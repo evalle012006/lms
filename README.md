@@ -1,4 +1,4 @@
-# HybridAG Blend Program
+# Lending Management System
 #### Powered By: NextJS
 <br />
 
