@@ -4,6 +4,7 @@ import {
     Squares2X2Icon, 
     BuildingOffice2Icon, 
     ClipboardDocumentListIcon,
+    ClipboardDocumentCheckIcon,
     UserIcon,
     UsersIcon,
     UserGroupIcon,
@@ -119,47 +120,6 @@ const MenuItems = [
         hasSub: false
     },
     {
-        label: "Loans",
-        url: "#",
-        icon: {
-            active: <TicketIcon className="text-gray-800 w-6 h-6" />,
-            notActive: <TicketIcon className="text-white w-6 h-6" />,
-        },
-        active: false,
-        borderBottom: true,
-        hasSub: true,
-        subMenuItems: [
-            {
-                label: "View Loans",
-                url: "/loans",
-                icon: {
-                    active: (
-                        <TableCellsIcon className="text-gray-800 w-5 h-5" />
-                    ),
-                    notActive: (
-                        <TableCellsIcon className="text-white w-5 h-5" />
-                    ),
-                },
-                active: false,
-                hasSub: false
-            },
-            {
-                label: "View Applications",
-                url: "/loans/loan-applications",
-                icon: {
-                    active: (
-                        <TableCellsIcon className="text-gray-800 w-5 h-5" />
-                    ),
-                    notActive: (
-                        <TableCellsIcon className="text-white w-5 h-5" />
-                    ),
-                },
-                active: false,
-                hasSub: false
-            }
-        ]
-    },
-    {
         label: "Transactions",
         url: "#",
         icon: {
@@ -176,10 +136,10 @@ const MenuItems = [
                 url: "/loans",
                 icon: {
                     active: (
-                        <TableCellsIcon className="text-gray-800 w-5 h-5" />
+                        <TicketIcon className="text-gray-800 w-5 h-5" />
                     ),
                     notActive: (
-                        <TableCellsIcon className="text-white w-5 h-5" />
+                        <TicketIcon className="text-white w-5 h-5" />
                     ),
                 },
                 active: false,
@@ -190,24 +150,10 @@ const MenuItems = [
                 url: "/loan-applications",
                 icon: {
                     active: (
-                        <TableCellsIcon className="text-gray-800 w-5 h-5" />
+                        <ClipboardDocumentCheckIcon className="text-gray-800 w-5 h-5" />
                     ),
                     notActive: (
-                        <TableCellsIcon className="text-white w-5 h-5" />
-                    ),
-                },
-                active: false,
-                hasSub: false
-            },
-            {
-                label: "Create Loan",
-                url: "/create-loan",
-                icon: {
-                    active: (
-                        <PlusIcon className="text-gray-800 w-5 h-5" />
-                    ),
-                    notActive: (
-                        <PlusIcon className="text-white w-5 h-5" />
+                        <ClipboardDocumentCheckIcon className="text-white w-5 h-5" />
                     ),
                 },
                 active: false,
@@ -283,7 +229,7 @@ const NavComponent = () => {
     const getActivePath = () => {
         const path = router.asPath.replace("#", "");
         const paths = path.split("/").filter((p) => p);
-        console.log(paths)
+        
         let currentPath = '';
         if (paths.length > 0) {
             if (paths.length === 1) {
@@ -294,7 +240,7 @@ const NavComponent = () => {
         } else {
             currentPath = path;
         }
-        console.log(currentPath)
+
         return currentPath;
     };
 

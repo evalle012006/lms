@@ -6,15 +6,12 @@ import TableComponent, { AvatarCell, SelectCell, SelectColumnFilter } from '@/li
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { useDispatch, useSelector } from "react-redux";
 import { setUser, setUserList } from "@/redux/actions/userActions";
-import AddUpdateTeamMember from "@/components/branches/AddUpdateTeamMemberDrawer";
 import Spinner from "@/components/Spinner";
 import toast from 'react-hot-toast';
 import { UppercaseFirstLetter } from "@/lib/utils";
 import moment from 'moment';
 import { useRouter } from "node_modules/next/router";
-import TestBoxComponent from "@/components/dashboard/TestBoxComponent";
-import RecommendationsComponent from "@/components/dashboard/RecommendationsComponent";
-import DashboardProgramsComponent from "@/components/dashboard/DashboardProgramsComponent";
+import AddUpdateUser from "@/components/settings/users/AddUpdateUserDrawer";
 
 const TeamPage = () => {
     const dispatch = useDispatch();
@@ -265,7 +262,7 @@ const TeamPage = () => {
                         </div>
                     ) : <TableComponent columns={columns} data={list} hasActionButtons={rootUser || (loggedInUser.role && loggedInUser.role.rep === 1) ? true : false} rowActionButtons={rootUser || (loggedInUser.role && loggedInUser.role.rep === 1) ? rowActionButtons : []} />}
             </div>
-            <AddUpdateTeamMember mode={mode} user={user} roles={platformRoles} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
+            <AddUpdateUser mode={mode} user={user} roles={platformRoles} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
             <Dialog show={showDeleteDialog}>
                 <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                     <div className="sm:flex sm:items-start justify-center">
