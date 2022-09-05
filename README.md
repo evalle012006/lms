@@ -45,7 +45,7 @@ Please see our [contributing.md](/contributing.md).
 
 <br />
 
-## <b>Project Documentation (Hybrid AG)</b>
+## <b>Project Documentation (Lending Management System)</b>
 
 **_NOTE:_**  This project primarily uses <i>npm</i> instead of <i>yarn</i>. Hence the documentation only refers to installation using <i>npm</i>.
 
