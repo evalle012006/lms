@@ -1,8 +1,15 @@
 const { createLogger, transports, format } = require("winston");
+const { combine, timestamp, label, prettyPrint } = format;
 
 const logger = createLogger({
   level: "debug",
-  format: format.json(),
+  format: combine(
+    label({ label: 'Lending Managment System Logs' }),
+    timestamp({
+      format: "MMM-DD-YYYY HH:mm:ss",
+    }),
+    prettyPrint()
+  ),
   transports: [
     new transports.File({
       filename: "logs/logs.log",
