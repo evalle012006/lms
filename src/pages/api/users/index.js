@@ -1,0 +1,128 @@
+import { apiHandler } from '@/services/api-handler';
+import { connectToDatabase } from '@/lib/mongodb';
+import formidable from "formidable";
+import fs from "fs";
+
+export default apiHandler({
+    get: getUser,
+    post: updateUser
+});
+
+async function getUser(req, res) {
+    const { id } = req.query;
+    let statusCode = 200;
+    let response = {};
+    const users = findUserByID(id)
+    response = { success: true, users: users };
+    res.status(statusCode)
+        .setHeader('Content-Type', 'application/json')
+        .end(JSON.stringify(response));
+}
+
+async function updateUser(req, res) {
+    const { db } = await connectToDatabase();
+    let statusCode = 200;
+    let response = { upload: true, success: false };
+
+    const form = new formidable.IncomingForm({ keepExtensions: true });
+    const promise = await new Promise((resolve, reject) => {
+        form.parse(req, async function (err, fields, files) {
+            const userData = await findUserByEmail(fields.email);
+
+            let file;
+            if (files.file) {
+                file = await saveFile(files.file, userData._id);
+            }
+
+            if (err) {
+                resolve({ formError: true })
+            }
+
+            const profile = file ? file : userData.profile;
+
+            const userResponse = await db
+                .collection('users')
+                .updateOne(
+                    { email: fields.email },
+                    {
+                        $set: {
+                            firstName: fields.firstName,
+                            lastName: fields.lastName,
+                            number: fields.number,
+                            position: fields.position,
+                            profile: profile
+                        },
+                        $currentDate: { dateModified: true }
+                    }
+                );
+            userData.profile = file ? file : userData.profile;
+            delete userData._id;
+            delete userData.password;
+            resolve({ success: true, user: userData });
+        });
+    });
+
+    response = { ...response, success: true, ...promise };
+    console.log(response)
+
+    res.status(statusCode)
+        .setHeader('Content-Type', 'application/json')
+        .end(JSON.stringify(response));
+}
+
+const saveFile = async (file, uid) => {
+    if (file) {
+        const data = fs.readFileSync(file.filepath);
+
+        if (!fs.existsSync(`./public/images/profiles/`)) {
+            fs.mkdirSync(`./public/images/profiles/`, { recursive: true });
+        }
+
+        if (fs.existsSync(`./public/images/profiles/${uid}/`)) {
+            // check if file exists 
+            fs.existsSync(`./public/images/profiles/${uid}/${file.originalFilename}`) && fs.unlinkSync(`./public/images/profiles/${uid}/${file.originalFilename}`);
+        } else {
+            fs.mkdirSync(`./public/images/profiles/${uid}/`);
+        }
+
+        fs.writeFileSync(`./public/images/profiles/${uid}/${file.originalFilename}`, data);
+        await fs.unlinkSync(file.filepath);
+
+        return uid + '/' + file.originalFilename;
+    } else {
+        return false;
+    }
+}
+
+const findUserByID = async (id) => {
+    const { db } = await connectToDatabase();
+    const ObjectId = require('mongodb').ObjectId;
+    const condition = id ? { _id: ObjectId(id) } : {};
+
+    const users = await db
+        .collection('users')
+        .find(condition)
+        .project({ _id: 0, password: 0 })
+        .toArray();
+
+    return users.length > 0 && users[0];
+}
+
+const findUserByEmail = async (email) => {
+    const { db } = await connectToDatabase();
+    const condition = { email: email };
+
+    const users = await db
+        .collection('users')
+        .find(condition)
+        .project({ password: 0 })
+        .toArray();
+
+    return users.length > 0 && users[0];
+}
+
+export const config = {
+    api: {
+        bodyParser: false,
+    },
+}
