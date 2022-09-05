@@ -1,0 +1,9 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Hybrid AG Test Suite layout renders correctly 1`] = `
+<div
+  className="container mx-auto pt-20"
+>
+  <main />
+</div>
+`;
