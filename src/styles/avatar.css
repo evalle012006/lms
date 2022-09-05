@@ -1,0 +1,47 @@
+.UserAvatar {
+    display: inline-block;
+    color: white;
+}
+
+.UserAvatarInner {
+    box-sizing: border-box;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border: 1px solid #f5f5f5;
+    /* padding: 6px 8px; */
+}
+
+.UserAvatarInner:hover {
+    /* border: 2px solid #f5f5f5; */
+}
+
+.UserAvatarLight {
+    color: gray;
+}
+
+.UserAvatarLight .UserAvatarInner {
+    border: 2px solid lightgray;
+}
+
+/** FOR LIST AVATARS **/
+
+.listAvatar {
+    display: flex;
+    align-content: center;
+    /* width: 5em; */
+}
+
+.avatarWrapper {
+    /* margin-left: -2em; */
+    margin-left: -1.1em;
+    background: transparent;
+}
+.avatarWrapper:first-child{
+    margin-left: 0em;
+}
+
+.avatarWrapper:hover {
+    margin-right: 2em;
+    background: transparent;
+}

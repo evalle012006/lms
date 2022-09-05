@@ -1,0 +1,19 @@
+.page-title {
+    font-family: 'Alternate Gothic No2 D';
+    font-style: normal;
+    font-weight: 400;
+    font-size: 34px;
+    line-height: 40px;
+    /* identical to box height, or 118% */
+
+    display: flex;
+    align-items: center;
+
+    /* Text/Regular */
+
+    color: #201D1D;
+}
+
+.nav-width {
+    min-width: 220px;
+}
