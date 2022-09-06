@@ -1,115 +1,72 @@
 import React, { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
-import { PlusIcon } from '@heroicons/react/solid';
-import { ButtonOutline, ButtonSolid, Dialog } from "@/lib/form-helper";
+import { PlusIcon } from '@heroicons/react/24/solid';
 import TableComponent, { AvatarCell, SelectCell, SelectColumnFilter } from '@/lib/table';
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { useDispatch, useSelector } from "react-redux";
-import { setUser, setUserList } from "@/redux/actions/userActions";
-import AddUpdateTeamMember from "@/components/branches/AddUpdateTeamMemberDrawer";
 import Spinner from "@/components/Spinner";
 import toast from 'react-hot-toast';
-import { UppercaseFirstLetter } from "@/lib/utils";
-import moment from 'moment';
 import { useRouter } from "node_modules/next/router";
-import TestBoxComponent from "@/components/dashboard/TestBoxComponent";
-import RecommendationsComponent from "@/components/dashboard/RecommendationsComponent";
-import DashboardProgramsComponent from "@/components/dashboard/DashboardProgramsComponent";
+import Dialog from "@/lib/ui/Dialog";
+import ButtonOutline from "@/lib/ui/ButtonOutline";
+import ButtonSolid from "@/lib/ui/ButtonSolid";
+import AddUpdateRole from "@/components/settings/roles/AddUpdateRoleDrawer";
+import { setRoleList } from "@/redux/actions/roleActions";
 
-const TeamPage = () => {
+const RolesPage = () => {
     const dispatch = useDispatch();
-    const loggedInUser = useSelector(state => state.user.data);
-    const list = useSelector(state => state.user.list);
+    const currentUser = useSelector(state => state.user.data);
+    const list = useSelector(state => state.branch.list);
     const [loading, setLoading] = useState(true);
 
     const [showAddDrawer, setShowAddDrawer] = useState(false);
     const [mode, setMode] = useState('add');
-    const [user, setUser] = useState();
+    const [role, setRole] = useState();
 
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
     const [platformRoles, setPlatformRoles] = useState([]);
-    const [rootUser, setRootUser] = useState(loggedInUser.root ? loggedInUser.root : false);
+    const [permissions, setPermissions] = useState([]);
+    const [rootUser, setRootUser] = useState(currentUser.root ? currentUser.root : false);
     const router = useRouter();
 
-    const getListUsers = async () => {
-        const imgpath = process.env.NEXT_PUBLIC_LOCAL_HOST !== 'local' && process.env.NEXT_PUBLIC_LOCAL_HOST;
-        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'users/list');
-        let users = [];
-        response.users && response.users.filter(u => !u.root).map((user) => {
-            users.push({
-                _id: user._id,
-                name: user.firstName + ' ' + user.lastName,
-                email: user.email,
-                number: user.number,
-                position: user.position,
-                roleId: user.role.rep,
-                role: UppercaseFirstLetter(user.role.name),
-                imgUrl: user.profile ? imgpath + '/images/profiles/' + user.profile : '',
-                lastActivity: user.lastLogin ? moment.utc(user.lastLogin).local().startOf('seconds').fromNow() : '-',
-                root: user.root ? user.root : false,
-                // hidden columns used for update
-                firstName: user.firstName,
-                lastName: user.lastName
-            });
-        });
-        dispatch(setUserList(users));
+    const getListRoles = async () => {
+        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'roles/list');
+        if (response.success) {
+            dispatch(setRoleList(response.roles));
+        } else if (response.error) {
+            toast.error(response.message);
+        }
         setLoading(false);
     }
 
-    const updateUser = (u, updatedValue) => {
-        setLoading(true);
-        const tempUser = { ...u };
-        const selectedRole = platformRoles.find(role => role.rep == updatedValue);
-        tempUser.role = JSON.stringify(selectedRole);
-        delete tempUser.roleId;
-        fetchWrapper.sendData('/api/users/', tempUser)
-            .then(response => {
-                if (loggedInUser.email === tempUser.email) {
-                    dispatch(setUser({
-                        ...loggedInUser,
-                        firstName: tempUser.firstName,
-                        lastName: tempUser.lastName,
-                        email: tempUser.email,
-                        number: tempUser.number,
-                        position: tempUser.position,
-                        role: tempUser.role
-                    }));
-                }
-                // update list
-                const userList = list.map(o => {
-                    let obj = { ...o };
-                    if (obj.email === tempUser.email) {
-                        obj.roleId = selectedRole.rep;
-                        obj.role = UppercaseFirstLetter(selectedRole.name)
-                    }
+    // const getListPlatformRoles = async () => {
+    //     const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'platform-roles/list');
+    //     if (response.success) {
+    //         let roles = [];
+    //         response.roles && response.roles.map(role => {
+    //             roles.push(
+    //                 {
+    //                     ...role,
+    //                     value: role.rep,
+    //                     label: UppercaseFirstLetter(role.name)
+    //                 }
+    //             );
+    //         });
+    //         setPlatformRoles(roles);
+    //     } else {
+    //         toast.error('Error retrieving platform roles list.');
+    //     }
 
-                    return obj;
-                });
+    //     setLoading(false);
+    // }
 
-                dispatch(setUserList(userList));
-                setLoading(false);
-            }).catch(error => {
-                console.log(error);
-            });
-    }
-
-    const getListPlatformRoles = async () => {
-        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'platform-roles/list');
+    const getListPermission = async () => {
+        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'permissions/list');
         if (response.success) {
-            let roles = [];
-            response.roles && response.roles.map(role => {
-                roles.push(
-                    {
-                        ...role,
-                        value: role.rep,
-                        label: UppercaseFirstLetter(role.name)
-                    }
-                );
-            });
-            setPlatformRoles(roles);
+            setPermissions(response.permissions);
         } else {
-            toast.error('Error retrieving platform roles list.');
+            toast.error('Error retrieving permissions list.');
         }
 
         setLoading(false);
@@ -119,45 +76,15 @@ const TeamPage = () => {
         {
             Header: "Name",
             accessor: 'name',
-            Cell: AvatarCell,
-            imgAccessor: "imgUrl",
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
         {
-            Header: "Email Address",
-            accessor: 'email',
+            Header: "Code",
+            accessor: 'shortCode',
             Filter: SelectColumnFilter,
             filter: 'includes'
-        },
-        {
-            Header: "Phone Number",
-            accessor: 'number',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "Position",
-            accessor: 'position',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "Platform Role",
-            accessor: 'role',
-            Cell: SelectCell,
-            Options: platformRoles,
-            valueIdAccessor: 'roleId',
-            selectOnChange: updateUser,
-            Filter: SelectColumnFilter,
-            filter: 'includes',
-        },
-        {
-            Header: "Last Activity",
-            accessor: 'lastActivity',
-            Filter: SelectColumnFilter,
-            filter: 'includes',
-        },
+        }
     ]);
 
     const handleShowAddDrawer = () => {
@@ -166,26 +93,21 @@ const TeamPage = () => {
 
     const handleCloseAddDrawer = () => {
         setLoading(true);
-        getListUsers();
+        getListRoles();
     }
 
     const actionButtons = [
-        <ButtonSolid label="Add Team Member" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
+        <ButtonSolid label="Add Role" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
     ];
 
     const handleEditAction = (row) => {
         setMode("edit");
-        let rowOriginal = row.original;
-        const selectedRole = platformRoles.find(role => UppercaseFirstLetter(role.name) === rowOriginal.role);
-        if (selectedRole) {
-            rowOriginal = { ...rowOriginal, role: selectedRole };
-        }
-        setUser(rowOriginal);
+        setBranch(row.original);
         handleShowAddDrawer();
     }
 
     const handleDeleteAction = (row) => {
-        setUser(row.original);
+        setRole(row.original);
         setShowDeleteDialog(true);
     }
 
@@ -195,15 +117,15 @@ const TeamPage = () => {
     ];
 
     const handleDelete = () => {
-        if (user) {
+        if (role) {
             setLoading(true);
-            fetchWrapper.postCors(process.env.NEXT_PUBLIC_API_URL + 'users/delete', user)
+            fetchWrapper.postCors(process.env.NEXT_PUBLIC_API_URL + 'roles/delete', branch)
                 .then(response => {
                     if (response.success) {
                         setShowDeleteDialog(false);
-                        toast.success('User successfully deleted.');
+                        toast.success('Branch successfully deleted.');
                         setLoading(false);
-                        getListUsers();
+                        getListRoles();
                     } else if (response.error) {
                         toast.error(response.message);
                     } else {
@@ -214,7 +136,7 @@ const TeamPage = () => {
     }
 
     useEffect(() => {
-        if ((loggedInUser.role && loggedInUser.role.rep !== 1)) {
+        if ((currentUser.role && currentUser.role.rep !== 1)) {
             router.push('/');
         }
     }, []);
@@ -223,8 +145,9 @@ const TeamPage = () => {
     useEffect(() => {
         let mounted = true;
 
-        mounted && getListUsers();
-        mounted && getListPlatformRoles();
+        mounted && getListRoles();
+        mounted && getListPermission();
+        // mounted && getListPlatformRoles();
 
 
         return () => {
@@ -232,40 +155,40 @@ const TeamPage = () => {
         };
     }, []);
 
-    useEffect(() => {
-        // to set user permissions
-        let updatedColumns = [];
-        columns.map(col => {
-            let temp = {...col}; 
-            if ((loggedInUser.role && loggedInUser.role.rep !== 1)) {        
-                if (col.accessor === 'role') {
-                    delete temp.Cell;
-                }
-            } else {
-                // need to set the Options again since it was blank after checking for permissions
-                if (col.accessor === 'role') {
-                    temp.Options = platformRoles;
-                    temp.selectOnChange = updateUser;
-                }
-            }
+    // useEffect(() => {
+    //     // to set user permissions
+    //     let updatedColumns = [];
+    //     columns.map(col => {
+    //         let temp = {...col}; 
+    //         if ((currentUser.role && currentUser.role.rep !== 1)) {        
+    //             if (col.accessor === 'role') {
+    //                 delete temp.Cell;
+    //             }
+    //         } else {
+    //             // need to set the Options again since it was blank after checking for permissions
+    //             if (col.accessor === 'role') {
+    //                 temp.Options = platformRoles;
+    //                 temp.selectOnChange = updateUser;
+    //             }
+    //         }
 
-            updatedColumns.push(temp);
-        });
+    //         updatedColumns.push(temp);
+    //     });
 
-        setColumns(updatedColumns);
-    }, [platformRoles]);
+    //     setColumns(updatedColumns);
+    // }, [platformRoles]);
 
     return (
-        <Layout actionButtons={rootUser || (loggedInUser.role && loggedInUser.role.rep === 1) ? actionButtons : []}>
+        <Layout actionButtons={actionButtons}>
             <div className="pb-4">
                 {loading ?
                     (
                         <div className="absolute top-1/2 left-1/2">
                             <Spinner />
                         </div>
-                    ) : <TableComponent columns={columns} data={list} hasActionButtons={rootUser || (loggedInUser.role && loggedInUser.role.rep === 1) ? true : false} rowActionButtons={rootUser || (loggedInUser.role && loggedInUser.role.rep === 1) ? rowActionButtons : []} />}
+                    ) : <TableComponent columns={columns} data={list} hasActionButtons={true} rowActionButtons={rowActionButtons} />}
             </div>
-            <AddUpdateTeamMember mode={mode} user={user} roles={platformRoles} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
+            <AddUpdateRole mode={mode} role={role} permissions={permissions} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
             <Dialog show={showDeleteDialog}>
                 <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                     <div className="sm:flex sm:items-start justify-center">
@@ -285,4 +208,4 @@ const TeamPage = () => {
     );
 }
 
-export default TeamPage;
+export default RolesPage;

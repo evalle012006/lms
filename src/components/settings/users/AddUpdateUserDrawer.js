@@ -12,9 +12,9 @@ import InputNumber from "@/lib/ui/InputNumber";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 import SideBar from "@/lib/ui/SideBar";
-import Spinner from "../Spinner";
 import placeholder from '/public/images/image-placeholder.png';
 import Image from 'next/image';
+import Spinner from "@/components/Spinner";
 
 const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setShowSidebar, onClose }) => {
     const imgpath = process.env.NEXT_PUBLIC_LOCAL_HOST !== 'local' && process.env.NEXT_PUBLIC_LOCAL_HOST;
@@ -150,7 +150,10 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
     useEffect(() => {
         let mounted = true;
 
-        setPhoto(`${imgpath}/${user.imgUrl}`);
+        if (user.imgUrl) {
+            setPhoto(`${imgpath}/${user.imgUrl}`);
+        }
+
         setLoading(false);
 
         return () => {

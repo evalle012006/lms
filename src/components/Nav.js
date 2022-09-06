@@ -14,7 +14,8 @@ import {
     PlusIcon,
     BuildingLibraryIcon,
     ChevronDownIcon,
-    UserCircleIcon
+    UserCircleIcon,
+    ArrowRightOnRectangleIcon
 } from '@heroicons/react/24/solid';
 import Link from "next/link";
 import { useRouter } from "node_modules/next/router";
@@ -25,46 +26,74 @@ import {
     setCurrentSubMenu
 } from "@/redux/actions/globalActions";
 import Avatar from "@/lib/avatar";
+import { userService } from "@/services/user-service";
+import { fetchWrapper } from "@/lib/fetch-wrapper";
 
 const SubNav = ({ item, index, activePath, inner=false, className }) => {
-    const subMenu = useSelector(state => state.global.subMenu);
-    const [subMenuOpen, setSubMenuOpen] = useState(item.label === subMenu ? true : false);
+    const subMenu = useSelector(state => state.global.subMenus);
+    const sub = subMenu.find(s => s.menu === item.label);
+    const [subMenuOpen, setSubMenuOpen] = useState(sub && sub.open);
 
-    return (
-        <Link href={item.url} passHref>
-            {item.hasSub ? (
-                <React.Fragment>
-                    <li className={`${!inner ? index === 0 ? "mt-2" : "mt-5" : "mt-2"} ${activePath === item.url ? "text-gray-800 bg-teal-10" : "text-white"} ${className}`}>
-                        <a className="flex flex-row rounded-md p-2 cursor-pointer hover:opacity-70 text-sm items-center gap-x-4 mr-4 whitespace-nowrap transition duration-300 ease-in-out" onClick={() => {setSubMenuOpen(!subMenuOpen)}}>
-                            {activePath === item.url ? item.icon.active : item.icon.notActive}
-                            <span className={`origin-left duration-200`}>
-                                {item.label}
-                            </span>
-                            <ChevronDownIcon className={`ml-auto ${activePath === item.url ? 'text-gray-800 w-5 h-5' : 'text-white w-5 h-5'} ${subMenuOpen && 'rotate-180'}`} />
-                        </a>
-                        {subMenuOpen && (
-                            <ul className="relative accordion-collapse collapse">
-                                {item.subMenuItems.map((menu, idx) => {
-                                    return (
-                                        <SubNav key={idx} item={menu} index={idx} activePath={activePath} className="ml-6" inner={true} />
-                                    )
-                                })}
-                            </ul>
-                        )}
+    const handleLogout = async () => {
+        let user = userService.userValue;
+        if (user && user.hasOwnProperty('user')) {
+            user = user.user;
+        }
+        const url = `${process.env.NEXT_PUBLIC_API_URL}authenticate?`;
+        const params = { user: user._id };
+        const response = await fetchWrapper.get(url + new URLSearchParams(params));
+        await response && response.success && response.query.acknowledged && userService.logout();
+    }
+
+    if (item.url !== ("/logout")) {
+        return (
+            <Link href={item.url} passHref>
+                {item.hasSub ? (
+                    <React.Fragment>
+                        <li className={`${!inner ? index === 0 ? "mt-2" : "mt-5" : "mt-2"} ${activePath === item.url ? "text-gray-800 bg-teal-10" : "text-white"} ${className}`}>
+                            <a className="flex flex-row rounded-md p-2 cursor-pointer hover:opacity-70 text-sm items-center gap-x-4 mr-4 whitespace-nowrap transition duration-300 ease-in-out" onClick={() => {setSubMenuOpen(!subMenuOpen)}}>
+                                {activePath === item.url ? item.icon.active : item.icon.notActive}
+                                <span className={`origin-left duration-200`}>
+                                    {item.label}
+                                </span>
+                                <ChevronDownIcon className={`ml-auto ${activePath === item.url ? 'text-gray-800 w-5 h-5' : 'text-white w-5 h-5'} ${subMenuOpen && 'rotate-180'}`} />
+                            </a>
+                            {subMenuOpen && (
+                                <ul className="relative accordion-collapse collapse">
+                                    {item.subMenuItems.map((menu, idx) => {
+                                        return (
+                                            <SubNav key={idx} item={menu} index={idx} activePath={activePath} className="ml-6" inner={true} />
+                                        )
+                                    })}
+                                </ul>
+                            )}
+                        </li>
+                    </React.Fragment>
+                ) : (
+                    <li className={`flex rounded-md p-2 cursor-pointer hover:opacity-70 text-sm items-center gap-x-4
+                                ${!inner ? index === 0 ? "mt-2" : "mt-5" : "mt-2"}
+                                ${activePath === item.url ? "text-gray-800 bg-teal-10" : "text-white"} ${className}`}>
+                        {activePath === item.url ? item.icon.active : item.icon.notActive}
+                        <span className={`origin-left duration-200`}>
+                            {item.label}
+                        </span>
                     </li>
-                </React.Fragment>
-            ) : (
-                <li className={`flex rounded-md p-2 cursor-pointer hover:opacity-70 text-sm items-center gap-x-4
-                            ${!inner ? index === 0 ? "mt-2" : "mt-5" : "mt-2"}
-                            ${activePath === item.url ? "text-gray-800 bg-teal-10" : "text-white"} ${className}`}>
-                    {activePath === item.url ? item.icon.active : item.icon.notActive}
-                    <span className={`origin-left duration-200`}>
-                        {item.label}
-                    </span>
-                </li>
-            )}
-        </Link>
-    )
+                )}
+            </Link>
+        )
+    } else {
+        return (
+            <li className={`flex rounded-md p-2 cursor-pointer hover:opacity-70 text-sm items-center gap-x-4
+                        ${!inner ? index === 0 ? "mt-2" : "mt-5" : "mt-2"}
+                        ${activePath === item.url ? "text-gray-800 bg-teal-10" : "text-white"} ${className}`}
+                        onClick={handleLogout} >
+                {item.icon.active}
+                <span className={`origin-left duration-200`}>
+                    {item.label}
+                </span>
+            </li>
+        )
+    }
 }
 
 const MenuItems = [
@@ -121,7 +150,8 @@ const MenuItems = [
     },
     {
         label: "Transactions",
-        url: "#",
+        url: "#transactions",
+        subMenuIndex: 0,
         icon: {
             active: <ClipboardDocumentListIcon className="text-gray-800 w-6 h-6" />,
             notActive: <ClipboardDocumentListIcon className="text-white w-6 h-6" />,
@@ -129,11 +159,10 @@ const MenuItems = [
         active: false,
         borderBottom: true,
         hasSub: true,
-        id: 'transactions',
         subMenuItems: [
             {
                 label: "View Loans",
-                url: "/loans",
+                url: "/transactions/loans",
                 icon: {
                     active: (
                         <TicketIcon className="text-gray-800 w-5 h-5" />
@@ -147,7 +176,7 @@ const MenuItems = [
             },
             {
                 label: "View Applications",
-                url: "/loan-applications",
+                url: "/transactions/loan-applications",
                 icon: {
                     active: (
                         <ClipboardDocumentCheckIcon className="text-gray-800 w-5 h-5" />
@@ -163,7 +192,8 @@ const MenuItems = [
     },
     {
         label: "Settings",
-        url: "#",
+        url: "#settings",
+        subMenuIndex: 1,
         icon: {
             active: <Cog6ToothIcon className="text-gray-800 w-5 h-5" />,
             notActive: <Cog6ToothIcon className="text-white w-5 h-5" />,
@@ -173,7 +203,7 @@ const MenuItems = [
         subMenuItems: [
             {
                 label: "Users",
-                url: "/users",
+                url: "/settings/users",
                 icon: {
                     active: (
                         <UsersIcon className="text-gray-800 w-5 h-5" />
@@ -187,7 +217,7 @@ const MenuItems = [
             },
             {
                 label: "Roles",
-                url: "/roles",
+                url: "/settings/roles",
                 icon: {
                     active: (
                         <UserCircleIcon className="text-gray-800 w-5 h-5" />
@@ -214,7 +244,17 @@ const MenuItems = [
                 hasSub: false
             }
         ]
-    }
+    },
+    {
+        label: "Logout",
+        url: "/logout",
+        icon: {
+            active: <ArrowRightOnRectangleIcon className="text-gray-800 w-6 h-6" />
+        },
+        active: false,
+        borderBottom: true,
+        hasSub: false
+    },
 ];
 
 const NavComponent = () => {
@@ -249,22 +289,23 @@ const NavComponent = () => {
         mounted && setActivePath(getActivePath());
 
         let subMenu = false;
+        let parentMenu = '';
         let page = MenuItems.find((i) => i.url === activePath);
         if (!page) {
             MenuItems.forEach(menu => {
                 let currentPage = menu.subMenuItems && menu.subMenuItems.find(m => m.url === activePath);
-                
                 if (!currentPage) {
                     menu.subMenuItems && menu.subMenuItems.forEach(item => {
                         currentPage = item.subMenuItems && item.subMenuItems.find(i => i.url === activePath);
-                        
                         if (currentPage) {
                             subMenu = true;
+                            parentMenu = item.subMenuIndex;
                             page = currentPage;
                         }
                     });
                 } else {
                     subMenu = true;
+                    parentMenu = menu.subMenuIndex;
                     page = currentPage;
                 }
             });
@@ -273,7 +314,7 @@ const NavComponent = () => {
         if (page) {
             dispatch(setCurrentPage(page.url));
             dispatch(setCurrentPageTitle(page.label));
-            subMenu && dispatch(setCurrentSubMenu(page.label));
+            subMenu && dispatch(setCurrentSubMenu(parentMenu));
         }
 
         return () => {
@@ -309,8 +350,9 @@ const NavComponent = () => {
                         </a>
                     </div>
                 </header>
-                <div id="profile" className="flex items-center border-b border-orange-darkest px-4 py-6">
-                    <div id="img" className="w-1/4 mr-4">
+                {/** add click event to navigate to user profile **/}
+                <div id="profile" className="flex items-center border-b border-orange-darkest px-4 py-4">
+                    <div id="img" className="w-1/4">
                         <Avatar name={userState.firstName + " " + userState.lastName} src={userState.profile ? '/images/profiles/' + userState.profile : ""} className={`${userState.profile ? 'pt-8 pb-4 pl-8 pr-4' : 'py-1.5 px-2'} `} />
                     </div>
                     <div id="welcome" className="text-white w-2/4 sm:ml-1 md:ml-4">

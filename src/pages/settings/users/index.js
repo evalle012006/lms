@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
-import { PlusIcon } from '@heroicons/react/solid';
-import { ButtonOutline, ButtonSolid, Dialog } from "@/lib/form-helper";
+import { PlusIcon } from '@heroicons/react/24/solid';
 import TableComponent, { AvatarCell, SelectCell, SelectColumnFilter } from '@/lib/table';
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { useDispatch, useSelector } from "react-redux";
@@ -12,6 +11,9 @@ import { UppercaseFirstLetter } from "@/lib/utils";
 import moment from 'moment';
 import { useRouter } from "node_modules/next/router";
 import AddUpdateUser from "@/components/settings/users/AddUpdateUserDrawer";
+import ButtonOutline from "@/lib/ui/ButtonOutline";
+import ButtonSolid from "@/lib/ui/ButtonSolid";
+import Dialog from "@/lib/ui/Dialog";
 
 const TeamPage = () => {
     const dispatch = useDispatch();

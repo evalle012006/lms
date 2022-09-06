@@ -23,7 +23,7 @@ export const setPageLoading = () => ({
     type: SET_PAGE_LOADING
 });
 
-export const setCurrentSubMenu = (title) => ({
+export const setCurrentSubMenu = (index) => ({
     type: SET_CURRENT_SUB_MENU,
-    payload: title
+    payload: index
 });

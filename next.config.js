@@ -10,6 +10,6 @@ module.exports = {
         apiUrl: process.env.DEV_URL
     },
     images: {
-        domains: process.env.DEV_URL === 'http://localhost:3000' ? ['images.local'] : ['images-hybridag.castledigital.com.au']
+        domains: process.env.DEV_URL === 'http://localhost:3000' ? ['localhost'] : ['']
     }
 }
