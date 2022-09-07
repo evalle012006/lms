@@ -15,6 +15,11 @@ async function save(req, res) {
         .find({ shortCode: shortCode })
         .toArray();
 
+    const counter = await db
+        .collection('counters')
+        .find({ tableName: 'roles' })
+        .toArray();
+
     let response = {};
     let statusCode = 200;
 
@@ -28,13 +33,14 @@ async function save(req, res) {
         const role = await db.collection('roles').insertOne({
             name: name,
             shortCode: shortCode,
-            rep: null,
+            rep: counter[0].lastCounter + 1,
             system: false,
             dateAdded: new Date
         });
 
         response = {
             success: true,
+            rep: counter[0].lastCounter + 1,
             role: role
         }
     }

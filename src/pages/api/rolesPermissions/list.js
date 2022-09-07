@@ -14,7 +14,7 @@ async function list(req, res) {
 
 
     const roles = await db
-        .collection('platformRoles')
+        .collection('rolesPermissions')
         .find({})
         .toArray();
 

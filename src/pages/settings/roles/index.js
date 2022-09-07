@@ -11,12 +11,13 @@ import Dialog from "@/lib/ui/Dialog";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 import AddUpdateRole from "@/components/settings/roles/AddUpdateRoleDrawer";
-import { setRoleList } from "@/redux/actions/roleActions";
+import { setAddUpdateRole, setRoleList } from "@/redux/actions/roleActions";
+import { UppercaseFirstLetter } from "@/lib/utils";
 
 const RolesPage = () => {
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
-    const list = useSelector(state => state.branch.list);
+    const list = useSelector(state => state.role.list);
     const [loading, setLoading] = useState(true);
 
     const [showAddDrawer, setShowAddDrawer] = useState(false);
@@ -33,7 +34,11 @@ const RolesPage = () => {
     const getListRoles = async () => {
         const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'roles/list');
         if (response.success) {
-            dispatch(setRoleList(response.roles));
+            const roleList = response.roles.map(r => {
+                r.name = UppercaseFirstLetter(r.name);
+                return r;
+            });
+            dispatch(setRoleList(roleList));
         } else if (response.error) {
             toast.error(response.message);
         }
@@ -64,7 +69,8 @@ const RolesPage = () => {
     const getListPermission = async () => {
         const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'permissions/list');
         if (response.success) {
-            setPermissions(response.permissions);
+            const permissionList = response.permissions.sort((a,b) => a.rep - b.rep);;
+            setPermissions(permissionList);
         } else {
             toast.error('Error retrieving permissions list.');
         }
@@ -93,6 +99,7 @@ const RolesPage = () => {
 
     const handleCloseAddDrawer = () => {
         setLoading(true);
+        setMode('add');
         getListRoles();
     }
 
@@ -100,10 +107,19 @@ const RolesPage = () => {
         <ButtonSolid label="Add Role" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
     ];
 
-    const handleEditAction = (row) => {
+    const handleEditAction = async (row) => {
         setMode("edit");
-        setBranch(row.original);
-        handleShowAddDrawer();
+        const roleOriginal = row.original;
+        const roleApiUrl = process.env.NEXT_PUBLIC_API_URL + 'roles?';
+        const params = { id: roleOriginal._id };
+        const response = await fetchWrapper.get(roleApiUrl + new URLSearchParams(params));
+        if (response.success) {
+            await setRole(response.role);
+            await dispatch(setAddUpdateRole(response.role));
+            await handleShowAddDrawer();
+        } else {
+            toast.error(response.message);
+        }
     }
 
     const handleDeleteAction = (row) => {
@@ -188,7 +204,7 @@ const RolesPage = () => {
                         </div>
                     ) : <TableComponent columns={columns} data={list} hasActionButtons={true} rowActionButtons={rowActionButtons} />}
             </div>
-            <AddUpdateRole mode={mode} role={role} permissions={permissions} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
+            <AddUpdateRole mode={mode} permissions={permissions} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
             <Dialog show={showDeleteDialog}>
                 <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                     <div className="sm:flex sm:items-start justify-center">

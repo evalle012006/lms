@@ -5,10 +5,10 @@ module.exports = {
     // Example:
     // await db.collection('albums').updateOne({artist: 'The Beatles'}, {$set: {blacklisted: true}});
     db.collection('rolesPermissions').insertMany([
-      { role: 1, permission: [0] },
-      { role: 2, permission: [1, 2, 2.1, 2.3, 3, 3.1, 3.2, 3.3, 3.4, 3.5, 5, 5.1, 5.2, 5.3, 5.4, 6, 6.1, 6.2, 6.3, 6.4] },
-      { role: 3, permission: [1, 3, 3.1, 3.2, 3.3, 3.4, 3.5, 5, 5.1, 5.2, 5.3, 5.4, 6, 6.1, 6.2, 6.3, 6.4] },
-      { role: 4, permission: [1, 3, 3.1, 3.2, 3.3, 3.4, 3.5, 5, 5.1, 5.2, 5.3, 5.4, 6, 6.1, 6.2, 6.3, 6.4] }
+      { role: 1, permissions: [0] },
+      { role: 2, permissions: [1, 2, 2.1, 2.3, 3, 3.1, 3.2, 3.3, 3.4, 3.5, 5, 5.1, 5.2, 5.3, 5.4, 6, 6.1, 6.2, 6.3, 6.4] },
+      { role: 3, permissions: [1, 3, 3.1, 3.2, 3.3, 3.4, 3.5, 5, 5.1, 5.2, 5.3, 5.4, 6, 6.1, 6.2, 6.3, 6.4] },
+      { role: 4, permissions: [1, 3, 3.1, 3.2, 3.3, 3.4, 3.5, 5, 5.1, 5.2, 5.3, 5.4, 6, 6.1, 6.2, 6.3, 6.4] }
     ]);
   },
 

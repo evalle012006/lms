@@ -249,7 +249,7 @@ const MenuItems = [
         label: "Logout",
         url: "/logout",
         icon: {
-            active: <ArrowRightOnRectangleIcon className="text-gray-800 w-6 h-6" />
+            active: <ArrowRightOnRectangleIcon className="text-white w-6 h-6" />
         },
         active: false,
         borderBottom: true,

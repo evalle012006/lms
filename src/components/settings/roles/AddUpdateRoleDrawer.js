@@ -10,17 +10,18 @@ import ButtonSolid from "@/lib/ui/ButtonSolid";
 import SideBar from "@/lib/ui/SideBar";
 import Spinner from "@/components/Spinner";
 import CheckBox from "@/lib/ui/checkbox";
+import { UppercaseFirstLetter } from "@/lib/utils";
 
-const AddUpdateRole = ({ mode = 'add', role = {}, permissions=[], showSidebar, setShowSidebar, onClose }) => {
+const AddUpdateRole = ({ mode = 'add', permissions=[], showSidebar, setShowSidebar, onClose }) => {
     const formikRef = useRef();
     const dispatch = useDispatch();
+    const role = useSelector(state => state.role.addUpdate);
     const [loading, setLoading] = useState(false);
     const [fieldName, setFieldName] = useState({});
-    let fieldErrors = '';
 
     const initialValues = {
-        name: role.name,
-        shortCode: role.shortCode,
+        name: mode === 'edit' ? UppercaseFirstLetter(role.name) : '',
+        shortCode: mode === 'edit' ? role.shortCode : '',
         ...fieldName
     }
 
@@ -36,35 +37,57 @@ const AddUpdateRole = ({ mode = 'add', role = {}, permissions=[], showSidebar, s
 
     const handleSaveUpdate = (values, action) => {
         setLoading(true);
-        if (mode === 'add') {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'roles/save/';
+        let rolePermissionsValues = { role: role.rep, permissions: [] }
+        let rolePermissions = [];
+        permissions.map(p => {
+            if (values['p-' + p.shortCode]) {
+                rolePermissions.push(p.rep);
+            }
+            delete values['p-' + p.shortCode];
+        });
 
-            fetchWrapper.post(apiUrl, values)
+        rolePermissionsValues.permissions = rolePermissions;
+
+        if (mode === 'add') {
+            const roleApiUrl = process.env.NEXT_PUBLIC_API_URL + 'roles/save/';
+            const rolePermissionsApiUrl = process.env.NEXT_PUBLIC_API_URL + 'rolesPermissions/save/';
+
+            fetchWrapper.post(roleApiUrl, values)
                 .then(response => {
                     if (response.error) {
                         toast.error(response.message);
-                    } else if (response.success) {
                         setLoading(false);
-                        setShowSidebar(false);
-                        toast.success('Role successfully added.');
-                        action.setSubmitting = false;
-                        action.resetForm();
-                        onClose();
+                    } else if (response.success) {
+                        rolePermissionsValues.role = response.rep;
+                        fetchWrapper.post(rolePermissionsApiUrl, rolePermissionsValues)
+                            .then(resp => {
+                                setLoading(false);
+                                setShowSidebar(false);
+                                toast.success('Role successfully added.');
+                                action.setSubmitting = false;
+                                action.resetForm();
+                                onClose();
+                            });
                     }
                 }).catch(error => {
                     console.log(error)
                 });
         } else if (mode === 'edit') {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'roles';
+            const roleApiUrl = process.env.NEXT_PUBLIC_API_URL + 'roles';
+            const rolePermissionsApiUrl = process.env.NEXT_PUBLIC_API_URL + 'rolesPermissions';
             values._id = role._id;
-            fetchWrapper.post(apiUrl, values)
+            fetchWrapper.post(roleApiUrl, values)
                 .then(response => {
-                    setLoading(false);
-                    setShowSidebar(false);
-                    toast.success('Role successfully updated.');
-                    action.setSubmitting = false;
-                    action.resetForm();
-                    onClose();
+                    rolePermissionsValues.role = role.rep;
+                    fetchWrapper.post(rolePermissionsApiUrl, rolePermissionsValues)
+                        .then(resp => {
+                            setLoading(false);
+                            setShowSidebar(false);
+                            toast.success('Role successfully updated.');
+                            action.setSubmitting = false;
+                            action.resetForm();
+                            onClose();
+                        });
                 }).catch(error => {
                     console.log(error);
                 });
@@ -89,12 +112,20 @@ const AddUpdateRole = ({ mode = 'add', role = {}, permissions=[], showSidebar, s
     useEffect(() => {
         let fieldObject = {};
 
-        permissions && permissions.map(p => {
-            fieldObject['p-' + p.shortCode] = false;
-        });
+        if (mode === 'add') {
+            permissions && permissions.map(p => {
+                fieldObject['p-' + p.shortCode] = false;
+            });
+        } else {
+            const rolePermissions = role.rolesPermissions.length > 0 && role.rolesPermissions[0].permissions;
+            permissions && permissions.map(p => {
+                const perm = rolePermissions && rolePermissions.find(rp => rp === p.rep);
+                fieldObject['p-' + p.shortCode] = perm ? true : false;
+            });
+        }
 
         setFieldName(fieldObject);
-    }, [permissions])
+    }, [role, permissions])
 
     return (
         <React.Fragment>
@@ -143,19 +174,23 @@ const AddUpdateRole = ({ mode = 'add', role = {}, permissions=[], showSidebar, s
                                             setFieldValue={setFieldValue}
                                             errors={touched.shortCode && errors.shortCode ? errors.shortCode : undefined} />
                                     </div>
-                                    <div className={`w-full border rounded-md mt-4 p-4 ${fieldErrors && 'border-red-400'}`}>
+                                    <div className={`w-full border rounded-md mt-4 p-4`}>
                                         <div className="pb-4 border-b">Permissions</div>
-                                        <div className="grid gap-4 grid-cols-3 mt-4">
+                                        <div className="grid gap-4 grid-cols-3 mt-2">
                                             {permissions.map((item, index) => {
-                                                fieldErrors = errors[item.shortCode];
                                                 return (
                                                     <div key={index}>
-                                                        <CheckBox id={item.shortCode} value={values['p-' + item.shortCode]} onChange={handleChange}  label={item.name} size={"lg"} />
+                                                        <CheckBox 
+                                                            name={'p-' + item.shortCode}
+                                                            value={values['p-' + item.shortCode] ? values['p-' + item.shortCode] : false} 
+                                                            onChange={setFieldValue}  
+                                                            label={UppercaseFirstLetter(item.name)} 
+                                                            size={"lg"} 
+                                                        />
                                                     </div>
                                                 );
                                             })}
                                         </div>
-                                        {fieldErrors && <div className="mt-4 text-red-400 text-xs font-medium">One or more nutrient fields are blank. All nutrients are required.</div>}
                                     </div>
                                     <div className="flex flex-row mt-5">
                                         <ButtonOutline label="Cancel" onClick={handleCancel} className="mr-3" />

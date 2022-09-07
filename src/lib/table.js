@@ -475,7 +475,7 @@ const TableComponent = ({
                                     );
                                     })}
                                     {/* ACTION BUTTON */}
-                                    {(hasActionButtons && !root) && (
+                                    {(hasActionButtons && !root && !row.original.system) && (
                                     <td
                                         className="py-4-custom whitespace-nowrap-custom"
                                         role="cell"
