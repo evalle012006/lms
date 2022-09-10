@@ -2,10 +2,10 @@ import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
 
 export default apiHandler({
-    post: deleteBranch
+    post: deleteGroup
 });
 
-async function deleteBranch(req, res) {
+async function deleteGroup(req, res) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
     const { _id } = req.body;
@@ -13,14 +13,14 @@ async function deleteBranch(req, res) {
     let statusCode = 200;
     let response = {};
 
-    const branches = await db
-        .collection('branches')
+    const groups = await db
+        .collection('groups')
         .find({ _id: ObjectId(_id) })
         .toArray();
 
-    if (branches.length > 0) {
+    if (groups.length > 0) {
         await db
-            .collection('branches')
+            .collection('groups')
             .updateOne(
                 { _id: _id },
                 {
@@ -35,7 +35,7 @@ async function deleteBranch(req, res) {
     } else {
         response = {
             error: true,
-            message: `Branch with id: "${_id}" not exists`
+            message: `Group with id: "${_id}" not exists`
         };
     }
 
