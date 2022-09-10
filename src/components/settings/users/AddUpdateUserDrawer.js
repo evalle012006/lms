@@ -153,7 +153,22 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
         let mounted = true;
 
         if (user.imgUrl) {
-            setPhoto(`${imgpath}/${user.imgUrl}`);
+            // setPhoto(`${imgpath}/${user.imgUrl}`);
+            setPhoto(`${user.imgUrl}`);
+        }
+
+        if (user.role && user.role.rep === 2) {
+            const branchesCode = user.designatedBranch.split(',');
+            let selectedBranchesList = [];
+            branches && branches.map(branch => {
+                branchesCode && branchesCode.map(b => {
+                    if (branch.code === b) {
+                        selectedBranchesList.push(branch);
+                    }
+                })
+            });
+
+            setSelectedBranches(selectedBranchesList);
         }
 
         setLoading(false);
