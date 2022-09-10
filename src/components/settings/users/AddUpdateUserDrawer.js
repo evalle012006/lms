@@ -15,8 +15,10 @@ import SideBar from "@/lib/ui/SideBar";
 import placeholder from '/public/images/image-placeholder.png';
 import Image from 'next/image';
 import Spinner from "@/components/Spinner";
+import { multiStyles, DropdownIndicator } from "@/styles/select";
+import Select from 'react-select';
 
-const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setShowSidebar, onClose }) => {
+const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], showSidebar, setShowSidebar, onClose }) => {
     const imgpath = process.env.NEXT_PUBLIC_LOCAL_HOST !== 'local' && process.env.NEXT_PUBLIC_LOCAL_HOST;
     const hiddenInput = useRef(null);
     const formikRef = useRef();
@@ -26,15 +28,15 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
     const [photoW, setPhotoW] = useState(200);
     const [photoH, setPhotoH] = useState(200);
     const [image, setImage] = useState('');
-    const loggedInUser = useSelector(state => state.user.data);
+    const [selectedBranches, setSelectedBranches] = useState([]);
     const initialValues = {
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
         number: user.number,
         position: user.position,
-        role: user.role ? user.role.value : '',
-        newRole: ''
+        designatedBranch: user.designatedBranch ? user.designatedBranch : 0,
+        role: user.role ? user.role.value : ''
     }
 
     const validationSchema = yup.object().shape({
@@ -60,10 +62,21 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
 
     });
 
+    const handleSelectBranch = (selectedBranch) => {
+        setSelectedBranches(selectedBranch);
+    }
+
     const handleSaveUpdate = (values, action) => {
         setLoading(true);
+        let selectedBranchesCode = [];
+        selectedBranches && selectedBranches.map(branch => {
+            selectedBranchesCode.push(branch.code);
+        });
+
         const selectedRole = roles.find(role => role.rep == values.role);
         values.role = JSON.stringify(selectedRole);
+        values.designatedBranch = selectedRole.rep === 2 ? selectedBranchesCode : selectedRole.rep >= 2 ? values.designatedBranch : 0;
+
         if (mode === 'add') {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'users/save/';
 
@@ -87,17 +100,6 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
             values.file = image;
             fetchWrapper.sendData('/api/users/', values)
                 .then(response => {
-                    // if (loggedInUser.email === values.email) {
-                    //     dispatch(setUser({
-                    //         ...loggedInUser,
-                    //         firstName: values.firstName,
-                    //         lastName: values.lastName,
-                    //         email: values.email,
-                    //         number: values.number,
-                    //         position: values.position,
-                    //         role: values.role
-                    //     }));
-                    // }
                     setLoading(false);
                     setShowSidebar(false);
                     handleRemoveImage();
@@ -265,7 +267,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
                                             name="role"
                                             field="role"
                                             value={values.role}
-                                            label="Platform Role"
+                                            label="Role"
                                             options={roles}
                                             onChange={setFieldValue}
                                             onBlur={setFieldTouched}
@@ -273,6 +275,44 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
                                             errors={touched.role && errors.role ? errors.role : undefined}
                                         />
                                     </div>
+                                    {values.role === 2 && (
+                                        <div className="mt-4">
+                                            <div className={`flex flex-col border rounded-md px-4 py-2 bg-white ${selectedBranches.length > 0 ? 'border-main' : 'border-slate-400'}`}>
+                                                <div className="flex justify-between">
+                                                    <label htmlFor="designatedBranch" className={`font-proxima-bold text-xs font-bold  ${selectedBranches.length > 0 ? 'text-main' : 'text-gray-500'}`}>
+                                                        Designated Branches
+                                                    </label>
+                                                </div>
+                                                <div className="block h-fit">
+                                                    <Select 
+                                                        options={branches}
+                                                        value={selectedBranches}
+                                                        isMulti
+                                                        styles={multiStyles}
+                                                        components={{ DropdownIndicator }}
+                                                        onChange={handleSelectBranch}
+                                                        isSearchable={true}
+                                                        closeMenuOnSelect={true}
+                                                        placeholder={'Select branches'}/>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {values.role >= 3 && (
+                                        <div className="mt-4">
+                                            <SelectDropdown
+                                                name="designatedBranch"
+                                                field="designatedBranch"
+                                                value={values.designatedBranch}
+                                                label="Designated Branch"
+                                                options={branches}
+                                                onChange={setFieldValue}
+                                                onBlur={setFieldTouched}
+                                                placeholder="Select Branch"
+                                                errors={touched.designatedBranch && errors.designatedBranch ? errors.designatedBranch : undefined}
+                                            />
+                                        </div>
+                                    )}
                                     <div className="flex flex-row mt-5">
                                         <ButtonOutline label="Cancel" onClick={handleCancel} className="mr-3" />
                                         <ButtonSolid label="Submit" type="submit" isSubmitting={isValidating && isSubmitting} />

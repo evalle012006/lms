@@ -7,7 +7,7 @@ export default apiHandler({
 });
 
 async function save(req, res) {
-    const { email, firstName, lastName, number, position, role } = req.body;
+    const { email, firstName, lastName, number, position, designatedBranch, role } = req.body;
 
     const { db } = await connectToDatabase();
 
@@ -38,7 +38,8 @@ async function save(req, res) {
             // status: 'verification',
             lastLogin: null,
             dateAdded: new Date,
-            role: JSON.parse(role)
+            role: JSON.parse(role),
+            designatedBranch: designatedBranch
         });
 
         response = {

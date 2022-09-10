@@ -50,7 +50,9 @@ async function updateUser(req, res) {
                             lastName: fields.lastName,
                             number: fields.number,
                             position: fields.position,
-                            profile: profile
+                            profile: profile,
+                            role: JSON.parse(fields.role),
+                            designatedBranch: fields.designatedBranch
                         },
                         $currentDate: { dateModified: true }
                     }
@@ -63,7 +65,6 @@ async function updateUser(req, res) {
     });
 
     response = { ...response, success: true, ...promise };
-    console.log(response)
 
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')
