@@ -6,7 +6,7 @@ const initialGroupState = {
     list: []
 };
 
-const branchReducer = (state = initialGroupState, action) => {
+const groupReducer = (state = initialGroupState, action) => {
     switch (action.type) {
         case SET_GROUP:
             return { ...state, data: action.payload }
@@ -19,4 +19,4 @@ const branchReducer = (state = initialGroupState, action) => {
     }
 };
 
-export default branchReducer;
+export default groupReducer;

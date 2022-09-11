@@ -10,24 +10,24 @@ import { useRouter } from "node_modules/next/router";
 import Dialog from "@/lib/ui/Dialog";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
-import { setGroupList } from "@/redux/actions/groupActions";
-import AddUpdateGroup from "@/components/groups/AddUpdateGroupDrawer";
 import { UppercaseFirstLetter } from "@/lib/utils";
+import { setClientList } from "@/redux/actions/clientActions";
+import AddUpdateClient from "@/components/clients/AddUpdateClientDrawer";
 
-const GroupsPage = () => {
+const ClientsPage = () => {
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
-    const list = useSelector(state => state.group.list);
+    const list = useSelector(state => state.client.list);
     const [loading, setLoading] = useState(true);
 
     const [showAddDrawer, setShowAddDrawer] = useState(false);
     const [mode, setMode] = useState('add');
-    const [group, setGroup] = useState();
+    const [client, setClient] = useState();
 
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
+    const [groups, setGroups] = useState([]);
     const [branches, setBranches] = useState([]);
-    const [users, setUsers] = useState([]);
     const [rootUser, setRootUser] = useState(currentUser.root ? currentUser.root : false);
     const router = useRouter();
 
@@ -52,39 +52,35 @@ const GroupsPage = () => {
         setLoading(false);
     }
 
-    const getListUser = async () => {
-        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'users/list');
-        if (response.success) {
-            let userList = [];
-            response.users && response.users.filter(u => u.role.rep === 4).map(u => {
-                const name = `${u.firstName} ${u.lastName}`;
-                userList.push(
-                    {
-                        ...u,
-                        value: u._id,
-                        label: UppercaseFirstLetter(name)
-                    }
-                );
-            });
-            setUsers(userList);
-        } else {
-            toast.error('Error retrieving branches list.');
-        }
-
-        setLoading(false);
-    }
-
     const getListGroup = async () => {
         const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'groups/list');
         if (response.success) {
-            let groups = [];
+            let groupList = [];
             await response.groups && response.groups.map(group => {
-                groups.push({
+                groupList.push({
                     ...group,
-                    day: UppercaseFirstLetter(group.day)
+                    value: group._id,
+                    label: UppercaseFirstLetter(group.name)
                 });
             });
-            dispatch(setGroupList(groups));
+            setGroups(groupList);
+        } else if (response.error) {
+            toast.error(response.message);
+        }
+        setLoading(false);
+    }
+
+    const getListClient = async () => {
+        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'clients/list');
+        if (response.success) {
+            let clients = [];
+            await response.clients && response.clients.map(client => {
+                clients.push({
+                    ...client,
+                    delinquent: client.delinquent === true ? 'Yes' : 'No'
+                });
+            });
+            dispatch(setClientList(clients));
         } else if (response.error) {
             toast.error(response.message);
         }
@@ -93,8 +89,62 @@ const GroupsPage = () => {
 
     const [columns, setColumns] = useState([
         {
-            Header: "Name",
-            accessor: 'name',
+            Header: "First Name",
+            accessor: 'firstName',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "Middle Name",
+            accessor: 'middleName',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "Last Name",
+            accessor: 'lastName',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "Birthdate",
+            accessor: 'birthdate',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "No. Street, Sitio/Purok",
+            accessor: 'addressStreetNo',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "Barangay District",
+            accessor: 'addressBarangayDistrict',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "Municipality or City",
+            accessor: 'addressMunicipalityCity',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "Province",
+            accessor: 'addressProvince',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "Zip Code",
+            accessor: 'addressZipCode',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "Contact Number",
+            accessor: 'contactNumber',
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
@@ -105,32 +155,20 @@ const GroupsPage = () => {
             filter: 'includes'
         },
         {
-            Header: "Day",
-            accessor: 'day',
+            Header: "Group",
+            accessor: 'groupName',
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
         {
-            Header: "Day No.",
-            accessor: 'dayNo',
+            Header: "Status",
+            accessor: 'status',
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
         {
-            Header: "Time",
-            accessor: 'time',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "Group No.",
-            accessor: 'groupNo',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "Loan Officer",
-            accessor: 'loanOfficerName',
+            Header: "Delinquent",
+            accessor: 'delinquent',
             Filter: SelectColumnFilter,
             filter: 'includes'
         }
@@ -142,21 +180,21 @@ const GroupsPage = () => {
 
     const handleCloseAddDrawer = () => {
         setLoading(true);
-        getListGroup();
+        getListClient();
     }
 
     const actionButtons = [
-        <ButtonSolid label="Add Group" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
+        <ButtonSolid label="Add Client" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
     ];
 
     const handleEditAction = (row) => {
         setMode("edit");
-        setGroup(row.original);
+        setClient(row.original);
         handleShowAddDrawer();
     }
 
     const handleDeleteAction = (row) => {
-        setGroup(row.original);
+        setClient(row.original);
         setShowDeleteDialog(true);
     }
 
@@ -166,15 +204,15 @@ const GroupsPage = () => {
     ];
 
     const handleDelete = () => {
-        if (group) {
+        if (client) {
             setLoading(true);
-            fetchWrapper.postCors(process.env.NEXT_PUBLIC_API_URL + 'groups/delete', {_id: group._id})
+            fetchWrapper.postCors(process.env.NEXT_PUBLIC_API_URL + 'clients/delete', {_id: client._id})
                 .then(response => {
                     if (response.success) {
                         setShowDeleteDialog(false);
-                        toast.success('Group successfully deleted.');
+                        toast.success('Client successfully deleted.');
                         setLoading(false);
-                        getListGroup();
+                        getListClient();
                     } else if (response.error) {
                         toast.error(response.message);
                     } else {
@@ -194,9 +232,9 @@ const GroupsPage = () => {
     useEffect(() => {
         let mounted = true;
 
-        mounted && getListUser();
         mounted && getListBranch();
         mounted && getListGroup();
+        mounted && getListClient();
         // mounted && getListPlatformRoles();
 
 
@@ -238,7 +276,7 @@ const GroupsPage = () => {
                         </div>
                     ) : <TableComponent columns={columns} data={list} hasActionButtons={true} rowActionButtons={rowActionButtons} />}
             </div>
-            <AddUpdateGroup mode={mode} group={group} branches={branches} users={users} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
+            <AddUpdateClient mode={mode} client={client} groups={groups} branches={branches} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
             <Dialog show={showDeleteDialog}>
                 <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                     <div className="sm:flex sm:items-start justify-center">
@@ -258,4 +296,4 @@ const GroupsPage = () => {
     );
 }
 
-export default GroupsPage;
+export default ClientsPage;

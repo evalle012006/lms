@@ -46,6 +46,7 @@ const TeamPage = () => {
                 designatedBranch: user.designatedBranch,
                 roleId: user.role.rep,
                 role: UppercaseFirstLetter(user.role.name),
+                loNo: user.loNo,
                 imgUrl: user.profile ? imgpath + '/images/profiles/' + user.profile : '',
                 lastActivity: user.lastLogin ? moment.utc(user.lastLogin).local().startOf('seconds').fromNow() : '-',
                 root: user.root ? user.root : false,
@@ -75,7 +76,8 @@ const TeamPage = () => {
                         number: tempUser.number,
                         position: tempUser.position,
                         role: tempUser.role,
-                        designatedBranch: tempUser.designatedBranch
+                        designatedBranch: tempUser.designatedBranch,
+                        loNo: tempUser.loNo
                     }));
                 }
                 // update list
@@ -199,7 +201,7 @@ const TeamPage = () => {
     }
 
     const actionButtons = [
-        <ButtonSolid label="Add Team Member" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
+        <ButtonSolid label="Add User" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
     ];
 
     const handleEditAction = (row) => {
@@ -226,7 +228,7 @@ const TeamPage = () => {
     const handleDelete = () => {
         if (userData) {
             setLoading(true);
-            fetchWrapper.postCors(process.env.NEXT_PUBLIC_API_URL + 'users/delete', user)
+            fetchWrapper.postCors(process.env.NEXT_PUBLIC_API_URL + 'users/delete', userData)
                 .then(response => {
                     if (response.success) {
                         setShowDeleteDialog(false);

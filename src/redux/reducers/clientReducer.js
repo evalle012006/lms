@@ -1,23 +1,22 @@
-import { SET_ADD_UPDATE_ROLE, SET_ROLE, SET_ROLE_LIST } from "../actions/roleActions";
+import { SET_ADD_UPDATE_CLIENT, SET_CLIENT, SET_CLIENT_LIST } from "../actions/clientActions";
 
-
-const initialRoleState = {
+const initialClientState = {
     data: {},
     addUpdate: {},
     list: []
 };
 
-const roleReducer = (state = initialRoleState, action) => {
+const clientReducer = (state = initialClientState, action) => {
     switch (action.type) {
-        case SET_ROLE:
+        case SET_CLIENT:
             return { ...state, data: action.payload }
-        case SET_ROLE_LIST:
+        case SET_CLIENT_LIST:
             return { ...state, list: action.payload }
-        case SET_ADD_UPDATE_ROLE:
+        case SET_ADD_UPDATE_CLIENT:
             return { ...state, addUpdate: action.payload }
         default:
             return { ...state }
     }
 };
 
-export default roleReducer;
+export default clientReducer;

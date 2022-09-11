@@ -97,6 +97,7 @@ const AddUpdateRole = ({ mode = 'add', permissions=[], showSidebar, setShowSideb
     const handleCancel = () => {
         setShowSidebar(false);
         formikRef.current.resetForm();
+        onClose();
     }
 
     useEffect(() => {

@@ -1,4 +1,5 @@
 import { combineReducers } from 'redux';
+import client from './clientReducer';
 import group from './groupReducer';
 import role from './roleReducer';
 import branch from './branchReducer';
@@ -7,6 +8,7 @@ import systemSettings from './systemReducer';
 import global from './globalReducer';
 
 const rootReducer = combineReducers({
+    client: client,
     group: group,
     role: role,
     branch: branch,

@@ -5,7 +5,6 @@ import { fetchWrapper } from "@/lib/fetch-wrapper";
 import toast from 'react-hot-toast';
 import { useDispatch, useSelector } from "react-redux";
 import InputText from "@/lib/ui/InputText";
-import InputEmail from "@/lib/ui/InputEmail";
 import InputNumber from "@/lib/ui/InputNumber";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
@@ -13,13 +12,12 @@ import SideBar from "@/lib/ui/SideBar";
 import Spinner from "../Spinner";
 import SelectDropdown from "@/lib/ui/select";
 
-const AddUpdateGroup = ({ mode = 'add', group = {}, branches = [], showSidebar, setShowSidebar, onClose }) => {
+const AddUpdateGroup = ({ mode = 'add', group = {}, branches = [], users = [], showSidebar, setShowSidebar, onClose }) => {
     const formikRef = useRef();
     const dispatch = useDispatch();
     const [loading, setLoading] = useState(false);
-    const [name, setName] = useState(group.name);
-    const [day, setDay] = useState(group.day);
-    const [dayNo, setDayNo] = useState(group.dayNo);
+    const [day, setDay] = useState('');
+    const [dayNo, setDayNo] = useState('');
     const days = [
         {label: 'Monday', value: 'monday', dayNo: 1}, 
         {label: 'Tuesday', value: 'tuesday', dayNo: 2}, 
@@ -29,12 +27,14 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, branches = [], showSidebar, 
     ];
 
     const initialValues = {
-        name: name,
+        name: group.name,
         branchId: group.branchId,
-        day: day,
-        dayNo: dayNo,
+        day: group.day,
+        dayNo: group.dayNo,
         time: group.time,
-        groupNo: group.groupNo
+        groupNo: group.groupNo,
+        loanOfficerId: group.loanOfficerId,
+        loanOfficerName: group.loanOfficerName
     }
 
     const validationSchema = yup.object().shape({
@@ -44,21 +44,23 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, branches = [], showSidebar, 
         branchId: yup
             .string()
             .required('Please select a branch'),
-        day: yup
-            .string()
-            .required('Please select a day'),
         time: yup
             .string()
             .required('Please enter time'),
         groupNo: yup
             .string()
             .required('Please select a group number'),
+        loanOfficerId: yup
+            .string()
+            .required('Please select a loan officer'),
 
     });
 
     const handleSaveUpdate = (values, action) => {
         setLoading(true);
-        values.name = name;
+        values.day = day;
+        values.dayNo = dayNo;
+        values.loanOfficerName = users.find(u => u._id === values.loanOfficerId).label;
         if (mode === 'add') {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'groups/save/';
 
@@ -71,7 +73,9 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, branches = [], showSidebar, 
                         setShowSidebar(false);
                         toast.success('Group successfully added.');
                         action.setSubmitting = false;
-                        action.resetForm();
+                        action.resetForm({values: ''});
+                        setDay('');
+                        setDayNo('');
                         onClose();
                     }
                 }).catch(error => {
@@ -86,7 +90,9 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, branches = [], showSidebar, 
                     setShowSidebar(false);
                     toast.success('Group successfully updated.');
                     action.setSubmitting = false;
-                    action.resetForm();
+                    action.resetForm({values: ''});
+                    setDay('');
+                    setDayNo('');
                     onClose();
                 }).catch(error => {
                     console.log(error);
@@ -97,6 +103,9 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, branches = [], showSidebar, 
     const handleCancel = () => {
         setShowSidebar(false);
         formikRef.current.resetForm();
+        setDay('');
+        setDayNo('');
+        onClose();
     }
 
     const handleChangeDay = async (field, value) => {
@@ -112,6 +121,11 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, branches = [], showSidebar, 
 
     useEffect(() => {
         let mounted = true;
+
+        if (Object.keys(group).length > 0) {
+            setDay(group.day.toLowerCase());
+            setDayNo(group.dayNo);
+        }
 
         mounted && setLoading(false);
 
@@ -151,7 +165,7 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, branches = [], showSidebar, 
                                         <InputText
                                             name="name"
                                             value={values.name}
-                                            onChange={(e) => setName(e.target.value)}
+                                            onChange={handleChange}
                                             label="Name"
                                             placeholder="Enter Name"
                                             setFieldValue={setFieldValue}
@@ -161,25 +175,24 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, branches = [], showSidebar, 
                                         <SelectDropdown
                                             name="day"
                                             field="day"
-                                            value={values.day}
+                                            value={day}
                                             label="Day"
                                             options={days}
                                             onChange={(field, value) => handleChangeDay(field, value)}
                                             onBlur={setFieldTouched}
                                             placeholder="Select Day"
-                                            errors={touched.day && errors.day ? errors.day : undefined}
                                         />
                                     </div>
                                     <div className="mt-4">
                                         <InputNumber
                                             name="dayNo"
-                                            value={values.dayNo}
+                                            value={dayNo}
                                             onChange={handleChange}
                                             label="Day No"
                                             placeholder="Enter day number"
                                             disabled={true}
                                             setFieldValue={setFieldValue}
-                                            errors={touched.dayNo && errors.dayNo ? errors.dayNo : undefined} />
+                                        />
                                     </div>
                                     <div className="mt-4">
                                         <InputText
@@ -224,6 +237,19 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, branches = [], showSidebar, 
                                             onBlur={setFieldTouched}
                                             placeholder="Select Branch"
                                             errors={touched.branchId && errors.branchId ? errors.branchId : undefined}
+                                        />
+                                    </div>
+                                    <div className="mt-4">
+                                        <SelectDropdown
+                                            name="loanOfficerId"
+                                            field="loanOfficerId"
+                                            value={values.loanOfficerId}
+                                            label="Loan Officer"
+                                            options={users}
+                                            onChange={setFieldValue}
+                                            onBlur={setFieldTouched}
+                                            placeholder="Select Loan Officer"
+                                            errors={touched.loanOfficerId && errors.loanOfficerId ? errors.loanOfficerId : undefined}
                                         />
                                     </div>
                                     <div className="flex flex-row mt-5">

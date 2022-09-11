@@ -21,13 +21,7 @@ async function deleteBranch(req, res) {
     if (branches.length > 0) {
         await db
             .collection('branches')
-            .updateOne(
-                { _id: _id },
-                {
-                    $set: { deleted: true },
-                    $currentDate: { dateModified: true }
-                }
-            );
+            .deleteOne({ _id: ObjectId(_id) });
 
         response = {
             success: true

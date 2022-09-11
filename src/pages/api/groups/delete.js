@@ -17,17 +17,11 @@ async function deleteGroup(req, res) {
         .collection('groups')
         .find({ _id: ObjectId(_id) })
         .toArray();
-
+    console.log(groups)
     if (groups.length > 0) {
         await db
             .collection('groups')
-            .updateOne(
-                { _id: _id },
-                {
-                    $set: { deleted: true },
-                    $currentDate: { dateModified: true }
-                }
-            );
+            .deleteOne({ _id: ObjectId(_id) });
 
         response = {
             success: true

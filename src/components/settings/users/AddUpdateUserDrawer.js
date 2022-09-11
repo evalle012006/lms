@@ -36,7 +36,8 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
         number: user.number,
         position: user.position,
         designatedBranch: user.designatedBranch ? user.designatedBranch : 0,
-        role: user.role ? user.role.value : ''
+        role: user.role ? user.role.value : '',
+        loNo: user.loNo
     }
 
     const validationSchema = yup.object().shape({
@@ -147,6 +148,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
         setShowSidebar(false);
         formikRef.current.resetForm();
         handleRemoveImage();
+        onClose();
     }
 
     useEffect(() => {
@@ -205,28 +207,30 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
                                 setFieldTouched
                             }) => (
                                 <form onSubmit={handleSubmit} autoComplete="off">
-                                    <div className="profile-photo rounded-lg p-3 proxima-regular border">
-                                        <div className="proxima-bold">Profile Photo</div>
-                                        <div className="photo-row mt-4 flex space-x-4">
-                                            <div className="photo-container rounded-lg">
-                                                <div className="w-[200px] h-[200px] relative flex justify-center bg-slate-200 rounded-xl border overflow-hidden">
-                                                    <Image src={!photo ? placeholder : photo}
-                                                        className="overflow-hidden"
-                                                        width={photoW}
-                                                        height={photoH}
-                                                        onLoadingComplete={loadImageFile} />
+                                    {mode === 'edit' && (
+                                        <div className="profile-photo rounded-lg p-3 proxima-regular border">
+                                            <div className="proxima-bold">Profile Photo</div>
+                                            <div className="photo-row mt-4 flex space-x-4">
+                                                <div className="photo-container rounded-lg">
+                                                    <div className="w-[200px] h-[200px] relative flex justify-center bg-slate-200 rounded-xl border overflow-hidden">
+                                                        <Image src={!photo ? placeholder : photo}
+                                                            className="overflow-hidden"
+                                                            width={photoW}
+                                                            height={photoH}
+                                                            onLoadingComplete={loadImageFile} />
+                                                    </div>
+                                                    <input type="file" name="file" ref={hiddenInput} onChange={(e) => handleFileChange(e)} className="hidden" />
                                                 </div>
-                                                <input type="file" name="file" ref={hiddenInput} onChange={(e) => handleFileChange(e)} className="hidden" />
-                                            </div>
-                                            <div className="w-48">
-                                                <div className="flex flex-col space-y-4">
-                                                    <span>Photo should be at least 300px x 300px</span>
-                                                    <ButtonSolid label="Upload Photo" onClick={onUploadClick} />
-                                                    <ButtonOutline label="Remove Photo" onClick={handleRemoveImage} />
+                                                <div className="w-48">
+                                                    <div className="flex flex-col space-y-4">
+                                                        <span>Photo should be at least 300px x 300px</span>
+                                                        <ButtonSolid label="Upload Photo" onClick={onUploadClick} />
+                                                        <ButtonOutline label="Remove Photo" onClick={handleRemoveImage} />
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
+                                    )}
                                     <div className="mt-4">
                                         <InputText
                                             name="firstName"
@@ -325,6 +329,32 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
                                                 onBlur={setFieldTouched}
                                                 placeholder="Select Branch"
                                                 errors={touched.designatedBranch && errors.designatedBranch ? errors.designatedBranch : undefined}
+                                            />
+                                        </div>
+                                    )}
+                                    {values.role === 4 && (
+                                        <div className="mt-4">
+                                            <SelectDropdown
+                                                name="loNo"
+                                                field="loNo"
+                                                value={values.loNo}
+                                                label="LO Number"
+                                                options={[
+                                                    {label: '1', value: '1'},
+                                                    {label: '2', value: '2'},
+                                                    {label: '3', value: '3'},
+                                                    {label: '4', value: '4'},
+                                                    {label: '5', value: '5'},
+                                                    {label: '6', value: '6'},
+                                                    {label: '7', value: '7'},
+                                                    {label: '8', value: '8'},
+                                                    {label: '9', value: '9'},
+                                                    {label: '10', value: '10'}
+                                                ]}
+                                                onChange={setFieldValue}
+                                                onBlur={setFieldTouched}
+                                                placeholder="Select LO Number"
+                                                errors={touched.loNo && errors.loNo ? errors.loNo : undefined}
                                             />
                                         </div>
                                     )}

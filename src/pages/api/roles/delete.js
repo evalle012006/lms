@@ -27,13 +27,7 @@ async function deleteRole(req, res) {
         } else {
             await db
                 .collection('roles')
-                .updateOne(
-                    { _id: _id },
-                    {
-                        $set: { deleted: true },
-                        $currentDate: { dateModified: true }
-                    }
-                );
+                .deleteOne({ _id: ObjectId(_id) });
 
             response = {
                 success: true

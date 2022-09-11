@@ -59,7 +59,7 @@ const AddUpdateBranch = ({ mode = 'add', branch = {}, showSidebar, setShowSideba
                         setShowSidebar(false);
                         toast.success('Branch successfully added.');
                         action.setSubmitting = false;
-                        action.resetForm();
+                        action.resetForm({values: ''});
                         onClose();
                     }
                 }).catch(error => {
@@ -74,7 +74,7 @@ const AddUpdateBranch = ({ mode = 'add', branch = {}, showSidebar, setShowSideba
                     setShowSidebar(false);
                     toast.success('Branch successfully updated.');
                     action.setSubmitting = false;
-                    action.resetForm();
+                    action.resetForm({values: ''});
                     onClose();
                 }).catch(error => {
                     console.log(error);
@@ -85,6 +85,7 @@ const AddUpdateBranch = ({ mode = 'add', branch = {}, showSidebar, setShowSideba
     const handleCancel = () => {
         setShowSidebar(false);
         formikRef.current.resetForm();
+        onClose();
     }
 
     useEffect(() => {

@@ -8,7 +8,7 @@ export default apiHandler({
 
 async function save(req, res) {
     const ObjectId = require('mongodb').ObjectId;
-    const { name, branchId, day, dayNo, time, groupNo } = req.body;
+    const { name, branchId, day, dayNo, time, groupNo, loanOfficerId, loanOfficerName } = req.body;
 
     const { db } = await connectToDatabase();
 
@@ -40,6 +40,8 @@ async function save(req, res) {
             dayNo: dayNo,
             time: time,
             groupNo: groupNo,
+            loanOfficerId: loanOfficerId,
+            loanOfficerName: loanOfficerName,
             dateAdded: new Date()
         });
 
