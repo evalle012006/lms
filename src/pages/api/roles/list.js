@@ -12,7 +12,7 @@ async function list(req, res) {
 
     const roles = await db
         .collection('roles')
-        .find()
+        .find({})
         .toArray();
 
     response = {

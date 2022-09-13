@@ -1,50 +1,47 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
-import { findUserByEmail } from './index';
 
 export default apiHandler({
     post: save
 });
 
 async function save(req, res) {
-    const { email, firstName, lastName, number, position, role } = req.body;
+    const { name, shortCode } = req.body;
 
     const { db } = await connectToDatabase();
 
-    const users = await db
-        .collection('users')
-        .find({ email: email })
+    const roles = await db
+        .collection('roles')
+        .find({ shortCode: shortCode })
+        .toArray();
+
+    const counter = await db
+        .collection('counters')
+        .find({ tableName: 'roles' })
         .toArray();
 
     let response = {};
     let statusCode = 200;
 
-    if (users.length > 0) {
+    if (roles.length > 0) {
         response = {
             error: true,
-            fields: ['email'],
-            message: `User with the email "${email}" already exists`
+            fields: ['shortCode'],
+            message: `Role with the short code "${shortCode}" already exists`
         };
     } else {
-        // const role = await db.collection('platformRoles').find({ rep: 1 }).project({ _id: 0 }).toArray();
-
-        const user = await db.collection('users').insertOne({
-            firstName: firstName,
-            lastName: lastName,
-            email: email,
-            number: number,
-            position: position,
-            logged: false,
-            // status: 'verification',
-            lastLogin: null,
-            dateAdded: new Date,
-            role: JSON.parse(role)
+        const role = await db.collection('roles').insertOne({
+            name: name,
+            shortCode: shortCode,
+            rep: counter[0].lastCounter + 1,
+            system: false,
+            dateAdded: new Date
         });
 
         response = {
             success: true,
-            user: user,
-            email: email
+            rep: counter[0].lastCounter + 1,
+            role: role
         }
     }
 

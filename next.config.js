@@ -10,6 +10,6 @@ module.exports = {
         apiUrl: process.env.DEV_URL
     },
     images: {
-        domains: ['images.local']
+        domains: process.env.DEV_URL === 'http://localhost:3000' ? ['localhost'] : ['']
     }
 }

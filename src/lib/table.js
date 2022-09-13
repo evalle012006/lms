@@ -455,8 +455,9 @@ const TableComponent = ({
                             {page.map((row, i) => {
                                 prepareRow(row);
                                 const root = row.original.root ? row.original.root : false;
+                                const delinquent = row.original.delinquent;
                                 return (
-                                <tr {...row.getRowProps()}>
+                                <tr {...row.getRowProps()} className={`${delinquent === 'Yes' && 'bg-red-100'}`}>
                                     {row.cells.map((cell) => {
                                     return (
                                         <td
@@ -475,7 +476,7 @@ const TableComponent = ({
                                     );
                                     })}
                                     {/* ACTION BUTTON */}
-                                    {(hasActionButtons && !root) && (
+                                    {(hasActionButtons && !root && !row.original.system) && (
                                     <td
                                         className="py-4-custom whitespace-nowrap-custom"
                                         role="cell"

@@ -13,21 +13,15 @@ async function deleteBranch(req, res) {
     let statusCode = 200;
     let response = {};
 
-    const roles = await db
+    const branches = await db
         .collection('branches')
         .find({ _id: ObjectId(_id) })
         .toArray();
 
-    if (roles.length > 0) {
+    if (branches.length > 0) {
         await db
             .collection('branches')
-            .updateOne(
-                { _id: _id },
-                {
-                    $set: { deleted: true },
-                    $currentDate: { dateModified: true }
-                }
-            );
+            .deleteOne({ _id: ObjectId(_id) });
 
         response = {
             success: true
@@ -35,7 +29,7 @@ async function deleteBranch(req, res) {
     } else {
         response = {
             error: true,
-            message: `Role with id: "${_id}" not exists`
+            message: `Branch with id: "${_id}" not exists`
         };
     }
 

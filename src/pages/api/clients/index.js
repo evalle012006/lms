@@ -12,11 +12,11 @@ async function getClient(req, res) {
 
     let statusCode = 200;
     let response = {};
-    const users = await findClientByID(id)
+    const clients = await findClientByID(id)
 
     response = {
         success: true,
-        users: users
+        clients: clients
     }
 
     res.status(statusCode)
@@ -28,19 +28,6 @@ const findClientByID = async (id) => {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
     const condition = id ? { _id: ObjectId(id) } : {};
-
-    const clients = await db
-        .collection('client')
-        .find(condition)
-        .project({ password: 0 })
-        .toArray();
-
-    return clients.length > 0 && clients[0];
-}
-
-const findClientByEmail = async (email) => {
-    const { db } = await connectToDatabase();
-    const condition = { email: email };
 
     const clients = await db
         .collection('client')

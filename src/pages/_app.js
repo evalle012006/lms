@@ -18,7 +18,7 @@ const ACLoanManagementApp = ({ Component, pageProps }) => {
     return (
         <>
             <Head>
-                <title>AC Loan Management</title>
+                <title>AC Lending Management System</title>
                 <link rel="icon" href="/images/favicon.ico" type="image/x-icon" />
                 <link rel="shortcut icon" href="/images/favicon.ico" type="image/x-icon" />
             </Head>

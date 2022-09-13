@@ -4,6 +4,7 @@ import {
     Squares2X2Icon, 
     BuildingOffice2Icon, 
     ClipboardDocumentListIcon,
+    ClipboardDocumentCheckIcon,
     UserIcon,
     UsersIcon,
     UserGroupIcon,
@@ -13,7 +14,8 @@ import {
     PlusIcon,
     BuildingLibraryIcon,
     ChevronDownIcon,
-    UserCircleIcon
+    UserCircleIcon,
+    ArrowRightOnRectangleIcon
 } from '@heroicons/react/24/solid';
 import Link from "next/link";
 import { useRouter } from "node_modules/next/router";
@@ -24,46 +26,74 @@ import {
     setCurrentSubMenu
 } from "@/redux/actions/globalActions";
 import Avatar from "@/lib/avatar";
+import { userService } from "@/services/user-service";
+import { fetchWrapper } from "@/lib/fetch-wrapper";
 
 const SubNav = ({ item, index, activePath, inner=false, className }) => {
-    const subMenu = useSelector(state => state.global.subMenu);
-    const [subMenuOpen, setSubMenuOpen] = useState(item.label === subMenu ? true : false);
+    const subMenu = useSelector(state => state.global.subMenus);
+    const sub = subMenu.find(s => s.menu === item.label);
+    const [subMenuOpen, setSubMenuOpen] = useState(sub && sub.open);
 
-    return (
-        <Link href={item.url} passHref>
-            {item.hasSub ? (
-                <React.Fragment>
-                    <li className={`${!inner ? index === 0 ? "mt-2" : "mt-5" : "mt-2"} ${activePath === item.url ? "text-gray-800 bg-teal-10" : "text-white"} ${className}`}>
-                        <a className="flex flex-row rounded-md p-2 cursor-pointer hover:opacity-70 text-sm items-center gap-x-4 mr-4 whitespace-nowrap transition duration-300 ease-in-out" onClick={() => {setSubMenuOpen(!subMenuOpen)}}>
-                            {activePath === item.url ? item.icon.active : item.icon.notActive}
-                            <span className={`origin-left duration-200`}>
-                                {item.label}
-                            </span>
-                            <ChevronDownIcon className={`ml-auto ${activePath === item.url ? 'text-gray-800 w-5 h-5' : 'text-white w-5 h-5'} ${subMenuOpen && 'rotate-180'}`} />
-                        </a>
-                        {subMenuOpen && (
-                            <ul className="relative accordion-collapse collapse">
-                                {item.subMenuItems.map((menu, idx) => {
-                                    return (
-                                        <SubNav key={idx} item={menu} index={idx} activePath={activePath} className="ml-6" inner={true} />
-                                    )
-                                })}
-                            </ul>
-                        )}
+    const handleLogout = async () => {
+        let user = userService.userValue;
+        if (user && user.hasOwnProperty('user')) {
+            user = user.user;
+        }
+        const url = `${process.env.NEXT_PUBLIC_API_URL}authenticate?`;
+        const params = { user: user._id };
+        const response = await fetchWrapper.get(url + new URLSearchParams(params));
+        await response && response.success && response.query.acknowledged && userService.logout();
+    }
+
+    if (item.url !== ("/logout")) {
+        return (
+            <Link href={item.url} passHref>
+                {item.hasSub ? (
+                    <React.Fragment>
+                        <li className={`${!inner ? index === 0 ? "mt-2" : "mt-5" : "mt-2"} ${activePath === item.url ? "text-gray-800 bg-teal-10" : "text-white"} ${className}`}>
+                            <a className="flex flex-row rounded-md p-2 cursor-pointer hover:opacity-70 text-sm items-center gap-x-4 mr-4 whitespace-nowrap transition duration-300 ease-in-out" onClick={() => {setSubMenuOpen(!subMenuOpen)}}>
+                                {activePath === item.url ? item.icon.active : item.icon.notActive}
+                                <span className={`origin-left duration-200`}>
+                                    {item.label}
+                                </span>
+                                <ChevronDownIcon className={`ml-auto ${activePath === item.url ? 'text-gray-800 w-5 h-5' : 'text-white w-5 h-5'} ${subMenuOpen && 'rotate-180'}`} />
+                            </a>
+                            {subMenuOpen && (
+                                <ul className="relative accordion-collapse collapse">
+                                    {item.subMenuItems.map((menu, idx) => {
+                                        return (
+                                            <SubNav key={idx} item={menu} index={idx} activePath={activePath} className="ml-6" inner={true} />
+                                        )
+                                    })}
+                                </ul>
+                            )}
+                        </li>
+                    </React.Fragment>
+                ) : (
+                    <li className={`flex rounded-md p-2 cursor-pointer hover:opacity-70 text-sm items-center gap-x-4
+                                ${!inner ? index === 0 ? "mt-2" : "mt-5" : "mt-2"}
+                                ${activePath === item.url ? "text-gray-800 bg-teal-10" : "text-white"} ${className}`}>
+                        {activePath === item.url ? item.icon.active : item.icon.notActive}
+                        <span className={`origin-left duration-200`}>
+                            {item.label}
+                        </span>
                     </li>
-                </React.Fragment>
-            ) : (
-                <li className={`flex rounded-md p-2 cursor-pointer hover:opacity-70 text-sm items-center gap-x-4
-                            ${!inner ? index === 0 ? "mt-2" : "mt-5" : "mt-2"}
-                            ${activePath === item.url ? "text-gray-800 bg-teal-10" : "text-white"} ${className}`}>
-                    {activePath === item.url ? item.icon.active : item.icon.notActive}
-                    <span className={`origin-left duration-200`}>
-                        {item.label}
-                    </span>
-                </li>
-            )}
-        </Link>
-    )
+                )}
+            </Link>
+        )
+    } else {
+        return (
+            <li className={`flex rounded-md p-2 cursor-pointer hover:opacity-70 text-sm items-center gap-x-4
+                        ${!inner ? index === 0 ? "mt-2" : "mt-5" : "mt-2"}
+                        ${activePath === item.url ? "text-gray-800 bg-teal-10" : "text-white"} ${className}`}
+                        onClick={handleLogout} >
+                {item.icon.active}
+                <span className={`origin-left duration-200`}>
+                    {item.label}
+                </span>
+            </li>
+        )
+    }
 }
 
 const MenuItems = [
@@ -119,49 +149,9 @@ const MenuItems = [
         hasSub: false
     },
     {
-        label: "Loans",
-        url: "#",
-        icon: {
-            active: <TicketIcon className="text-gray-800 w-6 h-6" />,
-            notActive: <TicketIcon className="text-white w-6 h-6" />,
-        },
-        active: false,
-        borderBottom: true,
-        hasSub: true,
-        subMenuItems: [
-            {
-                label: "View Loans",
-                url: "/loans",
-                icon: {
-                    active: (
-                        <TableCellsIcon className="text-gray-800 w-5 h-5" />
-                    ),
-                    notActive: (
-                        <TableCellsIcon className="text-white w-5 h-5" />
-                    ),
-                },
-                active: false,
-                hasSub: false
-            },
-            {
-                label: "View Applications",
-                url: "/loans/loan-applications",
-                icon: {
-                    active: (
-                        <TableCellsIcon className="text-gray-800 w-5 h-5" />
-                    ),
-                    notActive: (
-                        <TableCellsIcon className="text-white w-5 h-5" />
-                    ),
-                },
-                active: false,
-                hasSub: false
-            }
-        ]
-    },
-    {
         label: "Transactions",
-        url: "#",
+        url: "#transactions",
+        subMenuIndex: 0,
         icon: {
             active: <ClipboardDocumentListIcon className="text-gray-800 w-6 h-6" />,
             notActive: <ClipboardDocumentListIcon className="text-white w-6 h-6" />,
@@ -169,17 +159,16 @@ const MenuItems = [
         active: false,
         borderBottom: true,
         hasSub: true,
-        id: 'transactions',
         subMenuItems: [
             {
                 label: "View Loans",
-                url: "/loans",
+                url: "/transactions/loans",
                 icon: {
                     active: (
-                        <TableCellsIcon className="text-gray-800 w-5 h-5" />
+                        <TicketIcon className="text-gray-800 w-5 h-5" />
                     ),
                     notActive: (
-                        <TableCellsIcon className="text-white w-5 h-5" />
+                        <TicketIcon className="text-white w-5 h-5" />
                     ),
                 },
                 active: false,
@@ -187,27 +176,13 @@ const MenuItems = [
             },
             {
                 label: "View Applications",
-                url: "/loan-applications",
+                url: "/transactions/loans/loan-applications",
                 icon: {
                     active: (
-                        <TableCellsIcon className="text-gray-800 w-5 h-5" />
+                        <ClipboardDocumentCheckIcon className="text-gray-800 w-5 h-5" />
                     ),
                     notActive: (
-                        <TableCellsIcon className="text-white w-5 h-5" />
-                    ),
-                },
-                active: false,
-                hasSub: false
-            },
-            {
-                label: "Create Loan",
-                url: "/create-loan",
-                icon: {
-                    active: (
-                        <PlusIcon className="text-gray-800 w-5 h-5" />
-                    ),
-                    notActive: (
-                        <PlusIcon className="text-white w-5 h-5" />
+                        <ClipboardDocumentCheckIcon className="text-white w-5 h-5" />
                     ),
                 },
                 active: false,
@@ -217,7 +192,8 @@ const MenuItems = [
     },
     {
         label: "Settings",
-        url: "#",
+        url: "#settings",
+        subMenuIndex: 1,
         icon: {
             active: <Cog6ToothIcon className="text-gray-800 w-5 h-5" />,
             notActive: <Cog6ToothIcon className="text-white w-5 h-5" />,
@@ -227,7 +203,7 @@ const MenuItems = [
         subMenuItems: [
             {
                 label: "Users",
-                url: "/users",
+                url: "/settings/users",
                 icon: {
                     active: (
                         <UsersIcon className="text-gray-800 w-5 h-5" />
@@ -241,7 +217,7 @@ const MenuItems = [
             },
             {
                 label: "Roles",
-                url: "/roles",
+                url: "/settings/roles",
                 icon: {
                     active: (
                         <UserCircleIcon className="text-gray-800 w-5 h-5" />
@@ -268,7 +244,17 @@ const MenuItems = [
                 hasSub: false
             }
         ]
-    }
+    },
+    {
+        label: "Logout",
+        url: "/logout",
+        icon: {
+            active: <ArrowRightOnRectangleIcon className="text-white w-6 h-6" />
+        },
+        active: false,
+        borderBottom: true,
+        hasSub: false
+    },
 ];
 
 const NavComponent = () => {
@@ -283,7 +269,7 @@ const NavComponent = () => {
     const getActivePath = () => {
         const path = router.asPath.replace("#", "");
         const paths = path.split("/").filter((p) => p);
-        console.log(paths)
+        
         let currentPath = '';
         if (paths.length > 0) {
             if (paths.length === 1) {
@@ -294,7 +280,7 @@ const NavComponent = () => {
         } else {
             currentPath = path;
         }
-        console.log(currentPath)
+
         return currentPath;
     };
 
@@ -303,22 +289,23 @@ const NavComponent = () => {
         mounted && setActivePath(getActivePath());
 
         let subMenu = false;
+        let parentMenu = '';
         let page = MenuItems.find((i) => i.url === activePath);
         if (!page) {
             MenuItems.forEach(menu => {
                 let currentPage = menu.subMenuItems && menu.subMenuItems.find(m => m.url === activePath);
-                
                 if (!currentPage) {
                     menu.subMenuItems && menu.subMenuItems.forEach(item => {
                         currentPage = item.subMenuItems && item.subMenuItems.find(i => i.url === activePath);
-                        
                         if (currentPage) {
                             subMenu = true;
+                            parentMenu = item.subMenuIndex;
                             page = currentPage;
                         }
                     });
                 } else {
                     subMenu = true;
+                    parentMenu = menu.subMenuIndex;
                     page = currentPage;
                 }
             });
@@ -327,7 +314,7 @@ const NavComponent = () => {
         if (page) {
             dispatch(setCurrentPage(page.url));
             dispatch(setCurrentPageTitle(page.label));
-            subMenu && dispatch(setCurrentSubMenu(page.label));
+            subMenu && dispatch(setCurrentSubMenu(parentMenu));
         }
 
         return () => {
@@ -341,7 +328,15 @@ const NavComponent = () => {
             let temp = {...menu};
             if (rootUser || userState.role.rep === 1) {
                 // nothing to do here...
-            } else {
+            } else if (userState.role.rep === 2) {
+                // if (menu.label === 'Team') {
+                //     temp.hidden = true;
+                // }
+            } else if (userState.role.rep === 3) {
+                // if (menu.label === 'Team') {
+                //     temp.hidden = true;
+                // }
+            }  else if (userState.role.rep === 4) {
                 // if (menu.label === 'Team') {
                 //     temp.hidden = true;
                 // }
@@ -363,8 +358,9 @@ const NavComponent = () => {
                         </a>
                     </div>
                 </header>
-                <div id="profile" className="flex items-center border-b border-orange-darkest px-4 py-6">
-                    <div id="img" className="w-1/4 mr-4">
+                {/** add click event to navigate to user profile **/}
+                <div id="profile" className="flex items-center border-b border-orange-darkest px-4 py-4">
+                    <div id="img" className="w-1/4">
                         <Avatar name={userState.firstName + " " + userState.lastName} src={userState.profile ? '/images/profiles/' + userState.profile : ""} className={`${userState.profile ? 'pt-8 pb-4 pl-8 pr-4' : 'py-1.5 px-2'} `} />
                     </div>
                     <div id="welcome" className="text-white w-2/4 sm:ml-1 md:ml-4">

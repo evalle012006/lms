@@ -1,5 +1,7 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
+import fs from "fs";
+import logger from '@/logger';
 
 export default apiHandler({
     post: deleteUser
@@ -7,6 +9,7 @@ export default apiHandler({
 
 async function deleteUser(req, res) {
     const { _id, email } = req.body;
+    const ObjectId = require('mongodb').ObjectId;
 
     const { db } = await connectToDatabase();
 
@@ -21,13 +24,9 @@ async function deleteUser(req, res) {
     if (user.length > 0) {
         await db
             .collection('users')
-            .updateOne(
-                { email: email },
-                {
-                    $set: { deleted: true },
-                    $currentDate: { dateModified: true }
-                }
-            );
+            .deleteOne({ _id: ObjectId(_id) });
+
+        removeFile.removeFile(user[0].profile);
 
         response = {
             success: true
@@ -43,4 +42,15 @@ async function deleteUser(req, res) {
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')
         .end(JSON.stringify(response));
+}
+
+
+const removeFile = async (fileName) => {
+    if (fileName) {
+        const dir = `./public/images/profiles/${fileName}`;
+        fs.rmdirSync(dir, { recursive: true });
+        logger.debug(`User file ${fileName} deleted!`);
+    } else {
+        return false;
+    }
 }

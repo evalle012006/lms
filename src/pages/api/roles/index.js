@@ -14,7 +14,20 @@ async function getRole(req, res) {
     const { id } = req.query;
     let statusCode = 200;
     let response = {};
-    const role = await db.collection('roles').find({ _id: ObjectId(id)}).toArray();
+    const role = await db.collection('roles')
+        .aggregate([
+            { $match: { _id: ObjectId(id) } },
+            {
+                $lookup: {
+                    from: "rolesPermissions",
+                    localField: "rep",
+                    foreignField: "role",
+                    as: "rolesPermissions"
+                }
+            }
+        ])
+        .toArray();
+
     response = { success: true, role: role[0] };
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')

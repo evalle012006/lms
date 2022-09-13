@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 import React from "react";
 import Select from 'react-select';
-import { ChevronDownIcon } from '@heroicons/react/solid';
+import { ChevronDownIcon } from '@heroicons/react/24/solid';
 
 const styles = {
   control: (base) => ({
@@ -103,7 +103,7 @@ const SelectDropdown = ({
         <>
           <div className={`
                 flex flex-col border rounded-md px-4 py-2 bg-white
-                ${value ? 'border-green-600' : 'border-slate-400'}
+                ${value ? 'border-main' : 'border-slate-400'}
                 ${errors && 'border-red-400'}
             `}>
             <div className="flex justify-between">
@@ -111,7 +111,7 @@ const SelectDropdown = ({
                 className={`
                           font-proxima-bold
                           text-xs font-bold 
-                          ${value ? 'text-green-600' : 'text-gray-500'}
+                          ${value ? 'text-main' : 'text-gray-500'}
                           ${errors && 'text-red-400'}
                       `}>
                 {label}
