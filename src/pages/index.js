@@ -1,9 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import Layout from "@/components/Layout";
-import TestBoxComponent from "@/components/dashboard/TestBoxComponent";
-import RecommendationsComponent from "@/components/dashboard/RecommendationsComponent";
-import DashboardProgramsComponent from "@/components/dashboard/DashboardProgramsComponent";
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { setSystemSettings } from '@/redux/actions/systemActions';
 

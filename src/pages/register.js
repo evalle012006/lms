@@ -1,4 +1,4 @@
-import { Formik } from 'formik';
+
 import * as yup from 'yup';
 import Image from 'next/image';
 import logo from '/public/images/logo.png';
@@ -7,7 +7,6 @@ import toast from 'react-hot-toast';
 import { useRouter } from 'next/router';
 import UserRegistration from '@/components/registration/UserRegistration';
 import { useState, useEffect } from 'react';
-import { CarretRightIcon } from '@heroicons/react/solid';
 import Spinner from '@/components/Spinner';
 import { userService } from '@/services/user-service';
 import { useSelector } from 'react-redux';
