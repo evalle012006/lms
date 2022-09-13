@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import logo from '/public/images/logo-transparent-small.png';
-import { InputEmail, InputPassword, ButtonSolid } from '@/lib/form-helper';
+import logo from '/public/images/logo.png';
 import { Formik } from 'formik';
 import * as yup from 'yup';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { useRouter } from 'next/router';
 import Spinner from '@/components/Spinner';
 import toast from 'react-hot-toast';
+import InputEmail from '@/lib/ui/InputEmail';
+import ButtonSolid from '@/lib/ui/ButtonSolid';
+import InputPassword from '@/lib/ui/InputPassword';
 
 const ForgotPasswordPage = () => {
     const router = useRouter();
@@ -66,7 +68,7 @@ const ForgotPasswordPage = () => {
         newPassword: yup.string()
             .required('New Password is required')
             .matches(
-                /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$/,
+                /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&_])[A-Za-z\d@$!%*#?&_]{8,}$/,
                 "Must Contain at least 8 Characters, One Uppercase, One Lowercase, One Number and one special case Character"
             ),
         confirmPassword: yup.string()

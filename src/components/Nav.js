@@ -176,7 +176,7 @@ const MenuItems = [
             },
             {
                 label: "View Applications",
-                url: "/transactions/loan-applications",
+                url: "/transactions/loans/loan-applications",
                 icon: {
                     active: (
                         <ClipboardDocumentCheckIcon className="text-gray-800 w-5 h-5" />
@@ -328,7 +328,15 @@ const NavComponent = () => {
             let temp = {...menu};
             if (rootUser || userState.role.rep === 1) {
                 // nothing to do here...
-            } else {
+            } else if (userState.role.rep === 2) {
+                // if (menu.label === 'Team') {
+                //     temp.hidden = true;
+                // }
+            } else if (userState.role.rep === 3) {
+                // if (menu.label === 'Team') {
+                //     temp.hidden = true;
+                // }
+            }  else if (userState.role.rep === 4) {
                 // if (menu.label === 'Team') {
                 //     temp.hidden = true;
                 // }

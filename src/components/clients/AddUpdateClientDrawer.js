@@ -96,6 +96,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, groups = [], branches = []
                         toast.success('Group successfully added.');
                         action.setSubmitting = false;
                         action.resetForm();
+                        setDateValue(new Date());
                         onClose();
                     }
                 }).catch(error => {
@@ -111,6 +112,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, groups = [], branches = []
                     toast.success('Client successfully updated.');
                     action.setSubmitting = false;
                     action.resetForm();
+                    setDateValue(new Date());
                     onClose();
                 }).catch(error => {
                     console.log(error);
@@ -121,6 +123,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, groups = [], branches = []
     const handleCancel = () => {
         setShowSidebar(false);
         formikRef.current.resetForm();
+        setDateValue(new Date());
         onClose();
     }
 
