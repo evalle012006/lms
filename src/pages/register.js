@@ -1,7 +1,7 @@
 import { Formik } from 'formik';
 import * as yup from 'yup';
 import Image from 'next/image';
-import logo from '/public/images/logo-transparent-small.png';
+import logo from '/public/images/logo.png';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/router';
