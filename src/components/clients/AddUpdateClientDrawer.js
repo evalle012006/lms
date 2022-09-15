@@ -24,7 +24,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, groups = [], branches = []
 
     const initialValues = {
         firstName: client.firstName,
-        middleName: client.clientName,
+        middleName: client.middleName,
         lastName: client.lastName,
         birthdate: client.birthdate,
         addressStreetNo: client.addressStreetNo,
@@ -36,7 +36,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, groups = [], branches = []
         groupId: client.groupId,
         branchId: client.branchId,
         status: client.status,
-        delinquent: client.delinquent ? client.delinquent : false
+        delinquent: client.delinquent === "Yes" ? true : false
     }
 
     const validationSchema = yup.object().shape({
@@ -73,6 +73,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, groups = [], branches = []
     };
 
     const handleSaveUpdate = (values, action) => {
+        let error = false;
         setLoading(true);
         values.birthdate = dateValue.toISOString();
         const group = groups && groups.find(g => g._id === values.groupId);
@@ -90,14 +91,9 @@ const AddUpdateClient = ({ mode = 'add', client = {}, groups = [], branches = []
                 .then(response => {
                     if (response.error) {
                         toast.error(response.message);
+                        error = true;
                     } else if (response.success) {
-                        setLoading(false);
-                        setShowSidebar(false);
-                        toast.success('Group successfully added.');
-                        action.setSubmitting = false;
-                        action.resetForm();
-                        setDateValue(new Date());
-                        onClose();
+                        toast.success('Client successfully added.');
                     }
                 }).catch(error => {
                     console.log(error)
@@ -107,16 +103,33 @@ const AddUpdateClient = ({ mode = 'add', client = {}, groups = [], branches = []
             values._id = client._id;
             fetchWrapper.post(apiUrl, values)
                 .then(response => {
-                    setLoading(false);
-                    setShowSidebar(false);
                     toast.success('Client successfully updated.');
-                    action.setSubmitting = false;
-                    action.resetForm();
-                    setDateValue(new Date());
-                    onClose();
                 }).catch(error => {
                     console.log(error);
                 });
+        }
+
+        if (error !== true) {
+            // update group slot no and status
+            let params = { groupId: values.groupId };
+
+            if (values.groupId !== client.groupId) {
+                params.oldGroupId = client.groupId;
+            }
+            
+            fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'groups/list', params)
+                .then(response => {
+                    if (response.error) {
+                        toast.error(response.message);
+                    } else {
+                        setLoading(false);
+                        setShowSidebar(false);
+                        action.setSubmitting = false;
+                        action.resetForm();
+                        setDateValue(new Date());
+                        onClose();
+                    }
+            });
         }
     }
 
@@ -296,7 +309,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, groups = [], branches = []
                                             </div>
                                             <div className="mt-4">
                                                 <CheckBox 
-                                                    name={delinquent}
+                                                    name="delinquent"
                                                     value={values.delinquent} 
                                                     onChange={setFieldValue}  
                                                     label={"Delinquent"} 

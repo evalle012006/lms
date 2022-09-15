@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
 import { PlusIcon } from '@heroicons/react/24/solid';
-import TableComponent, { SelectColumnFilter } from '@/lib/table';
+import TableComponent, { AvatarCell, SelectCell, SelectColumnFilter } from '@/lib/table';
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { useDispatch, useSelector } from "react-redux";
 import Spinner from "@/components/Spinner";
@@ -10,149 +10,172 @@ import { useRouter } from "node_modules/next/router";
 import Dialog from "@/lib/ui/Dialog";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
-import { setGroupList } from "@/redux/actions/groupActions";
-import AddUpdateGroup from "@/components/groups/AddUpdateGroupDrawer";
-import { UppercaseFirstLetter } from "@/lib/utils";
+import { setLoanList } from "@/redux/actions/loanActions";
+import AddUpdateLoan from "@/components/transactions/AddUpdateLoanDrawer";
 
-const GroupsPage = () => {
+const LoansPage = () => {
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
-    const list = useSelector(state => state.group.list);
+    const list = useSelector(state => state.loan.list);
     const [loading, setLoading] = useState(true);
 
     const [showAddDrawer, setShowAddDrawer] = useState(false);
     const [mode, setMode] = useState('add');
-    const [group, setGroup] = useState();
+    const [loan, setLoan] = useState();
 
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-    const [branches, setBranches] = useState([]);
-    const [users, setUsers] = useState([]);
+    const [groups, setGroups] = useState([]);
+    const [clients, setClients] = useState([]);
+    const [platformRoles, setPlatformRoles] = useState([]);
     const [rootUser, setRootUser] = useState(currentUser.root ? currentUser.root : false);
     const router = useRouter();
 
-    const getListBranch = async () => {
-        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'branches/list');
+    const getListLoan = async () => {
+        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'loans/list');
         if (response.success) {
-            let branches = [];
-            response.branches && response.branches.map(branch => {
-                branches.push(
-                    {
-                        ...branch,
-                        value: branch._id,
-                        label: UppercaseFirstLetter(branch.name)
-                    }
-                );
-            });
-
-            if (currentUser.root !== true && (currentUser.role.rep === 3 || currentUser.role.rep === 4)) {
-                branches = [branches.find(b => b.code === currentUser.designatedBranch)];
-            } 
-            
-            setBranches(branches);
-        } else {
-            toast.error('Error retrieving branches list.');
-        }
-
-        setLoading(false);
-    }
-
-    const getListUser = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
-        if (currentUser.root !== true && (currentUser.role.rep === 3 || currentUser.role.rep === 4) && branches.length > 0) {
-            url = url + '?' + new URLSearchParams({ branchCode: branches[0].code });
-        }
-        const response = await fetchWrapper.get(url);
-        if (response.success) {
-            let userList = [];
-            response.users && response.users.filter(u => u.role.rep === 4).map(u => {
-                const name = `${u.firstName} ${u.lastName}`;
-                userList.push(
-                    {
-                        ...u,
-                        value: u._id,
-                        label: UppercaseFirstLetter(name)
-                    }
-                );
-            });
-            setUsers(userList);
-        } else {
-            toast.error('Error retrieving branches list.');
-        }
-
-        setLoading(false);
-    }
-
-    const getListGroup = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list'
-        if (currentUser.root !== true && currentUser.role.rep === 4 && branches.length > 0) { 
-            url = url + '?' + new URLSearchParams({ branchId: branches[0]._id, loId: currentUser._id });
-        } else if (currentUser.root !== true && currentUser.role.rep === 3 && branches.length > 0) {
-            url = url + '?' + new URLSearchParams({ branchId: branches[0]._id });
-        }
-
-        const response = await fetchWrapper.get(url);
-        if (response.success) {
-            let groups = [];
-            await response.groups && response.groups.map(group => {
-                groups.push({
-                    ...group,
-                    day: UppercaseFirstLetter(group.day)
-                });
-            });
-            dispatch(setGroupList(groups));
+            dispatch(setLoanList(response.loans));
         } else if (response.error) {
             toast.error(response.message);
         }
         setLoading(false);
     }
 
+    const getListGroup = async () => {
+        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'groups/list');
+        if (response.success) {
+            setGroups(response.groups);
+        } else if (response.error) {
+            toast.error(response.message);
+        }
+        setLoading(false);
+    }
+
+    const getListClient = async () => {
+        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'clients/list');
+        if (response.success) {
+            setClients(response.clients);
+        } else if (response.error) {
+            toast.error(response.message);
+        }
+        setLoading(false);
+    }
+
+    // const getListPlatformRoles = async () => {
+    //     const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'platform-roles/list');
+    //     if (response.success) {
+    //         let roles = [];
+    //         response.roles && response.roles.map(role => {
+    //             roles.push(
+    //                 {
+    //                     ...role,
+    //                     value: role.rep,
+    //                     label: UppercaseFirstLetter(role.name)
+    //                 }
+    //             );
+    //         });
+    //         setPlatformRoles(roles);
+    //     } else {
+    //         toast.error('Error retrieving platform roles list.');
+    //     }
+
+    //     setLoading(false);
+    // }
+
     const [columns, setColumns] = useState([
         {
-            Header: "Name",
-            accessor: 'name',
+            Header: "Group",
+            accessor: 'groupName',
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
         {
-            Header: "Branch",
-            accessor: 'branchName',
+            Header: "Slot No.",
+            accessor: 'slotNo',
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
         {
-            Header: "Occurence",
-            accessor: 'occurence',
+            Header: "Status",
+            accessor: 'status',
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
         {
-            Header: "Day",
-            accessor: 'day',
+            Header: "Last Name",
+            accessor: 'lastName',
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
         {
-            Header: "Day No.",
-            accessor: 'dayNo',
+            Header: "First Name",
+            accessor: 'firstName',
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
         {
-            Header: "Time",
-            accessor: 'time',
+            Header: "Middle Name",
+            accessor: 'middleName',
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
         {
-            Header: "Group No.",
-            accessor: 'groupNo',
+            Header: "Admission Date",
+            accessor: 'admissionDate',
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
         {
-            Header: "Loan Officer",
-            accessor: 'loanOfficerName',
+            Header: "CBU",
+            accessor: 'cbu',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "LCBU",
+            accessor: 'lcbu',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "Loan Cycle",
+            accessor: 'loanCycle',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "Date Granted",
+            accessor: 'dateGranted',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "Pricipal Loan",
+            accessor: 'principalLoan',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "Active Loan",
+            accessor: 'activeLoan',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "Loan Balance",
+            accessor: 'loanBalance',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "No. of Weeks",
+            accessor: 'noOfWeeks',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "Co-Maker",
+            accessor: 'coMaker',
             Filter: SelectColumnFilter,
             filter: 'includes'
         }
@@ -164,21 +187,21 @@ const GroupsPage = () => {
 
     const handleCloseAddDrawer = () => {
         setLoading(true);
-        getListGroup();
+        getListLoan();
     }
 
     const actionButtons = [
-        <ButtonSolid label="Add Group" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
+        <ButtonSolid label="Add Loan" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
     ];
 
     const handleEditAction = (row) => {
         setMode("edit");
-        setGroup(row.original);
+        setLoan(row.original);
         handleShowAddDrawer();
     }
 
     const handleDeleteAction = (row) => {
-        setGroup(row.original);
+        setLoan(row.original);
         setShowDeleteDialog(true);
     }
 
@@ -188,15 +211,15 @@ const GroupsPage = () => {
     ];
 
     const handleDelete = () => {
-        if (group) {
+        if (branch) {
             setLoading(true);
-            fetchWrapper.postCors(process.env.NEXT_PUBLIC_API_URL + 'groups/delete', {_id: group._id})
+            fetchWrapper.postCors(process.env.NEXT_PUBLIC_API_URL + 'loans/delete', branch)
                 .then(response => {
                     if (response.success) {
                         setShowDeleteDialog(false);
-                        toast.success('Group successfully deleted.');
+                        toast.success('Loan successfully deleted.');
                         setLoading(false);
-                        getListGroup();
+                        getListLoan();
                     } else if (response.error) {
                         toast.error(response.message);
                     } else {
@@ -206,17 +229,19 @@ const GroupsPage = () => {
         }
     }
 
-    // useEffect(() => {
-    //     if ((currentUser.role && currentUser.role.rep !== 1)) {
-    //         router.push('/');
-    //     }
-    // }, []);
+    useEffect(() => {
+        if ((currentUser.role && currentUser.role.rep !== 1)) {
+            router.push('/');
+        }
+    }, []);
 
 
     useEffect(() => {
         let mounted = true;
 
-        mounted && getListBranch();
+        mounted && getListLoan();
+        mounted && getListGroup();
+        mounted && getListClient();
         // mounted && getListPlatformRoles();
 
 
@@ -224,13 +249,6 @@ const GroupsPage = () => {
             mounted = false;
         };
     }, []);
-
-    useEffect(() => {
-        if (branches) {
-            getListUser();
-            getListGroup();
-        }
-    }, [branches]);
 
     // useEffect(() => {
     //     // to set user permissions
@@ -263,9 +281,9 @@ const GroupsPage = () => {
                         <div className="absolute top-1/2 left-1/2">
                             <Spinner />
                         </div>
-                    ) : <TableComponent columns={columns} data={list} hasActionButtons={true} rowActionButtons={rowActionButtons} showFilters={false} />}
+                    ) : <TableComponent columns={columns} data={list} hasActionButtons={true} rowActionButtons={rowActionButtons} />}
             </div>
-            <AddUpdateGroup mode={mode} group={group} branches={branches} users={users} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
+            <AddUpdateLoan mode={mode} loan={loan} groups={groups} clients={clients} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
             <Dialog show={showDeleteDialog}>
                 <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                     <div className="sm:flex sm:items-start justify-center">
@@ -285,4 +303,4 @@ const GroupsPage = () => {
     );
 }
 
-export default GroupsPage;
+export default LoansPage;

@@ -11,6 +11,7 @@ import ButtonSolid from "@/lib/ui/ButtonSolid";
 import SideBar from "@/lib/ui/SideBar";
 import Spinner from "../Spinner";
 import SelectDropdown from "@/lib/ui/select";
+import RadioButton from "@/lib/ui/radio-button";
 
 const AddUpdateGroup = ({ mode = 'add', group = {}, branches = [], users = [], showSidebar, setShowSidebar, onClose }) => {
     const formikRef = useRef();
@@ -18,7 +19,11 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, branches = [], users = [], s
     const [loading, setLoading] = useState(false);
     const [day, setDay] = useState('');
     const [dayNo, setDayNo] = useState('');
+    const [occurence, setOccurence] = useState('daily');
+    const [branchId, setBranchId] = useState();
+    const [userList, setUserList] = useState(users);
     const days = [
+        {label: 'All Week', value: 'all', dayNo: 0},
         {label: 'Monday', value: 'monday', dayNo: 1}, 
         {label: 'Tuesday', value: 'tuesday', dayNo: 2}, 
         {label: 'Wednesday', value: 'wednesday', dayNo: 3}, 
@@ -28,11 +33,12 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, branches = [], users = [], s
 
     const initialValues = {
         name: group.name,
-        branchId: group.branchId,
+        branchId: branchId,
         day: group.day,
         dayNo: group.dayNo,
         time: group.time,
         groupNo: group.groupNo,
+        occurence: group.occurence,
         loanOfficerId: group.loanOfficerId,
         loanOfficerName: group.loanOfficerName
     }
@@ -41,9 +47,6 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, branches = [], users = [], s
         name: yup
             .string()
             .required('Please enter name'),
-        branchId: yup
-            .string()
-            .required('Please select a branch'),
         time: yup
             .string()
             .required('Please enter time'),
@@ -56,10 +59,24 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, branches = [], users = [], s
 
     });
 
+    const handleBranchChange = (selected) => {
+        setBranchId(selected);
+        const branch = branches.find(b => b._id === selected);
+        const newUserList = users.filter(u => u.designatedBranch === branch.code);
+        setUserList(newUserList);
+    }
+
     const handleSaveUpdate = (values, action) => {
         setLoading(true);
+        const branch = branches.find(b => b._id === branchId);
         values.day = day;
         values.dayNo = dayNo;
+        values.occurence = occurence;
+        values.capacity = occurence === 'daily' ? 25 : 30;
+        values.noOfClients = group.noOfClients;
+        values.status = group.status;
+        values.branchId = branchId;
+        values.branchName = branch.name;
         values.loanOfficerName = users.find(u => u._id === values.loanOfficerId).label;
         if (mode === 'add') {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'groups/save/';
@@ -125,6 +142,8 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, branches = [], users = [], s
         if (Object.keys(group).length > 0) {
             setDay(group.day.toLowerCase());
             setDayNo(group.dayNo);
+            setOccurence(group.occurence);
+            setBranchId(group.branchId);
         }
 
         mounted && setLoading(false);
@@ -170,6 +189,13 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, branches = [], users = [], s
                                             placeholder="Enter Name"
                                             setFieldValue={setFieldValue}
                                             errors={touched.name && errors.name ? errors.name : undefined} />
+                                    </div>
+                                    <div className="flex flex-col mt-4 text-gray-500">
+                                        <div>Group Occurence</div>
+                                        <div className="flex flex-row ml-4">
+                                            <RadioButton id={"radio_daily"} name="radio-occurence" label={"Daily"} checked={occurence === 'daily'} value="daily" onChange={() => setOccurence('daily')} />
+                                            <RadioButton id={"radio_weekly"} name="radio-occurence" label={"Weekly"} checked={occurence === 'weekly'} value="weekly" onChange={() => setOccurence('weekly')} />
+                                        </div>
                                     </div>
                                     <div className="mt-4">
                                         <SelectDropdown
@@ -230,10 +256,10 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, branches = [], users = [], s
                                         <SelectDropdown
                                             name="branchId"
                                             field="branchId"
-                                            value={values.branchId}
+                                            value={branchId}
                                             label="Branch"
                                             options={branches}
-                                            onChange={setFieldValue}
+                                            onChange={(e, selected) => handleBranchChange(selected)}
                                             onBlur={setFieldTouched}
                                             placeholder="Select Branch"
                                             errors={touched.branchId && errors.branchId ? errors.branchId : undefined}
@@ -245,7 +271,7 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, branches = [], users = [], s
                                             field="loanOfficerId"
                                             value={values.loanOfficerId}
                                             label="Loan Officer"
-                                            options={users}
+                                            options={userList}
                                             onChange={setFieldValue}
                                             onBlur={setFieldTouched}
                                             placeholder="Select Loan Officer"

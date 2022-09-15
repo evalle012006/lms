@@ -1,6 +1,4 @@
 import React, { useEffect, useState } from "react";
-import Layout from "@/components/Layout";
-import { PlusIcon } from '@heroicons/react/24/solid';
 import TableComponent, { SelectColumnFilter } from '@/lib/table';
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { useDispatch, useSelector } from "react-redux";
@@ -10,97 +8,44 @@ import { useRouter } from "node_modules/next/router";
 import Dialog from "@/lib/ui/Dialog";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
-import { setGroupList } from "@/redux/actions/groupActions";
-import AddUpdateGroup from "@/components/groups/AddUpdateGroupDrawer";
-import { UppercaseFirstLetter } from "@/lib/utils";
+import { setClientList } from "@/redux/actions/clientActions";
 
-const GroupsPage = () => {
+const ViewClientsByGroupPage = ({branchId, groups = [], groupId, client, setClient, setMode, handleShowAddDrawer}) => {
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
-    const list = useSelector(state => state.group.list);
+    const list = useSelector(state => state.client.list);
     const [loading, setLoading] = useState(true);
-
-    const [showAddDrawer, setShowAddDrawer] = useState(false);
-    const [mode, setMode] = useState('add');
-    const [group, setGroup] = useState();
 
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-    const [branches, setBranches] = useState([]);
-    const [users, setUsers] = useState([]);
     const [rootUser, setRootUser] = useState(currentUser.root ? currentUser.root : false);
     const router = useRouter();
 
-    const getListBranch = async () => {
-        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'branches/list');
-        if (response.success) {
-            let branches = [];
-            response.branches && response.branches.map(branch => {
-                branches.push(
-                    {
-                        ...branch,
-                        value: branch._id,
-                        label: UppercaseFirstLetter(branch.name)
-                    }
-                );
-            });
+    const getListClient = async () => {
+        let url = process.env.NEXT_PUBLIC_API_URL + 'clients/list';
 
-            if (currentUser.root !== true && (currentUser.role.rep === 3 || currentUser.role.rep === 4)) {
-                branches = [branches.find(b => b.code === currentUser.designatedBranch)];
-            } 
-            
-            setBranches(branches);
-        } else {
-            toast.error('Error retrieving branches list.');
-        }
-
-        setLoading(false);
-    }
-
-    const getListUser = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
-        if (currentUser.root !== true && (currentUser.role.rep === 3 || currentUser.role.rep === 4) && branches.length > 0) {
-            url = url + '?' + new URLSearchParams({ branchCode: branches[0].code });
-        }
-        const response = await fetchWrapper.get(url);
-        if (response.success) {
-            let userList = [];
-            response.users && response.users.filter(u => u.role.rep === 4).map(u => {
-                const name = `${u.firstName} ${u.lastName}`;
-                userList.push(
-                    {
-                        ...u,
-                        value: u._id,
-                        label: UppercaseFirstLetter(name)
-                    }
-                );
-            });
-            setUsers(userList);
-        } else {
-            toast.error('Error retrieving branches list.');
-        }
-
-        setLoading(false);
-    }
-
-    const getListGroup = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list'
-        if (currentUser.root !== true && currentUser.role.rep === 4 && branches.length > 0) { 
-            url = url + '?' + new URLSearchParams({ branchId: branches[0]._id, loId: currentUser._id });
-        } else if (currentUser.root !== true && currentUser.role.rep === 3 && branches.length > 0) {
-            url = url + '?' + new URLSearchParams({ branchId: branches[0]._id });
+        if (groupId) {
+            url = url + '?' + new URLSearchParams({ groupId: groupId })
+        } else if (branchId) {
+            url = url + '?' + new URLSearchParams({ branchId: branchId })
         }
 
         const response = await fetchWrapper.get(url);
         if (response.success) {
-            let groups = [];
-            await response.groups && response.groups.map(group => {
-                groups.push({
-                    ...group,
-                    day: UppercaseFirstLetter(group.day)
+            let clients = [];
+            await response.clients && response.clients.map(client => {
+                clients.push({
+                    ...client,
+                    loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
+                    activeLoan: client.loans.length > 0 ?  client.loans[0].activeLoan : 0.00,
+                    loanBalance: client.loans.length > 0 ?  client.loans[0].loanBalance : 0.00,
+                    missPayments: client.loans.length > 0 ?  client.loans[0].missPayments : 0,
+                    noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
+                    delinquent: client.delinquent === true ? 'Yes' : 'No'
                 });
             });
-            dispatch(setGroupList(groups));
+
+            dispatch(setClientList(clients));
         } else if (response.error) {
             toast.error(response.message);
         }
@@ -109,76 +54,81 @@ const GroupsPage = () => {
 
     const [columns, setColumns] = useState([
         {
-            Header: "Name",
-            accessor: 'name',
+            Header: "Last Name",
+            accessor: 'lastName',
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
         {
-            Header: "Branch",
-            accessor: 'branchName',
+            Header: "First Name",
+            accessor: 'firstName',
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
         {
-            Header: "Occurence",
-            accessor: 'occurence',
+            Header: "Middle Name",
+            accessor: 'middleName',
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
         {
-            Header: "Day",
-            accessor: 'day',
+            Header: "Group",
+            accessor: 'groupName',
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
         {
-            Header: "Day No.",
-            accessor: 'dayNo',
+            Header: "Loan Status",
+            accessor: 'loanStatus',
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
         {
-            Header: "Time",
-            accessor: 'time',
+            Header: "Active Loan",
+            accessor: 'activeLoan',
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
         {
-            Header: "Group No.",
-            accessor: 'groupNo',
+            Header: "Loan Balance",
+            accessor: 'loanBalance',
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
         {
-            Header: "Loan Officer",
-            accessor: 'loanOfficerName',
+            Header: "Miss Payments",
+            accessor: 'missPayments',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "No. of Payment",
+            accessor: 'noOfPayment',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "Status",
+            accessor: 'status',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "Delinquent",
+            accessor: 'delinquent',
             Filter: SelectColumnFilter,
             filter: 'includes'
         }
     ]);
 
-    const handleShowAddDrawer = () => {
-        setShowAddDrawer(true);
-    }
-
-    const handleCloseAddDrawer = () => {
-        setLoading(true);
-        getListGroup();
-    }
-
-    const actionButtons = [
-        <ButtonSolid label="Add Group" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
-    ];
-
     const handleEditAction = (row) => {
         setMode("edit");
-        setGroup(row.original);
+        setClient(row.original);
         handleShowAddDrawer();
     }
 
     const handleDeleteAction = (row) => {
-        setGroup(row.original);
+        setClient(row.original);
         setShowDeleteDialog(true);
     }
 
@@ -188,15 +138,15 @@ const GroupsPage = () => {
     ];
 
     const handleDelete = () => {
-        if (group) {
+        if (client) {
             setLoading(true);
-            fetchWrapper.postCors(process.env.NEXT_PUBLIC_API_URL + 'groups/delete', {_id: group._id})
+            fetchWrapper.postCors(process.env.NEXT_PUBLIC_API_URL + 'clients/delete', {_id: client._id})
                 .then(response => {
                     if (response.success) {
                         setShowDeleteDialog(false);
-                        toast.success('Group successfully deleted.');
+                        toast.success('Client successfully deleted.');
                         setLoading(false);
-                        getListGroup();
+                        getListClient();
                     } else if (response.error) {
                         toast.error(response.message);
                     } else {
@@ -206,19 +156,10 @@ const GroupsPage = () => {
         }
     }
 
-    // useEffect(() => {
-    //     if ((currentUser.role && currentUser.role.rep !== 1)) {
-    //         router.push('/');
-    //     }
-    // }, []);
-
-
     useEffect(() => {
         let mounted = true;
 
-        mounted && getListBranch();
-        // mounted && getListPlatformRoles();
-
+        mounted && getListClient();
 
         return () => {
             mounted = false;
@@ -226,11 +167,23 @@ const GroupsPage = () => {
     }, []);
 
     useEffect(() => {
-        if (branches) {
-            getListUser();
-            getListGroup();
+        if (currentUser.root !== true && currentUser.role.rep === 4) { 
+            // get all groups for this lo
+            // then filter the clients that is under that groups
+            if (groups.length > 0) {
+                let clientPerGroup = [];
+                groups.map(group => {
+                    list && list.map(c => {
+                        if (c.groupId === group._id) {
+                            clientPerGroup.push({...c});
+                        }
+                    });
+                });
+                dispatch(setClientList(clientPerGroup));
+            }
+
         }
-    }, [branches]);
+    }, [groups])
 
     // useEffect(() => {
     //     // to set user permissions
@@ -256,7 +209,7 @@ const GroupsPage = () => {
     // }, [platformRoles]);
 
     return (
-        <Layout actionButtons={actionButtons}>
+        <React.Fragment>
             <div className="pb-4">
                 {loading ?
                     (
@@ -265,7 +218,6 @@ const GroupsPage = () => {
                         </div>
                     ) : <TableComponent columns={columns} data={list} hasActionButtons={true} rowActionButtons={rowActionButtons} showFilters={false} />}
             </div>
-            <AddUpdateGroup mode={mode} group={group} branches={branches} users={users} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
             <Dialog show={showDeleteDialog}>
                 <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                     <div className="sm:flex sm:items-start justify-center">
@@ -281,8 +233,8 @@ const GroupsPage = () => {
                     <ButtonSolid label="Yes, delete" type="button" className="p-2" onClick={handleDelete} />
                 </div>
             </Dialog>
-        </Layout>
+        </React.Fragment>
     );
 }
 
-export default GroupsPage;
+export default ViewClientsByGroupPage;

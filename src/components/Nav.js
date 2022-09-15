@@ -161,8 +161,22 @@ const MenuItems = [
         hasSub: true,
         subMenuItems: [
             {
-                label: "View Loans",
-                url: "/transactions/loans",
+                label: "Loan Applications",
+                url: "/transactions/loan-applications",
+                icon: {
+                    active: (
+                        <ClipboardDocumentCheckIcon className="text-gray-800 w-5 h-5" />
+                    ),
+                    notActive: (
+                        <ClipboardDocumentCheckIcon className="text-white w-5 h-5" />
+                    ),
+                },
+                active: false,
+                hasSub: false
+            },
+            {
+                label: "Daily Cash Transactions",
+                url: "/transactions/daily-cash-collection",
                 icon: {
                     active: (
                         <TicketIcon className="text-gray-800 w-5 h-5" />
@@ -175,19 +189,19 @@ const MenuItems = [
                 hasSub: false
             },
             {
-                label: "View Applications",
-                url: "/transactions/loans/loan-applications",
+                label: "Weekly Cash Transactions",
+                url: "/transactions/weekly-cash-collection",
                 icon: {
                     active: (
-                        <ClipboardDocumentCheckIcon className="text-gray-800 w-5 h-5" />
+                        <TicketIcon className="text-gray-800 w-5 h-5" />
                     ),
                     notActive: (
-                        <ClipboardDocumentCheckIcon className="text-white w-5 h-5" />
+                        <TicketIcon className="text-white w-5 h-5" />
                     ),
                 },
                 active: false,
                 hasSub: false
-            }
+            },
         ]
     },
     {
@@ -337,9 +351,13 @@ const NavComponent = () => {
                 //     temp.hidden = true;
                 // }
             }  else if (userState.role.rep === 4) {
-                // if (menu.label === 'Team') {
-                //     temp.hidden = true;
-                // }
+                if (menu.label === 'Branches') {
+                    temp.hidden = true;
+                }
+
+                if (menu.label === 'Settings') {
+                    temp.hidden = true;
+                }
             }
 
             updatedMenu.push(temp);

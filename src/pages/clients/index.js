@@ -13,23 +13,22 @@ import ButtonSolid from "@/lib/ui/ButtonSolid";
 import { UppercaseFirstLetter } from "@/lib/utils";
 import { setClientList } from "@/redux/actions/clientActions";
 import AddUpdateClient from "@/components/clients/AddUpdateClientDrawer";
+import ViewClientsByGroupPage from "@/components/clients/ViewClientsByGroup";
 
 const ClientsPage = () => {
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
-    const list = useSelector(state => state.client.list);
     const [loading, setLoading] = useState(true);
 
     const [showAddDrawer, setShowAddDrawer] = useState(false);
     const [mode, setMode] = useState('add');
     const [client, setClient] = useState();
 
-    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-
     const [groups, setGroups] = useState([]);
     const [branches, setBranches] = useState([]);
     const [rootUser, setRootUser] = useState(currentUser.root ? currentUser.root : false);
     const router = useRouter();
+    const [branchId, setBranchId] = useState();
 
     const getListBranch = async () => {
         const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'branches/list');
@@ -44,6 +43,11 @@ const ClientsPage = () => {
                     }
                 );
             });
+
+            if (currentUser.root !== true && (currentUser.role.rep === 3 || currentUser.role.rep === 4)) {
+                branches = [branches.find(b => b.code === currentUser.designatedBranch)];
+            } 
+
             setBranches(branches);
         } else {
             toast.error('Error retrieving branches list.');
@@ -53,7 +57,15 @@ const ClientsPage = () => {
     }
 
     const getListGroup = async () => {
-        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'groups/list');
+        let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list'
+        if (currentUser.root !== true && currentUser.role.rep === 4 && branches.length > 0) { 
+            url = url + '?' + new URLSearchParams({ branchId: branches[0]._id, loId: currentUser._id });
+        } else if (currentUser.root !== true && currentUser.role.rep === 3 && branches.length > 0) {
+            url = url + '?' + new URLSearchParams({ branchId: branches[0]._id });
+            setBranchId(branches[0]._id);
+        }
+
+        const response = await fetchWrapper.get(url);
         if (response.success) {
             let groupList = [];
             await response.groups && response.groups.map(group => {
@@ -77,6 +89,11 @@ const ClientsPage = () => {
             await response.clients && response.clients.map(client => {
                 clients.push({
                     ...client,
+                    loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
+                    activeLoan: client.loans.length > 0 ?  client.loans[0].activeLoan : 0.00,
+                    loanBalance: client.loans.length > 0 ?  client.loans[0].loanBalance : 0.00,
+                    missPayments: client.loans.length > 0 ?  client.loans[0].missPayments : 0,
+                    noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
                     delinquent: client.delinquent === true ? 'Yes' : 'No'
                 });
             });
@@ -187,54 +204,17 @@ const ClientsPage = () => {
         <ButtonSolid label="Add Client" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
     ];
 
-    const handleEditAction = (row) => {
-        setMode("edit");
-        setClient(row.original);
-        handleShowAddDrawer();
-    }
-
-    const handleDeleteAction = (row) => {
-        setClient(row.original);
-        setShowDeleteDialog(true);
-    }
-
-    const rowActionButtons = [
-        { label: 'Edit', action: handleEditAction },
-        { label: 'Delete', action: handleDeleteAction }
-    ];
-
-    const handleDelete = () => {
-        if (client) {
-            setLoading(true);
-            fetchWrapper.postCors(process.env.NEXT_PUBLIC_API_URL + 'clients/delete', {_id: client._id})
-                .then(response => {
-                    if (response.success) {
-                        setShowDeleteDialog(false);
-                        toast.success('Client successfully deleted.');
-                        setLoading(false);
-                        getListClient();
-                    } else if (response.error) {
-                        toast.error(response.message);
-                    } else {
-                        console.log(response);
-                    }
-                });
-        }
-    }
-
-    useEffect(() => {
-        if ((currentUser.role && currentUser.role.rep !== 1)) {
-            router.push('/');
-        }
-    }, []);
+    // useEffect(() => {
+    //     if ((currentUser.role && currentUser.role.rep !== 1)) {
+    //         router.push('/');
+    //     }
+    // }, []);
 
 
     useEffect(() => {
         let mounted = true;
 
         mounted && getListBranch();
-        mounted && getListGroup();
-        mounted && getListClient();
         // mounted && getListPlatformRoles();
 
 
@@ -242,6 +222,12 @@ const ClientsPage = () => {
             mounted = false;
         };
     }, []);
+
+    useEffect(() => {
+        if (branches) {
+            getListGroup();
+        }
+    }, [branches]);
 
     // useEffect(() => {
     //     // to set user permissions
@@ -268,30 +254,12 @@ const ClientsPage = () => {
 
     return (
         <Layout actionButtons={actionButtons}>
-            <div className="pb-4">
-                {loading ?
-                    (
-                        <div className="absolute top-1/2 left-1/2">
-                            <Spinner />
-                        </div>
-                    ) : <TableComponent columns={columns} data={list} hasActionButtons={true} rowActionButtons={rowActionButtons} />}
-            </div>
+            {currentUser.root !== true && (currentUser.role.rep === 3 || currentUser.role.rep === 4) ? 
+                <ViewClientsByGroupPage branchId={branchId} groups={groups} client={client} setClient={setClient} setMode={setMode} handleShowAddDrawer={handleShowAddDrawer} />
+                :
+                <ViewClientsByGroupPage client={client} setClient={setClient} setMode={setMode} handleShowAddDrawer={handleShowAddDrawer} />
+            }
             <AddUpdateClient mode={mode} client={client} groups={groups} branches={branches} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
-            <Dialog show={showDeleteDialog}>
-                <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                    <div className="sm:flex sm:items-start justify-center">
-                        <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-center">
-                            <div className="mt-2">
-                                <p className="text-2xl font-normal text-dark-color">Are you sure you want to delete?</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div className="flex flex-row justify-center text-center px-4 py-3 sm:px-6 sm:flex">
-                    <ButtonOutline label="Cancel" type="button" className="p-2 mr-3" onClick={() => setShowDeleteDialog(false)} />
-                    <ButtonSolid label="Yes, delete" type="button" className="p-2" onClick={handleDelete} />
-                </div>
-            </Dialog>
         </Layout>
     );
 }

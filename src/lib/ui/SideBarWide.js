@@ -1,7 +1,7 @@
 import React from 'react';
 import { XIcon } from '@heroicons/react/outline';
 
-const SideBar = ({ title = '', children, showSidebar = false, setShowSidebar, onClose, hasCloseButton = true, position = 'right', width = '536px' }) => {
+const SideBarWide = ({ title = '', children, showSidebar = false, setShowSidebar, onClose, hasCloseButton = true, position = 'right' }) => {
 
     const handleClose = () => {
         setShowSidebar(false);
@@ -9,12 +9,12 @@ const SideBar = ({ title = '', children, showSidebar = false, setShowSidebar, on
     }
 
     const placementShow = position === 'right' ? 'right-0-custom' : 'left-0-custom';
-    const placementHide = position === 'right' ? '-right-0-custom' : '-left-0-custom';
+    const placementHide = position === 'right' ? '-right-0-wide' : '-left-0-wide';
 
     return (
         <React.Fragment>
             <div className={`sidebar-container bg-white ${showSidebar ? placementShow : placementHide}`}>
-                <div className="sidebar-sub-container" style={{ width: `${width}` }}>
+                <div className="sidebar-sub-container" style={{ width: '80vw' }}>
                     <div className="sidebar-header">
                         <div className='sidebar-title'>{ title }</div>
                         {hasCloseButton && (
@@ -32,4 +32,4 @@ const SideBar = ({ title = '', children, showSidebar = false, setShowSidebar, on
     )
 }
 
-export default SideBar;
+export default SideBarWide;

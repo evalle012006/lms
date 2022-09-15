@@ -15,6 +15,7 @@ import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import moment from 'moment'
 import SelectDropdown from "@/lib/ui/select";
+import SideBarWide from "@/lib/ui/SideBarWide";
 
 const AddUpdateLoan = ({ mode = 'add', loan = {}, groups=[], clients=[], showSidebar, setShowSidebar, onClose }) => {
     const formikRef = useRef();
@@ -162,7 +163,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, groups=[], clients=[], showSid
 
     return (
         <React.Fragment>
-            <SideBar title={mode === 'add' ? 'Add Branch' : 'Edit Branch'} showSidebar={showSidebar} setShowSidebar={setShowSidebar} hasCloseButton={false}>
+            <SideBarWide title={mode === 'add' ? 'Add Loan' : `Edit Loan: ${loan._id}`} showSidebar={showSidebar} setShowSidebar={setShowSidebar} hasCloseButton={false}>
                 {loading ? (
                     <div className="flex items-center justify-center h-screen">
                         <Spinner />
@@ -280,7 +281,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, groups=[], clients=[], showSid
                         </Formik>
                     </div>
                 )}
-            </SideBar>
+            </SideBarWide>
         </React.Fragment>
     )
 }

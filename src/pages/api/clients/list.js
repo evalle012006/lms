@@ -8,15 +8,64 @@ export default apiHandler({
 async function list(req, res) {
     const { db } = await connectToDatabase();
 
+    const {groupId, branchId} = req.query;
+
     let statusCode = 200;
     let response = {};
+    let clients;
 
-    const clients = await db
-        .collection('client')
-        .find({ 'deleted': { $ne: true }})
-        .project({ password: 0 })
-        .toArray();
-
+    if (groupId) {
+        clients = await db
+            .collection('client')
+            .aggregate([
+                { $match: { groupId: groupId } },
+                {
+                    $lookup: {
+                        from: "loans",
+                        localField: "_id",
+                        foreignField: "clientId",
+                        pipeline: [
+                            { $match: { "status": "active" } }
+                        ],
+                        as: "loans"
+                    }
+                }
+            ])
+            .toArray();
+    } else if (branchId) {
+        clients = await db
+            .collection('client')
+            .aggregate([
+                { $match: { branchId: branchId } },
+                {
+                    $lookup: {
+                        from: "loans",
+                        localField: "_id",
+                        foreignField: "clientId",
+                        pipeline: [
+                            { $match: { "status": "active" } }
+                        ],
+                        as: "loans"
+                    }
+                }
+            ])
+            .toArray();
+    } else {
+        clients = await db
+            .collection('client')
+            .aggregate([
+                {
+                    $lookup: {
+                        from: "loans",
+                        localField: "_id",
+                        foreignField: "clientId",
+                        as: "loans"
+                    }
+                }
+            ])
+            .toArray();
+    }
+    
     response = {
         success: true,
         clients: clients

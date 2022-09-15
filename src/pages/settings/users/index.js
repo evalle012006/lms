@@ -295,7 +295,7 @@ const TeamPage = () => {
                         <div className="absolute top-1/2 left-1/2">
                             <Spinner />
                         </div>
-                    ) : <TableComponent columns={columns} data={list} hasActionButtons={rootUser || (currentUser.role && currentUser.role.rep === 1) ? true : false} rowActionButtons={rootUser || (currentUser.role && currentUser.role.rep === 1) ? rowActionButtons : []} />}
+                    ) : <TableComponent columns={columns} data={list} showFilters={false} hasActionButtons={rootUser || (currentUser.role && currentUser.role.rep === 1) ? true : false} rowActionButtons={rootUser || (currentUser.role && currentUser.role.rep === 1) ? rowActionButtons : []} />}
             </div>
             <AddUpdateUser mode={mode} user={userData} roles={platformRoles} branches={branches} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
             <Dialog show={showDeleteDialog}>
