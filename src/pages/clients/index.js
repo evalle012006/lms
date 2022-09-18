@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
 import { PlusIcon } from '@heroicons/react/24/solid';
-import TableComponent, { SelectColumnFilter } from '@/lib/table';
+import TableComponent, { SelectColumnFilter, StatusPill } from '@/lib/table';
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { useDispatch, useSelector } from "react-redux";
 import Spinner from "@/components/Spinner";
@@ -103,93 +103,6 @@ const ClientsPage = () => {
         }
         setLoading(false);
     }
-
-    const [columns, setColumns] = useState([
-        {
-            Header: "First Name",
-            accessor: 'firstName',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "Middle Name",
-            accessor: 'middleName',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "Last Name",
-            accessor: 'lastName',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "Birthdate",
-            accessor: 'birthdate',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "No. Street, Sitio/Purok",
-            accessor: 'addressStreetNo',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "Barangay District",
-            accessor: 'addressBarangayDistrict',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "Municipality or City",
-            accessor: 'addressMunicipalityCity',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "Province",
-            accessor: 'addressProvince',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "Zip Code",
-            accessor: 'addressZipCode',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "Contact Number",
-            accessor: 'contactNumber',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "Branch",
-            accessor: 'branchName',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "Group",
-            accessor: 'groupName',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "Status",
-            accessor: 'status',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "Delinquent",
-            accessor: 'delinquent',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        }
-    ]);
 
     const handleShowAddDrawer = () => {
         setShowAddDrawer(true);

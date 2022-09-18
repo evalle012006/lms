@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import TableComponent, { SelectColumnFilter } from '@/lib/table';
+import TableComponent, { SelectColumnFilter, StatusPill } from '@/lib/table';
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { useDispatch, useSelector } from "react-redux";
 import Spinner from "@/components/Spinner";
@@ -10,9 +10,10 @@ import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 import { setClientList } from "@/redux/actions/clientActions";
 
-const ViewClientsByGroupPage = ({branchId, groups = [], groupId, client, setClient, setMode, handleShowAddDrawer}) => {
+const ViewClientsByGroupPage = ({branchId, groupId, client, setClient, setMode, handleShowAddDrawer}) => {
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
+    const groupList = useSelector(state => state.group.list);
     const list = useSelector(state => state.client.list);
     const [loading, setLoading] = useState(true);
 
@@ -44,11 +45,26 @@ const ViewClientsByGroupPage = ({branchId, groups = [], groupId, client, setClie
                     delinquent: client.delinquent === true ? 'Yes' : 'No'
                 });
             });
-
-            dispatch(setClientList(clients));
+            
+            if (currentUser.root !== true && currentUser.role.rep === 4) { 
+                // get all groups for this lo
+                // then filter the clients that is under that groups
+                let clientPerGroup = [];
+                groupList.map(group => {
+                    clients && clients.map(c => {
+                        if (c.groupId === group._id) {
+                            clientPerGroup.push({...c});
+                        }
+                    });
+                });
+                dispatch(setClientList(clientPerGroup));
+            } else {
+                dispatch(setClientList(clients));
+            }
         } else if (response.error) {
             toast.error(response.message);
         }
+
         setLoading(false);
     }
 
@@ -110,6 +126,7 @@ const ViewClientsByGroupPage = ({branchId, groups = [], groupId, client, setClie
         {
             Header: "Status",
             accessor: 'status',
+            Cell: StatusPill,
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
@@ -159,54 +176,14 @@ const ViewClientsByGroupPage = ({branchId, groups = [], groupId, client, setClie
     useEffect(() => {
         let mounted = true;
 
-        mounted && getListClient();
+        if (groupList.length > 0) {
+            mounted && getListClient();
+        }
 
         return () => {
             mounted = false;
         };
-    }, []);
-
-    useEffect(() => {
-        if (currentUser.root !== true && currentUser.role.rep === 4) { 
-            // get all groups for this lo
-            // then filter the clients that is under that groups
-            if (groups.length > 0) {
-                let clientPerGroup = [];
-                groups.map(group => {
-                    list && list.map(c => {
-                        if (c.groupId === group._id) {
-                            clientPerGroup.push({...c});
-                        }
-                    });
-                });
-                dispatch(setClientList(clientPerGroup));
-            }
-
-        }
-    }, [groups])
-
-    // useEffect(() => {
-    //     // to set user permissions
-    //     let updatedColumns = [];
-    //     columns.map(col => {
-    //         let temp = {...col}; 
-    //         if ((currentUser.role && currentUser.role.rep !== 1)) {        
-    //             if (col.accessor === 'role') {
-    //                 delete temp.Cell;
-    //             }
-    //         } else {
-    //             // need to set the Options again since it was blank after checking for permissions
-    //             if (col.accessor === 'role') {
-    //                 temp.Options = platformRoles;
-    //                 temp.selectOnChange = updateUser;
-    //             }
-    //         }
-
-    //         updatedColumns.push(temp);
-    //     });
-
-    //     setColumns(updatedColumns);
-    // }, [platformRoles]);
+    }, [groupList]);
 
     return (
         <React.Fragment>
@@ -216,7 +193,7 @@ const ViewClientsByGroupPage = ({branchId, groups = [], groupId, client, setClie
                         <div className="absolute top-1/2 left-1/2">
                             <Spinner />
                         </div>
-                    ) : <TableComponent columns={columns} data={list} hasActionButtons={true} rowActionButtons={rowActionButtons} showFilters={false} />}
+                    ) : <TableComponent columns={columns} data={list} hasActionButtons={groupId ? false : true} rowActionButtons={rowActionButtons} showFilters={false} />}
             </div>
             <Dialog show={showDeleteDialog}>
                 <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">

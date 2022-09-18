@@ -206,6 +206,10 @@ const GroupsPage = () => {
         }
     }
 
+    const handleRowClick = (selected) => {
+        router.push('./groups/' + selected._id);
+    };
+
     // useEffect(() => {
     //     if ((currentUser.role && currentUser.role.rep !== 1)) {
     //         router.push('/');
@@ -232,29 +236,6 @@ const GroupsPage = () => {
         }
     }, [branches]);
 
-    // useEffect(() => {
-    //     // to set user permissions
-    //     let updatedColumns = [];
-    //     columns.map(col => {
-    //         let temp = {...col}; 
-    //         if ((currentUser.role && currentUser.role.rep !== 1)) {        
-    //             if (col.accessor === 'role') {
-    //                 delete temp.Cell;
-    //             }
-    //         } else {
-    //             // need to set the Options again since it was blank after checking for permissions
-    //             if (col.accessor === 'role') {
-    //                 temp.Options = platformRoles;
-    //                 temp.selectOnChange = updateUser;
-    //             }
-    //         }
-
-    //         updatedColumns.push(temp);
-    //     });
-
-    //     setColumns(updatedColumns);
-    // }, [platformRoles]);
-
     return (
         <Layout actionButtons={actionButtons}>
             <div className="pb-4">
@@ -263,7 +244,7 @@ const GroupsPage = () => {
                         <div className="absolute top-1/2 left-1/2">
                             <Spinner />
                         </div>
-                    ) : <TableComponent columns={columns} data={list} hasActionButtons={true} rowActionButtons={rowActionButtons} showFilters={false} />}
+                    ) : <TableComponent columns={columns} data={list} hasActionButtons={true} rowActionButtons={rowActionButtons} showFilters={false} rowClick={handleRowClick} />}
             </div>
             <AddUpdateGroup mode={mode} group={group} branches={branches} users={users} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
             <Dialog show={showDeleteDialog}>

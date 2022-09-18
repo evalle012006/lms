@@ -321,6 +321,7 @@ const TableComponent = ({
   title = "",
   hasActionButtons = true,
   rowActionButtons = [],
+  rowClick = null
 }) => {
   // Use the state and functions returned from useTable to build your UI
   const {
@@ -462,8 +463,9 @@ const TableComponent = ({
                                     return (
                                         <td
                                           {...cell.getCellProps()}
-                                          className="px-6-custom py-4-custom whitespace-nowrap-custom "
+                                          className={`px-6-custom py-4-custom whitespace-nowrap-custom ${rowClick && 'cursor-pointer'}`}
                                           role="cell"
+                                          onClick={() => rowClick(row.original)}
                                         >
                                           {cell.column.Cell.name === "defaultRenderer" ? (
                                               <div className="text-sm text-gray-500">
@@ -476,7 +478,7 @@ const TableComponent = ({
                                     );
                                     })}
                                     {/* ACTION BUTTON */}
-                                    {(hasActionButtons && !root && !row.original.system) && (
+                                    {(hasActionButtons && !root) && (
                                     <td
                                         className="py-4-custom whitespace-nowrap-custom"
                                         role="cell"
