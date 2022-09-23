@@ -40,7 +40,8 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, branches = [], users = [], s
         groupNo: group.groupNo,
         occurence: group.occurence,
         loanOfficerId: group.loanOfficerId,
-        loanOfficerName: group.loanOfficerName
+        loanOfficerName: group.loanOfficerName,
+        availableSlots: group.availableSlots
     }
 
     const validationSchema = yup.object().shape({
@@ -80,6 +81,12 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, branches = [], users = [], s
         values.loanOfficerName = users.find(u => u._id === values.loanOfficerId).label;
         if (mode === 'add') {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'groups/save/';
+
+            let availableSlots = [];
+            for (let i = 1; i <= 40; i++) {
+                availableSlots.push(i);
+            }
+            values.availableSlots = availableSlots;
 
             fetchWrapper.post(apiUrl, values)
                 .then(response => {

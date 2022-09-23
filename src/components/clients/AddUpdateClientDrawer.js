@@ -15,9 +15,12 @@ import 'react-calendar/dist/Calendar.css';
 import moment from 'moment'
 import CheckBox from "@/lib/ui/checkbox";
 
-const AddUpdateClient = ({ mode = 'add', client = {}, groups = [], branches = [], showSidebar, setShowSidebar, onClose }) => {
+const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSidebar, onClose }) => {
     const formikRef = useRef();
     const dispatch = useDispatch();
+    const currentUser = useSelector(state => state.user.data);
+    const branchList = useSelector(state => state.branch.list);
+    const groupList = useSelector(state => state.group.list);
     const [loading, setLoading] = useState(false);
     const [dateValue, setDateValue] = useState(new Date());
     const [showCalendar, setShowCalendar] = useState(false);
@@ -33,7 +36,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, groups = [], branches = []
         addressProvince: client.addressProvince,
         addressZipCode: client.addressZipCode,
         contactNumber: client.contactNumber,
-        groupId: client.groupId,
+        // groupId: client.groupId,
         branchId: client.branchId,
         status: client.status,
         delinquent: client.delinquent === "Yes" ? true : false
@@ -58,9 +61,9 @@ const AddUpdateClient = ({ mode = 'add', client = {}, groups = [], branches = []
         addressZipCode: yup
             .string()
             .required('Please enter zip code'),
-        groupId: yup
-            .string()
-            .required('Please select a group')
+        // groupId: yup
+        //     .string()
+        //     .required('Please select a group')
     });
 
     const openCalendar = () => {
@@ -76,11 +79,14 @@ const AddUpdateClient = ({ mode = 'add', client = {}, groups = [], branches = []
         let error = false;
         setLoading(true);
         values.birthdate = dateValue.toISOString();
-        const group = groups && groups.find(g => g._id === values.groupId);
-        const branch = group && branches.find(b => b._id === group.branchId);
-        values.groupName = group.name;
-        values.branchId = branch._id;
-        values.branchName = branch.name;
+        // const group = groupList && groupList.find(g => g._id === values.groupId);
+        // values.groupName = group.name;
+        if (currentUser.root !== true && (currentUser.role.rep === 4 || currentUser.role.rep === 3) && branchList.length > 0) {
+            const branch = branchList.find(b => b.code === currentUser.designatedBranch);
+            values.branchId = branch._id;
+            values.branchName = branch.name;
+        } // if area manager it should be able to select a branch where this client is
+        
         if (mode === 'add') {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'clients/save/';
 
@@ -93,6 +99,12 @@ const AddUpdateClient = ({ mode = 'add', client = {}, groups = [], branches = []
                         toast.error(response.message);
                         error = true;
                     } else if (response.success) {
+                        setLoading(false);
+                        setShowSidebar(false);
+                        action.setSubmitting = false;
+                        action.resetForm();
+                        setDateValue(new Date());
+                        onClose();
                         toast.success('Client successfully added.');
                     }
                 }).catch(error => {
@@ -103,34 +115,40 @@ const AddUpdateClient = ({ mode = 'add', client = {}, groups = [], branches = []
             values._id = client._id;
             fetchWrapper.post(apiUrl, values)
                 .then(response => {
+                    setLoading(false);
+                    setShowSidebar(false);
+                    action.setSubmitting = false;
+                    action.resetForm();
+                    setDateValue(new Date());
+                    onClose();
                     toast.success('Client successfully updated.');
                 }).catch(error => {
                     console.log(error);
                 });
         }
 
-        if (error !== true) {
-            // update group slot no and status
-            let params = { groupId: values.groupId };
+        // if (error !== true) {
+        //     // update group slot no and status
+        //     let params = { groupId: values.groupId };
 
-            if (values.groupId !== client.groupId) {
-                params.oldGroupId = client.groupId;
-            }
+        //     if (values.groupId !== client.groupId) {
+        //         params.oldGroupId = client.groupId;
+        //     }
             
-            fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'groups/list', params)
-                .then(response => {
-                    if (response.error) {
-                        toast.error(response.message);
-                    } else {
-                        setLoading(false);
-                        setShowSidebar(false);
-                        action.setSubmitting = false;
-                        action.resetForm();
-                        setDateValue(new Date());
-                        onClose();
-                    }
-            });
-        }
+        //     fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'groups/list', params)
+        //         .then(response => {
+        //             if (response.error) {
+        //                 toast.error(response.message);
+        //             } else {
+                        // setLoading(false);
+                        // setShowSidebar(false);
+                        // action.setSubmitting = false;
+                        // action.resetForm();
+                        // setDateValue(new Date());
+                        // onClose();
+        //             }
+        //     });
+        // }
     }
 
     const handleCancel = () => {
@@ -276,19 +294,19 @@ const AddUpdateClient = ({ mode = 'add', client = {}, groups = [], branches = []
                                             setFieldValue={setFieldValue}
                                             errors={touched.contactNumber && errors.contactNumber ? errors.contactNumber : undefined} />
                                     </div>
-                                    <div className="mt-4">
+                                    {/* <div className="mt-4">
                                         <SelectDropdown
                                             name="groupId"
                                             field="groupId"
                                             value={values.groupId}
                                             label="Group"
-                                            options={groups}
+                                            options={groupList}
                                             onChange={setFieldValue}
                                             onBlur={setFieldTouched}
                                             placeholder="Select Group"
                                             errors={touched.groupId && errors.groupId ? errors.groupId : undefined}
                                         />
-                                    </div>
+                                    </div> */}
                                     {mode === 'edit' && (
                                         <React.Fragment>
                                             <div className="mt-4">

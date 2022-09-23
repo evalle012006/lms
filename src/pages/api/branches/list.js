@@ -9,12 +9,23 @@ async function list(req, res) {
     const { db } = await connectToDatabase();
     let statusCode = 200;
     let response = {};
+    let branches;
 
-    const branches = await db
-        .collection('branches')
-        .find()
-        .toArray();
+    const { branchCode } = req.query;
 
+    if (branchCode) {
+        branches = await db
+            .collection('branches')
+            .find({ code: branchCode })
+            .toArray();
+    } else {
+        branches = await db
+            .collection('branches')
+            .find()
+            .toArray();
+
+    }
+    
     response = {
         success: true,
         branches: branches

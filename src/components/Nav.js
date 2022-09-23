@@ -61,7 +61,7 @@ const SubNav = ({ item, index, activePath, inner=false, className }) => {
                             {subMenuOpen && (
                                 <ul className="relative accordion-collapse collapse">
                                     {item.subMenuItems.map((menu, idx) => {
-                                        return (
+                                        return !menu.hidden && (
                                             <SubNav key={idx} item={menu} index={idx} activePath={activePath} className="ml-6" inner={true} />
                                         )
                                     })}
@@ -347,9 +347,12 @@ const NavComponent = () => {
                 //     temp.hidden = true;
                 // }
             } else if (userState.role.rep === 3) {
-                // if (menu.label === 'Team') {
-                //     temp.hidden = true;
-                // }
+                if (menu.label === 'System') {
+                    temp.hidden = true;
+                }
+                if (menu.label === 'Roles') {
+                    temp.hidden = true;
+                }
             }  else if (userState.role.rep === 4) {
                 if (menu.label === 'Branches') {
                     temp.hidden = true;
@@ -360,6 +363,25 @@ const NavComponent = () => {
                 }
             }
 
+            if (temp.hasSub) {
+                temp.subMenuItems.map(sm => {
+                    if (rootUser || userState.role.rep === 1) {
+                        // nothing to do here...
+                    } else if (userState.role.rep === 2) {
+                        // nothing to do here...
+                    } else if (userState.role.rep === 3) {
+                        if (sm.label === 'System') {
+                            sm.hidden = true;
+                        }
+                        if (sm.label === 'Roles') {
+                            sm.hidden = true;
+                        }
+                    }  else if (userState.role.rep === 4) {
+                       // nothing to do here..
+                    }
+                });
+            }
+
             updatedMenu.push(temp);
         });
 
@@ -367,7 +389,7 @@ const NavComponent = () => {
     }, [userState]);
 
     return (
-        <div className='bg-main h-screen fixed duration-300 top-0 flex flex-col justify-between w-72 overflow-y-auto sm:w-screen'>
+        <div className='bg-main h-screen fixed duration-300 top-0 flex flex-col justify-between w-64 overflow-y-auto sm:w-screen'>
             <div className="items-center">
                 <header className="flex justify-center items-center border-b border-orange-darkest py-4">
                     <div id="logo">

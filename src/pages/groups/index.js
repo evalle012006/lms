@@ -13,11 +13,14 @@ import ButtonSolid from "@/lib/ui/ButtonSolid";
 import { setGroupList } from "@/redux/actions/groupActions";
 import AddUpdateGroup from "@/components/groups/AddUpdateGroupDrawer";
 import { UppercaseFirstLetter } from "@/lib/utils";
+import { setBranchList } from "@/redux/actions/branchActions";
+import { setUserList } from "@/redux/actions/userActions";
 
 const GroupsPage = () => {
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
     const list = useSelector(state => state.group.list);
+    const branchList = useSelector(state => state.branch.list);
     const [loading, setLoading] = useState(true);
 
     const [showAddDrawer, setShowAddDrawer] = useState(false);
@@ -49,7 +52,7 @@ const GroupsPage = () => {
                 branches = [branches.find(b => b.code === currentUser.designatedBranch)];
             } 
             
-            setBranches(branches);
+            dispatch(setBranchList(branches));
         } else {
             toast.error('Error retrieving branches list.');
         }
@@ -59,8 +62,8 @@ const GroupsPage = () => {
 
     const getListUser = async () => {
         let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
-        if (currentUser.root !== true && (currentUser.role.rep === 3 || currentUser.role.rep === 4) && branches.length > 0) {
-            url = url + '?' + new URLSearchParams({ branchCode: branches[0].code });
+        if (currentUser.root !== true && (currentUser.role.rep === 3 || currentUser.role.rep === 4) && branchList.length > 0) {
+            url = url + '?' + new URLSearchParams({ branchCode: branchList[0].code });
         }
         const response = await fetchWrapper.get(url);
         if (response.success) {
@@ -75,7 +78,7 @@ const GroupsPage = () => {
                     }
                 );
             });
-            setUsers(userList);
+            dispatch(setUserList(userList));
         } else {
             toast.error('Error retrieving branches list.');
         }
@@ -85,10 +88,10 @@ const GroupsPage = () => {
 
     const getListGroup = async () => {
         let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list'
-        if (currentUser.root !== true && currentUser.role.rep === 4 && branches.length > 0) { 
-            url = url + '?' + new URLSearchParams({ branchId: branches[0]._id, loId: currentUser._id });
-        } else if (currentUser.root !== true && currentUser.role.rep === 3 && branches.length > 0) {
-            url = url + '?' + new URLSearchParams({ branchId: branches[0]._id });
+        if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
+            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id });
+        } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
+            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id });
         }
 
         const response = await fetchWrapper.get(url);
@@ -230,11 +233,11 @@ const GroupsPage = () => {
     }, []);
 
     useEffect(() => {
-        if (branches) {
+        if (branchList) {
             getListUser();
             getListGroup();
         }
-    }, [branches]);
+    }, [branchList]);
 
     return (
         <Layout actionButtons={actionButtons}>

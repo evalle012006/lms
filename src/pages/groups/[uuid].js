@@ -16,9 +16,12 @@ import ViewClientsByGroupPage from '@/components/clients/ViewClientsByGroup';
 const GroupsDetailsPage = () => {
     const dispatch = useDispatch();
     const router = useRouter();
+    const currentUser = useSelector(state => state.user.data);
+    const branchList = useSelector(state => state.branch.list);
     const group = useSelector(state => state.group.data);
     const { uuid } = router.query;
     const [loading, setLoading] = useState(true);
+    const [branchId, setBranchId] = useState();
 
 
     useEffect(() => {
@@ -42,6 +45,13 @@ const GroupsDetailsPage = () => {
             mounted = false;
         };
     }, [uuid]);
+
+    useEffect(() => {
+        if (currentUser.root !== true && (currentUser.role.rep === 4 || currentUser.role.rep === 3) && branchList.length > 0) {
+            const branch = branchList.find(b => b.code === currentUser.designatedBranch);
+            setBranchId(branch._id);
+        }
+    }, [branchList])
 
     return (
         <Layout header={false} noPad={true}>

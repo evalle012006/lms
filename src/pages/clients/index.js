@@ -14,21 +14,21 @@ import { UppercaseFirstLetter } from "@/lib/utils";
 import { setClientList } from "@/redux/actions/clientActions";
 import AddUpdateClient from "@/components/clients/AddUpdateClientDrawer";
 import ViewClientsByGroupPage from "@/components/clients/ViewClientsByGroup";
+import { setBranchList } from "@/redux/actions/branchActions";
+import { setGroupList } from "@/redux/actions/groupActions";
 
 const ClientsPage = () => {
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
+    const branchList = useSelector(state => state.branch.list);
     const [loading, setLoading] = useState(true);
 
     const [showAddDrawer, setShowAddDrawer] = useState(false);
     const [mode, setMode] = useState('add');
     const [client, setClient] = useState();
 
-    const [groups, setGroups] = useState([]);
-    const [branches, setBranches] = useState([]);
     const [rootUser, setRootUser] = useState(currentUser.root ? currentUser.root : false);
     const router = useRouter();
-    const [branchId, setBranchId] = useState();
 
     const getListBranch = async () => {
         const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'branches/list');
@@ -48,7 +48,7 @@ const ClientsPage = () => {
                 branches = [branches.find(b => b.code === currentUser.designatedBranch)];
             } 
 
-            setBranches(branches);
+            dispatch(setBranchList(branches));
         } else {
             toast.error('Error retrieving branches list.');
         }
@@ -58,11 +58,10 @@ const ClientsPage = () => {
 
     const getListGroup = async () => {
         let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list'
-        if (currentUser.root !== true && currentUser.role.rep === 4 && branches.length > 0) { 
-            url = url + '?' + new URLSearchParams({ branchId: branches[0]._id, loId: currentUser._id });
-        } else if (currentUser.root !== true && currentUser.role.rep === 3 && branches.length > 0) {
-            url = url + '?' + new URLSearchParams({ branchId: branches[0]._id });
-            setBranchId(branches[0]._id);
+        if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
+            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id });
+        } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
+            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id });
         }
 
         const response = await fetchWrapper.get(url);
@@ -75,7 +74,7 @@ const ClientsPage = () => {
                     label: UppercaseFirstLetter(group.name)
                 });
             });
-            setGroups(groupList);
+            dispatch(setGroupList(groupList));
         } else if (response.error) {
             toast.error(response.message);
         }
@@ -137,42 +136,15 @@ const ClientsPage = () => {
     }, []);
 
     useEffect(() => {
-        if (branches) {
+        if (branchList) {
             getListGroup();
         }
-    }, [branches]);
-
-    // useEffect(() => {
-    //     // to set user permissions
-    //     let updatedColumns = [];
-    //     columns.map(col => {
-    //         let temp = {...col}; 
-    //         if ((currentUser.role && currentUser.role.rep !== 1)) {        
-    //             if (col.accessor === 'role') {
-    //                 delete temp.Cell;
-    //             }
-    //         } else {
-    //             // need to set the Options again since it was blank after checking for permissions
-    //             if (col.accessor === 'role') {
-    //                 temp.Options = platformRoles;
-    //                 temp.selectOnChange = updateUser;
-    //             }
-    //         }
-
-    //         updatedColumns.push(temp);
-    //     });
-
-    //     setColumns(updatedColumns);
-    // }, [platformRoles]);
+    }, [branchList]);
 
     return (
         <Layout actionButtons={actionButtons}>
-            {currentUser.root !== true && (currentUser.role.rep === 3 || currentUser.role.rep === 4) ? 
-                <ViewClientsByGroupPage branchId={branchId} groups={groups} client={client} setClient={setClient} setMode={setMode} handleShowAddDrawer={handleShowAddDrawer} />
-                :
-                <ViewClientsByGroupPage client={client} setClient={setClient} setMode={setMode} handleShowAddDrawer={handleShowAddDrawer} />
-            }
-            <AddUpdateClient mode={mode} client={client} groups={groups} branches={branches} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
+            <ViewClientsByGroupPage client={client} setClient={setClient} setMode={setMode} handleShowAddDrawer={handleShowAddDrawer} />
+            <AddUpdateClient mode={mode} client={client} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
         </Layout>
     );
 }

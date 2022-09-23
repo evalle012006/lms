@@ -92,8 +92,8 @@ export function StatusPill({ value }) {
       className={classNames(
         "status-pill",
         status.startsWith("active") ? "status-pill-active" : null,
-        status.startsWith("inactive") ? "status-pill-inactive" : null,
-        status.startsWith("offline") ? "status-pill-offline" : null
+        status.startsWith("pending") ? "status-pill-inactive" : null,
+        status.startsWith("inactive") ? "status-pill-offline" : null
       )}
     >
       {status}
@@ -463,9 +463,9 @@ const TableComponent = ({
                                     return (
                                         <td
                                           {...cell.getCellProps()}
-                                          className={`px-6-custom py-4-custom whitespace-nowrap-custom ${rowClick && 'cursor-pointer'}`}
+                                          className={`px-4 py-3 whitespace-nowrap-custom ${rowClick && 'cursor-pointer'}`}
                                           role="cell"
-                                          onClick={() => rowClick(row.original)}
+                                          onClick={() => rowClick && rowClick(row.original)}
                                         >
                                           {cell.column.Cell.name === "defaultRenderer" ? (
                                               <div className="text-sm text-gray-500">

@@ -10,59 +10,80 @@ import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 import { setClientList } from "@/redux/actions/clientActions";
 
-const ViewClientsByGroupPage = ({branchId, groupId, client, setClient, setMode, handleShowAddDrawer}) => {
+const ViewClientsByGroupPage = ({groupId, client, setClient, setMode, handleShowAddDrawer}) => {
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
+    const branchList = useSelector(state => state.branch.list);
     const groupList = useSelector(state => state.group.list);
     const list = useSelector(state => state.client.list);
     const [loading, setLoading] = useState(true);
 
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-    const [rootUser, setRootUser] = useState(currentUser.root ? currentUser.root : false);
-    const router = useRouter();
-
     const getListClient = async () => {
         let url = process.env.NEXT_PUBLIC_API_URL + 'clients/list';
-
         if (groupId) {
-            url = url + '?' + new URLSearchParams({ groupId: groupId })
-        } else if (branchId) {
-            url = url + '?' + new URLSearchParams({ branchId: branchId })
-        }
-
-        const response = await fetchWrapper.get(url);
-        if (response.success) {
-            let clients = [];
-            await response.clients && response.clients.map(client => {
-                clients.push({
-                    ...client,
-                    loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
-                    activeLoan: client.loans.length > 0 ?  client.loans[0].activeLoan : 0.00,
-                    loanBalance: client.loans.length > 0 ?  client.loans[0].loanBalance : 0.00,
-                    missPayments: client.loans.length > 0 ?  client.loans[0].missPayments : 0,
-                    noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
-                    delinquent: client.delinquent === true ? 'Yes' : 'No'
-                });
-            });
-            
-            if (currentUser.root !== true && currentUser.role.rep === 4) { 
-                // get all groups for this lo
-                // then filter the clients that is under that groups
-                let clientPerGroup = [];
-                groupList.map(group => {
-                    clients && clients.map(c => {
-                        if (c.groupId === group._id) {
-                            clientPerGroup.push({...c});
-                        }
+            url = url + '?' + new URLSearchParams({ mode: "view_by_group", groupId: groupId });
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                let clients = [];
+                await response.clients && response.clients.map(loan => {
+                    clients.push({
+                        ...loan.client,
+                        loanStatus: loan.status ? loan.status : '-',
+                        activeLoan: loan.activeLoan ? loan.activeLoan : 0.00,
+                        loanBalance: loan.loanBalance ? loan.loanBalance : 0.00,
+                        missPayments: loan.missPayments ?  loan.missPayments : 0,
+                        noOfPayment: loan.noOfPayment ? loan.noOfPayment : 0,
+                        delinquent: loan.client.delinquent === true ? 'Yes' : 'No'
                     });
                 });
-                dispatch(setClientList(clientPerGroup));
-            } else {
                 dispatch(setClientList(clients));
+            } else if (response.error) {
+                toast.error(response.message);
             }
-        } else if (response.error) {
-            toast.error(response.message);
+        } else if (!currentUser.root) {
+            const currentUserBranch = branchList.find(b => b.code === currentUser.designatedBranch);
+            if (currentUserBranch) {
+                url = url + '?' + new URLSearchParams({ mode: "view_all_by_branch", branchId: currentUserBranch._id });
+                const response = await fetchWrapper.get(url);
+                if (response.success) {
+                    let clients = [];
+                    await response.clients && response.clients.map(client => {
+                        clients.push({
+                            ...client,
+                            loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
+                            activeLoan: client.loans.length > 0 ?  client.loans[0].activeLoan : 0.00,
+                            loanBalance: client.loans.length > 0 ?  client.loans[0].loanBalance : 0.00,
+                            missPayments: client.loans.length > 0 ?  client.loans[0].missPayments : 0,
+                            noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
+                            delinquent: client.delinquent === true ? 'Yes' : 'No'
+                        });
+                    });
+                    dispatch(setClientList(clients));
+                } else if (response.error) {
+                    toast.error(response.message);
+                }
+            }
+        } else {
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                let clients = [];
+                await response.clients && response.clients.map(client => {
+                    clients.push({
+                        ...client,
+                        loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
+                        activeLoan: client.loans.length > 0 ?  client.loans[0].activeLoan : 0.00,
+                        loanBalance: client.loans.length > 0 ?  client.loans[0].loanBalance : 0.00,
+                        missPayments: client.loans.length > 0 ?  client.loans[0].missPayments : 0,
+                        noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
+                        delinquent: client.delinquent === true ? 'Yes' : 'No'
+                    });
+                });
+                dispatch(setClientList(clients));
+            } else if (response.error) {
+                toast.error(response.message);
+            }
         }
 
         setLoading(false);
@@ -176,14 +197,12 @@ const ViewClientsByGroupPage = ({branchId, groupId, client, setClient, setMode, 
     useEffect(() => {
         let mounted = true;
 
-        if (groupList.length > 0) {
-            mounted && getListClient();
-        }
+        mounted && getListClient();
 
         return () => {
             mounted = false;
         };
-    }, [groupList]);
+    }, [branchList]);
 
     return (
         <React.Fragment>
