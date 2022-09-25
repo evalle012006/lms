@@ -30,7 +30,11 @@ const BranchesPage = () => {
     const router = useRouter();
 
     const getListBranch = async () => {
-        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'branches/list');
+        let url = process.env.NEXT_PUBLIC_API_URL + 'branches/list';
+        if (currentUser.root !== true && currentUser.role.rep === 3) {
+            url = url + '?' + new URLSearchParams({ branchCode: currentUser.designatedBranch });
+        }
+        const response = await fetchWrapper.get(url);
         if (response.success) {
             dispatch(setBranchList(response.branches));
         } else if (response.error) {
@@ -38,27 +42,6 @@ const BranchesPage = () => {
         }
         setLoading(false);
     }
-
-    // const getListPlatformRoles = async () => {
-    //     const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'platform-roles/list');
-    //     if (response.success) {
-    //         let roles = [];
-    //         response.roles && response.roles.map(role => {
-    //             roles.push(
-    //                 {
-    //                     ...role,
-    //                     value: role.rep,
-    //                     label: UppercaseFirstLetter(role.name)
-    //                 }
-    //             );
-    //         });
-    //         setPlatformRoles(roles);
-    //     } else {
-    //         toast.error('Error retrieving platform roles list.');
-    //     }
-
-    //     setLoading(false);
-    // }
 
     const [columns, setColumns] = useState([
         {
@@ -142,7 +125,7 @@ const BranchesPage = () => {
     }
 
     useEffect(() => {
-        if ((currentUser.role && currentUser.role.rep !== 1)) {
+        if ((currentUser.role && currentUser.role.rep > 3)) {
             router.push('/');
         }
     }, []);
@@ -160,38 +143,15 @@ const BranchesPage = () => {
         };
     }, []);
 
-    // useEffect(() => {
-    //     // to set user permissions
-    //     let updatedColumns = [];
-    //     columns.map(col => {
-    //         let temp = {...col}; 
-    //         if ((currentUser.role && currentUser.role.rep !== 1)) {        
-    //             if (col.accessor === 'role') {
-    //                 delete temp.Cell;
-    //             }
-    //         } else {
-    //             // need to set the Options again since it was blank after checking for permissions
-    //             if (col.accessor === 'role') {
-    //                 temp.Options = platformRoles;
-    //                 temp.selectOnChange = updateUser;
-    //             }
-    //         }
-
-    //         updatedColumns.push(temp);
-    //     });
-
-    //     setColumns(updatedColumns);
-    // }, [platformRoles]);
-
     return (
-        <Layout actionButtons={actionButtons}>
+        <Layout actionButtons={currentUser < 3 && actionButtons}>
             <div className="pb-4">
                 {loading ?
                     (
                         <div className="absolute top-1/2 left-1/2">
                             <Spinner />
                         </div>
-                    ) : <TableComponent columns={columns} data={list} hasActionButtons={true} rowActionButtons={rowActionButtons} />}
+                    ) : <TableComponent columns={columns} data={list} hasActionButtons={true} rowActionButtons={rowActionButtons} showFilters={false} />}
             </div>
             <AddUpdateBranch mode={mode} branch={branch} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
             <Dialog show={showDeleteDialog}>

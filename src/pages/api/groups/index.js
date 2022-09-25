@@ -9,10 +9,10 @@ export default apiHandler({
 async function getGroup(req, res) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
-    const { id } = req.query;
+    const { _id } = req.query;
     let statusCode = 200;
     let response = {};
-    const group = await db.collection('groups').find({ _id: ObjectId(id)}).toArray();
+    const group = await db.collection('groups').find({ _id: ObjectId(_id)}).toArray();
     response = { success: true, group: group[0] };
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')

@@ -96,7 +96,7 @@ const SystemSettingsPage = (props) => {
                                                     errors={touched.companyEmail && errors.companyEmail ? errors.companyEmail : undefined} />
                                             </div>
                                             <div className="mt-4">
-                                                <InputNumber
+                                                <InputText
                                                     name="companyPhoneNumber"
                                                     value={values.companyPhoneNumber}
                                                     onChange={handleChange}
@@ -137,7 +137,7 @@ const SystemSettingsPage = (props) => {
                                                     errors={touched.branchAddress && errors.branchAddress ? errors.branchAddress : undefined} />
                                             </div>
                                             <div className="mt-4">
-                                                <InputNumber
+                                                <InputText
                                                     name="branchPhoneNumber"
                                                     value={values.branchPhoneNumber}
                                                     onChange={handleChange}

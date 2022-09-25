@@ -10,12 +10,23 @@ async function list(req, res) {
     let statusCode = 200;
     let response = {};
 
-    const users = await db
-        .collection('users')
-        .find({ 'deleted': { $ne: true }, 'root': { $ne: true } })
-        .project({ password: 0 })
-        .toArray();
+    const { branchCode } = req.query;
+    let users;
 
+    if (branchCode) {
+        users = await db
+            .collection('users')
+            .find({ 'root': { $ne: true }, designatedBranch: branchCode })
+            .project({ password: 0 })
+            .toArray();
+    } else {
+        users = await db
+            .collection('users')
+            .find({ 'root': { $ne: true } })
+            .project({ password: 0 })
+            .toArray();
+    }
+    
     response = {
         success: true,
         users: users

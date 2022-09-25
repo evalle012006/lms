@@ -92,8 +92,8 @@ export function StatusPill({ value }) {
       className={classNames(
         "status-pill",
         status.startsWith("active") ? "status-pill-active" : null,
-        status.startsWith("inactive") ? "status-pill-inactive" : null,
-        status.startsWith("offline") ? "status-pill-offline" : null
+        status.startsWith("pending") ? "status-pill-inactive" : null,
+        status.startsWith("inactive") ? "status-pill-offline" : null
       )}
     >
       {status}
@@ -321,6 +321,9 @@ const TableComponent = ({
   title = "",
   hasActionButtons = true,
   rowActionButtons = [],
+  rowClick = null,
+  noPadding = false,
+  border = false
 }) => {
   // Use the state and functions returned from useTable to build your UI
   const {
@@ -359,7 +362,7 @@ const TableComponent = ({
 
   // Render the UI for your table
   return (
-    <div className="relative w-full">
+    <div className={`relative w-full ${border && 'border rounded border-gray-400 overflow-hidden'}`}>
       <div className="relative">
         {showSearch && (
           <GlobalFilter
@@ -385,7 +388,7 @@ const TableComponent = ({
         )}
       </div>
       {/* table */}
-      <div className="p-10 mt-4 w-full">
+      <div className={`${noPadding ? 'p-1' : 'p-10 mt-4'} w-full`}>
         <div className="-my-2 overflow-x-auto -mx-4 sm:-mx-6 lg:-mx-8">
           <div className="py-2 align-middle inline-block w-auto min-w-full lg:px-4">
             <div
@@ -462,8 +465,9 @@ const TableComponent = ({
                                     return (
                                         <td
                                           {...cell.getCellProps()}
-                                          className="px-6-custom py-4-custom whitespace-nowrap-custom "
+                                          className={`px-4 py-3 whitespace-nowrap-custom ${rowClick && 'cursor-pointer'}`}
                                           role="cell"
+                                          onClick={() => rowClick && rowClick(row.original)}
                                         >
                                           {cell.column.Cell.name === "defaultRenderer" ? (
                                               <div className="text-sm text-gray-500">

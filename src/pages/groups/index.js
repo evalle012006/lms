@@ -13,11 +13,14 @@ import ButtonSolid from "@/lib/ui/ButtonSolid";
 import { setGroupList } from "@/redux/actions/groupActions";
 import AddUpdateGroup from "@/components/groups/AddUpdateGroupDrawer";
 import { UppercaseFirstLetter } from "@/lib/utils";
+import { setBranchList } from "@/redux/actions/branchActions";
+import { setUserList } from "@/redux/actions/userActions";
 
 const GroupsPage = () => {
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
     const list = useSelector(state => state.group.list);
+    const branchList = useSelector(state => state.branch.list);
     const [loading, setLoading] = useState(true);
 
     const [showAddDrawer, setShowAddDrawer] = useState(false);
@@ -44,7 +47,12 @@ const GroupsPage = () => {
                     }
                 );
             });
-            setBranches(branches);
+
+            if (currentUser.root !== true && (currentUser.role.rep === 3 || currentUser.role.rep === 4)) {
+                branches = [branches.find(b => b.code === currentUser.designatedBranch)];
+            } 
+            
+            dispatch(setBranchList(branches));
         } else {
             toast.error('Error retrieving branches list.');
         }
@@ -53,7 +61,11 @@ const GroupsPage = () => {
     }
 
     const getListUser = async () => {
-        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'users/list');
+        let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
+        if (currentUser.root !== true && (currentUser.role.rep === 3 || currentUser.role.rep === 4) && branchList.length > 0) {
+            url = url + '?' + new URLSearchParams({ branchCode: branchList[0].code });
+        }
+        const response = await fetchWrapper.get(url);
         if (response.success) {
             let userList = [];
             response.users && response.users.filter(u => u.role.rep === 4).map(u => {
@@ -66,7 +78,7 @@ const GroupsPage = () => {
                     }
                 );
             });
-            setUsers(userList);
+            dispatch(setUserList(userList));
         } else {
             toast.error('Error retrieving branches list.');
         }
@@ -75,7 +87,14 @@ const GroupsPage = () => {
     }
 
     const getListGroup = async () => {
-        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'groups/list');
+        let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list'
+        if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
+            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id });
+        } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
+            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id });
+        }
+
+        const response = await fetchWrapper.get(url);
         if (response.success) {
             let groups = [];
             await response.groups && response.groups.map(group => {
@@ -101,6 +120,12 @@ const GroupsPage = () => {
         {
             Header: "Branch",
             accessor: 'branchName',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "Occurence",
+            accessor: 'occurence',
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
@@ -184,19 +209,21 @@ const GroupsPage = () => {
         }
     }
 
-    useEffect(() => {
-        if ((currentUser.role && currentUser.role.rep !== 1)) {
-            router.push('/');
-        }
-    }, []);
+    const handleRowClick = (selected) => {
+        router.push('./groups/' + selected._id);
+    };
+
+    // useEffect(() => {
+    //     if ((currentUser.role && currentUser.role.rep !== 1)) {
+    //         router.push('/');
+    //     }
+    // }, []);
 
 
     useEffect(() => {
         let mounted = true;
 
-        mounted && getListUser();
         mounted && getListBranch();
-        mounted && getListGroup();
         // mounted && getListPlatformRoles();
 
 
@@ -205,28 +232,12 @@ const GroupsPage = () => {
         };
     }, []);
 
-    // useEffect(() => {
-    //     // to set user permissions
-    //     let updatedColumns = [];
-    //     columns.map(col => {
-    //         let temp = {...col}; 
-    //         if ((currentUser.role && currentUser.role.rep !== 1)) {        
-    //             if (col.accessor === 'role') {
-    //                 delete temp.Cell;
-    //             }
-    //         } else {
-    //             // need to set the Options again since it was blank after checking for permissions
-    //             if (col.accessor === 'role') {
-    //                 temp.Options = platformRoles;
-    //                 temp.selectOnChange = updateUser;
-    //             }
-    //         }
-
-    //         updatedColumns.push(temp);
-    //     });
-
-    //     setColumns(updatedColumns);
-    // }, [platformRoles]);
+    useEffect(() => {
+        if (branchList) {
+            getListUser();
+            getListGroup();
+        }
+    }, [branchList]);
 
     return (
         <Layout actionButtons={actionButtons}>
@@ -236,7 +247,7 @@ const GroupsPage = () => {
                         <div className="absolute top-1/2 left-1/2">
                             <Spinner />
                         </div>
-                    ) : <TableComponent columns={columns} data={list} hasActionButtons={true} rowActionButtons={rowActionButtons} />}
+                    ) : <TableComponent columns={columns} data={list} hasActionButtons={true} rowActionButtons={rowActionButtons} showFilters={false} rowClick={handleRowClick} />}
             </div>
             <AddUpdateGroup mode={mode} group={group} branches={branches} users={users} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
             <Dialog show={showDeleteDialog}>

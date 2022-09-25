@@ -1,0 +1,428 @@
+import React, { useEffect, useState } from "react";
+import Layout from "@/components/Layout";
+import { PlusIcon } from '@heroicons/react/24/solid';
+import TableComponent, { AvatarCell, SelectCell, SelectColumnFilter, StatusPill } from '@/lib/table';
+import { fetchWrapper } from "@/lib/fetch-wrapper";
+import { useDispatch, useSelector } from "react-redux";
+import Spinner from "@/components/Spinner";
+import toast from 'react-hot-toast';
+import { useRouter } from "node_modules/next/router";
+import { setBranchList } from "@/redux/actions/branchActions";
+import Dialog from "@/lib/ui/Dialog";
+import ButtonOutline from "@/lib/ui/ButtonOutline";
+import ButtonSolid from "@/lib/ui/ButtonSolid";
+import { setLoanList } from "@/redux/actions/loanActions";
+import { setGroupList } from "@/redux/actions/groupActions";
+import { setClientList } from "@/redux/actions/clientActions";
+import { UppercaseFirstLetter } from "@/lib/utils";
+import AddUpdateLoan from "@/components/transactions/AddUpdateLoanDrawer";
+import moment from 'moment';
+
+const LoanApplicationPage = () => {
+    const dispatch = useDispatch();
+    const currentUser = useSelector(state => state.user.data);
+    const list = useSelector(state => state.loan.list);
+    const branchList = useSelector(state => state.branch.list);
+    const groupList = useSelector(state => state.group.list);
+    const clientList = useSelector(state => state.client.list);
+    const [loading, setLoading] = useState(true);
+
+    const [showAddDrawer, setShowAddDrawer] = useState(false);
+    const [mode, setMode] = useState('add');
+    const [loan, setLoan] = useState();
+
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+    const router = useRouter();
+
+    const getListBranch = async () => {
+        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'branches/list');
+        if (response.success) {
+            let branches = [];
+            response.branches && response.branches.map(branch => {
+                branches.push(
+                    {
+                        ...branch,
+                        value: branch._id,
+                        label: UppercaseFirstLetter(branch.name)
+                    }
+                );
+            });
+
+            if (currentUser.root !== true && (currentUser.role.rep === 3 || currentUser.role.rep === 4)) {
+                branches = [branches.find(b => b.code === currentUser.designatedBranch)];
+            } 
+            
+            dispatch(setBranchList(branches));
+        } else {
+            toast.error('Error retrieving branches list.');
+        }
+
+        setLoading(false);
+    }
+
+    const getListGroup = async () => {
+        let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list'
+        if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
+            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id });
+        } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
+            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id });
+        }
+
+        const response = await fetchWrapper.get(url);
+        if (response.success) {
+            let groups = [];
+            await response.groups && response.groups.map(group => {
+                groups.push({
+                    ...group,
+                    value: group._id,
+                    label: UppercaseFirstLetter(group.name)
+                });
+            });
+            dispatch(setGroupList(groups));
+        } else if (response.error) {
+            toast.error(response.message);
+        }
+        setLoading(false);
+    }
+
+    const getListClient = async () => {
+        let url = process.env.NEXT_PUBLIC_API_URL + 'clients/list';
+        if (currentUser.root !== true && (currentUser.role.rep === 3 || currentUser.role.rep === 4) && branchList.length > 0) { 
+            url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", branchId: branchList[0]._id });
+        } 
+
+        const response = await fetchWrapper.get(url);
+        if (response.success) {
+            let clients = [];
+            await response.clients && response.clients.map(client => {
+                clients.push({
+                    ...client,
+                    label: UppercaseFirstLetter(`${client.lastName}, ${client.firstName} ${client.middleName}`),
+                    value: client._id
+                });
+            });
+            dispatch(setClientList(clients));
+        } else if (response.error) {
+            toast.error(response.message);
+        }
+        setLoading(false);
+    }
+
+    const getListLoan = async () => {
+        const internationalNumberFormat = new Intl.NumberFormat('en-US');
+        let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/list';
+        if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
+            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id });
+        } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
+            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id });
+        }
+
+        const response = await fetchWrapper.get(url);
+        if (response.success) {
+            let loanList = [];
+            await response.loans && response.loans.map(loan => {
+                loanList.push({
+                    ...loan,
+                    principalLoanStr: internationalNumberFormat.format(loan.principalLoan),
+                    mcbuStr: loan.mcbu && internationalNumberFormat.format(loan.mcbu),
+                    activeLoanStr: internationalNumberFormat.format(loan.activeLoan),
+                    loanBalanceStr: internationalNumberFormat.format(loan.loanBalance),
+                    fullName: UppercaseFirstLetter(`${loan.client[0].lastName}, ${loan.client[0].firstName} ${loan.client[0].middleName}`),
+                });
+            });
+
+            dispatch(setLoanList(loanList));
+        } else if (response.error) {
+            toast.error(response.message);
+        }
+        setLoading(false);
+    }
+
+    const statuses = [
+        {label: 'Pending', value: 'pending'},
+        {label: 'Active', value: 'active'},
+        {label: 'Inactive', value: 'inactive'}
+    ];
+
+    const updateClientStatus = async (data, updatedValue) => {
+        setLoading(true);
+        let loanData = {...data};
+        const group = loanData.group.length > 0 && loanData.group[0];
+        delete loanData.group;
+        delete loanData.client;
+        delete loanData.branch;
+        delete loanData.principalLoanStr;
+        delete loanData.activeLoanStr;
+        delete loanData.loanBalanceStr;
+        delete loanData.mcbuStr;
+
+        if (loanData.status === 'pending' && updatedValue === 'active') {
+            loanData.dateGranted = moment(new Date()).format('YYYY-MM-DD');
+            loanData.slotNo = group.availableSlots[0]; // get always the first slot available
+            loanData.status = updatedValue;
+
+            await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans', loanData)
+                .then(response => {
+                    setLoading(false);
+                    if (response.success) {
+                        toast.success('Loan successfully updated.');
+                        const groupUrl = process.env.NEXT_PUBLIC_API_URL + 'groups';
+                        let groupData = {...group}; // clone the object group data
+                        groupData.availableSlots = groupData.availableSlots.filter(s => s != loanData.slotNo); // removed the slot no used by this client
+                        groupData.noOfClients = parseInt(groupData.noOfClients) + 1;
+                        delete groupData.label;
+                        delete groupData.value;
+                        fetchWrapper.post(groupUrl, groupData)
+                            .then(response => {
+                                setLoading(false);
+                                if (response.error) {
+                                    toast.error(response.message);
+                                }
+                                getListGroup();
+                            }).catch(error => {
+                                console.log(error);
+                            });
+                    } else if (response.error) {
+                        toast.error(response.message);
+                    }
+                    getListLoan();
+                }).catch(error => {
+                    console.log(error);
+                });
+        } else {
+            loanData.status = updatedValue;
+            const clientSlotNo = loanData.slotNo;
+            loanData.slotNo = null;
+            
+            await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans', loanData)
+                .then(response => {
+                    setLoading(false);
+                    if (response.success) {
+                        toast.success('Loan successfully updated.');
+                        const groupUrl = process.env.NEXT_PUBLIC_API_URL + 'groups';
+                        let groupData = {...group}; // clone the object group data
+                        delete groupData.label;
+                        delete groupData.value;
+                        if (!groupData.availableSlots.includes(clientSlotNo)) {
+                            groupData.availableSlots.push(clientSlotNo);
+                            groupData.availableSlots.sort((a, b) => { return a - b; });
+                        }
+                        groupData.noOfClients = groupData.noOfClients - 1;
+                        fetchWrapper.post(groupUrl, groupData)
+                            .then(response => {
+                                setLoading(false);
+                                if (response.error) {
+                                    toast.error(response.message);
+                                }
+                                getListGroup();
+                            }).catch(error => {
+                                console.log(error);
+                            });
+                    } else if (response.error) {
+                        toast.error(response.message);
+                    }
+                    getListLoan();
+                }).catch(error => {
+                    console.log(error);
+                });
+        }
+    }
+
+    const [columns, setColumns] = useState([]);
+
+    const handleShowAddDrawer = () => {
+        setShowAddDrawer(true);
+    }
+
+    const handleCloseAddDrawer = () => {
+        setLoading(true);
+        getListClient();
+        getListLoan();
+    }
+
+    const actionButtons = [
+        <ButtonSolid label="Add Loan" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
+    ];
+
+    const handleEditAction = (row) => {
+        setMode("edit");
+        setLoan(row.original);
+        let clientListData = [...clientList];
+        let client = row.original.client[0];
+        client.label = `${client.lastName}, ${client.firstName} ${client.middleName}`;
+        client.value = client._id;
+        clientListData.push(client);
+        dispatch(setClientList(clientListData));
+        handleShowAddDrawer();
+    }
+
+    const handleDeleteAction = (row) => {
+        setLoan(row.original);
+        setShowDeleteDialog(true);
+    }
+
+    const rowActionButtons = [
+        { label: 'Edit', action: handleEditAction },
+        { label: 'Delete', action: handleDeleteAction }
+    ];
+
+    const handleDelete = () => {
+        if (loan) {
+            setLoading(true);
+            fetchWrapper.postCors(process.env.NEXT_PUBLIC_API_URL + 'branches/delete', loan)
+                .then(response => {
+                    if (response.success) {
+                        setShowDeleteDialog(false);
+                        toast.success('Loan successfully deleted.');
+                        setLoading(false);
+                        getListLoan();
+                    } else if (response.error) {
+                        toast.error(response.message);
+                    } else {
+                        console.log(response);
+                    }
+                });
+        }
+    }
+
+    useEffect(() => {
+        let mounted = true;
+
+        mounted && getListBranch();
+
+        return () => {
+            mounted = false;
+        };
+    }, []);
+
+    useEffect(() => {
+        if (branchList) {
+            getListGroup();
+            getListClient();
+        }
+    }, [branchList]);
+
+    useEffect(() => {
+        if (clientList) {
+            getListLoan();
+        }
+    }, [clientList]);
+
+    useEffect(() => {
+        if (groupList) {
+            let cols = [];
+            cols.push(
+                {
+                    Header: "Group",
+                    accessor: 'groupName',
+                    Filter: SelectColumnFilter,
+                    filter: 'includes'
+                },
+                {
+                    Header: "Slot No.",
+                    accessor: 'slotNo',
+                    Filter: SelectColumnFilter,
+                    filter: 'includes'
+                },
+                {
+                    Header: "Client Name",
+                    accessor: 'fullName',
+                    Filter: SelectColumnFilter,
+                    filter: 'includes'
+                },
+                {
+                    Header: "Admission Date",
+                    accessor: 'admissionDate',
+                    Filter: SelectColumnFilter,
+                    filter: 'includes'
+                },
+                {
+                    Header: "MCBU",
+                    accessor: 'mcbuStr',
+                    Filter: SelectColumnFilter,
+                    filter: 'includes'
+                },
+                {
+                    Header: "Principal Loan",
+                    accessor: 'principalLoanStr',
+                    Filter: SelectColumnFilter,
+                    filter: 'includes'
+                },
+                {
+                    Header: "Active Loan",
+                    accessor: 'activeLoanStr',
+                    Filter: SelectColumnFilter,
+                    filter: 'includes'
+                },
+                {
+                    Header: "Loan Balance",
+                    accessor: 'loanBalanceStr',
+                    Filter: SelectColumnFilter,
+                    filter: 'includes'
+                },
+                {
+                    Header: "Status",
+                    accessor: 'status',
+                    Cell: SelectCell,
+                    Options: statuses,
+                    valueIdAccessor: 'status',
+                    selectOnChange: updateClientStatus,
+                    Filter: SelectColumnFilter,
+                    filter: 'includes',
+                }
+            );
+
+            let updatedColumns = cols.map(col => {
+                let temp = {...col}; 
+                if ((currentUser.role && currentUser.role.rep > 3)) {        
+                    if (col.accessor === 'status') {
+                        // delete temp.Cell;
+                        temp.Cell = StatusPill;
+                    }
+                } else {
+                    // need to set the Options again since it was blank after checking for permissions
+                    if (col.accessor === 'status') {
+                        temp.Options = statuses;
+                        temp.selectOnChange = updateClientStatus;
+                    }
+                }
+
+                return temp;
+            });
+
+            setColumns(updatedColumns);
+        }
+    }, [groupList]);
+
+    return (
+        <Layout actionButtons={actionButtons}>
+            <div className="pb-4">
+                {loading ?
+                    (
+                        <div className="absolute top-1/2 left-1/2">
+                            <Spinner />
+                        </div>
+                    ) : <TableComponent columns={columns} data={list} hasActionButtons={true} rowActionButtons={rowActionButtons} showFilters={false} />}
+            </div>
+            <AddUpdateLoan mode={mode} loan={loan} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
+            <Dialog show={showDeleteDialog}>
+                <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <div className="sm:flex sm:items-start justify-center">
+                        <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-center">
+                            <div className="mt-2">
+                                <p className="text-2xl font-normal text-dark-color">Are you sure you want to delete?</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div className="flex flex-row justify-center text-center px-4 py-3 sm:px-6 sm:flex">
+                    <ButtonOutline label="Cancel" type="button" className="p-2 mr-3" onClick={() => setShowDeleteDialog(false)} />
+                    <ButtonSolid label="Yes, delete" type="button" className="p-2" onClick={handleDelete} />
+                </div>
+            </Dialog>
+        </Layout>
+    );
+}
+
+export default LoanApplicationPage;

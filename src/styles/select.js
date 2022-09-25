@@ -2,53 +2,57 @@ import { ChevronDownIcon } from '@heroicons/react/24/solid';
 import chroma from 'chroma-js';
 
 export const styles = {
-    control: (base) => ({
+    control: (base, state) => ({
         ...base,
-        border: 0,
+        border: state.isFocused ? 0 : 0,
+        // This line disable the blue border
+        boxShadow: state.isFocused ? 0 : 0,
+        '&:hover': {
+            border: state.isFocused ? 0 : 0
+        },
         padding: 0,
         margin: 0,
-        boxShadow: 'none',
+        // boxShadow: 'none',
         position: 'relative',
         minHeight: '20px',
         height: '30px'
-    }),
-    option: (base) => ({
+      }),
+      option: (base) => ({
         ...base,
         cursor: 'pointer'
-    }),
-    placeholder: (base) => ({
-        ...base,
-        paddingLeft: '6px',
-        fontSize: '14px',
-        fontWeight: '500',
-        fontFace: 'proxima-regular',
-        color: 'rgb(107 114 128)',
-        opacity: '.8'
-    }),
-    input: (base) => ({
-        ...base,
-        paddingLeft: '6px',
-        fontSize: '14px',
-        fontWeight: '500',
-        fontFace: 'proxima-regular',
-        color: 'rgb(107 114 128)',
-        opacity: '.8'
-    }),
-    singleValue: (base) => ({
-        ...base,
-        paddingLeft: '6px',
-        fontSize: '14px',
-        fontWeight: '500',
-        fontFace: 'proxima-regular',
-        color: 'rgb(107 114 128)',
-        opacity: '.8'
-    }),
-    valueContainer: (base) => ({
+      }),
+      placeholder: (base) => ({
         ...base,
         padding: 0,
-        paddingLeft: '8px',
+        fontSize: '14px',
+        fontWeight: '500',
+        fontFace: 'proxima-regular',
+        color: 'rgb(107 114 128)',
+        opacity: '.8'
+      }),
+      input: (base) => ({
+        ...base,
+        padding: 0,
+        width: '100%',
+        fontSize: '14px',
+        fontWeight: '500',
+        fontFace: 'proxima-regular',
+        color: 'rgb(107 114 128)',
+        opacity: '.8',
+      }),
+      singleValue: (base) => ({
+        ...base,
+        fontSize: '14px',
+        fontWeight: '500',
+        fontFace: 'proxima-regular',
+        color: 'rgb(107 114 128)',
+        opacity: '.8'
+      }),
+      valueContainer: (base) => ({
+        ...base,
+        padding: 0,
         alignItems: 'top'
-    })
+      })
 };
 
 export const multiStyles = {

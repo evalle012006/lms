@@ -262,7 +262,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
                                             errors={touched.email && errors.email ? errors.email : undefined} />
                                     </div>
                                     <div className="mt-4">
-                                        <InputNumber
+                                        <InputText
                                             name="number"
                                             value={values.number}
                                             onChange={handleChange}
