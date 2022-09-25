@@ -34,7 +34,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         principalLoan: loan.principalLoan,
         activeLoan: loan.activeLoan,
         loanBalance: loan.loanBalance,
-        noOfWeeks: loan.noOfWeeks,
+        noOfPayments: loan.noOfPayments,
         coMaker: loan.coMaker,
         status: loan.status,
     }
@@ -79,7 +79,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
 
             values.loanBalance = values.principalLoan * 1.20; // initial
             values.loanCycle = 1;
-            values.noOfWeeks = 0;
+            values.noOfPayments = 0;
             values.status = 'pending';
 
             fetchWrapper.post(apiUrl, values)

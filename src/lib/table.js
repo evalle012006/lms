@@ -321,7 +321,9 @@ const TableComponent = ({
   title = "",
   hasActionButtons = true,
   rowActionButtons = [],
-  rowClick = null
+  rowClick = null,
+  noPadding = false,
+  border = false
 }) => {
   // Use the state and functions returned from useTable to build your UI
   const {
@@ -360,7 +362,7 @@ const TableComponent = ({
 
   // Render the UI for your table
   return (
-    <div className="relative w-full">
+    <div className={`relative w-full ${border && 'border rounded border-gray-400 overflow-hidden'}`}>
       <div className="relative">
         {showSearch && (
           <GlobalFilter
@@ -386,7 +388,7 @@ const TableComponent = ({
         )}
       </div>
       {/* table */}
-      <div className="p-10 mt-4 w-full">
+      <div className={`${noPadding ? 'p-1' : 'p-10 mt-4'} w-full`}>
         <div className="-my-2 overflow-x-auto -mx-4 sm:-mx-6 lg:-mx-8">
           <div className="py-2 align-middle inline-block w-auto min-w-full lg:px-4">
             <div

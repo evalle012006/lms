@@ -16,7 +16,7 @@ import { setGroupList } from "@/redux/actions/groupActions";
 import { setClientList } from "@/redux/actions/clientActions";
 import { UppercaseFirstLetter } from "@/lib/utils";
 import AddUpdateLoan from "@/components/transactions/AddUpdateLoanDrawer";
-import moment from 'moment'
+import moment from 'moment';
 
 const LoanApplicationPage = () => {
     const dispatch = useDispatch();

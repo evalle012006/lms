@@ -8,34 +8,43 @@ export default apiHandler({
 });
 
 async function getClient(req, res) {
-    const { id } = req.query;
+    const { db } = await connectToDatabase();
+    const { clientId } = req.query;
+    const ObjectId = require('mongodb').ObjectId;
 
     let statusCode = 200;
     let response = {};
-    const clients = await findClientByID(id)
+    const clients = await db
+        .collection('client')
+        .aggregate([
+            { $match: { _id: ObjectId(clientId) } },
+            {
+                $addFields: {
+                    "clientId": { $toString: "$_id" }
+                }
+            },
+            {
+                $lookup: {
+                    from: "loans",
+                    localField: "clientId",
+                    foreignField: "clientId",
+                    as: "loans"
+                }
+            },
+            {
+                $sort: { dateGranted: -1 }
+            }
+        ])
+        .toArray();
 
     response = {
         success: true,
-        clients: clients
+        client: clients
     }
 
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')
         .end(JSON.stringify(response));
-}
-
-const findClientByID = async (id) => {
-    const { db } = await connectToDatabase();
-    const ObjectId = require('mongodb').ObjectId;
-    const condition = id ? { _id: ObjectId(id) } : {};
-
-    const clients = await db
-        .collection('client')
-        .find(condition)
-        .project({ password: 0 })
-        .toArray();
-
-    return clients.length > 0 && clients[0];
 }
 
 async function updateClient(req, res) {

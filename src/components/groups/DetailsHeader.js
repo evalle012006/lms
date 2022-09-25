@@ -5,6 +5,11 @@ import { UppercaseFirstLetter } from "@/lib/utils";
 const DetailsHeader = () => {
     const group = useSelector(state => state.group.data);
 
+    const statusClass = {
+        'available': "text-green-700 bg-green-100",
+        'full': "text-red-400 bg-red-100"
+    }
+
     return (
         <div className="bg-white px-7 py-2 fixed w-screen z-10">
             <div className="flex flex-row justify-between w-11/12">
@@ -47,7 +52,7 @@ const DetailsHeader = () => {
                             </div>
                             <div className="space-x-2 flex items-center ">
                                 <span className="text-gray-400 text-sm">Status:</span >
-                                <span className="text-sm status-pill status-pill-active">{UppercaseFirstLetter(group.status)}</span>
+                                <span className={`text-sm status-pill ${statusClass[group.status]}`}>{UppercaseFirstLetter(group.status)}</span>
                             </div>
                         </div>
                     </div>

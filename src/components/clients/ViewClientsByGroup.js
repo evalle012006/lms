@@ -4,13 +4,14 @@ import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { useDispatch, useSelector } from "react-redux";
 import Spinner from "@/components/Spinner";
 import toast from 'react-hot-toast';
-import { useRouter } from "node_modules/next/router";
 import Dialog from "@/lib/ui/Dialog";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
-import { setClientList } from "@/redux/actions/clientActions";
+import { setClient, setClientList } from "@/redux/actions/clientActions";
+import Modal from "@/lib/ui/Modal";
+import ClientDetailPage from "./ClientDetailPage";
 
-const ViewClientsByGroupPage = ({groupId, client, setClient, setMode, handleShowAddDrawer}) => {
+const ViewClientsByGroupPage = ({groupId, client, setClientParent, setMode, handleShowAddDrawer}) => {
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
@@ -19,8 +20,10 @@ const ViewClientsByGroupPage = ({groupId, client, setClient, setMode, handleShow
     const [loading, setLoading] = useState(true);
 
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [showClientInfoModal, setShowClientInfoModal] = useState(false);
 
     const getListClient = async () => {
+        const internationalNumberFormat = new Intl.NumberFormat('en-US');
         let url = process.env.NEXT_PUBLIC_API_URL + 'clients/list';
         if (groupId) {
             url = url + '?' + new URLSearchParams({ mode: "view_by_group", groupId: groupId });
@@ -30,9 +33,10 @@ const ViewClientsByGroupPage = ({groupId, client, setClient, setMode, handleShow
                 await response.clients && response.clients.map(loan => {
                     clients.push({
                         ...loan.client,
+                        ...loan,
                         loanStatus: loan.status ? loan.status : '-',
-                        activeLoan: loan.activeLoan ? loan.activeLoan : 0.00,
-                        loanBalance: loan.loanBalance ? loan.loanBalance : 0.00,
+                        activeLoanStr: loan.activeLoan ? internationalNumberFormat.format(loan.activeLoan) : 0.00,
+                        loanBalanceStr: loan.loanBalance ? internationalNumberFormat.format(loan.loanBalance) : 0.00,
                         missPayments: loan.missPayments ?  loan.missPayments : 0,
                         noOfPayment: loan.noOfPayment ? loan.noOfPayment : 0,
                         delinquent: loan.client.delinquent === true ? 'Yes' : 'No'
@@ -53,8 +57,8 @@ const ViewClientsByGroupPage = ({groupId, client, setClient, setMode, handleShow
                         clients.push({
                             ...client,
                             loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
-                            activeLoan: client.loans.length > 0 ?  client.loans[0].activeLoan : 0.00,
-                            loanBalance: client.loans.length > 0 ?  client.loans[0].loanBalance : 0.00,
+                            activeLoanStr: client.loans[0].activeLoan ? internationalNumberFormat.format(client.loans[0].activeLoan) : 0.00,
+                            loanBalanceStr: client.loans[0].loanBalance ? internationalNumberFormat.format(client.loans[0].loanBalance) : 0.00,
                             missPayments: client.loans.length > 0 ?  client.loans[0].missPayments : 0,
                             noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
                             delinquent: client.delinquent === true ? 'Yes' : 'No'
@@ -91,6 +95,18 @@ const ViewClientsByGroupPage = ({groupId, client, setClient, setMode, handleShow
 
     const [columns, setColumns] = useState([
         {
+            Header: "Group",
+            accessor: 'groupName',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "Slot No.",
+            accessor: 'slotNo',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
             Header: "Last Name",
             accessor: 'lastName',
             Filter: SelectColumnFilter,
@@ -109,26 +125,21 @@ const ViewClientsByGroupPage = ({groupId, client, setClient, setMode, handleShow
             filter: 'includes'
         },
         {
-            Header: "Group",
-            accessor: 'groupName',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
             Header: "Loan Status",
             accessor: 'loanStatus',
+            Cell: StatusPill,
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
         {
             Header: "Active Loan",
-            accessor: 'activeLoan',
+            accessor: 'activeLoanStr',
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
         {
             Header: "Loan Balance",
-            accessor: 'loanBalance',
+            accessor: 'loanBalanceStr',
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
@@ -145,13 +156,6 @@ const ViewClientsByGroupPage = ({groupId, client, setClient, setMode, handleShow
             filter: 'includes'
         },
         {
-            Header: "Status",
-            accessor: 'status',
-            Cell: StatusPill,
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
             Header: "Delinquent",
             accessor: 'delinquent',
             Filter: SelectColumnFilter,
@@ -161,13 +165,25 @@ const ViewClientsByGroupPage = ({groupId, client, setClient, setMode, handleShow
 
     const handleEditAction = (row) => {
         setMode("edit");
-        setClient(row.original);
+        let clientData = row.original.has("client") ? row.original.client : row.original;
+        setClientParent(clientData);
         handleShowAddDrawer();
     }
 
     const handleDeleteAction = (row) => {
-        setClient(row.original);
+        let clientData = row.original.has("client") ? row.original.client : row.original;
+        setClientParent(clientData);
         setShowDeleteDialog(true);
+    }
+
+    const handleShowClientInfoModal = (selectedRow) => {
+        let clientData = selectedRow.hasOwnProperty("client") ? selectedRow.client : selectedRow;
+        dispatch(setClient(clientData));
+        setShowClientInfoModal(true);
+    }
+
+    const handleCloseClientInfoModal = () => {
+        setShowClientInfoModal(false);
     }
 
     const rowActionButtons = [
@@ -212,8 +228,11 @@ const ViewClientsByGroupPage = ({groupId, client, setClient, setMode, handleShow
                         <div className="absolute top-1/2 left-1/2">
                             <Spinner />
                         </div>
-                    ) : <TableComponent columns={columns} data={list} hasActionButtons={groupId ? false : true} rowActionButtons={rowActionButtons} showFilters={false} />}
+                    ) : <TableComponent columns={columns} data={list} hasActionButtons={groupId ? false : true} rowActionButtons={rowActionButtons} showFilters={false} rowClick={handleShowClientInfoModal}/>}
             </div>
+            <Modal title="Client Detail Info" show={showClientInfoModal} onClose={handleCloseClientInfoModal} width="60rem">
+                <ClientDetailPage />
+            </Modal>
             <Dialog show={showDeleteDialog}>
                 <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                     <div className="sm:flex sm:items-start justify-center">

@@ -127,7 +127,6 @@ const ClientsPage = () => {
         let mounted = true;
 
         mounted && getListBranch();
-        // mounted && getListPlatformRoles();
 
 
         return () => {
