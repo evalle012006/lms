@@ -1,5 +1,4 @@
 import Head from 'next/head';
-import { useRouter } from 'next/router';
 import { Toaster } from 'react-hot-toast';
 import { RouteGuard } from '@/components/RouteGuard';
 import { wrapper } from '@/redux/store';

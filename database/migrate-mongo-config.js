@@ -3,7 +3,8 @@
 const config = {
   mongodb: {
     // TODO Change (or review) the url to your MongoDB:
-    url: "mongodb://localhost:27017",
+    // url: "mongodb://localhost:27017",
+    url: "mongodb+srv://amber-admin:amberlms@cluster0.gborljd.mongodb.net/?retryWrites=true&w=majority",
 
     // TODO Change this to your database name:
     databaseName: "acloandb",

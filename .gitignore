@@ -1,4 +1,4 @@
 node_modules
 .DS_Store
-.next
 next.config.js
+.next
