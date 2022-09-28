@@ -66,6 +66,7 @@ const TeamPage = () => {
         setLoading(false);
     }
 
+    // if area manager and branch manager status need to popup what branch/es
     const updateUser = (u, updatedValue) => {
         setLoading(true);
         const tempUser = { ...u };

@@ -56,9 +56,11 @@ const ViewClientsByGroupPage = ({groupId, client, setClientParent, setMode, hand
                     await response.clients && response.clients.map(client => {
                         clients.push({
                             ...client,
+                            groupName: client.loans.length > 0 ? client.loans[0].groupName : '-',
+                            slotNo: client.loans.length > 0 ? client.loans[0].slotNo : '-',
                             loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
-                            activeLoanStr: client.loans[0].activeLoan ? internationalNumberFormat.format(client.loans[0].activeLoan) : 0.00,
-                            loanBalanceStr: client.loans[0].loanBalance ? internationalNumberFormat.format(client.loans[0].loanBalance) : 0.00,
+                            activeLoanStr: client.loans.length > 0 ? internationalNumberFormat.format(client.loans[0].activeLoan) : 0.00,
+                            loanBalanceStr: client.loans.length > 0 ? internationalNumberFormat.format(client.loans[0].loanBalance) : 0.00,
                             missPayments: client.loans.length > 0 ?  client.loans[0].missPayments : 0,
                             noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
                             delinquent: client.delinquent === true ? 'Yes' : 'No'
