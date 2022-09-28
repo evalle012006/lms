@@ -133,7 +133,7 @@ const AddUpdateBranch = ({ mode = 'add', branch = {}, showSidebar, setShowSideba
                                             label="Code"
                                             placeholder="Enter Code"
                                             setFieldValue={setFieldValue}
-                                            errors={touched.lastName && errors.lastName ? errors.lastName : undefined} />
+                                            errors={touched.code && errors.code ? errors.code : undefined} />
                                     </div>
                                     <div className="mt-4">
                                         <InputText
@@ -166,7 +166,7 @@ const AddUpdateBranch = ({ mode = 'add', branch = {}, showSidebar, setShowSideba
                                             errors={touched.email && errors.email ? errors.email : undefined} />
                                     </div>
                                     <div className="mt-4">
-                                        <InputNumber
+                                        <InputText
                                             name="phoneNumber"
                                             value={values.phoneNumber}
                                             onChange={handleChange}

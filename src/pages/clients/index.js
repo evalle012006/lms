@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
 import { PlusIcon } from '@heroicons/react/24/solid';
-import TableComponent, { SelectColumnFilter } from '@/lib/table';
+import TableComponent, { SelectColumnFilter, StatusPill } from '@/lib/table';
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { useDispatch, useSelector } from "react-redux";
 import Spinner from "@/components/Spinner";
@@ -13,21 +13,20 @@ import ButtonSolid from "@/lib/ui/ButtonSolid";
 import { UppercaseFirstLetter } from "@/lib/utils";
 import { setClientList } from "@/redux/actions/clientActions";
 import AddUpdateClient from "@/components/clients/AddUpdateClientDrawer";
+import ViewClientsByGroupPage from "@/components/clients/ViewClientsByGroup";
+import { setBranchList } from "@/redux/actions/branchActions";
+import { setGroupList } from "@/redux/actions/groupActions";
 
 const ClientsPage = () => {
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
-    const list = useSelector(state => state.client.list);
+    const branchList = useSelector(state => state.branch.list);
     const [loading, setLoading] = useState(true);
 
     const [showAddDrawer, setShowAddDrawer] = useState(false);
     const [mode, setMode] = useState('add');
     const [client, setClient] = useState();
 
-    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-
-    const [groups, setGroups] = useState([]);
-    const [branches, setBranches] = useState([]);
     const [rootUser, setRootUser] = useState(currentUser.root ? currentUser.root : false);
     const router = useRouter();
 
@@ -44,7 +43,12 @@ const ClientsPage = () => {
                     }
                 );
             });
-            setBranches(branches);
+
+            if (currentUser.root !== true && (currentUser.role.rep === 3 || currentUser.role.rep === 4)) {
+                branches = [branches.find(b => b.code === currentUser.designatedBranch)];
+            } 
+
+            dispatch(setBranchList(branches));
         } else {
             toast.error('Error retrieving branches list.');
         }
@@ -53,7 +57,14 @@ const ClientsPage = () => {
     }
 
     const getListGroup = async () => {
-        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'groups/list');
+        let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list'
+        if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
+            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id });
+        } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
+            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id });
+        }
+
+        const response = await fetchWrapper.get(url);
         if (response.success) {
             let groupList = [];
             await response.groups && response.groups.map(group => {
@@ -63,7 +74,7 @@ const ClientsPage = () => {
                     label: UppercaseFirstLetter(group.name)
                 });
             });
-            setGroups(groupList);
+            dispatch(setGroupList(groupList));
         } else if (response.error) {
             toast.error(response.message);
         }
@@ -77,6 +88,11 @@ const ClientsPage = () => {
             await response.clients && response.clients.map(client => {
                 clients.push({
                     ...client,
+                    loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
+                    activeLoan: client.loans.length > 0 ?  client.loans[0].activeLoan : 0.00,
+                    loanBalance: client.loans.length > 0 ?  client.loans[0].loanBalance : 0.00,
+                    missPayments: client.loans.length > 0 ?  client.loans[0].missPayments : 0,
+                    noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
                     delinquent: client.delinquent === true ? 'Yes' : 'No'
                 });
             });
@@ -86,93 +102,6 @@ const ClientsPage = () => {
         }
         setLoading(false);
     }
-
-    const [columns, setColumns] = useState([
-        {
-            Header: "First Name",
-            accessor: 'firstName',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "Middle Name",
-            accessor: 'middleName',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "Last Name",
-            accessor: 'lastName',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "Birthdate",
-            accessor: 'birthdate',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "No. Street, Sitio/Purok",
-            accessor: 'addressStreetNo',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "Barangay District",
-            accessor: 'addressBarangayDistrict',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "Municipality or City",
-            accessor: 'addressMunicipalityCity',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "Province",
-            accessor: 'addressProvince',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "Zip Code",
-            accessor: 'addressZipCode',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "Contact Number",
-            accessor: 'contactNumber',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "Branch",
-            accessor: 'branchName',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "Group",
-            accessor: 'groupName',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "Status",
-            accessor: 'status',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "Delinquent",
-            accessor: 'delinquent',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        }
-    ]);
 
     const handleShowAddDrawer = () => {
         setShowAddDrawer(true);
@@ -187,55 +116,17 @@ const ClientsPage = () => {
         <ButtonSolid label="Add Client" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
     ];
 
-    const handleEditAction = (row) => {
-        setMode("edit");
-        setClient(row.original);
-        handleShowAddDrawer();
-    }
-
-    const handleDeleteAction = (row) => {
-        setClient(row.original);
-        setShowDeleteDialog(true);
-    }
-
-    const rowActionButtons = [
-        { label: 'Edit', action: handleEditAction },
-        { label: 'Delete', action: handleDeleteAction }
-    ];
-
-    const handleDelete = () => {
-        if (client) {
-            setLoading(true);
-            fetchWrapper.postCors(process.env.NEXT_PUBLIC_API_URL + 'clients/delete', {_id: client._id})
-                .then(response => {
-                    if (response.success) {
-                        setShowDeleteDialog(false);
-                        toast.success('Client successfully deleted.');
-                        setLoading(false);
-                        getListClient();
-                    } else if (response.error) {
-                        toast.error(response.message);
-                    } else {
-                        console.log(response);
-                    }
-                });
-        }
-    }
-
-    useEffect(() => {
-        if ((currentUser.role && currentUser.role.rep !== 1)) {
-            router.push('/');
-        }
-    }, []);
+    // useEffect(() => {
+    //     if ((currentUser.role && currentUser.role.rep !== 1)) {
+    //         router.push('/');
+    //     }
+    // }, []);
 
 
     useEffect(() => {
         let mounted = true;
 
         mounted && getListBranch();
-        mounted && getListGroup();
-        mounted && getListClient();
-        // mounted && getListPlatformRoles();
 
 
         return () => {
@@ -243,55 +134,16 @@ const ClientsPage = () => {
         };
     }, []);
 
-    // useEffect(() => {
-    //     // to set user permissions
-    //     let updatedColumns = [];
-    //     columns.map(col => {
-    //         let temp = {...col}; 
-    //         if ((currentUser.role && currentUser.role.rep !== 1)) {        
-    //             if (col.accessor === 'role') {
-    //                 delete temp.Cell;
-    //             }
-    //         } else {
-    //             // need to set the Options again since it was blank after checking for permissions
-    //             if (col.accessor === 'role') {
-    //                 temp.Options = platformRoles;
-    //                 temp.selectOnChange = updateUser;
-    //             }
-    //         }
-
-    //         updatedColumns.push(temp);
-    //     });
-
-    //     setColumns(updatedColumns);
-    // }, [platformRoles]);
+    useEffect(() => {
+        if (branchList) {
+            getListGroup();
+        }
+    }, [branchList]);
 
     return (
         <Layout actionButtons={actionButtons}>
-            <div className="pb-4">
-                {loading ?
-                    (
-                        <div className="absolute top-1/2 left-1/2">
-                            <Spinner />
-                        </div>
-                    ) : <TableComponent columns={columns} data={list} hasActionButtons={true} rowActionButtons={rowActionButtons} />}
-            </div>
-            <AddUpdateClient mode={mode} client={client} groups={groups} branches={branches} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
-            <Dialog show={showDeleteDialog}>
-                <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                    <div className="sm:flex sm:items-start justify-center">
-                        <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-center">
-                            <div className="mt-2">
-                                <p className="text-2xl font-normal text-dark-color">Are you sure you want to delete?</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div className="flex flex-row justify-center text-center px-4 py-3 sm:px-6 sm:flex">
-                    <ButtonOutline label="Cancel" type="button" className="p-2 mr-3" onClick={() => setShowDeleteDialog(false)} />
-                    <ButtonSolid label="Yes, delete" type="button" className="p-2" onClick={handleDelete} />
-                </div>
-            </Dialog>
+            <ViewClientsByGroupPage client={client} setClient={setClient} setMode={setMode} handleShowAddDrawer={handleShowAddDrawer} />
+            <AddUpdateClient mode={mode} client={client} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
         </Layout>
     );
 }

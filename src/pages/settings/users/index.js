@@ -34,7 +34,14 @@ const TeamPage = () => {
 
     const getListUsers = async () => {
         const imgpath = process.env.NEXT_PUBLIC_LOCAL_HOST !== 'local' && process.env.NEXT_PUBLIC_LOCAL_HOST;
-        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'users/list');
+        let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
+        if (currentUser.root !== true && currentUser.role.rep === 3) { 
+            url = url + '?' + new URLSearchParams({ branchCode: currentUser.designatedBranch });
+        } else if (currentUser.root !== true && currentUser.role.rep === 2) {
+            // url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id });
+        }
+
+        const response = await fetchWrapper.get(url);
         let users = [];
         response.users && response.users.filter(u => !u.root).map((user) => {
             users.push({
@@ -59,6 +66,7 @@ const TeamPage = () => {
         setLoading(false);
     }
 
+    // if area manager and branch manager status need to popup what branch/es
     const updateUser = (u, updatedValue) => {
         setLoading(true);
         const tempUser = { ...u };
@@ -245,7 +253,7 @@ const TeamPage = () => {
     }
 
     useEffect(() => {
-        if ((currentUser.role && currentUser.role.rep !== 1)) {
+        if ((currentUser.role && currentUser.role.rep > 3)) {
             router.push('/');
         }
     }, []);
@@ -288,14 +296,14 @@ const TeamPage = () => {
     }, [platformRoles]);
 
     return (
-        <Layout actionButtons={rootUser || (currentUser.role && currentUser.role.rep === 1) ? actionButtons : []}>
+        <Layout actionButtons={rootUser || (currentUser.role && currentUser.role.rep < 4) ? actionButtons : []}>
             <div className="pb-4">
                 {loading ?
                     (
                         <div className="absolute top-1/2 left-1/2">
                             <Spinner />
                         </div>
-                    ) : <TableComponent columns={columns} data={list} hasActionButtons={rootUser || (currentUser.role && currentUser.role.rep === 1) ? true : false} rowActionButtons={rootUser || (currentUser.role && currentUser.role.rep === 1) ? rowActionButtons : []} />}
+                    ) : <TableComponent columns={columns} data={list} showFilters={false} hasActionButtons={true} rowActionButtons={rowActionButtons} />}
             </div>
             <AddUpdateUser mode={mode} user={userData} roles={platformRoles} branches={branches} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
             <Dialog show={showDeleteDialog}>

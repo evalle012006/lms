@@ -209,6 +209,10 @@ input:focus {
     right: -536px;
 }
 
+.-right-0-wide {
+    right: -80vw;
+}
+
 .left-0-custom {
     left: 0px;
 }
@@ -217,12 +221,16 @@ input:focus {
     left: -536px;
 }
 
+.-left-0-wide {
+    left: -80vw;
+}
+
 .sidebar-sub-container {
     display: flex;
     height: 100vh;
     overflow-y: auto;
     flex-direction: column;
-    width: 536px;
+    /* width: 536px; */
     padding-left: 1rem/* 16px */;
     padding-right: 1rem/* 16px */;
     padding-top: 2rem/* 32px */;

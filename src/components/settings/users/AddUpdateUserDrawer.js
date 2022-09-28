@@ -76,7 +76,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
 
         const selectedRole = roles.find(role => role.rep == values.role);
         values.role = JSON.stringify(selectedRole);
-        values.designatedBranch = selectedRole.rep === 2 ? selectedBranchesCode : selectedRole.rep >= 2 ? values.designatedBranch : 0;
+        values.designatedBranch = selectedRole.rep === 2 ? selectedBranchesCode : selectedRole.rep >= 2 ? values.designatedBranch : '';
 
         if (mode === 'add') {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'users/save/';
@@ -160,7 +160,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
         }
 
         if (user.role && user.role.rep === 2) {
-            const branchesCode = user.designatedBranch.split(',');
+            const branchesCode = user.designatedBranch;
             let selectedBranchesList = [];
             branches && branches.map(branch => {
                 branchesCode && branchesCode.map(b => {
@@ -262,7 +262,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
                                             errors={touched.email && errors.email ? errors.email : undefined} />
                                     </div>
                                     <div className="mt-4">
-                                        <InputNumber
+                                        <InputText
                                             name="number"
                                             value={values.number}
                                             onChange={handleChange}

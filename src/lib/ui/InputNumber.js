@@ -1,11 +1,11 @@
 import React, { useState } from 'react'
 import { XCircleIcon } from '@heroicons/react/24/solid';
 
-const InputNumber = ({ name, value='', label, placeholder, disabled, onChange, setFieldValue, errors, className = '' }) => {
+const InputNumber = ({ name, value=0, label, placeholder, disabled, onChange, setFieldValue, errors, className = '' }) => {
     const [inputValue, setInputValue] = useState('');
 
     const handleClick = () => {
-        setInputValue('');
+        setInputValue(0);
     }
 
     return (
@@ -27,7 +27,7 @@ const InputNumber = ({ name, value='', label, placeholder, disabled, onChange, s
                     <input name={name}
                         value={value}
                         autoComplete="off"
-                        type="text"
+                        type="number"
                         className={`
                             p-1 pl-0 text-gray-500 font-medium border-none focus:ring-0
                             ${value ? 'text-xs' : 'text-sm'} 
@@ -39,9 +39,9 @@ const InputNumber = ({ name, value='', label, placeholder, disabled, onChange, s
                         onChange={onChange}
                     />
                 </div>
-                <div onClick={handleClick} className={`${value == '' && 'hide'} flex w-6 items-center justify-center`}>
+                {/* <div onClick={handleClick} className={`${value == '' && 'hide'} flex w-6 items-center justify-center`}>
                     <XCircleIcon className="cursor-pointer h-5" />
-                </div>
+                </div> */}
             </div>
             {errors && <span className="text-red-400 text-xs font-medium">{errors}</span>}
         </>

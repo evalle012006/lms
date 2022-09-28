@@ -9,7 +9,7 @@ const Layout = ({ children, bgwhite = false, header = true, noPad = false, actio
     return (
         <div className="flex bg-white">
             <NavComponent />
-            <div className={`ml-[18rem] flex flex-col bg-neutral-200 duration-300 w-screen overflow-x-auto h-screen`}>
+            <div className={`ml-[16rem] flex flex-col bg-neutral-200 duration-300 w-screen overflow-x-auto h-screen`}>
                 {header && (
                     <div className="bg-white p-6 gap-6 h-20">
                         <div className="flex flex-row justify-between">
