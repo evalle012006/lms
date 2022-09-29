@@ -88,6 +88,8 @@ const ClientsPage = () => {
             await response.clients && response.clients.map(client => {
                 clients.push({
                     ...client,
+                    groupName: client.loans.length > 0 ? client.loans[0].groupName : '-',
+                    slotNo: client.loans.length > 0 ? client.loans[0].slotNo : '-',
                     loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
                     activeLoan: client.loans.length > 0 ?  client.loans[0].activeLoan : 0.00,
                     loanBalance: client.loans.length > 0 ?  client.loans[0].loanBalance : 0.00,
