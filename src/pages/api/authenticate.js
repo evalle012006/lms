@@ -1,4 +1,5 @@
 import getConfig from 'next/config';
+import { errorHandler } from '@/services/error-handler';
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
 import logger from '@/logger';
@@ -20,36 +21,44 @@ async function authenticate(req, res) {
     const { username, password } = req.body;
     const users = await db
         .collection('users')
-        .find({ email: username.trim() })
+        .find({ email: username })
         .toArray();
 
     const user = users.length > 0 ? users[0] : null;
 
-    if (user) {
-        if (!user.password) {
-            response = { success: false, error: 'NO_PASS', user: user._id };
-            logger.error({page: 'login', message: 'NO_PASS', user: username});
-        } else if (!(bcrypt.compareSync(password.trim(), user.password))) {
-            response = { error: true, message: 'Username or Password is incorrect' };
-            logger.error({page: 'login', message: 'Password is incorrect', user: username});
-        } else {
-            const token = jwt.sign({ sub: user._id }, serverRuntimeConfig.secret, { expiresIn: '7d' });
-            delete user.password;
-            const query = await db
-                .collection('users')
-                .updateOne(
-                    { _id: user._id },
-                    {
-                        $set: { logged: true },
-                        $currentDate: { lastLogin: true }
-                    },
-                );
-            response = { success: true, user: { ...user, token } };
-            logger.debug({page: 'login', message: 'User succcessfuly login!', user: username});
-        }
+    if (user && !user.password) {
+        response = { success: false, error: 'NO_PASS', user: user._id };
+        res.status(statusCode)
+            .setHeader('Content-Type', 'application/json')
+            .end(JSON.stringify(response));
+    }
+
+    if (!(user && bcrypt.compareSync(password, user.password))) {
+        response = {
+            error: true,
+            message: 'Email or Password is incorrect'
+        };
+        logger.debug({page: 'login', message: 'Email or Password is incorrect'});
     } else {
-        response = { error: true, message: 'User not found!' };
-        logger.error({page: 'login', message: 'User not found!', user: username});
+        const token = jwt.sign({ sub: user._id }, serverRuntimeConfig.secret, { expiresIn: '7d' });
+        // delete user._id;
+        delete user.password;
+        const query = await db
+            .collection('users')
+            .updateOne(
+                { _id: user._id },
+                {
+                    $set: { logged: true },
+                    $currentDate: { lastLogin: true }
+                },
+            );
+
+        response = {
+            success: true,
+            user: { ...user, token }
+        }
+
+        logger.debug(response);
     }
 
     res.status(statusCode)
