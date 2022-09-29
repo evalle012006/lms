@@ -1,7 +1,7 @@
 module.exports = {
   reactStrictMode: false,
   serverRuntimeConfig: {
-      secret: 'F59BF9E27B6D826CB71994A6D338A'
+      secret: 'A39518F3263ABF7687DC89697A21A'
   },
   publicRuntimeConfig: {
       apiUrl: process.env.DEV_URL
