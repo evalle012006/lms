@@ -1,7 +1,7 @@
 import React from 'react'
 import { XCircleIcon } from '@heroicons/react/24/solid';
 
-const InputEmail = ({ name, value='', label, placeholder, disabled, onChange, setFieldValue, errors, className = '' }) => {
+const InputEmail = ({ name, value='', label, placeholder, disabled, onChange, setFieldValue, errors, className = '', width }) => {
     const handleClick = () => {
         setFieldValue(name, '');
     }
@@ -12,7 +12,7 @@ const InputEmail = ({ name, value='', label, placeholder, disabled, onChange, se
             flex justify-between border rounded-md px-4 py-1 mb-2 bg-white
             ${value ? ' border-main' : ' border-slate-400'}
             ${errors && ' border-red-400'}
-        `}>
+        `} style={{ width: width }}>
                 
             <div className="flex flex-col w-full">
                 <label htmlFor={name}

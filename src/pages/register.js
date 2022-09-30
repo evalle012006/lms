@@ -112,6 +112,10 @@ const RegistrationPage = () => {
     };
 
     useEffect(() => {
+        router.push('/');
+    }, []);
+
+    useEffect(() => {
         let mounted = true;
 
         if (mounted && action == 'registerSuccess') {
