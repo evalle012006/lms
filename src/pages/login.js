@@ -29,19 +29,28 @@ const LoginPage = () => {
     }
 
     const handleSuccess = (user) => {
-        dispatch(setUser(user)); 
+        dispatch(setUser(user));
         const returnUrl = router.query.returnUrl || '/';
-        router.push(returnUrl);        
+        router.push(returnUrl);
+        // if (user.status !== 'active') {
+        //     router.push('/register?action=inactive');
+        // } else {
+        //     dispatch(setUser(user)); 
+        //     const returnUrl = router.query.returnUrl || '/';
+        //     router.push(returnUrl);
+        // }
     }
 
     const handleLogin = async (values, actions) => {        
         const { email, password } = values;
         const response = await userService.login(email, password);
         
+        if (response.error) {
+            toast.error(`Error during Authentication. ${response.message}`)
+        }
+
         if (response.success) {
             handleSuccess(response.user);
-        } else if (response.error) {
-            handleError(response.message);
         }
     };
 
