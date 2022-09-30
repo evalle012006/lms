@@ -144,7 +144,7 @@ const BranchesPage = () => {
     }, []);
 
     return (
-        <Layout actionButtons={currentUser < 3 && actionButtons}>
+        <Layout actionButtons={currentUser.root || (currentUser.role && currentUser.role.rep < 3) ? actionButtons : null}>
             <div className="pb-4">
                 {loading ?
                     (

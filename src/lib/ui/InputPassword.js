@@ -34,7 +34,7 @@ const InputPassword = ({ name, value='', label, placeholder, disabled, onChange,
                         ${errors && 'text-red-400'}
                         ${className}
                     `}
-                        placeholder='*************'
+                        placeholder={placeholder}
                         disabled={disabled}
                         onChange={onChange}
                     />

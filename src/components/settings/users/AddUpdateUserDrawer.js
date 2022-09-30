@@ -4,11 +4,9 @@ import * as yup from 'yup';
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import toast from 'react-hot-toast';
 import { useDispatch, useSelector } from "react-redux";
-import { setUser } from "@/redux/actions/userActions";
 import SelectDropdown from "@/lib/ui/select";
 import InputText from "@/lib/ui/InputText";
 import InputEmail from "@/lib/ui/InputEmail";
-import InputNumber from "@/lib/ui/InputNumber";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 import SideBar from "@/lib/ui/SideBar";
@@ -76,7 +74,14 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
 
         const selectedRole = roles.find(role => role.rep == values.role);
         values.role = JSON.stringify(selectedRole);
-        values.designatedBranch = selectedRole.rep === 2 ? selectedBranchesCode : selectedRole.rep >= 2 ? values.designatedBranch : '';
+        let designatedBranch = '';
+        if (selectedRole.rep === 2) {
+            designatedBranch = selectedBranchesCode;
+        } else if (selectedRole.rep > 2) {
+            designatedBranch = values.designatedBranch;
+        }
+
+        values.designatedBranch = designatedBranch;
 
         if (mode === 'add') {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'users/save/';
