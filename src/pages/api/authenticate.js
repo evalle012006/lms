@@ -2,6 +2,7 @@ import getConfig from 'next/config';
 import { errorHandler } from '@/services/error-handler';
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
+import logger from '@/logger';
 
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
@@ -37,6 +38,7 @@ async function authenticate(req, res) {
             error: true,
             message: 'Email or Password is incorrect'
         };
+        logger.debug({page: 'login', message: 'Email or Password is incorrect'});
     } else {
         const token = jwt.sign({ sub: user._id }, serverRuntimeConfig.secret, { expiresIn: '7d' });
         // delete user._id;
@@ -55,6 +57,8 @@ async function authenticate(req, res) {
             success: true,
             user: { ...user, token }
         }
+
+        logger.debug(response);
     }
 
     res.status(statusCode)
@@ -75,6 +79,7 @@ async function logout(req, res) {
         );
 
     response = { success: true, query, user };
+    logger.debug({page: 'login', message: 'User succcessfuly logout!'});
 
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')

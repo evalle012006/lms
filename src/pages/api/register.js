@@ -2,6 +2,7 @@ import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
 import { sendMail } from '@/lib/send-mail';
 import { sendVerificationEmail } from '@/lib/email-templates';
+import logger from '@/logger';
 
 export default apiHandler({
     post: register
@@ -28,6 +29,7 @@ async function register(req, res) {
             fields: ['email'],
             message: `User with the email "${email}" already exists`
         };
+        logger.error({page: 'register', ...response});
     } else {
         // set role
         const role = await db.collection('platformRoles').find({ rep: 1 }).project({ _id: 0 }).toArray();
@@ -49,6 +51,8 @@ async function register(req, res) {
         const subject = 'HybridAG Account Verification';
         const template = sendVerificationEmail(email);
         const emailResponse = await sendMail(email, subject, template);
+
+        logger.debug({page: 'register', message: 'User succcessfuly registered!', user: email});
 
         response = {
             success: true,

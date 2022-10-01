@@ -10,7 +10,7 @@ module.exports = {
     db.collection('users').insertOne({
       firstName: 'SUPER',
       lastName: 'USER',
-      email: 'admin@ambercash.com',
+      email: 'admin@ambercashph.com',
       password: bcrypt.hashSync('password', bcrypt.genSaltSync(8), null),
       number: '04911111111',
       position: 'Administrator',
