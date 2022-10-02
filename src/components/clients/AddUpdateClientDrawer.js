@@ -14,8 +14,11 @@ import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import moment from 'moment'
 import CheckBox from "@/lib/ui/checkbox";
+import placeholder from '/public/images/image-placeholder.png';
+import Image from 'next/image';
 
 const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSidebar, onClose }) => {
+    const hiddenInput = useRef(null);
     const formikRef = useRef();
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
@@ -24,6 +27,10 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
     const [loading, setLoading] = useState(false);
     const [dateValue, setDateValue] = useState(new Date());
     const [showCalendar, setShowCalendar] = useState(false);
+    const [photo, setPhoto] = useState();
+    const [photoW, setPhotoW] = useState(200);
+    const [photoH, setPhotoH] = useState(200);
+    const [image, setImage] = useState('');
 
     const initialValues = {
         firstName: client.firstName,
@@ -111,9 +118,9 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                     console.log(error)
                 });
         } else if (mode === 'edit') {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'clients';
             values._id = client._id;
-            fetchWrapper.post(apiUrl, values)
+            values.file = image;
+            fetchWrapper.sendData(process.env.NEXT_PUBLIC_API_URL + 'clients/', values)
                 .then(response => {
                     setLoading(false);
                     setShowSidebar(false);
@@ -158,8 +165,30 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
         onClose();
     }
 
+    const onUploadClick = () => {
+        hiddenInput.current.click();
+    }
+
+    const handleFileChange = async e => {
+        if (e.target.value) {
+            const fileUploaded = e.target.files[0];
+            setPhoto(URL.createObjectURL(fileUploaded));
+            setImage(fileUploaded);
+        }
+    }
+
+    const handleRemoveImage = () => {
+        setPhoto('');
+        setImage('');
+        hiddenInput.current.value = '';
+    }
+
     useEffect(() => {
         let mounted = true;
+
+        if (client.imgUrl) {
+            mounted && setPhoto(`${client.imgUrl}`);
+        }
 
         mounted && setLoading(false);
 
@@ -195,6 +224,29 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                 setFieldTouched
                             }) => (
                                 <form onSubmit={handleSubmit} autoComplete="off">
+                                    {mode === 'edit' && (
+                                        <div className="profile-photo rounded-lg p-3 proxima-regular border">
+                                            <div className="proxima-bold">Profile Photo</div>
+                                            <div className="photo-row mt-4 flex space-x-4">
+                                                <div className="photo-container rounded-lg">
+                                                    <div className="w-[200px] h-[200px] relative flex justify-center bg-slate-200 rounded-xl border overflow-hidden">
+                                                        <Image src={!photo ? placeholder : photo}
+                                                            className="overflow-hidden"
+                                                            width={photoW}
+                                                            height={photoH} />
+                                                    </div>
+                                                    <input type="file" name="file" ref={hiddenInput} onChange={(e) => handleFileChange(e)} className="hidden" />
+                                                </div>
+                                                <div className="w-48">
+                                                    <div className="flex flex-col space-y-4">
+                                                        <span>Photo should be at least 300px x 300px</span>
+                                                        <ButtonSolid label="Upload Photo" onClick={onUploadClick} />
+                                                        <ButtonOutline label="Remove Photo" onClick={handleRemoveImage} />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                     <div className="mt-4">
                                         <InputText
                                             name="firstName"

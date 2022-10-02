@@ -144,7 +144,7 @@ const ClientsPage = () => {
 
     return (
         <Layout actionButtons={actionButtons}>
-            <ViewClientsByGroupPage client={client} setClient={setClient} setMode={setMode} handleShowAddDrawer={handleShowAddDrawer} />
+            <ViewClientsByGroupPage client={client} setClientParent={setClient} setMode={setMode} handleShowAddDrawer={handleShowAddDrawer} />
             <AddUpdateClient mode={mode} client={client} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
         </Layout>
     );

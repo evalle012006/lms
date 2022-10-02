@@ -12,6 +12,7 @@ import { fetchWrapper } from "@/lib/fetch-wrapper";
 const ClientDetailPage = () => {
     const [loading, setLoading] = useState(true);
     const client = useSelector(state => state.client.data);
+    const [clientAddress, setClientAddress] = useState('');
     const [loanList, setLoanList] = useState([]);
 
     const [columns, setColumns] = useState([
@@ -62,6 +63,7 @@ const ClientDetailPage = () => {
 
     useEffect(() => {
         let mounted = true;
+
         const getClientDetails = async () => {
             const internationalNumberFormat = new Intl.NumberFormat('en-US');
             let url = process.env.NEXT_PUBLIC_API_URL + 'clients?clientId=' + client._id;
@@ -90,6 +92,7 @@ const ClientDetailPage = () => {
             setLoading(false);
         }
 
+        mounted && setClientAddress(`${client.addressStreetNo ? client.addressStreetNo + ',': ''} ${client.addressBarangayDistrict}, ${client.addressMunicipalityCity}, ${client.addressProvince}, ${client.addressZipCode}`);
         mounted && getClientDetails() && setLoading(false);
 
         return () => {
@@ -106,7 +109,7 @@ const ClientDetailPage = () => {
             ): (
                 <React.Fragment>
                     <div className="flex flex-col items-center font-proxima">
-                        <Avatar name={`${client.lastName}, ${client.firstName}`} src={client.profile ? '/images/profiles/' + client.profile : placeholder.src} className={`${client.profile ? 'pt-8 pb-4 pl-8 pr-4' : 'p-10'} `} />
+                        <Avatar name={`${client.lastName}, ${client.firstName}`} src={client.profile ? client.imgUrl : placeholder.src} className={`${client.profile ? 'p-20' : 'p-12'} `} />
                         <h5 className="mb-1 text-xl font-medium text-gray-900">{`${client.lastName}, ${client.firstName}`}</h5>
                         <span className="bg-green-100 text-green-800 text-sm font-medium mr-2 px-2.5 py-0.5 rounded dark:bg-green-200 dark:text-green-900">{ UppercaseFirstLetter(client.status) }</span>
                         <div className="flex flex-col mt-4 md:mt-6">
@@ -116,7 +119,7 @@ const ClientDetailPage = () => {
                                 <div><span className="font-proxima-bold">Registered Date:</span> { moment(client.dateAdded).format('YYYY-MM-DD') }</div>
                                 <div><span className="font-proxima-bold">Contact Number:</span> { client.contactNumber }</div>
                                 <div><span className="font-proxima-bold">Registered in Branch:</span> { client.branchName }</div>
-                                <div className="col-span-2"><span className="font-proxima-bold">Address:</span>{` ${client.addressStreetNo}, ${client.addressBarangayDistrict}, ${client.addressMunicipalityCity}, ${client.addressProvince}, ${client.addressZipCode}`}</div>
+                                <div className="col-span-2"><span className="font-proxima-bold">Address: </span>{clientAddress}</div>
                             </div>
                         </div>
                         <div className="flex flex-col mt-4 md:mt-6">
