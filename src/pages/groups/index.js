@@ -29,9 +29,6 @@ const GroupsPage = () => {
 
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-    const [branches, setBranches] = useState([]);
-    const [users, setUsers] = useState([]);
-    const [rootUser, setRootUser] = useState(currentUser.root ? currentUser.root : false);
     const router = useRouter();
 
     const getListBranch = async () => {
@@ -249,7 +246,7 @@ const GroupsPage = () => {
                         </div>
                     ) : <TableComponent columns={columns} data={list} hasActionButtons={true} rowActionButtons={rowActionButtons} showFilters={false} rowClick={handleRowClick} />}
             </div>
-            <AddUpdateGroup mode={mode} group={group} branches={branches} users={users} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
+            <AddUpdateGroup mode={mode} group={group} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
             <Dialog show={showDeleteDialog}>
                 <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                     <div className="sm:flex sm:items-start justify-center">

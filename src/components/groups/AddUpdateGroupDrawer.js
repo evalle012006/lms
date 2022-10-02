@@ -13,7 +13,9 @@ import Spinner from "../Spinner";
 import SelectDropdown from "@/lib/ui/select";
 import RadioButton from "@/lib/ui/radio-button";
 
-const AddUpdateGroup = ({ mode = 'add', group = {}, branches = [], users = [], showSidebar, setShowSidebar, onClose }) => {
+const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar, onClose }) => {
+    const branchList = useSelector(state => state.branch.list);
+    const userList = useSelector(state => state.user.list);
     const formikRef = useRef();
     const dispatch = useDispatch();
     const [loading, setLoading] = useState(false);
@@ -21,7 +23,7 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, branches = [], users = [], s
     const [dayNo, setDayNo] = useState('');
     const [occurence, setOccurence] = useState('daily');
     const [branchId, setBranchId] = useState();
-    const [userList, setUserList] = useState(users);
+    const [branchOfficers, setBranchOfficers] = useState(userList);
     const days = [
         {label: 'All Week', value: 'all', dayNo: 0},
         {label: 'Monday', value: 'monday', dayNo: 1}, 
@@ -33,7 +35,7 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, branches = [], users = [], s
 
     const initialValues = {
         name: group.name,
-        branchId: branchId,
+        branchId: group.branchId,
         day: group.day,
         dayNo: group.dayNo,
         time: group.time,
@@ -62,23 +64,23 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, branches = [], users = [], s
 
     const handleBranchChange = (selected) => {
         setBranchId(selected);
-        const branch = branches.find(b => b._id === selected);
-        const newUserList = users.filter(u => u.designatedBranch === branch.code);
-        setUserList(newUserList);
+        const branch = branchList.find(b => b._id === selected);
+        const newUserList = userList.filter(u => u.designatedBranch === branch.code);
+        setBranchOfficers(newUserList);
     }
 
     const handleSaveUpdate = (values, action) => {
         setLoading(true);
-        const branch = branches.find(b => b._id === branchId);
+        const branch = branchList.find(b => b._id === branchId);
         values.day = day;
         values.dayNo = dayNo;
         values.occurence = occurence;
         values.capacity = occurence === 'daily' ? 25 : 30;
         values.noOfClients = group.noOfClients;
         values.status = group.status;
-        values.branchId = branchId;
+        values.branchId = branch._id;
         values.branchName = branch.name;
-        values.loanOfficerName = users.find(u => u._id === values.loanOfficerId).label;
+        values.loanOfficerName = branchOfficers.find(u => u._id === values.loanOfficerId).label;
         if (mode === 'add') {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'groups/save/';
 
@@ -265,7 +267,7 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, branches = [], users = [], s
                                             field="branchId"
                                             value={branchId}
                                             label="Branch"
-                                            options={branches}
+                                            options={branchList}
                                             onChange={(e, selected) => handleBranchChange(selected)}
                                             onBlur={setFieldTouched}
                                             placeholder="Select Branch"
@@ -278,7 +280,7 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, branches = [], users = [], s
                                             field="loanOfficerId"
                                             value={values.loanOfficerId}
                                             label="Loan Officer"
-                                            options={userList}
+                                            options={branchOfficers}
                                             onChange={setFieldValue}
                                             onBlur={setFieldTouched}
                                             placeholder="Select Loan Officer"

@@ -117,7 +117,7 @@ export function AvatarCell({ value, column, row }) {
         )}
       </div>
       <div className="name-container">
-        <div className="text-sm font-medium text-gray-900">{value}</div>
+        <div className="text-sm text-gray-500">{value}</div>
         <div className="text-sm text-gray-500">
           {row.original[column.emailAccessor]}
         </div>

@@ -16,8 +16,7 @@ import Spinner from "@/components/Spinner";
 import { multiStyles, DropdownIndicator } from "@/styles/select";
 import Select from 'react-select';
 
-const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], showSidebar, setShowSidebar, onClose }) => {
-    const imgpath = process.env.NEXT_PUBLIC_LOCAL_HOST !== 'local' && process.env.NEXT_PUBLIC_LOCAL_HOST;
+const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], showSidebar, setShowSidebar, onClose }) => {    
     const hiddenInput = useRef(null);
     const formikRef = useRef();
     const dispatch = useDispatch();

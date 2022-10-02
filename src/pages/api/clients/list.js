@@ -19,7 +19,7 @@ async function list(req, res) {
         clients = await db
             .collection('loans')
             .aggregate([
-                { $match: { "status": "active", "groupId": groupId } },
+                { $match: { "groupId": groupId } },
                 {
                     $addFields: {
                         "clientIdObj": { $toObjectId: "$clientId" }

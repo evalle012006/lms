@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import TableComponent, { SelectColumnFilter, StatusPill } from '@/lib/table';
+import TableComponent, { AvatarCell, SelectColumnFilter, StatusPill } from '@/lib/table';
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { useDispatch, useSelector } from "react-redux";
 import Spinner from "@/components/Spinner";
@@ -23,6 +23,7 @@ const ViewClientsByGroupPage = ({groupId, client, setClientParent, setMode, hand
     const [showClientInfoModal, setShowClientInfoModal] = useState(false);
 
     const getListClient = async () => {
+        const imgpath = process.env.NEXT_PUBLIC_LOCAL_HOST !== 'local' && process.env.NEXT_PUBLIC_LOCAL_HOST;
         const internationalNumberFormat = new Intl.NumberFormat('en-US');
         let url = process.env.NEXT_PUBLIC_API_URL + 'clients/list';
         if (groupId) {
@@ -34,6 +35,7 @@ const ViewClientsByGroupPage = ({groupId, client, setClientParent, setMode, hand
                     clients.push({
                         ...loan.client,
                         ...loan,
+                        imgUrl: loan.client.profile ? imgpath + '/images/profiles/' + loan.client.profile : '',
                         loanStatus: loan.status ? loan.status : '-',
                         activeLoanStr: loan.activeLoan ? internationalNumberFormat.format(loan.activeLoan) : 0.00,
                         loanBalanceStr: loan.loanBalance ? internationalNumberFormat.format(loan.loanBalance) : 0.00,
@@ -56,6 +58,7 @@ const ViewClientsByGroupPage = ({groupId, client, setClientParent, setMode, hand
                     await response.clients && response.clients.map(client => {
                         clients.push({
                             ...client,
+                            imgUrl: client.profile ? imgpath + '/images/profiles/' + client.profile : '',
                             groupName: client.loans.length > 0 ? client.loans[0].groupName : '-',
                             slotNo: client.loans.length > 0 ? client.loans[0].slotNo : '-',
                             loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
@@ -78,6 +81,7 @@ const ViewClientsByGroupPage = ({groupId, client, setClientParent, setMode, hand
                 await response.clients && response.clients.map(client => {
                     clients.push({
                         ...client,
+                        imgUrl: client.profile ? imgpath + '/images/clients/' + client.profile : '',
                         groupName: client.loans.length > 0 ? client.loans[0].groupName : '-',
                         slotNo: client.loans.length > 0 ? client.loans[0].slotNo : '-',
                         loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
@@ -99,20 +103,10 @@ const ViewClientsByGroupPage = ({groupId, client, setClientParent, setMode, hand
 
     const [columns, setColumns] = useState([
         {
-            Header: "Group",
-            accessor: 'groupName',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "Slot No.",
-            accessor: 'slotNo',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
             Header: "Last Name",
             accessor: 'lastName',
+            Cell: AvatarCell,
+            imgAccessor: "imgUrl",
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
@@ -125,6 +119,18 @@ const ViewClientsByGroupPage = ({groupId, client, setClientParent, setMode, hand
         {
             Header: "Middle Name",
             accessor: 'middleName',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "Group",
+            accessor: 'groupName',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "Slot No.",
+            accessor: 'slotNo',
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
@@ -169,7 +175,7 @@ const ViewClientsByGroupPage = ({groupId, client, setClientParent, setMode, hand
 
     const handleEditAction = (row) => {
         setMode("edit");
-        let clientData = row.original.has("client") ? row.original.client : row.original;
+        let clientData = row.original.hasOwnProperty("client") ? row.original.client : row.original;
         setClientParent(clientData);
         handleShowAddDrawer();
     }
