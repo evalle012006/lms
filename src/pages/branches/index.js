@@ -82,6 +82,8 @@ const BranchesPage = () => {
 
     const handleCloseAddDrawer = () => {
         setLoading(true);
+        setMode('add');
+        setBranch({});
         getListBranch();
     }
 

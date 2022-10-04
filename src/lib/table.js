@@ -103,6 +103,7 @@ export function StatusPill({ value }) {
 
 export function AvatarCell({ value, column, row }) {
   const url = row.original[column.imgAccessor];
+  console.log(value);
   return (
     <div className="flex items-center">
       <div className="image-container">

@@ -56,18 +56,18 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
         lastName: yup
             .string()
             .required('Please enter last name'),
-        addressBarangayDistrict: yup
-            .string()
-            .required('Please enter barangay or district'),
-        addressMunicipalityCity: yup
-            .string()
-            .required('Please enter municipality or city'),
-        addressProvince: yup
-            .string()
-            .required('Please enter province'),
-        addressZipCode: yup
-            .string()
-            .required('Please enter zip code'),
+        // addressBarangayDistrict: yup
+        //     .string()
+        //     .required('Please enter barangay or district'),
+        // addressMunicipalityCity: yup
+        //     .string()
+        //     .required('Please enter municipality or city'),
+        // addressProvince: yup
+        //     .string()
+        //     .required('Please enter province'),
+        // addressZipCode: yup
+        //     .string()
+        //     .required('Please enter zip code'),
         // groupId: yup
         //     .string()
         //     .required('Please select a group')
@@ -85,6 +85,12 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
     const handleSaveUpdate = (values, action) => {
         let error = false;
         setLoading(true);
+        values.middleName = values.middleName ? values.middleName : '';
+        values.addressBarangayDistrict = values.addressBarangayDistrict ? values.addressBarangayDistrict : '';
+        values.addressMunicipalityCity = values.addressMunicipalityCity ? values.addressMunicipalityCity : '';
+        values.addressProvince = values.addressProvince ? values.addressProvince : '';
+        values.addressStreetNo = values.addressStreetNo ? values.addressStreetNo : '';
+        values.addressZipCode = values.addressZipCode ? values.addressZipCode : '';
         values.birthdate = dateValue.toISOString();
         // const group = groupList && groupList.find(g => g._id === values.groupId);
         // values.groupName = group.name;
@@ -119,7 +125,9 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                 });
         } else if (mode === 'edit') {
             values._id = client._id;
-            values.file = image;
+            if (image.trim().length > 0) {
+                values.file = image;
+            }
             fetchWrapper.sendData(process.env.NEXT_PUBLIC_API_URL + 'clients/', values)
                 .then(response => {
                     setLoading(false);
@@ -180,7 +188,9 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
     const handleRemoveImage = () => {
         setPhoto('');
         setImage('');
-        hiddenInput.current.value = '';
+        if (hiddenInput.current) {
+            hiddenInput.current.value = '';
+        }
     }
 
     useEffect(() => {
@@ -249,6 +259,16 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                     )}
                                     <div className="mt-4">
                                         <InputText
+                                            name="lastName"
+                                            value={values.lastName}
+                                            onChange={handleChange}
+                                            label="Last Name"
+                                            placeholder="Enter Last Name"
+                                            setFieldValue={setFieldValue}
+                                            errors={touched.lastName && errors.lastName ? errors.lastName : undefined} />
+                                    </div>
+                                    <div className="mt-4">
+                                        <InputText
                                             name="firstName"
                                             value={values.firstName}
                                             onChange={handleChange}
@@ -267,16 +287,6 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                             setFieldValue={setFieldValue}
                                             errors={touched.middleName && errors.middleName ? errors.middleName : undefined} />
                                     </div>
-                                    <div className="mt-4">
-                                        <InputText
-                                            name="lastName"
-                                            value={values.lastName}
-                                            onChange={handleChange}
-                                            label="Last Name"
-                                            placeholder="Enter Last Name"
-                                            setFieldValue={setFieldValue}
-                                            errors={touched.lastName && errors.lastName ? errors.lastName : undefined} />
-                                    </div>
                                     <div className="mt-4" onClick={openCalendar}>
                                         <InputText
                                             name="birthdate"
@@ -284,7 +294,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                             onChange={handleChange}
                                             label="Birthdate" />
                                     </div>
-                                    <Calendar onChange={setSelectedDate} value={dateValue} className={`px-4 mt-2 ${!showCalendar && 'hidden'}`} />
+                                    <Calendar onChange={setSelectedDate} value={dateValue} className={`px-4 mt-2 ${!showCalendar && 'hidden'}`} calendarType={'US'} />
                                     <div>Address Information</div>
                                     <div className="mt-4">
                                         <InputText

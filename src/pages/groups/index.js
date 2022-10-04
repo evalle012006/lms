@@ -164,6 +164,8 @@ const GroupsPage = () => {
 
     const handleCloseAddDrawer = () => {
         setLoading(true);
+        setMode('add');
+        setGroup({});
         getListGroup();
     }
 

@@ -98,7 +98,7 @@ const LoanApplicationPage = () => {
             await response.clients && response.clients.map(client => {
                 clients.push({
                     ...client,
-                    label: UppercaseFirstLetter(`${client.lastName}, ${client.firstName} ${client.middleName}`),
+                    label: UppercaseFirstLetter(`${client.lastName}, ${client.firstName}`),
                     value: client._id
                 });
             });
@@ -179,14 +179,15 @@ const LoanApplicationPage = () => {
                                 if (response.error) {
                                     toast.error(response.message);
                                 }
-                                getListGroup();
+                                // getListGroup();
                             }).catch(error => {
                                 console.log(error);
                             });
                     } else if (response.error) {
                         toast.error(response.message);
                     }
-                    getListLoan();
+                    // getListLoan();
+                    window.location.reload();
                 }).catch(error => {
                     console.log(error);
                 });
@@ -215,14 +216,15 @@ const LoanApplicationPage = () => {
                                 if (response.error) {
                                     toast.error(response.message);
                                 }
-                                getListGroup();
+                                // getListGroup();
                             }).catch(error => {
                                 console.log(error);
                             });
                     } else if (response.error) {
                         toast.error(response.message);
                     }
-                    getListLoan();
+                    // getListLoan();
+                    window.location.reload();
                 }).catch(error => {
                     console.log(error);
                 });

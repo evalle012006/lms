@@ -35,6 +35,7 @@ const ViewClientsByGroupPage = ({groupId, client, setClientParent, setMode, hand
                     clients.push({
                         ...loan.client,
                         ...loan,
+                        middleName: loan.client.middleName ? loan.client.middleName : '',
                         imgUrl: loan.client.profile ? imgpath + '/images/profiles/' + loan.client.profile : '',
                         loanStatus: loan.status ? loan.status : '-',
                         activeLoanStr: loan.activeLoan ? internationalNumberFormat.format(loan.activeLoan) : 0.00,
@@ -58,6 +59,7 @@ const ViewClientsByGroupPage = ({groupId, client, setClientParent, setMode, hand
                     await response.clients && response.clients.map(client => {
                         clients.push({
                             ...client,
+                            middleName: client.middleName ? client.middleName : '',
                             imgUrl: client.profile ? imgpath + '/images/profiles/' + client.profile : '',
                             groupName: client.loans.length > 0 ? client.loans[0].groupName : '-',
                             slotNo: client.loans.length > 0 ? client.loans[0].slotNo : '-',
@@ -81,6 +83,7 @@ const ViewClientsByGroupPage = ({groupId, client, setClientParent, setMode, hand
                 await response.clients && response.clients.map(client => {
                     clients.push({
                         ...client,
+                        middleName: client.middleName ? client.middleName : '',
                         imgUrl: client.profile ? imgpath + '/images/clients/' + client.profile : '',
                         groupName: client.loans.length > 0 ? client.loans[0].groupName : '-',
                         slotNo: client.loans.length > 0 ? client.loans[0].slotNo : '-',

@@ -15,6 +15,7 @@ import Image from 'next/image';
 import Spinner from "@/components/Spinner";
 import { multiStyles, DropdownIndicator } from "@/styles/select";
 import Select from 'react-select';
+import { setUser } from "@/redux/actions/userActions";
 
 const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], showSidebar, setShowSidebar, onClose }) => {    
     const hiddenInput = useRef(null);
@@ -102,7 +103,9 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
                 });
         } else if (mode === 'edit') {
             setLoading(false);
-            values.file = image;
+            if (image.trim().length > 0) {
+                values.file = image;
+            }
             fetchWrapper.sendData('/api/users/', values)
                 .then(response => {
                     setLoading(false);
@@ -133,7 +136,9 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
     const handleRemoveImage = () => {
         setPhoto('');
         setImage('');
-        hiddenInput.current.value = '';
+        if (hiddenInput.current) {
+            hiddenInput.current.value = '';
+        }
     }
 
     const loadImageFile = ({ naturalWidth, naturalHeight }) => {
@@ -260,6 +265,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
                                             name="email"
                                             value={values.email}
                                             onChange={handleChange}
+                                            disabled={mode === 'edit'}
                                             label="Email Address"
                                             placeholder="Enter Email Address"
                                             setFieldValue={setFieldValue}

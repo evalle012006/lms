@@ -111,6 +111,8 @@ const ClientsPage = () => {
 
     const handleCloseAddDrawer = () => {
         setLoading(true);
+        setMode('add');
+        setClient({});
         getListClient();
     }
 
