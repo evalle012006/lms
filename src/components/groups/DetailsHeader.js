@@ -1,8 +1,9 @@
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { useDispatch, useSelector } from 'react-redux';
 import { UppercaseFirstLetter } from "@/lib/utils";
+import ButtonSolid from "@/lib/ui/ButtonSolid";
 
-const DetailsHeader = () => {
+const DetailsHeader = ({ page, handleSaveUpdate }) => {
     const group = useSelector(state => state.group.data);
 
     const statusClass = {
@@ -54,6 +55,11 @@ const DetailsHeader = () => {
                                 <span className="text-gray-400 text-sm">Status:</span >
                                 <span className={`text-sm status-pill ${statusClass[group.status]}`}>{UppercaseFirstLetter(group.status)}</span>
                             </div>
+                            {page === 'transaction' && (
+                                <div className="space-x-2 flex items-center ">
+                                    <ButtonSolid label="Submit Collection" onClick={handleSaveUpdate} />
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

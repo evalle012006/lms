@@ -290,7 +290,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                     <div className="mt-4" onClick={openCalendar}>
                                         <InputText
                                             name="birthdate"
-                                            value={moment(dateValue).format('MM - DD - YYYY')}
+                                            value={moment(dateValue).format('YYYY-MM-DD')}
                                             onChange={handleChange}
                                             label="Birthdate" />
                                     </div>

@@ -13,7 +13,7 @@ async function save(req, res) {
   let response = {};
   let statusCode = 200;
 
-  
+  // should check if the full name exist already
     const client = await db.collection("client").insertOne({
       ...clientData,
       dateAdded: new Date(),

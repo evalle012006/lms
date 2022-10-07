@@ -10,6 +10,7 @@ import ButtonSolid from "@/lib/ui/ButtonSolid";
 import { setClient, setClientList } from "@/redux/actions/clientActions";
 import Modal from "@/lib/ui/Modal";
 import ClientDetailPage from "./ClientDetailPage";
+import { formatPricePhp } from "@/lib/utils";
 
 const ViewClientsByGroupPage = ({groupId, client, setClientParent, setMode, handleShowAddDrawer}) => {
     const dispatch = useDispatch();
@@ -24,7 +25,6 @@ const ViewClientsByGroupPage = ({groupId, client, setClientParent, setMode, hand
 
     const getListClient = async () => {
         const imgpath = process.env.NEXT_PUBLIC_LOCAL_HOST !== 'local' && process.env.NEXT_PUBLIC_LOCAL_HOST;
-        const internationalNumberFormat = new Intl.NumberFormat('en-US');
         let url = process.env.NEXT_PUBLIC_API_URL + 'clients/list';
         if (groupId) {
             url = url + '?' + new URLSearchParams({ mode: "view_by_group", groupId: groupId });
@@ -38,8 +38,8 @@ const ViewClientsByGroupPage = ({groupId, client, setClientParent, setMode, hand
                         middleName: loan.client.middleName ? loan.client.middleName : '',
                         imgUrl: loan.client.profile ? imgpath + '/images/profiles/' + loan.client.profile : '',
                         loanStatus: loan.status ? loan.status : '-',
-                        activeLoanStr: loan.activeLoan ? internationalNumberFormat.format(loan.activeLoan) : 0.00,
-                        loanBalanceStr: loan.loanBalance ? internationalNumberFormat.format(loan.loanBalance) : 0.00,
+                        activeLoanStr: formatPricePhp(loan.activeLoan),
+                        loanBalanceStr: formatPricePhp(loan.loanBalance),
                         missPayments: loan.missPayments ?  loan.missPayments : 0,
                         noOfPayment: loan.noOfPayment ? loan.noOfPayment : 0,
                         delinquent: loan.client.delinquent === true ? 'Yes' : 'No'
@@ -64,8 +64,8 @@ const ViewClientsByGroupPage = ({groupId, client, setClientParent, setMode, hand
                             groupName: client.loans.length > 0 ? client.loans[0].groupName : '-',
                             slotNo: client.loans.length > 0 ? client.loans[0].slotNo : '-',
                             loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
-                            activeLoanStr: client.loans.length > 0 ? internationalNumberFormat.format(client.loans[0].activeLoan) : 0.00,
-                            loanBalanceStr: client.loans.length > 0 ? internationalNumberFormat.format(client.loans[0].loanBalance) : 0.00,
+                            activeLoanStr: formatPricePhp(client.loans[0].activeLoan),
+                            loanBalanceStr: formatPricePhp(client.loans[0].loanBalance),
                             missPayments: client.loans.length > 0 ?  client.loans[0].missPayments : 0,
                             noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
                             delinquent: client.delinquent === true ? 'Yes' : 'No'

@@ -1,14 +1,10 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '@/components/Layout';
 import Spinner from '@/components/Spinner';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { toast } from 'react-hot-toast';
-import { DndProvider } from 'node_modules/react-dnd/dist/index';
-import { HTML5Backend } from 'react-dnd-html5-backend';
-import moment from 'moment';
-import React from 'react';
 import DetailsHeader from '@/components/groups/DetailsHeader';
 import { setGroup } from '@/redux/actions/groupActions';
 import ViewClientsByGroupPage from '@/components/clients/ViewClientsByGroup';
@@ -63,9 +59,7 @@ const GroupsDetailsPage = () => {
                 <div className="overflow-x-auto">
                     {group && <DetailsHeader page={'group'} />}
                     <div className="p-2 mt-[6rem]">
-                        <DndProvider backend={HTML5Backend}>
-                            <ViewClientsByGroupPage groupId={group && group._id} />
-                        </DndProvider>
+                        <ViewClientsByGroupPage groupId={group && group._id} />
                     </div>
                 </div>
             )}

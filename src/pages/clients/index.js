@@ -1,14 +1,10 @@
 import React, { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
 import { PlusIcon } from '@heroicons/react/24/solid';
-import TableComponent, { SelectColumnFilter, StatusPill } from '@/lib/table';
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { useDispatch, useSelector } from "react-redux";
-import Spinner from "@/components/Spinner";
 import toast from 'react-hot-toast';
 import { useRouter } from "node_modules/next/router";
-import Dialog from "@/lib/ui/Dialog";
-import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 import { UppercaseFirstLetter } from "@/lib/utils";
 import { setClientList } from "@/redux/actions/clientActions";

@@ -64,6 +64,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         const branch = branchList.find(b => b._id === group.branchId);
         values.branchId = branch._id;
         values.brancName = branch.name;
+        values.middleName = values.middleName ? values.middleName : '';
 
         if (mode === 'add') {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/save/';
