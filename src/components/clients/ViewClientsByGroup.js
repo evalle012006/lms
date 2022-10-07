@@ -38,8 +38,8 @@ const ViewClientsByGroupPage = ({groupId, client, setClientParent, setMode, hand
                         middleName: loan.client.middleName ? loan.client.middleName : '',
                         imgUrl: loan.client.profile ? imgpath + '/images/profiles/' + loan.client.profile : '',
                         loanStatus: loan.status ? loan.status : '-',
-                        activeLoanStr: formatPricePhp(loan.activeLoan),
-                        loanBalanceStr: formatPricePhp(loan.loanBalance),
+                        activeLoanStr: loan.activeLoan ? formatPricePhp(loan.activeLoan) : '0.00',
+                        loanBalanceStr: loan.loanBalance ? formatPricePhp(loan.loanBalance) : '0.00',
                         missPayments: loan.missPayments ?  loan.missPayments : 0,
                         noOfPayment: loan.noOfPayment ? loan.noOfPayment : 0,
                         delinquent: loan.client.delinquent === true ? 'Yes' : 'No'
@@ -64,8 +64,8 @@ const ViewClientsByGroupPage = ({groupId, client, setClientParent, setMode, hand
                             groupName: client.loans.length > 0 ? client.loans[0].groupName : '-',
                             slotNo: client.loans.length > 0 ? client.loans[0].slotNo : '-',
                             loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
-                            activeLoanStr: formatPricePhp(client.loans[0].activeLoan),
-                            loanBalanceStr: formatPricePhp(client.loans[0].loanBalance),
+                            activeLoanStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].activeLoan) : '0.00',
+                            loanBalanceStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].loanBalance) : '0.00',
                             missPayments: client.loans.length > 0 ?  client.loans[0].missPayments : 0,
                             noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
                             delinquent: client.delinquent === true ? 'Yes' : 'No'
@@ -88,8 +88,8 @@ const ViewClientsByGroupPage = ({groupId, client, setClientParent, setMode, hand
                         groupName: client.loans.length > 0 ? client.loans[0].groupName : '-',
                         slotNo: client.loans.length > 0 ? client.loans[0].slotNo : '-',
                         loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
-                        activeLoan: client.loans.length > 0 ?  client.loans[0].activeLoan : 0.00,
-                        loanBalance: client.loans.length > 0 ?  client.loans[0].loanBalance : 0.00,
+                        activeLoanStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].activeLoan) : '0.00',
+                        loanBalanceStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].loanBalance) : '0.00',
                         missPayments: client.loans.length > 0 ?  client.loans[0].missPayments : 0,
                         noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
                         delinquent: client.delinquent === true ? 'Yes' : 'No'
