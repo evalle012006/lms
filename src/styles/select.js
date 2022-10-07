@@ -116,5 +116,5 @@ export const multiStyles = {
 };
 
 export const DropdownIndicator = () => {
-    return <ChevronDownIcon className="ml-2 w-8 h-4 cursor-pointer -mt-2" />
+    return <ChevronDownIcon className="ml-2 w-8 h-4 cursor-pointer" />
 };

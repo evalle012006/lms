@@ -44,3 +44,11 @@ export const formatBytes = (bytes, decimals = 2) => {
 
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
+
+export const formatPricePhp = (num) => {
+    if (num) {
+        return new Intl.NumberFormat('fil-PH', { style: 'currency', currency: 'PHP' }).format(num);
+    } else {
+        new Intl.NumberFormat('fil-PH', { style: 'currency', currency: 'PHP' }).format(0);
+    }
+}

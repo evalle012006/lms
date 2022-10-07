@@ -77,7 +77,7 @@ const GroupsPage = () => {
             });
             dispatch(setUserList(userList));
         } else {
-            toast.error('Error retrieving branches list.');
+            toast.error('Error retrieving user list.');
         }
 
         setLoading(false);
@@ -164,6 +164,8 @@ const GroupsPage = () => {
 
     const handleCloseAddDrawer = () => {
         setLoading(true);
+        setMode('add');
+        setGroup({});
         getListGroup();
     }
 

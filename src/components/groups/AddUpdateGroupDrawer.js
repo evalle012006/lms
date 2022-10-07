@@ -14,6 +14,7 @@ import SelectDropdown from "@/lib/ui/select";
 import RadioButton from "@/lib/ui/radio-button";
 
 const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar, onClose }) => {
+    const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
     const userList = useSelector(state => state.user.list);
     const formikRef = useRef();
@@ -56,9 +57,9 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
         groupNo: yup
             .string()
             .required('Please select a group number'),
-        loanOfficerId: yup
-            .string()
-            .required('Please select a loan officer'),
+        // loanOfficerId: yup
+        //     .string()
+        //     .required('Please select a loan officer'),
 
     });
 
@@ -78,9 +79,19 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
         values.capacity = occurence === 'daily' ? 25 : 30;
         values.noOfClients = group.noOfClients;
         values.status = group.status;
-        values.branchId = branch._id;
-        values.branchName = branch.name;
-        values.loanOfficerName = branchOfficers.find(u => u._id === values.loanOfficerId).label;
+
+        if (currentUser.role.rep === 4) {
+            const cuBranch = branchList.find(b => b.code === currentUser.designatedBranch);
+            values.branchId = cuBranch._id;
+            values.branchName = cuBranch.name;
+            values.loanOfficerId = currentUser._id;
+            values.loanOfficerName = `${currentUser.firstName} ${currentUser.lastName}`;
+        } else {
+            values.branchId = branch._id;
+            values.branchName = branch.name;
+            values.loanOfficerName = branchOfficers.find(u => u._id === values.loanOfficerId).label;
+        }
+        
         if (mode === 'add') {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'groups/save/';
 
@@ -261,32 +272,36 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
                                                 errors={touched.groupNo && errors.groupNo ? errors.groupNo : undefined}
                                             />
                                     </div>
-                                    <div className="mt-4">
-                                        <SelectDropdown
-                                            name="branchId"
-                                            field="branchId"
-                                            value={branchId}
-                                            label="Branch"
-                                            options={branchList}
-                                            onChange={(e, selected) => handleBranchChange(selected)}
-                                            onBlur={setFieldTouched}
-                                            placeholder="Select Branch"
-                                            errors={touched.branchId && errors.branchId ? errors.branchId : undefined}
-                                        />
-                                    </div>
-                                    <div className="mt-4">
-                                        <SelectDropdown
-                                            name="loanOfficerId"
-                                            field="loanOfficerId"
-                                            value={values.loanOfficerId}
-                                            label="Loan Officer"
-                                            options={branchOfficers}
-                                            onChange={setFieldValue}
-                                            onBlur={setFieldTouched}
-                                            placeholder="Select Loan Officer"
-                                            errors={touched.loanOfficerId && errors.loanOfficerId ? errors.loanOfficerId : undefined}
-                                        />
-                                    </div>
+                                    {currentUser.role.rep < 4 && (
+                                        <React.Fragment>
+                                            <div className="mt-4">
+                                                <SelectDropdown
+                                                    name="branchId"
+                                                    field="branchId"
+                                                    value={branchId}
+                                                    label="Branch"
+                                                    options={branchList}
+                                                    onChange={(e, selected) => handleBranchChange(selected)}
+                                                    onBlur={setFieldTouched}
+                                                    placeholder="Select Branch"
+                                                    errors={touched.branchId && errors.branchId ? errors.branchId : undefined}
+                                                />
+                                            </div>
+                                            <div className="mt-4">
+                                                <SelectDropdown
+                                                    name="loanOfficerId"
+                                                    field="loanOfficerId"
+                                                    value={values.loanOfficerId}
+                                                    label="Loan Officer"
+                                                    options={branchOfficers}
+                                                    onChange={setFieldValue}
+                                                    onBlur={setFieldTouched}
+                                                    placeholder="Select Loan Officer"
+                                                    errors={touched.loanOfficerId && errors.loanOfficerId ? errors.loanOfficerId : undefined}
+                                                />
+                                            </div>
+                                        </React.Fragment>
+                                    )}
                                     <div className="flex flex-row mt-5">
                                         <ButtonOutline label="Cancel" onClick={handleCancel} className="mr-3" />
                                         <ButtonSolid label="Submit" type="submit" isSubmitting={isValidating && isSubmitting} />

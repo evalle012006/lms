@@ -58,7 +58,7 @@ async function updateUser(req, res) {
                         $currentDate: { dateModified: true }
                     }
                 );
-            userData.profile = file ? file : userData.profile;
+            // userData.profile = file ? file : userData.profile;
             delete userData._id;
             delete userData.password;
             resolve({ success: true, user: userData });

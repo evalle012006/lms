@@ -5,7 +5,7 @@ module.exports = {
     // Example:
     // await db.collection('albums').updateOne({artist: 'The Beatles'}, {$set: {blacklisted: true}});
     const bcrypt = require("bcryptjs");
-    const role = await db.collection('platformRoles').find({ rep: 1 }).project({ _id: 0 }).toArray();
+    const role = await db.collection('roles').find({ rep: 1 }).project({ _id: 0 }).toArray();
 
     db.collection('users').insertOne({
       firstName: 'SUPER',

@@ -103,6 +103,7 @@ export function StatusPill({ value }) {
 
 export function AvatarCell({ value, column, row }) {
   const url = row.original[column.imgAccessor];
+
   return (
     <div className="flex items-center">
       <div className="image-container">
@@ -460,7 +461,7 @@ const TableComponent = ({
                                 const root = row.original.root ? row.original.root : false;
                                 const delinquent = row.original.delinquent;
                                 return (
-                                <tr {...row.getRowProps()} className={`${delinquent === 'Yes' && 'bg-red-100'}`}>
+                                <tr {...row.getRowProps()} className={`hover:bg-slate-200 ${delinquent === 'Yes' && 'bg-red-100'} even:bg-gray-100`}>
                                     {row.cells.map((cell) => {
                                     return (
                                         <td

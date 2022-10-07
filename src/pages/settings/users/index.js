@@ -205,6 +205,8 @@ const TeamPage = () => {
 
     const handleCloseAddDrawer = () => {
         setLoading(true);
+        setMode('add');
+        setUserData({});
         getListUsers();
     }
 

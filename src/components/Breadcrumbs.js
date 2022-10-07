@@ -20,43 +20,72 @@ const Breadcrumbs = () => {
             let params = {};
             let crumbs = {};
             const url = process.env.NEXT_PUBLIC_API_URL + currentPage;
+
             if (paths.length == 2) {
                 params = { _id: paths[1] };
-                let data;
                 const response = await fetchWrapper.get(`${url}?` + new URLSearchParams(params));
+                let data;
+                let links = [];
+                let labels = [];
 
                 if (currentPage === 'groups') {
                     data = response.group;
+                    links = [`${process.env.NEXT_PUBLIC_URL}/${currentPage}`, null];
+                    labels = [UppercaseFirstLetter(currentPage), data.name];
                 }
 
                 crumbs = paths.map((item, index) => {
                     return {
-                        label: index === 0 ? UppercaseFirstLetter(currentPage) : data.name,
-                        link: index === 0 ? `${process.env.NEXT_PUBLIC_URL}/${currentPage}` : null
+                        label: labels[index],
+                        link: links[index]
                     }
                 });
 
-                setBreadcrumbs(crumbs)
+                setBreadcrumbs(crumbs);
+            } else if (paths.length == 3) {
+                const subCurrentPage = paths[1] ? paths[1].split('-') : [];
+                const title = subCurrentPage.length > 0 ? UppercaseFirstLetter(subCurrentPage[0]) + ' ' + UppercaseFirstLetter(subCurrentPage[1]) + ' ' + UppercaseFirstLetter(subCurrentPage[2]) : '';
+
+                params = { _id: paths[2] };
+                const response = await fetchWrapper.get(`${process.env.NEXT_PUBLIC_API_URL}groups?` + new URLSearchParams(params));
+                const data = response.group;
+
+                const links = [
+                    `${process.env.NEXT_PUBLIC_URL}/transactions/${paths[1]}`,
+                    null
+                ];
+                const labels = [title, data.name];
+
+                crumbs = paths.map((item, index) => {
+                    return {
+                        label: index < 3 && labels[index],
+                        link: index < 3 && links[index]
+                    }
+                });
+                
+                crumbs = crumbs.filter(c => typeof c.label !== 'undefined'); // removed empty labels
+
+                setBreadcrumbs(crumbs);
+            } else if (paths.length == 4) {
+                // const currentPage = paths[2];
+                // params = { uuid: paths[2] };
+                // const response = await fetchWrapper.get(`${url}/tests?` + new URLSearchParams(params));
+                // const test = response.tests[0];
+                // const links = [
+                //     `${process.env.NEXT_PUBLIC_URL}/jobs`,
+                //     `${process.env.NEXT_PUBLIC_URL}/jobs/${test.job_id}`
+                // ];
+                // const labels = ['Jobs', test.client, `${test.crop} - ${test.labnumber}`];
+
+                // crumbs = paths.map((item, index) => {
+                //     return {
+                //         label: labels[index],
+                //         link: links[index]
+                //     }
+                // });
+
+                // setBreadcrumbs(crumbs)
             }
-            // if (paths.length == 3) {
-            //     params = { uuid: paths[2] };
-            //     const response = await fetchWrapper.get(`${url}/tests?` + new URLSearchParams(params));
-            //     const test = response.tests[0];
-            //     const links = [
-            //         `${process.env.NEXT_PUBLIC_URL}/jobs`,
-            //         `${process.env.NEXT_PUBLIC_URL}/jobs/${test.job_id}`
-            //     ];
-            //     const labels = ['Jobs', test.client, `${test.crop} - ${test.labnumber}`];
-
-            //     crumbs = paths.map((item, index) => {
-            //         return {
-            //             label: labels[index],
-            //             link: links[index]
-            //         }
-            //     });
-
-            //     setBreadcrumbs(crumbs)
-            // }
         }
 
         mounted && setBreadcrumbsData();

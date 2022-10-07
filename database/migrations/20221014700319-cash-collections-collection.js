@@ -1,9 +1,9 @@
 module.exports = {
   async up(db, client) {
-    db.createCollection('cash-collections');
+    db.createCollection('cashCollections');
   },
 
   async down(db, client) {
-    db.collection('cash-collections').drop();
+    db.collection('cashCollections').drop();
   }
 };

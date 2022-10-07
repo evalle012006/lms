@@ -175,7 +175,7 @@ const MenuItems = [
                 hasSub: false
             },
             {
-                label: "Daily Cash Transactions",
+                label: "Daily Cash Collections",
                 url: "/transactions/daily-cash-collection",
                 icon: {
                     active: (
@@ -189,7 +189,7 @@ const MenuItems = [
                 hasSub: false
             },
             {
-                label: "Weekly Cash Transactions",
+                label: "Weekly Cash Collections",
                 url: "/transactions/weekly-cash-collection",
                 icon: {
                     active: (

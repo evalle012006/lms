@@ -8,7 +8,7 @@ export default apiHandler({
 
 async function save(req, res) {
     const ObjectId = require('mongodb').ObjectId;
-    const { name, branchId, day, dayNo, time, groupNo, loanOfficerId, loanOfficerName, occurence } = req.body;
+    const { name, branchId, day, dayNo, time, groupNo, loanOfficerId, loanOfficerName, occurence, availableSlots } = req.body;
 
     const { db } = await connectToDatabase();
 
@@ -46,6 +46,7 @@ async function save(req, res) {
             status: 'available',
             capacity: occurence === 'daily' ? 25 : 30,
             noOfClients: 0,
+            availableSlots: availableSlots,
             dateAdded: new Date()
         });
 

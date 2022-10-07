@@ -15,14 +15,16 @@ async function list(req, res) {
     let response = {};
     let clients;
 
-    if (mode === 'view_by_group' && groupId) {
+
+    if (mode === 'view_active_by_group' && groupId) {
         clients = await db
             .collection('loans')
             .aggregate([
-                { $match: { "groupId": groupId } },
+                { $match: { "groupId": groupId, 'status': 'active' } },
                 {
                     $addFields: {
-                        "clientIdObj": { $toObjectId: "$clientId" }
+                        "clientIdObj": { $toObjectId: "$clientId" },
+                        "groupIdObj": { $toObjectId: "$groupId" }
                     }
                 },
                 {
@@ -38,7 +40,58 @@ async function list(req, res) {
                 },
                 {
                     $unwind: "$client"
-                }
+                }, 
+                {
+                    $lookup: {
+                        from: "groups",
+                        localField: "groupIdObj",
+                        foreignField: "_id",
+                        as: "group"
+                    }
+                },
+                {
+                    $unwind: "$group"
+                },
+                { $project: { groupIdObj: 0, clientIdObj: 0 } }
+            ])
+            .toArray();
+    } else if (mode === 'view_by_group' && groupId) {
+        clients = await db
+            .collection('loans')
+            .aggregate([
+                { $match: { "groupId": groupId } },
+                {
+                    $addFields: {
+                        "clientIdObj": { $toObjectId: "$clientId" },
+                        "groupIdObj": { $toObjectId: "$groupId" }
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "client",
+                        localField: "clientIdObj",
+                        foreignField: "_id",
+                        pipeline: [
+                            { $match: { "status": "active" } }
+                        ],
+                        as: "client"
+                    }
+                },
+                {
+                    $unwind: "$client"
+                }, 
+                {
+                    $lookup: {
+                        from: "groups",
+                        localField: "groupIdObj",
+                        foreignField: "_id",
+                        as: "group"
+                    }
+                },
+                {
+                    $unwind: "$group"
+                },
+                { $project: { groupIdObj: 0, clientIdObj: 0 } }
             ])
             .toArray();
     } else if (mode === 'view_all_by_branch' && branchId) {

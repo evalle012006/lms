@@ -14,7 +14,7 @@ import ButtonSolid from "@/lib/ui/ButtonSolid";
 import { setLoanList } from "@/redux/actions/loanActions";
 import { setGroupList } from "@/redux/actions/groupActions";
 import { setClientList } from "@/redux/actions/clientActions";
-import { UppercaseFirstLetter } from "@/lib/utils";
+import { formatPricePhp, UppercaseFirstLetter } from "@/lib/utils";
 import AddUpdateLoan from "@/components/transactions/AddUpdateLoanDrawer";
 import moment from 'moment';
 
@@ -98,7 +98,7 @@ const LoanApplicationPage = () => {
             await response.clients && response.clients.map(client => {
                 clients.push({
                     ...client,
-                    label: UppercaseFirstLetter(`${client.lastName}, ${client.firstName} ${client.middleName}`),
+                    label: UppercaseFirstLetter(`${client.lastName}, ${client.firstName}`),
                     value: client._id
                 });
             });
@@ -110,7 +110,6 @@ const LoanApplicationPage = () => {
     }
 
     const getListLoan = async () => {
-        const internationalNumberFormat = new Intl.NumberFormat('en-US');
         let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/list';
         if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
             url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id });
@@ -124,10 +123,10 @@ const LoanApplicationPage = () => {
             await response.loans && response.loans.map(loan => {
                 loanList.push({
                     ...loan,
-                    principalLoanStr: internationalNumberFormat.format(loan.principalLoan),
-                    mcbuStr: loan.mcbu && internationalNumberFormat.format(loan.mcbu),
-                    activeLoanStr: internationalNumberFormat.format(loan.activeLoan),
-                    loanBalanceStr: internationalNumberFormat.format(loan.loanBalance),
+                    principalLoanStr: formatPricePhp(loan.principalLoan),
+                    mcbuStr: formatPricePhp(loan.mcbu),
+                    activeLoanStr: formatPricePhp(loan.activeLoan),
+                    loanBalanceStr: formatPricePhp(loan.loanBalance),
                     fullName: UppercaseFirstLetter(`${loan.client[0].lastName}, ${loan.client[0].firstName} ${loan.client[0].middleName}`),
                 });
             });
@@ -159,70 +158,36 @@ const LoanApplicationPage = () => {
 
         if (loanData.status === 'pending' && updatedValue === 'active') {
             loanData.dateGranted = moment(new Date()).format('YYYY-MM-DD');
-            loanData.slotNo = group.availableSlots[0]; // get always the first slot available
+            // loanData.slotNo = group.availableSlots[0]; // get always the first slot available
             loanData.status = updatedValue;
 
-            await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans', loanData)
+            await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/approved-reject-loan', loanData)
                 .then(response => {
-                    setLoading(false);
                     if (response.success) {
+                        setLoading(false);
                         toast.success('Loan successfully updated.');
-                        const groupUrl = process.env.NEXT_PUBLIC_API_URL + 'groups';
-                        let groupData = {...group}; // clone the object group data
-                        groupData.availableSlots = groupData.availableSlots.filter(s => s != loanData.slotNo); // removed the slot no used by this client
-                        groupData.noOfClients = parseInt(groupData.noOfClients) + 1;
-                        delete groupData.label;
-                        delete groupData.value;
-                        fetchWrapper.post(groupUrl, groupData)
-                            .then(response => {
-                                setLoading(false);
-                                if (response.error) {
-                                    toast.error(response.message);
-                                }
-                                getListGroup();
-                            }).catch(error => {
-                                console.log(error);
-                            });
+                        window.location.reload();
                     } else if (response.error) {
+                        setLoading(false);
                         toast.error(response.message);
                     }
-                    getListLoan();
                 }).catch(error => {
                     console.log(error);
                 });
         } else {
             loanData.status = updatedValue;
-            const clientSlotNo = loanData.slotNo;
             loanData.slotNo = null;
             
-            await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans', loanData)
+            await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/approved-reject-loan', loanData)
                 .then(response => {
-                    setLoading(false);
                     if (response.success) {
+                        setLoading(false);
                         toast.success('Loan successfully updated.');
-                        const groupUrl = process.env.NEXT_PUBLIC_API_URL + 'groups';
-                        let groupData = {...group}; // clone the object group data
-                        delete groupData.label;
-                        delete groupData.value;
-                        if (!groupData.availableSlots.includes(clientSlotNo)) {
-                            groupData.availableSlots.push(clientSlotNo);
-                            groupData.availableSlots.sort((a, b) => { return a - b; });
-                        }
-                        groupData.noOfClients = groupData.noOfClients - 1;
-                        fetchWrapper.post(groupUrl, groupData)
-                            .then(response => {
-                                setLoading(false);
-                                if (response.error) {
-                                    toast.error(response.message);
-                                }
-                                getListGroup();
-                            }).catch(error => {
-                                console.log(error);
-                            });
+                        window.location.reload();
                     } else if (response.error) {
+                        setLoading(false);
                         toast.error(response.message);
                     }
-                    getListLoan();
                 }).catch(error => {
                     console.log(error);
                 });

@@ -12,6 +12,7 @@ const InputEmail = ({ name, value='', label, placeholder, disabled, onChange, se
             flex justify-between border rounded-md px-4 py-1 mb-2 bg-white
             ${value ? ' border-main' : ' border-slate-400'}
             ${errors && ' border-red-400'}
+            ${disabled && 'bg-gray-100 border-gray-300'}
         `} style={{ width: width }}>
                 
             <div className="flex flex-col w-full">
@@ -31,6 +32,7 @@ const InputEmail = ({ name, value='', label, placeholder, disabled, onChange, se
                     p-1 pl-0 text-gray-500 font-medium 
                     ${value ? 'text-xs' : 'text-sm'} 
                     ${errors && 'text-red-400'}
+                    ${disabled && 'bg-gray-100 border-gray-300'}
                     ${className}
                 `}
                     placeholder={placeholder}
@@ -38,7 +40,7 @@ const InputEmail = ({ name, value='', label, placeholder, disabled, onChange, se
                     onChange={onChange}
                 />
             </div>
-            <div onClick={handleClick} className={`${value == '' && 'hide'} flex w-6 items-center justify-center`}>
+            <div onClick={handleClick} className={`${value == '' || disabled && 'hide'} flex w-6 items-center justify-center`}>
                 <XCircleIcon className="cursor-pointer h-5" />
             </div>
         </div>

@@ -1,5 +1,5 @@
 import Avatar from "@/lib/avatar";
-import { UppercaseFirstLetter } from "@/lib/utils";
+import { formatPricePhp, UppercaseFirstLetter } from "@/lib/utils";
 import React, { useState } from "react";
 import { useEffect } from "react";
 import { useSelector } from "react-redux";
@@ -65,7 +65,6 @@ const ClientDetailPage = () => {
         let mounted = true;
 
         const getClientDetails = async () => {
-            const internationalNumberFormat = new Intl.NumberFormat('en-US');
             let url = process.env.NEXT_PUBLIC_API_URL + 'clients?clientId=' + client._id;
     
             const response = await fetchWrapper.get(url);
@@ -79,7 +78,7 @@ const ClientDetailPage = () => {
                             slotNo: loan.slotNo > 0 ? loan.slotNo : '-',
                             missPayments: loan.missPayments ? loan.missPayments : 0,
                             loanStatus: loan.status,
-                            loanBalanceStr: loan.loanBalance ? internationalNumberFormat.format(loan.loanBalance) : 0.00,
+                            loanBalanceStr: loan.loanBalance ? formatPricePhp(loan.loanBalance) : 0.00,
                             missPayments: loan.missPayments ?  loan.missPayments : 0,
                             noOfPayment: loan.noOfPayment ? loan.noOfPayment : 0
                         });
