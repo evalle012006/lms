@@ -11,91 +11,13 @@ async function list(req, res) {
     let response = {};
     let loans;
 
-    const { branchId, groupId, loId } = req.query;
+    const { branchId, groupId, loId, status } = req.query;
 
-    if (branchId) {
+    if (loId && branchId) {
         loans = await db
         .collection('loans')
         .aggregate([
-            { $match: { branchId: branchId, status: 'pending' } },
-            {
-                $addFields: {
-                    "branchIdObj": { $toObjectId: "$branchId" },
-                    "groupIdObj": { $toObjectId: "$groupId" },
-                    "clientIdObj": { $toObjectId: "$clientId" }
-                }
-            },
-            {
-                $lookup: {
-                    from: "branches",
-                    localField: "branchIdObj",
-                    foreignField: "_id",
-                    as: "branch"
-                }
-            },
-            {
-                $lookup: {
-                    from: "groups",
-                    localField: "groupIdObj",
-                    foreignField: "_id",
-                    as: "group"
-                }
-            },
-            {
-                $lookup: {
-                    from: "client",
-                    localField: "clientIdObj",
-                    foreignField: "_id",
-                    as: "client"
-                }
-            },
-            { $project: { branchIdObj: 0, groupIdObj: 0, clientIdObj: 0 } }
-        ])
-        .toArray();
-    } else if (groupId) {
-        loans = await db
-        .collection('loans')
-        .aggregate([
-            { $match: { groupId: groupId } },
-            {
-                $addFields: {
-                    "branchIdObj": { $toObjectId: "$branchId" },
-                    "groupIdObj": { $toObjectId: "$groupId" },
-                    "clientIdObj": { $toObjectId: "$clientId" }
-                }
-            },
-            {
-                $lookup: {
-                    from: "branches",
-                    localField: "branchIdObj",
-                    foreignField: "_id",
-                    as: "branch"
-                }
-            },
-            {
-                $lookup: {
-                    from: "groups",
-                    localField: "groupIdObj",
-                    foreignField: "_id",
-                    as: "group"
-                }
-            },
-            {
-                $lookup: {
-                    from: "client",
-                    localField: "clientIdObj",
-                    foreignField: "_id",
-                    as: "client"
-                }
-            },
-            { $project: { branchIdObj: 0, groupIdObj: 0, clientIdObj: 0 } }
-        ])
-        .toArray();
-    } else if (loId && branchId) {
-        loans = await db
-        .collection('loans')
-        .aggregate([
-            { $match: { branchId: branchId, status: 'pending' } },
+            { $match: { branchId: branchId, status: status } },
             {
                 $addFields: {
                     "branchIdObj": { $toObjectId: "$branchId" },
@@ -141,6 +63,96 @@ async function list(req, res) {
             },
             {
                 $sort: { "dateAdded": -1 }
+            },
+            { $project: { branchIdObj: 0, groupIdObj: 0, clientIdObj: 0 } }
+        ])
+        .toArray();
+    } else if (branchId) {
+        loans = await db
+        .collection('loans')
+        .aggregate([
+            { $match: { branchId: branchId, status: status } },
+            {
+                $addFields: {
+                    "branchIdObj": { $toObjectId: "$branchId" },
+                    "groupIdObj": { $toObjectId: "$groupId" },
+                    "clientIdObj": { $toObjectId: "$clientId" }
+                }
+            },
+            {
+                $lookup: {
+                    from: "branches",
+                    localField: "branchIdObj",
+                    foreignField: "_id",
+                    as: "branch"
+                }
+            },
+            {
+                $lookup: {
+                    from: "groups",
+                    localField: "groupIdObj",
+                    foreignField: "_id",
+                    as: "group"
+                }
+            },
+            {
+                $unwind: "$group"
+            },
+            {
+                $lookup: {
+                    from: "client",
+                    localField: "clientIdObj",
+                    foreignField: "_id",
+                    as: "client"
+                }
+            },
+            {
+                $unwind: "$client"
+            },
+            { $project: { branchIdObj: 0, groupIdObj: 0, clientIdObj: 0 } }
+        ])
+        .toArray();
+    } else if (groupId) {
+        loans = await db
+        .collection('loans')
+        .aggregate([
+            { $match: { groupId: groupId, status: status } },
+            {
+                $addFields: {
+                    "branchIdObj": { $toObjectId: "$branchId" },
+                    "groupIdObj": { $toObjectId: "$groupId" },
+                    "clientIdObj": { $toObjectId: "$clientId" }
+                }
+            },
+            {
+                $lookup: {
+                    from: "branches",
+                    localField: "branchIdObj",
+                    foreignField: "_id",
+                    as: "branch"
+                }
+            },
+            {
+                $lookup: {
+                    from: "groups",
+                    localField: "groupIdObj",
+                    foreignField: "_id",
+                    as: "group"
+                }
+            },
+            {
+                $unwind: "$group"
+            },
+            {
+                $lookup: {
+                    from: "client",
+                    localField: "clientIdObj",
+                    foreignField: "_id",
+                    as: "client"
+                }
+            },
+            {
+                $unwind: "$client"
             },
             { $project: { branchIdObj: 0, groupIdObj: 0, clientIdObj: 0 } }
         ])

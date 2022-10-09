@@ -18,31 +18,45 @@ async function updateLoan(req, res) {
     let groupData = await db.collection('groups').find({ _id: ObjectId(loan.groupId) }).toArray();
     if (groupData.length > 0) {
         groupData = groupData[0];
-        if (loan.status === 'active') {
-            loan.slotNo = groupData.availableSlots.shift();
-            groupData.noOfClients = parseInt(groupData.noOfClients) + 1; // update the no. of clients
+        let status = groupData.status;
+        let noOfClients = groupData.noOfClients;
+        const capacity = groupData.capacity;
+
+        if (status === 'full' || noOfClients >= capacity) {
+            response = {
+                error: true,
+                message: `"${groupData.name}" is already full. Please select another group.`
+            };
         } else {
-            if (!groupData.availableSlots.includes(loan.slotNo)) {
-                groupData.availableSlots.push(loan.slotNo);
-                groupData.availableSlots.sort((a, b) => { return a - b; });
-                groupData.noOfClients = groupData.noOfClients - 1;
+            if (loan.status === 'active') {
+                loan.slotNo = groupData.availableSlots.shift();
+                groupData.noOfClients = noOfClients + 1;
+    
+                if (noOfClients === capacity) {
+                    groupData.status = 'full';
+                }
+            } else {
+                if (!groupData.availableSlots.includes(loan.slotNo)) {
+                    groupData.availableSlots.push(loan.slotNo);
+                    groupData.availableSlots.sort((a, b) => { return a - b; });
+                    groupData.noOfClients = groupData.noOfClients - 1;
+                }
+            }
+    
+            const groupResp = await updateGroup(groupData);
+            if (groupResp.success) {
+                const loanResp = await db
+                    .collection('loans')
+                    .updateOne(
+                        { _id: ObjectId(loanId) }, 
+                        {
+                            $set: { ...loan }
+                        }, 
+                        { upsert: false });
+    
+                response = { success: true, loan: loanResp };
             }
         }
-
-        const groupResp = await updateGroup(groupData);
-        if (groupResp.success) {
-            const loanResp = await db
-                .collection('loans')
-                .updateOne(
-                    { _id: ObjectId(loanId) }, 
-                    {
-                        $set: { ...loan }
-                    }, 
-                    { upsert: false });
-
-            response = { success: true, loan: loanResp };
-        }
-
     } else {
         response = { error: true, message: 'Group data not found.' };
     }

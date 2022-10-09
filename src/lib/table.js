@@ -14,6 +14,7 @@ import Avatar from "./avatar";
 import { FileExists } from "./utils";
 import { useState } from "react";
 import SelectDropdown from "./ui/select";
+import { PencilIcon, TrashIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/solid';
 
 // Define a default UI for filtering
 function GlobalFilter({
@@ -92,8 +93,9 @@ export function StatusPill({ value }) {
       className={classNames(
         "status-pill",
         status.startsWith("active") ? "status-pill-active" : null,
-        status.startsWith("pending") ? "status-pill-inactive" : null,
-        status.startsWith("inactive") ? "status-pill-offline" : null
+        status.startsWith("pending") ? "status-pill-pending" : null,
+        status.startsWith("inactive") ? "status-pill-inactive" : null,
+        status.startsWith("rejected") ? "status-pill-rejected" : null
       )}
     >
       {status}
@@ -238,64 +240,100 @@ export function PageButton({ children, className, ...rest }) {
   );
 }
 
+// const ActionButton = ({ row, rowActionButtons }) => {
+//   const [showMenu, setShowMenu] = useState(false);
+
+//   const handleClick = () => {
+//     setShowMenu(!showMenu);
+//   };
+
+//   return (
+//     <React.Fragment>
+//       <div
+//         className="relative inline-block text-left cursor-pointer"
+//         onClick={handleClick}
+//       >
+//         <svg
+//           xmlns="http://www.w3.org/2000/svg"
+//           className="h-6 w-6"
+//           fill="none"
+//           viewBox="0 0 24 24"
+//           stroke="currentColor"
+//           strokeWidth={2}
+//         >
+//           <path
+//             strokeLinecap="round"
+//             strokeLinejoin="round"
+//             d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
+//           />
+//         </svg>
+//         <div
+//           className={`dropdown-menu-container border border-solid border-gray-13 origin-top-right absolute right-0 mt-2 w-56 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none ${
+//             showMenu ? "block" : "hidden"
+//           }`}
+//           role="menu"
+//           aria-orientation="vertical"
+//           aria-labelledby="menu-button"
+//           tabIndex="-1"
+//         >
+//           <div className="flex flex-col w-56" role="none">
+//             {rowActionButtons &&
+//               rowActionButtons.map((item, index) => {
+//                 return (
+//                   <a
+//                     key={index}
+//                     href="#"
+//                     className="dropdown-menu-item"
+//                     role="menuitem"
+//                     tabIndex="-1"
+//                     id={`'menu-item-'${index}`}
+//                     onClick={() => {
+//                       item.action(row);
+//                       setShowMenu(false);
+//                     }}
+//                   >
+//                     {item.label}
+//                   </a>
+//                 );
+//               })}
+//           </div>
+//         </div>
+//       </div>
+//     </React.Fragment>
+//   );
+// };
+
 const ActionButton = ({ row, rowActionButtons }) => {
-  const [showMenu, setShowMenu] = useState(false);
-
-  const handleClick = () => {
-    setShowMenu(!showMenu);
-  };
-
+  
   return (
     <React.Fragment>
-      <div
-        className="relative inline-block text-left cursor-pointer"
-        onClick={handleClick}
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-6 w-6"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
-          />
-        </svg>
-        <div
-          className={`dropdown-menu-container border border-solid border-gray-13 origin-top-right absolute right-0 mt-2 w-56 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none ${
-            showMenu ? "block" : "hidden"
-          }`}
-          role="menu"
-          aria-orientation="vertical"
-          aria-labelledby="menu-button"
-          tabIndex="-1"
-        >
-          <div className="flex flex-col w-56" role="none">
-            {rowActionButtons &&
-              rowActionButtons.map((item, index) => {
+      <div className="flex flex-row justify-center">
+            {rowActionButtons && rowActionButtons.map((item, index) => {
                 return (
-                  <a
-                    key={index}
-                    href="#"
-                    className="dropdown-menu-item"
-                    role="menuitem"
-                    tabIndex="-1"
-                    id={`'menu-item-'${index}`}
-                    onClick={() => {
-                      item.action(row);
-                      setShowMenu(false);
-                    }}
-                  >
-                    {item.label}
-                  </a>
+                    <React.Fragment key={index}>
+                      {item.label === 'Approve' && (
+                        <div className="px-1" onClick={() => item.action(row)} title="Approve">
+                          <CheckIcon className="cursor-pointer h-5" />
+                        </div>
+                      )}
+                      {item.label === 'Reject' && (
+                        <div className="px-1" onClick={() => item.action(row)} title="Reject">
+                          <XMarkIcon className="cursor-pointer h-5" />
+                        </div>
+                      )}
+                      {item.label === 'Edit' && (
+                        <div className="px-1" onClick={() => item.action(row)} title="Edit">
+                          <PencilIcon className="cursor-pointer h-5" />
+                        </div>
+                      )}
+                      {item.label === 'Delete' && (
+                        <div className="px-1" onClick={() => item.action(row)} title="Delete">
+                          <TrashIcon className="cursor-pointer h-5" />
+                        </div>
+                      )}
+                    </React.Fragment>
                 );
               })}
-          </div>
-        </div>
       </div>
     </React.Fragment>
   );
@@ -437,7 +475,7 @@ const TableComponent = ({
                         <th
                           scope="col"
                           className="column py-0 pr-0 pl-4 tracking-wider m-1"
-                        ></th>
+                        >Actions</th>
                       )}
                     </tr>
                   ))}
@@ -460,6 +498,7 @@ const TableComponent = ({
                                 prepareRow(row);
                                 const root = row.original.root ? row.original.root : false;
                                 const delinquent = row.original.delinquent;
+                                
                                 return (
                                 <tr {...row.getRowProps()} className={`hover:bg-slate-200 ${delinquent === 'Yes' && 'bg-red-100'} even:bg-gray-100`}>
                                     {row.cells.map((cell) => {

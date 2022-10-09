@@ -16,19 +16,48 @@ const CashCollectionDetailsPage = () => {
     const dispatch = useDispatch();
     const router = useRouter();
     const currentUser = useSelector(state => state.user.data);
-    const cashCollections = useSelector(state => state.cashCollection.client);
+    // const cashCollections = useSelector(state => state.cashCollection.client);
     const groupClients = useSelector(state => state.cashCollection.group);
+    const groupList = useSelector(state => state.group.list);
     const { uuid } = router.query;
     const [loading, setLoading] = useState(true);
     const [currentDate, setCurrentDate] = useState(moment(new Date()).format('YYYY-MM-DD'));
-    const [data, setData] = useState([]);
+    // const [data, setData] = useState([]);
 
     const getCashCollections = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/get-by-date?' + new URLSearchParams({ date: currentDate, mode: 'daily', groupId: uuid });
+        let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/get-loan-by-group-cash-collection?' + new URLSearchParams({ date: currentDate, mode: 'daily', groupId: uuid });
 
         const response = await fetchWrapper.get(url);
         if (response.success) {
-            dispatch(setCashCollection(response.data));
+            let cashCollection = [];
+            response.data && response.data.map(cc => {
+                let collection = {
+                    slotNo: cc.slotNo,
+                    mispayments: cc.mispayments,
+                    collection: 0.00,
+                    excess: 0.00,
+                    total: 0.00,
+                    activeLoan: cc.activeLoan,
+                    loanTarget: formatPricePhp(cc.activeLoan),
+                    loanBalance: formatPricePhp(cc.loanBalance),
+                    paymentCollection: 0.00,
+                    remarks: ''
+                }
+
+                if (cc.current.length > 0) {
+                    collection.paymentCollection = cc.current[0].paymentCollection;
+                    collection._id = cc.current[0]._id;
+                }
+
+                if (cc.history.length > 0) {
+                    collection.collection = formatPricePhp(cc.history[0].collection);
+                    collection.excess = formatPricePhp(cc.history[0].excess);
+                    collection.total = formatPricePhp(cc.history[0].total);
+                }
+
+                cashCollection.push(collection);
+            });
+            dispatch(setCashCollectionGroup(cashCollection));
         } else {
             toast.error('Error retrieving branches list.');
         }
@@ -42,7 +71,12 @@ const CashCollectionDetailsPage = () => {
             let temp = {...cc};
             if (currentUser.role.rep === 4) {
                 temp.loId = currentUser._id;
+            } else {
+                const group = groupList.find(g => g._id === cc.groupId);
+                temp.loId = group && group.loanOfficerId;
             }
+
+            temp.insertBy = currentUser._id;
 
             temp.paymentCollection = temp.paymentCollection && parseFloat(temp.paymentCollection.replace(',', ''));
             temp.loanBalance = parseFloat(temp.loanBalance.replace(',', ''));
@@ -139,45 +173,47 @@ const CashCollectionDetailsPage = () => {
         };
     }, [uuid]);
 
-    useEffect(() => {
-        const getGroupClients = async () => {
-            const imgpath = process.env.NEXT_PUBLIC_LOCAL_HOST !== 'local' && process.env.NEXT_PUBLIC_LOCAL_HOST;
-            const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'clients/list?' + new URLSearchParams({ mode: "view_active_by_group", groupId: uuid }));
-            if (response.success) {
-                let clients = [];
-                await response.clients && response.clients.map(loan => {
-                    clients.push({
-                        branchId: loan.branchId,
-                        groupId: loan.groupId,
-                        clientId: loan.client._id,
-                        loanId: loan._id,
-                        // imgUrl: loan.client.profile ? imgpath + '/images/profiles/' + loan.client.profile : '',
-                        lastName: loan.client.lastName,
-                        firstName: loan.client.firstName,
-                        middleName: loan.client.middleName ? loan.client.middleName : '',
-                        slotNo: loan.slotNo,
-                        groupName: loan.group.name,
-                        loanAmount: formatPricePhp(loan.principalLoan),
-                        loanBalance: formatPricePhp(loan.loanBalance),
-                        activeLoan: loan.activeLoan,
-                        paymentCollection: 0
-                    });
-                });
-                dispatch(setCashCollectionGroup(clients));
-                setLoading(false);
-            } else if (response.error) {
-                toast.error(response.message);
-            }
-        }
+    // useEffect(() => {
+    //     const getGroupClients = async () => {
+    //         const imgpath = process.env.NEXT_PUBLIC_LOCAL_HOST !== 'local' && process.env.NEXT_PUBLIC_LOCAL_HOST;
+    //         const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'clients/list?' + new URLSearchParams({ mode: "view_active_by_group", groupId: uuid }));
+    //         if (response.success) {
+    //             let clients = [];
+    //             await response.clients && response.clients.map(loan => {
+    //                 clients.push({
+    //                     branchId: loan.branchId,
+    //                     groupId: loan.groupId,
+    //                     clientId: loan.client._id,
+    //                     loanId: loan._id,
+    //                     slotNo: loan.slotNo,
+    //                     groupName: loan.group.name,
+    //                     loanAmount: formatPricePhp(loan.principalLoan),
+    //                     loanBalance: formatPricePhp(loan.loanBalance),
+    //                     activeLoan: loan.activeLoan,
+    //                     paymentCollection: 0
+    //                 });
+    //             });
+    //             dispatch(setCashCollectionGroup(clients));
+    //             setLoading(false);
+    //         } else if (response.error) {
+    //             toast.error(response.message);
+    //         }
+    //     }
 
-        if (cashCollections.length === 0) {
-            uuid && getGroupClients(uuid);
-            setData(groupClients);
-        } else {
-            setData(cashCollections);
-        }
+    //     if (cashCollections.length === 0) {
+    //         uuid && getGroupClients(uuid);
+    //         setData(groupClients);
+    //     } else {
+    //         setData(cashCollections);
+    //     }
 
-    }, [cashCollections]);
+    // }, [cashCollections]);
+
+    // useEffect(() => {
+    //     if (groupClients) {
+    //         setData(groupClients);
+    //     }
+    // }, [groupClients]);
 
     return (
         <Layout header={false} noPad={true}>
@@ -187,37 +223,43 @@ const CashCollectionDetailsPage = () => {
                 </div>
             ) : (
                 <div className="overflow-x-auto">
-                    {data && <DetailsHeader page={'transaction'} handleSaveUpdate={handleSaveUpdate} />}
+                    {groupClients && <DetailsHeader page={'transaction'} handleSaveUpdate={handleSaveUpdate} />}
                     <div className="p-4 mt-[8rem]">
                         <div className="bg-white flex flex-col rounded-md p-6">
                             <table className="table-auto border-collapse text-sm">
                                 <thead className="border-b border-b-gray-300">
                                     <tr className="column py-0 pr-0 pl-4 text-left text-gray-500 uppercase tracking-wider m-1">
                                         <th className="p-2">Slot #</th>
-                                        <th className="p-2">Group</th>
-                                        <th className="p-2">Last Name</th>
-                                        <th className="p-2">First Name</th>
-                                        <th className="p-2">Middle Name</th>
-                                        <th className="p-2">Loan Amount</th>
+                                        <th className="p-2">Mispayments</th>
+                                        <th className="p-2">Collection</th>
+                                        <th className="p-2">Excess</th>
+                                        <th className="p-2">Total</th>
+                                        <th className="p-2">Loan Target</th>
                                         <th className="p-2">Loan Balance</th>
-                                        <th className="p-2">Payment Collection</th>
+                                        <th className="p-2">Actual Collection</th>
+                                        <th className="p-2">Remarks</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {data && data.map((cc, index) => {
+                                    {groupClients && groupClients.map((cc, index) => {
                                         return (
-                                            <tr key={index} className="hover:bg-slate-200 even:bg-gray-100 border-b border-b-gray-300 text-gray-600" onClick={() => handleRowClick(cc)}>
+                                            <tr key={index} className="hover:bg-slate-200 even:bg-gray-100 border-b border-b-gray-300 text-gray-600 font-proxima" onClick={() => handleRowClick(cc)}>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">{ cc.slotNo }</td>
-                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">{ cc.groupName }</td>
-                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">{ cc.lastName }</td>
-                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">{ cc.firstName }</td>
-                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">{ cc.middleName }</td>
-                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">{ cc.loanAmount }</td>
+                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">{ cc.mispayments }</td>
+                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">{ cc.collection }</td>
+                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">{ cc.excess }</td>
+                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">{ cc.total }</td>
+                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">{ cc.loanTarget }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">{ cc.loanBalance }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">
                                                     <input type="number" name={cc.clientId} onBlur={(e) => handlePaymentCollectionChange(e, index)}
                                                         onClick={(e) => e.stopPropagation()} defaultValue={cc.paymentCollection}
                                                         className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-main focus:border-main block w-1/2 p-2.5"/>
+                                                </td>
+                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">
+                                                    <input type="text" name={cc.clientId} onBlur={(e) => handlePaymentCollectionChange(e, index)}
+                                                        onClick={(e) => e.stopPropagation()} defaultValue={cc.remarks}
+                                                        className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-main focus:border-main block w-10/12 p-2.5"/>
                                                 </td>
                                             </tr>    
                                         )

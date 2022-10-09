@@ -64,11 +64,11 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         const branch = branchList.find(b => b._id === group.branchId);
         values.branchId = branch._id;
         values.brancName = branch.name;
-        values.middleName = values.middleName ? values.middleName : '';
 
         if (mode === 'add') {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/save/';
 
+            values.lastUpdated = null;  // use only when updating the mispayments
             values.admissionDate = moment(values.admissionDate).format('YYYY-MM-DD');
 
             if (group.occurence === 'weekly') {
@@ -100,32 +100,31 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                 });
         } else if (mode === 'edit') {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans';
-            
             values._id = loan._id;
             fetchWrapper.post(apiUrl, values)
                 .then(response => {
                     if (response.success) {
-                        if (values.status === 'active') {
-                            let params = { groupId: values.groupId };
-
-                            if (values.groupId !== client.groupId) {
-                                params.oldGroupId = client.groupId;
-                            }
+                        let error = false;
+                        if (values.status === 'active' && values.groupId !== loan.groupId) {
+                            let params = { groupId: values.groupId, oldGroupId: loan.groupId };
                             
-                            fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'groups/list', params)
+                            fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'groups/update-group', params)
                                 .then(response => {
                                     if (response.error) {
-                                        toast.error(response.message);
-                                    } else {
                                         setLoading(false);
-                                        setShowSidebar(false);
-                                        toast.success('Loan successfully updated.');
-                                        action.setSubmitting = false;
-                                        action.resetForm();
-                                        setDateValue(new Date());
-                                        onClose();
+                                        error = true;
+                                        toast.error(response.message);
                                     }
                             });
+                        }
+
+                        if (!error) {
+                            setLoading(false);
+                            setShowSidebar(false);
+                            toast.success('Loan successfully updated.');
+                            action.setSubmitting = false;
+                            action.resetForm();
+                            onClose();
                         }
                     } else if (response.error) {
                         setLoading(false);

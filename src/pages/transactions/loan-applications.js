@@ -14,7 +14,7 @@ import ButtonSolid from "@/lib/ui/ButtonSolid";
 import { setLoanList } from "@/redux/actions/loanActions";
 import { setGroupList } from "@/redux/actions/groupActions";
 import { setClientList } from "@/redux/actions/clientActions";
-import { formatPricePhp, UppercaseFirstLetter } from "@/lib/utils";
+import { formatPricePhp, getEndDate, UppercaseFirstLetter } from "@/lib/utils";
 import AddUpdateLoan from "@/components/transactions/AddUpdateLoanDrawer";
 import moment from 'moment';
 
@@ -112,9 +112,9 @@ const LoanApplicationPage = () => {
     const getListLoan = async () => {
         let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/list';
         if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
-            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id });
+            url = url + '?' + new URLSearchParams({ status: 'pending', branchId: branchList[0]._id, loId: currentUser._id });
         } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
-            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id });
+            url = url + '?' + new URLSearchParams({ status: 'pending', branchId: branchList[0]._id });
         }
 
         const response = await fetchWrapper.get(url);
@@ -127,7 +127,7 @@ const LoanApplicationPage = () => {
                     mcbuStr: formatPricePhp(loan.mcbu),
                     activeLoanStr: formatPricePhp(loan.activeLoan),
                     loanBalanceStr: formatPricePhp(loan.loanBalance),
-                    fullName: UppercaseFirstLetter(`${loan.client[0].lastName}, ${loan.client[0].firstName} ${loan.client[0].middleName}`),
+                    fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
                 });
             });
 
@@ -158,8 +158,9 @@ const LoanApplicationPage = () => {
 
         if (loanData.status === 'pending' && updatedValue === 'active') {
             loanData.dateGranted = moment(new Date()).format('YYYY-MM-DD');
-            // loanData.slotNo = group.availableSlots[0]; // get always the first slot available
             loanData.status = updatedValue;
+            loanData.endDate = getEndDate(loanData.dateGranted, group.occurence === 'daily' ? 60 : 24 );
+            loanData.mispayments = 0;
 
             await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/approved-reject-loan', loanData)
                 .then(response => {
@@ -214,8 +215,8 @@ const LoanApplicationPage = () => {
         setMode("edit");
         setLoan(row.original);
         let clientListData = [...clientList];
-        let client = row.original.client[0];
-        client.label = `${client.lastName}, ${client.firstName} ${client.middleName}`;
+        let client = row.original.client;
+        client.label = `${client.lastName}, ${client.firstName} ${client.middleName ? client.middleName : ''}`;
         client.value = client._id;
         clientListData.push(client);
         dispatch(setClientList(clientListData));
@@ -227,10 +228,15 @@ const LoanApplicationPage = () => {
         setShowDeleteDialog(true);
     }
 
-    const rowActionButtons = [
-        { label: 'Edit', action: handleEditAction },
-        { label: 'Delete', action: handleDeleteAction }
-    ];
+    const handleApprove = (row) => {
+        updateClientStatus(row.original, 'active');
+    }
+
+    const handleReject = (row) => {
+        updateClientStatus(row.original, 'reject');
+    }
+
+    const [rowActionButtons, setRowActionButtons] = useState([]);
 
     const handleDelete = () => {
         if (loan) {
@@ -329,34 +335,52 @@ const LoanApplicationPage = () => {
                 {
                     Header: "Status",
                     accessor: 'status',
-                    Cell: SelectCell,
-                    Options: statuses,
-                    valueIdAccessor: 'status',
-                    selectOnChange: updateClientStatus,
+                    Cell: StatusPill,
+                    // Cell: SelectCell,
+                    // Options: statuses,
+                    // valueIdAccessor: 'status',
+                    // selectOnChange: updateClientStatus,
                     Filter: SelectColumnFilter,
                     filter: 'includes',
                 }
             );
 
-            let updatedColumns = cols.map(col => {
-                let temp = {...col}; 
-                if ((currentUser.role && currentUser.role.rep > 3)) {        
-                    if (col.accessor === 'status') {
-                        // delete temp.Cell;
-                        temp.Cell = StatusPill;
-                    }
-                } else {
-                    // need to set the Options again since it was blank after checking for permissions
-                    if (col.accessor === 'status') {
-                        temp.Options = statuses;
-                        temp.selectOnChange = updateClientStatus;
-                    }
-                }
+            // let updatedColumns = cols.map(col => {
+            //     let temp = {...col}; 
+            //     if ((currentUser.role && currentUser.role.rep > 3)) {        
+            //         if (col.accessor === 'status') {
+            //             // delete temp.Cell;
+            //             temp.Cell = StatusPill;
+            //         }
+            //     } else {
+            //         // need to set the Options again since it was blank after checking for permissions
+            //         if (col.accessor === 'status') {
+            //             // temp.Options = statuses;
+            //             // temp.selectOnChange = updateClientStatus;
+            //         }
+            //     }
 
-                return temp;
-            });
+            //     return temp;
+            // });
 
-            setColumns(updatedColumns);
+            let rowActionBtn = [];
+
+            if (currentUser.role.rep <= 3) {
+                rowActionBtn = [
+                    { label: 'Approve', action: handleApprove},
+                    { label: 'Reject', action: handleReject},
+                    { label: 'Edit', action: handleEditAction},
+                    { label: 'Delete', action: handleDeleteAction}
+                ];
+            } else {
+                rowActionBtn = [
+                    { label: 'Edit', action: handleEditAction},
+                    { label: 'Delete', action: handleDeleteAction}
+                ];
+            }
+
+            setColumns(cols);
+            setRowActionButtons(rowActionBtn);
         }
     }, [groupList]);
 
