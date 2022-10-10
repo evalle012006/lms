@@ -10,23 +10,23 @@ async function list(req, res) {
     let statusCode = 200;
     let response = {};
 
-    const { day, branchId, loId, occurence } = req.query;
+    const { branchId, loId, occurence } = req.query;
     let groups;
 
     if (branchId && loId) {
         groups = await db
             .collection('groups')
-            .find({ branchId: branchId, status: 'available', loanOfficerId: loId, day: day, occurence: occurence })
+            .find({ branchId: branchId, status: 'available', loanOfficerId: loId,occurence: occurence })
             .toArray();
     } else if (branchId) {
         groups = await db
             .collection('groups')
-            .find({ branchId: branchId, status: 'available', day: day, occurence: occurence })
+            .find({ branchId: branchId, status: 'available', occurence: occurence })
             .toArray();
     } else {
         groups = await db
             .collection('groups')
-            .find({ status: 'available', day: day, occurence: occurence })
+            .find({ status: 'available', occurence: occurence })
             .toArray();
     }
     

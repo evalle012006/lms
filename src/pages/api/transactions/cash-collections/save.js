@@ -1,5 +1,6 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
+import moment from 'moment';
 
 
 export default apiHandler({
@@ -30,10 +31,8 @@ async function save(req, res) {
                 } else {
                     saveCollection(cc);
                 }
-                // update the loan if it has payment
-                if (cc.paymentCollection > 0) {
-                    updateLoan(cc);
-                }
+
+                updateLoan(cc);
             }
 
             response = { success: true }
@@ -92,8 +91,13 @@ async function updateLoan(collection) {
     let loan = await db.collection('loans').find({ _id: ObjectId(collection.loanId) }).toArray();
     if (loan.length > 0) {
         loan = loan[0];
-        loan.loanBalance = loan.loanBalance - collection.paymentCollection;
-        loan.noOfPayments = loan.noOfPayments + 1;
+        if (collection.paymentCollection > 0) {
+            loan.loanBalance = loan.loanBalance - collection.paymentCollection;
+            loan.noOfPayments = loan.noOfPayments + 1;
+        } else {
+            loan.mispayments = loan.mispayments ? loan.mispayments + 1 : loan.mispayments;
+        }
+        loan.lastUpdated = moment().format('YYYY-MM-DD');
 
         delete loan._id;
         await db.collection('loans').updateOne(

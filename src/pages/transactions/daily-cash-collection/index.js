@@ -9,7 +9,7 @@ import { setGroupList } from "@/redux/actions/groupActions";
 import { formatPricePhp, UppercaseFirstLetter } from "@/lib/utils";
 import { setBranchList } from "@/redux/actions/branchActions";
 import moment from 'moment';
-import { setCashCollection, setCashCollectionGroup, setCashCollectionList } from "@/redux/actions/cashCollectionActions";
+import { setCashCollectionList } from "@/redux/actions/cashCollectionActions";
 import DetailsHeader from "@/components/transactions/DetailsHeaderMain";
 import { setUserList } from "@/redux/actions/userActions";
 import TableComponent, { SelectColumnFilter } from "@/lib/table";
@@ -17,12 +17,10 @@ import TableComponent, { SelectColumnFilter } from "@/lib/table";
 const DailyCashCollectionPage = () => {
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
-    const groupList = useSelector(state => state.group.list);
     const branchList = useSelector(state => state.branch.list);
     const [currentDate, setCurrentDate] = useState(moment(new Date()).format('YYYY-MM-DD'));
     const cashCollectionList = useSelector(state => state.cashCollection.main);
     const [loading, setLoading] = useState(true);
-    const [currentCollection, setCurrentCollection] = useState([]);
 
     const router = useRouter();
 
@@ -53,14 +51,13 @@ const DailyCashCollectionPage = () => {
     }
 
     const getListGroup = async () => {
-        const currentDay = moment(new Date()).format('dddd').toLowerCase();
-        let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list-by-group-day'
+        let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list-by-group-occurence'
         if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
-            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id, day: currentDay, occurence: 'daily' });
+            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id, occurence: 'daily' });
         } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
-            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, day: currentDay, occurence: 'daily' });
+            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, occurence: 'daily' });
         } else {
-            url = url + '?' + new URLSearchParams({ day: currentDay, occurence: 'daily' });
+            url = url + '?' + new URLSearchParams({ occurence: 'daily' });
         }
 
         const response = await fetchWrapper.get(url);
@@ -111,8 +108,7 @@ const DailyCashCollectionPage = () => {
     }
 
     const getCashCollections = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/get-by-date';
-
+        let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/get-all-loans-per-group';
         if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
             url = url + '?' + new URLSearchParams({ date: currentDate, mode: 'daily', loId: currentUser._id });
         } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
@@ -125,65 +121,55 @@ const DailyCashCollectionPage = () => {
 
         const response = await fetchWrapper.get(url);
         if (response.success) {
-            dispatch(setCashCollection(response.data));
-
-            // aggregation for cashcollection by group list
             let collectionData = [];
             response.data && response.data.map(cc => {
-                const groupExist = collectionData.find(c => c.groupId === cc.groupId);
-                if (groupExist) {
-                    const index = collectionData.indexOf(groupExist);
-                    let existing = {...collectionData[index]};
-                    existing.noOfClients = cc.paymentCollection > 0 ? existing.noOfClients + 1 : existing.noOfClients;
-                    existing.mispayments = cc.mispayment ? existing.mispayments + 1 : existing.mispayments;
-                    existing.loanTarget = existing.loanTarget + cc.activeLoan;
-                    existing.collection = existing.collection + cc.paymentCollection;
-                    existing.excess = existing.excess + cc.excess;
-                    existing.total = existing.total + cc.paymentCollection;
-
-                    collectionData[index] = existing;
-                } else {
-                    const group = groupList.find(g => g._id === cc.groupId);
-
-                    if (group) {
-                        collectionData.push({
-                            groupId: group._id,
-                            group: group.name,
-                            totalNoOfGroup: group.noOfClients,
-                            noOfClients: cc.paymentCollection > 0 ? 1 : 0,
-                            mispayments: cc.mispayment ? 1 : 0,
-                            loanTarget: cc.activeLoan,
-                            collection: cc.paymentCollection,
-                            excess: cc.excess,
-                            total: cc.paymentCollection
-                        });
-                    }
+                let collection = {
+                    groupId: cc._id,
+                    group: cc.name,
+                    noOfClients: '-',
+                    totalReleases: 0,
+                    totalLoanBalance: 0,
+                    loanTarget: '-',
+                    excess: '-',
+                    total: '-',
+                    collection: '-',
+                    mispayments: 0,
+                };
+                if (cc.cashCollections.length > 0) {
+                    const loanNoOfClients = cc.loans.length > 0 ? cc.loans[0].noOfClients : 0;
+                    collection = {
+                        groupId: cc._id,
+                        group: cc.name,
+                        noOfClients: cc.cashCollections[0].noOfClients ? cc.cashCollections[0].noOfClients + '/' + loanNoOfClients : 0 + '/' + cc.loans[0].noOfClients,
+                        mispayments: cc.cashCollections[0].mispayments ? cc.cashCollections[0].mispayments : 0,
+                        loanTarget: cc.cashCollections[0].loanTarget ? formatPricePhp(cc.cashCollections[0].loanTarget) : 0.00,
+                        collection: cc.cashCollections[0].collection ? formatPricePhp(cc.cashCollections[0].collection) : 0.00,
+                        excess: cc.cashCollections[0].excess ? formatPricePhp(cc.cashCollections[0].excess) : 0.00,
+                        total: cc.cashCollections[0].total ? formatPricePhp(cc.cashCollections[0].total) : 0.00,
+                        totalReleases: cc.loans.length > 0 ? formatPricePhp(cc.loans[0].totalRelease) : 0.00,
+                        totalLoanBalance: cc.loans.length > 0 ? formatPricePhp(cc.loans[0].totalLoanBalance) : 0.00
+                    };
+                    collectionData.push(collection);
+                    return false;
+                } else if (cc.loans.length > 0) {
+                    collection = {
+                        groupId: cc._id,
+                        group: cc.name,
+                        noOfClients: cc.loans[0].noOfClients ? 0 + '/' + cc.loans[0].noOfClients : 0 + '/' + 0,
+                        mispayments: collection.mispayments,
+                        loanTarget: cc.loans[0].loanTarget ? formatPricePhp(cc.loans[0].loanTarget) : '-',
+                        collection: cc.loans[0].collection ? formatPricePhp(cc.loans[0].collection) : '-',
+                        excess: cc.loans[0].excess ? formatPricePhp(cc.loans[0].excess) : '-',
+                        total: cc.loans[0].total ? formatPricePhp(cc.loans[0].total) : '-',
+                        totalReleases: cc.loans[0].totalRelease ? formatPricePhp(cc.loans[0].totalRelease) : '-',
+                        totalLoanBalance: cc.loans[0].totalLoanBalance ? formatPricePhp(cc.loans[0].totalLoanBalance) : '-'
+                    };
+                    collectionData.push(collection);
                 }
-            });
 
-            collectionData.map(cc => {
-                cc.noOfClients  = cc.noOfClients + '/' + cc.totalNoOfGroup;
-                cc.loanTarget = formatPricePhp(cc.loanTarget);
-                cc.collection = formatPricePhp(cc.collection);
-                cc.excess = formatPricePhp(cc.excess);
-                cc.total = formatPricePhp(cc.total);
-            });
-
-            groupList.map(group => {
-                const groupExist = collectionData.find(c => c.groupId === group._id);
-
-                if (!groupExist) {
-                    collectionData.push({
-                        groupId: group._id,
-                        group: group.name,
-                        noOfClients: `0/${group.noOfClients}`,
-                        mispayments: 0,
-                        loanTarget: formatPricePhp(0),
-                        collection: formatPricePhp(0),
-                        excess: formatPricePhp(0),
-                        total: formatPricePhp(0)
-                    });
-                }
+                // if (cc.loans.length > 0) {
+                    // collection.mispayments = cc.loans[0].mispayments ? cc.loans[0].mispayments : '-';
+                // }
             });
 
             dispatch(setCashCollectionList(collectionData));
@@ -193,7 +179,6 @@ const DailyCashCollectionPage = () => {
 
         setLoading(false);
     }
-
 
     const handleRowClick = (selected) => {
         router.push('./daily-cash-collection/' + selected.groupId);
@@ -219,25 +204,25 @@ const DailyCashCollectionPage = () => {
             filter: 'includes'
         },
         {
-            Header: "Mispayments",
-            accessor: 'mispayments',
+            Header: "Total Releases",
+            accessor: 'totalReleases',
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
         {
-            Header: "Loan Target", // sum of all current collection of the day
+            Header: "Loan Balance",
+            accessor: 'totalLoanBalance',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "Loan Target",
             accessor: 'loanTarget',
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
         {
-            Header: "Collection", // sum of all collected
-            accessor: 'collection',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "Excess", // sum of all excess 
+            Header: "Excess",
             accessor: 'excess',
             Filter: SelectColumnFilter,
             filter: 'includes'
@@ -254,7 +239,18 @@ const DailyCashCollectionPage = () => {
     useEffect(() => {
         let mounted = true;
 
-        mounted && getListBranch();
+        const checkAndUpdateLoanStatus = async () => {
+            const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/check-loan-payment');
+            if (response.success) {
+                // nothing to do here...
+            } else {
+                toast.error('Error retrieving branches list.');
+            }
+
+            setLoading(false);
+        }
+        
+        mounted && getListBranch() && checkAndUpdateLoanStatus();
 
         return () => {
             mounted = false;
@@ -265,37 +261,9 @@ const DailyCashCollectionPage = () => {
         if (branchList) {
             getListGroup();
             getListUser();
-        }
-    }, [branchList]);
-
-    useEffect(() => {
-        if (groupList) {
             getCashCollections();
         }
-    }, [groupList]);
-
-    useEffect(() => {
-        let cashCollectionData = [];
-        if (cashCollectionList.length > 0) {
-            // process here...
-            cashCollectionData = cashCollectionList; // temp
-        } else {
-            groupList && groupList.map(group => {
-                cashCollectionData.push({
-                    groupId: group._id,
-                    group: group.name,
-                    noOfClients: `0/${group.noOfClients}`,
-                    mispayments: 0,
-                    loanTarget: '0.00',
-                    collection: '0.00',
-                    excess: '0.00',
-                    total: '0.00'
-                });
-            });
-        }
-
-        setCurrentCollection(cashCollectionData);
-    }, [cashCollectionList, groupList]);
+    }, [branchList]);
 
     return (
         <Layout header={false} noPad={true}>
@@ -305,9 +273,9 @@ const DailyCashCollectionPage = () => {
                 </div>
             ) : (
                 <div className="overflow-x-auto">
-                    <DetailsHeader pageTitle='Daily Cash Transactions' mode={'daily'} currentDate={moment(currentDate).format('dddd, MMMM DD, YYYY')} />
-                    <div className="p-4 mt-[8rem]">
-                        <TableComponent columns={columns} data={currentCollection} showFilters={false} hasActionButtons={false} rowClick={handleRowClick} />
+                    <DetailsHeader pageTitle='Daily Cash Collections' mode={'daily'} currentDate={moment(currentDate).format('dddd, MMMM DD, YYYY')} />
+                    <div className={`p-4 ${currentUser.role.rep < 4 ? 'mt-[8rem]' : 'mt-[6rem]'} `}>
+                        <TableComponent columns={columns} data={cashCollectionList} showFilters={false} hasActionButtons={false} rowClick={handleRowClick} />
                     </div>
                 </div>
             )}

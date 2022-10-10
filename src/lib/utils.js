@@ -1,3 +1,5 @@
+import moment from 'moment';
+
 export const FileExists = (url) => {
     if (!url) {
         return;    
@@ -52,3 +54,30 @@ export const formatPricePhp = (num) => {
         new Intl.NumberFormat('fil-PH', { style: 'currency', currency: 'PHP' }).format(0);
     }
 }
+
+export const getEndDate = (date, days) => {
+    date = moment(date); // use a clone
+    while (days > 0) {
+       date = date.add(1, 'days');
+       // decrease "days" only if it's a weekday.
+       if (date.isoWeekday() !== 6 && date.isoWeekday() !== 7) {
+          days -= 1;
+       }
+    }
+    return date.format('YYYY-MM-DD');
+ }
+
+ export const getWeekDaysCount = (startDate, endDate) => {
+    let count = 0;
+    let curDate = +startDate;
+    while (curDate <= +endDate) {
+       const dayOfWeek = new Date(curDate).getDay();
+       const isWeekend = (dayOfWeek === 6) || (dayOfWeek === 0);
+       if (!isWeekend) {
+          count++;
+       }
+       curDate = curDate + 24 * 60 * 60 * 1000
+    }
+    
+    return count;
+ }

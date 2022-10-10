@@ -111,18 +111,25 @@
     color: rgb(22 101 52 / var(--tw-text-opacity));
 }
 
-.status-pill-inactive {
+.status-pill-pending {
     --tw-bg-opacity: 1;
     background-color: rgb(254 249 195 / var(--tw-bg-opacity));
     --tw-text-opacity: 1;
     color: rgb(133 77 14 / var(--tw-text-opacity));
 }
 
-.status-pill-offline {
+.status-pill-rejected {
     --tw-bg-opacity: 1;
     background-color: rgb(254 226 226 / var(--tw-bg-opacity));
     --tw-text-opacity: 1;
     color: rgb(153 27 27 / var(--tw-text-opacity));
+}
+
+.status-pill-inactive {
+    --tw-bg-opacity: 0.2;
+    background-color: rgb(107 114 128 / var(--tw-bg-opacity));
+    --tw-text-opacity: 1;
+    color: rgb(255,255,255 / var(--tw-text-opacity));
 }
 
 /** SELECT PILL **/
