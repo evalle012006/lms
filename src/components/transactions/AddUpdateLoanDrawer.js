@@ -34,6 +34,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         principalLoan: loan.principalLoan,
         activeLoan: loan.activeLoan,
         loanBalance: loan.loanBalance,
+        amountRelease: loan.amountRelease,
         noOfPayments: loan.noOfPayments,
         coMaker: loan.coMaker,
         status: loan.status,
@@ -65,22 +66,25 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         values.branchId = branch._id;
         values.brancName = branch.name;
 
-        if (mode === 'add') {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/save/';
-
-            values.lastUpdated = null;  // use only when updating the mispayments
-            values.admissionDate = moment(values.admissionDate).format('YYYY-MM-DD');
-
+        if (values.status !== 'active') {
             if (group.occurence === 'weekly') {
                 values.mcbu = 50;
                 values.activeLoan = (values.principalLoan * 1.20) / 24;
             } else if (group.occurence === 'daily') {
                 values.activeLoan = (values.principalLoan * 1.20) / 60;
             }
-
+    
             values.loanBalance = values.principalLoan * 1.20; // initial
+            values.amountRelease = values.loanBalance;
             values.loanCycle = 1;
             values.noOfPayments = 0;
+        }
+
+        if (mode === 'add') {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/save/';
+
+            values.lastUpdated = null;  // use only when updating the mispayments
+            values.admissionDate = moment(values.admissionDate).format('YYYY-MM-DD');
             values.status = 'pending';
 
             fetchWrapper.post(apiUrl, values)
@@ -211,6 +215,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                             value={values.principalLoan}
                                             onChange={handleChange}
                                             label="Principal Loan"
+                                            disabled={values.status === 'active'}
                                             placeholder="Enter Principal Loan"
                                             setFieldValue={setFieldValue}
                                             errors={touched.principalLoan && errors.principalLoan ? errors.principalLoan : undefined} />

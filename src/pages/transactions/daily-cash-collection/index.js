@@ -127,22 +127,27 @@ const DailyCashCollectionPage = () => {
                     groupId: cc._id,
                     group: cc.name,
                     noOfClients: '-',
-                    mispayments: 0,
+                    totalReleases: 0,
+                    totalLoanBalance: 0,
                     loanTarget: '-',
-                    collection: '-',
                     excess: '-',
-                    total: '-'
+                    total: '-',
+                    collection: '-',
+                    mispayments: 0,
                 };
                 if (cc.cashCollections.length > 0) {
+                    const loanNoOfClients = cc.loans.length > 0 ? cc.loans[0].noOfClients : 0;
                     collection = {
                         groupId: cc._id,
                         group: cc.name,
-                        noOfClients: cc.cashCollections[0].noOfClients ? cc.cashCollections[0].noOfClients + '/' + cc.noOfClients : 0 + '/' + cc.noOfClients,
+                        noOfClients: cc.cashCollections[0].noOfClients ? cc.cashCollections[0].noOfClients + '/' + loanNoOfClients : 0 + '/' + cc.loans[0].noOfClients,
                         mispayments: cc.cashCollections[0].mispayments ? cc.cashCollections[0].mispayments : 0,
                         loanTarget: cc.cashCollections[0].loanTarget ? formatPricePhp(cc.cashCollections[0].loanTarget) : 0.00,
                         collection: cc.cashCollections[0].collection ? formatPricePhp(cc.cashCollections[0].collection) : 0.00,
                         excess: cc.cashCollections[0].excess ? formatPricePhp(cc.cashCollections[0].excess) : 0.00,
-                        total: cc.cashCollections[0].total ? formatPricePhp(cc.cashCollections[0].total) : 0.00
+                        total: cc.cashCollections[0].total ? formatPricePhp(cc.cashCollections[0].total) : 0.00,
+                        totalReleases: cc.loans.length > 0 ? formatPricePhp(cc.loans[0].totalRelease) : 0.00,
+                        totalLoanBalance: cc.loans.length > 0 ? formatPricePhp(cc.loans[0].totalLoanBalance) : 0.00
                     };
                     collectionData.push(collection);
                     return false;
@@ -150,12 +155,14 @@ const DailyCashCollectionPage = () => {
                     collection = {
                         groupId: cc._id,
                         group: cc.name,
-                        noOfClients: cc.loans[0].noOfClients ? cc.loans[0].noOfClients + '/' + cc.noOfClients : 0 + '/' + cc.noOfClients,
+                        noOfClients: cc.loans[0].noOfClients ? 0 + '/' + cc.loans[0].noOfClients : 0 + '/' + 0,
                         mispayments: collection.mispayments,
                         loanTarget: cc.loans[0].loanTarget ? formatPricePhp(cc.loans[0].loanTarget) : '-',
                         collection: cc.loans[0].collection ? formatPricePhp(cc.loans[0].collection) : '-',
                         excess: cc.loans[0].excess ? formatPricePhp(cc.loans[0].excess) : '-',
-                        total: cc.loans[0].total ? formatPricePhp(cc.loans[0].total) : '-'
+                        total: cc.loans[0].total ? formatPricePhp(cc.loans[0].total) : '-',
+                        totalReleases: cc.loans[0].totalRelease ? formatPricePhp(cc.loans[0].totalRelease) : '-',
+                        totalLoanBalance: cc.loans[0].totalLoanBalance ? formatPricePhp(cc.loans[0].totalLoanBalance) : '-'
                     };
                     collectionData.push(collection);
                 }
@@ -197,25 +204,25 @@ const DailyCashCollectionPage = () => {
             filter: 'includes'
         },
         {
-            Header: "Mispayments",
-            accessor: 'mispayments',
+            Header: "Total Releases",
+            accessor: 'totalReleases',
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
         {
-            Header: "Loan Target", // sum of all current collection of the day
+            Header: "Loan Balance",
+            accessor: 'totalLoanBalance',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "Loan Target",
             accessor: 'loanTarget',
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
         {
-            Header: "Collection", // sum of all collected
-            accessor: 'collection',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "Excess", // sum of all excess 
+            Header: "Excess",
             accessor: 'excess',
             Filter: SelectColumnFilter,
             filter: 'includes'
@@ -267,7 +274,7 @@ const DailyCashCollectionPage = () => {
             ) : (
                 <div className="overflow-x-auto">
                     <DetailsHeader pageTitle='Daily Cash Collections' mode={'daily'} currentDate={moment(currentDate).format('dddd, MMMM DD, YYYY')} />
-                    <div className="p-4 mt-[8rem]">
+                    <div className={`p-4 ${currentUser.role.rep < 4 ? 'mt-[8rem]' : 'mt-[6rem]'} `}>
                         <TableComponent columns={columns} data={cashCollectionList} showFilters={false} hasActionButtons={false} rowClick={handleRowClick} />
                     </div>
                 </div>

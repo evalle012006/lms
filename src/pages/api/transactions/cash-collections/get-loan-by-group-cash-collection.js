@@ -131,7 +131,11 @@ async function getLoanWithCashCollection(req, res) {
         cashCollection = await db
             .collection('loans')
             .aggregate([
-                { $match: { groupId: groupId, status: 'active' } },
+                { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
+                // { $match: { groupId: groupId, status: 'active',  } },
+                { $match: {$expr: { $and: [
+                    {$eq: ['$groupId', groupId]}, {$eq: ['$status', 'active']}, {$lte: ['$startDateObj', '$currentDateObj']}
+                ]}} },
                 {
                     $addFields: {
                         "clientIdObj": { $toObjectId: "$clientId" },

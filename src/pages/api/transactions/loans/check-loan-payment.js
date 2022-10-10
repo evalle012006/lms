@@ -37,8 +37,7 @@ async function processActiveLoan(req, res) {
                             updateLoan(temp);
                             // automate dilenquent clients if loan is not paid for how many days?
                         } else {
-                            const dateGranted = moment(loan.dateGranted).add(1, 'days').format('YYYY-MM-DD');
-                            const diff = getWeekDaysCount(new Date(dateGranted), new Date());
+                            const diff = getWeekDaysCount(new Date(loan.startDate), new Date());
                             if (diff > 0) {
                                 temp.mispayments = diff;
                                 temp.lastUpdated = moment().format('YYYY-MM-DD');
@@ -50,8 +49,7 @@ async function processActiveLoan(req, res) {
                 }
             } else {
                 // automate mispayments
-                const dateGranted = moment(loan.dateGranted).add(1, 'days').format('YYYY-MM-DD');
-                const diff = getWeekDaysCount(new Date(dateGranted), new Date());
+                const diff = getWeekDaysCount(new Date(loan.startDate), new Date());
                 if (diff > 0) {
                     temp.mispayments = diff;
                     temp.lastUpdated = moment().format('YYYY-MM-DD');

@@ -138,16 +138,10 @@ const LoanApplicationPage = () => {
         setLoading(false);
     }
 
-    const statuses = [
-        {label: 'Pending', value: 'pending'},
-        {label: 'Active', value: 'active'},
-        {label: 'Inactive', value: 'inactive'}
-    ];
-
     const updateClientStatus = async (data, updatedValue) => {
         setLoading(true);
+        const group = data.group;
         let loanData = {...data};
-        const group = loanData.group.length > 0 && loanData.group[0];
         delete loanData.group;
         delete loanData.client;
         delete loanData.branch;
@@ -159,6 +153,7 @@ const LoanApplicationPage = () => {
         if (loanData.status === 'pending' && updatedValue === 'active') {
             loanData.dateGranted = moment(new Date()).format('YYYY-MM-DD');
             loanData.status = updatedValue;
+            loanData.startDate = moment(new Date()).add(1, 'days').format('YYYY-MM-DD');
             loanData.endDate = getEndDate(loanData.dateGranted, group.occurence === 'daily' ? 60 : 24 );
             loanData.mispayments = 0;
 
