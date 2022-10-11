@@ -97,11 +97,53 @@ async function updateLoan(collection) {
         } else {
             loan.mispayments = loan.mispayments ? loan.mispayments + 1 : loan.mispayments;
         }
+
+        if (loan.loanBalance <= 0) {
+            loan.status = 'completed';
+            loan.history = {
+                activeLoan: loan.activeLoan,
+                amountRelease: loan.amountRelease,
+                principalLoan: loan.principalLoan
+            }
+            // so that it will not be added in group summary
+            loan.activeLoan = 0;
+            loan.amountRelease = 0;
+            loan.principalLoan = 0;
+            // updateGroup(loan);
+        }
+
         loan.lastUpdated = moment().format('YYYY-MM-DD');
 
         delete loan._id;
         await db.collection('loans').updateOne(
             { _id: ObjectId(collection.loanId) }, 
+            {
+                $set: { ...loan }
+            }, 
+            { upsert: false }
+        );
+    }
+}
+
+async function updateGroup(loan) {
+    const { db } = await connectToDatabase();
+    const ObjectId = require('mongodb').ObjectId;
+
+    let group = await db.collection('groups').find({ _id: ObjectId(loan.groupId) }).toArray();
+    if (group.length > 0) {
+        group = group[0];
+
+        if (group.status === 'full') {
+            group.status = 'available';
+        }
+
+        group.availableSlots.push(loan.slotNo);
+        group.availableSlots.sort((a, b) => { return a - b; });
+        group.noOfClients = group.noOfClients - 1;
+
+        delete group._id;
+        await db.collection('groups').updateOne(
+            {  _id: ObjectId(loan.groupId) },
             {
                 $set: { ...loan }
             }, 

@@ -81,3 +81,7 @@ export const getEndDate = (date, days) => {
     
     return count;
  }
+
+ export const isBlank = (str) => {
+    return (!str || /^\s*$/.test(str));
+}

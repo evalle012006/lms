@@ -19,7 +19,11 @@ async function getLoanWithCashCollection(req, res) {
         cashCollection = await db
             .collection('loans')
             .aggregate([
-                { $match: { branchId: branchId, status: 'active' } },
+                { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
+                { $match: {$expr: { $and: [ { $or: [{$eq: ['$status', 'active']}, {$eq: ['$status', 'completed']}] },
+                     {$eq: ['$branchId', branchId]}, {$lte: ['$startDateObj', '$currentDateObj']}
+                ]}} },
+                // { $match: { branchId: branchId, status: 'active' } },
                 {
                     $addFields: {
                         "clientIdObj": { $toObjectId: "$clientId" },
@@ -75,7 +79,11 @@ async function getLoanWithCashCollection(req, res) {
         cashCollection = await db
             .collection('loans')
             .aggregate([
-                { $match: { status: 'active' } },
+                { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
+                { $match: {$expr: { $and: [ { $or: [{$eq: ['$status', 'active']}, {$eq: ['$status', 'completed']}] },
+                     {$lte: ['$startDateObj', '$currentDateObj']}
+                ]}} },
+                // { $match: { status: 'active' } },
                 {
                     $addFields: {
                         "clientIdObj": { $toObjectId: "$clientId" },
@@ -134,7 +142,7 @@ async function getLoanWithCashCollection(req, res) {
                 { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
                 // { $match: { groupId: groupId, status: 'active',  } },
                 { $match: {$expr: { $and: [
-                    {$eq: ['$groupId', groupId]}, {$eq: ['$status', 'active']}, {$lte: ['$startDateObj', '$currentDateObj']}
+                    {$eq: ['$groupId', groupId]}, {$or: [{$eq: ['$status', 'active']}, {$eq: ['$status', 'completed']}]}, {$lte: ['$startDateObj', '$currentDateObj']}
                 ]}} },
                 {
                     $addFields: {
@@ -191,7 +199,10 @@ async function getLoanWithCashCollection(req, res) {
         cashCollection = await db
             .collection('loans')
             .aggregate([
-                { $match: { status: 'active' } },
+                { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
+                { $match: {$expr: { $and: [ { $or: [{$eq: ['$status', 'active']}, {$eq: ['$status', 'completed']}] },
+                     {$lte: ['$startDateObj', '$currentDateObj']}
+                ]}} },
                 {
                     $addFields: {
                         "clientIdObj": { $toObjectId: "$clientId" },

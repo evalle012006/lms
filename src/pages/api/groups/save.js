@@ -1,6 +1,6 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
-import { findUserByEmail } from './index';
+import moment from 'moment'
 
 export default apiHandler({
     post: save
@@ -47,7 +47,7 @@ async function save(req, res) {
             capacity: occurence === 'daily' ? 25 : 30,
             noOfClients: 0,
             availableSlots: availableSlots,
-            dateAdded: new Date()
+            dateAdded: moment(new Date()).format('YYYY-MM-DD')
         });
 
         response = {

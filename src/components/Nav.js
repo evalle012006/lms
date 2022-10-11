@@ -229,20 +229,20 @@ const MenuItems = [
                 active: false,
                 hasSub: false
             },
-            {
-                label: "Roles",
-                url: "/settings/roles",
-                icon: {
-                    active: (
-                        <UserCircleIcon className="text-gray-800 w-5 h-5" />
-                    ),
-                    notActive: (
-                        <UserCircleIcon className="text-white w-5 h-5" />
-                    ),
-                },
-                active: false,
-                hasSub: false
-            },
+            // {
+            //     label: "Roles",
+            //     url: "/settings/roles",
+            //     icon: {
+            //         active: (
+            //             <UserCircleIcon className="text-gray-800 w-5 h-5" />
+            //         ),
+            //         notActive: (
+            //             <UserCircleIcon className="text-white w-5 h-5" />
+            //         ),
+            //     },
+            //     active: false,
+            //     hasSub: false
+            // },
             {
                 label: "System",
                 url: "/settings/system",
@@ -350,9 +350,9 @@ const NavComponent = () => {
                 if (menu.label === 'System') {
                     temp.hidden = true;
                 }
-                if (menu.label === 'Roles') {
-                    temp.hidden = true;
-                }
+                // if (menu.label === 'Roles') {
+                //     temp.hidden = true;
+                // }
             }  else if (userState.role.rep === 4) {
                 if (menu.label === 'Branches') {
                     temp.hidden = true;

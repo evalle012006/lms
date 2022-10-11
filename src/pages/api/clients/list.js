@@ -46,6 +46,9 @@ async function list(req, res) {
                         from: "groups",
                         localField: "groupIdObj",
                         foreignField: "_id",
+                            pipeline: [
+                                { $match: { "status": "active" } }
+                            ],
                         as: "group"
                     }
                 },
@@ -132,6 +135,9 @@ async function list(req, res) {
                         from: "loans",
                         localField: "clientId",
                         foreignField: "clientId",
+                        pipeline: [
+                            { $match: { "status": "active" } }
+                        ],
                         as: "loans"
                     }
                 },

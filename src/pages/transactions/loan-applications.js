@@ -172,7 +172,7 @@ const LoanApplicationPage = () => {
                 });
         } else {
             loanData.status = updatedValue;
-            loanData.slotNo = null;
+            // loanData.slotNo = null;
             
             await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/approved-reject-loan', loanData)
                 .then(response => {
@@ -303,12 +303,12 @@ const LoanApplicationPage = () => {
                     Filter: SelectColumnFilter,
                     filter: 'includes'
                 },
-                {
-                    Header: "MCBU",
-                    accessor: 'mcbuStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
+                // {
+                //     Header: "MCBU",
+                //     accessor: 'mcbuStr',
+                //     Filter: SelectColumnFilter,
+                //     filter: 'includes'
+                // },
                 {
                     Header: "Principal Loan",
                     accessor: 'principalLoanStr',

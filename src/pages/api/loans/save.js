@@ -1,6 +1,6 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
-import { findUserByEmail } from './index';
+import moment from 'moment'
 
 export default apiHandler({
     post: save
@@ -28,7 +28,7 @@ async function save(req, res) {
     // } else {
         const loan = await db.collection('loans').insertOne({
             ...loanData,
-            dateAdded: new Date()
+            dateAdded: moment(new Date()).format('YYYY-MM-DD')
         });
 
         response = {

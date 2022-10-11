@@ -56,7 +56,7 @@ async function getAllLoansPerGroup(req, res) {
                         pipeline: [
                             { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
                             { $match: {$expr: { $and: [
-                                {$eq: ['$status', 'active']}, {$lte: ['$startDateObj', '$currentDateObj']}
+                                {$or: [{$eq: ['$status', 'active']}, {$eq: ['$status', 'completed']}]}, {$lte: ['$startDateObj', '$currentDateObj']}
                             ]}} },
                             { $group: { 
                                     _id: '$$groupName',
@@ -118,7 +118,7 @@ async function getAllLoansPerGroup(req, res) {
                         pipeline: [
                             { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
                             { $match: {$expr: { $and: [
-                                {$eq: ['$status', 'active']}, {$lte: ['$startDateObj', '$currentDateObj']}
+                                {$or: [{$eq: ['$status', 'active']}, {$eq: ['$status', 'completed']}]}, {$lte: ['$startDateObj', '$currentDateObj']}
                             ]}} },
                             { $group: { 
                                     _id: '$$groupName',
@@ -180,7 +180,7 @@ async function getAllLoansPerGroup(req, res) {
                         pipeline: [
                             { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
                             { $match: {$expr: { $and: [
-                                {$eq: ['$status', 'active']}, {$lte: ['$startDateObj', '$currentDateObj']}
+                                {$or: [{$eq: ['$status', 'active']}, {$eq: ['$status', 'completed']}]}, {$lte: ['$startDateObj', '$currentDateObj']}
                             ]}} },
                             { $group: { 
                                     _id: '$$groupName',
@@ -242,7 +242,7 @@ async function getAllLoansPerGroup(req, res) {
                         pipeline: [
                             { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
                             { $match: {$expr: { $and: [
-                                {$eq: ['$status', 'active']}, {$lte: ['$startDateObj', '$currentDateObj']}
+                                {$or: [{$eq: ['$status', 'active']}, {$eq: ['$status', 'completed']}]}, {$lte: ['$startDateObj', '$currentDateObj']}
                             ]}} },
                             { $group: { 
                                     _id: '$$groupName',
