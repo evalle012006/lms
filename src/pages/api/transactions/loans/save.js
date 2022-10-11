@@ -1,6 +1,6 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
-import { findUserByEmail } from './index';
+import moment from 'moment'
 
 export default apiHandler({
     post: save
@@ -28,8 +28,10 @@ async function save(req, res) {
     } else {
         const loan = await db.collection('loans').insertOne({
             ...loanData,
-            dateGranted: new Date()
+            dateGranted: moment(new Date()).format('YYYY-MM-DD')
         });
+
+        updateGroup(loanData);
 
         response = {
             success: true,
@@ -40,4 +42,31 @@ async function save(req, res) {
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')
         .end(JSON.stringify(response));
+}
+
+
+async function updateGroup(loan) {
+    const { db } = await connectToDatabase();
+    const ObjectId = require('mongodb').ObjectId;
+
+    let group = await db.collection('groups').find({ _id: ObjectId(loan.groupId) }).toArray();
+    if (group.length > 0) {
+        group = group[0];
+
+        group.availableSlots = group.availableSlots.filter(s => s !== loan.slotNo);
+        group.noOfClients = group.noOfClients + 1;
+
+        if (group.noOfClients === group.capacity) {
+            group.status = 'full';
+        }
+
+        delete group._id;
+        await db.collection('groups').updateOne(
+            {  _id: ObjectId(loan.groupId) },
+            {
+                $set: { ...group }
+            }, 
+            { upsert: false }
+        );
+    }
 }

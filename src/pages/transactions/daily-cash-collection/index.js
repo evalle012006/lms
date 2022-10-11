@@ -204,19 +204,19 @@ const DailyCashCollectionPage = () => {
             filter: 'includes'
         },
         {
-            Header: "Total Releases",
+            Header: "Total Loan Releases",
             accessor: 'totalReleases',
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
         {
-            Header: "Loan Balance",
+            Header: "Total Loan Balance",
             accessor: 'totalLoanBalance',
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
         {
-            Header: "Loan Target",
+            Header: "Target Loan Collection",
             accessor: 'loanTarget',
             Filter: SelectColumnFilter,
             filter: 'includes'
@@ -228,7 +228,7 @@ const DailyCashCollectionPage = () => {
             filter: 'includes'
         },
         {
-            Header: "Total",
+            Header: "Total Loan Collection",
             accessor: 'total',
             Filter: SelectColumnFilter,
             filter: 'includes'

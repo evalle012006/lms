@@ -21,6 +21,9 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     const branchList = useSelector(state => state.branch.list);
     const groupList = useSelector(state => state.group.list);
     const clientList = useSelector(state => state.client.list);
+    const [selectedGroup, setSelectedGroup] = useState();
+    const [slotNo, setSlotNo] = useState();
+    const [slotNumber, setSlotNumber] = useState([]);
 
     const initialValues = {
         branchId: loan.branchId,
@@ -53,18 +56,54 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             .positive()
             .moreThan(0, 'Princal loan should be greater than 0')
             .required('Please enter principal loan'),
-        coMaker: yup
-            .string()
-            .required('Please enter co-maker')
+        slotNo: yup
+            .number()
+            .integer()
+            .positive()
+            .required('Please select a slot number'),
+        // coMaker: yup
+        //     .string()
+        //     .required('Please enter co-maker')
     });
+
+    const handleGroupChange = (field, value) => {
+        setLoading(true);
+        const form = formikRef.current;
+        setSelectedGroup(value);
+        const group = groupList.find(g => g._id === value);
+        if (group) {
+            let slotArr = [];
+            group.availableSlots.map(slot => {
+                slotArr.push({
+                    value: slot,
+                    label: slot
+                });
+            });
+
+            setSlotNumber(slotArr);
+        }
+        
+        form.setFieldValue(field, value);
+        setLoading(false);
+    }
+
+    const handleSlotNoChange = (field, value) => {
+        setLoading(true);
+        const form = formikRef.current;
+        setSlotNo(value);
+        form.setFieldValue(field, value);
+        setLoading(false);
+    }
 
     const handleSaveUpdate = (values, action) => {
         setLoading(true);
+        values.groupId = selectedGroup;
         const group = groupList.find(g => g._id === values.groupId);
         values.groupName = group.name;
         const branch = branchList.find(b => b._id === group.branchId);
         values.branchId = branch._id;
         values.brancName = branch.name;
+        values.slotNo = slotNo;
 
         if (values.status !== 'active') {
             if (group.occurence === 'weekly') {
@@ -76,7 +115,6 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     
             values.loanBalance = values.principalLoan * 1.20; // initial
             values.amountRelease = values.loanBalance;
-            values.loanCycle = 1;
             values.noOfPayments = 0;
         }
 
@@ -86,6 +124,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             values.lastUpdated = null;  // use only when updating the mispayments
             values.admissionDate = moment(values.admissionDate).format('YYYY-MM-DD');
             values.status = 'pending';
+            values.loanCycle = 1;
 
             fetchWrapper.post(apiUrl, values)
                 .then(response => {
@@ -97,6 +136,9 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                         toast.success('Loan successfully added.');
                         action.setSubmitting = false;
                         action.resetForm({values: ''});
+                        setSelectedGroup();
+                        setSlotNo();
+                        setSlotNumber();
                         onClose();
                     }
                 }).catch(error => {
@@ -187,13 +229,26 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                         <SelectDropdown
                                             name="groupId"
                                             field="groupId"
-                                            value={values.groupId}
+                                            value={selectedGroup}
                                             label="Group"
                                             options={groupList}
-                                            onChange={setFieldValue}
+                                            onChange={(field, value) => handleGroupChange(field, value)}
                                             onBlur={setFieldTouched}
                                             placeholder="Select Group"
                                             errors={touched.groupId && errors.groupId ? errors.groupId : undefined}
+                                        />
+                                    </div>
+                                    <div className="mt-4">
+                                        <SelectDropdown
+                                            name="slotNo"
+                                            field="slotNo"
+                                            value={slotNo}
+                                            label="Slot Number"
+                                            options={slotNumber}
+                                            onChange={(field, value) => handleSlotNoChange(field, value)}
+                                            onBlur={setFieldTouched}
+                                            placeholder="Select Slot No"
+                                            errors={touched.slotNo && errors.slotNo ? errors.slotNo : undefined}
                                         />
                                     </div>
                                     <div className="mt-4">

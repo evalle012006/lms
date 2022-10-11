@@ -6,7 +6,7 @@ import { useSelector } from "react-redux";
 import Spinner from "../Spinner";
 import moment from 'moment';
 import placeholder from '/public/images/image-placeholder.png';
-import TableComponent, { SelectColumnFilter } from "@/lib/table";
+import TableComponent, { SelectColumnFilter, StatusPill } from "@/lib/table";
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 
 const ClientDetailPage = () => {
@@ -24,6 +24,7 @@ const ClientDetailPage = () => {
         },
         {
             Header: "Loan Status",
+            Cell: StatusPill,
             accessor: 'loanStatus',
             Filter: SelectColumnFilter,
             filter: 'includes'

@@ -1,6 +1,6 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
-import { findUserByEmail } from './index';
+import moment from 'moment'
 
 export default apiHandler({
     post: save
@@ -37,7 +37,7 @@ async function save(req, res) {
             logged: false,
             // status: 'verification',
             lastLogin: null,
-            dateAdded: new Date,
+            dateAdded: moment(new Date).format('YYYY-MM-DD'),
             role: JSON.parse(role),
             loNo: loNo,
             designatedBranch: designatedBranch

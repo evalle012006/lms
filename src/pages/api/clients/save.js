@@ -1,5 +1,6 @@
 import { apiHandler } from "@/services/api-handler";
 import { connectToDatabase } from "@/lib/mongodb";
+import moment from 'moment'
 
 export default apiHandler({
   post: save,
@@ -16,7 +17,7 @@ async function save(req, res) {
   // should check if the full name exist already
     const client = await db.collection("client").insertOne({
       ...clientData,
-      dateAdded: new Date(),
+      dateAdded: moment(new Date()).format('YYYY-MM-DD')
     });
 
     response = {

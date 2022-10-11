@@ -252,6 +252,7 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">{ cc.excessStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">{ cc.totalStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">{ cc.targetCollectionStr }</td>
+                                                {/** if loan status is completed, hide the payment collection input and show Reloan and Close **/}
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">
                                                     <input type="number" name={cc.clientId} onBlur={(e) => handlePaymentCollectionChange(e, index, 'amount')}
                                                         onClick={(e) => e.stopPropagation()} defaultValue={cc.paymentCollection}

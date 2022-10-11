@@ -28,18 +28,20 @@ async function updateLoan(req, res) {
                 message: `"${groupData.name}" is already full. Please select another group.`
             };
         } else {
-            if (loan.status === 'active') {
-                loan.slotNo = groupData.availableSlots.shift();
-                groupData.noOfClients = noOfClients + 1;
+            // if (loan.status === 'active') {
+            //     loan.slotNo = groupData.availableSlots.shift();
+            //     groupData.noOfClients = noOfClients + 1;
     
-                if (noOfClients === capacity) {
-                    groupData.status = 'full';
-                }
-            } else {
+            //     if (noOfClients === capacity) {
+            //         groupData.status = 'full';
+            //     }
+            // } 
+            if (loan.status === 'reject') {
                 if (!groupData.availableSlots.includes(loan.slotNo)) {
                     groupData.availableSlots.push(loan.slotNo);
                     groupData.availableSlots.sort((a, b) => { return a - b; });
                     groupData.noOfClients = groupData.noOfClients - 1;
+                    groupData.status = groupData.status === 'full' ? 'available' : groupData.status;
                 }
             }
     

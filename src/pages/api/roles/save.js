@@ -1,5 +1,6 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
+import moment from 'moment'
 
 export default apiHandler({
     post: save
@@ -35,7 +36,7 @@ async function save(req, res) {
             shortCode: shortCode,
             rep: counter[0].lastCounter + 1,
             system: false,
-            dateAdded: new Date
+            dateAdded: moment(new Date()).format('YYYY-MM-DD')
         });
 
         response = {
