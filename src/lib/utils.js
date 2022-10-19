@@ -50,8 +50,6 @@ export const formatBytes = (bytes, decimals = 2) => {
 export const formatPricePhp = (num) => {
     if (num) {
         return new Intl.NumberFormat('fil-PH', { style: 'currency', currency: 'PHP' }).format(num);
-    } else {
-        new Intl.NumberFormat('fil-PH', { style: 'currency', currency: 'PHP' }).format(0);
     }
 }
 
@@ -85,3 +83,7 @@ export const getEndDate = (date, days) => {
  export const isBlank = (str) => {
     return (!str || /^\s*$/.test(str));
 }
+
+export const containsOnlyNumbers = (str) => {
+    return /^\d+$/.test(str);
+  }

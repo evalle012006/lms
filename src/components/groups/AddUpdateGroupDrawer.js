@@ -76,7 +76,7 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
         values.day = day;
         values.dayNo = dayNo;
         values.occurence = occurence;
-        values.capacity = occurence === 'daily' ? 25 : 30;
+        values.capacity = occurence === 'daily' ? 26 : 30;
         values.noOfClients = group.noOfClients;
         values.status = group.status;
 

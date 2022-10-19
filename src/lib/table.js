@@ -14,7 +14,7 @@ import Avatar from "./avatar";
 import { FileExists } from "./utils";
 import { useState } from "react";
 import SelectDropdown from "./ui/select";
-import { PencilIcon, TrashIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/solid';
+import { PencilIcon, TrashIcon, CheckIcon, XMarkIcon, LockClosedIcon, LockOpenIcon } from '@heroicons/react/24/solid';
 
 // Define a default UI for filtering
 function GlobalFilter({
@@ -92,10 +92,10 @@ export function StatusPill({ value }) {
     <span
       className={classNames(
         "status-pill",
-        status.startsWith("active") ? "status-pill-active" : null,
+        status.startsWith("active") || status.startsWith("open") ? "status-pill-active" : null,
         status.startsWith("pending") ? "status-pill-pending" : null,
         status.startsWith("inactive") ? "status-pill-inactive" : null,
-        status.startsWith("rejected") ? "status-pill-rejected" : null
+        status.startsWith("rejected") || status.startsWith("close") ? "status-pill-rejected" : null
       )}
     >
       {status}
@@ -304,7 +304,8 @@ export function PageButton({ children, className, ...rest }) {
 // };
 
 const ActionButton = ({ row, rowActionButtons }) => {
-  
+  const status = row.original.hasOwnProperty('status') ? row.original.status : '';
+  const page = row.original.hasOwnProperty('page') ? row.original.page : '';
   return (
     <React.Fragment>
       <div className="flex flex-row justify-center">
@@ -321,14 +322,34 @@ const ActionButton = ({ row, rowActionButtons }) => {
                           <XMarkIcon className="cursor-pointer h-5" />
                         </div>
                       )}
-                      {item.label === 'Edit' && (
+                      {(item.label === 'Edit Loan' && status !== 'active') && (
                         <div className="px-1" onClick={() => item.action(row)} title="Edit">
                           <PencilIcon className="cursor-pointer h-5" />
                         </div>
                       )}
-                      {item.label === 'Delete' && (
+                      {(item.label === 'Delete Loan' && status !== 'active') && (
                         <div className="px-1" onClick={() => item.action(row)} title="Delete">
                           <TrashIcon className="cursor-pointer h-5" />
+                        </div>
+                      )}
+                      {(item.label === 'Edit') && (
+                        <div className="px-1" onClick={() => item.action(row)} title="Edit">
+                          <PencilIcon className="cursor-pointer h-5" />
+                        </div>
+                      )}
+                      {(item.label === 'Delete') && (
+                        <div className="px-1" onClick={() => item.action(row)} title="Delete">
+                          <TrashIcon className="cursor-pointer h-5" />
+                        </div>
+                      )}
+                      {(item.label === 'Close' && status === 'open') && (
+                        <div className="px-1" onClick={() => item.action(row)} title="Close Transaction">
+                          <LockClosedIcon className="cursor-pointer h-5" />
+                        </div>
+                      )}
+                      {(item.label === 'Open' && status === 'close') && (
+                        <div className="px-1" onClick={() => item.action(row)} title="Open Transaction">
+                          <LockOpenIcon className="cursor-pointer h-5" />
                         </div>
                       )}
                     </React.Fragment>
@@ -427,7 +448,7 @@ const TableComponent = ({
         )}
       </div>
       {/* table */}
-      <div className={`${noPadding ? 'p-1' : 'p-10 mt-4'} w-full`}>
+      <div className={`${noPadding ? 'p-1' : 'p-6 mt-4'} w-full`}>
         <div className="-my-2 overflow-x-auto -mx-4 sm:-mx-6 lg:-mx-8">
           <div className="py-2 align-middle inline-block w-auto min-w-full lg:px-4">
             <div

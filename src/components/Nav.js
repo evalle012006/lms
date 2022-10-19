@@ -2,7 +2,8 @@ import React, { useEffect, useState } from "react";
 import logo from "/public/images/logo.png";
 import { 
     Squares2X2Icon, 
-    BuildingOffice2Icon, 
+    BuildingOffice2Icon,
+    ClipboardDocumentIcon,
     ClipboardDocumentListIcon,
     ClipboardDocumentCheckIcon,
     UserIcon,
@@ -70,9 +71,9 @@ const SubNav = ({ item, index, activePath, inner=false, className }) => {
                         </li>
                     </React.Fragment>
                 ) : (
-                    <li className={`flex rounded-md p-2 cursor-pointer hover:opacity-70 text-sm items-center gap-x-4
+                    <li title={item.label} className={`flex rounded-md p-2 cursor-pointer hover:opacity-70 text-sm items-center gap-x-4
                                 ${!inner ? index === 0 ? "mt-2" : "mt-5" : "mt-2"}
-                                ${activePath === item.url ? "text-gray-800 bg-teal-10" : "text-white"} ${className}`}>
+                                ${activePath === item.url ? "text-gray-800 bg-teal-10 mr-4" : "text-white"} ${className}`}>
                         {activePath === item.url ? item.icon.active : item.icon.notActive}
                         <span className={`origin-left duration-200`}>
                             {item.label}
@@ -161,7 +162,21 @@ const MenuItems = [
         hasSub: true,
         subMenuItems: [
             {
-                label: "Loan Applications",
+                label: "Loans List",
+                url: "/transactions/loan-list",
+                icon: {
+                    active: (
+                        <ClipboardDocumentIcon className="text-gray-800 w-5 h-5" />
+                    ),
+                    notActive: (
+                        <ClipboardDocumentIcon className="text-white w-5 h-5" />
+                    ),
+                },
+                active: false,
+                hasSub: false
+            },
+            {
+                label: "Loan Approval",
                 url: "/transactions/loan-applications",
                 icon: {
                     active: (
@@ -188,20 +203,20 @@ const MenuItems = [
                 active: false,
                 hasSub: false
             },
-            {
-                label: "Weekly Cash Collections",
-                url: "/transactions/weekly-cash-collection",
-                icon: {
-                    active: (
-                        <TicketIcon className="text-gray-800 w-5 h-5" />
-                    ),
-                    notActive: (
-                        <TicketIcon className="text-white w-5 h-5" />
-                    ),
-                },
-                active: false,
-                hasSub: false
-            },
+            // {
+            //     label: "Weekly Cash Collections",
+            //     url: "/transactions/weekly-cash-collection",
+            //     icon: {
+            //         active: (
+            //             <TicketIcon className="text-gray-800 w-5 h-5" />
+            //         ),
+            //         notActive: (
+            //             <TicketIcon className="text-white w-5 h-5" />
+            //         ),
+            //     },
+            //     active: false,
+            //     hasSub: false
+            // },
         ]
     },
     {
