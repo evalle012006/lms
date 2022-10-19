@@ -44,3 +44,5 @@
 [type="tel"]:focus-visible {
     @apply focus:ring-0 focus:ring-offset-0;
   }
+
+input[type='text']:focus { box-shadow: none; }

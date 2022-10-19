@@ -16,7 +16,7 @@ import moment from 'moment'
 import CheckBox from "@/lib/ui/checkbox";
 import placeholder from '/public/images/image-placeholder.png';
 import Image from 'next/image';
-
+// add loan officer per client
 const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSidebar, onClose }) => {
     const hiddenInput = useRef(null);
     const formikRef = useRef();

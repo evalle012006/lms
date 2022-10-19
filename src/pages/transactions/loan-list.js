@@ -18,7 +18,7 @@ import { formatPricePhp, getEndDate, UppercaseFirstLetter } from "@/lib/utils";
 import AddUpdateLoan from "@/components/transactions/AddUpdateLoanDrawer";
 import moment from 'moment';
 
-const LoanApplicationPage = () => {
+const LoanListPage = () => {
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
     const list = useSelector(state => state.loan.list);
@@ -112,9 +112,9 @@ const LoanApplicationPage = () => {
     const getListLoan = async () => {
         let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/list';
         if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
-            url = url + '?' + new URLSearchParams({ status: 'pending', branchId: branchList[0]._id, loId: currentUser._id });
+            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id });
         } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
-            url = url + '?' + new URLSearchParams({ status: 'pending', branchId: branchList[0]._id });
+            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id });
         }
 
         const response = await fetchWrapper.get(url);
@@ -138,58 +138,6 @@ const LoanApplicationPage = () => {
         setLoading(false);
     }
 
-    const updateClientStatus = async (data, updatedValue) => {
-        setLoading(true);
-        const group = data.group;
-        let loanData = {...data};
-        delete loanData.group;
-        delete loanData.client;
-        delete loanData.branch;
-        delete loanData.principalLoanStr;
-        delete loanData.activeLoanStr;
-        delete loanData.loanBalanceStr;
-        delete loanData.mcbuStr;
-
-        if (loanData.status === 'pending' && updatedValue === 'active') {
-            loanData.dateGranted = moment(new Date()).format('YYYY-MM-DD');
-            loanData.status = updatedValue;
-            loanData.startDate = moment(new Date()).add(1, 'days').format('YYYY-MM-DD');
-            loanData.endDate = getEndDate(loanData.dateGranted, group.occurence === 'daily' ? 60 : 24 );
-            loanData.mispayments = 0;
-
-            await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/approved-reject-loan', loanData)
-                .then(response => {
-                    if (response.success) {
-                        setLoading(false);
-                        toast.success('Loan successfully updated.');
-                        window.location.reload();
-                    } else if (response.error) {
-                        setLoading(false);
-                        toast.error(response.message);
-                    }
-                }).catch(error => {
-                    console.log(error);
-                });
-        } else {
-            loanData.status = updatedValue;
-            // loanData.slotNo = null;
-            
-            await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/approved-reject-loan', loanData)
-                .then(response => {
-                    if (response.success) {
-                        setLoading(false);
-                        toast.success('Loan successfully updated.');
-                        window.location.reload();
-                    } else if (response.error) {
-                        setLoading(false);
-                        toast.error(response.message);
-                    }
-                }).catch(error => {
-                    console.log(error);
-                });
-        }
-    }
-
     const [columns, setColumns] = useState([]);
 
     const handleShowAddDrawer = () => {
@@ -201,6 +149,10 @@ const LoanApplicationPage = () => {
         getListClient();
         getListLoan();
     }
+
+    const actionButtons = [
+        <ButtonSolid label="Add Loan" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
+    ];
 
     const handleEditAction = (row) => {
         setMode("edit");
@@ -227,12 +179,15 @@ const LoanApplicationPage = () => {
         updateClientStatus(row.original, 'reject');
     }
 
-    const [rowActionButtons, setRowActionButtons] = useState([]);
+    const [rowActionButtons, setRowActionButtons] = useState([
+        { label: 'Edit Loan', action: handleEditAction},
+        { label: 'Delete Loan', action: handleDeleteAction}
+    ]);
 
     const handleDelete = () => {
         if (loan) {
-            setLoading(true);
             const loanData = {...loan, deleted: true, deletedBy: currentUser._id, dateDeleted: moment(new Date()).format('YYYY-MM-DD')};
+            setLoading(true);
             fetchWrapper.postCors(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/delete', loanData)
                 .then(response => {
                     if (response.success) {
@@ -355,29 +310,12 @@ const LoanApplicationPage = () => {
             //     return temp;
             // });
 
-            let rowActionBtn = [];
-
-            if (currentUser.role.rep <= 3) {
-                rowActionBtn = [
-                    { label: 'Approve', action: handleApprove},
-                    { label: 'Reject', action: handleReject},
-                    { label: 'Edit Loan', action: handleEditAction},
-                    { label: 'Delete Loan', action: handleDeleteAction}
-                ];
-            } else {
-                rowActionBtn = [
-                    { label: 'Edit Loan', action: handleEditAction},
-                    { label: 'Delete Loan', action: handleDeleteAction}
-                ];
-            }
-
             setColumns(cols);
-            setRowActionButtons(rowActionBtn);
         }
     }, [groupList]);
 
     return (
-        <Layout>
+        <Layout actionButtons={actionButtons}>
             <div className="pb-4">
                 {loading ?
                     (
@@ -406,4 +344,4 @@ const LoanApplicationPage = () => {
     );
 }
 
-export default LoanApplicationPage;
+export default LoanListPage;

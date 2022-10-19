@@ -27,6 +27,17 @@ async function getAllLoansPerGroup(req, res) {
                 },
                 {
                     $lookup: {
+                        from: "groupCashCollections",
+                        localField: "groupIdStr",
+                        foreignField: "groupId",
+                        pipeline: [
+                            { $match: { dateAdded: date } }
+                        ],
+                        as: 'groupCashCollections'
+                    }
+                },
+                {
+                    $lookup: {
                         from: "cashCollections",
                         let: { groupName: '$name' },
                         localField: "groupIdStr",
@@ -72,6 +83,44 @@ async function getAllLoansPerGroup(req, res) {
                             }
                         ],
                         as: "loans"
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "loans",
+                        let: { groupName: '$name' },
+                        localField: "groupIdStr",
+                        foreignField: "groupId",
+                        pipeline: [
+                            { $match: { status: 'active', dateAdded: date } },
+                            { $group: {
+                                    _id: '$$groupName',
+                                    currentReleaseAmount: { $sum: '$amountRelease' },
+                                    noOfCurrentRelease: { $sum: 1 }
+                                }
+                            }
+                        ],
+                        as: "currentRelease"
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "loans",
+                        let: { groupName: '$name' },
+                        localField: "groupIdStr",
+                        foreignField: "groupId",
+                        pipeline: [
+                            { $match: {$expr: { $and: [
+                                {$eq: ['$status', 'completed']}, {$lte: ['$loanBalance', 0]}
+                            ]}} },
+                            { $group: {
+                                    _id: '$$groupName',
+                                    fullPaymentAmount: { $sum: '$history.amountRelease' },
+                                    noOfFullPayment: { $sum: 1 }
+                                }
+                            }
+                        ],
+                        as: "fullPayment"
                     }
                 },
                 { $project: { groupIdStr: 0, availableSlots: 0 } }
@@ -89,6 +138,17 @@ async function getAllLoansPerGroup(req, res) {
                 },
                 {
                     $lookup: {
+                        from: "groupCashCollections",
+                        localField: "groupIdStr",
+                        foreignField: "groupId",
+                        pipeline: [
+                            { $match: { dateAdded: date } }
+                        ],
+                        as: 'groupCashCollections'
+                    }
+                },
+                {
+                    $lookup: {
                         from: "cashCollections",
                         let: { groupName: '$name' },
                         localField: "groupIdStr",
@@ -134,6 +194,44 @@ async function getAllLoansPerGroup(req, res) {
                             }
                         ],
                         as: "loans"
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "loans",
+                        let: { groupName: '$name' },
+                        localField: "groupIdStr",
+                        foreignField: "groupId",
+                        pipeline: [
+                            { $match: { status: 'active', dateAdded: date } },
+                            { $group: {
+                                    _id: '$$groupName',
+                                    currentReleaseAmount: { $sum: '$amountRelease' },
+                                    noOfCurrentRelease: { $sum: 1 }
+                                }
+                            }
+                        ],
+                        as: "currentRelease"
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "loans",
+                        let: { groupName: '$name' },
+                        localField: "groupIdStr",
+                        foreignField: "groupId",
+                        pipeline: [
+                            { $match: {$expr: { $and: [
+                                {$eq: ['$status', 'completed']}, {$lte: ['$loanBalance', 0]}
+                            ]}} },
+                            { $group: {
+                                    _id: '$$groupName',
+                                    fullPaymentAmount: { $sum: '$history.amountRelease' },
+                                    noOfFullPayment: { $sum: 1 }
+                                }
+                            }
+                        ],
+                        as: "fullPayment"
                     }
                 },
                 { $project: { groupIdStr: 0, availableSlots: 0 } }
@@ -151,6 +249,17 @@ async function getAllLoansPerGroup(req, res) {
                 },
                 {
                     $lookup: {
+                        from: "groupCashCollections",
+                        localField: "groupIdStr",
+                        foreignField: "groupId",
+                        pipeline: [
+                            { $match: { dateAdded: date } }
+                        ],
+                        as: 'groupCashCollections'
+                    }
+                },
+                {
+                    $lookup: {
                         from: "cashCollections",
                         let: { groupName: '$name' },
                         localField: "groupIdStr",
@@ -196,6 +305,44 @@ async function getAllLoansPerGroup(req, res) {
                             }
                         ],
                         as: "loans"
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "loans",
+                        let: { groupName: '$name' },
+                        localField: "groupIdStr",
+                        foreignField: "groupId",
+                        pipeline: [
+                            { $match: { status: 'active', dateAdded: date } },
+                            { $group: {
+                                    _id: '$$groupName',
+                                    currentReleaseAmount: { $sum: '$amountRelease' },
+                                    noOfCurrentRelease: { $sum: 1 }
+                                }
+                            }
+                        ],
+                        as: "currentRelease"
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "loans",
+                        let: { groupName: '$name' },
+                        localField: "groupIdStr",
+                        foreignField: "groupId",
+                        pipeline: [
+                            { $match: {$expr: { $and: [
+                                {$eq: ['$status', 'completed']}, {$lte: ['$loanBalance', 0]}
+                            ]}} },
+                            { $group: {
+                                    _id: '$$groupName',
+                                    fullPaymentAmount: { $sum: '$history.amountRelease' },
+                                    noOfFullPayment: { $sum: 1 }
+                                }
+                            }
+                        ],
+                        as: "fullPayment"
                     }
                 },
                 { $project: { groupIdStr: 0, availableSlots: 0 } }
@@ -213,6 +360,17 @@ async function getAllLoansPerGroup(req, res) {
                 },
                 {
                     $lookup: {
+                        from: "groupCashCollections",
+                        localField: "groupIdStr",
+                        foreignField: "groupId",
+                        pipeline: [
+                            { $match: { dateAdded: date } }
+                        ],
+                        as: 'groupCashCollections'
+                    }
+                },
+                {
+                    $lookup: {
                         from: "cashCollections",
                         let: { groupName: '$name' },
                         localField: "groupIdStr",
@@ -258,6 +416,44 @@ async function getAllLoansPerGroup(req, res) {
                             }
                         ],
                         as: "loans"
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "loans",
+                        let: { groupName: '$name' },
+                        localField: "groupIdStr",
+                        foreignField: "groupId",
+                        pipeline: [
+                            { $match: { status: 'active', dateAdded: date } },
+                            { $group: {
+                                    _id: '$$groupName',
+                                    currentReleaseAmount: { $sum: '$amountRelease' },
+                                    noOfCurrentRelease: { $sum: 1 }
+                                }
+                            }
+                        ],
+                        as: "currentRelease"
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "loans",
+                        let: { groupName: '$name' },
+                        localField: "groupIdStr",
+                        foreignField: "groupId",
+                        pipeline: [
+                            { $match: {$expr: { $and: [
+                                {$eq: ['$status', 'completed']}, {$lte: ['$loanBalance', 0]}
+                            ]}} },
+                            { $group: {
+                                    _id: '$$groupName',
+                                    fullPaymentAmount: { $sum: '$amountRelease' },
+                                    noOfFullPayment: { $sum: 1 }
+                                }
+                            }
+                        ],
+                        as: "fullPayment"
                     }
                 },
                 { $project: { groupIdStr: 0, availableSlots: 0 } }
