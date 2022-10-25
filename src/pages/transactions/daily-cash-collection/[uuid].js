@@ -250,7 +250,6 @@ const CashCollectionDetailsPage = () => {
                 if (currentUser.role.rep === 4) {
                     temp.loId = currentUser._id;
                 } else {
-                    // const group = groupList.find(g => g._id === cc.groupId);
                     temp.loId = currentGroup && currentGroup.loanOfficerId;
                 }
 
