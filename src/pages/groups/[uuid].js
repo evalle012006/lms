@@ -59,7 +59,7 @@ const GroupsDetailsPage = () => {
                 <div className="overflow-x-auto">
                     {group && <DetailsHeader page={'group'} />}
                     <div className="p-2 mt-[6rem]">
-                        <ViewClientsByGroupPage groupId={group && group._id} />
+                        <ViewClientsByGroupPage groupId={group && group._id} status="active" />
                     </div>
                 </div>
             )}

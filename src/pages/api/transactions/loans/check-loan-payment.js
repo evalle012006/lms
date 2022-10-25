@@ -13,7 +13,7 @@ async function processActiveLoan(req, res) {
     let statusCode = 200;
     let response = {};
 
-    const loans = await db.collection('loans').find({ status: 'active' }).toArray();
+    const loans = await db.collection('loans').find( {$expr: {$or: [{$eq: ['$status', 'active']}, {$eq: ['$status', 'completed']}]}} ).toArray();
     const currentDate = moment().format('YYYY-MM-DD');
 
     if (loans.length > 0) {
@@ -21,42 +21,53 @@ async function processActiveLoan(req, res) {
             const loanId = loan._id + '';
             const lastUpdated = loan.lastUpdated;
             const temp = {...loan};
-            if (lastUpdated) {
-                if (lastUpdated !== currentDate) {
-                    getCashCollections(loanId).then(collection => {
-                        if (collection.length > 0) {
-                            // automate mispayments
-                            const lastPayment = collection[collection.length - 1];
-                            const lastDatePayment = moment(lastPayment.dateAdded).add(1, 'days').format('YYYY-MM-DD');
-                            const diff = getWeekDaysCount(new Date(lastDatePayment), new Date());
-                            if (diff > 1) {
-                                temp.mispayments = temp.mispayments + diff;
-                                temp.lastUpdated = moment().format('YYYY-MM-DD');
+            if (loan.status === 'active') {
+                if (lastUpdated) {
+                    if (lastUpdated !== currentDate) {
+                        getCashCollections(loanId).then(collection => {
+                            if (collection.length > 0) {
+                                // automate mispayments
+                                const lastPayment = collection[collection.length - 1];
+                                const lastDatePayment = moment(lastPayment.dateAdded).add(1, 'days').format('YYYY-MM-DD');
+                                const diff = getWeekDaysCount(new Date(lastDatePayment), new Date());
+                                if (diff > 1) {
+                                    temp.mispayments = temp.mispayments + diff;
+                                    temp.lastUpdated = moment().format('YYYY-MM-DD');
+                                }
+                
+                                updateLoan(temp);
+                                // automate dilenquent clients if loan is not paid for how many days?
+                            } else {
+                                const diff = getWeekDaysCount(new Date(loan.startDate), new Date());
+                                if (diff > 0) {
+                                    temp.mispayments = diff;
+                                    temp.lastUpdated = moment().format('YYYY-MM-DD');
+                                }
+    
+                                updateLoan(temp);
                             }
-            
-                            updateLoan(temp);
-                            // automate dilenquent clients if loan is not paid for how many days?
-                        } else {
-                            const diff = getWeekDaysCount(new Date(loan.startDate), new Date());
-                            if (diff > 0) {
-                                temp.mispayments = diff;
-                                temp.lastUpdated = moment().format('YYYY-MM-DD');
-                            }
-
-                            updateLoan(temp);
-                        }
-                    });
+                        });
+                    }
+                } else {
+                    // automate mispayments
+                    const diff = getWeekDaysCount(new Date(loan.startDate), new Date());
+                    if (diff > 0) {
+                        temp.mispayments = diff;
+                        temp.lastUpdated = moment().format('YYYY-MM-DD');
+                    }
+    
+                    updateLoan(temp);
                 }
-            } else {
-                // automate mispayments
-                const diff = getWeekDaysCount(new Date(loan.startDate), new Date());
-                if (diff > 0) {
-                    temp.mispayments = diff;
-                    temp.lastUpdated = moment().format('YYYY-MM-DD');
-                }
+            } 
+            // else if (loan.status === 'completed' && loan.loanBalance <= 0) {
+            //     const fiveDaysFromNow = moment(loan.fullPaymentDate).add(5, 'days').format('YYYY-MM-DD');
 
-                updateLoan(temp);
-            }
+            //     if (currentDate === fiveDaysFromNow) {
+            //         loan.status = 'close';
+            //         updateLoan(loan);
+            //         updateGroup(loan);
+            //     }
+            // }
         });
     }
 
@@ -92,4 +103,31 @@ async function updateLoan(loan) {
             { upsert: false });
 
     return loanResp;
+}
+
+async function updateGroup(loan) {
+    const { db } = await connectToDatabase();
+    const ObjectId = require('mongodb').ObjectId;
+
+    let group = await db.collection('groups').find({ _id: ObjectId(loan.groupId) }).toArray();
+    if (group.length > 0) {
+        group = group[0];
+
+        if (group.status === 'full') {
+            group.status = 'available';
+        }
+
+        group.availableSlots.push(loan.slotNo);
+        group.availableSlots.sort((a, b) => { return a - b; });
+        group.noOfClients = group.noOfClients - 1;
+
+        delete group._id;
+        await db.collection('groups').updateOne(
+            {  _id: ObjectId(loan.groupId) },
+            {
+                $set: { ...group }
+            }, 
+            { upsert: false }
+        );
+    }
 }

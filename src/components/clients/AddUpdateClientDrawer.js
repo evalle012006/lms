@@ -46,7 +46,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
         // groupId: client.groupId,
         branchId: client.branchId,
         status: client.status,
-        delinquent: client.delinquent === "Yes" ? true : false
+        delinquent: client.delinquent === "Yes" ? true : false,
     }
 
     const validationSchema = yup.object().shape({
@@ -103,7 +103,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
         if (mode === 'add') {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'clients/save/';
 
-            values.status = 'active';
+            values.status = 'pending';
             values.delinquent = false;
 
             fetchWrapper.post(apiUrl, values)
@@ -369,7 +369,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                             errors={touched.groupId && errors.groupId ? errors.groupId : undefined}
                                         />
                                     </div> */}
-                                    {mode === 'edit' && (
+                                    {mode === 'edit' && currentUser.role.rep < 4 && (
                                         <React.Fragment>
                                             <div className="mt-4">
                                                 <SelectDropdown
@@ -378,8 +378,9 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                                     value={values.status}
                                                     label="Status"
                                                     options={[
+                                                        {label: 'Pending', value: 'pending'},
                                                         {label: 'Active', value: 'active'},
-                                                        {label: 'Inactive', value: 'inactive'}
+                                                        {label: 'Offset', value: 'offset'}
                                                     ]}
                                                     onChange={setFieldValue}
                                                     onBlur={setFieldTouched}
@@ -387,16 +388,18 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                                     errors={touched.status && errors.status ? errors.status : undefined}
                                                 />
                                             </div>
-                                            <div className="mt-4">
-                                                <CheckBox 
-                                                    name="delinquent"
-                                                    value={values.delinquent} 
-                                                    onChange={setFieldValue}  
-                                                    label={"Delinquent"} 
-                                                    size={"lg"} 
-                                                />
-                                            </div>
                                         </React.Fragment>
+                                    )}
+                                    {mode === 'edit' && (
+                                        <div className="mt-4">
+                                            <CheckBox 
+                                                name="delinquent"
+                                                value={values.delinquent} 
+                                                onChange={setFieldValue}  
+                                                label={"Delinquent"} 
+                                                size={"lg"} 
+                                            />
+                                        </div>
                                     )}
                                     <div className="flex flex-row mt-5">
                                         <ButtonOutline label="Cancel" onClick={handleCancel} className="mr-3" />

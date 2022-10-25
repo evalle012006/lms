@@ -13,7 +13,7 @@ import ViewClientsByGroupPage from "@/components/clients/ViewClientsByGroup";
 import { setBranchList } from "@/redux/actions/branchActions";
 import { setGroupList } from "@/redux/actions/groupActions";
 
-const ClientsProspectPage = () => {
+const ClientsPage = () => {
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
@@ -141,11 +141,11 @@ const ClientsProspectPage = () => {
     }, [branchList]);
 
     return (
-        <Layout actionButtons={actionButtons}>
-            <ViewClientsByGroupPage status="pending" client={client} setClientParent={setClient} setMode={setMode} handleShowAddDrawer={handleShowAddDrawer} />
+        <Layout>
+            <ViewClientsByGroupPage client={client} status="active" setClientParent={setClient} setMode={setMode} handleShowAddDrawer={handleShowAddDrawer} />
             <AddUpdateClient mode={mode} client={client} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
         </Layout>
     );
 }
 
-export default ClientsProspectPage;
+export default ClientsPage;

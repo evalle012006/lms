@@ -12,7 +12,7 @@ import Modal from "@/lib/ui/Modal";
 import ClientDetailPage from "./ClientDetailPage";
 import { formatPricePhp } from "@/lib/utils";
 
-const ViewClientsByGroupPage = ({groupId, client, setClientParent, setMode, handleShowAddDrawer}) => {
+const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMode, handleShowAddDrawer}) => {
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
@@ -52,7 +52,7 @@ const ViewClientsByGroupPage = ({groupId, client, setClientParent, setMode, hand
         } else if (!currentUser.root) {
             const currentUserBranch = branchList.find(b => b.code === currentUser.designatedBranch);
             if (currentUserBranch) {
-                url = url + '?' + new URLSearchParams({ mode: "view_all_by_branch", branchId: currentUserBranch._id });
+                url = url + '?' + new URLSearchParams({ mode: "view_all_by_branch", branchId: currentUserBranch._id, status: status });
                 const response = await fetchWrapper.get(url);
                 if (response.success) {
                     let clients = [];
@@ -77,7 +77,7 @@ const ViewClientsByGroupPage = ({groupId, client, setClientParent, setMode, hand
                 }
             }
         } else {
-            const response = await fetchWrapper.get(url);
+            const response = await fetchWrapper.get(url + '?' + new URLSearchParams({ status: status }));
             if (response.success) {
                 let clients = [];
                 await response.clients && response.clients.map(client => {
@@ -171,6 +171,13 @@ const ViewClientsByGroupPage = ({groupId, client, setClientParent, setMode, hand
         {
             Header: "Delinquent",
             accessor: 'delinquent',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "Status",
+            accessor: 'status',
+            Cell: StatusPill,
             Filter: SelectColumnFilter,
             filter: 'includes'
         }

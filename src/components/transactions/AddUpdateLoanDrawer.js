@@ -13,17 +13,25 @@ import 'react-calendar/dist/Calendar.css';
 import moment from 'moment'
 import SelectDropdown from "@/lib/ui/select";
 import SideBar from "@/lib/ui/SideBar";
+import RadioButton from "@/lib/ui/radio-button";
+import { setGroupList } from "@/redux/actions/groupActions";
+import { setClientList } from "@/redux/actions/clientActions";
+import { UppercaseFirstLetter } from "@/lib/utils";
 
 const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, onClose }) => {
     const formikRef = useRef();
     const dispatch = useDispatch();
+    const currentUser = useSelector(state => state.user.data);
     const [loading, setLoading] = useState(false);
+    const [title, setTitle] = useState('Add Loan');
     const branchList = useSelector(state => state.branch.list);
     const groupList = useSelector(state => state.group.list);
     const clientList = useSelector(state => state.client.list);
     const [selectedGroup, setSelectedGroup] = useState();
     const [slotNo, setSlotNo] = useState();
     const [slotNumber, setSlotNumber] = useState([]);
+    const [groupOccurence, setGroupOccurence] = useState('daily');
+    const [clientType, setClientType] = useState('active');
 
     const initialValues = {
         branchId: loan.branchId,
@@ -33,14 +41,15 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         fullName: loan.fullName,
         admissionDate: loan.admissionDate,
         mcbu: loan.mcbu,
-        dateGranted: loan.dateGranted,
+        dateGranted: mode !== 'reloan' ? loan.dateGranted : null,
         principalLoan: loan.principalLoan,
         activeLoan: loan.activeLoan,
         loanBalance: loan.loanBalance,
         amountRelease: loan.amountRelease,
-        noOfPayments: loan.noOfPayments,
+        noOfPayments: mode !== 'reloan' ? loan.noOfPayments : 0,
         coMaker: loan.coMaker,
-        status: loan.status,
+        loanCycle: mode !== 'reloan' ? loan.loanCycle : loan.loanCycle + 1,
+        status: mode !== 'reloan' ? loan.status : 'pending',
     }
 
     const validationSchema = yup.object().shape({
@@ -61,6 +70,11 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             .integer()
             .positive()
             .required('Please select a slot number'),
+        loanCycle: yup
+            .number()
+            .integer()
+            .positive()
+            .required('Please enter a loan cycle number'),
         // coMaker: yup
         //     .string()
         //     .required('Please enter co-maker')
@@ -97,13 +111,21 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
 
     const handleSaveUpdate = (values, action) => {
         setLoading(true);
-        values.groupId = selectedGroup;
-        const group = groupList.find(g => g._id === values.groupId);
-        values.groupName = group.name;
-        const branch = branchList.find(b => b._id === group.branchId);
-        values.branchId = branch._id;
-        values.brancName = branch.name;
-        values.slotNo = slotNo;
+        let group;
+        if (mode !== 'reloan') {
+            values.groupId = selectedGroup;
+            group = groupList.find(g => g._id === values.groupId);
+            values.groupName = group.name;
+            const branch = branchList.find(b => b._id === group.branchId);
+            values.branchId = branch._id;
+            values.brancName = branch.name;
+        } else {
+            group = loan.group;
+            values.mode = 'reloan';
+            values.oldLoanId = loan.loanId;
+        }
+
+        values.slotNo = mode !== 'reloan' ? slotNo : loan.slotNo;
 
         if (values.status !== 'active') {
             if (group.occurence === 'weekly') {
@@ -118,13 +140,14 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             values.noOfPayments = 0;
         }
 
-        if (mode === 'add') {
+        if (mode === 'add' || mode === 'reloan') {
+            // should check if the user has previous loan that is loanCycle 0, then set the loanCycle to 1
             const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/save/';
 
             values.lastUpdated = null;  // use only when updating the mispayments
             values.admissionDate = moment(values.admissionDate).format('YYYY-MM-DD');
             values.status = 'pending';
-            values.loanCycle = 1;
+            values.loanCycle = values.loanCycle ? values.loanCycle : 1;
 
             fetchWrapper.post(apiUrl, values)
                 .then(response => {
@@ -182,6 +205,64 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         }
     }
 
+    const getListGroup = async (occurence) => {
+        let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list-by-group-occurence'
+        if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
+            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id, occurence: occurence });
+        } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
+            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, occurence: occurence });
+        }
+
+        const response = await fetchWrapper.get(url);
+        if (response.success) {
+            let groups = [];
+            await response.groups && response.groups.map(group => {
+                groups.push({
+                    ...group,
+                    value: group._id,
+                    label: UppercaseFirstLetter(group.name)
+                });
+            });
+            dispatch(setGroupList(groups));
+        } else if (response.error) {
+            toast.error(response.message);
+        }
+        setLoading(false);
+    }
+
+    const getListClient = async (status) => {
+        let url = process.env.NEXT_PUBLIC_API_URL + 'clients/list';
+        if (currentUser.root !== true && (currentUser.role.rep === 3 || currentUser.role.rep === 4) && branchList.length > 0) { 
+            url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", branchId: branchList[0]._id, status: status });
+        } 
+
+        const response = await fetchWrapper.get(url);
+        if (response.success) {
+            let clients = [];
+            await response.clients && response.clients.map(client => {
+                clients.push({
+                    ...client,
+                    label: UppercaseFirstLetter(`${client.lastName}, ${client.firstName}`),
+                    value: client._id
+                });
+            });
+            dispatch(setClientList(clients));
+        } else if (response.error) {
+            toast.error(response.message);
+        }
+        setLoading(false);
+    }
+
+    const handleOccurenceChange = (value) => {
+        setGroupOccurence(value);
+        getListGroup(value);
+    }
+
+    const handleClientTypeChange = (value) => {
+        setClientType(value);
+        getListClient(value);
+    }
+
     const handleCancel = () => {
         setShowSidebar(false);
         formikRef.current.resetForm();
@@ -191,16 +272,22 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     useEffect(() => {
         let mounted = true;
 
+        if (mode === 'add' || mode === 'reloan') {
+            setTitle('Add Loan');
+        } else if (mode === 'edit') {
+            setTitle('Edit Loan');
+        }
+
         mounted && setLoading(false);
 
         return () => {
             mounted = false;
         };
-    }, []);
+    }, [mode]);
 
     return (
         <React.Fragment>
-            <SideBar title={mode === 'add' ? 'Add Loan' : 'Edit Loan'} showSidebar={showSidebar} setShowSidebar={setShowSidebar} hasCloseButton={false}>
+            <SideBar title={title} showSidebar={showSidebar} setShowSidebar={setShowSidebar} hasCloseButton={false}>
                 {loading ? (
                     <div className="flex items-center justify-center h-screen">
                         <Spinner />
@@ -225,44 +312,99 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                 setFieldTouched
                             }) => (
                                 <form onSubmit={handleSubmit} autoComplete="off">
+                                    {mode !== 'reloan' ? (
+                                        <React.Fragment>
+                                            <div className="mt-4 flex flex-row">
+                                                <RadioButton id={"radio_daily"} name="radio-group-occurence" label={"Daily"} checked={groupOccurence === 'daily'} value="daily" onChange={handleOccurenceChange} />
+                                                <RadioButton id={"radio_weekly"} name="radio-group-occurence" label={"Weekly"} checked={groupOccurence === 'weekly'} value="weekly" onChange={handleOccurenceChange} />
+                                            </div>
+                                            <div className="mt-4">
+                                                <SelectDropdown
+                                                    name="groupId"
+                                                    field="groupId"
+                                                    value={selectedGroup}
+                                                    label="Group"
+                                                    options={groupList}
+                                                    onChange={(field, value) => handleGroupChange(field, value)}
+                                                    onBlur={setFieldTouched}
+                                                    placeholder="Select Group"
+                                                    errors={touched.groupId && errors.groupId ? errors.groupId : undefined}
+                                                />
+                                            </div>
+                                            <div className="mt-4">
+                                                <SelectDropdown
+                                                    name="slotNo"
+                                                    field="slotNo"
+                                                    value={slotNo}
+                                                    label="Slot Number"
+                                                    options={slotNumber}
+                                                    onChange={(field, value) => handleSlotNoChange(field, value)}
+                                                    onBlur={setFieldTouched}
+                                                    placeholder="Select Slot No"
+                                                    errors={touched.slotNo && errors.slotNo ? errors.slotNo : undefined}
+                                                />
+                                            </div>
+                                            <div className="mt-4 flex flex-row">
+                                                <RadioButton id={"radio_active"} name="radio-client-type" label={"Active Clients"} checked={clientType === 'active'} value="active" onChange={handleClientTypeChange} />
+                                                <RadioButton id={"radio_offset"} name="radio-client-type" label={"Offset Clients"} checked={clientType === 'offset'} value="offset" onChange={handleClientTypeChange} />
+                                            </div>
+                                            <div className="mt-4">
+                                                <SelectDropdown
+                                                    name="clientId"
+                                                    field="clientId"
+                                                    value={values.clientId}
+                                                    label="Client"
+                                                    options={clientList}
+                                                    onChange={setFieldValue}
+                                                    onBlur={setFieldTouched}
+                                                    placeholder="Select Client"
+                                                    errors={touched.clientId && errors.clientId ? errors.clientId : undefined}
+                                                />
+                                            </div>
+                                        </React.Fragment>
+                                    ) : (
+                                        <React.Fragment>
+                                            <div className="mt-4">
+                                                <div className={`flex flex-col border rounded-md px-4 py-2 bg-white border-main`}>
+                                                    <div className="flex justify-between">
+                                                        <label htmlFor={'group'} className={`font-proxima-bold text-xs font-bold text-main`}>
+                                                            Group
+                                                        </label>
+                                                    </div>
+                                                    <span className="text-gray-400">{ loan && loan.groupName }</span>
+                                                </div>
+                                            </div>
+                                            <div className="mt-4">
+                                                <div className={`flex flex-col border rounded-md px-4 py-2 bg-white border-main`}>
+                                                    <div className="flex justify-between">
+                                                        <label htmlFor={'slotNo'} className={`font-proxima-bold text-xs font-bold text-main`}>
+                                                            Slot Number
+                                                        </label>
+                                                    </div>
+                                                    <span className="text-gray-400">{ loan && loan.slotNo }</span>
+                                                </div>
+                                            </div>
+                                            <div className="mt-4">
+                                                <div className={`flex flex-col border rounded-md px-4 py-2 bg-white border-main`}>
+                                                    <div className="flex justify-between">
+                                                        <label htmlFor={'client'} className={`font-proxima-bold text-xs font-bold text-main`}>
+                                                            Client
+                                                        </label>
+                                                    </div>
+                                                    <span className="text-gray-400">{ loan && loan.fullName }</span>
+                                                </div>
+                                            </div>
+                                        </React.Fragment>
+                                    )}
                                     <div className="mt-4">
-                                        <SelectDropdown
-                                            name="groupId"
-                                            field="groupId"
-                                            value={selectedGroup}
-                                            label="Group"
-                                            options={groupList}
-                                            onChange={(field, value) => handleGroupChange(field, value)}
-                                            onBlur={setFieldTouched}
-                                            placeholder="Select Group"
-                                            errors={touched.groupId && errors.groupId ? errors.groupId : undefined}
-                                        />
-                                    </div>
-                                    <div className="mt-4">
-                                        <SelectDropdown
-                                            name="slotNo"
-                                            field="slotNo"
-                                            value={slotNo}
-                                            label="Slot Number"
-                                            options={slotNumber}
-                                            onChange={(field, value) => handleSlotNoChange(field, value)}
-                                            onBlur={setFieldTouched}
-                                            placeholder="Select Slot No"
-                                            errors={touched.slotNo && errors.slotNo ? errors.slotNo : undefined}
-                                        />
-                                    </div>
-                                    <div className="mt-4">
-                                        <SelectDropdown
-                                            name="clientId"
-                                            field="clientId"
-                                            value={values.clientId}
-                                            label="Client"
-                                            options={clientList}
-                                            onChange={setFieldValue}
-                                            onBlur={setFieldTouched}
-                                            placeholder="Select Client"
-                                            errors={touched.clientId && errors.clientId ? errors.clientId : undefined}
-                                        />
+                                        <InputNumber
+                                            name="loanCycle"
+                                            value={values.loanCycle}
+                                            onChange={handleChange}
+                                            label="Loan Cycle"
+                                            placeholder="Enter Loan Cycle"
+                                            setFieldValue={setFieldValue}
+                                            errors={touched.loanCycle && errors.loanCycle ? errors.loanCycle : undefined} />
                                     </div>
                                     <div className="mt-4">
                                         <InputNumber

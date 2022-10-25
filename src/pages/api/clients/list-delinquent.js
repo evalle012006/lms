@@ -9,14 +9,13 @@ async function list(req, res) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
 
-    const {mode, groupId, branchId, status} = req.query;
+    const {groupId, branchId} = req.query;
 
     let statusCode = 200;
     let response = {};
     let clients;
 
-
-    if (mode === 'view_active_by_group' && groupId) {
+    if (groupId) {
         clients = await db
             .collection('loans')
             .aggregate([
@@ -33,7 +32,7 @@ async function list(req, res) {
                         localField: "clientIdObj",
                         foreignField: "_id",
                         pipeline: [
-                            { $match: { "status": "active" } }
+                            { $match: { "delinquent": "true" } }
                         ],
                         as: "client"
                     }
@@ -58,14 +57,11 @@ async function list(req, res) {
                 { $project: { groupIdObj: 0, clientIdObj: 0 } }
             ])
             .toArray();
-    } else if (mode === 'view_by_group' && groupId) {
+    } else if (branchId) {
         clients = await db
             .collection('loans')
             .aggregate([
-                // { $match: { "groupId": groupId } },
-                { $match: {$expr: { $and: [
-                    {$or: [{$eq: ['$status', 'completed']}, {$eq: ['$status', 'active']}, {$eq: ['$status', 'pending']}]}, {$eq: ['$groupId', groupId]}
-                ]}} },
+                { $match: { "branchId": branchId, 'status': 'active' } },
                 {
                     $addFields: {
                         "clientIdObj": { $toObjectId: "$clientId" },
@@ -78,7 +74,7 @@ async function list(req, res) {
                         localField: "clientIdObj",
                         foreignField: "_id",
                         pipeline: [
-                            { $match: { "status": "active" } }
+                            { $match: { "delinquent": "true" } }
                         ],
                         as: "client"
                     }
@@ -91,6 +87,9 @@ async function list(req, res) {
                         from: "groups",
                         localField: "groupIdObj",
                         foreignField: "_id",
+                            pipeline: [
+                                { $match: { "status": "active" } }
+                            ],
                         as: "group"
                     }
                 },
@@ -100,60 +99,11 @@ async function list(req, res) {
                 { $project: { groupIdObj: 0, clientIdObj: 0 } }
             ])
             .toArray();
-    } else if (mode === 'view_all_by_branch' && branchId) {
-        clients = await db
-            .collection('client')
-            .aggregate([
-                { $match: { branchId: branchId, status: status } },
-                {
-                    $addFields: {
-                        "clientId": { $toString: "$_id" }
-                    }
-                },
-                {
-                    $lookup: {
-                        from: "loans",
-                        localField: "clientId",
-                        foreignField: "clientId",
-                        // pipeline: [
-                        //     { $match: { "status": "active" } }
-                        // ],
-                        as: "loans"
-                    }
-                }
-            ])
-            .toArray();
-    } else if (mode === 'view_only_no_exist_loan' && branchId) {
-        clients = await db
-            .collection('client')
-            .aggregate([
-                { $match: { branchId: branchId, status: status } },
-                {
-                    $addFields: {
-                        "clientId": { $toString: "$_id" }
-                    }
-                },
-                {
-                    $lookup: {
-                        from: "loans",
-                        localField: "clientId",
-                        foreignField: "clientId",
-                        pipeline: [
-                            { $match: {$expr: {$or: [{$eq: ['$status', 'active']}, {$eq: ['$status', 'completed']}]}} }
-                        ],
-                        as: "loans"
-                    }
-                },
-                {
-                    "$match": { "loans.0": { "$exists": false } }
-                }
-            ])
-            .toArray();
     } else {
         clients = await db
             .collection('client')
             .aggregate([
-                { $match: { status: status } },
+                { $match: { delinquent: "true" } },
                 {
                     $addFields: {
                         "clientId": { $toString: "$_id" }

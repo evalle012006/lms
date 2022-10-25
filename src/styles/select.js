@@ -55,6 +55,59 @@ export const styles = {
       })
 };
 
+export const borderStyles = {
+    control: (base, state) => ({
+        ...base,
+        borderRadius: '9999px',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: '4px 8px',
+        gap: '8px',
+        border: '1px solid #E9E8E8',
+        boxShadow: state.isFocused ? 0 : 0,
+        position: 'relative',
+        minHeight: '20px',
+        height: '30px',
+        width: '230px'
+      }),
+      option: (base) => ({
+        ...base,
+        cursor: 'pointer'
+      }),
+      placeholder: (base) => ({
+        ...base,
+        padding: 0,
+        fontSize: '14px',
+        fontWeight: '500',
+        fontFace: 'proxima-regular',
+        color: 'rgb(107 114 128)',
+        opacity: '.8'
+      }),
+      input: (base) => ({
+        ...base,
+        padding: 0,
+        width: '100%',
+        fontSize: '14px',
+        fontWeight: '500',
+        fontFace: 'proxima-regular',
+        color: 'rgb(107 114 128)',
+        opacity: '.8',
+      }),
+      singleValue: (base) => ({
+        ...base,
+        fontSize: '14px',
+        fontWeight: '500',
+        fontFace: 'proxima-regular',
+        color: 'rgb(107 114 128)',
+        opacity: '.8'
+      }),
+      valueContainer: (base) => ({
+        ...base,
+        padding: 0,
+        alignItems: 'top'
+      })
+};
+
 export const multiStyles = {
     control: (base) => ({
         ...base,

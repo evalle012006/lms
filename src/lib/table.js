@@ -14,7 +14,16 @@ import Avatar from "./avatar";
 import { FileExists } from "./utils";
 import { useState } from "react";
 import SelectDropdown from "./ui/select";
-import { PencilIcon, TrashIcon, CheckIcon, XMarkIcon, LockClosedIcon, LockOpenIcon } from '@heroicons/react/24/solid';
+import { 
+  PencilIcon, 
+  TrashIcon, 
+  CheckIcon, 
+  XMarkIcon, 
+  LockClosedIcon, 
+  LockOpenIcon,
+  XCircleIcon,
+  ArrowPathIcon
+} from '@heroicons/react/24/solid';
 
 // Define a default UI for filtering
 function GlobalFilter({
@@ -95,7 +104,7 @@ export function StatusPill({ value }) {
         status.startsWith("active") || status.startsWith("open") ? "status-pill-active" : null,
         status.startsWith("pending") ? "status-pill-pending" : null,
         status.startsWith("inactive") ? "status-pill-inactive" : null,
-        status.startsWith("rejected") || status.startsWith("close") ? "status-pill-rejected" : null
+        status.startsWith("rejected") || status.startsWith("close") || status.startsWith("offset") ? "status-pill-rejected" : null
       )}
     >
       {status}
@@ -153,6 +162,31 @@ export function SelectCell({ value, column, row }) {
       table={true}
     />
   );
+}
+
+export function InputCell({ value, column, row }) {
+  const inputType = column.inputType ? column.inputType : text;
+  const [defaultValue, setDefaultValue] = useState(value);
+  const onBlur = column.onBlur;
+  const index = row.index;
+  const disabledColumn = column.disabledColumn && row.original[column.disabledColumn];
+
+  const handleOnBlur = (e) => {
+    const type = inputType === 'number' ? 'amount' : 'remarks';
+    onBlur && onBlur(e, index, type);
+  }
+
+  return (
+    <input 
+      type={inputType}
+      name="input"
+      defaultValue={defaultValue}
+      className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-main focus:border-main block w-10/12 p-2.5"
+      onClick={(e) => e.stopPropagation()}
+      onBlur={(e) => handleOnBlur(e)}
+      disabled={disabledColumn <= 0 ? true : false}
+    />
+  )
 }
 
 export function classNames(...classes) {
@@ -350,6 +384,16 @@ const ActionButton = ({ row, rowActionButtons }) => {
                       {(item.label === 'Open' && status === 'close') && (
                         <div className="px-1" onClick={() => item.action(row)} title="Open Transaction">
                           <LockOpenIcon className="cursor-pointer h-5" />
+                        </div>
+                      )}
+                      {(item.label === 'Reloan') && (
+                        <div className="px-1" onClick={() => item.action(row)} title="Open Transaction">
+                          <ArrowPathIcon className="cursor-pointer h-5" />
+                        </div>
+                      )}
+                      {(item.label === 'Close Account') && (
+                        <div className="px-1" onClick={() => item.action(row)} title="Open Transaction">
+                          <XCircleIcon className="cursor-pointer h-5" />
                         </div>
                       )}
                     </React.Fragment>

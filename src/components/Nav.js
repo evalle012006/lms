@@ -140,17 +140,61 @@ const MenuItems = [
     },
     {
         label: "Clients",
-        url: "/clients",
+        url: "#clients",
         icon: {
             active: <UserIcon className="text-gray-800 w-6 h-6" />,
             notActive: <UserIcon className="text-white w-6 h-6" />,
         },
         active: false,
         borderBottom: true,
-        hasSub: false
+        hasSub: true,
+        subMenuItems: [
+            {
+                label: "Prospect Clients",
+                url: "/clients",
+                icon: {
+                    active: (
+                        <UserIcon className="text-gray-800 w-5 h-5" />
+                    ),
+                    notActive: (
+                        <UserIcon className="text-white w-5 h-5" />
+                    ),
+                },
+                active: false,
+                hasSub: false
+            },
+            {
+                label: "Active Clients",
+                url: "/clients/active-clients",
+                icon: {
+                    active: (
+                        <UserIcon className="text-gray-800 w-5 h-5" />
+                    ),
+                    notActive: (
+                        <UserIcon className="text-white w-5 h-5" />
+                    ),
+                },
+                active: false,
+                hasSub: false
+            },
+            {
+                label: "Offset Accounts",
+                url: "/clients/offset-accounts",
+                icon: {
+                    active: (
+                        <UserIcon className="text-gray-800 w-5 h-5" />
+                    ),
+                    notActive: (
+                        <UserIcon className="text-white w-5 h-5" />
+                    ),
+                },
+                active: false,
+                hasSub: false
+            }
+        ]
     },
     {
-        label: "Transactions",
+        label: "Daily Transactions",
         url: "#transactions",
         subMenuIndex: 0,
         icon: {
@@ -161,20 +205,20 @@ const MenuItems = [
         borderBottom: true,
         hasSub: true,
         subMenuItems: [
-            {
-                label: "Loans List",
-                url: "/transactions/loan-list",
-                icon: {
-                    active: (
-                        <ClipboardDocumentIcon className="text-gray-800 w-5 h-5" />
-                    ),
-                    notActive: (
-                        <ClipboardDocumentIcon className="text-white w-5 h-5" />
-                    ),
-                },
-                active: false,
-                hasSub: false
-            },
+            // {
+            //     label: "Loans List",
+            //     url: "/transactions/loan-list",
+            //     icon: {
+            //         active: (
+            //             <ClipboardDocumentIcon className="text-gray-800 w-5 h-5" />
+            //         ),
+            //         notActive: (
+            //             <ClipboardDocumentIcon className="text-white w-5 h-5" />
+            //         ),
+            //     },
+            //     active: false,
+            //     hasSub: false
+            // },
             {
                 label: "Loan Approval",
                 url: "/transactions/loan-applications",
@@ -190,8 +234,8 @@ const MenuItems = [
                 hasSub: false
             },
             {
-                label: "Daily Cash Collections",
-                url: "/transactions/daily-cash-collection",
+                label: "Loan Officer Register (Daily)",
+                url: "/transactions/daily-cash-collection", 
                 icon: {
                     active: (
                         <TicketIcon className="text-gray-800 w-5 h-5" />
@@ -204,7 +248,7 @@ const MenuItems = [
                 hasSub: false
             },
             // {
-            //     label: "Weekly Cash Collections",
+            //     label: "Loan Officer Register (Weekly)",
             //     url: "/transactions/weekly-cash-collection",
             //     icon: {
             //         active: (
