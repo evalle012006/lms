@@ -97,7 +97,9 @@ async function getAllLoansPerGroup(req, res) {
                             { $group: {
                                     _id: '$$groupName',
                                     currentReleaseAmount: { $sum: '$amountRelease' },
-                                    noOfCurrentRelease: { $sum: 1 }
+                                    noOfCurrentRelease: { $sum: 1 },
+                                    newCurrentRelease: { $sum: { $cond:{if: { $eq: ['$loanCycle', 1] }, then: 1, else: 0} } },
+                                    reCurrentRelease: { $sum: { $cond:{if: { $gt: ['$loanCycle', 1] }, then: 1, else: 0} } }
                                 }
                             }
                         ],
@@ -117,7 +119,9 @@ async function getAllLoansPerGroup(req, res) {
                             { $group: {
                                     _id: '$$groupName',
                                     fullPaymentAmount: { $sum: '$history.amountRelease' },
-                                    noOfFullPayment: { $sum: 1 }
+                                    noOfFullPayment: { $sum: 1 },
+                                    newFullPayment: { $sum: { $cond:{if: { $eq: ['$loanCycle', 1] }, then: 1, else: 0} } },
+                                    reFullPayment: { $sum: { $cond:{if: { $gt: ['$loanCycle', 1] }, then: 1, else: 0} } }
                                 }
                             }
                         ],
@@ -325,7 +329,9 @@ async function getAllLoansPerGroup(req, res) {
                             { $group: {
                                     _id: '$$groupName',
                                     currentReleaseAmount: { $sum: '$amountRelease' },
-                                    noOfCurrentRelease: { $sum: 1 }
+                                    noOfCurrentRelease: { $sum: 1 },
+                                    newCurrentRelease: { $sum: { $cond:{if: { $eq: ['$loanCycle', 1] }, then: 1, else: 0} } },
+                                    reCurrentRelease: { $sum: { $cond:{if: { $gt: ['$loanCycle', 1] }, then: 1, else: 0} } }
                                 }
                             }
                         ],
@@ -345,7 +351,9 @@ async function getAllLoansPerGroup(req, res) {
                             { $group: {
                                     _id: '$$groupName',
                                     fullPaymentAmount: { $sum: '$history.amountRelease' },
-                                    noOfFullPayment: { $sum: 1 }
+                                    noOfFullPayment: { $sum: 1 },
+                                    newFullPayment: { $sum: { $cond:{if: { $eq: ['$loanCycle', 1] }, then: 1, else: 0} } },
+                                    reFullPayment: { $sum: { $cond:{if: { $gt: ['$loanCycle', 1] }, then: 1, else: 0} } }
                                 }
                             }
                         ],
@@ -437,7 +445,9 @@ async function getAllLoansPerGroup(req, res) {
                             { $group: {
                                     _id: '$$groupName',
                                     currentReleaseAmount: { $sum: '$amountRelease' },
-                                    noOfCurrentRelease: { $sum: 1 }
+                                    noOfCurrentRelease: { $sum: 1 },
+                                    newCurrentRelease: { $sum: { $cond:{if: { $eq: ['$loanCycle', 1] }, then: 1, else: 0} } },
+                                    reCurrentRelease: { $sum: { $cond:{if: { $gt: ['$loanCycle', 1] }, then: 1, else: 0} } }
                                 }
                             }
                         ],
@@ -456,8 +466,10 @@ async function getAllLoansPerGroup(req, res) {
                             ]}} },
                             { $group: {
                                     _id: '$$groupName',
-                                    fullPaymentAmount: { $sum: '$amountRelease' },
-                                    noOfFullPayment: { $sum: 1 }
+                                    fullPaymentAmount: { $sum: '$history.amountRelease' },
+                                    noOfFullPayment: { $sum: 1 },
+                                    newFullPayment: { $sum: { $cond:{if: { $eq: ['$loanCycle', 1] }, then: 1, else: 0} } },
+                                    reFullPayment: { $sum: { $cond:{if: { $gt: ['$loanCycle', 1] }, then: 1, else: 0} } }
                                 }
                             }
                         ],
