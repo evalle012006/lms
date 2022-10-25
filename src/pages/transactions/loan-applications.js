@@ -62,11 +62,11 @@ const LoanApplicationPage = () => {
     }
 
     const getListGroup = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list'
+        let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list-by-group-occurence'
         if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
-            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id });
+            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id, occurence: 'daily' });
         } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
-            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id });
+            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, occurence: 'daily' });
         }
 
         const response = await fetchWrapper.get(url);
@@ -89,7 +89,7 @@ const LoanApplicationPage = () => {
     const getListClient = async () => {
         let url = process.env.NEXT_PUBLIC_API_URL + 'clients/list';
         if (currentUser.root !== true && (currentUser.role.rep === 3 || currentUser.role.rep === 4) && branchList.length > 0) { 
-            url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", branchId: branchList[0]._id });
+            url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", branchId: branchList[0]._id, status: 'active' });
         } 
 
         const response = await fetchWrapper.get(url);
@@ -123,6 +123,7 @@ const LoanApplicationPage = () => {
             await response.loans && response.loans.map(loan => {
                 loanList.push({
                     ...loan,
+                    groupName: loan.group.name,
                     principalLoanStr: formatPricePhp(loan.principalLoan),
                     mcbuStr: formatPricePhp(loan.mcbu),
                     activeLoanStr: formatPricePhp(loan.activeLoan),
@@ -201,6 +202,10 @@ const LoanApplicationPage = () => {
         getListClient();
         getListLoan();
     }
+
+    const actionButtons = [
+        <ButtonSolid label="Add Loan" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
+    ];
 
     const handleEditAction = (row) => {
         setMode("edit");
@@ -377,7 +382,7 @@ const LoanApplicationPage = () => {
     }, [groupList]);
 
     return (
-        <Layout>
+        <Layout actionButtons={actionButtons}>
             <div className="pb-4">
                 {loading ?
                     (

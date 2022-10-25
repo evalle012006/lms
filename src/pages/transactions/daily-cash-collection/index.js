@@ -23,15 +23,18 @@ const DailyCashCollectionPage = () => {
     const [loading, setLoading] = useState(true);
     const [overallTotals, setOverallTotals] = useState([]);
     const [overallTotalsTitles, setOverallTotalsTitles] = useState([
-        'No. Of Clients',
+        'Active Clients',
+        'Active Borrowers',
         'Loan Release',
         'Loan Balance',
-        'No. Of Current Release',
+        'No. Of Current Release Person',
         'Current Release Amount',
         'Target Loan Collection',
         'Excess',
         'Total Loan Collection',
-        'Full Payment Amount'
+        'No. Of Full Payment Person',
+        'Full Payment Amount',
+        'Mispayments' // 5/9
     ]);
 
     const router = useRouter();
@@ -142,9 +145,10 @@ const DailyCashCollectionPage = () => {
                     let collection = {
                         groupId: cc._id,
                         group: cc.name,
-                        noCurrentRelease: '-',
+                        noCurrentReleaseStr: '-',
                         currentReleaseAmountStr: '-',
-                        noOfClients: '-',
+                        activeClients: '-',
+                        activeBorrowers: '-',
                         totalReleasesStr: '-',
                         totalLoanBalanceStr: '-',
                         loanTargetStr: '-',
@@ -153,110 +157,135 @@ const DailyCashCollectionPage = () => {
                         collectionStr: '-',
                         mispayments: '-',
                         fullPaymentAmountStr: '-',
+                        noFullPaymentStr: '-',
                         status: '-'
                     };
 
-                    if (cc.cashCollections.length > 0) {
-                        const loanNoOfClients = cc.loans.length > 0 ? cc.loans[0].noOfClients : 0;
+                    if (cc.loans.length > 0) {
+                        let noCurrentRelease = '0 / 0';
+                        if (cc.currentRelease.length > 0) {
+                            noCurrentRelease = cc.currentRelease[0].newCurrentRelease + ' / ' + cc.currentRelease[0].reCurrentRelease;
+                        }
+
+                        let noFullPayment = '0 / 0';
+                        if (cc.fullPayment.length > 0) {
+                            noFullPayment = cc.fullPayment[0].newFullPayment + ' / ' + cc.fullPayment[0].reFullPayment;
+                        }
+
                         collection = {
                             groupId: cc._id,
                             group: cc.name,
-                            noCurrentRelease: cc.currentRelease.length > 0 ? cc.currentRelease[0].noOfCurrentRelease : 0.00,
+                            noCurrentReleaseStr: noCurrentRelease,
+                            newCurrentRelease: cc.currentRelease.length > 0 ? cc.currentRelease[0].newCurrentRelease : 0,
+                            reCurrentRelease: cc.currentRelease.length > 0 ? cc.currentRelease[0].reCurrentRelease : 0,
                             currentReleaseAmount: cc.currentRelease.length > 0 && cc.currentRelease[0].currentReleaseAmount,
-                            currentReleaseAmountStr: cc.currentRelease.length > 0 ? formatPricePhp(cc.currentRelease[0].currentReleaseAmount) : 0.0,
-                            noOfPaidClients: cc.cashCollections[0].noOfClients ? cc.cashCollections[0].noOfClients : 0,
-                            noOfClients: cc.cashCollections[0].noOfClients ? cc.cashCollections[0].noOfClients + '/' + loanNoOfClients : 0 + '/' + cc.loans[0].noOfClients,
-                            mispayments: cc.cashCollections[0].mispayments ? cc.cashCollections[0].mispayments : 0,
-                            loanTarget: cc.cashCollections[0].loanTarget && cc.cashCollections[0].loanTarget,
-                            loanTargetStr: cc.cashCollections[0].loanTarget ? formatPricePhp(cc.cashCollections[0].loanTarget) : 0.00,
-                            collection: cc.cashCollections[0].collection && cc.cashCollections[0].collection,
-                            collectionStr: cc.cashCollections[0].collection ? formatPricePhp(cc.cashCollections[0].collection) : 0.00,
-                            excess: cc.cashCollections[0].excess && cc.cashCollections[0].excess,
-                            excessStr: cc.cashCollections[0].excess ? formatPricePhp(cc.cashCollections[0].excess) : 0.00,
-                            total: cc.cashCollections[0].total && cc.cashCollections[0].total,
-                            totalStr: cc.cashCollections[0].total ? formatPricePhp(cc.cashCollections[0].total) : 0.00,
-                            totalReleases: cc.loans.length > 0 ? formatPricePhp(cc.loans[0].totalRelease) : 0.00,
-                            totalLoanBalance: cc.loans.length > 0 && cc.loans[0].totalLoanBalance,
-                            totalLoanBalanceStr: cc.loans.length > 0 ? formatPricePhp(cc.loans[0].totalLoanBalance) : 0.00,
-                            fullPaymentAmount: cc.fullPayment.length > 0 && cc.fullPayment[0].fullPaymentAmount,
-                            fullPaymentAmountStr: cc.fullPayment.length > 0 ? formatPricePhp(cc.fullPayment[0].fullPaymentAmount) : 0.00,
-                            status: 'open',
-                            page: 'collection'
-                        };
-                        collectionData.push(collection);
-                        return false;
-                    } else if (cc.loans.length > 0) {
-                        collection = {
-                            groupId: cc._id,
-                            group: cc.name,
-                            noCurrentRelease: cc.currentRelease.length > 0 ? cc.currentRelease[0].noOfCurrentRelease : 0.00,
-                            currentReleaseAmount: cc.currentRelease.length > 0 && cc.currentRelease[0].currentReleaseAmount,
-                            currentReleaseAmountStr: cc.currentRelease.length > 0 ? formatPricePhp(cc.currentRelease[0].currentReleaseAmount) : 0.0,
-                            noOfPaidClients: 0,
-                            noOfClients: cc.loans[0].noOfClients ? 0 + '/' + cc.loans[0].noOfClients : 0 + '/' + 0,
+                            currentReleaseAmountStr: cc.currentRelease.length > 0 ? formatPricePhp(cc.currentRelease[0].currentReleaseAmount) : 0,
+                            // noOfPaidClients: 0,
+                            activeClients: cc.loans[0].activeClients ? cc.loans[0].activeClients : 0,
+                            activeBorrowers: cc.loans[0].activeBorrowers ? cc.loans[0].activeBorrowers : 0,
                             mispayments: collection.mispayments,
                             loanTarget: cc.loans[0].loanTarget && cc.loans[0].loanTarget,
-                            loanTargetStr: cc.loans[0].loanTarget ? formatPricePhp(cc.loans[0].loanTarget) : 0.0,
+                            loanTargetStr: cc.loans[0].loanTarget ? formatPricePhp(cc.loans[0].loanTarget) : 0,
                             collection: cc.loans[0].collection && cc.loans[0].collection,
-                            collectionStr: cc.loans[0].collection ? formatPricePhp(cc.loans[0].collection) : 0.0,
+                            collectionStr: cc.loans[0].collection ? formatPricePhp(cc.loans[0].collection) : 0,
                             excess: cc.loans[0].excess && cc.loans[0].excess,
-                            excessStr: cc.loans[0].excess ? formatPricePhp(cc.loans[0].excess) : 0.0,
-                            total: cc.loans[0].total && cc.loans[0].total,
-                            totalStr: cc.loans[0].total ? formatPricePhp(cc.loans[0].total) : 0.0,
+                            excessStr: cc.loans[0].excess ? formatPricePhp(cc.loans[0].excess) : 0,
+                            total: cc.loans[0].total,
+                            totalStr: formatPricePhp(cc.loans[0].total),
                             totalReleases: cc.loans[0].totalRelease && cc.loans[0].totalRelease,
-                            totalReleasesStr: cc.loans[0].totalRelease ? formatPricePhp(cc.loans[0].totalRelease) : 0.0,
+                            totalReleasesStr: cc.loans[0].totalRelease ? formatPricePhp(cc.loans[0].totalRelease) : 0,
                             totalLoanBalance: cc.loans[0].totalLoanBalance && cc.loans[0].totalLoanBalance,
-                            totalLoanBalanceStr: cc.loans[0].totalLoanBalance ? formatPricePhp(cc.loans[0].totalLoanBalance) : 0.00,
-                            fullPaymentAmount: cc.fullPayment.length > 0 ? cc.fullPayment[0].fullPaymentAmount : 0.00,
-                            fullPaymentAmountStr: cc.fullPayment.length > 0 ? formatPricePhp(cc.fullPayment[0].fullPaymentAmount) : 0.00,
+                            totalLoanBalanceStr: cc.loans[0].totalLoanBalance ? formatPricePhp(cc.loans[0].totalLoanBalance) : 0,
+                            fullPaymentAmount: cc.fullPayment.length > 0 ? cc.fullPayment[0].fullPaymentAmount : 0,
+                            fullPaymentAmountStr: cc.fullPayment.length > 0 ? formatPricePhp(cc.fullPayment[0].fullPaymentAmount) : 0,
+                            noFullPaymentStr: noFullPayment,
+                            newFullPayment: cc.fullPayment.length > 0 ? cc.fullPayment[0].newFullPayment : 0,
+                            reFullPayment: cc.fullPayment.length > 0 ? cc.fullPayment[0].reFullPayment : 0,
                             status: 'open',
                             page: 'collection'
                         };
-                        collectionData.push(collection);
-                    } else {
-                        collectionData.push(collection);
+                    } else if (cc.cashCollections.length > 0) {
+                        // const loanNoOfClients = cc.loans.length > 0 ? cc.loans[0].noOfClients : 0;
+                        collection = { ...collection,
+                            // groupId: cc._id,
+                            // group: cc.name,
+                            // noCurrentRelease: cc.currentRelease.length > 0 ? cc.currentRelease[0].noOfCurrentRelease : 0,
+                            // currentReleaseAmount: cc.currentRelease.length > 0 && cc.currentRelease[0].currentReleaseAmount,
+                            // currentReleaseAmountStr: cc.currentRelease.length > 0 ? formatPricePhp(cc.currentRelease[0].currentReleaseAmount) : 0,
+                            // noOfPaidClients: cc.cashCollections[0].noOfClients ? cc.cashCollections[0].noOfClients : 0,
+                            // noOfClients: cc.cashCollections[0].noOfClients ? cc.cashCollections[0].noOfClients + '/' + loanNoOfClients : 0 + '/' + cc.loans[0].noOfClients,
+                            mispayments: cc.cashCollections[0].mispayments ? cc.cashCollections[0].mispayments : 0,
+                            // loanTarget: cc.cashCollections[0].loanTarget && cc.cashCollections[0].loanTarget,
+                            // loanTargetStr: cc.cashCollections[0].loanTarget ? formatPricePhp(cc.cashCollections[0].loanTarget) : 0,
+                            collection: cc.cashCollections[0].collection && cc.cashCollections[0].collection,
+                            collectionStr: cc.cashCollections[0].collection ? formatPricePhp(cc.cashCollections[0].collection) : 0,
+                            excess: cc.cashCollections[0].excess && cc.cashCollections[0].excess,
+                            excessStr: cc.cashCollections[0].excess ? formatPricePhp(cc.cashCollections[0].excess) : 0,
+                            total: cc.cashCollections[0].total && cc.cashCollections[0].total,
+                            totalStr: cc.cashCollections[0].total ? formatPricePhp(cc.cashCollections[0].total) : 0.00,
+                            // totalReleases: cc.loans.length > 0 ? formatPricePhp(cc.loans[0].totalRelease) : 0.00,
+                            // totalLoanBalance: cc.loans.length > 0 && cc.loans[0].totalLoanBalance,
+                            // totalLoanBalanceStr: cc.loans.length > 0 ? formatPricePhp(cc.loans[0].totalLoanBalance) : 0.00,
+                            // fullPaymentAmount: cc.fullPayment.length > 0 && cc.fullPayment[0].fullPaymentAmount,
+                            // fullPaymentAmountStr: cc.fullPayment.length > 0 ? formatPricePhp(cc.fullPayment[0].fullPaymentAmount) : 0.00,
+                            // status: 'open',
+                            // page: 'collection'
+                        };
                     }
-                }
 
-                // if (cc.loans.length > 0) {
-                    // collection.mispayments = cc.loans[0].mispayments ? cc.loans[0].mispayments : '-';
-                // }
+                    collectionData.push(collection);
+                }
             });
 
-            let noOfPaidClients = 0;
+            let noOfClients = 0;
+            let noOfBorrowers = 0;
             let totalLoanRelease = 0;
             let totalLoanBalance = 0;
-            let noOfCurrentRelease = 0;
+            // let noOfCurrentRelease = 0;
+            let noOfNewCurrentRelease = 0;
+            let noOfReCurrentRelease = 0;
             let currentReleaseAmount = 0;
             let targetLoanCollection = 0;
             let excess = 0;
             let totalLoanCollection = 0;
+            let noOfNewfullPayment = 0;
+            let reOfNewfullPayment = 0;
             let fullPaymentAmount = 0;
+            let mispayments = 0;
             
             collectionData.map(cc => {
                 if (cc.status !== '-') {
-                    noOfPaidClients += cc.noOfPaidClients ? cc.noOfPaidClients : 0;
+                    noOfClients += cc.activeClients ? cc.activeClients : 0;
+                    noOfBorrowers += cc.activeBorrowers ? cc.activeBorrowers : 0;
                     totalLoanRelease += cc.totalReleases ? cc.totalReleases : 0;
                     totalLoanBalance += cc.totalLoanBalance ? cc.totalLoanBalance : 0;
-                    noOfCurrentRelease += cc.noCurrentRelease ? cc.noCurrentRelease : 0;
+                    // noOfCurrentRelease += cc.noCurrentRelease ? cc.noCurrentRelease : 0;
+                    noOfNewCurrentRelease += cc.newCurrentRelease ? cc.newCurrentRelease : 0;
+                    noOfReCurrentRelease += cc.reCurrentRelease ? cc.reCurrentRelease : 0;
                     currentReleaseAmount += cc.currentReleaseAmount ? cc.currentReleaseAmount : 0;
                     targetLoanCollection += cc.loanTarget ? cc.loanTarget : 0;
                     excess += cc.excess ? cc.excess : 0;
                     totalLoanCollection += cc.total ? cc.total : 0;
                     fullPaymentAmount += cc.fullPaymentAmount ? cc.fullPaymentAmount : 0;
+                    noOfNewfullPayment += cc.newFullPayment ? cc.newFullPayment : 0;
+                    reOfNewfullPayment += cc.reFullPayment ? cc.reFullPayment : 0;
+                    mispayments += cc.mispayments && cc.mispayments !== '-' ? cc.mispayments : 0;
                 }
             });
 
             setOverallTotals([
-                noOfPaidClients,
+                noOfClients,
+                noOfBorrowers,
                 totalLoanRelease,
                 totalLoanBalance,
-                noOfCurrentRelease,
+                noOfNewCurrentRelease + ' / ' + noOfReCurrentRelease,
                 currentReleaseAmount,
                 targetLoanCollection,
                 excess,
                 totalLoanCollection,
-                fullPaymentAmount
+                noOfNewfullPayment + ' / ' + reOfNewfullPayment,
+                fullPaymentAmount,
+                mispayments + ' / ' + noOfClients
             ]);
 
             dispatch(setCashCollectionList(collectionData));
@@ -289,8 +318,8 @@ const DailyCashCollectionPage = () => {
             filter: 'includes'
         },
         {
-            Header: "# of Clients",
-            accessor: 'noOfClients',
+            Header: "Active Clients", // total number of clients per group
+            accessor: 'activeClients',
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
@@ -301,14 +330,20 @@ const DailyCashCollectionPage = () => {
             filter: 'includes'
         },
         {
+            Header: "Active Borrowers", // with balance
+            accessor: 'activeBorrowers',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
             Header: "Total Loan Balance",
             accessor: 'totalLoanBalanceStr',
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
         {
-            Header: "# of Current Release",
-            accessor: 'noCurrentRelease',
+            Header: "Current Release Person",
+            accessor: 'noCurrentReleaseStr',
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
@@ -331,8 +366,14 @@ const DailyCashCollectionPage = () => {
             filter: 'includes'
         },
         {
-            Header: "Total Loan Collection",
+            Header: "Actual Loan Collection",
             accessor: 'totalStr',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "Full Payment Person",
+            accessor: 'noFullPaymentStr',
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
@@ -343,12 +384,25 @@ const DailyCashCollectionPage = () => {
             filter: 'includes'
         },
         {
+            Header: "Mispayments",
+            accessor: 'mispayments',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
             Header: "Status",
             accessor: 'status',
             Cell: StatusPill,
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
+        // to be implemented
+        // {
+        //     Header: "Remakrs",
+        //     accessor: 'remarks',
+        //     Filter: SelectColumnFilter,
+        //     filter: 'includes'
+        // }
     ];
 
     const handleOpen = async (row) => {
@@ -448,10 +502,10 @@ const DailyCashCollectionPage = () => {
                             <TableComponent columns={columns} data={cashCollectionList} showFilters={false} hasActionButtons={true} rowActionButtons={rowActionButtons} rowClick={handleRowClick} />
                         </div>
                     </div>
-                    <div className="w-full h-16 bg-white border-t-2 border-gray-300 fixed bottom-0 flex pl-8">
-                        <table className="table-auto border-collapse text-sm font-proxima">
+                    <div className="w-11/12 h-18 bg-white border-t-2 border-gray-300 fixed bottom-0 flex">
+                        <table className="table-auto border-collapse text-sm font-proxima w-11/12 overflow-auto">
                             <thead className="text-gray-400">
-                                <tr className="">
+                                <tr className="w-8">
                                     {overallTotalsTitles.map((o, i) => {
                                         return (
                                             <th key={i} className="px-4">
@@ -462,10 +516,16 @@ const DailyCashCollectionPage = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr className="text-lg">
+                                <tr className="text-base">
                                     {overallTotals.map((o, i) => {
                                         return (
-                                            <td key={i} className="px-4"><center>{ o !== 0 ? formatPricePhp(o) : o }</center></td>
+                                            <React.Fragment key={i}>
+                                                {i === 0 || i === 1 || i === 4 || i === 9 || i === 11 ? (
+                                                    <td className="px-4"><center>{ o }</center></td>
+                                                ) : (
+                                                    <td className="px-4"><center>{ o ? formatPricePhp(o) : 0 }</center></td>
+                                                )}
+                                            </React.Fragment>
                                         )
                                     })}
                                 </tr>

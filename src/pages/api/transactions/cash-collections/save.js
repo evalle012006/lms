@@ -94,12 +94,13 @@ async function updateLoan(collection) {
         if (collection.paymentCollection > 0) {
             loan.loanBalance = loan.loanBalance - collection.paymentCollection;
             loan.noOfPayments = loan.noOfPayments + 1;
-        } else {
+        } else if (collection.paymentCollection <= 0 || collection.mispayment) {
             loan.mispayments = loan.mispayments ? loan.mispayments + 1 : loan.mispayments;
         }
 
         if (loan.loanBalance <= 0) {
             loan.status = 'completed';
+            loan.fullPaymentDate = moment(new Date()).format('YYYY-MM-DD');
             loan.history = {
                 activeLoan: loan.activeLoan,
                 amountRelease: loan.amountRelease,
@@ -145,7 +146,7 @@ async function updateGroup(loan) {
         await db.collection('groups').updateOne(
             {  _id: ObjectId(loan.groupId) },
             {
-                $set: { ...loan }
+                $set: { ...group }
             }, 
             { upsert: false }
         );

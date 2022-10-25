@@ -46,7 +46,7 @@ async function getAllLoansPerGroup(req, res) {
                             { $match: {dateAdded: date} },
                             { $group: { 
                                     _id: '$$groupName',
-                                    noOfClients: { $sum: { $cond: {if: { $gt: ['$paymentCollection', 0] }, then: 1, else: 0} } },
+                                    // noOfClients: { $sum: { $cond: {if: { $gt: ['$paymentCollection', 0] }, then: 1, else: 0} } },
                                     mispayments: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },
                                     loanTarget: { $sum: '$activeLoan' },
                                     collection: { $sum: '$paymentCollection' },
@@ -71,7 +71,8 @@ async function getAllLoansPerGroup(req, res) {
                             ]}} },
                             { $group: { 
                                     _id: '$$groupName',
-                                    noOfClients: { $sum: 1 },
+                                    activeClients: { $sum: 1 },
+                                    activeBorrowers: { $sum: { $cond:{if: { $gt: ['$loanBalance', 0] }, then: 1, else: 0} } },
                                     mispayments: { $sum: '$mispayments' },
                                     totalRelease: { $sum: '$amountRelease' },
                                     totalLoanBalance: { $sum: '$loanBalance' },
@@ -92,7 +93,7 @@ async function getAllLoansPerGroup(req, res) {
                         localField: "groupIdStr",
                         foreignField: "groupId",
                         pipeline: [
-                            { $match: { status: 'active', dateAdded: date } },
+                            { $match: { status: 'active', dateGranted: date } },
                             { $group: {
                                     _id: '$$groupName',
                                     currentReleaseAmount: { $sum: '$amountRelease' },
@@ -111,7 +112,7 @@ async function getAllLoansPerGroup(req, res) {
                         foreignField: "groupId",
                         pipeline: [
                             { $match: {$expr: { $and: [
-                                {$eq: ['$status', 'completed']}, {$lte: ['$loanBalance', 0]}
+                                {$eq: ['$status', 'completed']}, {$lte: ['$loanBalance', 0]}, {eq: ['$fullPaymentDate', date]}
                             ]}} },
                             { $group: {
                                     _id: '$$groupName',
@@ -157,7 +158,7 @@ async function getAllLoansPerGroup(req, res) {
                             { $match: {dateAdded: date} },
                             { $group: { 
                                     _id: '$$groupName',
-                                    noOfClients: { $sum: { $cond: {if: { $gt: ['$paymentCollection', 0] }, then: 1, else: 0} } },
+                                    // noOfClients: { $sum: { $cond: {if: { $gt: ['$paymentCollection', 0] }, then: 1, else: 0} } },
                                     mispayments: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },
                                     loanTarget: { $sum: '$activeLoan' },
                                     collection: { $sum: '$paymentCollection' },
@@ -182,7 +183,8 @@ async function getAllLoansPerGroup(req, res) {
                             ]}} },
                             { $group: { 
                                     _id: '$$groupName',
-                                    noOfClients: { $sum: 1 },
+                                    activeClients: { $sum: 1 },
+                                    activeBorrowers: { $sum: { $cond:{if: { $gt: ['$loanBalance', 0] }, then: 1, else: 0} } },
                                     mispayments: { $sum: '$mispayments' },
                                     totalRelease: { $sum: '$amountRelease' },
                                     totalLoanBalance: { $sum: '$loanBalance' },
@@ -203,11 +205,13 @@ async function getAllLoansPerGroup(req, res) {
                         localField: "groupIdStr",
                         foreignField: "groupId",
                         pipeline: [
-                            { $match: { status: 'active', dateAdded: date } },
+                            { $match: { status: 'active', dateGranted: date } },
                             { $group: {
                                     _id: '$$groupName',
                                     currentReleaseAmount: { $sum: '$amountRelease' },
-                                    noOfCurrentRelease: { $sum: 1 }
+                                    noOfCurrentRelease: { $sum: 1 },
+                                    newCurrentRelease: { $sum: { $cond:{if: { $eq: ['$loanCycle', 1] }, then: 1, else: 0} } },
+                                    reCurrentRelease: { $sum: { $cond:{if: { $gt: ['$loanCycle', 1] }, then: 1, else: 0} } }
                                 }
                             }
                         ],
@@ -222,12 +226,14 @@ async function getAllLoansPerGroup(req, res) {
                         foreignField: "groupId",
                         pipeline: [
                             { $match: {$expr: { $and: [
-                                {$eq: ['$status', 'completed']}, {$lte: ['$loanBalance', 0]}
+                                {$eq: ['$status', 'completed']}, {$lte: ['$loanBalance', 0]}, {eq: ['$fullPaymentDate', date]}
                             ]}} },
                             { $group: {
                                     _id: '$$groupName',
                                     fullPaymentAmount: { $sum: '$history.amountRelease' },
-                                    noOfFullPayment: { $sum: 1 }
+                                    noOfFullPayment: { $sum: 1 },
+                                    newFullPayment: { $sum: { $cond:{if: { $eq: ['$loanCycle', 1] }, then: 1, else: 0} } },
+                                    reFullPayment: { $sum: { $cond:{if: { $gt: ['$loanCycle', 1] }, then: 1, else: 0} } }
                                 }
                             }
                         ],
@@ -268,7 +274,7 @@ async function getAllLoansPerGroup(req, res) {
                             { $match: {dateAdded: date} },
                             { $group: { 
                                     _id: '$$groupName',
-                                    noOfClients: { $sum: { $cond: {if: { $gt: ['$paymentCollection', 0] }, then: 1, else: 0} } },
+                                    // noOfClients: { $sum: { $cond: {if: { $gt: ['$paymentCollection', 0] }, then: 1, else: 0} } },
                                     mispayments: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },
                                     loanTarget: { $sum: '$activeLoan' },
                                     collection: { $sum: '$paymentCollection' },
@@ -293,7 +299,8 @@ async function getAllLoansPerGroup(req, res) {
                             ]}} },
                             { $group: { 
                                     _id: '$$groupName',
-                                    noOfClients: { $sum: 1 },
+                                    activeClients: { $sum: 1 },
+                                    activeBorrowers: { $sum: { $cond:{if: { $gt: ['$loanBalance', 0] }, then: 1, else: 0} } },
                                     mispayments: { $sum: '$mispayments' },
                                     totalRelease: { $sum: '$amountRelease' },
                                     totalLoanBalance: { $sum: '$loanBalance' },
@@ -314,7 +321,7 @@ async function getAllLoansPerGroup(req, res) {
                         localField: "groupIdStr",
                         foreignField: "groupId",
                         pipeline: [
-                            { $match: { status: 'active', dateAdded: date } },
+                            { $match: { status: 'active', dateGranted: date } },
                             { $group: {
                                     _id: '$$groupName',
                                     currentReleaseAmount: { $sum: '$amountRelease' },
@@ -333,7 +340,7 @@ async function getAllLoansPerGroup(req, res) {
                         foreignField: "groupId",
                         pipeline: [
                             { $match: {$expr: { $and: [
-                                {$eq: ['$status', 'completed']}, {$lte: ['$loanBalance', 0]}
+                                {$eq: ['$status', 'completed']}, {$lte: ['$loanBalance', 0]}, {eq: ['$fullPaymentDate', date]}
                             ]}} },
                             { $group: {
                                     _id: '$$groupName',
@@ -379,7 +386,7 @@ async function getAllLoansPerGroup(req, res) {
                             { $match: {dateAdded: date} },
                             { $group: { 
                                     _id: '$$groupName',
-                                    noOfClients: { $sum: { $cond: {if: { $gt: ['$paymentCollection', 0] }, then: 1, else: 0} } },
+                                    // noOfClients: { $sum: { $cond: {if: { $gt: ['$paymentCollection', 0] }, then: 1, else: 0} } },
                                     mispayments: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },
                                     loanTarget: { $sum: '$activeLoan' },
                                     collection: { $sum: '$paymentCollection' },
@@ -404,7 +411,8 @@ async function getAllLoansPerGroup(req, res) {
                             ]}} },
                             { $group: { 
                                     _id: '$$groupName',
-                                    noOfClients: { $sum: 1 },
+                                    activeClients: { $sum: 1 },
+                                    activeBorrowers: { $sum: { $cond:{if: { $gt: ['$loanBalance', 0] }, then: 1, else: 0} } },
                                     mispayments: { $sum: '$mispayments' },
                                     totalRelease: { $sum: '$amountRelease' },
                                     totalLoanBalance: { $sum: '$loanBalance' },
@@ -425,7 +433,7 @@ async function getAllLoansPerGroup(req, res) {
                         localField: "groupIdStr",
                         foreignField: "groupId",
                         pipeline: [
-                            { $match: { status: 'active', dateAdded: date } },
+                            { $match: { status: 'active', dateGranted: date } },
                             { $group: {
                                     _id: '$$groupName',
                                     currentReleaseAmount: { $sum: '$amountRelease' },
@@ -444,7 +452,7 @@ async function getAllLoansPerGroup(req, res) {
                         foreignField: "groupId",
                         pipeline: [
                             { $match: {$expr: { $and: [
-                                {$eq: ['$status', 'completed']}, {$lte: ['$loanBalance', 0]}
+                                {$eq: ['$status', 'completed']}, {$lte: ['$loanBalance', 0]}, {eq: ['$fullPaymentDate', date]}
                             ]}} },
                             { $group: {
                                     _id: '$$groupName',

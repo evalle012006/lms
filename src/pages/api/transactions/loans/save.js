@@ -11,6 +11,16 @@ async function save(req, res) {
 
     const { db } = await connectToDatabase();
 
+    let mode;
+    let oldLoanId;
+    console.log(loanData.hasOwnProperty('mode'))
+    if (loanData.hasOwnProperty('mode')) {
+        mode = loanData.mode;
+        oldLoanId = loanData.oldLoanId;
+        delete loanData.mode;
+        delete loanData.oldLoanId;
+    }
+
     const loans = await db
         .collection('loans')
         .find({ clientId: loanData.clientId, status: 'active' })
@@ -31,7 +41,11 @@ async function save(req, res) {
             dateGranted: moment(new Date()).format('YYYY-MM-DD')
         });
 
-        updateGroup(loanData);
+        if (mode === 'reloan') {
+            updateLoan(oldLoanId);
+        } else {
+            updateGroup(loanData);
+        }
 
         response = {
             success: true,
@@ -68,5 +82,27 @@ async function updateGroup(loan) {
             }, 
             { upsert: false }
         );
+    }
+}
+
+async function updateLoan(loanId) {
+    const { db } = await connectToDatabase();
+    const ObjectId = require('mongodb').ObjectId;
+
+    let loan = await db.collection('loans').find({ _id: ObjectId(loanId) }).toArray();
+
+    if (loan.length > 0) {
+        loan = loan[0];
+
+        loan.status = 'closed';
+
+        await db
+            .collection('loans')
+            .updateOne(
+                { _id: ObjectId(loanId) }, 
+                {
+                    $set: { ...loan }
+                }, 
+                { upsert: false });
     }
 }

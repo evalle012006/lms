@@ -109,7 +109,7 @@ async function getLoanWithCashCollection(req, res) {
                         foreignField: "clientId",
                         pipeline: [
                             { $match: {$expr: { $and: [
-                                {$eq: ['$status', 'completed']}, {$lte: ['$loanBalance', 0]}
+                                {$eq: ['$status', 'completed']}, {$lte: ['$loanBalance', 0]}, {$eq: ['$fullPaymentDate', date]}
                             ]}} },
                             { $group: {
                                     _id: '$$clientId',
@@ -119,6 +119,26 @@ async function getLoanWithCashCollection(req, res) {
                             }
                         ],
                         as: "fullPayment"
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "loans",
+                        let: { clientId: '$clientId' },
+                        localField: "clientId",
+                        foreignField: "clientId",
+                        pipeline: [
+                            { $match: {$expr: { $and: [
+                                {$eq: ['$status', 'completed']}, {$lte: ['$loanBalance', 0]}
+                            ]}} },
+                            { $group: {
+                                    _id: '$$clientId',
+                                    fullPaymentAmount: { $sum: '$history.amountRelease' },
+                                    noOfFullPayment: { $sum: 1 }
+                                }
+                            }
+                        ],
+                        as: "fullPaymentTotal"
                     }
                 },
                 { $project: { clientIdObj: 0, loanIdStr: 0, startDateObj: 0, groupIdObj: 0 } }
@@ -219,7 +239,7 @@ async function getLoanWithCashCollection(req, res) {
                         foreignField: "clientId",
                         pipeline: [
                             { $match: {$expr: { $and: [
-                                {$eq: ['$status', 'completed']}, {$lte: ['$loanBalance', 0]}
+                                {$eq: ['$status', 'completed']}, {$lte: ['$loanBalance', 0]}, {$eq: ['$fullPaymentDate', date]}
                             ]}} },
                             { $group: {
                                     _id: '$$clientId',
@@ -229,6 +249,26 @@ async function getLoanWithCashCollection(req, res) {
                             }
                         ],
                         as: "fullPayment"
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "loans",
+                        let: { clientId: '$clientId' },
+                        localField: "clientId",
+                        foreignField: "clientId",
+                        pipeline: [
+                            { $match: {$expr: { $and: [
+                                {$eq: ['$status', 'completed']}, {$lte: ['$loanBalance', 0]}
+                            ]}} },
+                            { $group: {
+                                    _id: '$$clientId',
+                                    fullPaymentAmount: { $sum: '$history.amountRelease' },
+                                    noOfFullPayment: { $sum: 1 }
+                                }
+                            }
+                        ],
+                        as: "fullPaymentTotal"
                     }
                 },
                 { $project: { clientIdObj: 0, loanIdStr: 0, startDateObj: 0, groupIdObj: 0 } }
@@ -329,7 +369,7 @@ async function getLoanWithCashCollection(req, res) {
                         foreignField: "clientId",
                         pipeline: [
                             { $match: {$expr: { $and: [
-                                {$eq: ['$status', 'completed']}, {$lte: ['$loanBalance', 0]}
+                                {$eq: ['$status', 'completed']}, {$lte: ['$loanBalance', 0]}, {$eq: ['$fullPaymentDate', date]}
                             ]}} },
                             { $group: {
                                     _id: '$$clientId',
@@ -339,6 +379,26 @@ async function getLoanWithCashCollection(req, res) {
                             }
                         ],
                         as: "fullPayment"
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "loans",
+                        let: { clientId: '$clientId' },
+                        localField: "clientId",
+                        foreignField: "clientId",
+                        pipeline: [
+                            { $match: {$expr: { $and: [
+                                {$eq: ['$status', 'completed']}, {$lte: ['$loanBalance', 0]}
+                            ]}} },
+                            { $group: {
+                                    _id: '$$clientId',
+                                    fullPaymentAmount: { $sum: '$history.amountRelease' },
+                                    noOfFullPayment: { $sum: 1 }
+                                }
+                            }
+                        ],
+                        as: "fullPaymentTotal"
                     }
                 },
                 { $project: { clientIdObj: 0, loanIdStr: 0, startDateObj: 0, groupIdObj: 0 } }
@@ -438,7 +498,7 @@ async function getLoanWithCashCollection(req, res) {
                         foreignField: "clientId",
                         pipeline: [
                             { $match: {$expr: { $and: [
-                                {$eq: ['$status', 'completed']}, {$lte: ['$loanBalance', 0]}
+                                {$eq: ['$status', 'completed']}, {$lte: ['$loanBalance', 0]}, {$eq: ['$fullPaymentDate', date]}
                             ]}} },
                             { $group: {
                                     _id: '$$clientId',
@@ -448,6 +508,26 @@ async function getLoanWithCashCollection(req, res) {
                             }
                         ],
                         as: "fullPayment"
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "loans",
+                        let: { clientId: '$clientId' },
+                        localField: "clientId",
+                        foreignField: "clientId",
+                        pipeline: [
+                            { $match: {$expr: { $and: [
+                                {$eq: ['$status', 'completed']}, {$lte: ['$loanBalance', 0]}
+                            ]}} },
+                            { $group: {
+                                    _id: '$$clientId',
+                                    fullPaymentAmount: { $sum: '$history.amountRelease' },
+                                    noOfFullPayment: { $sum: 1 }
+                                }
+                            }
+                        ],
+                        as: "fullPaymentTotal"
                     }
                 },
                 { $project: { clientIdObj: 0, loanIdStr: 0, startDateObj: 0, groupIdObj: 0 } }

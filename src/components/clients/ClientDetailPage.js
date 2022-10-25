@@ -58,6 +58,12 @@ const ClientDetailPage = () => {
             accessor: 'dateGranted',
             Filter: SelectColumnFilter,
             filter: 'includes'
+        },
+        {
+            Header: "Remarks",
+            accessor: 'remarks',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
         }
     ]);
 
