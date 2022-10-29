@@ -1,7 +1,7 @@
 import React from 'react'
-import { XCircleIcon } from '@heroicons/react/24/solid';
+import { XCircleIcon, CalendarDaysIcon } from '@heroicons/react/24/solid';
 
-const InputText = ({ name, value = '', label, placeholder, disabled, onChange, onBlur, setFieldValue, errors, closeIcon = true, className = '', onPaste }) => {
+const InputText = ({ name, value = '', label, placeholder, disabled, onChange, onBlur, setFieldValue, errors, closeIcon = true, className = '', onPaste, filter=false }) => {
     const handleClick = () => {
         setFieldValue(name, '');
     }
@@ -40,7 +40,7 @@ const InputText = ({ name, value = '', label, placeholder, disabled, onChange, o
                     />
                 </div>
                 {closeIcon && (<div onClick={handleClick} className={`${value == '' && 'hide'} flex w-6 items-center justify-center`}>
-                    <XCircleIcon className="cursor-pointer h-5" />
+                    {filter ? <CalendarDaysIcon className="cursor-pointer h-5" /> : <XCircleIcon className="cursor-pointer h-5" /> }
                 </div>)}
             </div>
             {errors && <span className="text-red-400 text-xs font-medium">{errors}</span>}

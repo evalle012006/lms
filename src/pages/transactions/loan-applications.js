@@ -203,6 +203,10 @@ const LoanApplicationPage = () => {
         getListLoan();
     }
 
+    const actionButtons = [
+        <ButtonSolid label="Add Loan" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
+    ];
+
     const handleEditAction = (row) => {
         setMode("edit");
         setLoan(row.original);
@@ -378,7 +382,7 @@ const LoanApplicationPage = () => {
     }, [groupList]);
 
     return (
-        <Layout>
+        <Layout actionButtons={actionButtons}>
             <div className="pb-4">
                 {loading ?
                     (

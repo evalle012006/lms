@@ -4,7 +4,7 @@ import { RouteGuard } from '@/components/RouteGuard';
 import { wrapper } from '@/redux/store';
 
 import 'tailwindcss/tailwind.css';
-import 'react-phone-number-input/style.css'
+import 'react-phone-number-input/style.css';
 import '@/styles/globals.css';
 import '@/styles/login.css';
 import '@/styles/layout.css';

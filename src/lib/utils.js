@@ -49,7 +49,8 @@ export const formatBytes = (bytes, decimals = 2) => {
 
 export const formatPricePhp = (num) => {
     if (num) {
-        return new Intl.NumberFormat('fil-PH', { style: 'currency', currency: 'PHP' }).format(num);
+        const price = new Intl.NumberFormat('fil-PH', { style: 'currency', currency: 'PHP' }).format(num);
+        return price.replace('.00', '');
     }
 }
 

@@ -292,6 +292,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                             name="birthdate"
                                             value={moment(dateValue).format('YYYY-MM-DD')}
                                             onChange={handleChange}
+                                            setFieldValue={setFieldValue}
                                             label="Birthdate" />
                                     </div>
                                     <Calendar onChange={setSelectedDate} value={dateValue} className={`px-4 mt-2 ${!showCalendar && 'hidden'}`} calendarType={'US'} />
