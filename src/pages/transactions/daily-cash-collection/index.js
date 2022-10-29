@@ -198,6 +198,7 @@ const DailyCashCollectionPage = () => {
                             totalLoanBalanceStr: cc.loans[0].totalLoanBalance ? formatPricePhp(cc.loans[0].totalLoanBalance) : 0,
                             fullPaymentAmount: cc.fullPayment.length > 0 ? cc.fullPayment[0].fullPaymentAmount : 0,
                             fullPaymentAmountStr: cc.fullPayment.length > 0 ? formatPricePhp(cc.fullPayment[0].fullPaymentAmount) : 0,
+                            noOfFullPayment: cc.fullPayment.length > 0 ? cc.fullPayment[0].noOfFullPayment : 0,
                             noFullPaymentStr: noFullPayment,
                             newFullPayment: cc.fullPayment.length > 0 ? cc.fullPayment[0].newFullPayment : 0,
                             reFullPayment: cc.fullPayment.length > 0 ? cc.fullPayment[0].reFullPayment : 0,
@@ -248,6 +249,7 @@ const DailyCashCollectionPage = () => {
             let targetLoanCollection = 0;
             let excess = 0;
             let totalLoanCollection = 0;
+            let noOfFullPayment = 0;
             let noOfNewfullPayment = 0;
             let reOfNewfullPayment = 0;
             let fullPaymentAmount = 0;
@@ -267,6 +269,7 @@ const DailyCashCollectionPage = () => {
                     excess += cc.excess ? cc.excess : 0;
                     totalLoanCollection += cc.total ? cc.total : 0;
                     fullPaymentAmount += cc.fullPaymentAmount ? cc.fullPaymentAmount : 0;
+                    noOfFullPayment += cc.noOfFullPayment ? cc.noOfFullPayment: 0;
                     noOfNewfullPayment += cc.newFullPayment ? cc.newFullPayment : 0;
                     reOfNewfullPayment += cc.reFullPayment ? cc.reFullPayment : 0;
                     mispayments += cc.mispayments && cc.mispayments !== '-' ? cc.mispayments : 0;
@@ -283,7 +286,7 @@ const DailyCashCollectionPage = () => {
                 targetLoanCollection,
                 excess,
                 totalLoanCollection,
-                noOfNewfullPayment + ' / ' + reOfNewfullPayment,
+                noOfFullPayment,
                 fullPaymentAmount,
                 mispayments + ' / ' + noOfClients
             ]);
@@ -373,7 +376,7 @@ const DailyCashCollectionPage = () => {
         },
         {
             Header: "Full Payment Person",
-            accessor: 'noFullPaymentStr',
+            accessor: 'noOfFullPayment',
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
@@ -384,7 +387,7 @@ const DailyCashCollectionPage = () => {
             filter: 'includes'
         },
         {
-            Header: "Mispayments",
+            Header: "Mispay",
             accessor: 'mispayments',
             Filter: SelectColumnFilter,
             filter: 'includes'
@@ -451,16 +454,16 @@ const DailyCashCollectionPage = () => {
     useEffect(() => {
         let mounted = true;
 
-        const checkAndUpdateLoanStatus = async () => {
-            const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/check-loan-payment');
-            if (response.success) {
-                // nothing to do here...
-            } else {
-                toast.error('Error updating current loan status.');
-            }
+        // const checkAndUpdateLoanStatus = async () => {
+        //     const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/check-loan-payment');
+        //     if (response.success) {
+        //         // nothing to do here...
+        //     } else {
+        //         toast.error('Error updating current loan status.');
+        //     }
 
-            setLoading(false);
-        }
+        //     setLoading(false);
+        // }
 
         if (currentUser.role.rep >= 4) {
             mounted && setRowActionButtons([
@@ -473,7 +476,7 @@ const DailyCashCollectionPage = () => {
             ]);
         }
         
-        mounted && getListBranch() && checkAndUpdateLoanStatus();
+        mounted && getListBranch();
 
         return () => {
             mounted = false;
