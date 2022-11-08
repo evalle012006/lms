@@ -6,19 +6,19 @@ export default apiHandler({
 });
 
 async function deleteUser(req, res) {
-  const { clientId } = req.body;
+  const { _id } = req.body;
   const ObjectId = require('mongodb').ObjectId;
   const { db } = await connectToDatabase();
 
   let statusCode = 200;
   let response = {};
 
-  const clients = await db.collection("client").find({ _id: ObjectId(clientId) }).toArray();
+  const clients = await db.collection("client").find({ _id: ObjectId(_id) }).toArray();
 
   if (clients.length > 0) {
     await db
         .collection('client')
-        .deleteOne({ _id: ObjectId(clientId) });
+        .deleteOne({ _id: ObjectId(_id) });
 
     response = {
       success: true,
@@ -27,7 +27,7 @@ async function deleteUser(req, res) {
     response = {
       error: true,
       fields: ["id"],
-      message: `Client with the id "${clientId}" not exists`,
+      message: `Client with the id "${_id}" not exists`,
     };
   }
 

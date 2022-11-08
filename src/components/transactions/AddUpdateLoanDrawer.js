@@ -31,7 +31,8 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     const [slotNo, setSlotNo] = useState();
     const [slotNumber, setSlotNumber] = useState([]);
     const [groupOccurence, setGroupOccurence] = useState('daily');
-    const [clientType, setClientType] = useState('active');
+    const [clientId, setClientId] = useState();
+    const [clientType, setClientType] = useState('pending');
 
     const initialValues = {
         branchId: loan.branchId,
@@ -48,7 +49,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         amountRelease: loan.amountRelease,
         noOfPayments: mode !== 'reloan' ? loan.noOfPayments : 0,
         coMaker: loan.coMaker,
-        loanCycle: mode !== 'reloan' ? loan.loanCycle : loan.loanCycle + 1,
+        loanCycle: mode !== 'reloan' ? mode === 'add' ? 1 : loan.loanCycle : loan.loanCycle + 1,
         status: mode !== 'reloan' ? loan.status : 'pending',
     }
 
@@ -101,6 +102,24 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         setLoading(false);
     }
 
+    const handleClientIdChange = (field, value) => {
+        setLoading(true);
+        const form = formikRef.current;
+        setClientId(value);
+        
+        if (clientType === 'active') {
+            const currentClient = clientList.find(c => c._id === value);
+            const currentSlotNo = currentClient && currentClient.loans[0].slotNo;
+            const currentLoanCycle = currentClient && currentClient.loans[0].loanCycle;
+            setSlotNo(currentSlotNo);
+            form.setFieldValue('slotNo', currentSlotNo);
+            form.setFieldValue('loanCycle', currentLoanCycle + 1);
+        }
+
+        form.setFieldValue(field, value);
+        setLoading(false);
+    }
+
     const handleSlotNoChange = (field, value) => {
         setLoading(true);
         const form = formikRef.current;
@@ -112,6 +131,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     const handleSaveUpdate = (values, action) => {
         setLoading(true);
         let group;
+        values.clientId = clientId;
         if (mode !== 'reloan') {
             values.groupId = selectedGroup;
             group = groupList.find(g => g._id === values.groupId);
@@ -232,19 +252,40 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
 
     const getListClient = async (status) => {
         let url = process.env.NEXT_PUBLIC_API_URL + 'clients/list';
-        if (currentUser.root !== true && (currentUser.role.rep === 3 || currentUser.role.rep === 4) && branchList.length > 0) { 
-            url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", branchId: branchList[0]._id, status: status });
-        } 
+        if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) {
+            if (status === 'active') {
+                url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", branchId: branchList[0]._id, groupId: selectedGroup, status: status });
+            } else {
+                url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", loId: currentUser._id, status: status });
+            }
+        } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
+            if (status === 'active') {
+                url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", branchId: branchList[0]._id, groupId: selectedGroup, status: status });
+            } else {
+                url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", branchId: branchList[0]._id, status: status });
+            }
+        }
 
         const response = await fetchWrapper.get(url);
         if (response.success) {
             let clients = [];
             await response.clients && response.clients.map(client => {
-                clients.push({
-                    ...client,
-                    label: UppercaseFirstLetter(`${client.lastName}, ${client.firstName}`),
-                    value: client._id
-                });
+                if (status === 'active') {
+                    let temp = {
+                        ...client.client,
+                        loans: [client],
+                        label: UppercaseFirstLetter(`${client.client.lastName}, ${client.client.firstName}`),
+                        value: client.client._id
+                    };
+                    delete temp.loans[0].client;
+                    clients.push(temp);
+                } else {
+                    clients.push({
+                        ...client,
+                        label: UppercaseFirstLetter(`${client.lastName}, ${client.firstName}`),
+                        value: client._id
+                    });   
+                }
             });
             dispatch(setClientList(clients));
         } else if (response.error) {
@@ -276,6 +317,11 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             setTitle('Add Loan');
         } else if (mode === 'edit') {
             setTitle('Edit Loan');
+            const form = formikRef.current;
+            setSelectedGroup(loan.groupId);
+            setSlotNo(loan.slotNo);
+
+            form.setFieldValue('slotNo', loan.slotNo);
         }
 
         mounted && setLoading(false);
@@ -312,7 +358,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                 setFieldTouched
                             }) => (
                                 <form onSubmit={handleSubmit} autoComplete="off">
-                                    {mode !== 'reloan' ? (
+                                    {mode === 'add' ? (
                                         <React.Fragment>
                                             <div className="mt-4 flex flex-row">
                                                 <RadioButton id={"radio_daily"} name="radio-group-occurence" label={"Daily"} checked={groupOccurence === 'daily'} value="daily" onChange={handleOccurenceChange} />
@@ -331,20 +377,8 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                                     errors={touched.groupId && errors.groupId ? errors.groupId : undefined}
                                                 />
                                             </div>
-                                            <div className="mt-4">
-                                                <SelectDropdown
-                                                    name="slotNo"
-                                                    field="slotNo"
-                                                    value={slotNo}
-                                                    label="Slot Number"
-                                                    options={slotNumber}
-                                                    onChange={(field, value) => handleSlotNoChange(field, value)}
-                                                    onBlur={setFieldTouched}
-                                                    placeholder="Select Slot No"
-                                                    errors={touched.slotNo && errors.slotNo ? errors.slotNo : undefined}
-                                                />
-                                            </div>
                                             <div className="mt-4 flex flex-row">
+                                                <RadioButton id={"radio_pending"} name="radio-client-type" label={"Prospect Clients"} checked={clientType === 'pending'} value="pending" onChange={handleClientTypeChange} />
                                                 <RadioButton id={"radio_active"} name="radio-client-type" label={"Active Clients"} checked={clientType === 'active'} value="active" onChange={handleClientTypeChange} />
                                                 <RadioButton id={"radio_offset"} name="radio-client-type" label={"Offset Clients"} checked={clientType === 'offset'} value="offset" onChange={handleClientTypeChange} />
                                             </div>
@@ -352,15 +386,41 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                                 <SelectDropdown
                                                     name="clientId"
                                                     field="clientId"
-                                                    value={values.clientId}
+                                                    value={clientId}
                                                     label="Client"
                                                     options={clientList}
-                                                    onChange={setFieldValue}
+                                                    onChange={(field, value) => handleClientIdChange(field, value)}
                                                     onBlur={setFieldTouched}
                                                     placeholder="Select Client"
                                                     errors={touched.clientId && errors.clientId ? errors.clientId : undefined}
                                                 />
                                             </div>
+                                            {clientType === 'active' ? (
+                                                <div className="mt-4">
+                                                    <div className={`flex flex-col border rounded-md px-4 py-2 bg-white border-main`}>
+                                                        <div className="flex justify-between">
+                                                            <label htmlFor={'slotNo'} className={`font-proxima-bold text-xs font-bold text-main`}>
+                                                                Slot Number
+                                                            </label>
+                                                        </div>
+                                                        <span className="text-gray-400">{ slotNo ? slotNo : '-' }</span>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="mt-4">
+                                                    <SelectDropdown
+                                                        name="slotNo"
+                                                        field="slotNo"
+                                                        value={slotNo}
+                                                        label="Slot Number"
+                                                        options={slotNumber}
+                                                        onChange={(field, value) => handleSlotNoChange(field, value)}
+                                                        onBlur={setFieldTouched}
+                                                        placeholder="Select Slot No"
+                                                        errors={touched.slotNo && errors.slotNo ? errors.slotNo : undefined}
+                                                    />
+                                                </div>
+                                            )}
                                         </React.Fragment>
                                     ) : (
                                         <React.Fragment>

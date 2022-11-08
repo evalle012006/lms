@@ -24,6 +24,8 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
     const groupList = useSelector(state => state.group.list);
+    const userList = useSelector(state => state.user.list);
+    const [loUsers, setLoUsers] = useState([]);
     const [loading, setLoading] = useState(false);
     const [dateValue, setDateValue] = useState(new Date());
     const [showCalendar, setShowCalendar] = useState(false);
@@ -45,6 +47,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
         contactNumber: client.contactNumber,
         // groupId: client.groupId,
         branchId: client.branchId,
+        loId: client.loId,
         status: client.status,
         delinquent: client.delinquent === "Yes" ? true : false,
     }
@@ -68,9 +71,9 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
         // addressZipCode: yup
         //     .string()
         //     .required('Please enter zip code'),
-        // groupId: yup
-        //     .string()
-        //     .required('Please select a group')
+        loId: yup
+            .string()
+            .required('Please select a Loan Officer')
     });
 
     const openCalendar = () => {
@@ -85,6 +88,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
     const handleSaveUpdate = (values, action) => {
         let error = false;
         setLoading(true);
+        values.insertedBy = currentUser._id;
         values.middleName = values.middleName ? values.middleName : '';
         values.addressBarangayDistrict = values.addressBarangayDistrict ? values.addressBarangayDistrict : '';
         values.addressMunicipalityCity = values.addressMunicipalityCity ? values.addressMunicipalityCity : '';
@@ -206,6 +210,20 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
             mounted = false;
         };
     }, [client]);
+
+    useEffect(() => {
+        if (userList) {
+            const temp = userList.filter(u => u.role.rep === 4);
+            setLoUsers(temp);
+        }
+    }, [userList]);
+
+    useEffect(() => {
+        if (currentUser && currentUser.role.rep === 4) {
+            const form = formikRef.current;
+            form.setFieldValue('loId', currentUser._id);
+        }
+    }, [currentUser]);
 
     return (
         <React.Fragment>
@@ -347,6 +365,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                             setFieldValue={setFieldValue}
                                             errors={touched.addressZipCode && errors.addressZipCode ? errors.addressZipCode : undefined} />
                                     </div>
+                                    <div>Other Information</div>
                                     <div className="mt-4">
                                         <InputText
                                             name="contactNumber"
@@ -399,6 +418,21 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                                 onChange={setFieldValue}  
                                                 label={"Delinquent"} 
                                                 size={"lg"} 
+                                            />
+                                        </div>
+                                    )}
+                                    {currentUser.role.rep < 4 && (
+                                        <div className="mt-4">
+                                            <SelectDropdown
+                                                name="loId"
+                                                field="loId"
+                                                value={values.loId}
+                                                label="Loan Officer"
+                                                options={loUsers}
+                                                onChange={setFieldValue}
+                                                onBlur={setFieldTouched}
+                                                placeholder="Select Loan Officer"
+                                                errors={touched.loId && errors.loId ? errors.loId : undefined}
                                             />
                                         </div>
                                     )}

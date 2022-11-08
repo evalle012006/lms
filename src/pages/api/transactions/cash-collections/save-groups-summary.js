@@ -25,13 +25,11 @@ async function saveUpdate(req, res) {
     const data = req.body;
 
     if (data.hasOwnProperty('_id')) {
-        console.log('updating');
         await update(data);
     } else {
-        console.log('saving');
         await save(data);
     }
-    console.log(response)
+
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')
         .end(JSON.stringify(response));

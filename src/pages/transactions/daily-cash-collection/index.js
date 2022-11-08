@@ -21,21 +21,21 @@ const DailyCashCollectionPage = () => {
     const [currentDate, setCurrentDate] = useState(moment(new Date()).format('YYYY-MM-DD'));
     const cashCollectionList = useSelector(state => state.cashCollection.main);
     const [loading, setLoading] = useState(true);
-    const [overallTotals, setOverallTotals] = useState([]);
-    const [overallTotalsTitles, setOverallTotalsTitles] = useState([
-        'Active Clients',
-        'Active Borrowers',
-        'Loan Release',
-        'Loan Balance',
-        'No. Of Current Release Person',
-        'Current Release Amount',
-        'Target Loan Collection',
-        'Excess',
-        'Total Loan Collection',
-        'No. Of Full Payment Person',
-        'Full Payment Amount',
-        'Mispayments' // 5/9
-    ]);
+    // const [overallTotals, setOverallTotals] = useState([]);
+    // const [overallTotalsTitles, setOverallTotalsTitles] = useState([
+    //     'Active Clients',
+    //     'Active Borrowers',
+    //     'Loan Release',
+    //     'Loan Balance',
+    //     'No. Of Current Release Person',
+    //     'Current Release Amount',
+    //     'Target Loan Collection',
+    //     'Excess',
+    //     'Total Loan Collection',
+    //     'No. Of Full Payment Person',
+    //     'Full Payment Amount',
+    //     'Mispayments' // 5/9
+    // ]);
 
     const router = useRouter();
 
@@ -161,25 +161,18 @@ const DailyCashCollectionPage = () => {
                         status: '-'
                     };
 
+                    let noCurrentRelease = '0 / 0';
+                    let noFullPayment = '0 / 0';
+
                     if (cc.loans.length > 0) {
-                        let noCurrentRelease = '0 / 0';
-                        if (cc.currentRelease.length > 0) {
-                            noCurrentRelease = cc.currentRelease[0].newCurrentRelease + ' / ' + cc.currentRelease[0].reCurrentRelease;
-                        }
-
-                        let noFullPayment = '0 / 0';
-                        if (cc.fullPayment.length > 0) {
-                            noFullPayment = cc.fullPayment[0].newFullPayment + ' / ' + cc.fullPayment[0].reFullPayment;
-                        }
-
                         collection = {
                             groupId: cc._id,
                             group: cc.name,
                             noCurrentReleaseStr: noCurrentRelease,
-                            newCurrentRelease: cc.currentRelease.length > 0 ? cc.currentRelease[0].newCurrentRelease : 0,
-                            reCurrentRelease: cc.currentRelease.length > 0 ? cc.currentRelease[0].reCurrentRelease : 0,
-                            currentReleaseAmount: cc.currentRelease.length > 0 && cc.currentRelease[0].currentReleaseAmount,
-                            currentReleaseAmountStr: cc.currentRelease.length > 0 ? formatPricePhp(cc.currentRelease[0].currentReleaseAmount) : 0,
+                            newCurrentRelease: 0,
+                            reCurrentRelease: 0,
+                            currentReleaseAmount: 0,
+                            currentReleaseAmountStr: 0,
                             // noOfPaidClients: 0,
                             activeClients: cc.loans[0].activeClients ? cc.loans[0].activeClients : 0,
                             activeBorrowers: cc.loans[0].activeBorrowers ? cc.loans[0].activeBorrowers : 0,
@@ -196,16 +189,18 @@ const DailyCashCollectionPage = () => {
                             totalReleasesStr: cc.loans[0].totalRelease ? formatPricePhp(cc.loans[0].totalRelease) : 0,
                             totalLoanBalance: cc.loans[0].totalLoanBalance && cc.loans[0].totalLoanBalance,
                             totalLoanBalanceStr: cc.loans[0].totalLoanBalance ? formatPricePhp(cc.loans[0].totalLoanBalance) : 0,
-                            fullPaymentAmount: cc.fullPayment.length > 0 ? cc.fullPayment[0].fullPaymentAmount : 0,
-                            fullPaymentAmountStr: cc.fullPayment.length > 0 ? formatPricePhp(cc.fullPayment[0].fullPaymentAmount) : 0,
-                            noOfFullPayment: cc.fullPayment.length > 0 ? cc.fullPayment[0].noOfFullPayment : 0,
+                            fullPaymentAmount: 0,
+                            fullPaymentAmountStr: 0,
+                            noOfFullPayment: 0,
                             noFullPaymentStr: noFullPayment,
-                            newFullPayment: cc.fullPayment.length > 0 ? cc.fullPayment[0].newFullPayment : 0,
-                            reFullPayment: cc.fullPayment.length > 0 ? cc.fullPayment[0].reFullPayment : 0,
+                            newFullPayment: 0,
+                            reFullPayment: 0,
                             status: 'open',
                             page: 'collection'
                         };
-                    } else if (cc.cashCollections.length > 0) {
+                    } 
+                    
+                    if (cc.cashCollections.length > 0) {
                         // const loanNoOfClients = cc.loans.length > 0 ? cc.loans[0].noOfClients : 0;
                         collection = { ...collection,
                             // groupId: cc._id,
@@ -234,6 +229,37 @@ const DailyCashCollectionPage = () => {
                         };
                     }
 
+                    if (cc.currentRelease.length > 0) {
+                        noCurrentRelease = cc.currentRelease[0].newCurrentRelease + ' / ' + cc.currentRelease[0].reCurrentRelease;
+
+                        collection = {
+                            ...collection,
+                            noCurrentReleaseStr: noCurrentRelease,
+                            newCurrentRelease: cc.currentRelease.length > 0 ? cc.currentRelease[0].newCurrentRelease : 0,
+                            reCurrentRelease: cc.currentRelease.length > 0 ? cc.currentRelease[0].reCurrentRelease : 0,
+                            currentReleaseAmount: cc.currentRelease.length > 0 && cc.currentRelease[0].currentReleaseAmount,
+                            currentReleaseAmountStr: cc.currentRelease.length > 0 ? formatPricePhp(cc.currentRelease[0].currentReleaseAmount) : 0,
+                            status: 'open',
+                            page: 'collection'
+                        };
+                    }
+
+                    if (cc.fullPayment.length > 0) {
+                        noFullPayment = cc.fullPayment[0].newFullPayment + ' / ' + cc.fullPayment[0].reFullPayment;
+
+                        collection = {
+                            ...collection,
+                            fullPaymentAmount: cc.fullPayment.length > 0 ? cc.fullPayment[0].fullPaymentAmount : 0,
+                            fullPaymentAmountStr: cc.fullPayment.length > 0 ? formatPricePhp(cc.fullPayment[0].fullPaymentAmount) : 0,
+                            noOfFullPayment: cc.fullPayment.length > 0 ? cc.fullPayment[0].noOfFullPayment : 0,
+                            noFullPaymentStr: noFullPayment,
+                            newFullPayment: cc.fullPayment.length > 0 ? cc.fullPayment[0].newFullPayment : 0,
+                            reFullPayment: cc.fullPayment.length > 0 ? cc.fullPayment[0].reFullPayment : 0,
+                            status: 'open',
+                            page: 'collection'
+                        };
+                    }
+
                     collectionData.push(collection);
                 }
             });
@@ -257,8 +283,8 @@ const DailyCashCollectionPage = () => {
             
             collectionData.map(cc => {
                 if (cc.status !== '-') {
-                    noOfClients += cc.activeClients ? cc.activeClients : 0;
-                    noOfBorrowers += cc.activeBorrowers ? cc.activeBorrowers : 0;
+                    noOfClients += (cc.activeClients && cc.activeClients !== '-') ? cc.activeClients : 0;
+                    noOfBorrowers += (cc.activeBorrowers && cc.activeBorrowers !== '-') ? cc.activeBorrowers : 0;
                     totalLoanRelease += cc.totalReleases ? cc.totalReleases : 0;
                     totalLoanBalance += cc.totalLoanBalance ? cc.totalLoanBalance : 0;
                     // noOfCurrentRelease += cc.noCurrentRelease ? cc.noCurrentRelease : 0;
@@ -276,20 +302,40 @@ const DailyCashCollectionPage = () => {
                 }
             });
 
-            setOverallTotals([
-                noOfClients,
-                noOfBorrowers,
-                totalLoanRelease,
-                totalLoanBalance,
-                noOfNewCurrentRelease + ' / ' + noOfReCurrentRelease,
-                currentReleaseAmount,
-                targetLoanCollection,
-                excess,
-                totalLoanCollection,
-                noOfFullPayment,
-                fullPaymentAmount,
-                mispayments + ' / ' + noOfClients
-            ]);
+            // totals
+            const totals = {
+                group: 'TOTALS',
+                noCurrentReleaseStr: noOfNewCurrentRelease + ' / ' + noOfReCurrentRelease,
+                currentReleaseAmountStr: currentReleaseAmount ? formatPricePhp(currentReleaseAmount) : 0,
+                activeClients: noOfClients,
+                activeBorrowers: noOfBorrowers,
+                totalReleasesStr: totalLoanRelease ? formatPricePhp(totalLoanRelease) : 0,
+                totalLoanBalanceStr: formatPricePhp(totalLoanBalance),
+                loanTargetStr: targetLoanCollection ? formatPricePhp(targetLoanCollection) : 0,
+                excessStr: excess ? formatPricePhp(excess) : 0,
+                totalStr: totalLoanCollection ? formatPricePhp(totalLoanCollection) : 0,
+                mispayments: mispayments + ' / ' + noOfClients,
+                fullPaymentAmountStr: fullPaymentAmount ? formatPricePhp(fullPaymentAmount) : 0,
+                noFullPaymentStr: noOfFullPayment,
+                totalData: true,
+                status: '-'
+            }
+            collectionData.push(totals);
+            // setOverallTotals([
+            //     noOfClients,
+            //     noOfBorrowers,
+            //     totalLoanRelease,
+            //     totalLoanBalance,
+            //     noOfNewCurrentRelease + ' / ' + noOfReCurrentRelease,
+            //     currentReleaseAmount,
+            //     targetLoanCollection,
+            //     excess,
+            //     totalLoanCollection,
+            //     noOfFullPayment,
+            //     fullPaymentAmount,
+            //     mispayments + ' / ' + noOfClients
+            // ]);
+
 
             dispatch(setCashCollectionList(collectionData));
         } else {
@@ -505,7 +551,7 @@ const DailyCashCollectionPage = () => {
                             <TableComponent columns={columns} data={cashCollectionList} showFilters={false} hasActionButtons={true} rowActionButtons={rowActionButtons} rowClick={handleRowClick} />
                         </div>
                     </div>
-                    <div className="w-11/12 h-18 bg-white border-t-2 border-gray-300 fixed bottom-0 flex">
+                    {/* <div className="w-11/12 h-18 bg-white border-t-2 border-gray-300 fixed bottom-0 flex">
                         <table className="table-auto border-collapse text-sm font-proxima w-11/12 overflow-auto">
                             <thead className="text-gray-400">
                                 <tr className="w-8">
@@ -534,7 +580,7 @@ const DailyCashCollectionPage = () => {
                                 </tr>
                             </tbody>
                         </table>
-                    </div>
+                    </div> */}
                 </React.Fragment>
             )}
         </Layout>

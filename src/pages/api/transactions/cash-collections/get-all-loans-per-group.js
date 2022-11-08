@@ -160,14 +160,20 @@ async function getAllLoansPerGroup(req, res) {
                         foreignField: "groupId",
                         pipeline: [
                             { $match: {dateAdded: date} },
+                            { $unwind: '$collection' },
+                            { $project: {
+                                'collectionArr': { $sum: { $cond: {if: {$or: [{$eq: ['$collection.status', 'active']}, {$eq: ['$collection.status', 'completed']}]}, then: '$collection.paymentCollection', else: 0} } },
+                                'excessArr': { $sum: { $cond: {if: {$ne: ['$collection.status', 'totals']}, then: '$collection.excess', else: 0} } },
+                                'totalArr': { $sum: '$collection.total' }
+                            } },
                             { $group: { 
                                     _id: '$$groupName',
                                     // noOfClients: { $sum: { $cond: {if: { $gt: ['$paymentCollection', 0] }, then: 1, else: 0} } },
-                                    mispayments: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },
-                                    loanTarget: { $sum: '$activeLoan' },
-                                    collection: { $sum: '$paymentCollection' },
-                                    excess: { $sum: '$excess' },
-                                    total: { $sum: '$paymentCollection' }
+                                    mispayments: { $sum: { $cond:{if: { $eq: ['$collection.mispayment', true] }, then: 1, else: 0} } },
+                                    // loanTarget: { $sum: '$activeLoan' },
+                                    collection: { $sum: '$collectionArr' },
+                                    excess: { $sum: '$excessArr' },
+                                    total: { $sum: '$totalArr' }
                                 } 
                             }
                         ],

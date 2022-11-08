@@ -12,6 +12,7 @@ import AddUpdateClient from "@/components/clients/AddUpdateClientDrawer";
 import ViewClientsByGroupPage from "@/components/clients/ViewClientsByGroup";
 import { setBranchList } from "@/redux/actions/branchActions";
 import { setGroupList } from "@/redux/actions/groupActions";
+import { setUserList } from "@/redux/actions/userActions";
 
 const ClientsProspectPage = () => {
     const dispatch = useDispatch();
@@ -101,6 +102,32 @@ const ClientsProspectPage = () => {
         setLoading(false);
     }
 
+    const getListUser = async () => {
+        let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
+        if (currentUser.root !== true && (currentUser.role.rep === 3 || currentUser.role.rep === 4) && branchList.length > 0) {
+            url = url + '?' + new URLSearchParams({ branchCode: branchList[0].code });
+        }
+        const response = await fetchWrapper.get(url);
+        if (response.success) {
+            let userList = [];
+            response.users && response.users.filter(u => u.role.rep === 4).map(u => {
+                const name = `${u.firstName} ${u.lastName}`;
+                userList.push(
+                    {
+                        ...u,
+                        value: u._id,
+                        label: UppercaseFirstLetter(name)
+                    }
+                );
+            });
+            dispatch(setUserList(userList));
+        } else {
+            toast.error('Error retrieving user list.');
+        }
+
+        setLoading(false);
+    }
+
     const handleShowAddDrawer = () => {
         setShowAddDrawer(true);
     }
@@ -137,6 +164,7 @@ const ClientsProspectPage = () => {
     useEffect(() => {
         if (branchList) {
             getListGroup();
+            getListUser();
         }
     }, [branchList]);
 

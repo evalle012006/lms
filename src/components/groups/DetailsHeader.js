@@ -8,10 +8,9 @@ import { useEffect, useRef, useState } from "react";
 import moment from 'moment'
 import DatePicker from "@/lib/ui/DatePicker";
 
-const DetailsHeader = ({ page, handleSaveUpdate, data, setData, dateFilter, setDateFilter, handleDateFilter }) => {
+const DetailsHeader = ({ page, handleSaveUpdate, data, setData, editMode, dateFilter, setDateFilter, handleDateFilter }) => {
     const calendarRef = useRef();
     const group = useSelector(state => state.group.data);
-    const [hideSubmitButton, setHideSubmitButton] = useState(false);
     const [showCalendar, setShowCalendar] = useState(false);
 
     const statusClass = {
@@ -78,18 +77,18 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, dateFilter, setD
         }
     }, []);
 
-    useEffect(() => {
-        if (data.length > 0) {
-            const hasId = data.some(obj => { return obj.hasOwnProperty('_id') });
-            if (hasId) {
-                setHideSubmitButton(true);
-            }
-        }
-    }, [data]);
+    // useEffect(() => {
+    //     if (data && data.length > 0) {
+    //         const hasId = data.some(obj => { return obj.hasOwnProperty('_id') });
+    //         if (hasId) {
+    //             setHideSubmitButton(true);
+    //         }
+    //     }
+    // }, [data]);
 
-    useEffect(() => {
+    // useEffect(() => {
         
-    }, [dateFilter]);
+    // }, [dateFilter]);
 
     return (
         <div className="bg-white px-7 py-2 fixed w-screen z-10">
@@ -135,7 +134,7 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, dateFilter, setD
                                 <span className="text-gray-400 text-sm">Status:</span >
                                 <span className={`text-sm status-pill ${statusClass[group.status]}`}>{UppercaseFirstLetter(group.status)}</span>
                             </div>
-                            {page === 'transaction' && hideSubmitButton === false && (
+                            {page === 'transaction' && editMode && (
                                 <div className="space-x-2 flex items-center ">
                                     <ButtonSolid label="Submit Collection" onClick={handleSaveUpdate} />
                                 </div>
@@ -147,12 +146,12 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, dateFilter, setD
             {page === 'transaction' && (
                 <div className="flex justify-between w-10/12">
                     <div className="flex flex-row w-11/12 text-gray-400 text-sm justify-start">
-                        {/* <span className="text-gray-400 text-sm mt-1">Filters:</span >
+                        <span className="text-gray-400 text-sm mt-1">Filters:</span >
                         <div className="ml-4 flex w-64">
                             <div className="relative w-full" onClick={openCalendar}>
                                 <DatePicker name="dateFilter" value={moment(dateFilter).format('YYYY-MM-DD')} maxDate={moment(dateFilter).format('YYYY-MM-DD')} onChange={handleDateFilter} />
                             </div>
-                        </div> */}
+                        </div>
                     </div>
                     <div className="flex flex-row">
                         {/* <span className="text-gray-400 text-sm mt-1 mr-4">Legend:</span >
