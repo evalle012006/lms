@@ -200,17 +200,6 @@ const CashCollectionDetailsPage = () => {
                 }
             }
 
-            // setOverallTotals([
-            //     totalLoanRelease,
-            //     totalLoanBalance,
-            //     totalReleaseAmount,
-            //     // totalPayments,
-            //     totalTargetLoanCollection,
-            //     totalExcess,
-            //     totalFullPayment,
-            //     totalLoanCollection
-            // ]);
-
             dispatch(setCashCollectionGroup(cashCollection));
         } else {
             toast.error('Error retrieving cash collection list.');
