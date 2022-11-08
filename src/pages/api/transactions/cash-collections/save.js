@@ -12,77 +12,111 @@ async function save(req, res) {
     const ObjectId = require('mongodb').ObjectId;
     let response = {};
     let statusCode = 200;
-    const data = req.body;
+    let data = req.body;
+    data.collection = JSON.parse(data.collection);
+    if (data.collection.length > 0) {
+        data.collection.map(cc => {
+            // const clientData = findClient(ObjectId(cc.clientId));
 
-    
-    if (data.length > 0) {
-        data.map(cc => {
-            const clientData = findClient(ObjectId(cc.clientId));
-
-            if (clientData.length === 0) {
-                response = {
-                    error: true,
-                    fields: ['clientId'],
-                    message: `Client not found`
-                };
-            } else {
-                if (cc._id) {
-                    updateCollection(cc);
-                } else {
-                    saveCollection(cc);
+            // if (clientData.length === 0) {
+            //     response = {
+            //         error: true,
+            //         fields: ['clientId'],
+            //         message: `Client not found`
+            //     };
+            // } else {
+                // if (cc._id) {
+                //     updateCollection(cc);
+                // } else {
+                //     saveCollection(cc);
+                // }
+                if (cc.loanBalance <= 0) {
+                    cc.history = {
+                        activeLoan: cc.activeLoan,
+                        amountRelease: cc.amountRelease,
+                        principalLoan: cc.principalLoan,
+                        excess: cc.excess,
+                        collection: cc.paymentCollection,
+                        total: cc.amountRelease
+                    }
                 }
 
-                updateLoan(cc);
-            }
+                updateLoan(cc).then(resp => {
+                    if (resp.success && cc.remarks === 'offset') {
+                        updateClient(cc);
+                    }
+                });
+            // }
 
-            response = { success: true }
+            // response = { success: true }
         });
     }
+
+    let cashCollection;
+    if (!data._id) {
+        cashCollection = await db.collection('cashCollections').insertOne({
+            ...data
+        });
+    } else {
+        const collectionId = data._id;
+        delete data._id;
+
+        cashCollection = await db.collection('cashCollections')
+            .updateOne(
+                { _id: ObjectId(collectionId) }, 
+                {
+                    $set: { ...data }
+                }, 
+                { upsert: false }
+            );
+    }
+
+    response = {success: true, data: cashCollection};
 
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')
         .end(JSON.stringify(response));
 }
 
-async function findClient(clientId) {
-    const { db } = await connectToDatabase();
+// async function findClient(clientId) {
+//     const { db } = await connectToDatabase();
 
-    const client = await db
-        .collection('client')
-        .find({ _id: clientId, status: 'active' })
-        .toArray();
+//     const client = await db
+//         .collection('client')
+//         .find({ _id: clientId, status: 'active' })
+//         .toArray();
 
-    return client;
-}
+//     return client;
+// }
 
-async function saveCollection(collection) {
-    const { db } = await connectToDatabase();
+// async function saveCollection(collection) {
+//     const { db } = await connectToDatabase();
 
-    const cashCollection = await db.collection('cashCollections').insertOne({
-        ...collection
-    });
+//     const cashCollection = await db.collection('cashCollections').insertOne({
+//         ...collection
+//     });
 
-    return cashCollection;
-}
+//     return cashCollection;
+// }
 
-async function updateCollection(collection) {
-    const { db } = await connectToDatabase();
+// async function updateCollection(collection) {
+//     const { db } = await connectToDatabase();
 
-    const collectionId = collection._id;
-    delete collection._id;
-    // collection.dateModified = new Date();
+//     const collectionId = collection._id;
+//     delete collection._id;
+//     // collection.dateModified = new Date();
 
-    const cashCollection = await db.collection('cashCollections')
-        .updateOne(
-            { _id: ObjectId(collectionId) }, 
-            {
-                $set: { ...collection }
-            }, 
-            { upsert: false }
-        );
+//     const cashCollection = await db.collection('cashCollections')
+//         .updateOne(
+//             { _id: ObjectId(collectionId) }, 
+//             {
+//                 $set: { ...collection }
+//             }, 
+//             { upsert: false }
+//         );
 
-    return cashCollection;
-}
+//     return cashCollection;
+// }
 
 async function updateLoan(collection) {
     const { db } = await connectToDatabase();
@@ -104,7 +138,8 @@ async function updateLoan(collection) {
             loan.history = {
                 activeLoan: loan.activeLoan,
                 amountRelease: loan.amountRelease,
-                principalLoan: loan.principalLoan
+                principalLoan: loan.principalLoan,
+                loanBalance: loan.loanBalance
             }
             // so that it will not be added in group summary
             loan.activeLoan = 0;
@@ -123,6 +158,62 @@ async function updateLoan(collection) {
             }, 
             { upsert: false }
         );
+    }
+
+    return { success: true }
+}
+
+async function updateClient(loan) {
+    const { db } = await connectToDatabase();
+    const ObjectId = require('mongodb').ObjectId;
+
+    let client = await db.collection('client').find({ _id: ObjectId(loan.clientId) }).toArray();
+
+    if (client.length > 0) {
+        client = client[0];
+
+        client.status = 'offset';
+
+        const clientResp = await db
+            .collection('client')
+            .updateOne(
+                { _id: ObjectId(loan.clientId) }, 
+                {
+                    $set: { ...client }
+                }, 
+                { upsert: false });
+        
+        updateLoanClose(loan);
+        updateGroup(loan);
+    }
+
+    res.status(statusCode)
+        .setHeader('Content-Type', 'application/json')
+        .end(JSON.stringify(response));
+}
+
+async function updateLoanClose(loanData) {
+    const { db } = await connectToDatabase();
+    const ObjectId = require('mongodb').ObjectId;
+
+    let loan = await db.collection('loans').find({ _id: ObjectId(loanData.loanId) }).toArray();
+
+    if (loan.length > 0) {
+        loan = loan[0];
+
+        loan.loanCycle = 0;
+        loan.remarks = loanData.remarks;
+        loan.status = 'closed';
+        loan.dateModified = moment(new Date()).format('YYYY-MM-DD');
+        delete loan._id;
+        await db
+            .collection('loans')
+            .updateOne(
+                { _id: ObjectId(loanData.loanId) }, 
+                {
+                    $set: { ...loan }
+                }, 
+                { upsert: false });
     }
 }
 
@@ -152,3 +243,30 @@ async function updateGroup(loan) {
         );
     }
 }
+
+// async function updateGroup(loan) {
+//     const { db } = await connectToDatabase();
+//     const ObjectId = require('mongodb').ObjectId;
+
+//     let group = await db.collection('groups').find({ _id: ObjectId(loan.groupId) }).toArray();
+//     if (group.length > 0) {
+//         group = group[0];
+
+//         if (group.status === 'full') {
+//             group.status = 'available';
+//         }
+
+//         group.availableSlots.push(loan.slotNo);
+//         group.availableSlots.sort((a, b) => { return a - b; });
+//         group.noOfClients = group.noOfClients - 1;
+
+//         delete group._id;
+//         await db.collection('groups').updateOne(
+//             {  _id: ObjectId(loan.groupId) },
+//             {
+//                 $set: { ...group }
+//             }, 
+//             { upsert: false }
+//         );
+//     }
+// }

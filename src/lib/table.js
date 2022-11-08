@@ -563,14 +563,14 @@ const TableComponent = ({
                                 prepareRow(row);
                                 const root = row.original.root ? row.original.root : false;
                                 const delinquent = row.original.delinquent;
-                                
+                                const totalData = row.original.hasOwnProperty('totalData') ? row.original.totalData : false;
                                 return (
                                 <tr {...row.getRowProps()} className={`hover:bg-slate-200 ${delinquent === 'Yes' && 'bg-red-100'} even:bg-gray-100`}>
                                     {row.cells.map((cell) => {
                                     return (
                                         <td
                                           {...cell.getCellProps()}
-                                          className={`px-4 py-3 whitespace-nowrap-custom ${rowClick && 'cursor-pointer'}`}
+                                          className={`px-4 py-3 whitespace-nowrap-custom ${rowClick && 'cursor-pointer'} ${totalData && 'font-bold'}`}
                                           role="cell"
                                           onClick={() => rowClick && rowClick(row.original)}
                                         >

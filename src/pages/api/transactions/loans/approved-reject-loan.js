@@ -28,36 +28,29 @@ async function updateLoan(req, res) {
                 message: `"${groupData.name}" is already full. Please select another group.`
             };
         } else {
-            // if (loan.status === 'active') {
-            //     loan.slotNo = groupData.availableSlots.shift();
-            //     groupData.noOfClients = noOfClients + 1;
-    
-            //     if (noOfClients === capacity) {
-            //         groupData.status = 'full';
-            //     }
-            // } 
-            if (loan.status === 'reject') {
+            if (loan.status === 'active') {
+                await updateClient(loan.clientId);
+                await updateExistingLoan(loan.clientId);
+            }  else if (loan.status === 'reject') {
                 if (!groupData.availableSlots.includes(loan.slotNo)) {
                     groupData.availableSlots.push(loan.slotNo);
                     groupData.availableSlots.sort((a, b) => { return a - b; });
                     groupData.noOfClients = groupData.noOfClients - 1;
                     groupData.status = groupData.status === 'full' ? 'available' : groupData.status;
+                    await updateGroup(groupData);
                 }
             }
-    
-            const groupResp = await updateGroup(groupData);
-            if (groupResp.success) {
-                const loanResp = await db
-                    .collection('loans')
-                    .updateOne(
-                        { _id: ObjectId(loanId) }, 
-                        {
-                            $set: { ...loan }
-                        }, 
-                        { upsert: false });
-    
-                response = { success: true, loan: loanResp };
-            }
+           
+            const loanResp = await db
+                .collection('loans')
+                .updateOne(
+                    { _id: ObjectId(loanId) }, 
+                    {
+                        $set: { ...loan }
+                    }, 
+                    { upsert: false });
+            
+            response = { success: true, loan: loanResp };
         }
     } else {
         response = { error: true, message: 'Group data not found.' };
@@ -66,6 +59,45 @@ async function updateLoan(req, res) {
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')
         .end(JSON.stringify(response));
+}
+
+async function updateExistingLoan(clientId) {
+    const { db } = await connectToDatabase();
+    const ObjectId = require('mongodb').ObjectId;
+    let response;
+
+    let activeLoan  = await db
+        .collection('loans')
+        .find({ clientId: clientId, status: 'active' })
+        .toArray();
+
+    if (activeLoan.length > 0) {
+        response = { error: true, message: 'Client has still existing active loan.' };
+    } else {
+        let existingLoan = await db
+            .collection('loans')
+            .find({ clientId: clientId, status: 'completed' })
+            .toArray();
+        
+        if (existingLoan.length > 0) {
+            existingLoan = existingLoan[0];
+            const loanId = existingLoan._id;
+            delete existingLoan._id;
+            existingLoan.status = 'closed';
+            const loanResp = await db
+                .collection('loans')
+                .updateOne(
+                    { _id: ObjectId(loanId) },
+                    {
+                        $set: {...existingLoan}
+                    },
+                    { upsert: false }
+                );
+            response = {success: true};
+        }
+    }
+
+    return response;
 }
 
 async function updateGroup(group) {
@@ -85,4 +117,29 @@ async function updateGroup(group) {
             { upsert: false });
     
     return {success: true, groupResp}
+}
+
+async function updateClient(clientId) {
+    const { db } = await connectToDatabase();
+    const ObjectId = require('mongodb').ObjectId;
+
+    let client = await db.collection('client').find({ _id: ObjectId(clientId) }).toArray();
+
+    if (client.length > 0) {
+        client = client[0];
+
+        client.status = 'active';
+        delete client._id;
+
+        const clientResp = await db
+            .collection('client')
+            .updateOne(
+                { _id: ObjectId(clientId) }, 
+                {
+                    $set: { ...client }
+                }, 
+                { upsert: false });
+    }
+    
+    return {success: true, client}
 }

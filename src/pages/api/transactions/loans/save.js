@@ -13,7 +13,7 @@ async function save(req, res) {
 
     let mode;
     let oldLoanId;
-    console.log(loanData.hasOwnProperty('mode'))
+    // console.log(loanData.hasOwnProperty('mode'))
     if (loanData.hasOwnProperty('mode')) {
         mode = loanData.mode;
         oldLoanId = loanData.oldLoanId;
