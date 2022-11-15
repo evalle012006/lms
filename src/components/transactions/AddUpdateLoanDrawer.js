@@ -33,7 +33,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     const [groupOccurence, setGroupOccurence] = useState('daily');
     const [clientId, setClientId] = useState();
     const [clientType, setClientType] = useState('pending');
-    console.log(loan)
+
     const initialValues = {
         branchId: loan.branchId,
         groupId: loan.groupId,
