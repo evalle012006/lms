@@ -45,7 +45,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
         addressProvince: client.addressProvince,
         addressZipCode: client.addressZipCode,
         contactNumber: client.contactNumber,
-        // groupId: client.groupId,
+        groupId: client.groupId,
         branchId: client.branchId,
         loId: client.loId,
         status: client.status,
@@ -96,8 +96,8 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
         values.addressStreetNo = values.addressStreetNo ? values.addressStreetNo : '';
         values.addressZipCode = values.addressZipCode ? values.addressZipCode : '';
         values.birthdate = dateValue.toISOString();
-        // const group = groupList && groupList.find(g => g._id === values.groupId);
-        // values.groupName = group.name;
+        const group = groupList && groupList.find(g => g._id === values.groupId);
+        values.groupName = group.name;
         if (currentUser.root !== true && (currentUser.role.rep === 4 || currentUser.role.rep === 3) && branchList.length > 0) {
             const branch = branchList.find(b => b.code === currentUser.designatedBranch);
             values.branchId = branch._id;
@@ -276,6 +276,19 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                         </div>
                                     )}
                                     <div className="mt-4">
+                                        <SelectDropdown
+                                            name="groupId"
+                                            field="groupId"
+                                            value={values.groupId}
+                                            label="Group"
+                                            options={groupList}
+                                            onChange={setFieldValue}
+                                            onBlur={setFieldTouched}
+                                            placeholder="Select Group"
+                                            errors={touched.groupId && errors.groupId ? errors.groupId : undefined}
+                                        />
+                                    </div>
+                                    <div className="mt-4">
                                         <InputText
                                             name="lastName"
                                             value={values.lastName}
@@ -376,19 +389,6 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                             setFieldValue={setFieldValue}
                                             errors={touched.contactNumber && errors.contactNumber ? errors.contactNumber : undefined} />
                                     </div>
-                                    {/* <div className="mt-4">
-                                        <SelectDropdown
-                                            name="groupId"
-                                            field="groupId"
-                                            value={values.groupId}
-                                            label="Group"
-                                            options={groupList}
-                                            onChange={setFieldValue}
-                                            onBlur={setFieldTouched}
-                                            placeholder="Select Group"
-                                            errors={touched.groupId && errors.groupId ? errors.groupId : undefined}
-                                        />
-                                    </div> */}
                                     {mode === 'edit' && currentUser.role.rep < 4 && (
                                         <React.Fragment>
                                             <div className="mt-4">
@@ -436,7 +436,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                             />
                                         </div>
                                     )}
-                                    <div className="flex flex-row mt-5">
+                                    <div className="flex flex-row mt-5 pb-5">
                                         <ButtonOutline label="Cancel" onClick={handleCancel} className="mr-3" />
                                         <ButtonSolid label="Submit" type="submit" isSubmitting={isValidating && isSubmitting} />
                                     </div>

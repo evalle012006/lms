@@ -9,11 +9,12 @@ export default apiHandler({
 });
 
 async function getUser(req, res) {
-    const { id } = req.query;
+    const { _id } = req.query;
     let statusCode = 200;
     let response = {};
-    const users = findUserByID(id)
-    response = { success: true, users: users };
+    const user = await findUserByID(_id)
+
+    response = { success: true, user: user };
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')
         .end(JSON.stringify(response));
@@ -100,13 +101,12 @@ const findUserByID = async (id) => {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
     const condition = id ? { _id: ObjectId(id) } : {};
-
+    
     const users = await db
         .collection('users')
         .find(condition)
         .project({ _id: 0, password: 0 })
         .toArray();
-
     return users.length > 0 && users[0];
 }
 

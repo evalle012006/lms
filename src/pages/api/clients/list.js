@@ -179,7 +179,7 @@ async function list(req, res) {
                 clients = await db
                     .collection('client')
                     .aggregate([
-                        { $match: { loId: loId, status: status } },
+                        { $match: { loId: loId, groupId: groupId, status: status } },
                         {
                             $addFields: {
                                 "clientId": { $toString: "$_id" }
