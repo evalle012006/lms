@@ -5,8 +5,6 @@ import { useDispatch, useSelector } from "react-redux";
 import Spinner from "@/components/Spinner";
 import toast from 'react-hot-toast';
 import { useRouter } from "node_modules/next/router";
-import { setGroupList } from "@/redux/actions/groupActions";
-import { UppercaseFirstLetter } from "@/lib/utils";
 import { setBranchList } from "@/redux/actions/branchActions";
 import moment from 'moment';
 import DetailsHeader from "@/components/transactions/DetailsHeaderMain";
