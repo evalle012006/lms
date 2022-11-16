@@ -32,12 +32,13 @@ const DetailsHeader = ({ pageTitle, page, currentDate, mode = 'daily', setFilter
     }
 
     useEffect(() => {
-        if (branchList.length > 0 && userList.length > 0) {
+        // not yet working for area manager and admins
+        if (branchList && userList) {
             const branchData = branchList.find(b => b.code === currentUser.designatedBranch);
-            setBranchName(branchData.name);
-            setBranchCode(branchData.code);
+            branchData && setBranchName(branchData.name);
+            branchData && setBranchCode(branchData.code);
             const branchManager = userList.find(b => b.role.rep === 3);
-            setBranchManager(`${branchManager.lastName}, ${branchManager.firstName}`);
+            branchManager && setBranchManager(`${branchManager.lastName}, ${branchManager.firstName}`);
         }
     }, [currentUser, branchList, userList]);
 
