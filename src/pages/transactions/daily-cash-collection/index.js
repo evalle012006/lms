@@ -4,9 +4,6 @@ import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { useDispatch, useSelector } from "react-redux";
 import Spinner from "@/components/Spinner";
 import toast from 'react-hot-toast';
-import { useRouter } from "node_modules/next/router";
-import { setGroupList } from "@/redux/actions/groupActions";
-import { UppercaseFirstLetter } from "@/lib/utils";
 import { setBranchList } from "@/redux/actions/branchActions";
 import moment from 'moment';
 import DetailsHeader from "@/components/transactions/DetailsHeaderMain";
@@ -20,8 +17,6 @@ const DailyCashCollectionPage = () => {
     const branchList = useSelector(state => state.branch.list);
     const [currentDate, setCurrentDate] = useState(moment(new Date()).format('YYYY-MM-DD'));
     const [loading, setLoading] = useState(true);
-
-    const router = useRouter();
 
     const getListBranch = async () => {
         const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'branches/list');
@@ -100,9 +95,9 @@ const DailyCashCollectionPage = () => {
             ) : (
                 <React.Fragment>
                     <div className="overflow-x-auto">
-                        <DetailsHeader pageTitle='Daily Cash Collections' page={1} mode={'daily'} currentDate={moment(currentDate).format('dddd, MMMM DD, YYYY')} />
+                        {branchList && <DetailsHeader pageTitle='Daily Cash Collections' page={1} mode={'daily'} currentDate={moment(currentDate).format('dddd, MMMM DD, YYYY')} />}
                         <div className={`p-4 ${currentUser.role.rep < 4 ? 'mt-[8rem]' : 'mt-[6rem]'} `}>
-                            {currentUser.role.rep === 3 && <ViewByLoanOfficerPage />}
+                            {currentUser.role.rep <= 3 && <ViewByLoanOfficerPage />}
                             {currentUser.role.rep === 4 && <ViewDailyCashCollectionPage pageNo={1} />}
                         </div>
                     </div>
