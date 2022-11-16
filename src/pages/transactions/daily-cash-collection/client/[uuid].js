@@ -178,6 +178,7 @@ const CashCollectionDetailsPage = () => {
     
                     if (cc.loanBalance <= 0) {
                         collection.status = 'completed';
+                        collection.noOfPaymentStr = '-';
                     } else {
                         collection.status = 'active';
                     }
@@ -222,8 +223,8 @@ const CashCollectionDetailsPage = () => {
                             slotNo: loan.slotNo,
                             fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
                             loanCycle: loan.loanCycle,
-                            amountRelease: 0,
-                            amountReleaseStr: 0,
+                            amountRelease: 0, // loan.amountRelease + currentLoan.loanBalance,
+                            amountReleaseStr: 0, // formatPricePhp(currentLoan.amountRelease),
                             loanBalance: 0,
                             loanBalanceStr: 0,
                             targetCollection: currentLoan.history.activeLoan,
@@ -485,7 +486,7 @@ const CashCollectionDetailsPage = () => {
                     }
 
                     if (temp.status === 'completed') {
-                        temp.fullPaymentDate = moment(new Date()).format('YYYY-MM-DD');
+                        temp.fullPaymentDate = temp.fullPaymentDate ? temp.fullPaymentDate : moment(new Date()).format('YYYY-MM-DD');
                     }
                     
                     if (typeof temp.remarks === 'object') {
@@ -495,10 +496,6 @@ const CashCollectionDetailsPage = () => {
                         }
                     }
                 }
-
-                // if (cc.status !== 'open') {
-                //     temp.group = currentGroup;
-                // }
             
                 return temp;   
             }).filter(cc => typeof cc !== 'undefined');
@@ -682,7 +679,12 @@ const CashCollectionDetailsPage = () => {
         e.stopPropagation();
         let origList = [...data];
         let temp = {...selected};
-        if (temp.hasOwnProperty('prevData')) {
+        let allow = true;
+        if (temp.status === 'completed') {
+            allow = temp.fullPaymentDate === currentDate;
+        }
+
+        if (allow && temp.hasOwnProperty('prevData')) {
             temp.amountRelease = temp.prevData.amountRelease;
             temp.amountReleaseStr = formatPricePhp(temp.prevData.amountRelease);
             temp.paymentCollection = temp.prevData.paymentCollection;
@@ -709,6 +711,8 @@ const CashCollectionDetailsPage = () => {
             
             origList[index] = temp;
             dispatch(setCashCollectionGroup(origList));
+        } else {
+            toast.error("Data can't be reverted!");
         }
     }
 
@@ -851,9 +855,7 @@ const CashCollectionDetailsPage = () => {
                                         <th className="p-2 text-center">Mispay</th>
                                         <th className="p-2 text-center">Remarks</th>
                                         {/* <th className="p-2 text-center">Client Status</th> */}
-                                        {headerData.hasOwnProperty('_id') && (
-                                            <th className="p-2 text-center">Actions</th>
-                                        )}
+                                        <th className="p-2 text-center">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -884,20 +886,20 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.targetCollectionStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.excessStr }</td>
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer ${cc.status !== 'active' && 'text-center'} ${cc.hasOwnProperty('_id') && 'text-right'}`}>
-                                                    { (cc.status === 'active' || cc.status === 'completed') && editMode ? (
+                                                    { cc.status === 'active' && editMode ? (
                                                         <input type="number" name={cc.clientId} onBlur={(e) => handlePaymentCollectionChange(e, index, 'amount')}
                                                             onClick={(e) => e.stopPropagation()} defaultValue={cc.paymentCollection} tabIndex={index + 1}
                                                             className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg 
                                                                         focus:ring-main focus:border-main block p-2.5" style={{ width: '100px' }}/>
                                                         ): 
                                                             <React.Fragment>
-                                                                {(!editMode || cc.status === 'pending' || cc.status === 'totals') ? cc.paymentCollectionStr : '-'}
+                                                                {(!editMode || cc.status === 'completed' || cc.status === 'pending' || cc.status === 'totals') ? cc.paymentCollectionStr : '-'}
                                                             </React.Fragment>
                                                     }
                                                 </td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.fullPaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.mispaymentStr }</td>
-                                                { (cc.status === 'active' || cc.status === 'completed') && editMode ? (
+                                                { cc.status === 'active' && editMode ? (
                                                         <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">
                                                             { cc.remarks !== '-' ? (
                                                                 <Select 
@@ -930,20 +932,16 @@ const CashCollectionDetailsPage = () => {
                                                         <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer"></td>
                                                     )
                                                 } */}
-                                                {headerData.hasOwnProperty('_id') && (
+                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">
                                                     <React.Fragment>
-                                                        {cc.status === 'active' || cc.status === 'completed' ? (
-                                                            <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">
-                                                                <div className='flex flex-row p-4'>
-                                                                    {editMode && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleRevert(e, cc, index)} />}
-                                                                    {(cc.status === 'completed' && !cc.tomorrow) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
-                                                                </div>
-                                                            </td>
-                                                        ) : (
-                                                            <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer"></td>
+                                                        {(cc.status === 'active' || cc.status === 'completed') && (
+                                                            <div className='flex flex-row p-4'>
+                                                                {(editMode && headerData.hasOwnProperty('_id')) && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleRevert(e, cc, index)} />}
+                                                                {(cc.status === 'completed' && !cc.tomorrow) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
+                                                            </div>
                                                         )}
                                                     </React.Fragment>
-                                                )}
+                                                </td>
                                             </tr>    
                                         )
                                     })}

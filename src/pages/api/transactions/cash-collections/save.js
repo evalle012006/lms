@@ -76,7 +76,7 @@ async function updateLoan(collection) {
 
         if (collection.loanBalance <= 0) {
             loan.status = 'completed';
-            loan.fullPaymentDate = moment(new Date()).format('YYYY-MM-DD');
+            loan.fullPaymentDate = collection.fullPaymentDate;
             loan.history = collection.history;
             // so that it will not be added in group summary
             loan.activeLoan = 0;

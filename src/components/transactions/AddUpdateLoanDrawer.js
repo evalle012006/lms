@@ -93,10 +93,12 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         if (group) {
             let slotArr = [];
             group.availableSlots.map(slot => {
-                slotArr.push({
-                    value: slot,
-                    label: slot
-                });
+                if (slot <= group.capacity) {
+                    slotArr.push({
+                        value: slot,
+                        label: slot
+                    });
+                }
             });
 
             setSlotNumber(slotArr);
