@@ -4,21 +4,22 @@ import Link from 'next/link';
 import { ChevronRightIcon } from '@heroicons/react/24/solid';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { UppercaseFirstLetter } from '@/lib/utils';
+import { useSelector } from 'react-redux';
 
 const Breadcrumbs = () => {
     const router = useRouter();
-    const [breadcrumbs, setBreadcrumbs] = useState(null);
+    const currentUser = useSelector(state => state.user.data);
+    const [breadcrumbs, setBreadcrumbs] = useState([]);
     const paths = router.asPath
         .split('/')
         .filter((p, i) => i !== 0);
 
     useEffect(() => {
         let mounted = true;
-
         const setBreadcrumbsData = async () => {
             const currentPage = paths[0];
             let params = {};
-            let crumbs = {};
+            let crumbs = [];
             const url = process.env.NEXT_PUBLIC_API_URL + currentPage;
 
             if (paths.length == 2) {
@@ -40,52 +41,45 @@ const Breadcrumbs = () => {
                         link: links[index]
                     }
                 });
-
-                setBreadcrumbs(crumbs);
-            } else if (paths.length == 3) {
-                const subCurrentPage = paths[1] ? paths[1].split('-') : [];
-                const title = subCurrentPage.length > 0 ? UppercaseFirstLetter(subCurrentPage[0]) + ' ' + UppercaseFirstLetter(subCurrentPage[1]) + ' ' + UppercaseFirstLetter(subCurrentPage[2]) : '';
-
-                params = { _id: paths[2] };
-                const response = await fetchWrapper.get(`${process.env.NEXT_PUBLIC_API_URL}groups?` + new URLSearchParams(params));
-                const data = response.group;
-
-                const links = [
-                    `${process.env.NEXT_PUBLIC_URL}/transactions/${paths[1]}`,
-                    null
-                ];
-                const labels = [title, data.name];
-
-                crumbs = paths.map((item, index) => {
-                    return {
-                        label: index < 3 && labels[index],
-                        link: index < 3 && links[index]
-                    }
-                });
-                
-                crumbs = crumbs.filter(c => typeof c.label !== 'undefined'); // removed empty labels
-
-                setBreadcrumbs(crumbs);
             } else if (paths.length == 4) {
-                // const currentPage = paths[2];
-                // params = { uuid: paths[2] };
-                // const response = await fetchWrapper.get(`${url}/tests?` + new URLSearchParams(params));
-                // const test = response.tests[0];
-                // const links = [
-                //     `${process.env.NEXT_PUBLIC_URL}/jobs`,
-                //     `${process.env.NEXT_PUBLIC_URL}/jobs/${test.job_id}`
-                // ];
-                // const labels = ['Jobs', test.client, `${test.crop} - ${test.labnumber}`];
+                if (paths[0] === 'transactions' && paths[1] === 'daily-cash-collection') {
+                    const subCurrentPage = paths[1] ? paths[1].split('-') : [];
+                    const title = subCurrentPage.length > 0 ? UppercaseFirstLetter(subCurrentPage[0]) + ' ' + UppercaseFirstLetter(subCurrentPage[1]) + ' ' + UppercaseFirstLetter(subCurrentPage[2]) : '';
+                    params = { _id: paths[3] };
+                    let response;
+                    let data;
+                    let labels;
+                    let links;
+                    if (paths[2] === 'group') {
+                        response = await fetchWrapper.get(`${process.env.NEXT_PUBLIC_API_URL}users?` + new URLSearchParams(params));
+                        data = response.user;
+                        labels = [title, `${data.lastName}, ${data.firstName}`];
+                        links = [
+                            `${process.env.NEXT_PUBLIC_URL}/transactions/${paths[1]}`,
+                            null
+                        ];
+                    } else if (paths[2] ==='client') {
+                        response = await fetchWrapper.get(`${process.env.NEXT_PUBLIC_API_URL}groups?` + new URLSearchParams(params));
+                        data = response.group;
+                        labels = [title, data.name];
+                        links = [   // need to retrived the selected LO
+                            `${process.env.NEXT_PUBLIC_URL}/transactions/${paths[1]}`,
+                            null
+                        ];
+                    }
 
-                // crumbs = paths.map((item, index) => {
-                //     return {
-                //         label: labels[index],
-                //         link: links[index]
-                //     }
-                // });
-
-                // setBreadcrumbs(crumbs)
+                    crumbs = paths.map((item, index) => {
+                        return {
+                            label: index < 4 && labels[index],
+                            link: index < 4 && links[index]
+                        }
+                    });
+                    
+                    crumbs = crumbs.filter(c => typeof c.label !== 'undefined'); // removed empty labels
+                }
             }
+
+            setBreadcrumbs(crumbs);
         }
 
         mounted && setBreadcrumbsData();

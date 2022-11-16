@@ -18,9 +18,6 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, editMode, dateFi
         'full': "text-red-400 bg-red-100"
     }
 
-    const [remarkFilter, setRemarkFilter] = useState();
-    const [remarksArr, setRemarksArr] = useState([]);
-
     const legends = [
         {label: 'Active', bg: ''},
         {label: 'Pending', bg: 'bg-yellow-100'},
@@ -149,7 +146,7 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, editMode, dateFi
                         <span className="text-gray-400 text-sm mt-1">Filters:</span >
                         <div className="ml-4 flex w-64">
                             <div className="relative w-full" onClick={openCalendar}>
-                                <DatePicker name="dateFilter" value={moment(dateFilter).format('YYYY-MM-DD')} maxDate={moment(dateFilter).format('YYYY-MM-DD')} onChange={handleDateFilter} />
+                                <DatePicker name="dateFilter" value={moment(dateFilter).format('YYYY-MM-DD')} maxDate={moment(new Date()).format('YYYY-MM-DD')} onChange={handleDateFilter} />
                             </div>
                         </div>
                     </div>

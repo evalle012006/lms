@@ -1,3 +1,4 @@
+import e from 'cors';
 import moment from 'moment';
 
 export const FileExists = (url) => {
@@ -51,6 +52,8 @@ export const formatPricePhp = (num) => {
     if (num) {
         const price = new Intl.NumberFormat('fil-PH', { style: 'currency', currency: 'PHP' }).format(num);
         return price.replace('.00', '');
+    } else {
+        return '0';
     }
 }
 

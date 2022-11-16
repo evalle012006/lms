@@ -50,6 +50,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         noOfPayments: mode !== 'reloan' ? loan.noOfPayments : 0,
         coMaker: loan.coMaker,
         loanCycle: mode !== 'reloan' ? mode === 'add' ? 1 : loan.loanCycle : loan.loanCycle + 1,
+        pnNumber: loan.pnNumber,
         status: mode !== 'reloan' ? loan.status : 'pending',
     }
 
@@ -76,6 +77,9 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             .integer()
             .positive()
             .required('Please enter a loan cycle number'),
+        pnNumber: yup
+            .string()
+            .required('Please enter a promisory note number.'),
         // coMaker: yup
         //     .string()
         //     .required('Please enter co-maker')
@@ -89,10 +93,12 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         if (group) {
             let slotArr = [];
             group.availableSlots.map(slot => {
-                slotArr.push({
-                    value: slot,
-                    label: slot
-                });
+                if (slot <= group.capacity) {
+                    slotArr.push({
+                        value: slot,
+                        label: slot
+                    });
+                }
             });
 
             setSlotNumber(slotArr);
@@ -141,8 +147,12 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             values.brancName = branch.name;
         } else {
             group = loan.group;
+            values.groupId = loan.groupId;
+            values.groupName = loan.groupName;
             values.mode = 'reloan';
             values.oldLoanId = loan.loanId;
+            values.clientId = loan.clientId;
+            values.branchId = loan.branchId;
         }
 
         values.slotNo = mode !== 'reloan' ? slotNo : loan.slotNo;
@@ -180,6 +190,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                         action.setSubmitting = false;
                         action.resetForm({values: ''});
                         setSelectedGroup();
+                        setClientId();
                         setSlotNo();
                         setSlotNumber();
                         onClose();
@@ -213,6 +224,10 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                             toast.success('Loan successfully updated.');
                             action.setSubmitting = false;
                             action.resetForm();
+                            setSelectedGroup();
+                            setClientId();
+                            setSlotNo();
+                            setSlotNumber();
                             onClose();
                         }
                     } else if (response.error) {
@@ -256,7 +271,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             if (status === 'active') {
                 url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", branchId: branchList[0]._id, groupId: selectedGroup, status: status });
             } else {
-                url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", loId: currentUser._id, status: status });
+                url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", loId: currentUser._id, groupId: selectedGroup, status: status });
             }
         } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
             if (status === 'active') {
@@ -307,6 +322,10 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     const handleCancel = () => {
         setShowSidebar(false);
         formikRef.current.resetForm();
+        setSelectedGroup();
+        setClientId();
+        setSlotNo();
+        setSlotNumber();
         onClose();
     }
 
@@ -318,9 +337,12 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         } else if (mode === 'edit') {
             setTitle('Edit Loan');
             const form = formikRef.current;
+            setClientId(loan.clientId);
             setSelectedGroup(loan.groupId);
             setSlotNo(loan.slotNo);
 
+            form.setFieldValue('clientId', loan.clientId);
+            form.setFieldValue('groupId', loan.groupId);
             form.setFieldValue('slotNo', loan.slotNo);
         }
 
@@ -330,6 +352,12 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             mounted = false;
         };
     }, [mode]);
+
+    useEffect(() => {
+        if (selectedGroup) {
+            getListClient(clientType);
+        }
+    }, [selectedGroup])
 
     return (
         <React.Fragment>
@@ -476,6 +504,16 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                             placeholder="Enter Principal Loan"
                                             setFieldValue={setFieldValue}
                                             errors={touched.principalLoan && errors.principalLoan ? errors.principalLoan : undefined} />
+                                    </div>
+                                    <div className="mt-4">
+                                        <InputText
+                                            name="pnNumber"
+                                            value={values.pnNumber}
+                                            onChange={handleChange}
+                                            label="Promisory Note Number"
+                                            placeholder="Enter PN Number"
+                                            setFieldValue={setFieldValue}
+                                            errors={touched.pnNumber && errors.pnNumber ? errors.pnNumber : undefined} />
                                     </div>
                                     <div className="mt-4">
                                         <InputText

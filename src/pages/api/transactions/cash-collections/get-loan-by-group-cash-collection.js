@@ -76,7 +76,7 @@ async function getLoanWithCashCollection(req, res) {
                                 { $match: { mode: mode } },
                                 { $group: { 
                                         _id: '$clientId',
-                                        mispayments: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },
+                                        mispayment: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },
                                         loanTarget: { $sum: '$activeLoan' },
                                         collection: { $sum: '$paymentCollection' },
                                         excess: { $sum: '$excess' },
@@ -206,7 +206,7 @@ async function getLoanWithCashCollection(req, res) {
                                 { $match: { loId: loId, mode: mode } },
                                 { $group: { 
                                         _id: '$clientId',
-                                        mispayments: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },
+                                        mispayment: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },
                                         loanTarget: { $sum: '$activeLoan' },
                                         collection: { $sum: '$paymentCollection' },
                                         excess: { $sum: '$excess' },
@@ -336,7 +336,7 @@ async function getLoanWithCashCollection(req, res) {
                                 { $match: { mode: mode } },
                                 { $group: { 
                                         _id: '$clientId',
-                                        mispayments: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },
+                                        mispayment: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },
                                         loanTarget: { $sum: '$activeLoan' },
                                         collection: { $sum: '$paymentCollection' },
                                         excess: { $sum: '$excess' },
@@ -465,7 +465,7 @@ async function getLoanWithCashCollection(req, res) {
                                 { $match: { mode: mode } },
                                 { $group: { 
                                         _id: '$clientId',
-                                        mispayments: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },
+                                        mispayment: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },
                                         loanTarget: { $sum: '$activeLoan' },
                                         collection: { $sum: '$paymentCollection' },
                                         excess: { $sum: '$excess' },

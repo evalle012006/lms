@@ -116,6 +116,8 @@ async function updateClient(req, res) {
                             branchId: fields.branchId,
                             status: fields.status,
                             delinquent: fields.delinquent,
+                            loId: fields.loId,
+                            groupId: fields.groupId,
                             profile: profile
                         },
                         $currentDate: { dateModified: true }

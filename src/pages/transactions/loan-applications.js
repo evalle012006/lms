@@ -86,30 +86,30 @@ const LoanApplicationPage = () => {
         setLoading(false);
     }
 
-    const getListClient = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'clients/list';
-        if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
-            url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", loId: currentUser._id, status: 'pending' });
-        } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
-            url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", branchId: branchList[0]._id, status: 'pending' });
-        }
+    // const getListClient = async () => {
+    //     let url = process.env.NEXT_PUBLIC_API_URL + 'clients/list';
+    //     if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
+    //         url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", loId: currentUser._id, status: 'pending' });
+    //     } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
+    //         url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", branchId: branchList[0]._id, status: 'pending' });
+    //     }
 
-        const response = await fetchWrapper.get(url);
-        if (response.success) {
-            let clients = [];
-            await response.clients && response.clients.map(client => {
-                clients.push({
-                    ...client,
-                    label: UppercaseFirstLetter(`${client.lastName}, ${client.firstName}`),
-                    value: client._id
-                });
-            });
-            dispatch(setClientList(clients));
-        } else if (response.error) {
-            toast.error(response.message);
-        }
-        setLoading(false);
-    }
+    //     const response = await fetchWrapper.get(url);
+    //     if (response.success) {
+    //         let clients = [];
+    //         await response.clients && response.clients.map(client => {
+    //             clients.push({
+    //                 ...client,
+    //                 label: UppercaseFirstLetter(`${client.lastName}, ${client.firstName}`),
+    //                 value: client._id
+    //             });
+    //         });
+    //         dispatch(setClientList(clients));
+    //     } else if (response.error) {
+    //         toast.error(response.message);
+    //     }
+    //     setLoading(false);
+    // }
 
     const getListLoan = async () => {
         let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/list';
@@ -158,7 +158,7 @@ const LoanApplicationPage = () => {
             loanData.status = updatedValue;
             loanData.startDate = moment(new Date()).add(1, 'days').format('YYYY-MM-DD');
             loanData.endDate = getEndDate(loanData.dateGranted, group.occurence === 'daily' ? 60 : 24 );
-            loanData.mispayments = 0;
+            loanData.mispayment = 0;
 
             await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/approved-reject-loan', loanData)
                 .then(response => {
@@ -201,7 +201,7 @@ const LoanApplicationPage = () => {
 
     const handleCloseAddDrawer = () => {
         setLoading(true);
-        getListClient();
+        // getListClient();
         getListLoan();
         getListGroup();
         setMode('add');
@@ -272,15 +272,10 @@ const LoanApplicationPage = () => {
     useEffect(() => {
         if (branchList) {
             getListGroup();
-            getListClient();
-        }
-    }, [branchList]);
-
-    useEffect(() => {
-        if (clientList) {
+            // getListClient();
             getListLoan();
         }
-    }, [clientList]);
+    }, [branchList]);
 
     useEffect(() => {
         if (groupList) {
