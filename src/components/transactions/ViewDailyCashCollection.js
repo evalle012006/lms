@@ -4,16 +4,14 @@ import { useDispatch, useSelector } from "react-redux";
 import Spinner from "@/components/Spinner";
 import toast from 'react-hot-toast';
 import { useRouter } from "node_modules/next/router";
-import { setGroupList } from "@/redux/actions/groupActions";
 import { formatPricePhp, UppercaseFirstLetter } from "@/lib/utils";
-import { setBranchList } from "@/redux/actions/branchActions";
 import moment from 'moment';
 import { setCashCollectionList } from "@/redux/actions/cashCollectionActions";
-import { setUserList } from "@/redux/actions/userActions";
 import TableComponent, { SelectColumnFilter, StatusPill } from "@/lib/table";
 import { BehaviorSubject } from 'rxjs';
 
 const ViewDailyCashCollectionPage = ({ pageNo }) => {
+    const router = useRouter();
     const dispatch = useDispatch();
     const selectedLOSubject = new BehaviorSubject(process.browser && localStorage.getItem('selectedLO'));
     const currentUser = useSelector(state => state.user.data);
@@ -22,51 +20,14 @@ const ViewDailyCashCollectionPage = ({ pageNo }) => {
     const cashCollectionList = useSelector(state => state.cashCollection.main);
     const [loading, setLoading] = useState(true);
 
-    const router = useRouter();
-
-    const getListGroup = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list-by-group-occurence'
-        if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
-            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id, occurence: 'daily' });
-        } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
-            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, occurence: 'daily' });
-        } else {
-            url = url + '?' + new URLSearchParams({ occurence: 'daily' });
-        }
-
-        const response = await fetchWrapper.get(url);
-        if (response.success) {
-            let groups = [];
-            await response.groups && response.groups.map(group => {
-                groups.push({
-                    ...group,
-                    day: UppercaseFirstLetter(group.day)
-                });
-            });
-            dispatch(setGroupList(groups));
-        } else if (response.error) {
-            toast.error(response.message);
-        }
-        setLoading(false);
-    }
-
     const getCashCollections = async (selectedLO) => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/get-all-loans-per-group';
-        if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
-            url = url + '?' + new URLSearchParams({ date: currentDate, mode: 'daily', loId: selectedLO ? selectedLO : currentUser._id });
-        } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
-            url = url + '?' + new URLSearchParams({ date: currentDate, mode: 'daily', loId: selectedLO });
-        } else if (currentUser.root !== true && currentUser.role.rep === 2) { // for area manager
-            url = url + '?' + new URLSearchParams({ date: currentDate, mode: 'daily', areaManagerId: currentUser._id });
-        } else { // administrator
-            url = url + '?' + new URLSearchParams({ date: currentDate, mode: 'daily' });
-        }
+        let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/get-all-loans-per-group?' + new URLSearchParams({ date: currentDate, mode: 'daily', loId: selectedLO ? selectedLO : currentUser._id });
 
         const response = await fetchWrapper.get(url);
         if (response.success) {
             let collectionData = [];
             response.data && response.data.map(cc => {
-                if (cc.groupCashCollections.length > 0) {
+                if (cc.groupCashCollections.length > 0 && cc.groupCashCollections.status === 'close') {
                     const gcArr = cc.groupCashCollections.map(gc => {
                         let temp = {...gc};
 
@@ -149,42 +110,25 @@ const ViewDailyCashCollectionPage = ({ pageNo }) => {
                     if (cc.cashCollections.length > 0) {
                         // const loanNoOfClients = cc.loans.length > 0 ? cc.loans[0].noOfClients : 0;
                         collection = { ...collection,
-                            // groupId: cc._id,
-                            // group: cc.name,
-                            // noCurrentRelease: cc.currentRelease.length > 0 ? cc.currentRelease[0].noOfCurrentRelease : 0,
-                            // currentReleaseAmount: cc.currentRelease.length > 0 && cc.currentRelease[0].currentReleaseAmount,
-                            // currentReleaseAmountStr: cc.currentRelease.length > 0 ? formatPricePhp(cc.currentRelease[0].currentReleaseAmount) : 0,
-                            // noOfPaidClients: cc.cashCollections[0].noOfClients ? cc.cashCollections[0].noOfClients : 0,
-                            // noOfClients: cc.cashCollections[0].noOfClients ? cc.cashCollections[0].noOfClients + '/' + loanNoOfClients : 0 + '/' + cc.loans[0].noOfClients,
                             mispayment: cc.cashCollections[0].mispayment ? cc.cashCollections[0].mispayment : 0,
-                            // loanTarget: cc.cashCollections[0].loanTarget && cc.cashCollections[0].loanTarget,
-                            // loanTargetStr: cc.cashCollections[0].loanTarget ? formatPricePhp(cc.cashCollections[0].loanTarget) : 0,
                             collection: cc.cashCollections[0].collection && cc.cashCollections[0].collection,
                             collectionStr: cc.cashCollections[0].collection ? formatPricePhp(cc.cashCollections[0].collection) : 0,
                             excess: cc.cashCollections[0].excess && cc.cashCollections[0].excess,
                             excessStr: cc.cashCollections[0].excess ? formatPricePhp(cc.cashCollections[0].excess) : 0,
                             total: cc.cashCollections[0].total && cc.cashCollections[0].total,
                             totalStr: cc.cashCollections[0].total ? formatPricePhp(cc.cashCollections[0].total) : 0.00,
-                            // totalReleases: cc.loans.length > 0 ? formatPricePhp(cc.loans[0].totalRelease) : 0.00,
-                            // totalLoanBalance: cc.loans.length > 0 && cc.loans[0].totalLoanBalance,
-                            // totalLoanBalanceStr: cc.loans.length > 0 ? formatPricePhp(cc.loans[0].totalLoanBalance) : 0.00,
-                            // fullPaymentAmount: cc.fullPayment.length > 0 && cc.fullPayment[0].fullPaymentAmount,
-                            // fullPaymentAmountStr: cc.fullPayment.length > 0 ? formatPricePhp(cc.fullPayment[0].fullPaymentAmount) : 0.00,
-                            // status: 'open',
-                            // page: 'collection'
                         };
                     }
 
                     if (cc.currentRelease.length > 0) {
                         noCurrentRelease = cc.currentRelease[0].newCurrentRelease + ' / ' + cc.currentRelease[0].reCurrentRelease;
-
                         collection = {
                             ...collection,
                             noCurrentReleaseStr: noCurrentRelease,
-                            newCurrentRelease: cc.currentRelease.length > 0 ? cc.currentRelease[0].newCurrentRelease : 0,
-                            reCurrentRelease: cc.currentRelease.length > 0 ? cc.currentRelease[0].reCurrentRelease : 0,
-                            currentReleaseAmount: cc.currentRelease.length > 0 && cc.currentRelease[0].currentReleaseAmount,
-                            currentReleaseAmountStr: cc.currentRelease.length > 0 ? formatPricePhp(cc.currentRelease[0].currentReleaseAmount) : 0,
+                            newCurrentRelease: cc.currentRelease[0].newCurrentRelease ? cc.currentRelease[0].newCurrentRelease : 0,
+                            reCurrentRelease: cc.currentRelease[0].reCurrentRelease ? cc.currentRelease[0].reCurrentRelease : 0,
+                            currentReleaseAmount: cc.currentRelease[0].currentReleaseAmount ? cc.currentRelease[0].currentReleaseAmount : 0,
+                            currentReleaseAmountStr: cc.currentRelease[0].currentReleaseAmount ? formatPricePhp(cc.currentRelease[0].currentReleaseAmount) : 0,
                             status: 'open',
                             page: 'collection'
                         };
@@ -282,7 +226,9 @@ const ViewDailyCashCollectionPage = ({ pageNo }) => {
                 router.push('/transactions/daily-cash-collection/client/' + selected.groupId);
             }
         } else {
-            toast.error('No loans on this group yet.')
+            if (selected.group !== 'TOTALS') {
+                toast.error('No loans on this group yet.')
+            }
         }
     };
 
@@ -473,7 +419,6 @@ const ViewDailyCashCollectionPage = ({ pageNo }) => {
         }
 
         if (branchList) {
-            mounted && getListGroup();
             
             if (currentUser.role.rep < 4 && selectedLOSubject.value.length > 0) {
                 mounted && getCashCollections(selectedLOSubject.value);

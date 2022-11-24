@@ -130,7 +130,8 @@ const LoanApplicationPage = () => {
                     mcbuStr: formatPricePhp(loan.mcbu),
                     activeLoanStr: formatPricePhp(loan.activeLoan),
                     loanBalanceStr: formatPricePhp(loan.loanBalance),
-                    fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`)
+                    fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
+                    selected: false
                 });
             });
 
@@ -160,36 +161,28 @@ const LoanApplicationPage = () => {
             loanData.endDate = getEndDate(loanData.dateGranted, group.occurence === 'daily' ? 60 : 24 );
             loanData.mispayment = 0;
 
-            await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/approved-reject-loan', loanData)
-                .then(response => {
-                    if (response.success) {
-                        setLoading(false);
-                        toast.success('Loan successfully updated.');
-                        window.location.reload();
-                    } else if (response.error) {
-                        setLoading(false);
-                        toast.error(response.message);
-                    }
-                }).catch(error => {
-                    console.log(error);
-                });
+            const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/approved-reject-loan', loanData)
+            
+            if (response.success) {
+                setLoading(false);
+                toast.success('Loan successfully updated.');
+                window.location.reload();
+            } else if (response.error) {
+                setLoading(false);
+                toast.error(response.message);
+            }
         } else {
             loanData.status = updatedValue;
-            // loanData.slotNo = null;
             
-            await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/approved-reject-loan', loanData)
-                .then(response => {
-                    if (response.success) {
-                        setLoading(false);
-                        toast.success('Loan successfully updated.');
-                        window.location.reload();
-                    } else if (response.error) {
-                        setLoading(false);
-                        toast.error(response.message);
-                    }
-                }).catch(error => {
-                    console.log(error);
-                });
+            const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/approved-reject-loan', loanData)
+            if (response.success) {
+                setLoading(false);
+                toast.success('Loan successfully updated.');
+                window.location.reload();
+            } else if (response.error) {
+                setLoading(false);
+                toast.error(response.message);
+            }
         }
     }
 
@@ -208,7 +201,70 @@ const LoanApplicationPage = () => {
         setLoan({});
     }
 
+    const handleMultiSelect = (mode, selectAll, row, rowIndex) => {
+        if (mode === 'all') {
+            const tempList = list.map(loan => {
+                let temp = {...loan};
+                temp.selected = selectAll;
+                return temp;
+            });
+            dispatch(setLoanList(tempList));
+        } else if (mode === 'row') {
+            const tempList = list.map((loan, index) => {
+                let temp = {...loan};
+
+                if (index === rowIndex) {
+                    temp.selected = !temp.selected;
+                }
+
+                return temp;
+            });
+            dispatch(setLoanList(tempList));
+        }
+    }
+
+    const handleMultiApprove = async () => {
+        let selectedLoanList = list.filter(loan => loan.selected === true);
+
+        if (selectedLoanList.length > 0) {
+            selectedLoanList = selectedLoanList.map(loan => {
+                let temp = {...loan};
+                const group = loan.group;
+
+                delete temp.group;
+                delete temp.client;
+                delete temp.branch;
+                delete temp.principalLoanStr;
+                delete temp.activeLoanStr;
+                delete temp.loanBalanceStr;
+                delete temp.mcbuStr;
+
+                temp.dateGranted = moment(new Date()).format('YYYY-MM-DD');
+                temp.status = 'active';
+                temp.startDate = moment(new Date()).add(1, 'days').format('YYYY-MM-DD');
+                temp.endDate = getEndDate(temp.dateGranted, group.occurence === 'daily' ? 60 : 24 );
+                temp.mispayment = 0;
+
+                return temp;
+            });
+
+            const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/approved-reject-by-batch', selectedLoanList);
+
+            if (response.success) {
+                setLoading(false);
+                toast.success('Selected loans successfully approved.');
+                // window.location.reload();
+                setTimeout(() => {
+                    getListLoan();
+                }, 500);
+            }
+        } else {
+            toast.error('No loan selected!');
+        }
+    }
+
     const actionButtons = [
+        <ButtonOutline label="Approved Selected Loans" type="button" className="p-2 mr-3" onClick={handleMultiApprove} />,
         <ButtonSolid label="Add Loan" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
     ];
 
@@ -389,7 +445,7 @@ const LoanApplicationPage = () => {
                         <div className="absolute top-1/2 left-1/2">
                             <Spinner />
                         </div>
-                    ) : <TableComponent columns={columns} data={list} hasActionButtons={true} rowActionButtons={rowActionButtons} showFilters={false} />}
+                    ) : <TableComponent columns={columns} data={list} hasActionButtons={true} rowActionButtons={rowActionButtons} showFilters={false} multiSelect={true} multiSelectActionFn={handleMultiSelect} />}
             </div>
             <AddUpdateLoan mode={mode} loan={loan} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
             <Dialog show={showDeleteDialog}>

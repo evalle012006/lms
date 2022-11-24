@@ -26,7 +26,6 @@ const RolesPage = () => {
 
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-    const [platformRoles, setPlatformRoles] = useState([]);
     const [permissions, setPermissions] = useState([]);
     const [rootUser, setRootUser] = useState(currentUser.root ? currentUser.root : false);
     const router = useRouter();

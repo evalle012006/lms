@@ -24,6 +24,7 @@ import {
   XCircleIcon,
   ArrowPathIcon
 } from '@heroicons/react/24/solid';
+import CheckBox from "./ui/checkbox";
 
 // Define a default UI for filtering
 function GlobalFilter({
@@ -427,7 +428,9 @@ const TableComponent = ({
   rowActionButtons = [],
   rowClick = null,
   noPadding = false,
-  border = false
+  border = false,
+  multiSelect = false,
+  multiSelectActionFn = null
 }) => {
   // Use the state and functions returned from useTable to build your UI
   const {
@@ -463,6 +466,17 @@ const TableComponent = ({
     useSortBy,
     usePagination // new
   );
+
+  const [selectAll, setSelectAll] = useState(false);
+
+  const handleSelectAll = () => {
+    setSelectAll(!selectAll);
+    multiSelectActionFn('all', !selectAll);
+  }
+
+  const handleSelectRow = (row, index) => {
+    multiSelectActionFn('row', null, row, index);
+  }
 
   // Render the UI for your table
   return (
@@ -507,6 +521,16 @@ const TableComponent = ({
                 <thead className="table-head table-row-group">
                   {headerGroups.map((headerGroup, index) => (
                     <tr key={index} {...headerGroup.getHeaderGroupProps()}>
+                      {multiSelect && (
+                        <th scope="col" className="py-4-custom whitespace-nowrap-custom">
+                          {/* add checkbox here */}
+                          <CheckBox name="selectAll"
+                              value={selectAll} 
+                              onChange={handleSelectAll}
+                              size={"md"} 
+                          />
+                        </th>
+                      )}
                       {headerGroup.headers.map((column) => (
                         // Add the sorting props to control sorting. For this example
                         // we can add them into the header props
@@ -564,8 +588,18 @@ const TableComponent = ({
                                 const root = row.original.root ? row.original.root : false;
                                 const delinquent = row.original.delinquent;
                                 const totalData = row.original.hasOwnProperty('totalData') ? row.original.totalData : false;
+                                const selected = row.original.hasOwnProperty('selected') ? row.original.selected : false;
                                 return (
                                 <tr {...row.getRowProps()} className={`hover:bg-slate-200 ${delinquent === 'Yes' && 'bg-red-100'} even:bg-gray-100`}>
+                                    {multiSelect && (
+                                      <td className="py-4-custom whitespace-nowrap-custom" role="cell">
+                                        <CheckBox name={`select-${i}`}
+                                            value={selected} 
+                                            onChange={() => handleSelectRow(row.original, i)}
+                                            size={"md"} 
+                                        />
+                                      </td>
+                                    )}
                                     {row.cells.map((cell) => {
                                     return (
                                         <td

@@ -115,6 +115,10 @@ async function updateClient(loan) {
 
         client.status = loan.clientStatus;
 
+        if (loan.remarks.label.toLowerCase().includes('delinquent')) {
+            client.delinquent = true;
+        }
+
         const clientResp = await db
             .collection('client')
             .updateOne(

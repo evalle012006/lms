@@ -105,7 +105,7 @@ const findUserByID = async (id) => {
     const users = await db
         .collection('users')
         .find(condition)
-        .project({ _id: 0, password: 0 })
+        .project({ password: 0 })
         .toArray();
     return users.length > 0 && users[0];
 }

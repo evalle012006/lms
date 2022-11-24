@@ -28,10 +28,8 @@ const Index = () => {
     return (
         <Layout>
             <div className="flex space-x-4 m-4">
-                {/* <TestBoxComponent testCounts={testCounts} setTestCounts={setTestCounts} /> */}
-                {/* <RecommendationsComponent /> */}
+                
             </div>
-            {/* <DashboardProgramsComponent programs={programs} /> */}
         </Layout>
     );
 }

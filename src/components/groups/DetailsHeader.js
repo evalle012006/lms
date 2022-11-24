@@ -8,8 +8,9 @@ import { useEffect, useRef, useState } from "react";
 import moment from 'moment'
 import DatePicker from "@/lib/ui/DatePicker";
 
-const DetailsHeader = ({ page, handleSaveUpdate, data, setData, editMode, dateFilter, setDateFilter, handleDateFilter }) => {
+const DetailsHeader = ({ page, handleSaveUpdate, data, setData, editMode, dateFilter, setDateFilter, handleDateFilter, groupFilter, handleGroupFilter }) => {
     const calendarRef = useRef();
+    const groupList = useSelector(state => state.group.list);
     const group = useSelector(state => state.group.data);
     const [showCalendar, setShowCalendar] = useState(false);
 
@@ -144,7 +145,20 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, editMode, dateFi
                 <div className="flex justify-between w-10/12">
                     <div className="flex flex-row w-11/12 text-gray-400 text-sm justify-start">
                         <span className="text-gray-400 text-sm mt-1">Filters:</span >
-                        <div className="ml-4 flex w-64">
+                        <div className="ml-4 flex w-40">
+                            <Select 
+                                options={groupList}
+                                value={groupFilter && groupList.find(g => {
+                                    return g._id === groupFilter
+                                })}
+                                styles={borderStyles}
+                                components={{ DropdownIndicator }}
+                                onChange={handleGroupFilter}
+                                isSearchable={true}
+                                closeMenuOnSelect={true}
+                                placeholder={'Group Filter'}/>
+                        </div>
+                        <div className="ml-24 flex w-64">
                             <div className="relative w-full" onClick={openCalendar}>
                                 <DatePicker name="dateFilter" value={moment(dateFilter).format('YYYY-MM-DD')} maxDate={moment(new Date()).format('YYYY-MM-DD')} onChange={handleDateFilter} />
                             </div>

@@ -7,7 +7,7 @@ import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { toast } from 'react-hot-toast';
 import React from 'react';
 import { setCashCollection, setCashCollectionGroup } from '@/redux/actions/cashCollectionActions';
-import { setGroup } from '@/redux/actions/groupActions';
+import { setGroup, setGroupList } from '@/redux/actions/groupActions';
 import DetailsHeader from '@/components/groups/DetailsHeader';
 import moment from 'moment';
 import { formatPricePhp, UppercaseFirstLetter } from '@/lib/utils';
@@ -18,14 +18,17 @@ import AddUpdateLoan from '@/components/transactions/AddUpdateLoanDrawer';
 import Dialog from '@/lib/ui/Dialog';
 import ButtonSolid from '@/lib/ui/ButtonSolid';
 import ButtonOutline from '@/lib/ui/ButtonOutline';
+import { setBranchList } from '@/redux/actions/branchActions';
 
 const CashCollectionDetailsPage = () => {
     const dispatch = useDispatch();
     const router = useRouter();
     const currentUser = useSelector(state => state.user.data);
+    const branchList = useSelector(state => state.branch.list);
     const groupClients = useSelector(state => state.cashCollection.group);
     const [groupSummary, setGroupSummary] = useState();
     const [editMode, setEditMode] = useState(true);
+    const [groupSummaryIsClose, setGroupSummaryIsClose] = useState(false);
     const [queryMain, setQueryMain] = useState(true);
     const [headerData, setHeaderData] = useState({});
     const [data, setData] = useState([]);
@@ -43,15 +46,26 @@ const CashCollectionDetailsPage = () => {
     const [closeLoan, setCloseLoan] = useState();
     const remarksArr = [
         { label: 'Remarks', value: ''},
+        { label: 'Pending', value: 'pending'},
         { label: 'Excused', value: 'excused'},
         { label: 'Delinquent', value: 'delinquent'},
         { label: 'Advance Payment', value: 'advance payment'},
         { label: 'Hospitalization', value: 'hospitalization'},
         { label: 'Death of Clients/Family Member', value: 'death of clients/family member'},
-        { label: 'For Close/Offset', value: 'offset'}
+        { label: 'Reloaner', value: 'reloaner'},
+        { label: 'For Close/Offset - Good Client', value: 'offset'},
+        { label: 'For Close/Offset - Delinquent Client', value: 'offset'}
     ];
     const [filter, setFilter] = useState(false);
     const maxDays = 60;
+    const [groupFilter, setGroupFilter] = useState();
+
+    const handleGroupFilter = (selected) => {
+        setGroupFilter(selected._id);
+        setCurrentGroup(selected);
+        // getCashCollections(null, selected._id);
+        router.push('/transactions/daily-cash-collection/client/' + selected._id);
+    }
     
     const handleDateFilter = (selected) => {
         const filteredDate = selected.target.value;
@@ -96,7 +110,7 @@ const CashCollectionDetailsPage = () => {
                     cashCollection.push(temp);
                 });
 
-                if (collections.status === 'pending') {
+                if (collections.status === 'pending' && !groupSummaryIsClose) {
                     setEditMode(true);
                     setHeaderData(collections);
                 } else {
@@ -145,22 +159,22 @@ const CashCollectionDetailsPage = () => {
     
                     delete cc._id;
     
-                    if (cc.current.length > 0) {
-                        collection.excess = cc.current[0].excess;
-                        collection.excessStr = formatPricePhp(cc.current[0].excess);
-                        collection.paymentCollection = cc.current[0].paymentCollection;
-                        collection.paymentCollectionStr = formatPricePhp(cc.current[0].paymentCollection);
-                        collection._id = cc.current[0]._id;
-                    }
+                    // if (cc.current.length > 0) {
+                    //     collection.excess = cc.current[0].excess;
+                    //     collection.excessStr = formatPricePhp(cc.current[0].excess);
+                    //     collection.paymentCollection = cc.current[0].paymentCollection;
+                    //     collection.paymentCollectionStr = formatPricePhp(cc.current[0].paymentCollection);
+                    //     collection._id = cc.current[0]._id;
+                    // }
     
-                    if (cc.history.length > 0) {
-                        // collection.collection = formatPricePhp(cc.history[0].collection);
-                        // collection.excess = cc.history[0].excess;
-                        // collection.excessStr = formatPricePhp(cc.history[0].excess);
-                        collection.total = cc.history[0].total;
-                        collection.totalStr = formatPricePhp(cc.history[0].total);
-                        collection.history = cc.history[0];
-                    }
+                    // if (cc.history.length > 0) {
+                    //     // collection.collection = formatPricePhp(cc.history[0].collection);
+                    //     // collection.excess = cc.history[0].excess;
+                    //     // collection.excessStr = formatPricePhp(cc.history[0].excess);
+                    //     collection.total = cc.history[0].total;
+                    //     collection.totalStr = formatPricePhp(cc.history[0].total);
+                    //     collection.history = cc.history[0];
+                    // }
     
                     if (cc.currentRelease.length > 0) {
                         collection.currentReleaseAmount = cc.currentRelease[0].currentReleaseAmount;
@@ -178,7 +192,10 @@ const CashCollectionDetailsPage = () => {
     
                     if (cc.loanBalance <= 0) {
                         collection.status = 'completed';
-                        collection.noOfPaymentStr = '-';
+                        collection.notCalculate = true;
+                        collection.paymentCollection = cc.history ? cc.history.collection : 0;
+                        collection.paymentCollectionStr = formatPricePhp(collection.paymentCollection);
+                        collection.remarks = cc.history ? cc.history.remarks : '-';
                     } else {
                         collection.status = 'active';
                     }
@@ -248,6 +265,7 @@ const CashCollectionDetailsPage = () => {
                             // clientStatus: loan.client.status
                         };
                     } else if (currentLoan.status !== 'active') {
+                        console.log(currentLoan)
                         currentData[index] = {
                             slotNo: loan.slotNo,
                             fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
@@ -262,7 +280,7 @@ const CashCollectionDetailsPage = () => {
                             noOfPayments: '-',
                             targetCollectionStr: '-',
                             excessStr: '-',
-                            paymentCollectionStr: '-',
+                            paymentCollectionStr: formatPricePhp(currentLoan.prevData.paymentCollection),
                             remarks: '-',
                             fullPaymentStr: '-',
                             status: loan.status === 'active' ? 'tomorrow' : 'pending',
@@ -442,99 +460,102 @@ const CashCollectionDetailsPage = () => {
         
         let save = false;
 
-        const errorMsgArr = validation();
-
-        if (errorMsgArr.length > 0) {
-            toast.error(errorMsgArr[0]);
-            setLoading(false);
+        if (groupSummary && groupSummary.status === 'close') {
+            toast.error('Updating this record is not allowed since the Group Summary is already closed by the Branch Manager.');
         } else {
-            const dataArr = groupClients && groupClients.map(cc => {
-                let temp = {...cc};
-
-                delete temp.targetCollectionStr;
-                delete temp.amountReleaseStr;
-                delete temp.loanBalanceStr;
-                delete temp.excessStr;
-                delete temp.totalStr;
-                delete temp.currentReleaseAmountStr;
-                delete temp.fullPaymentStr;
-                delete temp.paymentCollectionStr;
-                delete temp.noOfPaymentStr;
-                delete temp.error;
-
-                if (cc.status === 'active') {
-                    save = true;
-                    if (currentUser.role.rep === 4) {
-                        temp.loId = currentUser._id;
-                    } else {
-                        temp.loId = currentGroup && currentGroup.loanOfficerId;
-                    }
-
-                    // temp.insertBy = currentUser._id;
-
-                    temp.loanBalance = parseFloat(temp.loanBalance);
-                    temp.amountRelease = parseFloat(temp.amountRelease);
-
-                    if (!temp.paymentCollection || temp.paymentCollection <= 0) {
-                        temp.paymentCollection = 0;
-                        temp.mispayment = true;
-                        temp.mispaymentStr = 'Yes';
-                    }
-
-                    if (temp.loanBalance <= 0) {
-                        temp.status = 'completed';
-                    }
-
-                    if (temp.status === 'completed') {
-                        temp.fullPaymentDate = temp.fullPaymentDate ? temp.fullPaymentDate : moment(new Date()).format('YYYY-MM-DD');
-                    }
-                    
-                    if (typeof temp.remarks === 'object') {
-                        if (temp.remarks.value === 'offset') {
-                            temp.status = 'closed';
-                            temp.clientStatus = 'offset';
+            const errorMsgArr = validation();
+            if (errorMsgArr.length > 0) {
+                toast.error(errorMsgArr[0]);
+                setLoading(false);
+            } else {
+                const dataArr = groupClients && groupClients.map(cc => {
+                    let temp = {...cc};
+    
+                    delete temp.targetCollectionStr;
+                    delete temp.amountReleaseStr;
+                    delete temp.loanBalanceStr;
+                    delete temp.excessStr;
+                    delete temp.totalStr;
+                    delete temp.currentReleaseAmountStr;
+                    delete temp.fullPaymentStr;
+                    delete temp.paymentCollectionStr;
+                    delete temp.noOfPaymentStr;
+                    delete temp.error;
+    
+                    if (cc.status === 'active') {
+                        save = true;
+                        if (currentUser.role.rep === 4) {
+                            temp.loId = currentUser._id;
+                        } else {
+                            temp.loId = currentGroup && currentGroup.loanOfficerId;
+                        }
+    
+                        // temp.insertBy = currentUser._id;
+    
+                        temp.loanBalance = parseFloat(temp.loanBalance);
+                        temp.amountRelease = parseFloat(temp.amountRelease);
+    
+                        if (!temp.paymentCollection || temp.paymentCollection <= 0) {
+                            temp.paymentCollection = 0;
+                            temp.mispayment = true;
+                            temp.mispaymentStr = 'Yes';
+                        }
+    
+                        if (temp.loanBalance <= 0) {
+                            temp.status = 'completed';
+                        }
+    
+                        if (temp.status === 'completed') {
+                            temp.fullPaymentDate = temp.fullPaymentDate ? temp.fullPaymentDate : moment(new Date()).format('YYYY-MM-DD');
+                        }
+                        
+                        if (typeof temp.remarks === 'object') {
+                            if (temp.remarks.value === 'offset') {
+                                temp.status = 'closed';
+                                temp.clientStatus = 'offset';
+                            }
                         }
                     }
-                }
+                
+                    return temp;   
+                }).filter(cc => typeof cc !== 'undefined');
+    
+                if (save) {
+                    let cashCollection;
+                    if (editMode && Object.keys(headerData).length > 0) {
+                        cashCollection = {
+                            ...headerData,
+                            dateModified: moment(new Date()).format('YYYY-MM-DD'),
+                            status: 'pending',
+                            modifiedBy: currentUser._id,
+                            collection: JSON.stringify(dataArr)
+                        };
+                    } else {
+                        cashCollection = {
+                            branchId: currentGroup && currentGroup.branchId,
+                            groupId: currentGroup && currentGroup._id,
+                            loId: currentGroup && currentGroup.loanOfficerId,
+                            dateAdded: moment(new Date()).format('YYYY-MM-DD'),
+                            status: 'pending',
+                            insertBy: currentUser._id,
+                            collection: JSON.stringify(dataArr),
+                            mode: 'daily'
+                        };
+                    }
             
-                return temp;   
-            }).filter(cc => typeof cc !== 'undefined');
-
-            if (save) {
-                let cashCollection;
-                if (editMode && Object.keys(headerData).length > 0) {
-                    cashCollection = {
-                        ...headerData,
-                        dateModified: moment(new Date()).format('YYYY-MM-DD'),
-                        status: 'pending',
-                        modifiedBy: currentUser._id,
-                        collection: JSON.stringify(dataArr)
-                    };
+                    const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save', cashCollection);
+                    if (response.success) {
+                        setLoading(false);
+                        toast.success('Payment collection successfully submitted.');
+            
+                        setTimeout(() => {
+                            getCashCollections();
+                        }, 500);
+                    }
                 } else {
-                    cashCollection = {
-                        branchId: currentGroup && currentGroup.branchId,
-                        groupId: currentGroup && currentGroup._id,
-                        loId: currentGroup && currentGroup.loanOfficerId,
-                        dateAdded: moment(new Date()).format('YYYY-MM-DD'),
-                        status: 'pending',
-                        insertBy: currentUser._id,
-                        collection: JSON.stringify(dataArr),
-                        mode: 'daily'
-                    };
-                }
-        
-                const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save', cashCollection);
-                if (response.success) {
+                    toast.warning('No active data to be saved.');
                     setLoading(false);
-                    toast.success('Payment collection successfully submitted.');
-        
-                    setTimeout(() => {
-                        getCashCollections();
-                    }, 500);
                 }
-            } else {
-                toast.warning('No active data to be saved.');
-                setLoading(false);
             }
         }
     }
@@ -553,6 +574,7 @@ const CashCollectionDetailsPage = () => {
                 let list = data.map((cc, idx) => {
                     let temp = {...cc};
                     if (temp.status !== 'open') {
+                        payment = payment - payment % 10;
                         if (idx === index) {
                             if (temp.hasOwnProperty('prevData')) {
                                 temp.loanBalance = temp.prevData.loanBalance;
@@ -567,7 +589,7 @@ const CashCollectionDetailsPage = () => {
                             } else {
                                 temp.prevData = {
                                     amountRelease: temp.amountRelease,
-                                    paymentCollection: temp.paymentCollection,
+                                    paymentCollection: payment,
                                     excess: temp.excess,
                                     loanBalance: temp.loanBalance,
                                     activeLoan: temp.activeLoan,
@@ -582,9 +604,9 @@ const CashCollectionDetailsPage = () => {
                                 temp.error = false;
                             }
     
-                            payment = payment - payment % 10; // not yet working...i think its best to check before saving???
                             temp.paymentCollection = parseFloat(payment);
                             temp.paymentCollectionStr = formatPricePhp(payment);
+                            const prevLoanBalance = temp.loanBalance;
                             temp.loanBalance = parseFloat(temp.loanBalance) - parseFloat(payment);
                             temp.loanBalanceStr = temp.loanBalance > 0 ? formatPricePhp(temp.loanBalance) : 0;
                             temp.total = parseFloat(temp.total) + parseFloat(payment);
@@ -602,13 +624,13 @@ const CashCollectionDetailsPage = () => {
                                 temp.mispayment = false;
                                 temp.mispaymentStr = "No";
                                 temp.noOfPayments = temp.noOfPayments + 1;
-                                temp.remarks = { label: 'Advance Payment', value: 'advance payment'};
+                                // temp.remarks = { label: 'Advance Payment', value: 'advance payment'};
                             } else if (parseFloat(payment) < parseFloat(temp.activeLoan)) {
                                 temp.excess =  0;
                                 temp.mispayment = true;
                                 temp.mispaymentStr = 'Yes';
                                 temp.noOfPayments = temp.noOfPayments + 1;
-                                temp.remarks = { label: 'Excused', value: 'excused'};
+                                // temp.remarks = { label: 'Excused', value: 'excused'};
                             } else {
                                 temp.mispayment = false;
                                 temp.mispaymentStr = 'No';
@@ -620,10 +642,11 @@ const CashCollectionDetailsPage = () => {
                             if (temp.loanBalance <= 0) {
                                 temp.history = {
                                     amountRelease: temp.amountRelease,
+                                    loanBalance: prevLoanBalance,
                                     activeLoan: temp.activeLoan,
-                                    principalLoan: temp.principalLoan,
                                     excess: temp.excess,
-                                    collection: temp.paymentCollection
+                                    collection: temp.paymentCollection,
+                                    remarks: temp.remarks
                                 };
                                 temp.fullPayment = temp.amountRelease;
                                 temp.fullPaymentStr = formatPricePhp(temp.fullPayment);
@@ -651,6 +674,13 @@ const CashCollectionDetailsPage = () => {
                 
                 if (idx === index) {
                     temp.remarks = remarks;
+
+                    if (temp.hasOwnProperty('history')) {
+                        temp.history = {
+                            ...temp.history,
+                            remarks: remarks
+                        }
+                    }
 
                     if (remarks.value === 'offset') {
                         setShowRemarksModal(true);
@@ -767,6 +797,30 @@ const CashCollectionDetailsPage = () => {
         let mounted = true;
         setLoading(true);
 
+        const getListBranch = async () => {
+            const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'branches/list');
+            if (response.success) {
+                let branches = [];
+                response.branches && response.branches.map(branch => {
+                    branches.push(
+                        {
+                            ...branch
+                        }
+                    );
+                });
+    
+                if (currentUser.root !== true && (currentUser.role.rep === 3 || currentUser.role.rep === 4)) {
+                    branches = [branches.find(b => b.code === currentUser.designatedBranch)];
+                } 
+                
+                dispatch(setBranchList(branches));
+            } else {
+                toast.error('Error retrieving branches list.');
+            }
+    
+            setLoading(false);
+        }
+
         const getCurrentGroup = async () => {
             const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}groups?`;
             const params = { _id: uuid };
@@ -774,6 +828,7 @@ const CashCollectionDetailsPage = () => {
             if (response.success) {
                 dispatch(setGroup(response.group));
                 setCurrentGroup(response.group);
+                setGroupFilter(uuid);
                 setLoading(false);
             } else {
                 toast.error('Error while loading data');
@@ -786,14 +841,22 @@ const CashCollectionDetailsPage = () => {
             const response = await fetchWrapper.get(apiUrl + new URLSearchParams(params));
             if (response.success) {
                 const groupSummaryData = response.groupCashCollections;
-                setGroupSummary(groupSummaryData.length > 0 ? groupSummaryData[0] : {});
+                if (groupSummaryData.length > 0) {
+                    setGroupSummary(groupSummaryData[0]);
+                    if (groupSummaryData[0].status === 'close') {
+                        setGroupSummaryIsClose(true);
+                    } else {
+                        setGroupSummaryIsClose(false);
+                    }
+                }
                 setLoading(false);
             } else {
                 toast.error('Error while loading data');
             }
         }
 
-        mounted && uuid && getCurrentGroup(uuid) && getCurrentGroupSummary() && getCashCollections();
+        mounted && uuid && getCurrentGroup() && getCurrentGroupSummary() && getCashCollections();
+        mounted && getListBranch();
 
         return () => {
             mounted = false;
@@ -801,20 +864,54 @@ const CashCollectionDetailsPage = () => {
     }, [uuid]);
 
     useEffect(() => {
+        const getListGroup = async () => {
+            let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list-by-group-occurence'
+            if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
+                url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id, occurence: 'daily' });
+            } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
+                url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, occurence: 'daily' });
+            } else {
+                url = url + '?' + new URLSearchParams({ occurence: 'daily' });
+            }
+    
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                let groups = [];
+                await response.groups && response.groups.map(group => {
+                    groups.push({
+                        ...group,
+                        day: UppercaseFirstLetter(group.day),
+                        value: group._id,
+                        label: group.name
+                    });
+                });
+                dispatch(setGroupList(groups));
+            } else if (response.error) {
+                toast.error(response.message);
+            }
+            setLoading(false);
+        }
+
+        if (branchList) {
+            getListGroup();
+        }
+    }, [branchList]);
+
+    useEffect(() => {
         setData(groupClients);
     }, [groupClients]);
 
     useEffect(() => {
-        if (currentGroup && !queryMain) {
+        if (currentGroup && !queryMain && !groupSummaryIsClose) {
             getTomorrowPendingLoans(currentGroup._id);
         }
 
-        if (groupSummary && groupSummary.status === 'close') {
+        if (groupSummaryIsClose) {
             setEditMode(false);
         } else {
             setEditMode(true);
         }
-    }, [currentGroup, queryMain]);
+    }, [currentGroup, queryMain, groupSummaryIsClose]);
 
     useEffect(() => {
         if (filteredData.length > 0) {
@@ -835,7 +932,8 @@ const CashCollectionDetailsPage = () => {
                 <div className="overflow-x-auto">
                     {data && <DetailsHeader page={'transaction'} editMode={editMode}
                         handleSaveUpdate={handleSaveUpdate} data={allData} setData={setFilteredData} 
-                        dateFilter={dateFilter} setDateFilter={setDateFilter} handleDateFilter={handleDateFilter} />}
+                        dateFilter={dateFilter} setDateFilter={setDateFilter} handleDateFilter={handleDateFilter} currentGroup={uuid} 
+                        groupFilter={groupFilter} handleGroupFilter={handleGroupFilter} />}
                     <div className="p-4 mt-[12rem] mb-[4rem]">
                         <div className="bg-white flex flex-col rounded-md p-6 overflow-auto">
                             <table className="table-auto border-collapse text-sm">
@@ -893,13 +991,13 @@ const CashCollectionDetailsPage = () => {
                                                                         focus:ring-main focus:border-main block p-2.5" style={{ width: '100px' }}/>
                                                         ): 
                                                             <React.Fragment>
-                                                                {(!editMode || cc.status === 'completed' || cc.status === 'pending' || cc.status === 'totals') ? cc.paymentCollectionStr : '-'}
+                                                                {(!editMode || cc.status === 'completed' || cc.status === 'pending' || cc.status === 'totals' || cc.status === 'closed') ? cc.paymentCollectionStr : '-'}
                                                             </React.Fragment>
                                                     }
                                                 </td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.fullPaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.mispaymentStr }</td>
-                                                { cc.status === 'active' && editMode ? (
+                                                { (cc.status === 'active' || (cc.status === 'completed' && cc.fullPaymentDate === currentDate)) && editMode ? (
                                                         <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">
                                                             { cc.remarks !== '-' ? (
                                                                 <Select 
@@ -916,7 +1014,7 @@ const CashCollectionDetailsPage = () => {
                                                         </td>
                                                     ) : (
                                                         <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">
-                                                            { cc.status === 'completed' ? cc.remarks.label : '-'}
+                                                            { cc.status === 'completed' ? cc.remarks.label === 'Remarks' ? 'No Remarks' : cc.remarks.label : '-'}
                                                         </td>
                                                     )
                                                 }
