@@ -74,17 +74,24 @@ async function getLoanWithCashCollection(req, res) {
                             foreignField: "loanId",
                             pipeline: [
                                 { $match: { mode: mode } },
+                                { $project: {
+                                    'collectionArr': { $sum: { $cond: {if: {$or: [{$eq: ['$collection.status', 'active']}, {$eq: ['$collection.status', 'completed']}, {$eq: ['$collection.status', 'closed']}]}, then: '$collection.paymentCollection', else: 0} } },
+                                    'excessArr': { $sum: { $cond: {if: {$ne: ['$collection.status', 'totals']}, then: '$collection.excess', else: 0} } },
+                                    'totalArr': { $sum: '$collection.total' },
+                                    'activeLoanArr': { $sum: '$collection.activeLoan' },
+                                    'mispaymentArr' : { $sum: { $cond:{if: { $eq: ['$collection.mispayment', true] }, then: 1, else: 0} } }
+                                } },
                                 { $group: { 
                                         _id: '$clientId',
-                                        mispayment: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },
-                                        loanTarget: { $sum: '$activeLoan' },
-                                        collection: { $sum: '$paymentCollection' },
-                                        excess: { $sum: '$excess' },
-                                        total: { $sum: '$paymentCollection' }
+                                        mispayment: { $sum: 'mispaymentArr' },
+                                        loanTarget: { $sum: '$activeLoanArr' },
+                                        collection: { $sum: '$collectionArr' },
+                                        excess: { $sum: '$excessArr' },
+                                        total: { $sum: '$totalArr' }
                                     } 
                                 }
                             ],
-                            as: "history"
+                            as: "totals"
                         }
                     },
                     {
@@ -203,18 +210,25 @@ async function getLoanWithCashCollection(req, res) {
                             localField: "loanIdStr",
                             foreignField: "loanId",
                             pipeline: [
-                                { $match: { loId: loId, mode: mode } },
+                                { $match: { mode: mode } },
+                                { $project: {
+                                    'collectionArr': { $sum: { $cond: {if: {$or: [{$eq: ['$collection.status', 'active']}, {$eq: ['$collection.status', 'completed']}, {$eq: ['$collection.status', 'closed']}]}, then: '$collection.paymentCollection', else: 0} } },
+                                    'excessArr': { $sum: { $cond: {if: {$ne: ['$collection.status', 'totals']}, then: '$collection.excess', else: 0} } },
+                                    'totalArr': { $sum: '$collection.total' },
+                                    'activeLoanArr': { $sum: '$collection.activeLoan' },
+                                    'mispaymentArr' : { $sum: { $cond:{if: { $eq: ['$collection.mispayment', true] }, then: 1, else: 0} } }
+                                } },
                                 { $group: { 
                                         _id: '$clientId',
-                                        mispayment: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },
-                                        loanTarget: { $sum: '$activeLoan' },
-                                        collection: { $sum: '$paymentCollection' },
-                                        excess: { $sum: '$excess' },
-                                        total: { $sum: '$paymentCollection' }
+                                        mispayment: { $sum: 'mispaymentArr' },
+                                        loanTarget: { $sum: '$activeLoanArr' },
+                                        collection: { $sum: '$collectionArr' },
+                                        excess: { $sum: '$excessArr' },
+                                        total: { $sum: '$totalArr' }
                                     } 
                                 }
                             ],
-                            as: "history"
+                            as: "totals"
                         }
                     },
                     {
@@ -334,14 +348,44 @@ async function getLoanWithCashCollection(req, res) {
                             foreignField: "loanId",
                             pipeline: [
                                 { $match: { mode: mode } },
+                                { $project: {
+                                    'collectionArr': { $sum: { $cond: {if: {$or: [{$eq: ['$collection.status', 'active']}, {$eq: ['$collection.status', 'completed']}, {$eq: ['$collection.status', 'closed']}]}, then: '$collection.paymentCollection', else: 0} } },
+                                    'excessArr': { $sum: { $cond: {if: {$ne: ['$collection.status', 'totals']}, then: '$collection.excess', else: 0} } },
+                                    'totalArr': { $sum: '$collection.total' },
+                                    'activeLoanArr': { $sum: '$collection.activeLoan' },
+                                    'mispaymentArr' : { $sum: { $cond:{if: { $eq: ['$collection.mispayment', true] }, then: 1, else: 0} } }
+                                } },
                                 { $group: { 
                                         _id: '$clientId',
-                                        mispayment: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },
-                                        loanTarget: { $sum: '$activeLoan' },
-                                        collection: { $sum: '$paymentCollection' },
-                                        excess: { $sum: '$excess' },
-                                        total: { $sum: '$paymentCollection' }
+                                        mispayment: { $sum: 'mispaymentArr' },
+                                        loanTarget: { $sum: '$activeLoanArr' },
+                                        collection: { $sum: '$collectionArr' },
+                                        excess: { $sum: '$excessArr' },
+                                        total: { $sum: '$totalArr' }
                                     } 
+                                }
+                            ],
+                            as: "totals"
+                        }
+                    },
+                    {
+                        $lookup: {
+                            from: "cashCollections",
+                            localField: "groupId",
+                            foreignField: "groupId",
+                            pipeline: [
+                                { $match: { $expr: {$and: [
+                                    {$eq: [ {$getField: {field: {$literal: '$loanId'}, input: 'collection'}}, '$loanIdStr' ]}, 
+                                    {$eq: [ {$getField: {field: {$literal: '$clientId'}, input: 'collection'}}, '$clientId' ]}
+                                ]} } },
+                                {
+                                    $project: {
+                                        collection: {$filter: {
+                                            input: '$collection',
+                                            as: 'collection',
+                                            cond: {$and: [{$ne: ['$$collection.clientId', '$clientId']}, {$ne: ['$$collection.status', 'open']}]}
+                                        }}
+                                    }
                                 }
                             ],
                             as: "history"
@@ -463,17 +507,24 @@ async function getLoanWithCashCollection(req, res) {
                             foreignField: "loanId",
                             pipeline: [
                                 { $match: { mode: mode } },
+                                { $project: {
+                                    'collectionArr': { $sum: { $cond: {if: {$or: [{$eq: ['$collection.status', 'active']}, {$eq: ['$collection.status', 'completed']}, {$eq: ['$collection.status', 'closed']}]}, then: '$collection.paymentCollection', else: 0} } },
+                                    'excessArr': { $sum: { $cond: {if: {$ne: ['$collection.status', 'totals']}, then: '$collection.excess', else: 0} } },
+                                    'totalArr': { $sum: '$collection.total' },
+                                    'activeLoanArr': { $sum: '$collection.activeLoan' },
+                                    'mispaymentArr' : { $sum: { $cond:{if: { $eq: ['$collection.mispayment', true] }, then: 1, else: 0} } }
+                                } },
                                 { $group: { 
                                         _id: '$clientId',
-                                        mispayment: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },
-                                        loanTarget: { $sum: '$activeLoan' },
-                                        collection: { $sum: '$paymentCollection' },
-                                        excess: { $sum: '$excess' },
-                                        total: { $sum: '$paymentCollection' }
+                                        mispayment: { $sum: 'mispaymentArr' },
+                                        loanTarget: { $sum: '$activeLoanArr' },
+                                        collection: { $sum: '$collectionArr' },
+                                        excess: { $sum: '$excessArr' },
+                                        total: { $sum: '$totalArr' }
                                     } 
                                 }
                             ],
-                            as: "history"
+                            as: "totals"
                         }
                     },
                     {

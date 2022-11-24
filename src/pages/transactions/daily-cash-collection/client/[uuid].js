@@ -7,7 +7,7 @@ import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { toast } from 'react-hot-toast';
 import React from 'react';
 import { setCashCollection, setCashCollectionGroup } from '@/redux/actions/cashCollectionActions';
-import { setGroup } from '@/redux/actions/groupActions';
+import { setGroup, setGroupList } from '@/redux/actions/groupActions';
 import DetailsHeader from '@/components/groups/DetailsHeader';
 import moment from 'moment';
 import { formatPricePhp, UppercaseFirstLetter } from '@/lib/utils';
@@ -18,14 +18,17 @@ import AddUpdateLoan from '@/components/transactions/AddUpdateLoanDrawer';
 import Dialog from '@/lib/ui/Dialog';
 import ButtonSolid from '@/lib/ui/ButtonSolid';
 import ButtonOutline from '@/lib/ui/ButtonOutline';
+import { setBranchList } from '@/redux/actions/branchActions';
 
 const CashCollectionDetailsPage = () => {
     const dispatch = useDispatch();
     const router = useRouter();
     const currentUser = useSelector(state => state.user.data);
+    const branchList = useSelector(state => state.branch.list);
     const groupClients = useSelector(state => state.cashCollection.group);
     const [groupSummary, setGroupSummary] = useState();
     const [editMode, setEditMode] = useState(true);
+    const [groupSummaryIsClose, setGroupSummaryIsClose] = useState(false);
     const [queryMain, setQueryMain] = useState(true);
     const [headerData, setHeaderData] = useState({});
     const [data, setData] = useState([]);
@@ -43,15 +46,26 @@ const CashCollectionDetailsPage = () => {
     const [closeLoan, setCloseLoan] = useState();
     const remarksArr = [
         { label: 'Remarks', value: ''},
+        { label: 'Pending', value: 'pending'},
         { label: 'Excused', value: 'excused'},
         { label: 'Delinquent', value: 'delinquent'},
         { label: 'Advance Payment', value: 'advance payment'},
         { label: 'Hospitalization', value: 'hospitalization'},
         { label: 'Death of Clients/Family Member', value: 'death of clients/family member'},
-        { label: 'For Close/Offset', value: 'offset'}
+        { label: 'Reloaner', value: 'reloaner'},
+        { label: 'For Close/Offset - Good Client', value: 'offset'},
+        { label: 'For Close/Offset - Delinquent Client', value: 'offset'}
     ];
     const [filter, setFilter] = useState(false);
     const maxDays = 60;
+    const [groupFilter, setGroupFilter] = useState();
+
+    const handleGroupFilter = (selected) => {
+        setGroupFilter(selected._id);
+        setCurrentGroup(selected);
+        // getCashCollections(null, selected._id);
+        router.push('/transactions/daily-cash-collection/client/' + selected._id);
+    }
     
     const handleDateFilter = (selected) => {
         const filteredDate = selected.target.value;
@@ -96,7 +110,7 @@ const CashCollectionDetailsPage = () => {
                     cashCollection.push(temp);
                 });
 
-                if (collections.status === 'pending') {
+                if (collections.status === 'pending' && !groupSummaryIsClose) {
                     setEditMode(true);
                     setHeaderData(collections);
                 } else {
@@ -582,7 +596,7 @@ const CashCollectionDetailsPage = () => {
                                 temp.error = false;
                             }
     
-                            payment = payment - payment % 10; // not yet working...i think its best to check before saving???
+                            payment = payment - payment % 10;
                             temp.paymentCollection = parseFloat(payment);
                             temp.paymentCollectionStr = formatPricePhp(payment);
                             temp.loanBalance = parseFloat(temp.loanBalance) - parseFloat(payment);
@@ -602,13 +616,13 @@ const CashCollectionDetailsPage = () => {
                                 temp.mispayment = false;
                                 temp.mispaymentStr = "No";
                                 temp.noOfPayments = temp.noOfPayments + 1;
-                                temp.remarks = { label: 'Advance Payment', value: 'advance payment'};
+                                // temp.remarks = { label: 'Advance Payment', value: 'advance payment'};
                             } else if (parseFloat(payment) < parseFloat(temp.activeLoan)) {
                                 temp.excess =  0;
                                 temp.mispayment = true;
                                 temp.mispaymentStr = 'Yes';
                                 temp.noOfPayments = temp.noOfPayments + 1;
-                                temp.remarks = { label: 'Excused', value: 'excused'};
+                                // temp.remarks = { label: 'Excused', value: 'excused'};
                             } else {
                                 temp.mispayment = false;
                                 temp.mispaymentStr = 'No';
@@ -767,6 +781,30 @@ const CashCollectionDetailsPage = () => {
         let mounted = true;
         setLoading(true);
 
+        const getListBranch = async () => {
+            const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'branches/list');
+            if (response.success) {
+                let branches = [];
+                response.branches && response.branches.map(branch => {
+                    branches.push(
+                        {
+                            ...branch
+                        }
+                    );
+                });
+    
+                if (currentUser.root !== true && (currentUser.role.rep === 3 || currentUser.role.rep === 4)) {
+                    branches = [branches.find(b => b.code === currentUser.designatedBranch)];
+                } 
+                
+                dispatch(setBranchList(branches));
+            } else {
+                toast.error('Error retrieving branches list.');
+            }
+    
+            setLoading(false);
+        }
+
         const getCurrentGroup = async () => {
             const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}groups?`;
             const params = { _id: uuid };
@@ -774,6 +812,7 @@ const CashCollectionDetailsPage = () => {
             if (response.success) {
                 dispatch(setGroup(response.group));
                 setCurrentGroup(response.group);
+                setGroupFilter(uuid);
                 setLoading(false);
             } else {
                 toast.error('Error while loading data');
@@ -786,14 +825,22 @@ const CashCollectionDetailsPage = () => {
             const response = await fetchWrapper.get(apiUrl + new URLSearchParams(params));
             if (response.success) {
                 const groupSummaryData = response.groupCashCollections;
-                setGroupSummary(groupSummaryData.length > 0 ? groupSummaryData[0] : {});
+                if (groupSummaryData.length > 0) {
+                    setGroupSummary(groupSummaryData[0]);
+                    if (groupSummaryData[0].status === 'close') {
+                        setGroupSummaryIsClose(true);
+                    } else {
+                        setGroupSummaryIsClose(false);
+                    }
+                }
                 setLoading(false);
             } else {
                 toast.error('Error while loading data');
             }
         }
 
-        mounted && uuid && getCurrentGroup(uuid) && getCurrentGroupSummary() && getCashCollections();
+        mounted && uuid && getCurrentGroup() && getCurrentGroupSummary() && getCashCollections();
+        mounted && getListBranch();
 
         return () => {
             mounted = false;
@@ -801,20 +848,54 @@ const CashCollectionDetailsPage = () => {
     }, [uuid]);
 
     useEffect(() => {
+        const getListGroup = async () => {
+            let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list-by-group-occurence'
+            if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
+                url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id, occurence: 'daily' });
+            } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
+                url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, occurence: 'daily' });
+            } else {
+                url = url + '?' + new URLSearchParams({ occurence: 'daily' });
+            }
+    
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                let groups = [];
+                await response.groups && response.groups.map(group => {
+                    groups.push({
+                        ...group,
+                        day: UppercaseFirstLetter(group.day),
+                        value: group._id,
+                        label: group.name
+                    });
+                });
+                dispatch(setGroupList(groups));
+            } else if (response.error) {
+                toast.error(response.message);
+            }
+            setLoading(false);
+        }
+
+        if (branchList) {
+            getListGroup();
+        }
+    }, [branchList]);
+
+    useEffect(() => {
         setData(groupClients);
     }, [groupClients]);
 
     useEffect(() => {
-        if (currentGroup && !queryMain) {
+        if (currentGroup && !queryMain && !groupSummaryIsClose) {
             getTomorrowPendingLoans(currentGroup._id);
         }
 
-        if (groupSummary && groupSummary.status === 'close') {
+        if (groupSummaryIsClose) {
             setEditMode(false);
         } else {
             setEditMode(true);
         }
-    }, [currentGroup, queryMain]);
+    }, [currentGroup, queryMain, groupSummaryIsClose]);
 
     useEffect(() => {
         if (filteredData.length > 0) {
@@ -835,7 +916,8 @@ const CashCollectionDetailsPage = () => {
                 <div className="overflow-x-auto">
                     {data && <DetailsHeader page={'transaction'} editMode={editMode}
                         handleSaveUpdate={handleSaveUpdate} data={allData} setData={setFilteredData} 
-                        dateFilter={dateFilter} setDateFilter={setDateFilter} handleDateFilter={handleDateFilter} />}
+                        dateFilter={dateFilter} setDateFilter={setDateFilter} handleDateFilter={handleDateFilter} currentGroup={uuid} 
+                        groupFilter={groupFilter} handleGroupFilter={handleGroupFilter} />}
                     <div className="p-4 mt-[12rem] mb-[4rem]">
                         <div className="bg-white flex flex-col rounded-md p-6 overflow-auto">
                             <table className="table-auto border-collapse text-sm">
@@ -893,13 +975,13 @@ const CashCollectionDetailsPage = () => {
                                                                         focus:ring-main focus:border-main block p-2.5" style={{ width: '100px' }}/>
                                                         ): 
                                                             <React.Fragment>
-                                                                {(!editMode || cc.status === 'completed' || cc.status === 'pending' || cc.status === 'totals') ? cc.paymentCollectionStr : '-'}
+                                                                {(!editMode || cc.status === 'completed' || cc.status === 'pending' || cc.status === 'totals' || cc.status === 'closed') ? cc.paymentCollectionStr : '-'}
                                                             </React.Fragment>
                                                     }
                                                 </td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.fullPaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.mispaymentStr }</td>
-                                                { cc.status === 'active' && editMode ? (
+                                                { (cc.status === 'active' || (cc.status === 'completed' && cc.fullPaymentDate === currentDate)) && editMode ? (
                                                         <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">
                                                             { cc.remarks !== '-' ? (
                                                                 <Select 

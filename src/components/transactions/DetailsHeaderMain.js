@@ -1,12 +1,12 @@
 import { UppercaseFirstLetter } from "@/lib/utils";
-import { styles, DropdownIndicator } from "@/styles/select";
+import { styles, DropdownIndicator, borderStyles } from "@/styles/select";
 import React from "react";
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import Select from 'react-select';
 import Breadcrumbs from "../Breadcrumbs";
 
-const DetailsHeader = ({ pageTitle, page, currentDate, mode = 'daily', setFilter, selectedLO }) => {
+const DetailsHeader = ({ pageTitle, page, currentDate, mode = 'daily', setFilter, selectedLO, handleLOFilter }) => {
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
     const groupList = useSelector(state => state.group.list);
@@ -55,7 +55,7 @@ const DetailsHeader = ({ pageTitle, page, currentDate, mode = 'daily', setFilter
             {page === 1 && (
                 <div className="py-2 proxima-regular">
                     <div className="page-title">
-                        {pageTitle}
+                        {currentUser.role.rep === 4 ? pageTitle + ' - Group Summary' : pageTitle} 
                     </div>
                     <div className="flex justify-between w-11/12">
                         <div className="flex flex-row justify-items-start space-x-5 py-4" style={{ height: '40px' }}>
@@ -135,7 +135,7 @@ const DetailsHeader = ({ pageTitle, page, currentDate, mode = 'daily', setFilter
                     {selectedLO && (
                         <div className="py-2 proxima-regular">
                             <div className="page-title">
-                                {`${selectedLO.lastName}, ${selectedLO.firstName}`}
+                                {`${selectedLO.lastName}, ${selectedLO.firstName} - Group Summary`}
                             </div>
                             <div className="flex justify-between w-11/12">
                                 <div className="flex flex-row justify-items-start space-x-5 py-4" style={{ height: '40px' }}>
@@ -163,6 +163,29 @@ const DetailsHeader = ({ pageTitle, page, currentDate, mode = 'daily', setFilter
                                         <span className="text-gray-400 text-sm">Position:</span >
                                         <span className="text-sm">{selectedLO.position}</span>
                                     </div>
+                                </div>
+                            </div>
+                            <div className="flex justify-between w-10/12">
+                                <div className="flex flex-row w-11/12 text-gray-400 text-sm justify-start">
+                                    <span className="text-gray-400 text-sm mt-1">Filters:</span >
+                                    <div className="ml-4 flex w-40">
+                                        <Select 
+                                            options={userList}
+                                            value={selectedLO && userList.find(lo => {
+                                                return lo._id === selectedLO._id
+                                            })}
+                                            styles={borderStyles}
+                                            components={{ DropdownIndicator }}
+                                            onChange={handleLOFilter}
+                                            isSearchable={true}
+                                            closeMenuOnSelect={true}
+                                            placeholder={'Loan Officer Filter'}/>
+                                    </div>
+                                    {/* <div className="ml-24 flex w-64">
+                                        <div className="relative w-full" onClick={openCalendar}>
+                                            <DatePicker name="dateFilter" value={moment(dateFilter).format('YYYY-MM-DD')} maxDate={moment(new Date()).format('YYYY-MM-DD')} onChange={handleDateFilter} />
+                                        </div>
+                                    </div> */}
                                 </div>
                             </div>
                         </div>

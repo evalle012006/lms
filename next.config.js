@@ -10,7 +10,7 @@ module.exports = {
         domains: [process.env.NEXT_PUBLIC_IMAGE_HOST],
         remotePatterns: [
             {
-                protocol: 'https',
+                protocol: 'http',
                 hostname: process.env.NEXT_PUBLIC_IMAGE_HOST,
                 port: '',
                 pathname: '/images/**',

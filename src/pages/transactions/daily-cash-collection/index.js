@@ -58,7 +58,9 @@ const DailyCashCollectionPage = () => {
                 userList.push(
                     {
                         ...u,
-                        name: name
+                        name: name,
+                        label: name,
+                        value: u._id
                     }
                 );
             });
