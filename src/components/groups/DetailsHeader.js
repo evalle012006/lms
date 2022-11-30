@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import moment from 'moment'
 import DatePicker from "@/lib/ui/DatePicker";
 
-const DetailsHeader = ({ page, handleSaveUpdate, data, setData, editMode, dateFilter, setDateFilter, handleDateFilter, groupFilter, handleGroupFilter }) => {
+const DetailsHeader = ({ page, handleSaveUpdate, data, setData, editMode, dateFilter, setDateFilter, handleDateFilter, groupFilter, handleGroupFilter, groupTransactionStatus }) => {
     const calendarRef = useRef();
     const groupList = useSelector(state => state.group.list);
     const group = useSelector(state => state.group.data);
@@ -16,7 +16,9 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, editMode, dateFi
 
     const statusClass = {
         'available': "text-green-700 bg-green-100",
-        'full': "text-red-400 bg-red-100"
+        'full': "text-red-400 bg-red-100",
+        'open': "text-green-700 bg-green-100",
+        'close': "text-red-400 bg-red-100"
     }
 
     const legends = [
@@ -132,11 +134,10 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, editMode, dateFi
                                 <span className="text-gray-400 text-sm">Status:</span >
                                 <span className={`text-sm status-pill ${statusClass[group.status]}`}>{UppercaseFirstLetter(group.status)}</span>
                             </div>
-                            {page === 'transaction' && editMode && (
-                                <div className="space-x-2 flex items-center ">
-                                    <ButtonSolid label="Submit Collection" onClick={handleSaveUpdate} />
-                                </div>
-                            )}
+                            <div className="space-x-2 flex items-center ">
+                                <span className="text-gray-400 text-sm">Group Transaction Status:</span >
+                                <span className={`text-sm status-pill ${statusClass[groupTransactionStatus]}`}>{UppercaseFirstLetter(groupTransactionStatus)}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -164,14 +165,11 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, editMode, dateFi
                             </div>
                         </div>
                     </div>
-                    <div className="flex flex-row">
-                        {/* <span className="text-gray-400 text-sm mt-1 mr-4">Legend:</span >
-                        { legends.map((l, i) => {
-                            return (
-                                <span key={i} className={`${l.bg} text-xs rounded-lg shadow-md px-4 py-2 align-middle mr-2 w-28 text-center`}>{ l.label }</span>
-                            );
-                        }) } */}
-                    </div>
+                    {editMode && (
+                        <div className="flex items-center w-40">
+                            <ButtonSolid label="Submit Collection" onClick={handleSaveUpdate} />
+                        </div>
+                    )}
                 </div>
             )}
         </div>

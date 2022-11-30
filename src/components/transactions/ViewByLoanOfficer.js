@@ -5,7 +5,8 @@ import { useRouter } from "node_modules/next/router";
 import TableComponent, { SelectColumnFilter, StatusPill } from "@/lib/table";
 import moment from 'moment';
 import { fetchWrapper } from "@/lib/fetch-wrapper";
-import { formatPricePhp } from "@/lib/utils";
+import { formatPricePhp, getTotal } from "@/lib/utils";
+import { toast } from 'react-hot-toast';
 
 const ViewByLoanOfficerPage = () => {
     const currentUser = useSelector(state => state.user.data);
@@ -24,7 +25,7 @@ const ViewByLoanOfficerPage = () => {
     }
 
     const handleRowClick = (selected) => {
-        if (selected) {
+        if (selected && selected.hasOwnProperty('_id')) {
             localStorage.setItem('selectedLO', selected._id);
             router.push('./daily-cash-collection/group/' + selected._id);
         }
@@ -49,10 +50,11 @@ const ViewByLoanOfficerPage = () => {
                     loanTargetStr: '-',
                     excessStr: '-',
                     totalStr: '-',
-                    collectionStr: '-',
-                    mispayment: '-',
+                    mispaymentStr: '-',
                     fullPaymentAmountStr: '-',
-                    noOfFullPayment: '-'
+                    noOfFullPayment: '-',
+                    groupSummaryIds: [],
+                    page: 'loan-officer-summary'
                 };
 
                 let noOfClients = 0;
@@ -78,7 +80,11 @@ const ViewByLoanOfficerPage = () => {
                         totalsLoanRelease += group.loans[0].totalRelease;
                         totalsLoanBalance += group.loans[0].totalLoanBalance;
                         targetLoanCollection += group.loans[0].loanTarget;
-                    } 
+                    }
+
+                    if (group.groupCashCollections.length > 0) {
+                        collection.groupSummaryIds.push({ _id: group.groupCashCollections[0]._id, groupId: group._id, status: group.groupCashCollections[0].status });
+                    }
                     
                     if (group.cashCollections.length > 0) {
                         excess += group.cashCollections[0].excess;
@@ -102,30 +108,151 @@ const ViewByLoanOfficerPage = () => {
 
                 collection = {
                     ...collection,
+                    noOfNewCurrentRelease: noOfNewCurrentRelease,
+                    noOfReCurrentRelease: noOfReCurrentRelease,
                     noCurrentReleaseStr: noOfNewCurrentRelease + ' / ' + noOfReCurrentRelease,
+                    currentReleaseAmount: currentReleaseAmount,
                     currentReleaseAmountStr: currentReleaseAmount ? formatPricePhp(currentReleaseAmount) : 0,
                     activeClients: noOfClients,
                     activeBorrowers: noOfBorrowers,
+                    totalReleases: totalsLoanRelease,
                     totalReleasesStr: totalsLoanRelease ? formatPricePhp(totalsLoanRelease) : 0,
+                    totalLoanBalance: totalsLoanBalance,
                     totalLoanBalanceStr: totalsLoanBalance ? formatPricePhp(totalsLoanBalance) : 0,
+                    loanTarget: targetLoanCollection,
                     loanTargetStr: targetLoanCollection ? formatPricePhp(targetLoanCollection) : 0,
+                    excess: excess,
                     excessStr: excess ? formatPricePhp(excess) : 0,
+                    total: totalLoanCollection,
                     totalStr: totalLoanCollection ? formatPricePhp(totalLoanCollection) : 0,
-                    mispayment: mispayment + ' / ' + noOfClients,
+                    mispayment: mispayment,
+                    mispaymentStr: mispayment + ' / ' + noOfClients,
+                    fullPaymentAmount: fullPaymentAmount,
                     fullPaymentAmountStr: fullPaymentAmount ? formatPricePhp(fullPaymentAmount) : 0,
-                    noOfFullPayment: noOfFullPayment
+                    noOfFullPayment: noOfFullPayment,
                 }
 
                 collectionData.push(collection);
             });
 
+            // totals
+            let totalNoOfClients = getTotal(collectionData, 'activeClients');
+            let totalNoOfBorrowers = getTotal(collectionData, 'activeBorrowers');
+            let totalsLoanRelease = getTotal(collectionData, 'totalReleases');
+            let totalsLoanBalance = getTotal(collectionData, 'totalLoanBalance');
+            let totalNoOfNewCurrentRelease = getTotal(collectionData, 'noOfNewCurrentRelease');
+            let totalNoOfReCurrentRelease = getTotal(collectionData, 'noOfReCurrentRelease');
+            let totalCurrentReleaseAmount = getTotal(collectionData, 'currentReleaseAmount');
+            let totalTargetLoanCollection = getTotal(collectionData, 'loanTarget');
+            let totalExcess = getTotal(collectionData, 'excess');
+            let totalLoanCollection = getTotal(collectionData, 'total');
+            let totalNoOfFullPayment = getTotal(collectionData, 'noOfFullPayment');
+            // let totalNoOfNewfullPayment = getTotal(collectionData, 'activeBorrowers');
+            // let totalNoOfRefullPayment = getTotal(collectionData, 'activeBorrowers');
+            let totalFullPaymentAmount = getTotal(collectionData, 'fullPaymentAmount');
+            let totalMispayment = getTotal(collectionData, 'mispayment');
+
+            const loTotals = {
+                name: 'TOTALS',
+                noCurrentReleaseStr: totalNoOfNewCurrentRelease + ' / ' + totalNoOfReCurrentRelease,
+                currentReleaseAmountStr: formatPricePhp(totalCurrentReleaseAmount),
+                activeClients: totalNoOfClients,
+                activeBorrowers: totalNoOfBorrowers,
+                totalReleasesStr: formatPricePhp(totalsLoanRelease),
+                totalLoanBalanceStr: formatPricePhp(totalsLoanBalance),
+                loanTargetStr: formatPricePhp(totalTargetLoanCollection),
+                excessStr: formatPricePhp(totalExcess),
+                totalStr: formatPricePhp(totalLoanCollection),
+                mispaymentStr: totalMispayment + ' / ' + totalNoOfClients,
+                fullPaymentAmountStr: formatPricePhp(totalFullPaymentAmount),
+                noOfFullPayment: totalNoOfFullPayment,
+                totalData: true
+            };
+
+            collectionData.push(loTotals);
+
             setUserLOList(collectionData);
+            setLoading(false);
         } else {
+            setLoading(false);
             toast.error('Error retrieving branches list.');
         }
-
-        setLoading(false);
     }
+
+    
+    const handleOpen = async (row) => {
+        if (row.original.activeClients !== 0) {
+            setLoading(true);
+            delete row.original.page;
+            delete row.original.noCurrentReleaseStr;
+            delete row.original.currentReleaseAmountStr;
+            delete row.original.loanTargetStr;
+            delete row.original.collectionStr;
+            delete row.original.excessStr;
+            delete row.original.totalStr;
+            delete row.original.totalReleasesStr;
+            delete row.original.totalLoanBalanceStr;
+            delete row.original.fullPaymentAmountStr;
+            delete row.original.noFullPaymentStr;
+
+            let data = {
+                ...row.original,
+                mode: 'daily',
+                status: 'pending',
+                currentUser: currentUser._id,
+            };
+
+            const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary', data);
+            if (response.success) {
+                toast.success(`${data.name} groups transactions are now open!`);
+                window.location.reload();
+            } else {
+                toast.error('Error updating group summary.');
+            }
+
+            setLoading(false);
+        } else {
+            toast.error('No transaction detected for this Loan Officer!');
+        }
+    }
+
+    const handleClose = async (row) => {
+        if (row.original.activeClients !== 0) {
+            setLoading(true);
+            delete row.original.page;
+            delete row.original.noCurrentReleaseStr;
+            delete row.original.currentReleaseAmountStr;
+            delete row.original.loanTargetStr;
+            delete row.original.collectionStr;
+            delete row.original.excessStr;
+            delete row.original.totalStr;
+            delete row.original.totalReleasesStr;
+            delete row.original.totalLoanBalanceStr;
+            delete row.original.fullPaymentAmountStr;
+            delete row.original.noFullPaymentStr;
+            
+            let data = {
+                ...row.original,
+                mode: 'daily',
+                status: 'close',
+                currentUser: currentUser._id,
+            };
+
+            const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary', data);
+            if (response.success) {
+                toast.success(`${data.name} groups are now closed!`);
+                window.location.reload();
+            } else {
+                toast.error('Error updating group summary.');
+            }
+
+            setLoading(false);
+        } else {
+            toast.error('No transaction detected for this Loan Officer!');
+        }
+    }
+
+    const [rowActionButtons, setRowActionButtons] = useState();
 
     const columns = [
         {
@@ -202,7 +329,7 @@ const ViewByLoanOfficerPage = () => {
         },
         {
             Header: "Mispay",
-            accessor: 'mispayment',
+            accessor: 'mispaymentStr',
             Filter: SelectColumnFilter,
             filter: 'includes'
         }
@@ -211,6 +338,13 @@ const ViewByLoanOfficerPage = () => {
 
     useEffect(() => {
         let mounted = true;
+
+        if (currentUser.role.rep < 4) {
+            mounted && setRowActionButtons([
+                { label: 'Close', action: handleClose},
+                { label: 'Open', action: handleOpen}
+            ]);
+        }
 
         if (branchList) {
             if (currentUser.role.rep === 3 || currentUser.role.rep === 4) {
@@ -225,7 +359,7 @@ const ViewByLoanOfficerPage = () => {
         return () => {
             mounted = false;
         };
-    }, [branchList]);
+    }, [currentUser, branchList]);
 
     return (
         <React.Fragment>
@@ -234,7 +368,7 @@ const ViewByLoanOfficerPage = () => {
                     <Spinner />
                 </div>
             ) : (
-                <TableComponent columns={columns} data={userLOList} showFilters={false} hasActionButtons={false} rowClick={handleRowClick} />
+                <TableComponent columns={columns} data={userLOList} showFilters={false} hasActionButtons={true} rowActionButtons={rowActionButtons} rowClick={handleRowClick} />
             )}
         </React.Fragment>
     );

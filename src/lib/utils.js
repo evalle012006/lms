@@ -15,9 +15,8 @@ export const FileExists = (url) => {
             console.log("image doesn't exist");
             exist = false;
         }
-        console.log(exist)
     }
-    console.log(exist);
+
     return exist;
 }
 
@@ -90,4 +89,10 @@ export const getEndDate = (date, days) => {
 
 export const containsOnlyNumbers = (str) => {
     return /^\d+$/.test(str);
-  }
+}
+
+export const getTotal = (arr, prop) => {
+    return arr.reduce((a, b) => {
+        return a + b[prop];
+    }, 0);
+}

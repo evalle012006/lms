@@ -59,7 +59,7 @@ const CashCollectionDetailsPage = () => {
             let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
             if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
                 url = url + '?' + new URLSearchParams({ branchCode: branchList[0].code });
-            } else if (currentUser.root !== true && currentUser.role.rep === 2 && branchList.length > 0) {
+            } else if (branchList.length > 0) {
                 // url = url + '?' + new URLSearchParams({ branchCode: branchList[0].code });
             }
             const response = await fetchWrapper.get(url);

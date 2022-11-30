@@ -8,18 +8,19 @@ export default apiHandler({
 
 async function save(req, res) {
     const ObjectId = require('mongodb').ObjectId;
-    const { name, branchId, day, dayNo, time, groupNo, loanOfficerId, loanOfficerName, occurence, availableSlots } = req.body;
+    // const { name, branchId, day, dayNo, time, groupNo, capacity, loanOfficerId, loanOfficerName, occurence, availableSlots } = req.body;
+    const groupData = req.body;
 
     const { db } = await connectToDatabase();
 
     const branch = await db
         .collection('branches')
-        .find({_id: ObjectId(branchId)})
+        .find({_id: ObjectId(groupData.branchId)})
         .toArray();
 
     const groups = await db
         .collection('groups')
-        .find({ name: name, branchId: branchId })
+        .find({ name: groupData.name, branchId: groupData.branchId })
         .toArray();
 
     let response = {};
@@ -33,20 +34,7 @@ async function save(req, res) {
         };
     } else {
         const group = await db.collection('groups').insertOne({
-            name: name,
-            branchId: branchId,
-            branchName: branch[0].name,
-            day: day,
-            dayNo: dayNo,
-            time: time,
-            groupNo: groupNo,
-            loanOfficerId: loanOfficerId,
-            loanOfficerName: loanOfficerName,
-            occurence: occurence,
-            status: 'available',
-            capacity: occurence === 'daily' ? 25 : 30,
-            noOfClients: 0,
-            availableSlots: availableSlots,
+            ...groupData,
             dateAdded: moment(new Date()).format('YYYY-MM-DD')
         });
 
