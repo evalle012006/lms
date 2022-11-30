@@ -271,6 +271,7 @@ const CashCollectionDetailsPage = () => {
                             // clientStatus: loan.client.status
                         };
                     } else if (currentLoan.status !== 'active') {
+                        console.log(currentLoan)
                         currentData[index] = {
                             slotNo: loan.slotNo,
                             fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
