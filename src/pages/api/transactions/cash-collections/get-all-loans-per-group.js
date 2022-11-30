@@ -56,14 +56,6 @@ async function getAllLoansPerGroup(req, res) {
                                     foreignField: "groupId",
                                     pipeline: [
                                         { $match: {dateAdded: date} },
-                                        // { $unwind: '$collection' },
-                                        // { $project: {
-                                        //     'collectionArr': { $sum: { $cond: {if: {$or: [{$eq: ['$collection.status', 'active']}, {$eq: ['$collection.status', 'completed']}, {$eq: ['$collection.status', 'closed']}]}, then: '$collection.paymentCollection', else: 0} } },
-                                        //     'excessArr': { $sum: { $cond: {if: {$ne: ['$collection.status', 'totals']}, then: '$collection.excess', else: 0} } },
-                                        //     'totalArr': { $sum: '$collection.total' },
-                                        //     'activeLoanArr': { $sum: '$collection.activeLoan' },
-                                        //     'mispaymentArr' : { $sum: { $cond:{if: { $eq: ['$collection.mispayment', true] }, then: 1, else: 0} } }
-                                        // } },
                                         { $group: { 
                                                 _id: '$$groupName',
                                                 // noOfClients: { $sum: { $cond: {if: { $gt: ['$paymentCollection', 0] }, then: 1, else: 0} } },
@@ -73,16 +65,6 @@ async function getAllLoansPerGroup(req, res) {
                                                 excess: { $sum: '$excess' },
                                                 total: { $sum: '$total' }
                                         } }
-                                        // { $group: { 
-                                        //         _id: '$$groupName',
-                                        //         // noOfClients: { $sum: { $cond: {if: { $gt: ['$paymentCollection', 0] }, then: 1, else: 0} } },
-                                        //         mispayment: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },
-                                        //         loanTarget: { $sum: '$activeLoan' },
-                                        //         collection: { $sum: '$paymentCollection' },
-                                        //         excess: { $sum: '$excess' },
-                                        //         total: { $sum: '$paymentCollection' }
-                                        //     } 
-                                        // }
                                     ],
                                     as: "cashCollections"
                                 }
@@ -96,7 +78,7 @@ async function getAllLoansPerGroup(req, res) {
                                     pipeline: [
                                         { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
                                         { $match: {$expr: { $and: [
-                                            {$or: [{$eq: ['$status', 'active']}, {$eq: ['$status', 'completed']}]}, {$lte: ['$startDateObj', '$currentDateObj']}
+                                            {$or: [{$eq: ['$status', 'active']}, {$eq: ['$status', 'completed']}]}, {$lte: ['$currentDateObj', '$startDateObj']}
                                         ]}} },
                                         { $group: { 
                                                 _id: '$$groupName',
@@ -194,13 +176,6 @@ async function getAllLoansPerGroup(req, res) {
                         foreignField: "groupId",
                         pipeline: [
                             { $match: { dateAdded: date} },
-                            // { $unwind: '$collection' },
-                            // { $project: {
-                            //     'collectionArr': { $sum: { $cond: {if: {$or: [{$eq: ['$collection.status', 'active']}, {$eq: ['$collection.status', 'completed']}, {$eq: ['$collection.status', 'closed']}]}, then: '$collection.paymentCollection', else: 0} } },
-                            //     'excessArr': { $sum: { $cond: {if: {$ne: ['$collection.status', 'totals']}, then: '$collection.excess', else: 0} } },
-                            //     'totalArr': { $sum: '$collection.total' },
-                            //     'mispaymentArr' : { $sum: { $cond:{if: { $eq: ['$collection.mispayment', true] }, then: 1, else: 0} } }
-                            // } },
                             { $group: { 
                                     _id: '$$groupName',
                                     // noOfClients: { $sum: { $cond: {if: { $gt: ['$paymentCollection', 0] }, then: 1, else: 0} } },
@@ -224,7 +199,7 @@ async function getAllLoansPerGroup(req, res) {
                         pipeline: [
                             { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
                             { $match: {$expr: { $and: [
-                                {$or: [{$eq: ['$status', 'active']}, {$eq: ['$status', 'completed']}]}, {$lte: ['$startDateObj', '$currentDateObj']}
+                                {$or: [{$eq: ['$status', 'active']}, {$eq: ['$status', 'completed']}]}, {$lte: ['$currentDateObj', '$startDateObj']}
                             ]}} },
                             { $group: { 
                                     _id: '$$groupName',
@@ -340,7 +315,7 @@ async function getAllLoansPerGroup(req, res) {
                         pipeline: [
                             { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
                             { $match: {$expr: { $and: [
-                                {$or: [{$eq: ['$status', 'active']}, {$eq: ['$status', 'completed']}]}, {$lte: ['$startDateObj', '$currentDateObj']}
+                                {$or: [{$eq: ['$status', 'active']}, {$eq: ['$status', 'completed']}]}, {$lte: ['$currentDateObj', '$startDateObj']}
                             ]}} },
                             { $group: { 
                                     _id: '$$groupName',
@@ -456,7 +431,7 @@ async function getAllLoansPerGroup(req, res) {
                         pipeline: [
                             { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
                             { $match: {$expr: { $and: [
-                                {$or: [{$eq: ['$status', 'active']}, {$eq: ['$status', 'completed']}]}, {$lte: ['$startDateObj', '$currentDateObj']}
+                                {$or: [{$eq: ['$status', 'active']}, {$eq: ['$status', 'completed']}]}, {$lte: ['$currentDateObj', '$startDateObj']}
                             ]}} },
                             { $group: { 
                                     _id: '$$groupName',
