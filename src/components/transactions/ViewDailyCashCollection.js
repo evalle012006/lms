@@ -27,130 +27,102 @@ const ViewDailyCashCollectionPage = ({ pageNo }) => {
         if (response.success) {
             let collectionData = [];
             response.data && response.data.map(cc => {
-                if (cc.groupCashCollections.length > 0 && cc.groupCashCollections.status === 'close') {
-                    const gcArr = cc.groupCashCollections.map(gc => {
-                        let temp = {...gc};
+                let collection = {
+                    groupId: cc._id,
+                    group: cc.name,
+                    noCurrentReleaseStr: '-',
+                    currentReleaseAmountStr: '-',
+                    activeClients: '-',
+                    activeBorrowers: '-',
+                    totalReleasesStr: '-',
+                    totalLoanBalanceStr: '-',
+                    loanTargetStr: '-',
+                    excessStr: '-',
+                    totalStr: '-',
+                    collectionStr: '-',
+                    mispayment: '-',
+                    fullPaymentAmountStr: '-',
+                    noOfFullPayment: '-',
+                    status: '-'
+                };
 
-                        temp.totalReleasesStr = formatPricePhp(temp.totalReleases);
-                        temp.totalLoanBalanceStr = formatPricePhp(temp.totalLoanBalance),
-                        temp.loanTargetStr = formatPricePhp(temp.loanTarget),
-                        temp.excessStr = formatPricePhp(temp.excess);
-                        temp.totalStr = formatPricePhp(temp.total);
-                        temp.collectionStr = formatPricePhp(temp.collection);
-                        temp.currentReleaseAmountStr = formatPricePhp(temp.currentReleaseAmount);
-                        temp.fullPaymentAmountStr = formatPricePhp(temp.fullPaymentAmount);
-                        temp.noCurrentReleaseStr = temp.newCurrentRelease + ' / ' + temp.reCurrentRelease;
+                let noCurrentRelease = '0 / 0';
+                // let noFullPayment = '0 / 0';
 
-                        // to do: 
-                        // group summary: change open and closed to Approved and Reject
-                        // client summary: allow only edit mode if the group summary is not closed; checked if there's a record and check the status
-
-                        return temp;
-                    });
-                    collectionData.push(gcArr[0]);
-                    return false;
-                } else {
-                    let collection = {
+                if (cc.loans.length > 0) {
+                    collection = {
                         groupId: cc._id,
                         group: cc.name,
-                        noCurrentReleaseStr: '-',
-                        currentReleaseAmountStr: '-',
-                        activeClients: '-',
-                        activeBorrowers: '-',
-                        totalReleasesStr: '-',
-                        totalLoanBalanceStr: '-',
-                        loanTargetStr: '-',
-                        excessStr: '-',
-                        totalStr: '-',
-                        collectionStr: '-',
-                        mispayment: '-',
-                        fullPaymentAmountStr: '-',
-                        noOfFullPayment: '-',
-                        status: '-'
+                        noCurrentReleaseStr: noCurrentRelease,
+                        newCurrentRelease: 0,
+                        reCurrentRelease: 0,
+                        currentReleaseAmount: 0,
+                        currentReleaseAmountStr: 0,
+                        // noOfPaidClients: 0,
+                        activeClients: cc.loans[0].activeClients ? cc.loans[0].activeClients : 0,
+                        activeBorrowers: cc.loans[0].activeBorrowers ? cc.loans[0].activeBorrowers : 0,
+                        mispayment: collection.mispayment,
+                        loanTarget: cc.loans[0].loanTarget && cc.loans[0].loanTarget,
+                        loanTargetStr: cc.loans[0].loanTarget ? formatPricePhp(cc.loans[0].loanTarget) : 0,
+                        collection: cc.loans[0].collection && cc.loans[0].collection,
+                        collectionStr: cc.loans[0].collection ? formatPricePhp(cc.loans[0].collection) : 0,
+                        excess: cc.loans[0].excess && cc.loans[0].excess,
+                        excessStr: cc.loans[0].excess ? formatPricePhp(cc.loans[0].excess) : 0,
+                        total: cc.loans[0].total,
+                        totalStr: formatPricePhp(cc.loans[0].total),
+                        totalReleases: cc.loans[0].totalRelease && cc.loans[0].totalRelease,
+                        totalReleasesStr: cc.loans[0].totalRelease ? formatPricePhp(cc.loans[0].totalRelease) : 0,
+                        totalLoanBalance: cc.loans[0].totalLoanBalance && cc.loans[0].totalLoanBalance,
+                        totalLoanBalanceStr: cc.loans[0].totalLoanBalance ? formatPricePhp(cc.loans[0].totalLoanBalance) : 0,
+                        fullPaymentAmount: 0,
+                        fullPaymentAmountStr: 0,
+                        noOfFullPayment: 0,
+                        newFullPayment: 0,
+                        reFullPayment: 0,
+                        status: cc.groupCashCollections.length > 0 ? cc.groupCashCollections[0].status : 'No Saved Transaction',
+                        page: 'collection'
                     };
-
-                    let noCurrentRelease = '0 / 0';
-                    // let noFullPayment = '0 / 0';
-
-                    if (cc.loans.length > 0) {
-                        collection = {
-                            groupId: cc._id,
-                            group: cc.name,
-                            noCurrentReleaseStr: noCurrentRelease,
-                            newCurrentRelease: 0,
-                            reCurrentRelease: 0,
-                            currentReleaseAmount: 0,
-                            currentReleaseAmountStr: 0,
-                            // noOfPaidClients: 0,
-                            activeClients: cc.loans[0].activeClients ? cc.loans[0].activeClients : 0,
-                            activeBorrowers: cc.loans[0].activeBorrowers ? cc.loans[0].activeBorrowers : 0,
-                            mispayment: collection.mispayment,
-                            loanTarget: cc.loans[0].loanTarget && cc.loans[0].loanTarget,
-                            loanTargetStr: cc.loans[0].loanTarget ? formatPricePhp(cc.loans[0].loanTarget) : 0,
-                            collection: cc.loans[0].collection && cc.loans[0].collection,
-                            collectionStr: cc.loans[0].collection ? formatPricePhp(cc.loans[0].collection) : 0,
-                            excess: cc.loans[0].excess && cc.loans[0].excess,
-                            excessStr: cc.loans[0].excess ? formatPricePhp(cc.loans[0].excess) : 0,
-                            total: cc.loans[0].total,
-                            totalStr: formatPricePhp(cc.loans[0].total),
-                            totalReleases: cc.loans[0].totalRelease && cc.loans[0].totalRelease,
-                            totalReleasesStr: cc.loans[0].totalRelease ? formatPricePhp(cc.loans[0].totalRelease) : 0,
-                            totalLoanBalance: cc.loans[0].totalLoanBalance && cc.loans[0].totalLoanBalance,
-                            totalLoanBalanceStr: cc.loans[0].totalLoanBalance ? formatPricePhp(cc.loans[0].totalLoanBalance) : 0,
-                            fullPaymentAmount: 0,
-                            fullPaymentAmountStr: 0,
-                            noOfFullPayment: 0,
-                            newFullPayment: 0,
-                            reFullPayment: 0,
-                            status: 'open',
-                            page: 'collection'
-                        };
-                    } 
-                    
-                    if (cc.cashCollections.length > 0) {
-                        // const loanNoOfClients = cc.loans.length > 0 ? cc.loans[0].noOfClients : 0;
-                        collection = { ...collection,
-                            mispayment: cc.cashCollections[0].mispayment ? cc.cashCollections[0].mispayment : 0,
-                            collection: cc.cashCollections[0].collection && cc.cashCollections[0].collection,
-                            collectionStr: cc.cashCollections[0].collection ? formatPricePhp(cc.cashCollections[0].collection) : 0,
-                            excess: cc.cashCollections[0].excess && cc.cashCollections[0].excess,
-                            excessStr: cc.cashCollections[0].excess ? formatPricePhp(cc.cashCollections[0].excess) : 0,
-                            total: cc.cashCollections[0].total && cc.cashCollections[0].total,
-                            totalStr: cc.cashCollections[0].total ? formatPricePhp(cc.cashCollections[0].total) : 0.00,
-                        };
-                    }
-
-                    if (cc.currentRelease.length > 0) {
-                        noCurrentRelease = cc.currentRelease[0].newCurrentRelease + ' / ' + cc.currentRelease[0].reCurrentRelease;
-                        collection = {
-                            ...collection,
-                            noCurrentReleaseStr: noCurrentRelease,
-                            newCurrentRelease: cc.currentRelease[0].newCurrentRelease ? cc.currentRelease[0].newCurrentRelease : 0,
-                            reCurrentRelease: cc.currentRelease[0].reCurrentRelease ? cc.currentRelease[0].reCurrentRelease : 0,
-                            currentReleaseAmount: cc.currentRelease[0].currentReleaseAmount ? cc.currentRelease[0].currentReleaseAmount : 0,
-                            currentReleaseAmountStr: cc.currentRelease[0].currentReleaseAmount ? formatPricePhp(cc.currentRelease[0].currentReleaseAmount) : 0,
-                            status: 'open',
-                            page: 'collection'
-                        };
-                    }
-
-                    if (cc.fullPayment.length > 0) {
-                        // noOfFullPayment = cc.fullPayment[0].newFullPayment + ' / ' + cc.fullPayment[0].reFullPayment;
-
-                        collection = {
-                            ...collection,
-                            fullPaymentAmount: cc.fullPayment.length > 0 ? cc.fullPayment[0].fullPaymentAmount : 0,
-                            fullPaymentAmountStr: cc.fullPayment.length > 0 ? formatPricePhp(cc.fullPayment[0].fullPaymentAmount) : 0,
-                            noOfFullPayment: cc.fullPayment.length > 0 ? cc.fullPayment[0].noOfFullPayment : 0,
-                            newFullPayment: cc.fullPayment.length > 0 ? cc.fullPayment[0].newFullPayment : 0,
-                            reFullPayment: cc.fullPayment.length > 0 ? cc.fullPayment[0].reFullPayment : 0,
-                            status: 'open',
-                            page: 'collection'
-                        };
-                    }
-
-                    collectionData.push(collection);
+                } 
+                
+                if (cc.cashCollections.length > 0) {
+                    // const loanNoOfClients = cc.loans.length > 0 ? cc.loans[0].noOfClients : 0;
+                    collection = { ...collection,
+                        mispayment: cc.cashCollections[0].mispayment ? cc.cashCollections[0].mispayment : 0,
+                        collection: cc.cashCollections[0].collection && cc.cashCollections[0].collection,
+                        collectionStr: cc.cashCollections[0].collection ? formatPricePhp(cc.cashCollections[0].collection) : 0,
+                        excess: cc.cashCollections[0].excess && cc.cashCollections[0].excess,
+                        excessStr: cc.cashCollections[0].excess ? formatPricePhp(cc.cashCollections[0].excess) : 0,
+                        total: cc.cashCollections[0].total && cc.cashCollections[0].total,
+                        totalStr: cc.cashCollections[0].total ? formatPricePhp(cc.cashCollections[0].total) : 0.00
+                    };
                 }
+
+                if (cc.currentRelease.length > 0) {
+                    noCurrentRelease = cc.currentRelease[0].newCurrentRelease + ' / ' + cc.currentRelease[0].reCurrentRelease;
+                    collection = {
+                        ...collection,
+                        noCurrentReleaseStr: noCurrentRelease,
+                        newCurrentRelease: cc.currentRelease[0].newCurrentRelease ? cc.currentRelease[0].newCurrentRelease : 0,
+                        reCurrentRelease: cc.currentRelease[0].reCurrentRelease ? cc.currentRelease[0].reCurrentRelease : 0,
+                        currentReleaseAmount: cc.currentRelease[0].currentReleaseAmount ? cc.currentRelease[0].currentReleaseAmount : 0,
+                        currentReleaseAmountStr: cc.currentRelease[0].currentReleaseAmount ? formatPricePhp(cc.currentRelease[0].currentReleaseAmount) : 0
+                    };
+                }
+
+                if (cc.fullPayment.length > 0) {
+                    // noOfFullPayment = cc.fullPayment[0].newFullPayment + ' / ' + cc.fullPayment[0].reFullPayment;
+
+                    collection = {
+                        ...collection,
+                        fullPaymentAmount: cc.fullPayment.length > 0 ? cc.fullPayment[0].fullPaymentAmount : 0,
+                        fullPaymentAmountStr: cc.fullPayment.length > 0 ? formatPricePhp(cc.fullPayment[0].fullPaymentAmount) : 0,
+                        noOfFullPayment: cc.fullPayment.length > 0 ? cc.fullPayment[0].noOfFullPayment : 0,
+                        newFullPayment: cc.fullPayment.length > 0 ? cc.fullPayment[0].newFullPayment : 0,
+                        reFullPayment: cc.fullPayment.length > 0 ? cc.fullPayment[0].reFullPayment : 0
+                    };
+                }
+
+                collectionData.push(collection);
             });
 
             let noOfClients = 0;
@@ -327,72 +299,6 @@ const ViewDailyCashCollectionPage = ({ pageNo }) => {
         // }
     ];
 
-    const handleOpen = async (row) => {
-        setLoading(true);
-        delete row.original.page;
-        delete row.original.noCurrentReleaseStr;
-        delete row.original.currentReleaseAmountStr;
-        delete row.original.loanTargetStr;
-        delete row.original.collectionStr;
-        delete row.original.excessStr;
-        delete row.original.totalStr;
-        delete row.original.totalReleasesStr;
-        delete row.original.totalLoanBalanceStr;
-        delete row.original.fullPaymentAmountStr;
-        delete row.original.noFullPaymentStr;
-
-        let data = { ...row.original, 
-            dateAdded: moment(new Date()).format('YYYY-MM-DD'), 
-            modifiedBy: currentUser._id, 
-            status: 'open',
-            loId: currentUser._id,
-            branchId: branchList[0]._id
-        };
-        const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary', data);
-        if (response.success) {
-            toast.success(`${data.group} group is now open!`);
-            getCashCollections();
-        } else {
-            toast.error('Error updating group summary.');
-        }
-
-        setLoading(false);
-    }
-
-    const handleClose = async (row) => {
-        setLoading(true);
-        delete row.original.page;
-        delete row.original.noCurrentReleaseStr;
-        delete row.original.currentReleaseAmountStr;
-        delete row.original.loanTargetStr;
-        delete row.original.collectionStr;
-        delete row.original.excessStr;
-        delete row.original.totalStr;
-        delete row.original.totalReleasesStr;
-        delete row.original.totalLoanBalanceStr;
-        delete row.original.fullPaymentAmountStr;
-        delete row.original.noFullPaymentStr;
-        
-        let data = { ...row.original, 
-            dateAdded: moment(new Date()).format('YYYY-MM-DD'), 
-            modifiedBy: currentUser._id, 
-            status: 'close',
-            loId: currentUser._id,
-            branchId: branchList[0]._id
-        };
-        const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary', data);
-        if (response.success) {
-            toast.success(`${data.group} group is now closed!`);
-            getCashCollections();
-        } else {
-            toast.error('Error updating group summary.');
-        }
-
-        setLoading(false);
-    }
-
-    const [rowActionButtons, setRowActionButtons] = useState([]);
-
 
     useEffect(() => {
         let mounted = true;
@@ -406,17 +312,6 @@ const ViewDailyCashCollectionPage = ({ pageNo }) => {
 
         //     setLoading(false);
         // }
-
-        if (currentUser.role.rep >= 4) {
-            mounted && setRowActionButtons([
-                { label: 'Close', action: handleClose}
-            ]);
-        } else {
-            mounted && setRowActionButtons([
-                { label: 'Open', action: handleOpen},
-                { label: 'Close', action: handleClose}
-            ]);
-        }
 
         if (branchList) {
             
@@ -432,7 +327,7 @@ const ViewDailyCashCollectionPage = ({ pageNo }) => {
         return () => {
             mounted = false;
         };
-    }, [currentUser, branchList]);
+    }, [branchList]);
 
 
     return (
@@ -442,7 +337,7 @@ const ViewDailyCashCollectionPage = ({ pageNo }) => {
                     <Spinner />
                 </div>
             ) : (
-                <TableComponent columns={columns} data={cashCollectionList} showFilters={false} hasActionButtons={true} rowActionButtons={rowActionButtons} rowClick={handleRowClick} />
+                <TableComponent columns={columns} data={cashCollectionList} showFilters={false} hasActionButtons={false} rowClick={handleRowClick} />
             )}
         </React.Fragment>
     );

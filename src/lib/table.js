@@ -96,21 +96,23 @@ export function SelectColumnFilter({
 }
 
 export function StatusPill({ value }) {
-  const status = value ? value.toLowerCase() : "unknown";
+  if (value && value !== '-') {
+    const status = value ? value.toLowerCase() : "unknown";
 
-  return (
-    <span
-      className={classNames(
-        "status-pill",
-        status.startsWith("active") || status.startsWith("open") ? "status-pill-active" : null,
-        status.startsWith("pending") ? "status-pill-pending" : null,
-        status.startsWith("inactive") ? "status-pill-inactive" : null,
-        status.startsWith("rejected") || status.startsWith("close") || status.startsWith("offset") ? "status-pill-rejected" : null
-      )}
-    >
-      {status}
-    </span>
-  );
+    return (
+      <span
+        className={classNames(
+          "status-pill",
+          status.startsWith("active") || status.startsWith("open") ? "status-pill-active" : null,
+          status.startsWith("pending") ? "status-pill-pending" : null,
+          status.startsWith("inactive") ? "status-pill-inactive" : null,
+          status.startsWith("rejected") || status.startsWith("close") || status.startsWith("offset") ? "status-pill-rejected" : null
+        )}
+      >
+        {status}
+      </span>
+    );
+  }
 }
 
 export function AvatarCell({ value, column, row }) {
@@ -377,23 +379,23 @@ const ActionButton = ({ row, rowActionButtons }) => {
                           <TrashIcon className="cursor-pointer h-5" />
                         </div>
                       )}
-                      {(item.label === 'Close' && status === 'open') && (
-                        <div className="px-1" onClick={() => item.action(row)} title="Close Transaction">
+                      {(item.label === 'Open' && page === 'loan-officer-summary') && (
+                        <div className="px-1" onClick={() => item.action(row)} title="Open Transaction">
                           <LockOpenIcon className="cursor-pointer h-5" />
                         </div>
                       )}
-                      {(item.label === 'Open' && status === 'close') && (
-                        <div className="px-1" onClick={() => item.action(row)} title="Open Transaction">
+                      {(item.label === 'Close' && page === 'loan-officer-summary') && (
+                        <div className="px-1" onClick={() => item.action(row)} title="Close Transaction">
                           <LockClosedIcon className="cursor-pointer h-5" />
                         </div>
                       )}
                       {(item.label === 'Reloan') && (
-                        <div className="px-1" onClick={() => item.action(row)} title="Open Transaction">
+                        <div className="px-1" onClick={() => item.action(row)} title="Reloan">
                           <ArrowPathIcon className="cursor-pointer h-5" />
                         </div>
                       )}
                       {(item.label === 'Close Account') && (
-                        <div className="px-1" onClick={() => item.action(row)} title="Open Transaction">
+                        <div className="px-1" onClick={() => item.action(row)} title="Close Account">
                           <XCircleIcon className="cursor-pointer h-5" />
                         </div>
                       )}
@@ -523,7 +525,6 @@ const TableComponent = ({
                     <tr key={index} {...headerGroup.getHeaderGroupProps()}>
                       {multiSelect && (
                         <th scope="col" className="py-4-custom whitespace-nowrap-custom">
-                          {/* add checkbox here */}
                           <CheckBox name="selectAll"
                               value={selectAll} 
                               onChange={handleSelectAll}

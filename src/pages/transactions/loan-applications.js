@@ -17,6 +17,8 @@ import { setClientList } from "@/redux/actions/clientActions";
 import { formatPricePhp, getEndDate, UppercaseFirstLetter } from "@/lib/utils";
 import AddUpdateLoan from "@/components/transactions/AddUpdateLoanDrawer";
 import moment from 'moment';
+import { TabPanel, useTabs } from "react-headless-tabs";
+import { TabSelector } from "@/lib/ui/tabSelector";
 
 const LoanApplicationPage = () => {
     const dispatch = useDispatch();
@@ -32,6 +34,12 @@ const LoanApplicationPage = () => {
     const [loan, setLoan] = useState();
 
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+    const [historyList, setHistoryList] = useState([]);
+    const [selectedTab, setSelectedTab] = useTabs([
+        'application',
+        'history'
+    ]);
 
     const router = useRouter();
 
@@ -142,46 +150,100 @@ const LoanApplicationPage = () => {
         setLoading(false);
     }
 
+    const getHistoyListLoan = async () => {
+        let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/list-history';
+        if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
+            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id });
+        } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
+            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id });
+        }
+
+        const response = await fetchWrapper.get(url);
+        if (response.success) {
+            let loanList = [];
+            await response.loans && response.loans.map(loan => {
+                loanList.push({
+                    ...loan,
+                    groupName: loan.group.name,
+                    principalLoanStr: formatPricePhp(loan.principalLoan),
+                    mcbuStr: formatPricePhp(loan.mcbu),
+                    activeLoanStr: formatPricePhp(loan.activeLoan),
+                    loanBalanceStr: formatPricePhp(loan.loanBalance),
+                    fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
+                    selected: false
+                });
+            });
+
+            setHistoryList(loanList);
+        } else if (response.error) {
+            toast.error(response.message);
+        }
+        setLoading(false);
+    }
+
+    const getCurrentGroupSummary = async (groupId) => {
+        const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}transactions/cash-collections/get-groups-summary?`;
+        const params = { groupId: groupId, date: moment(new Date()).format('YYYY-MM-DD') };
+        return await fetchWrapper.get(apiUrl + new URLSearchParams(params));
+    }
+
     const updateClientStatus = async (data, updatedValue) => {
         setLoading(true);
         const group = data.group;
-        let loanData = {...data};
-        delete loanData.group;
-        delete loanData.client;
-        delete loanData.branch;
-        delete loanData.principalLoanStr;
-        delete loanData.activeLoanStr;
-        delete loanData.loanBalanceStr;
-        delete loanData.mcbuStr;
 
-        if (loanData.status === 'pending' && updatedValue === 'active') {
-            loanData.dateGranted = moment(new Date()).format('YYYY-MM-DD');
-            loanData.status = updatedValue;
-            loanData.startDate = moment(new Date()).add(1, 'days').format('YYYY-MM-DD');
-            loanData.endDate = getEndDate(loanData.dateGranted, group.occurence === 'daily' ? 60 : 24 );
-            loanData.mispayment = 0;
+        const groupSummary = await getCurrentGroupSummary(group._id);
+        if (groupSummary.success) {
+            let groupSummaryData = groupSummary.groupCashCollections;
 
-            const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/approved-reject-loan', loanData)
-            
-            if (response.success) {
-                setLoading(false);
-                toast.success('Loan successfully updated.');
-                window.location.reload();
-            } else if (response.error) {
-                setLoading(false);
-                toast.error(response.message);
-            }
-        } else {
-            loanData.status = updatedValue;
-            
-            const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/approved-reject-loan', loanData)
-            if (response.success) {
-                setLoading(false);
-                toast.success('Loan successfully updated.');
-                window.location.reload();
-            } else if (response.error) {
-                setLoading(false);
-                toast.error(response.message);
+            if (groupSummaryData.length > 0) {
+                groupSummaryData = groupSummaryData[0];
+
+                if (groupSummaryData.status === 'pending') {
+                    let loanData = {...data};
+                    delete loanData.group;
+                    delete loanData.client;
+                    delete loanData.branch;
+                    delete loanData.principalLoanStr;
+                    delete loanData.activeLoanStr;
+                    delete loanData.loanBalanceStr;
+                    delete loanData.mcbuStr;
+
+                    if (loanData.status === 'pending' && updatedValue === 'active') {
+                        loanData.dateGranted = moment(new Date()).format('YYYY-MM-DD');
+                        loanData.status = updatedValue;
+                        loanData.startDate = moment(new Date()).add(1, 'days').format('YYYY-MM-DD');
+                        loanData.endDate = getEndDate(loanData.dateGranted, group.occurence === 'daily' ? 60 : 24 );
+                        loanData.mispayment = 0;
+
+                        delete loanData.selected;
+
+                        const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/approved-reject-loan', loanData)
+                        
+                        if (response.success) {
+                            setLoading(false);
+                            toast.success('Loan successfully updated.');
+                            window.location.reload();
+                        } else if (response.error) {
+                            setLoading(false);
+                            toast.error(response.message);
+                        }
+                    } else {
+                        loanData.status = updatedValue;
+                        
+                        const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/approved-reject-loan', loanData)
+                        if (response.success) {
+                            setLoading(false);
+                            toast.success('Loan successfully updated.');
+                            window.location.reload();
+                        } else if (response.error) {
+                            setLoading(false);
+                            toast.error(response.message);
+                        }
+                    }
+                } else {
+                    setLoading(false);
+                    toast.error("Loan can't be approved because the Group Transaction is already closed!");
+                }
             }
         }
     }
@@ -202,30 +264,32 @@ const LoanApplicationPage = () => {
     }
 
     const handleMultiSelect = (mode, selectAll, row, rowIndex) => {
-        if (mode === 'all') {
-            const tempList = list.map(loan => {
-                let temp = {...loan};
-                temp.selected = selectAll;
-                return temp;
-            });
-            dispatch(setLoanList(tempList));
-        } else if (mode === 'row') {
-            const tempList = list.map((loan, index) => {
-                let temp = {...loan};
-
-                if (index === rowIndex) {
-                    temp.selected = !temp.selected;
-                }
-
-                return temp;
-            });
-            dispatch(setLoanList(tempList));
+        if (list) {
+            if (mode === 'all') {
+                const tempList = list.map(loan => {
+                    let temp = {...loan};
+                    temp.selected = selectAll;
+                    return temp;
+                });
+                dispatch(setLoanList(tempList));
+            } else if (mode === 'row') {
+                const tempList = list.map((loan, index) => {
+                    let temp = {...loan};
+    
+                    if (index === rowIndex) {
+                        temp.selected = !temp.selected;
+                    }
+    
+                    return temp;
+                });
+                dispatch(setLoanList(tempList));
+            }
         }
     }
 
     const handleMultiApprove = async () => {
-        let selectedLoanList = list.filter(loan => loan.selected === true);
-
+        let selectedLoanList = list && list.filter(loan => loan.selected === true);
+        
         if (selectedLoanList.length > 0) {
             selectedLoanList = selectedLoanList.map(loan => {
                 let temp = {...loan};
@@ -238,6 +302,7 @@ const LoanApplicationPage = () => {
                 delete temp.activeLoanStr;
                 delete temp.loanBalanceStr;
                 delete temp.mcbuStr;
+                delete temp.selected;
 
                 temp.dateGranted = moment(new Date()).format('YYYY-MM-DD');
                 temp.status = 'active';
@@ -263,8 +328,10 @@ const LoanApplicationPage = () => {
         }
     }
 
-    const actionButtons = [
+    const actionButtons = currentUser.role.rep < 4 ? [
         <ButtonOutline label="Approved Selected Loans" type="button" className="p-2 mr-3" onClick={handleMultiApprove} />,
+        <ButtonSolid label="Add Loan" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
+    ] : [
         <ButtonSolid label="Add Loan" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
     ];
 
@@ -328,8 +395,8 @@ const LoanApplicationPage = () => {
     useEffect(() => {
         if (branchList) {
             getListGroup();
-            // getListClient();
             getListLoan();
+            getHistoyListLoan();
         }
     }, [branchList]);
 
@@ -445,7 +512,31 @@ const LoanApplicationPage = () => {
                         <div className="absolute top-1/2 left-1/2">
                             <Spinner />
                         </div>
-                    ) : <TableComponent columns={columns} data={list} hasActionButtons={true} rowActionButtons={rowActionButtons} showFilters={false} multiSelect={true} multiSelectActionFn={handleMultiSelect} />}
+                    ) : (
+                        <React.Fragment>
+                            <nav className="flex pl-10 bg-white border-b border-gray-300">
+                                <TabSelector
+                                    isActive={selectedTab === "application"}
+                                    onClick={() => setSelectedTab("application")}>
+                                    Pending Applications
+                                </TabSelector>
+                                <TabSelector
+                                    isActive={selectedTab === "history"}
+                                    onClick={() => setSelectedTab("history")}>
+                                    History
+                                </TabSelector>
+                            </nav>
+                            <div>
+                                <TabPanel hidden={selectedTab !== "application"}>
+                                    <TableComponent columns={columns} data={list} hasActionButtons={true} rowActionButtons={rowActionButtons} showFilters={false} multiSelect={currentUser.role.rep <= 3 ? true : false} multiSelectActionFn={handleMultiSelect} />
+                                </TabPanel>
+                                <TabPanel hidden={selectedTab !== 'history'}>
+                                    <TableComponent columns={columns} data={historyList} hasActionButtons={false} showFilters={false} />
+                                </TabPanel>
+                            </div>
+                        </React.Fragment>
+                    )
+                } 
             </div>
             <AddUpdateLoan mode={mode} loan={loan} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
             <Dialog show={showDeleteDialog}>

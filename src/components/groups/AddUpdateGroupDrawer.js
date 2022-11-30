@@ -78,7 +78,7 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
         values.occurence = occurence;
         values.capacity = occurence === 'daily' ? 26 : 30;
         values.noOfClients = group.noOfClients;
-        values.status = group.status;
+        // values.status = group.status;
 
         if (currentUser.role.rep === 4) {
             const cuBranch = branchList.find(b => b.code === currentUser.designatedBranch);
@@ -100,6 +100,7 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
                 availableSlots.push(i);
             }
             values.availableSlots = availableSlots;
+            values.status = 'available';
 
             fetchWrapper.post(apiUrl, values)
                 .then(response => {

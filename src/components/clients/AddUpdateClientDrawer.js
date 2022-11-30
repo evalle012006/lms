@@ -95,7 +95,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
         values.addressProvince = values.addressProvince ? values.addressProvince : '';
         values.addressStreetNo = values.addressStreetNo ? values.addressStreetNo : '';
         values.addressZipCode = values.addressZipCode ? values.addressZipCode : '';
-        values.birthdate = dateValue.toISOString();
+        // values.birthdate = dateValue.toISOString();
         const group = groupList && groupList.find(g => g._id === values.groupId);
         values.groupName = group.name;
         if (currentUser.root !== true && (currentUser.role.rep === 4 || currentUser.role.rep === 3) && branchList.length > 0) {
@@ -321,12 +321,13 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                     <div className="mt-4" onClick={openCalendar}>
                                         <InputText
                                             name="birthdate"
-                                            value={moment(dateValue).format('YYYY-MM-DD')}
+                                            value={values.birthdate}
                                             onChange={handleChange}
                                             setFieldValue={setFieldValue}
+                                            placeholder="YYYY-MM-DD"
                                             label="Birthdate" />
                                     </div>
-                                    <Calendar onChange={setSelectedDate} value={dateValue} className={`px-4 mt-2 ${!showCalendar && 'hidden'}`} calendarType={'US'} />
+                                    {/* <Calendar onChange={setSelectedDate} value={dateValue} className={`px-4 mt-2 ${!showCalendar && 'hidden'}`} calendarType={'US'} /> */}
                                     <div>Address Information</div>
                                     <div className="mt-4">
                                         <InputText

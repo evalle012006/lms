@@ -22,7 +22,7 @@ const ACLoanManagementApp = ({ Component, pageProps }) => {
                 <link rel="shortcut icon" href="/images/favicon.ico" type="image/x-icon" />
             </Head>
             <RouteGuard>
-                <Toaster position="top-right" reverseOrder={false} />
+                <Toaster position="top-center" reverseOrder={false} />
                 <Component {...pageProps} />
             </RouteGuard>
         </>
