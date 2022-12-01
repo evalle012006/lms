@@ -14,51 +14,24 @@ async function save(req, res) {
     let data = req.body;
     data.collection = JSON.parse(data.collection);
     if (data.collection.length > 0) {
-        const groupHeader = await saveGroupHeader(data);
-        if (groupHeader) {
-            let groupHeaderId;
-            if (groupHeader.hasOwnProperty('insertedId')) {
-                groupHeaderId = groupHeader.insertedId + '';
-            } else if (groupHeader.hasOwnProperty('upsertedId')) {
-                groupHeaderId = groupHeader.upsertedId + '';
-            }
+        const groupHeaderId = data._id;
+        await saveUpdateGroupHeader(data);
+        data.collection.map(async cc => {
+            const collection = {...cc, groupCollectionId: groupHeaderId}
+            const respCollection = await saveCollection(collection);
 
-            data.collection.map(async cc => {
-                const collection = {...cc, groupCollectionId: groupHeaderId}
-                const respCollection = await saveCollection(collection);
-
-                if (respCollection.success) {
-                    const respLoan = await updateLoan(collection);
-                    if (respLoan.success) {
-                        if (typeof cc.remarks === 'object') {
-                            if (cc.remarks.value === 'offset') {
-                                await updateClient(collection);
-                            }
+            if (respCollection.success) {
+                const respLoan = await updateLoan(collection);
+                if (respLoan.success) {
+                    if (typeof cc.remarks === 'object') {
+                        if (cc.remarks.value === 'offset') {
+                            await updateClient(collection);
                         }
                     }
                 }
-            });
-        }
+            }
+        });
     }
-
-    // let cashCollection;
-    // if (!data._id) {
-    //     cashCollection = await db.collection('cashCollections').insertOne({
-    //         ...data
-    //     });
-    // } else {
-    //     const collectionId = data._id;
-    //     delete data._id;
-
-    //     cashCollection = await db.collection('cashCollections')
-    //         .updateOne(
-    //             { _id: ObjectId(collectionId) }, 
-    //             {
-    //                 $set: { ...data }
-    //             }, 
-    //             { upsert: false }
-    //         );
-    // }
 
     response = {success: true};
 
@@ -67,7 +40,7 @@ async function save(req, res) {
         .end(JSON.stringify(response));
 }
 
-async function saveGroupHeader(header) {
+async function saveUpdateGroupHeader(header) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
     const currentDate = moment(new Date()).format('YYYY-MM-DD');
@@ -85,14 +58,9 @@ async function saveGroupHeader(header) {
                 },
                 { upsert: false }
             );
-    } else {
-        groupHeader = await db.collection('groupCashCollections')
-            .insertOne({
-                ...headerData
-            });
     }
 
-    return groupHeader;
+    return {success: true};
 }
 
 async function saveCollection(collection) {

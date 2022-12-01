@@ -7,19 +7,8 @@ let statusCode = 200;
 
 
 export default apiHandler({
-    post: processLOSummary,
-    get: list
+    post: processLOSummary
 });
-
-async function list(req, res) {
-    const { db } = await connectToDatabase();
-    const data = req.query;
-
-
-    res.status(statusCode)
-        .setHeader('Content-Type', 'application/json')
-        .end(JSON.stringify(response));
-}
 
 async function processLOSummary(req, res) {
     const { db } = await connectToDatabase();
@@ -39,11 +28,13 @@ async function processLOSummary(req, res) {
 
     if (groups.length > 0) {
         groups.map(async group => {
-            const hasData = groupSummaryIds.find(gs => gs.groupId === group._id+'');
-            if (!hasData) {
+            const exist = await db.collection('groupCashCollections').find({ dateAdded: moment(new Date()).format('YYYY-MM-DD'), groupId: group._id + '' }).toArray();
+
+            if (exist.length === 0) {
                 const data = {
                     branchId: group.branchId,
                     groupId: group._id + '',
+                    groupName: group.name,
                     loId: _id,
                     dateAdded: moment(new Date()).format('YYYY-MM-DD'),
                     insertBy: currentUser,
@@ -53,6 +44,10 @@ async function processLOSummary(req, res) {
     
                 await save(data);
             }
+            // const hasData = groupSummaryIds.find(gs => gs.groupId === group._id+'');
+            // if (!hasData) {
+                
+            // }
         });
     }
 
