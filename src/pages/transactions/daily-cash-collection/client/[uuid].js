@@ -198,10 +198,12 @@ const CashCollectionDetailsPage = () => {
                     // }
     
                     if (cc.loanBalance <= 0) {
+                        if (cc.fullPaymentDate === currentDate) {
+                            collection.paymentCollection = cc.history ? cc.history.collection : 0;
+                            collection.paymentCollectionStr = formatPricePhp(collection.paymentCollection);
+                        }
                         collection.status = 'completed';
                         collection.notCalculate = true;
-                        collection.paymentCollection = cc.history ? cc.history.collection : 0;
-                        collection.paymentCollectionStr = formatPricePhp(collection.paymentCollection);
                         collection.remarks = cc.history ? cc.history.remarks : '-';
                     } else {
                         collection.status = 'active';
@@ -265,10 +267,8 @@ const CashCollectionDetailsPage = () => {
                             status: loan.status,
                             pending: loan.status === 'pending' ? true : false,
                             tomorrow: loan.status === 'active' ? true : false
-                            // clientStatus: loan.client.status
                         };
                     } else if (currentLoan.status !== 'active') {
-                        console.log(currentLoan)
                         currentData[index] = {
                             slotNo: loan.slotNo,
                             fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
@@ -286,8 +286,7 @@ const CashCollectionDetailsPage = () => {
                             paymentCollectionStr: formatPricePhp(currentLoan.prevData.paymentCollection),
                             remarks: '-',
                             fullPaymentStr: '-',
-                            status: loan.status === 'active' ? 'tomorrow' : 'pending',
-                            // clientStatus: loan.client.status
+                            status: loan.status === 'active' ? 'tomorrow' : 'pending'
                         };
                     }
                 } else {
@@ -315,8 +314,7 @@ const CashCollectionDetailsPage = () => {
                             paymentCollectionStr: '-',
                             remarks: '-',
                             fullPaymentStr: '-',
-                            status: loan.status === 'active' ? 'tomorrow' : 'pending',
-                            // clientStatus: loan.client.status
+                            status: loan.status === 'active' ? 'tomorrow' : 'pending'
                         };
                     } else {
                         currentData.push({
@@ -340,8 +338,7 @@ const CashCollectionDetailsPage = () => {
                             paymentCollectionStr: '-',
                             remarks: '-',
                             fullPaymentStr: '-',
-                            status: loan.status === 'active' ? 'tomorrow' : 'pending',
-                            // clientStatus: loan.client.status
+                            status: loan.status === 'active' ? 'tomorrow' : 'pending'
                         });
                     }
                 }
@@ -380,10 +377,6 @@ const CashCollectionDetailsPage = () => {
                         }
                     }
                 }
-
-                // to test:
-                // fullpayment (not today)
-                // reloan
 
                 currentData.push(calculateTotals(currentData));
             } else {
@@ -620,15 +613,7 @@ const CashCollectionDetailsPage = () => {
                     let temp = {...cc};
                     if (temp.status !== 'open') {
                         if (idx === index) {
-                            if (payment < targetCollection) {
-                                toast.error("Actual collection is below the target collection.");
-                                temp.error = true;
-                                temp.paymentCollection = 0;
-                            } else if (payment % 100 !== 0) {
-                                toast.error("Actual collection should be divisible by 100.");
-                                temp.error = true;
-                                temp.paymentCollection = 0;
-                            } else {
+                            if (parseFloat(payment) === temp.activeLoan || (parseFloat(payment) > temp.activeLoan && parseFloat(payment) % 100 === 0)) {
                                 temp.dirty = true;
                                 temp.error = false;
                                 if (temp.hasOwnProperty('prevData')) {
@@ -663,22 +648,23 @@ const CashCollectionDetailsPage = () => {
         
                                 temp.excess =  0;
                                 temp.excessStr = '-';
-                                if (parseFloat(payment) === 0) {
-                                    temp.noOfPayments = temp.noOfPayments <= 0 ? 0 : temp.noOfPayments - 1;
-                                    temp.mispayment = true;
-                                    temp.mispaymentStr = 'Yes';
-                                } else if (parseFloat(payment) > parseFloat(temp.activeLoan)) {
+                                // if (parseFloat(payment) === 0) {
+                                //     temp.noOfPayments = temp.noOfPayments <= 0 ? 0 : temp.noOfPayments - 1;
+                                //     temp.mispayment = true;
+                                //     temp.mispaymentStr = 'Yes';
+                                // } else 
+                                if (parseFloat(payment) > parseFloat(temp.activeLoan)) {
                                     temp.excess = parseFloat(payment) - parseFloat(temp.activeLoan);
                                     temp.excessStr = formatPricePhp(temp.excess);
                                     temp.mispayment = false;
                                     temp.mispaymentStr = "No";
                                     temp.noOfPayments = temp.noOfPayments + 1;
                                     // temp.remarks = { label: 'Advance Payment', value: 'advance payment'};
-                                } else if (parseFloat(payment) < parseFloat(temp.activeLoan)) {
-                                    temp.excess =  0;
-                                    temp.mispayment = true;
-                                    temp.mispaymentStr = 'Yes';
-                                    temp.noOfPayments = temp.noOfPayments + 1;
+                                // } else if (parseFloat(payment) < parseFloat(temp.activeLoan)) {
+                                //     temp.excess =  0;
+                                //     temp.mispayment = true;
+                                //     temp.mispaymentStr = 'Yes';
+                                //     temp.noOfPayments = temp.noOfPayments + 1;
                                     // temp.remarks = { label: 'Excused', value: 'excused'};
                                 } else {
                                     temp.mispayment = false;
@@ -703,6 +689,14 @@ const CashCollectionDetailsPage = () => {
                                     temp.amountRelease = 0;
                                     temp.amountReleaseStr = 0;
                                 }
+                            } else if (payment < targetCollection) {
+                                toast.error("Actual collection is below the target collection.");
+                                temp.error = true;
+                                temp.paymentCollection = 0;
+                            } else if (payment % 100 !== 0) {
+                                toast.error("Actual collection should be divisible by 100.");
+                                temp.error = true;
+                                temp.paymentCollection = 0;
                             }
                         } 
                     } 
@@ -886,7 +880,6 @@ const CashCollectionDetailsPage = () => {
         }
 
         const getCurrentGroup = async () => {
-            console.log(uuid)
             if (uuid) {
                 const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}groups?`;
                 const params = { _id: uuid };

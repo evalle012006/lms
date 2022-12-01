@@ -167,7 +167,6 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     
             values.loanBalance = values.principalLoan * 1.20; // initial
             values.amountRelease = values.loanBalance;
-            values.noOfPayments = 0;
         }
 
         if (mode === 'add' || mode === 'reloan') {
@@ -178,6 +177,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             values.admissionDate = moment(values.admissionDate).format('YYYY-MM-DD');
             values.status = 'pending';
             values.loanCycle = values.loanCycle ? values.loanCycle : 1;
+            values.noOfPayments = 0;
 
             fetchWrapper.post(apiUrl, values)
                 .then(response => {
