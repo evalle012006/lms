@@ -613,7 +613,7 @@ const CashCollectionDetailsPage = () => {
                     let temp = {...cc};
                     if (temp.status !== 'open') {
                         if (idx === index) {
-                            if (parseFloat(payment) === temp.activeLoan || (parseFloat(payment) > temp.activeLoan && parseFloat(payment) % 100 === 0)) {
+                            if (parseFloat(payment) === temp.activeLoan || (parseFloat(payment) > temp.activeLoan && parseFloat(payment) % parseFloat(temp.activeLoan) === 0)) {
                                 temp.dirty = true;
                                 temp.error = false;
                                 if (temp.hasOwnProperty('prevData')) {
