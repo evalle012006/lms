@@ -52,8 +52,9 @@ const CashCollectionDetailsPage = () => {
         { label: 'Remarks', value: ''},
         { label: 'Pending', value: 'pending'},
         { label: 'Excused', value: 'excused'},
-        { label: 'Delinquent', value: 'delinquent'},
+        { label: 'Double Payment', value: 'double payment'},
         { label: 'Advance Payment', value: 'advance payment'},
+        { label: 'Delinquent', value: 'delinquent'},
         { label: 'Hospitalization', value: 'hospitalization'},
         { label: 'Death of Clients/Family Member', value: 'death of clients/family member'},
         { label: 'Reloaner', value: 'reloaner'},
@@ -693,7 +694,7 @@ const CashCollectionDetailsPage = () => {
                                 toast.error("Actual collection is below the target collection.");
                                 temp.error = true;
                                 temp.paymentCollection = 0;
-                            } else if (payment % 100 !== 0) {
+                            } else if (parseFloat(payment) % parseFloat(temp.activeLoan) !== 0) {
                                 toast.error("Actual collection should be divisible by 100.");
                                 temp.error = true;
                                 temp.paymentCollection = 0;
