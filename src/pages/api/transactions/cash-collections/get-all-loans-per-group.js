@@ -58,7 +58,6 @@ async function getAllLoansPerGroup(req, res) {
                                         { $match: {dateAdded: date} },
                                         { $group: { 
                                                 _id: '$$groupName',
-                                                // noOfClients: { $sum: { $cond: {if: { $gt: ['$paymentCollection', 0] }, then: 1, else: 0} } },
                                                 mispayment: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },
                                                 loanTarget: { $sum: '$activeLoan' },
                                                 collection: { $sum: '$paymentCollection' },
@@ -197,9 +196,9 @@ async function getAllLoansPerGroup(req, res) {
                         localField: "groupIdStr",
                         foreignField: "groupId",
                         pipeline: [
-                            { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
+                            // { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
                             { $match: {$expr: { $and: [
-                                {$or: [{$eq: ['$status', 'active']}, {$eq: ['$status', 'completed']}]}, {$lte: ['$currentDateObj', '$startDateObj']}
+                                {$or: [{$eq: ['$status', 'active']}, {$eq: ['$status', 'completed']}]}, {$gte: [new Date('$startDate'), new Date('$date')]}
                             ]}} },
                             { $group: { 
                                     _id: '$$groupName',

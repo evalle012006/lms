@@ -101,6 +101,7 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
             }
             values.availableSlots = availableSlots;
             values.status = 'available';
+            values.noOfClients = 0;
 
             fetchWrapper.post(apiUrl, values)
                 .then(response => {

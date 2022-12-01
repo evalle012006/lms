@@ -66,6 +66,7 @@ async function updateGroup(loan) {
     let group = await db.collection('groups').find({ _id: ObjectId(loan.groupId) }).toArray();
     if (group.length > 0) {
         group = group[0];
+        group.noOfClients = group.noOfClients ? group.noOfClients : 0;
 
         group.availableSlots = group.availableSlots.filter(s => s !== loan.slotNo);
         group.noOfClients = group.noOfClients + 1;

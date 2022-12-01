@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import moment from 'moment'
 import DatePicker from "@/lib/ui/DatePicker";
 
-const DetailsHeader = ({ page, handleSaveUpdate, data, setData, editMode, dateFilter, setDateFilter, handleDateFilter, groupFilter, handleGroupFilter, groupTransactionStatus }) => {
+const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, dateFilter, setDateFilter, handleDateFilter, groupFilter, handleGroupFilter, groupTransactionStatus }) => {
     const calendarRef = useRef();
     const groupList = useSelector(state => state.group.list);
     const group = useSelector(state => state.group.data);
@@ -165,7 +165,7 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, editMode, dateFi
                             </div>
                         </div>
                     </div>
-                    {editMode && (
+                    {showSaveButton && (
                         <div className="flex items-center w-40">
                             <ButtonSolid label="Submit Collection" onClick={handleSaveUpdate} />
                         </div>

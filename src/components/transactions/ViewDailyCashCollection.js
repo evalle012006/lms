@@ -314,7 +314,6 @@ const ViewDailyCashCollectionPage = ({ pageNo }) => {
         // }
 
         if (branchList) {
-            
             if (currentUser.role.rep < 4 && selectedLOSubject.value.length > 0) {
                 mounted && getCashCollections(selectedLOSubject.value);
             } else {
@@ -329,6 +328,23 @@ const ViewDailyCashCollectionPage = ({ pageNo }) => {
         };
     }, [branchList]);
 
+    useEffect(() => {
+        if (cashCollectionList.length > 0) {
+            const initGroupCollectionSummary = async () => {
+                let data = {
+                    _id: currentUser.role.rep === 4 ? currentUser._id : selectedLOSubject.value.length > 0 && selectedLOSubject.value,
+                    mode: 'daily',
+                    status: 'pending',
+                    currentUser: currentUser._id,
+                    groupSummaryIds: []
+                };
+    
+                await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary', data);
+            }
+
+            initGroupCollectionSummary();
+        }
+    }, [cashCollectionList]);
 
     return (
         <React.Fragment>
