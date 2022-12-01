@@ -99,7 +99,7 @@ async function updateLoan(collection) {
         loan.loanBalance = collection.loanBalance;
         loan.activeLoan = collection.activeLoan;
         loan.amountRelease = collection.amountRelease;
-        loan.noOfPayments = collection.noOfPayments;
+        loan.noOfPayments = collection.noOfPayments !== '-' ? collection.noOfPayments : 0;
         loan.fullPaymentDate = '';
         loan.history = {};
         loan.status = collection.status;
@@ -112,15 +112,13 @@ async function updateLoan(collection) {
             loan.status = 'completed';
             loan.fullPaymentDate = collection.fullPaymentDate;
             loan.history = collection.history;
-            // so that it will not be added in group summary
             loan.activeLoan = 0;
             loan.amountRelease = 0;
-            // updateGroup(loan);
         }
 
         // check if client is closed and update it
         if (collection.clientStatus === 'offset') {
-            updateClient(collection);
+            await updateClient(collection);
         }
 
         loan.lastUpdated = moment().format('YYYY-MM-DD');
@@ -163,10 +161,10 @@ async function updateClient(loan) {
                 { upsert: false });
         
         if (loan.clientStatus === 'offset') {
-            updateLoanClose(loan);
+            await updateLoanClose(loan);
         }
         
-        updateGroup(loan);
+        await updateGroup(loan);
     }
 }
 
