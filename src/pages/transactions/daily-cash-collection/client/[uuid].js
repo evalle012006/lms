@@ -267,7 +267,6 @@ const CashCollectionDetailsPage = () => {
                             status: loan.status,
                             pending: loan.status === 'pending' ? true : false,
                             tomorrow: loan.status === 'active' ? true : false
-                            // clientStatus: loan.client.status
                         };
                     } else if (currentLoan.status !== 'active') {
                         currentData[index] = {
@@ -287,8 +286,7 @@ const CashCollectionDetailsPage = () => {
                             paymentCollectionStr: formatPricePhp(currentLoan.prevData.paymentCollection),
                             remarks: '-',
                             fullPaymentStr: '-',
-                            status: loan.status === 'active' ? 'tomorrow' : 'pending',
-                            // clientStatus: loan.client.status
+                            status: loan.status === 'active' ? 'tomorrow' : 'pending'
                         };
                     }
                 } else {
@@ -316,8 +314,7 @@ const CashCollectionDetailsPage = () => {
                             paymentCollectionStr: '-',
                             remarks: '-',
                             fullPaymentStr: '-',
-                            status: loan.status === 'active' ? 'tomorrow' : 'pending',
-                            // clientStatus: loan.client.status
+                            status: loan.status === 'active' ? 'tomorrow' : 'pending'
                         };
                     } else {
                         currentData.push({
@@ -341,8 +338,7 @@ const CashCollectionDetailsPage = () => {
                             paymentCollectionStr: '-',
                             remarks: '-',
                             fullPaymentStr: '-',
-                            status: loan.status === 'active' ? 'tomorrow' : 'pending',
-                            // clientStatus: loan.client.status
+                            status: loan.status === 'active' ? 'tomorrow' : 'pending'
                         });
                     }
                 }
@@ -381,10 +377,6 @@ const CashCollectionDetailsPage = () => {
                         }
                     }
                 }
-
-                // to test:
-                // fullpayment (not today)
-                // reloan
 
                 currentData.push(calculateTotals(currentData));
             } else {
