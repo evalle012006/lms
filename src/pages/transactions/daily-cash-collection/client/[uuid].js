@@ -132,7 +132,6 @@ const CashCollectionDetailsPage = () => {
 
                 if (date && date !== currentDate) {
                     cashCollection = addBlankAndTotal(true, cashCollection);
-                    // console.log(cashCollection)
                 }
             } else {
                 response.data.collection.map(cc => {
@@ -226,10 +225,12 @@ const CashCollectionDetailsPage = () => {
             setQueryMain(false);
             dispatch(setCashCollectionGroup(cashCollection));
             setLoading(false);
-
-        } else {
-            setLoading(false);
+        } else if (response.error){
             toast.error('Error retrieving cash collection list.');
+            setTimeout(() => {
+                dispatch(setCashCollectionGroup([]));
+                setLoading(false);
+            }, 200);
         }
     }
 
@@ -427,14 +428,17 @@ const CashCollectionDetailsPage = () => {
                     });
                 }
             }
-            
+
             currentData.sort((a, b) => { return a.slotNo - b.slotNo; });
-            setData(currentData);
-            setAllData(currentData);
+
+            setTimeout(() => {
+                dispatch(setCashCollectionGroup(currentData));
+                setLoading(false);
+            }, 200);
         } else if (response.error) {
+            setLoading(false);
             toast.error(response.message);
         }
-        setLoading(false);
     }
 
     const calculateTotals = (dataArr) => {
@@ -641,8 +645,13 @@ const CashCollectionDetailsPage = () => {
                     let temp = {...cc};
                     if (temp.status !== 'open') {
                         if (idx === index) {
-                            if (parseFloat(payment) === 0 || parseFloat(payment) === temp.activeLoan 
-                                || (parseFloat(payment) > temp.activeLoan && parseFloat(payment) % parseFloat(temp.activeLoan) === 0)) {
+                            if (parseFloat(payment) > temp.loanBalance) {
+                                toast.error("Actual collection is greater than the loan balance.");
+                                temp.error = true;
+                                temp.paymentCollection = 0;
+                            } else if (parseFloat(payment) === 0 || parseFloat(payment) === temp.activeLoan 
+                                || (parseFloat(payment) > temp.activeLoan && parseFloat(payment) % parseFloat(temp.activeLoan) === 0)
+                                || parseFloat(payment) === parseFloat(temp.loanBalance)) {
                                 temp.dirty = true;
                                 temp.error = false;
                                 if (temp.hasOwnProperty('prevData')) {
@@ -717,7 +726,7 @@ const CashCollectionDetailsPage = () => {
                                     temp.amountRelease = 0;
                                     temp.amountReleaseStr = 0;
                                 }
-                            } else if (payment < targetCollection) {
+                            } else if (parseFloat(payment) < targetCollection) {
                                 toast.error("Actual collection is below the target collection.");
                                 temp.error = true;
                                 temp.paymentCollection = 0;
@@ -1075,6 +1084,7 @@ const CashCollectionDetailsPage = () => {
 
     useEffect(() => {
         setData(groupClients);
+        setAllData(groupClients);
     }, [groupClients]);
 
     useEffect(() => {
@@ -1092,7 +1102,7 @@ const CashCollectionDetailsPage = () => {
 
     useEffect(() => {
         if (dateFilterSubject.value && currentGroup) {
-            const date = moment(dateFilterSubject.value).format('YYYY-MM-DD');
+            const date = moment(new Date(dateFilterSubject.value)).format('YYYY-MM-DD');
             getCashCollections(date);
             setDateFilter(date);
         }
