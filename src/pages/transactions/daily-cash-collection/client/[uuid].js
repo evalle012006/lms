@@ -976,8 +976,6 @@ const CashCollectionDetailsPage = () => {
                 dispatch(setCashCollectionGroup(cashCollection));
                 setLoading(false);
             }, 200);
-            // setData(cashCollection);
-            // setAllData(cashCollection);
         }
     }
 
