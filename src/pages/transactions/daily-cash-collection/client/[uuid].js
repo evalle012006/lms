@@ -1108,20 +1108,6 @@ const CashCollectionDetailsPage = () => {
         }
     }, [currentGroup]);
 
-    // useEffect(() => {
-    //     if (filteredData.length > 0 && currentGroup) {
-    //         // addBlankAndTotal();
-    //     } else {
-    //         setData(allData);
-    //     }
-    // }, [filteredData]);
-
-    // useEffect(() => {
-    //     if (filter && currentGroup) {
-    //         addBlankAndTotal();
-    //     }
-    // }, [filter])
-
     useEffect(() => {
         if (!editMode && dataType === 'existing' && revertMode) {
             setEditMode(true);
