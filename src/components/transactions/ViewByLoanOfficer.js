@@ -54,7 +54,8 @@ const ViewByLoanOfficerPage = ({ dateFilter }) => {
                     fullPaymentAmountStr: '-',
                     noOfFullPayment: '-',
                     groupSummaryIds: [],
-                    page: 'loan-officer-summary'
+                    page: 'loan-officer-summary',
+                    status: '-'
                 };
 
                 let noOfClients = 0;
@@ -72,6 +73,7 @@ const ViewByLoanOfficerPage = ({ dateFilter }) => {
                 let noOfRefullPayment = 0;
                 let fullPaymentAmount = 0;
                 let mispayment = 0;
+                let statusArr = [];
 
                 lo.groups.map(group => {
                     if (group.loans.length > 0) {
@@ -84,6 +86,7 @@ const ViewByLoanOfficerPage = ({ dateFilter }) => {
 
                     if (group.groupCashCollections.length > 0) {
                         collection.groupSummaryIds.push({ _id: group.groupCashCollections[0]._id, groupId: group._id, status: group.groupCashCollections[0].status });
+                        statusArr.push(group.groupCashCollections[0].status);
                     }
                     
                     if (group.cashCollections.length > 0) {
@@ -105,6 +108,8 @@ const ViewByLoanOfficerPage = ({ dateFilter }) => {
                         noOfRefullPayment += group.fullPayment[0].reFullPayment;
                     }
                 });
+
+                const status = statusArr.find(s => s === 'pending') === 'pending' ? 'open' : 'close';
 
                 collection = {
                     ...collection,
@@ -130,6 +135,7 @@ const ViewByLoanOfficerPage = ({ dateFilter }) => {
                     fullPaymentAmount: fullPaymentAmount,
                     fullPaymentAmountStr: fullPaymentAmount ? formatPricePhp(fullPaymentAmount) : 0,
                     noOfFullPayment: noOfFullPayment,
+                    status: status
                 }
 
                 collectionData.push(collection);
@@ -170,7 +176,7 @@ const ViewByLoanOfficerPage = ({ dateFilter }) => {
             };
 
             collectionData.push(loTotals);
-
+            
             setUserLOList(collectionData);
             setLoading(false);
         } else {

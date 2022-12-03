@@ -7,8 +7,11 @@ import { styles, DropdownIndicator, borderStyles } from "@/styles/select";
 import { useEffect, useRef, useState } from "react";
 import moment from 'moment'
 import DatePicker from "@/lib/ui/DatePicker";
+import { useRouter } from 'next/router';
+import { ArrowLeftCircleIcon } from '@heroicons/react/24/solid';
 
 const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, dateFilter, setDateFilter, handleDateFilter, groupFilter, handleGroupFilter, groupTransactionStatus }) => {
+    const router = useRouter();
     const groupList = useSelector(state => state.group.list);
     const group = useSelector(state => state.group.data);
     const [showCalendar, setShowCalendar] = useState(false);
@@ -42,6 +45,10 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
         setDateFilter(e);
         setShowCalendar(false);
     };
+
+    const handleBack = () => {
+        router.back();
+    }
 
     // useEffect(() => {
     //     if (data) {
@@ -96,9 +103,16 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
             </div>
             {group && (
                 <div className="py-2 proxima-regular">
-                    <div className="alternate-gothic text-2xl">
-                        {group.name}
-                    </div>
+                    {page === 'transaction' ? (
+                        <div className="flex flex-row alternate-gothic text-2xl">
+                            <span><ArrowLeftCircleIcon className="w-5 h-5 mr-6 cursor-pointer" title="Back" onClick={handleBack} /></span>
+                            <span>{group.name}</span>
+                        </div>
+                    ) : (
+                        <div className="alternate-gothic text-2xl">
+                            {group.name}
+                        </div>
+                    )}
                     <div className="flex justify-between w-11/12">
                         <div className="flex flex-row justify-items-start space-x-5 py-4" style={{ height: '40px' }}>
                             <div className="space-x-2 flex items-center">

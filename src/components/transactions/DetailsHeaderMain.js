@@ -8,8 +8,11 @@ import { useSelector } from "react-redux";
 import Select from 'react-select';
 import Breadcrumbs from "../Breadcrumbs";
 import moment from 'moment';
+import { useRouter } from 'next/router';
+import { ArrowLeftCircleIcon } from '@heroicons/react/24/solid';
 
 const DetailsHeader = ({ pageTitle, page, currentDate, mode = 'daily', setFilter, selectedLO, handleLOFilter, dateFilter, handleDateFilter }) => {
+    const router = useRouter();
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
     const groupList = useSelector(state => state.group.list);
@@ -43,6 +46,10 @@ const DetailsHeader = ({ pageTitle, page, currentDate, mode = 'daily', setFilter
         setDateFilter(e);
         setShowCalendar(false);
     };
+
+    const handleBack = () => {
+        router.back();
+    }
 
     useEffect(() => {
         // not yet working for area manager and admins
@@ -156,8 +163,9 @@ const DetailsHeader = ({ pageTitle, page, currentDate, mode = 'daily', setFilter
                     </div>
                     {selectedLO && (
                         <div className="py-2 proxima-regular">
-                            <div className="page-title">
-                                {`${selectedLO.lastName}, ${selectedLO.firstName} - Group Summary`}
+                            <div className="page-title flex-row">
+                                <span><ArrowLeftCircleIcon className="w-5 h-5 mr-6 cursor-pointer" title="Back" onClick={handleBack} /></span>
+                                <span>{`${selectedLO.lastName}, ${selectedLO.firstName} - Group Summary`}</span>
                             </div>
                             <div className="flex justify-between w-11/12">
                                 <div className="flex flex-row justify-items-start space-x-5 py-4" style={{ height: '40px' }}>
