@@ -379,12 +379,12 @@ const ActionButton = ({ row, rowActionButtons }) => {
                           <TrashIcon className="cursor-pointer h-5" />
                         </div>
                       )}
-                      {(item.label === 'Open' && page === 'loan-officer-summary') && (
+                      {(item.label === 'Open' && page === 'loan-officer-summary' && status === 'close') && (
                         <div className="px-1" onClick={() => item.action(row)} title="Open Transaction">
                           <LockOpenIcon className="cursor-pointer h-5" />
                         </div>
                       )}
-                      {(item.label === 'Close' && page === 'loan-officer-summary') && (
+                      {(item.label === 'Close' && page === 'loan-officer-summary' && status === 'open') && (
                         <div className="px-1" onClick={() => item.action(row)} title="Close Transaction">
                           <LockClosedIcon className="cursor-pointer h-5" />
                         </div>
