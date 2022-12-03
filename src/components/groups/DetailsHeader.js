@@ -9,7 +9,6 @@ import moment from 'moment'
 import DatePicker from "@/lib/ui/DatePicker";
 
 const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, dateFilter, setDateFilter, handleDateFilter, groupFilter, handleGroupFilter, groupTransactionStatus }) => {
-    const calendarRef = useRef();
     const groupList = useSelector(state => state.group.list);
     const group = useSelector(state => state.group.data);
     const [showCalendar, setShowCalendar] = useState(false);
@@ -63,19 +62,19 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
     //     }
     // }, [data])
 
-    useEffect(() => {
-        const handleClickOutside = (e) => {
-            if (calendarRef.current && !calendarRef.current.contains(e.target)) {
-                setShowCalendar(false);
-            }
-        };
+    // useEffect(() => {
+    //     const handleClickOutside = (e) => {
+    //         if (calendarRef.current && !calendarRef.current.contains(e.target)) {
+    //             setShowCalendar(false);
+    //         }
+    //     };
 
-        document.addEventListener('click', handleClickOutside, true);
+    //     document.addEventListener('click', handleClickOutside, true);
 
-        return () => {
-            document.removeEventListener('click', handleClickOutside, true);
-        }
-    }, []);
+    //     return () => {
+    //         document.removeEventListener('click', handleClickOutside, true);
+    //     }
+    // }, []);
 
     // useEffect(() => {
     //     if (data && data.length > 0) {

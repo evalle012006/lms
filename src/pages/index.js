@@ -18,12 +18,12 @@ const Index = () => {
             }
         }
 
-        const updateGroupClients = async () => {
-            await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}groups/update-group-clients`);
-        }
+        // const updateGroupClients = async () => {
+        //     await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}groups/update-group-clients`);
+        // }
 
         mounted && getSystemSettings();
-        mounted && updateGroupClients();
+        // mounted && updateGroupClients();
 
         return () => {
             mounted = false;

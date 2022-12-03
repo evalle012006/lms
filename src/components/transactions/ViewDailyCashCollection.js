@@ -4,13 +4,13 @@ import { useDispatch, useSelector } from "react-redux";
 import Spinner from "@/components/Spinner";
 import toast from 'react-hot-toast';
 import { useRouter } from "node_modules/next/router";
-import { formatPricePhp, UppercaseFirstLetter } from "@/lib/utils";
+import { formatPricePhp } from "@/lib/utils";
 import moment from 'moment';
 import { setCashCollectionList } from "@/redux/actions/cashCollectionActions";
 import TableComponent, { SelectColumnFilter, StatusPill } from "@/lib/table";
 import { BehaviorSubject } from 'rxjs';
 
-const ViewDailyCashCollectionPage = ({ pageNo }) => {
+const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
     const router = useRouter();
     const dispatch = useDispatch();
     const selectedLOSubject = new BehaviorSubject(process.browser && localStorage.getItem('selectedLO'));
@@ -20,8 +20,14 @@ const ViewDailyCashCollectionPage = ({ pageNo }) => {
     const cashCollectionList = useSelector(state => state.cashCollection.main);
     const [loading, setLoading] = useState(true);
 
-    const getCashCollections = async (selectedLO) => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/get-all-loans-per-group?' + new URLSearchParams({ date: currentDate, mode: 'daily', loId: selectedLO ? selectedLO : currentUser._id });
+    const getCashCollections = async (selectedLO, dateFilter) => {
+        let url = process.env.NEXT_PUBLIC_API_URL + 
+            'transactions/cash-collections/get-all-loans-per-group?' 
+            + new URLSearchParams({ 
+                    date: dateFilter ? dateFilter : currentDate,
+                    mode: 'daily', 
+                    loId: selectedLO ? selectedLO : currentUser._id
+                });
 
         const response = await fetchWrapper.get(url);
         if (response.success) {
@@ -143,7 +149,7 @@ const ViewDailyCashCollectionPage = ({ pageNo }) => {
             let mispayment = 0;
             
             collectionData.map(cc => {
-                if (cc.status !== '-') {
+                if (cc.status !== '-' && cc.status !== 'pending') {
                     noOfClients += (cc.activeClients && cc.activeClients !== '-') ? cc.activeClients : 0;
                     noOfBorrowers += (cc.activeBorrowers && cc.activeBorrowers !== '-') ? cc.activeBorrowers : 0;
                     totalsLoanRelease += cc.totalReleases ? cc.totalReleases : 0;
@@ -197,6 +203,8 @@ const ViewDailyCashCollectionPage = ({ pageNo }) => {
             } else if (pageNo === 2) {
                 router.push('/transactions/daily-cash-collection/client/' + selected.groupId);
             }
+            
+            localStorage.setItem('cashCollectionDateFilter', dateFilter);
         } else {
             if (selected.group !== 'TOTALS') {
                 toast.error('No loans on this group yet.')
@@ -302,6 +310,7 @@ const ViewDailyCashCollectionPage = ({ pageNo }) => {
 
     useEffect(() => {
         let mounted = true;
+        localStorage.removeItem('cashCollectionDateFilter');
         // const checkAndUpdateLoanStatus = async () => {
         //     const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/check-loan-payment');
         //     if (response.success) {
@@ -327,6 +336,20 @@ const ViewDailyCashCollectionPage = ({ pageNo }) => {
             mounted = false;
         };
     }, [branchList]);
+
+    useEffect(() => {
+        if (dateFilter) {
+            const date = moment(dateFilter).format('YYYY-MM-DD');
+            if (date !== currentDate) {
+                if (currentUser.role.rep < 4 && selectedLOSubject.value.length > 0) {
+                    getCashCollections(selectedLOSubject.value, date);
+                } else {
+                    getCashCollections(null, date);
+                }
+            }
+        }
+
+    }, [dateFilter]);
 
     useEffect(() => {
         if (cashCollectionList.length > 0) {

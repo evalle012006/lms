@@ -30,7 +30,7 @@ async function processLOSummary(req, res) {
         groups.map(async group => {
             const exist = await db.collection('groupCashCollections').find({ dateAdded: moment(new Date()).format('YYYY-MM-DD'), groupId: group._id + '' }).toArray();
 
-            if (exist.length === 0) {
+            if (exist.length === 0 && (group.noOfClients && group.noOfClients > 0)) {
                 const data = {
                     branchId: group.branchId,
                     groupId: group._id + '',
@@ -44,10 +44,8 @@ async function processLOSummary(req, res) {
     
                 await save(data);
             }
-            // const hasData = groupSummaryIds.find(gs => gs.groupId === group._id+'');
-            // if (!hasData) {
-                
-            // }
+
+            await saveCashCollections(group);
         });
     }
 
@@ -91,4 +89,65 @@ async function update(data) {
     }
     
     response = { success: true };
+}
+
+async function saveCashCollections(group) {
+    const { db } = await connectToDatabase();
+    const groupId = group._id + '';
+    const cashCollections = await db.collection('cashCollections').find({ groupId: groupId }).toArray();
+
+    if (cashCollections.length === 0) {
+        let groupHeader = await db.collection('groupCashCollections').find({ groupId: groupId, dateAdded: moment(new Date()).format('YYYY-MM-DD') }).toArray();
+
+        if (groupHeader.length > 0) {
+            groupHeader = groupHeader[0];
+            const tomorrowDate = moment(new Date()).add(1, 'days').format('YYYY-MM-DD');
+            const loans = await db.collection('loans')
+                .find({ 
+                        $expr: {
+                            $and: [
+                                { $eq: ['$groupId', groupId] }, 
+                                { $or: [
+                                    { $eq: ['$status', 'pending'] }, 
+                                    { $eq: ['$startDate', tomorrowDate] }
+                                ]}
+                            ]
+                        }
+                }).toArray();
+
+            if (loans.length > 0) {
+                loans.map(async loan => {
+                    const data = {
+                        loanId: loan._id + '',
+                        branchId: loan.branchId,
+                        groupId: loan.groupId,
+                        clientId: loan.clientId,
+                        slotNo: loan.slotNo,
+                        fullName: loan.fullName,
+                        loanCycle: loan.loanCycle,
+                        mispayment: false,
+                        mispaymentStr: 'No',
+                        collection: 0,
+                        excess: 0,
+                        total: 0,
+                        noOfPayments: 0,
+                        activeLoan: loan.activeLoan,
+                        targetCollection: loan.activeLoan,
+                        amountRelease: loan.amountRelease,
+                        loanBalance: loan.loanBalance,
+                        paymentCollection: 0,
+                        occurence: group.occurence,
+                        currentReleaseAmount: 0,
+                        fullPayment: 0,
+                        remarks: '',
+                        status: loan.status === 'active' ? 'tomorrow' : 'pending',
+                        dateAdded: moment(new Date()).format('YYYY-MM-DD'),
+                        groupCollectionId: groupHeader && groupHeader._id + ''
+                    };
+
+                    await db.collection('cashCollections').insertOne({ ...data });
+                });
+            }
+        }
+    }
 }
