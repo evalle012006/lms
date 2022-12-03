@@ -186,7 +186,7 @@ const LoanApplicationPage = () => {
         const params = { groupId: groupId, date: moment(new Date()).format('YYYY-MM-DD') };
         return await fetchWrapper.get(apiUrl + new URLSearchParams(params));
     }
-
+    // amountRelease, activeLoan and loanBalance are null after updating....(currently working...need more investigation)
     const updateClientStatus = async (data, updatedValue) => {
         setLoading(true);
         const group = data.group;

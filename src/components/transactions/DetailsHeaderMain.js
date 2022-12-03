@@ -1,17 +1,21 @@
+import DatePicker from "@/lib/ui/DatePicker";
 import { UppercaseFirstLetter } from "@/lib/utils";
 import { styles, DropdownIndicator, borderStyles } from "@/styles/select";
 import React from "react";
+import { useRef } from "react";
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import Select from 'react-select';
 import Breadcrumbs from "../Breadcrumbs";
+import moment from 'moment';
 
-const DetailsHeader = ({ pageTitle, page, currentDate, mode = 'daily', setFilter, selectedLO, handleLOFilter }) => {
+const DetailsHeader = ({ pageTitle, page, currentDate, mode = 'daily', setFilter, selectedLO, handleLOFilter, dateFilter, handleDateFilter }) => {
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
     const groupList = useSelector(state => state.group.list);
     const userList = useSelector(state => state.user.list);
 
+    const [showCalendar, setShowCalendar] = useState(false);
     const [branch, setBranch] = useState();
     const [group, setGroup] = useState();
     const [user, setUser] = useState();
@@ -31,6 +35,15 @@ const DetailsHeader = ({ pageTitle, page, currentDate, mode = 'daily', setFilter
         // });
     }
 
+    const openCalendar = () => {
+        setShowCalendar(true);
+    };
+
+    const setSelectedDate = (e) => {
+        setDateFilter(e);
+        setShowCalendar(false);
+    };
+
     useEffect(() => {
         // not yet working for area manager and admins
         if (branchList && userList) {
@@ -48,7 +61,8 @@ const DetailsHeader = ({ pageTitle, page, currentDate, mode = 'daily', setFilter
         } else if (currentUser.role.rep === 4) {
             setLoanOfficerName(`${currentUser.lastName}, ${currentUser.firstName}`)
         }
-    }, [selectedLO])
+    }, [selectedLO]);
+
 
     return (
         <div className="bg-white px-7 py-2 fixed w-screen z-10">
@@ -85,6 +99,14 @@ const DetailsHeader = ({ pageTitle, page, currentDate, mode = 'daily', setFilter
                                     <span className="text-sm">{loanOfficerName}</span>
                                 </div>
                             )}
+                        </div>
+                    </div>
+                    <div className="flex flex-row w-11/12 text-gray-400 text-sm justify-start">
+                        <span className="text-gray-400 text-sm mt-1">Filters:</span >
+                        <div className="ml-6 flex w-64">
+                            <div className="relative w-full" onClick={openCalendar}>
+                                <DatePicker name="dateFilter" value={moment(dateFilter).format('YYYY-MM-DD')} maxDate={moment(new Date()).format('YYYY-MM-DD')} onChange={handleDateFilter} />
+                            </div>
                         </div>
                     </div>
                     {/* {currentUser.role.rep < 4 && (
@@ -181,11 +203,11 @@ const DetailsHeader = ({ pageTitle, page, currentDate, mode = 'daily', setFilter
                                             closeMenuOnSelect={true}
                                             placeholder={'Loan Officer Filter'}/>
                                     </div>
-                                    {/* <div className="ml-24 flex w-64">
+                                    <div className="ml-24 flex w-64">
                                         <div className="relative w-full" onClick={openCalendar}>
                                             <DatePicker name="dateFilter" value={moment(dateFilter).format('YYYY-MM-DD')} maxDate={moment(new Date()).format('YYYY-MM-DD')} onChange={handleDateFilter} />
                                         </div>
-                                    </div> */}
+                                    </div>
                                 </div>
                             </div>
                         </div>

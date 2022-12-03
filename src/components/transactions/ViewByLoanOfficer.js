@@ -8,7 +8,7 @@ import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { formatPricePhp, getTotal } from "@/lib/utils";
 import { toast } from 'react-hot-toast';
 
-const ViewByLoanOfficerPage = () => {
+const ViewByLoanOfficerPage = ({ dateFilter }) => {
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
     const [userLOList, setUserLOList] = useState([]);
@@ -31,9 +31,9 @@ const ViewByLoanOfficerPage = () => {
         }
     };
 
-    const getGroupCashCollections = async (selectedBranch) => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/get-all-loans-per-group?' + new URLSearchParams({ date: currentDate, mode: 'daily', branchCode: selectedBranch ? selectedBranch : branchFilter });
-
+    const getGroupCashCollections = async (selectedBranch, date) => {
+        let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/get-all-loans-per-group?' + new URLSearchParams({ date: date ? date : currentDate, mode: 'daily', branchCode: selectedBranch ? selectedBranch : branchFilter });
+        
         const response = await fetchWrapper.get(url);
         if (response.success) {
             let collectionData = [];
@@ -345,12 +345,21 @@ const ViewByLoanOfficerPage = () => {
                 { label: 'Open', action: handleOpen}
             ]);
         }
-
         if (branchList) {
             if (currentUser.role.rep === 3 || currentUser.role.rep === 4) {
                 const currentBranch = branchList.find(b => b.code === currentUser.designatedBranch);
                 mounted && setBranchFilter(currentBranch.code);
-                mounted && getGroupCashCollections(currentBranch.code);
+                
+                if (dateFilter) {
+                    const date = moment(dateFilter).format('YYYY-MM-DD');
+                    if (date !== currentDate) {
+                        mounted && getGroupCashCollections(currentBranch.code, date);
+                    } else {
+                        mounted && getGroupCashCollections(currentBranch.code);
+                    }
+                } else {
+                    mounted && getGroupCashCollections(currentBranch.code);
+                }
             }
             
             setLoading(false);
@@ -359,7 +368,7 @@ const ViewByLoanOfficerPage = () => {
         return () => {
             mounted = false;
         };
-    }, [currentUser, branchList]);
+    }, [currentUser, branchList, dateFilter]);
 
     return (
         <React.Fragment>

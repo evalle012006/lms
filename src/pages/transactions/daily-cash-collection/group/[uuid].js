@@ -9,20 +9,18 @@ import moment from 'moment';
 import DetailsHeader from '@/components/transactions/DetailsHeaderMain';
 import ViewDailyCashCollectionPage from '@/components/transactions/ViewDailyCashCollection';
 import { setUserList } from '@/redux/actions/userActions';
+import { BehaviorSubject } from 'rxjs';
 
 const CashCollectionDetailsPage = () => {
+    const dateFilterSubject = new BehaviorSubject(process.browser && localStorage.getItem('cashCollectionDateFilter'));
     const dispatch = useDispatch();
     const router = useRouter();
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
-    const [data, setData] = useState([]);
-    const [allData, setAllData] = useState([]);
-    const [filteredData, setFilteredData] = useState([]);
     const [currentLO, setCurrentLO] = useState();
     const { uuid } = router.query;
-    const [currentDate, setCurrentDate] = useState(moment(currentDate).format('YYYY-MM-DD'));
-    const [dateFilter, setDateFilter] = useState(new Date());
-    const [filter, setFilter] = useState(false);
+    const [currentDate, setCurrentDate] = useState(moment(new Date()).format('YYYY-MM-DD'));
+    const [dateFilter, setDateFilter] = useState(dateFilterSubject.value ? dateFilterSubject.value : new Date());
 
     const handleLOFilter = (selected) => {
         setCurrentLO(selected);
@@ -30,19 +28,10 @@ const CashCollectionDetailsPage = () => {
         router.push('/transactions/daily-cash-collection/group/' + selected._id);
     }
     
-    // const handleDateFilter = (selected) => {
-    //     const filteredDate = selected.target.value;
-    //     setDateFilter(filteredDate);
-    //     if (filteredDate === currentDate) {
-    //         setFilter(false);
-    //     } else {
-    //         setLoading(true);
-    //         setFilter(true);
-    //         setCurrentDate(filteredDate);
-
-    //         getCashCollections(filteredDate);
-    //     }
-    // }
+    const handleDateFilter = (selected) => {
+        const filteredDate = selected.target.value;
+        setDateFilter(filteredDate);
+    }
 
     const handleRowClick = (selected) => {
         // console.log(selected);
@@ -114,9 +103,12 @@ const CashCollectionDetailsPage = () => {
     return (
         <Layout header={false} noPad={true}>
             <div className="overflow-x-auto">
-                {currentLO && <DetailsHeader page={2} mode={'daily'} currentDate={moment(currentDate).format('dddd, MMMM DD, YYYY')} selectedLO={currentLO} handleLOFilter={handleLOFilter} />}
+                {currentLO && <DetailsHeader page={2} mode={'daily'} currentDate={moment(currentDate).format('dddd, MMMM DD, YYYY')} 
+                    selectedLO={currentLO} handleLOFilter={handleLOFilter} 
+                    dateFilter={dateFilter} handleDateFilter={handleDateFilter}
+                />}
                 <div className='p-4 mt-[8rem]'>
-                    <ViewDailyCashCollectionPage pageNo={2}/>
+                    <ViewDailyCashCollectionPage pageNo={2} dateFilter={dateFilter} />
                 </div>
             </div>
         </Layout>

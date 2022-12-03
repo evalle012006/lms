@@ -33,7 +33,8 @@ export async function connectToDatabase() {
 
     const options = {
         useNewUrlParser: true,
-        useUnifiedTopology: true
+        useUnifiedTopology: true,
+        maxPoolSize: 200
     };
 
     let client = new MongoClient(MONGO_URL, options);

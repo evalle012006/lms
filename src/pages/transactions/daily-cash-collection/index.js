@@ -17,6 +17,13 @@ const DailyCashCollectionPage = () => {
     const branchList = useSelector(state => state.branch.list);
     const [currentDate, setCurrentDate] = useState(moment(new Date()).format('YYYY-MM-DD'));
     const [loading, setLoading] = useState(true);
+    const [dateFilter, setDateFilter] = useState(new Date());
+
+    const handleDateFilter = (selected) => {
+        const filteredDate = selected.target.value;
+        setDateFilter(filteredDate);
+        localStorage.setItem('cashCollectionDateFilter', filteredDate);
+    }
 
     const getListBranch = async () => {
         const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'branches/list');
@@ -85,6 +92,7 @@ const DailyCashCollectionPage = () => {
     useEffect(() => {
         if (branchList.length > 0) {
             getListUser();
+            localStorage.setItem('cashCollectionDateFilter', currentDate);
         }
     }, [branchList]);
 
@@ -97,10 +105,17 @@ const DailyCashCollectionPage = () => {
             ) : (
                 <React.Fragment>
                     <div className="overflow-x-auto">
-                        {branchList && <DetailsHeader pageTitle='Daily Cash Collections' page={1} mode={'daily'} currentDate={moment(currentDate).format('dddd, MMMM DD, YYYY')} />}
+                        {branchList && <DetailsHeader pageTitle='Daily Cash Collections' 
+                            page={1} mode={'daily'} currentDate={moment(currentDate).format('dddd, MMMM DD, YYYY')} 
+                            dateFilter={dateFilter} handleDateFilter={handleDateFilter}
+                        />}
                         <div className={`p-4 ${currentUser.role.rep < 4 ? 'mt-[8rem]' : 'mt-[6rem]'} `}>
-                            {currentUser.role.rep <= 3 && <ViewByLoanOfficerPage />}
-                            {currentUser.role.rep === 4 && <ViewDailyCashCollectionPage pageNo={1} />}
+                            {currentUser.role.rep <= 3 && <ViewByLoanOfficerPage dateFilter={dateFilter} />}
+                            {currentUser.role.rep === 4 && (
+                                <div className='p-4 mt-[2rem]'>
+                                    <ViewDailyCashCollectionPage pageNo={1} dateFilter={dateFilter} />
+                                </div>
+                            )}
                         </div>
                     </div>
                 </React.Fragment>

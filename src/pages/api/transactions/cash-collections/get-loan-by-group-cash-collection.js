@@ -83,17 +83,17 @@ async function getLoanWithCashCollection(req, res) {
                     {
                         $unwind: "$group"
                     },
-                    // {
-                    //     $lookup: {
-                    //         from: "cashCollections",
-                    //         localField: "loanIdStr",
-                    //         foreignField: "loanId",
-                    //         pipeline: [
-                    //             { $match: { dateAdded: date } }
-                    //         ],
-                    //         as: "current"
-                    //     }
-                    // },
+                    {
+                        $lookup: {
+                            from: "cashCollections",
+                            localField: "loanIdStr",
+                            foreignField: "loanId",
+                            pipeline: [
+                                { $match: { dateAdded: date } }
+                            ],
+                            as: "current"
+                        }
+                    },
                     // {
                     //     $lookup: {
                     //         from: "cashCollections",
@@ -192,10 +192,12 @@ async function getLoanWithCashCollection(req, res) {
                 flag: 'new'
             };
         }
+
+        response = { success: true, data: cashCollection };
+    } else {
+        response = { error: true, message: 'Group Collection Summary not found!' };
     }
 
-        
-    response = { success: true, data: cashCollection };
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')
         .end(JSON.stringify(response));
