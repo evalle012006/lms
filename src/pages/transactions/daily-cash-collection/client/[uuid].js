@@ -1023,26 +1023,6 @@ const CashCollectionDetailsPage = () => {
             }
         }
 
-        // const getCurrentGroupSummary = async () => {
-        //     const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}transactions/cash-collections/get-groups-summary?`;
-        //     const params = { groupId: uuid, date: currentDate };
-        //     const response = await fetchWrapper.get(apiUrl + new URLSearchParams(params));
-        //     if (response.success) {
-        //         const groupSummaryData = response.groupCashCollections;
-        //         if (groupSummaryData.length > 0) {
-        //             setGroupSummary(groupSummaryData[0]);
-        //             if (groupSummaryData[0].status === 'close') {
-        //                 setGroupSummaryIsClose(true);
-        //             } else {
-        //                 setGroupSummaryIsClose(false);
-        //             }
-        //         }
-        //         setLoading(false);
-        //     } else {
-        //         toast.error('Error while loading data');
-        //     }
-        // }
-
         mounted && uuid && getCurrentGroup() && getCashCollections();
         mounted && getListBranch();
 
@@ -1206,7 +1186,7 @@ const CashCollectionDetailsPage = () => {
                                                         </td>
                                                     ) : (
                                                         <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">
-                                                            { (cc.remarks && cc.status === 'completed') || filter ? cc.remarks.label === 'Remarks' ? 'No Remarks' : cc.remarks.label : '-'}
+                                                            { cc.remarks || (filter && cc.remarks) ? cc.remarks.label === 'Remarks' ? 'No Remarks' : cc.remarks.label : '-'}
                                                         </td>
                                                     )
                                                 }
