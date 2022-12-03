@@ -1206,7 +1206,7 @@ const CashCollectionDetailsPage = () => {
                                                         </td>
                                                     ) : (
                                                         <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">
-                                                            { (cc.remarks && cc.status === 'completed') || filter ? cc.remarks.label === 'Remarks' ? 'No Remarks' : cc.remarks.label : '-'}
+                                                            { cc.remarks || (filter && cc.remarks) ? cc.remarks.label === 'Remarks' ? 'No Remarks' : cc.remarks.label : '-'}
                                                         </td>
                                                     )
                                                 }
