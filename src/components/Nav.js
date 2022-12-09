@@ -151,7 +151,7 @@ const MenuItems = [
         subMenuItems: [
             {
                 label: "Prospect Clients",
-                url: "/clients",
+                url: "/clients?status=pending",
                 icon: {
                     active: (
                         <UserIcon className="text-gray-800 w-5 h-5" />
@@ -165,7 +165,7 @@ const MenuItems = [
             },
             {
                 label: "Active Clients",
-                url: "/clients/active-clients",
+                url: "/clients?status=active",
                 icon: {
                     active: (
                         <UserIcon className="text-gray-800 w-5 h-5" />
@@ -179,7 +179,7 @@ const MenuItems = [
             },
             {
                 label: "Offset Accounts",
-                url: "/clients/offset-accounts",
+                url: "/clients?status=offset",
                 icon: {
                     active: (
                         <UserIcon className="text-gray-800 w-5 h-5" />
@@ -402,16 +402,13 @@ const NavComponent = () => {
             if (rootUser || userState.role.rep === 1) {
                 // nothing to do here...
             } else if (userState.role.rep === 2) {
-                // if (menu.label === 'Team') {
-                //     temp.hidden = true;
-                // }
-            } else if (userState.role.rep === 3) {
-                if (menu.label === 'System') {
+                if (menu.label === 'Settings') {
                     temp.hidden = true;
                 }
-                // if (menu.label === 'Roles') {
-                //     temp.hidden = true;
-                // }
+            } else if (userState.role.rep === 3) {
+                if (menu.label === 'Settings') {
+                    temp.hidden = true;
+                }
             }  else if (userState.role.rep === 4) {
                 if (menu.label === 'Branches') {
                     temp.hidden = true;

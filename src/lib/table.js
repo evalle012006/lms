@@ -25,6 +25,7 @@ import {
   ArrowPathIcon
 } from '@heroicons/react/24/solid';
 import CheckBox from "./ui/checkbox";
+import { useEffect } from "react";
 
 // Define a default UI for filtering
 function GlobalFilter({
@@ -480,6 +481,10 @@ const TableComponent = ({
     multiSelectActionFn('row', null, row, index);
   }
 
+  useEffect(() => {
+    state.pageSize = 20;
+  }, [state]);
+
   // Render the UI for your table
   return (
     <div className={`relative w-full ${border && 'border rounded border-gray-400 overflow-hidden'}`}>
@@ -641,19 +646,6 @@ const TableComponent = ({
               {/* Pagination */}
               {(showPagination && rows.length > 0) && (
                 <div className="mt-4 py-3 flex items-center justify-between">
-                  {/* <span>
-                                            | Go to page:{' '}
-                                            <input
-                                            type="number"
-                                            defaultValue={pageIndex + 1}
-                                            onChange={e => {
-                                                const page = e.target.value ? Number(e.target.value) - 1 : 0
-                                                gotoPage(page)
-                                            }}
-                                            style={{ width: '100px' }}
-                                            />
-                                        </span>{' '} */}
-
                   <div style={{ marginRight: 20, marginLeft: 20 }}>
                     <span className="text-gray-10">
                       {state.pageIndex + 1}-{state.pageSize} of {rows.length}{" "}

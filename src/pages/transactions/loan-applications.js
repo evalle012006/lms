@@ -181,69 +181,49 @@ const LoanApplicationPage = () => {
         setLoading(false);
     }
 
-    const getCurrentGroupSummary = async (groupId) => {
-        const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}transactions/cash-collections/get-groups-summary?`;
-        const params = { groupId: groupId, date: moment(new Date()).format('YYYY-MM-DD') };
-        return await fetchWrapper.get(apiUrl + new URLSearchParams(params));
-    }
-    // amountRelease, activeLoan and loanBalance are null after updating....(currently working...need more investigation)
     const updateClientStatus = async (data, updatedValue) => {
         setLoading(true);
         const group = data.group;
 
-        const groupSummary = await getCurrentGroupSummary(group._id);
-        if (groupSummary.success) {
-            let groupSummaryData = groupSummary.groupCashCollections;
+        let loanData = {...data};
+        delete loanData.group;
+        delete loanData.client;
+        delete loanData.branch;
+        delete loanData.principalLoanStr;
+        delete loanData.activeLoanStr;
+        delete loanData.loanBalanceStr;
+        delete loanData.mcbuStr;
 
-            if (groupSummaryData.length > 0) {
-                groupSummaryData = groupSummaryData[0];
+        if (loanData.status === 'pending' && updatedValue === 'active') {
+            loanData.dateGranted = moment(new Date()).format('YYYY-MM-DD');
+            loanData.status = updatedValue;
+            loanData.startDate = moment(new Date()).add(1, 'days').format('YYYY-MM-DD');
+            loanData.endDate = getEndDate(loanData.dateGranted, group.occurence === 'daily' ? 60 : 24 );
+            loanData.mispayment = 0;
 
-                if (groupSummaryData.status === 'pending') {
-                    let loanData = {...data};
-                    delete loanData.group;
-                    delete loanData.client;
-                    delete loanData.branch;
-                    delete loanData.principalLoanStr;
-                    delete loanData.activeLoanStr;
-                    delete loanData.loanBalanceStr;
-                    delete loanData.mcbuStr;
+            delete loanData.selected;
 
-                    if (loanData.status === 'pending' && updatedValue === 'active') {
-                        loanData.dateGranted = moment(new Date()).format('YYYY-MM-DD');
-                        loanData.status = updatedValue;
-                        loanData.startDate = moment(new Date()).add(1, 'days').format('YYYY-MM-DD');
-                        loanData.endDate = getEndDate(loanData.dateGranted, group.occurence === 'daily' ? 60 : 24 );
-                        loanData.mispayment = 0;
-
-                        delete loanData.selected;
-
-                        const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/approved-reject-loan', loanData)
-                        
-                        if (response.success) {
-                            setLoading(false);
-                            toast.success('Loan successfully updated.');
-                            window.location.reload();
-                        } else if (response.error) {
-                            setLoading(false);
-                            toast.error(response.message);
-                        }
-                    } else {
-                        loanData.status = updatedValue;
-                        
-                        const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/approved-reject-loan', loanData)
-                        if (response.success) {
-                            setLoading(false);
-                            toast.success('Loan successfully updated.');
-                            window.location.reload();
-                        } else if (response.error) {
-                            setLoading(false);
-                            toast.error(response.message);
-                        }
-                    }
-                } else {
-                    setLoading(false);
-                    toast.error("Loan can't be approved because the Group Transaction is already closed!");
-                }
+            const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/approved-reject-loan', loanData)
+            
+            if (response.success) {
+                setLoading(false);
+                toast.success('Loan successfully updated.');
+                window.location.reload();
+            } else if (response.error) {
+                setLoading(false);
+                toast.error(response.message);
+            }
+        } else {
+            loanData.status = updatedValue;
+            
+            const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/approved-reject-loan', loanData)
+            if (response.success) {
+                setLoading(false);
+                toast.success('Loan successfully updated.');
+                window.location.reload();
+            } else if (response.error) {
+                setLoading(false);
+                toast.error(response.message);
             }
         }
     }

@@ -25,7 +25,10 @@ async function getLoanWithCashCollection(req, res) {
             .aggregate([
                 { $match: { groupCollectionId: groupCashCollectionDay._id + '' } },
                 {
-                    $addFields: { "loanIdObj": { $toObjectId: "$loanId" } }
+                    $addFields: { 
+                        "loanIdObj": { $toObjectId: "$loanId" },
+                        "clientIdObj": { $toObjectId: "$clientId" }
+                    }
                 },
                 {
                     $lookup: {
@@ -36,7 +39,16 @@ async function getLoanWithCashCollection(req, res) {
                     }
                 },
                 { $unwind: "$loan" },
-                { $project: { loanIdObj: 0 } }
+                {
+                    $lookup: {
+                        from: "client",
+                        localField: "clientIdObj",
+                        foreignField: "_id",
+                        as: "client"
+                    }
+                },
+                { $unwind: "$client" },
+                { $project: { loanIdObj: 0, clientIdObj: 0 } }
             ])
             .toArray();
 

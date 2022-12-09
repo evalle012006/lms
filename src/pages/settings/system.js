@@ -12,6 +12,7 @@ import Layout from '@/components/Layout';
 import Spinner from '@/components/Spinner';
 
 const SystemSettingsPage = (props) => {
+    const currentUser = useSelector(state => state.user.data);
     const state = useSelector(state => state.systemSettings.data);
     const dispatch = useDispatch();
     const [loading, setLoading] = useState(false);
@@ -40,6 +41,12 @@ const SystemSettingsPage = (props) => {
             toast.success('System Settings updated successfully!');
         }
     }
+
+    useEffect(() => {
+        if ((currentUser.role && currentUser.role.rep > 2)) {
+            router.push('/');
+        }
+    }, []);
 
     useEffect(() => {
         let mounted = true;

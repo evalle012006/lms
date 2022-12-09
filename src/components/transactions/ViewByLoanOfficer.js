@@ -355,7 +355,7 @@ const ViewByLoanOfficerPage = ({ dateFilter }) => {
             if (currentUser.role.rep === 3 || currentUser.role.rep === 4) {
                 const currentBranch = branchList.find(b => b.code === currentUser.designatedBranch);
                 mounted && setBranchFilter(currentBranch.code);
-                
+
                 if (dateFilter) {
                     const date = moment(dateFilter).format('YYYY-MM-DD');
                     if (date !== currentDate) {
@@ -383,7 +383,7 @@ const ViewByLoanOfficerPage = ({ dateFilter }) => {
                     <Spinner />
                 </div>
             ) : (
-                <TableComponent columns={columns} data={userLOList} showFilters={false} hasActionButtons={true} rowActionButtons={rowActionButtons} rowClick={handleRowClick} />
+                <TableComponent columns={columns} data={userLOList} showPagination={false} showFilters={false} hasActionButtons={true} rowActionButtons={rowActionButtons} rowClick={handleRowClick} />
             )}
         </React.Fragment>
     );

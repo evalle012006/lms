@@ -15,45 +15,54 @@ async function updateLoan(req, res) {
     const loanId = loan._id;
     delete loan._id;
 
-    let groupData = await db.collection('groups').find({ _id: ObjectId(loan.groupId) }).toArray();
-    if (groupData.length > 0) {
-        groupData = groupData[0];
-        let status = groupData.status;
-        let noOfClients = groupData.noOfClients;
-        const capacity = groupData.capacity;
+    const groupCashCollections = await db
+        .collection('groupCashCollections')
+        .find({ groupId: loan.groupId, dateAdded: loan.dateGranted})
+        .toArray();
 
-        if (status === 'full' || noOfClients >= capacity) {
-            response = {
-                error: true,
-                message: `"${groupData.name}" is already full. Please select another group.`
-            };
-        } else {
-            if (loan.status === 'active') {
-                await updateClient(loan.clientId);
-                await updateExistingLoan(loan.clientId);
-            }  else if (loan.status === 'reject') {
-                if (!groupData.availableSlots.includes(loan.slotNo)) {
-                    groupData.availableSlots.push(loan.slotNo);
-                    groupData.availableSlots.sort((a, b) => { return a - b; });
-                    groupData.noOfClients = groupData.noOfClients - 1;
-                    groupData.status = groupData.status === 'full' ? 'available' : groupData.status;
-                    await updateGroup(groupData);
-                }
-            }
-           
-            const loanResp = await db
-                .collection('loans')
-                .updateOne(
-                    { _id: ObjectId(loanId) }, 
-                    {
-                        $set: { ...loan }
-                    }, 
-                    { upsert: false });
-            
-            response = { success: true, loan: loanResp };
-        }
+    if (groupCashCollections.length > 0 && groupCashCollections[0].status === 'close') {
+        response = { error: true, message: "Loan can't be approved because the Group Transaction is already closed!" };
     } else {
-        response = { error: true, message: 'Group data not found.' };
+        let groupData = await db.collection('groups').find({ _id: ObjectId(loan.groupId) }).toArray();
+        if (groupData.length > 0) {
+            groupData = groupData[0];
+            let status = groupData.status;
+            let noOfClients = groupData.noOfClients;
+            const capacity = groupData.capacity;
+
+            if (status === 'full' || noOfClients >= capacity) {
+                response = {
+                    error: true,
+                    message: `"${groupData.name}" is already full. Please select another group.`
+                };
+            } else {
+                if (loan.status === 'active') {
+                    await updateClient(loan.clientId);
+                    await updateExistingLoan(loan.clientId);
+                }  else if (loan.status === 'reject') {
+                    if (!groupData.availableSlots.includes(loan.slotNo)) {
+                        groupData.availableSlots.push(loan.slotNo);
+                        groupData.availableSlots.sort((a, b) => { return a - b; });
+                        groupData.noOfClients = groupData.noOfClients - 1;
+                        groupData.status = groupData.status === 'full' ? 'available' : groupData.status;
+                        await updateGroup(groupData);
+                    }
+                }
+            
+                const loanResp = await db
+                    .collection('loans')
+                    .updateOne(
+                        { _id: ObjectId(loanId) }, 
+                        {
+                            $set: { ...loan }
+                        }, 
+                        { upsert: false });
+                
+                response = { success: true, loan: loanResp };
+            }
+        } else {
+            response = { error: true, message: 'Group data not found.' };
+        }
     }
 
     res.status(statusCode)

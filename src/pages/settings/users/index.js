@@ -4,7 +4,7 @@ import { PlusIcon } from '@heroicons/react/24/solid';
 import TableComponent, { AvatarCell, SelectCell, SelectColumnFilter } from '@/lib/table';
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { useDispatch, useSelector } from "react-redux";
-import { setUser, setUserList } from "@/redux/actions/userActions";
+import { setFilteredData, setIsFiltering, setUser, setUserList } from "@/redux/actions/userActions";
 import Spinner from "@/components/Spinner";
 import toast from 'react-hot-toast';
 import { UppercaseFirstLetter } from "@/lib/utils";
@@ -14,12 +14,17 @@ import AddUpdateUser from "@/components/settings/users/AddUpdateUserDrawer";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 import Dialog from "@/lib/ui/Dialog";
+import { styles, DropdownIndicator, borderStyles } from "@/styles/select";
+import Select from 'react-select';
 
 const TeamPage = () => {
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
     const list = useSelector(state => state.user.list);
+    const filteredList = useSelector(state => state.user.filteredData);
+    const isFiltering = useSelector(state => state.user.isFiltering);
     const [loading, setLoading] = useState(true);
+    const [userListData, setUserListData] = useState([]);
 
     const [showAddDrawer, setShowAddDrawer] = useState(false);
     const [mode, setMode] = useState('add');
@@ -31,6 +36,8 @@ const TeamPage = () => {
     const [rootUser, setRootUser] = useState(currentUser.root ? currentUser.root : false);
     const router = useRouter();
     const [branches, setBranches] = useState([]);
+
+    const [searchFilter, setSearchFilter] = useState();
 
     const getListUsers = async () => {
         const imgpath = process.env.NEXT_PUBLIC_LOCAL_HOST !== 'local' && process.env.NEXT_PUBLIC_LOCAL_HOST;
@@ -59,9 +66,12 @@ const TeamPage = () => {
                 root: user.root ? user.root : false,
                 // hidden columns used for update
                 firstName: user.firstName,
-                lastName: user.lastName
+                lastName: user.lastName,
+                label: user.firstName + ' ' + user.lastName,
+                value: user._id
             });
         });
+
         dispatch(setUserList(users));
         setLoading(false);
     }
@@ -254,8 +264,32 @@ const TeamPage = () => {
         }
     }
 
+    const handleSearchFilter = (selected) => {
+        if (selected && selected.hasOwnProperty('_id')) {
+            // filter
+            let filter = list.filter(u => u._id === selected._id);
+            dispatch(setFilteredData(filter));
+            dispatch(setIsFiltering(true));
+            setUserListData(filter);
+        } else {
+            // returned all
+            setUserListData(list);
+            dispatch(setIsFiltering(false));
+        }
+
+        setSearchFilter(selected);
+    }
+
+    const handleKeyDown = (e) => {
+        if (e.key === 'Escape') {
+            setSearchFilter('');
+            setUserListData(list);
+            dispatch(setIsFiltering(false));
+        }
+    }
+
     useEffect(() => {
-        if ((currentUser.role && currentUser.role.rep > 3)) {
+        if ((currentUser.role && currentUser.role.rep > 2)) {
             router.push('/');
         }
     }, []);
@@ -273,6 +307,10 @@ const TeamPage = () => {
             mounted = false;
         };
     }, []);
+
+    useEffect(() => {
+        setUserListData(list);
+    }, [list]);
 
     useEffect(() => {
         // to set user permissions
@@ -305,7 +343,31 @@ const TeamPage = () => {
                         <div className="absolute top-1/2 left-1/2">
                             <Spinner />
                         </div>
-                    ) : <TableComponent columns={columns} data={list} showFilters={false} hasActionButtons={true} rowActionButtons={rowActionButtons} />}
+                    ) : (
+                        <div className="flex flex-col">
+                            <div className="mb-4 bg-white">
+                                <div className="ml-6 mb-4 flex justify-between w-10/12">
+                                    <div className="flex flex-row w-11/12 text-gray-400 text-sm justify-start">
+                                        <span className="text-gray-400 text-sm mt-1">Filters:</span >
+                                        <div className="ml-4 flex flex-col w-96">
+                                            <Select 
+                                                options={list}
+                                                value={searchFilter}
+                                                styles={borderStyles}
+                                                components={{ DropdownIndicator }}
+                                                onChange={handleSearchFilter}
+                                                isSearchable={true}
+                                                closeMenuOnSelect={true}
+                                                onKeyDown={handleKeyDown}
+                                                placeholder={'All User'}/>
+                                            <span className="text-xs ml-4">Press escape to remove filter.</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <TableComponent columns={columns} data={userListData} showFilters={false} hasActionButtons={true} rowActionButtons={rowActionButtons} />
+                        </div>
+                    )}
             </div>
             <AddUpdateUser mode={mode} user={userData} roles={platformRoles} branches={branches} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
             <Dialog show={showDeleteDialog}>

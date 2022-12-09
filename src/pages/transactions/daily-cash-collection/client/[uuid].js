@@ -124,9 +124,10 @@ const CashCollectionDetailsPage = () => {
                         temp.targetCollectionStr = formatPricePhp(temp.targetCollection);
                         temp.noOfPaymentStr = (temp.noOfPayments !== '-' && temp.status !== 'totals') ? temp.noOfPayments + ' / ' + maxDays : '-';
                         temp.mispaymentStr = temp.mispayment ? 'Yes' : 'No';
-                        temp.status = temp.loan.status;
+                        temp.fullName = UppercaseFirstLetter(`${cc.client.lastName}, ${cc.client.firstName} ${cc.client.middleName ? cc.client.middleName : ''}`);
+                        // temp.status = temp.loan.status;
                     }
-                    
+
                     cashCollection.push(temp);
                 });
 
@@ -249,7 +250,7 @@ const CashCollectionDetailsPage = () => {
             let currentData = [...data];
             await response.loans && response.loans.map(loan => {
                 const currentLoan = currentData.find(l => l.clientId === loan.clientId);
-                if (currentLoan) {
+                if (currentLoan && currentLoan.status !== 'pending') {
                     const index = currentData.indexOf(currentLoan);
                     if ((currentLoan.fullPaymentDate === currentDate)) { // fullpayment with pending/tomorrow
                         currentData[index] = {
@@ -302,7 +303,7 @@ const CashCollectionDetailsPage = () => {
                     }
                 } else {
                     const slot = currentData.find(c => c.slotNo === loan.slotNo);
-                    if (slot) { // tomorrow
+                    if (slot) {
                         const index = currentData.indexOf(slot);
                         currentData[index] = {
                             slotNo: loan.slotNo,
@@ -327,7 +328,7 @@ const CashCollectionDetailsPage = () => {
                             fullPaymentStr: '-',
                             status: loan.status === 'active' ? 'tomorrow' : 'pending'
                         };
-                    } else {
+                    } else { // tomorrow && pending
                         currentData.push({
                             slotNo: loan.slotNo,
                             loanId: loan._id,
@@ -1079,6 +1080,9 @@ const CashCollectionDetailsPage = () => {
     }, [currentGroup, queryMain, groupSummaryIsClose]);
 
     useEffect(() => {
+        // issue in date filter wherein the data is not consistent
+        // in live: group pcx, dec 03 then dec 02 then dec 01 then back to dec 03
+        // bug is the data is not valid
         if (dateFilterSubject.value && currentGroup) {
             const date = moment(new Date(dateFilterSubject.value)).format('YYYY-MM-DD');
             getCashCollections(date);
@@ -1194,6 +1198,7 @@ const CashCollectionDetailsPage = () => {
                                                     <React.Fragment>
                                                         {(cc.status === 'active' || cc.status === 'completed') && (
                                                             <div className='flex flex-row p-4'>
+                                                                {/* {console.log(cc.status)} */}
                                                                 {(!groupSummaryIsClose && dataType === 'existing' && !filter) && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleRevert(e, cc, index)} />}
                                                                 {(cc.status === 'completed' && !cc.tomorrow) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
                                                             </div>

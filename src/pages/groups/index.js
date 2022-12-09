@@ -200,8 +200,10 @@ const GroupsPage = () => {
                         setLoading(false);
                         getListGroup();
                     } else if (response.error) {
+                        setLoading(false);
                         toast.error(response.message);
                     } else {
+                        setLoading(false);
                         console.log(response);
                     }
                 });

@@ -31,7 +31,7 @@ function InputSearch({
             `}>
             {label}
           </label>
-          <label className={`relative text-gray-400 focus-within:${value ? "text-green-600" : "text-gray-500"}
+          <label className={`relative text-gray-400 focus-within:${value ? "text-main" : "text-gray-500"}
                         ${errors && "text-red-400"} block`}>
 
             <svg xmlns="http://www.w3.org/2000/svg" 
