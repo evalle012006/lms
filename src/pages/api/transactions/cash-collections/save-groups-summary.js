@@ -37,6 +37,7 @@ async function processLOSummary(req, res) {
                     groupName: group.name,
                     loId: _id,
                     dateAdded: moment(new Date()).format('YYYY-MM-DD'),
+                    insertDate: moment(new Date().toLocaleString('hi-IN')).format('YYYY-MM-DD HH:mm:ss'),
                     insertBy: currentUser,
                     mode: mode,
                     status: status
@@ -74,7 +75,11 @@ async function update(data) {
     let groupCC = await db.collection('groupCashCollections').find({ _id: ObjectId(data._id) }).toArray();
 
     if (groupCC.length > 0) {
-        groupCC = {...groupCC[0], status: data.status, modifiedBy: data.modifiedBy, dateModified: moment(new Date()).format('YYYY-MM-DD')};
+        groupCC = {
+            ...groupCC[0], 
+            status: data.status, 
+            modifiedBy: data.modifiedBy, 
+            dateModified: moment(new Date()).format('YYYY-MM-DD')};
         
         delete groupCC._id;
 
@@ -142,7 +147,8 @@ async function saveCashCollections(group) {
                         remarks: '',
                         status: loan.status === 'active' ? 'tomorrow' : 'pending',
                         dateAdded: moment(new Date()).format('YYYY-MM-DD'),
-                        groupCollectionId: groupHeader && groupHeader._id + ''
+                        groupCollectionId: groupHeader && groupHeader._id + '',
+                        origin: 'automation'
                     };
 
                     await db.collection('cashCollections').insertOne({ ...data });

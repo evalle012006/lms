@@ -112,7 +112,7 @@ const CashCollectionDetailsPage = () => {
             if (response.data.flag === 'existing') {
                 response.data.collection.map(cc => {
                     let temp = {...cc};
-                    if (temp.status !== 'open') {
+                    if (temp.status === 'active' || temp.status === 'completed' || temp.status === 'closed') {
                         temp.targetCollectionStr = formatPricePhp(temp.targetCollectionStr);
                         temp.amountReleaseStr = formatPricePhp(temp.amountRelease);
                         temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
