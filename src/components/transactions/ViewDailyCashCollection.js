@@ -353,22 +353,21 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
     }, [dateFilter]);
 
     useEffect(() => {
-        if (cashCollectionList.length > 0) {
-            const initGroupCollectionSummary = async () => {
-                let data = {
-                    _id: currentUser.role.rep === 4 ? currentUser._id : selectedLOSubject.value.length > 0 && selectedLOSubject.value,
-                    mode: 'daily',
-                    status: 'pending',
-                    currentUser: currentUser._id,
-                    groupSummaryIds: []
-                };
-    
-                await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary', data);
-            }
-            console.log('init group summary')
-            initGroupCollectionSummary();
+        const initGroupCollectionSummary = async () => {
+            let data = {
+                _id: currentUser.role.rep === 4 ? currentUser._id : selectedLOSubject.value.length > 0 && selectedLOSubject.value,
+                mode: 'daily',
+                status: 'pending',
+                currentUser: currentUser._id,
+                groupSummaryIds: []
+            };
+
+            await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary', data);
         }
-    }, [cashCollectionList]);
+
+        console.log('init group summary')
+        initGroupCollectionSummary();
+    }, []);
 
     return (
         <React.Fragment>
