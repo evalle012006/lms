@@ -36,8 +36,7 @@ async function processLOSummary(req, res) {
                     groupId: group._id + '',
                     groupName: group.name,
                     loId: _id,
-                    dateAdded: moment(new Date()).format('YYYY-MM-DD'),
-                    insertDate: moment(new Date().toLocaleString('hi-IN')).format('YYYY-MM-DD HH:mm:ss'),
+                    dateAdded: moment(new Date()).format('YYYY-MM-DD'), 
                     insertBy: currentUser,
                     mode: mode,
                     status: status
