@@ -21,8 +21,6 @@ const TeamPage = () => {
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
     const list = useSelector(state => state.user.list);
-    const filteredList = useSelector(state => state.user.filteredData);
-    const isFiltering = useSelector(state => state.user.isFiltering);
     const [loading, setLoading] = useState(true);
     const [userListData, setUserListData] = useState([]);
 
