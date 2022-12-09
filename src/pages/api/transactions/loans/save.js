@@ -25,7 +25,9 @@ async function save(req, res) {
         .collection('loans')
         .find({ clientId: loanData.clientId, status: 'active' })
         .toArray();
-
+    
+    // const spotAvailable = await db.collection('groups').find({ groupId: loanData.groupId, availableSlots: { $elemMatch: { $eq: loanData.slotNo } } }).toArray(); // if there's result, then available else taken;
+    
     let response = {};
     let statusCode = 200;
 
@@ -35,6 +37,12 @@ async function save(req, res) {
             fields: ['clientId'],
             message: `Client "${loanData.fullName}" already have an active loan`
         };
+    // } else if (mode !== 'reloan' && spotAvailable.length === 0) {
+    //     response = {
+    //         error: true,
+    //         fields: ['clientId', ['slotNo']],
+    //         message: `Slot Number "${loanData.slotNo}" is not available`
+    //     };
     } else {
         const loan = await db.collection('loans').insertOne({
             ...loanData,

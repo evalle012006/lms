@@ -111,7 +111,8 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                         newCurrentRelease: cc.currentRelease[0].newCurrentRelease ? cc.currentRelease[0].newCurrentRelease : 0,
                         reCurrentRelease: cc.currentRelease[0].reCurrentRelease ? cc.currentRelease[0].reCurrentRelease : 0,
                         currentReleaseAmount: cc.currentRelease[0].currentReleaseAmount ? cc.currentRelease[0].currentReleaseAmount : 0,
-                        currentReleaseAmountStr: cc.currentRelease[0].currentReleaseAmount ? formatPricePhp(cc.currentRelease[0].currentReleaseAmount) : 0
+                        currentReleaseAmountStr: cc.currentRelease[0].currentReleaseAmount ? formatPricePhp(cc.currentRelease[0].currentReleaseAmount) : 0,
+                        status: cc.groupCashCollections.length > 0 ? cc.groupCashCollections[0].status : 'No Saved Transaction',
                     };
                 }
 
@@ -124,7 +125,8 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                         fullPaymentAmountStr: cc.fullPayment.length > 0 ? formatPricePhp(cc.fullPayment[0].fullPaymentAmount) : 0,
                         noOfFullPayment: cc.fullPayment.length > 0 ? cc.fullPayment[0].noOfFullPayment : 0,
                         newFullPayment: cc.fullPayment.length > 0 ? cc.fullPayment[0].newFullPayment : 0,
-                        reFullPayment: cc.fullPayment.length > 0 ? cc.fullPayment[0].reFullPayment : 0
+                        reFullPayment: cc.fullPayment.length > 0 ? cc.fullPayment[0].reFullPayment : 0,
+                        status: cc.groupCashCollections.length > 0 ? cc.groupCashCollections[0].status : 'No Saved Transaction',
                     };
                 }
 
@@ -149,7 +151,7 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
             let mispayment = 0;
             
             collectionData.map(cc => {
-                if (cc.status !== '-' && cc.status !== 'pending') {
+                if (cc.status !== '-') {
                     noOfClients += (cc.activeClients && cc.activeClients !== '-') ? cc.activeClients : 0;
                     noOfBorrowers += (cc.activeBorrowers && cc.activeBorrowers !== '-') ? cc.activeBorrowers : 0;
                     totalsLoanRelease += cc.totalReleases ? cc.totalReleases : 0;
@@ -376,7 +378,7 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                     <Spinner />
                 </div>
             ) : (
-                <TableComponent columns={columns} data={cashCollectionList} showFilters={false} hasActionButtons={false} rowClick={handleRowClick} />
+                <TableComponent columns={columns} data={cashCollectionList} showPagination={false} showFilters={false} hasActionButtons={false} rowClick={handleRowClick} />
             )}
         </React.Fragment>
     );

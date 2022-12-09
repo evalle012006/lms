@@ -46,7 +46,8 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                         loanBalanceStr: loan.loanBalance ? formatPricePhp(loan.loanBalance) : '0.00',
                         missPayments: loan.missPayments ?  loan.missPayments : 0,
                         noOfPayment: loan.noOfPayment ? loan.noOfPayment : 0,
-                        delinquent: loan.client.delinquent === true ? 'Yes' : 'No'
+                        delinquent: loan.client.delinquent === true ? 'Yes' : 'No',
+                        loName: loan.lo.length > 0 ? `${loan.lo[0].lastName}, ${loan.lo[0].firstName}` : ''
                     });
                 });
                 dispatch(setClientList(clients));
@@ -71,7 +72,8 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                             loanBalanceStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].loanBalance) : '0.00',
                             missPayments: client.loans.length > 0 ?  client.loans[0].missPayments : 0,
                             noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
-                            delinquent: client.delinquent === true ? 'Yes' : 'No'
+                            delinquent: client.delinquent === true ? 'Yes' : 'No',
+                            loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : ''
                         });
                     });
                     dispatch(setClientList(clients));
@@ -94,7 +96,8 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                             loanBalanceStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].loanBalance) : '0.00',
                             missPayments: client.loans.length > 0 ?  client.loans[0].missPayments : 0,
                             noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
-                            delinquent: client.delinquent === true ? 'Yes' : 'No'
+                            delinquent: client.delinquent === true ? 'Yes' : 'No',
+                            loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : ''
                         });
                     });
                     dispatch(setClientList(clients));
@@ -118,7 +121,8 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                         loanBalanceStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].loanBalance) : '0.00',
                         missPayments: client.loans.length > 0 ?  client.loans[0].missPayments : 0,
                         noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
-                        delinquent: client.delinquent === true ? 'Yes' : 'No'
+                        delinquent: client.delinquent === true ? 'Yes' : 'No',
+                        loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : ''
                     });
                 });
                 dispatch(setClientList(clients));
@@ -130,84 +134,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
         setLoading(false);
     }
 
-    const [columns, setColumns] = useState([
-        {
-            Header: "Last Name",
-            accessor: 'lastName',
-            Cell: AvatarCell,
-            imgAccessor: "imgUrl",
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "First Name",
-            accessor: 'firstName',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "Middle Name",
-            accessor: 'middleName',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "Group",
-            accessor: 'groupName',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "Slot No.",
-            accessor: 'slotNo',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "Loan Status",
-            accessor: 'loanStatus',
-            Cell: StatusPill,
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "Active Loan",
-            accessor: 'activeLoanStr',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "Loan Balance",
-            accessor: 'loanBalanceStr',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "Miss Payments",
-            accessor: 'missPayments',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "No. of Payment",
-            accessor: 'noOfPayment',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "Delinquent",
-            accessor: 'delinquent',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "Status",
-            accessor: 'status',
-            Cell: StatusPill,
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        }
-    ]);
+    const [columns, setColumns] = useState([]);
 
     const handleEditAction = (row) => {
         setMode("edit");
@@ -272,6 +199,137 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
         };
     }, [branchList]);
 
+    useEffect(() => {
+        let activeColumns = [];
+        if (currentUser.role.rep === 4) {
+            activeColumns = [
+                {
+                    Header: "Last Name",
+                    accessor: 'lastName',
+                    Cell: AvatarCell,
+                    imgAccessor: "imgUrl"
+                },
+                {
+                    Header: "First Name",
+                    accessor: 'firstName'
+                },
+                {
+                    Header: "Middle Name",
+                    accessor: 'middleName'
+                },
+                {
+                    Header: "Group",
+                    accessor: 'groupName',
+                    Filter: SelectColumnFilter,
+                    filter: 'includes'
+                },
+                {
+                    Header: "Slot No.",
+                    accessor: 'slotNo'
+                },
+                {
+                    Header: "Loan Status",
+                    accessor: 'loanStatus',
+                    Cell: StatusPill
+                },
+                {
+                    Header: "Active Loan",
+                    accessor: 'activeLoanStr'
+                },
+                {
+                    Header: "Loan Balance",
+                    accessor: 'loanBalanceStr'
+                },
+                // {
+                //     Header: "Miss Payments",
+                //     accessor: 'missPayments'
+                // },
+                // {
+                //     Header: "No. of Payment",
+                //     accessor: 'noOfPayment'
+                // },
+                {
+                    Header: "Delinquent",
+                    accessor: 'delinquent',
+                    Filter: SelectColumnFilter,
+                    filter: 'includes'
+                },
+                {
+                    Header: "Status",
+                    accessor: 'status',
+                    Cell: StatusPill
+                }
+            ];
+        } else {
+            activeColumns = [
+                {
+                    Header: "Last Name",
+                    accessor: 'lastName',
+                    Cell: AvatarCell,
+                    imgAccessor: "imgUrl",
+                },
+                {
+                    Header: "First Name",
+                    accessor: 'firstName'
+                },
+                {
+                    Header: "Middle Name",
+                    accessor: 'middleName'
+                },
+                {
+                    Header: "Loan Officer",
+                    accessor: 'loName',
+                    Filter: SelectColumnFilter,
+                    filter: 'includes'
+                },
+                {
+                    Header: "Group",
+                    accessor: 'groupName',
+                    Filter: SelectColumnFilter,
+                    filter: 'includes'
+                },
+                {
+                    Header: "Slot No.",
+                    accessor: 'slotNo'
+                },
+                {
+                    Header: "Loan Status",
+                    accessor: 'loanStatus',
+                    Cell: StatusPill
+                },
+                {
+                    Header: "Active Loan",
+                    accessor: 'activeLoanStr',
+                },
+                {
+                    Header: "Loan Balance",
+                    accessor: 'loanBalanceStr'
+                },
+                // {
+                //     Header: "Miss Payments",
+                //     accessor: 'missPayments',
+                // },
+                // {
+                //     Header: "No. of Payment",
+                //     accessor: 'noOfPayment'
+                // },
+                {
+                    Header: "Delinquent",
+                    accessor: 'delinquent',
+                    Filter: SelectColumnFilter,
+                    filter: 'includes'
+                },
+                {
+                    Header: "Status",
+                    accessor: 'status',
+                    Cell: StatusPill
+                }
+            ];
+        }
+
+        setColumns(activeColumns);
+    }, [currentUser]);
+
     return (
         <React.Fragment>
             <div className="pb-4">
@@ -280,7 +338,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                         <div className="absolute top-1/2 left-1/2">
                             <Spinner />
                         </div>
-                    ) : <TableComponent columns={columns} data={list} hasActionButtons={groupId ? false : true} rowActionButtons={rowActionButtons} showFilters={false} rowClick={handleShowClientInfoModal}/>}
+                    ) : <TableComponent columns={columns} data={list} hasActionButtons={groupId ? false : true} rowActionButtons={rowActionButtons} showFilters={true} rowClick={handleShowClientInfoModal}/>}
             </div>
             <Modal title="Client Detail Info" show={showClientInfoModal} onClose={handleCloseClientInfoModal} width="60rem">
                 <ClientDetailPage />

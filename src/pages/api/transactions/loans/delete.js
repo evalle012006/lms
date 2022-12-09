@@ -19,17 +19,17 @@ async function deleteLoan(req, res) {
         .toArray();
 
     if (loans.length > 0) {
-        delete loanData._id;
+        // delete loanData._id;
         await db
             .collection('loans')
-            .updateOne(
-                {  _id: ObjectId(loans[0]._id) },
-                {
-                    $set: { ...loanData }
-                }, 
-                { upsert: false }
-            );
-            // .deleteOne({ _id: ObjectId(_id) });
+            // .updateOne(
+            //     {  _id: ObjectId(loans[0]._id) },
+            //     {
+            //         $set: { ...loanData }
+            //     }, 
+            //     { upsert: false }
+            // );
+            .deleteOne({ _id: ObjectId(loanData._id) });
         
         updateGroup(loans[0]);
 
@@ -61,7 +61,7 @@ async function updateGroup(loan) {
             group.availableSlots.push(loan.slotNo);
             group.availableSlots.sort((a, b) => { return a - b; });
             group.noOfClients = group.noOfClients - 1;
-            group.status = group.status === 'full' ? 'available' : groupData.status;
+            group.status = group.status === 'full' ? 'available' : group.status;
         }
 
         if (group.noOfClients === group.capacity) {

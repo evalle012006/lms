@@ -7,14 +7,16 @@ import toast from 'react-hot-toast';
 import { useRouter } from "node_modules/next/router";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 import { UppercaseFirstLetter } from "@/lib/utils";
-import { setClientList } from "@/redux/actions/clientActions";
 import AddUpdateClient from "@/components/clients/AddUpdateClientDrawer";
 import ViewClientsByGroupPage from "@/components/clients/ViewClientsByGroup";
 import { setBranchList } from "@/redux/actions/branchActions";
 import { setGroupList } from "@/redux/actions/groupActions";
 import { setUserList } from "@/redux/actions/userActions";
+import Spinner from "@/components/Spinner";
 
 const ClientsProspectPage = () => {
+    const router = useRouter();
+    const { status } = router.query;
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
@@ -23,9 +25,6 @@ const ClientsProspectPage = () => {
     const [showAddDrawer, setShowAddDrawer] = useState(false);
     const [mode, setMode] = useState('add');
     const [client, setClient] = useState();
-
-    const [rootUser, setRootUser] = useState(currentUser.root ? currentUser.root : false);
-    const router = useRouter();
 
     const getListBranch = async () => {
         const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'branches/list');
@@ -46,11 +45,11 @@ const ClientsProspectPage = () => {
             } 
 
             dispatch(setBranchList(branches));
+            setLoading(false);
         } else {
+            setLoading(false);
             toast.error('Error retrieving branches list.');
         }
-
-        setLoading(false);
     }
 
     const getListGroup = async () => {
@@ -72,35 +71,37 @@ const ClientsProspectPage = () => {
                 });
             });
             dispatch(setGroupList(groupList));
+            setLoading(false);
         } else if (response.error) {
             toast.error(response.message);
+            setLoading(false);
         }
-        setLoading(false);
     }
 
-    const getListClient = async () => {
-        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'clients/list');
-        if (response.success) {
-            let clients = [];
-            await response.clients && response.clients.map(client => {
-                clients.push({
-                    ...client,
-                    groupName: client.loans.length > 0 ? client.loans[0].groupName : '-',
-                    slotNo: client.loans.length > 0 ? client.loans[0].slotNo : '-',
-                    loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
-                    activeLoan: client.loans.length > 0 ?  client.loans[0].activeLoan : 0.00,
-                    loanBalance: client.loans.length > 0 ?  client.loans[0].loanBalance : 0.00,
-                    missPayments: client.loans.length > 0 ?  client.loans[0].missPayments : 0,
-                    noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
-                    delinquent: client.delinquent === true ? 'Yes' : 'No'
-                });
-            });
-            dispatch(setClientList(clients));
-        } else if (response.error) {
-            toast.error(response.message);
-        }
-        setLoading(false);
-    }
+    // const getListClient = async () => {
+    //     const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'clients/list');
+    //     if (response.success) {
+    //         let clients = [];
+    //         await response.clients && response.clients.map(client => {
+    //             clients.push({
+    //                 ...client,
+    //                 groupName: client.loans.length > 0 ? client.loans[0].groupName : '-',
+    //                 slotNo: client.loans.length > 0 ? client.loans[0].slotNo : '-',
+    //                 loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
+    //                 activeLoan: client.loans.length > 0 ?  client.loans[0].activeLoan : 0.00,
+    //                 loanBalance: client.loans.length > 0 ?  client.loans[0].loanBalance : 0.00,
+    //                 missPayments: client.loans.length > 0 ?  client.loans[0].missPayments : 0,
+    //                 noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
+    //                 delinquent: client.delinquent === true ? 'Yes' : 'No'
+    //             });
+    //         });
+    //         dispatch(setClientList(clients));
+    //         setLoading(false);
+    //     } else if (response.error) {
+    //         setLoading(false);
+    //         toast.error(response.message);
+    //     }
+    // }
 
     const getListUser = async () => {
         let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
@@ -110,7 +111,7 @@ const ClientsProspectPage = () => {
         const response = await fetchWrapper.get(url);
         if (response.success) {
             let userList = [];
-            response.users && response.users.filter(u => u.role.rep === 4).map(u => {
+            response.users && response.users.map(u => {
                 const name = `${u.firstName} ${u.lastName}`;
                 userList.push(
                     {
@@ -121,11 +122,11 @@ const ClientsProspectPage = () => {
                 );
             });
             dispatch(setUserList(userList));
+            setLoading(false);
         } else {
+            setLoading(false);
             toast.error('Error retrieving user list.');
         }
-
-        setLoading(false);
     }
 
     const handleShowAddDrawer = () => {
@@ -155,7 +156,6 @@ const ClientsProspectPage = () => {
 
         mounted && getListBranch();
 
-
         return () => {
             mounted = false;
         };
@@ -170,8 +170,16 @@ const ClientsProspectPage = () => {
 
     return (
         <Layout actionButtons={actionButtons}>
-            <ViewClientsByGroupPage status="pending" client={client} setClientParent={setClient} setMode={setMode} handleShowAddDrawer={handleShowAddDrawer} />
-            <AddUpdateClient mode={mode} client={client} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
+            {loading ? (
+                <div className="absolute top-1/2 left-1/2">
+                    <Spinner />
+                </div>
+            ) : (
+                <React.Fragment>
+                    <ViewClientsByGroupPage status={status} client={client} setClientParent={setClient} setMode={setMode} handleShowAddDrawer={handleShowAddDrawer} />
+                    <AddUpdateClient mode={mode} client={client} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
+                </React.Fragment>
+            )}
         </Layout>
     );
 }

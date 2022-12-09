@@ -17,8 +17,13 @@ async function deleteGroup(req, res) {
         .collection('groups')
         .find({ _id: ObjectId(_id) })
         .toArray();
-    console.log(groups)
-    if (groups.length > 0) {
+    
+    if (groups[0].noOfClients > 0) {
+        response = {
+            error: true,
+            message: `Groups has associated clients. Can't remove.`
+        };
+    } else if (groups.length > 0) {
         await db
             .collection('groups')
             .deleteOne({ _id: ObjectId(_id) });
