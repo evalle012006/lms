@@ -91,7 +91,6 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                 } 
                 
                 if (cc.cashCollections.length > 0) {
-                    // const loanNoOfClients = cc.loans.length > 0 ? cc.loans[0].noOfClients : 0;
                     collection = { ...collection,
                         mispayment: cc.cashCollections[0].mispayment ? cc.cashCollections[0].mispayment : 0,
                         collection: cc.cashCollections[0].collection && cc.cashCollections[0].collection,
@@ -366,7 +365,7 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
     
                 await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary', data);
             }
-
+            console.log('init group summary')
             initGroupCollectionSummary();
         }
     }, [cashCollectionList]);

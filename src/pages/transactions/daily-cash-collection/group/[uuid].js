@@ -10,6 +10,7 @@ import DetailsHeader from '@/components/transactions/DetailsHeaderMain';
 import ViewDailyCashCollectionPage from '@/components/transactions/ViewDailyCashCollection';
 import { setUserList } from '@/redux/actions/userActions';
 import { BehaviorSubject } from 'rxjs';
+import { setBranchList } from '@/redux/actions/branchActions';
 
 const CashCollectionDetailsPage = () => {
     const dateFilterSubject = new BehaviorSubject(process.browser && localStorage.getItem('cashCollectionDateFilter'));
@@ -40,10 +41,51 @@ const CashCollectionDetailsPage = () => {
         }
     }
 
+    const getListBranch = async () => {
+        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'branches/list');
+        if (response.success) {
+            let branches = [];
+            response.branches && response.branches.map(branch => {
+                branches.push(
+                    {
+                        ...branch
+                    }
+                );
+            });
+
+            if (currentUser.root !== true && (currentUser.role.rep === 3 || currentUser.role.rep === 4)) {
+                branches = [branches.find(b => b.code === currentUser.designatedBranch)];
+            } 
+            
+            dispatch(setBranchList(branches));
+        } else {
+            toast.error('Error retrieving branches list.');
+        }
+    }
+
 
     useEffect(() => {
         let mounted = true;
 
+        const getCurrentLO = async () => {
+            const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}users?`;
+            const params = { _id: uuid };
+            const response = await fetchWrapper.get(apiUrl + new URLSearchParams(params));
+            if (response.success) {
+                setCurrentLO(response.user);
+            } else {
+                toast.error('Error while loading data');
+            }
+        }
+
+        mounted && uuid && getCurrentLO() && getListBranch();
+
+        return () => {
+            mounted = false;
+        };
+    }, [uuid]);
+
+    useEffect(() => {
         const getListUser = async () => {
             let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
             if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
@@ -72,24 +114,10 @@ const CashCollectionDetailsPage = () => {
 
         }
 
-        const getCurrentLO = async () => {
-            const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}users?`;
-            const params = { _id: uuid };
-            const response = await fetchWrapper.get(apiUrl + new URLSearchParams(params));
-            if (response.success) {
-                setCurrentLO(response.user);
-            } else {
-                toast.error('Error while loading data');
-            }
+        if (branchList) {
+            getListUser();
         }
-
-        mounted && uuid && getCurrentLO();
-        mounted && branchList && getListUser();
-
-        return () => {
-            mounted = false;
-        };
-    }, [uuid]);
+    }, [branchList]);
 
     // useEffect(() => {
     //     if (filteredData.length > 0) {
