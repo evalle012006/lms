@@ -366,7 +366,7 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
     
                 await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary', data);
             }
-
+            console.log('init group summary')
             initGroupCollectionSummary();
         }
     }, [cashCollectionList]);
