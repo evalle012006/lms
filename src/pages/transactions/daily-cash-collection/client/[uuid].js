@@ -82,10 +82,7 @@ const CashCollectionDetailsPage = () => {
             setFilter(true);
             setCurrentDate(filteredDate);
 
-            getCashCollections(filteredDate)
-            // .then(resp => {
-            //     addBlankAndTotal(true);
-            // });
+            getCashCollections(filteredDate);
         }
     }
 
