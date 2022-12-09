@@ -1,7 +1,6 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
 import moment from 'moment';
-import logger from '@/logger';
 
 let response = {};
 let statusCode = 200;
@@ -14,7 +13,7 @@ export default apiHandler({
 async function processLOSummary(req, res) {
     const { db } = await connectToDatabase();
     const { _id, groupSummaryIds, status, mode, currentUser } = req.body;
-    console.log('here...')
+
     groupSummaryIds.map(async gs => {
         const data = {
             _id: gs._id,
@@ -30,7 +29,7 @@ async function processLOSummary(req, res) {
     if (groups.length > 0) {
         groups.map(async group => {
             const exist = await db.collection('groupCashCollections').find({ dateAdded: moment(new Date()).format('YYYY-MM-DD'), groupId: group._id + '' }).toArray();
-            logger.debug({page: 'save-groups-summary', data: exist, group: group});
+
             if (exist.length === 0 && (group.noOfClients && group.noOfClients > 0)) {
                 const data = {
                     branchId: group.branchId,
@@ -59,7 +58,7 @@ async function processLOSummary(req, res) {
 
 async function save(data) {
     const { db } = await connectToDatabase();
-    logger.debug({message: 'saving group cash collections'});
+
     const groups = await db.collection('groupCashCollections')
         .insertOne({
             ...data
