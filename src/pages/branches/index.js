@@ -118,6 +118,7 @@ const BranchesPage = () => {
                         setLoading(false);
                         getListBranch();
                     } else if (response.error) {
+                        setLoading(false);
                         toast.error(response.message);
                     } else {
                         console.log(response);

@@ -293,7 +293,7 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
             filter: 'includes'
         },
         {
-            Header: "Status",
+            Header: "Save Status",
             accessor: 'status',
             Cell: StatusPill,
             Filter: SelectColumnFilter,

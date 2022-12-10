@@ -58,53 +58,105 @@ const GroupsPage = () => {
     }
 
     const getListUser = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
         if (currentUser.root !== true && (currentUser.role.rep === 3 || currentUser.role.rep === 4) && branchList.length > 0) {
+            let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
             url = url + '?' + new URLSearchParams({ branchCode: branchList[0].code });
-        }
-        const response = await fetchWrapper.get(url);
-        if (response.success) {
-            let userList = [];
-            response.users && response.users.filter(u => u.role.rep === 4).map(u => {
-                const name = `${u.firstName} ${u.lastName}`;
-                userList.push(
-                    {
-                        ...u,
-                        value: u._id,
-                        label: UppercaseFirstLetter(name)
-                    }
-                );
-            });
-            dispatch(setUserList(userList));
-        } else {
-            toast.error('Error retrieving user list.');
-        }
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                let userList = [];
+                response.users && response.users.filter(u => u.role.rep === 4).map(u => {
+                    const name = `${u.firstName} ${u.lastName}`;
+                    userList.push(
+                        {
+                            ...u,
+                            value: u._id,
+                            label: UppercaseFirstLetter(name)
+                        }
+                    );
+                });
+                dispatch(setUserList(userList));
+            } else {
+                toast.error('Error retrieving user list.');
+            }
 
-        setLoading(false);
+            setLoading(false);
+        } else if (branchList.length > 0) {
+            let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                let userList = [];
+                response.users && response.users.filter(u => u.role.rep === 4).map(u => {
+                    const name = `${u.firstName} ${u.lastName}`;
+                    userList.push(
+                        {
+                            ...u,
+                            value: u._id,
+                            label: UppercaseFirstLetter(name)
+                        }
+                    );
+                });
+                dispatch(setUserList(userList));
+            } else {
+                toast.error('Error retrieving user list.');
+            }
+
+            setLoading(false);
+        }
     }
 
     const getListGroup = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list'
+        let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list';
         if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
             url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id });
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                let groups = [];
+                await response.groups && response.groups.map(group => {
+                    groups.push({
+                        ...group,
+                        day: UppercaseFirstLetter(group.day)
+                    });
+                });
+                dispatch(setGroupList(groups));
+                setLoading(false);
+            } else if (response.error) {
+                setLoading(false);
+                toast.error(response.message);
+            }
         } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
             url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id });
-        }
-
-        const response = await fetchWrapper.get(url);
-        if (response.success) {
-            let groups = [];
-            await response.groups && response.groups.map(group => {
-                groups.push({
-                    ...group,
-                    day: UppercaseFirstLetter(group.day)
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                let groups = [];
+                await response.groups && response.groups.map(group => {
+                    groups.push({
+                        ...group,
+                        day: UppercaseFirstLetter(group.day)
+                    });
                 });
-            });
-            dispatch(setGroupList(groups));
-        } else if (response.error) {
-            toast.error(response.message);
+                dispatch(setGroupList(groups));
+                setLoading(false);
+            } else if (response.error) {
+                setLoading(false);
+                toast.error(response.message);
+            }
+        } else if (branchList.length > 0) {
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                let groups = [];
+                await response.groups && response.groups.map(group => {
+                    groups.push({
+                        ...group,
+                        day: UppercaseFirstLetter(group.day)
+                    });
+                });
+                dispatch(setGroupList(groups));
+                setLoading(false);
+            } else if (response.error) {
+                setLoading(false);
+                toast.error(response.message);
+            }
         }
-        setLoading(false);
     }
 
     const [columns, setColumns] = useState([

@@ -73,25 +73,58 @@ const LoanApplicationPage = () => {
         let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list-by-group-occurence'
         if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
             url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id, occurence: 'daily' });
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                let groups = [];
+                await response.groups && response.groups.map(group => {
+                    groups.push({
+                        ...group,
+                        value: group._id,
+                        label: UppercaseFirstLetter(group.name)
+                    });
+                });
+                dispatch(setGroupList(groups));
+                setLoading(false);
+            } else if (response.error) {
+                setLoading(false);
+                toast.error(response.message);
+            }
         } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
             url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, occurence: 'daily' });
-        }
-
-        const response = await fetchWrapper.get(url);
-        if (response.success) {
-            let groups = [];
-            await response.groups && response.groups.map(group => {
-                groups.push({
-                    ...group,
-                    value: group._id,
-                    label: UppercaseFirstLetter(group.name)
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                let groups = [];
+                await response.groups && response.groups.map(group => {
+                    groups.push({
+                        ...group,
+                        value: group._id,
+                        label: UppercaseFirstLetter(group.name)
+                    });
                 });
-            });
-            dispatch(setGroupList(groups));
-        } else if (response.error) {
-            toast.error(response.message);
+                dispatch(setGroupList(groups));
+                setLoading(false);
+            } else if (response.error) {
+                setLoading(false);
+                toast.error(response.message);
+            }
+        } else if (branchList.length > 0) {
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                let groups = [];
+                await response.groups && response.groups.map(group => {
+                    groups.push({
+                        ...group,
+                        value: group._id,
+                        label: UppercaseFirstLetter(group.name)
+                    });
+                });
+                dispatch(setGroupList(groups));
+                setLoading(false);
+            } else if (response.error) {
+                setLoading(false);
+                toast.error(response.message);
+            }
         }
-        setLoading(false);
     }
 
     // const getListClient = async () => {
@@ -123,62 +156,152 @@ const LoanApplicationPage = () => {
         let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/list';
         if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
             url = url + '?' + new URLSearchParams({ status: 'pending', branchId: branchList[0]._id, loId: currentUser._id });
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                let loanList = [];
+                await response.loans && response.loans.map(loan => {
+                    loanList.push({
+                        ...loan,
+                        groupName: loan.group.name,
+                        principalLoanStr: formatPricePhp(loan.principalLoan),
+                        mcbuStr: formatPricePhp(loan.mcbu),
+                        activeLoanStr: formatPricePhp(loan.activeLoan),
+                        loanBalanceStr: formatPricePhp(loan.loanBalance),
+                        fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
+                        selected: false
+                    });
+                });
+
+                dispatch(setLoanList(loanList));
+                setLoading(false);
+            } else if (response.error) {
+                setLoading(false);
+                toast.error(response.message);
+            }
         } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
             url = url + '?' + new URLSearchParams({ status: 'pending', branchId: branchList[0]._id });
-        }
-
-        const response = await fetchWrapper.get(url);
-        if (response.success) {
-            let loanList = [];
-            await response.loans && response.loans.map(loan => {
-                loanList.push({
-                    ...loan,
-                    groupName: loan.group.name,
-                    principalLoanStr: formatPricePhp(loan.principalLoan),
-                    mcbuStr: formatPricePhp(loan.mcbu),
-                    activeLoanStr: formatPricePhp(loan.activeLoan),
-                    loanBalanceStr: formatPricePhp(loan.loanBalance),
-                    fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
-                    selected: false
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                let loanList = [];
+                await response.loans && response.loans.map(loan => {
+                    loanList.push({
+                        ...loan,
+                        groupName: loan.group.name,
+                        principalLoanStr: formatPricePhp(loan.principalLoan),
+                        mcbuStr: formatPricePhp(loan.mcbu),
+                        activeLoanStr: formatPricePhp(loan.activeLoan),
+                        loanBalanceStr: formatPricePhp(loan.loanBalance),
+                        fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
+                        selected: false
+                    });
                 });
-            });
 
-            dispatch(setLoanList(loanList));
-        } else if (response.error) {
-            toast.error(response.message);
+                dispatch(setLoanList(loanList));
+                setLoading(false);
+            } else if (response.error) {
+                setLoading(false);
+                toast.error(response.message);
+            }
+        } else if (branchList.length > 0) {
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                let loanList = [];
+                await response.loans && response.loans.map(loan => {
+                    loanList.push({
+                        ...loan,
+                        groupName: loan.group.name,
+                        principalLoanStr: formatPricePhp(loan.principalLoan),
+                        mcbuStr: formatPricePhp(loan.mcbu),
+                        activeLoanStr: formatPricePhp(loan.activeLoan),
+                        loanBalanceStr: formatPricePhp(loan.loanBalance),
+                        fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
+                        selected: false
+                    });
+                });
+
+                dispatch(setLoanList(loanList));
+                setLoading(false);
+            } else if (response.error) {
+                setLoading(false);
+                toast.error(response.message);
+            }
         }
-        setLoading(false);
     }
 
     const getHistoyListLoan = async () => {
         let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/list-history';
         if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
             url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id });
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                let loanList = [];
+                await response.loans && response.loans.map(loan => {
+                    loanList.push({
+                        ...loan,
+                        groupName: loan.group.name,
+                        principalLoanStr: formatPricePhp(loan.principalLoan),
+                        mcbuStr: formatPricePhp(loan.mcbu),
+                        activeLoanStr: formatPricePhp(loan.activeLoan),
+                        loanBalanceStr: formatPricePhp(loan.loanBalance),
+                        fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
+                        selected: false
+                    });
+                });
+
+                setHistoryList(loanList);
+                setLoading(false);
+            } else if (response.error) {
+                setLoading(false);
+                toast.error(response.message);
+            }
         } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
             url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id });
-        }
-
-        const response = await fetchWrapper.get(url);
-        if (response.success) {
-            let loanList = [];
-            await response.loans && response.loans.map(loan => {
-                loanList.push({
-                    ...loan,
-                    groupName: loan.group.name,
-                    principalLoanStr: formatPricePhp(loan.principalLoan),
-                    mcbuStr: formatPricePhp(loan.mcbu),
-                    activeLoanStr: formatPricePhp(loan.activeLoan),
-                    loanBalanceStr: formatPricePhp(loan.loanBalance),
-                    fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
-                    selected: false
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                let loanList = [];
+                await response.loans && response.loans.map(loan => {
+                    loanList.push({
+                        ...loan,
+                        groupName: loan.group.name,
+                        principalLoanStr: formatPricePhp(loan.principalLoan),
+                        mcbuStr: formatPricePhp(loan.mcbu),
+                        activeLoanStr: formatPricePhp(loan.activeLoan),
+                        loanBalanceStr: formatPricePhp(loan.loanBalance),
+                        fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
+                        selected: false
+                    });
                 });
-            });
 
-            setHistoryList(loanList);
-        } else if (response.error) {
-            toast.error(response.message);
+                setHistoryList(loanList);
+                setLoading(false);
+            } else if (response.error) {
+                setLoading(false);
+                toast.error(response.message);
+            }
+        } else if (branchList.length > 0) {
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                let loanList = [];
+                await response.loans && response.loans.map(loan => {
+                    loanList.push({
+                        ...loan,
+                        groupName: loan.group.name,
+                        principalLoanStr: formatPricePhp(loan.principalLoan),
+                        mcbuStr: formatPricePhp(loan.mcbu),
+                        activeLoanStr: formatPricePhp(loan.activeLoan),
+                        loanBalanceStr: formatPricePhp(loan.loanBalance),
+                        fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
+                        selected: false
+                    });
+                });
+
+                setHistoryList(loanList);
+                setLoading(false);
+            } else if (response.error) {
+                setLoading(false);
+                toast.error(response.message);
+            }   
         }
-        setLoading(false);
     }
 
     const updateClientStatus = async (data, updatedValue) => {
