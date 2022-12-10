@@ -138,8 +138,6 @@ const BranchesPage = () => {
         let mounted = true;
 
         mounted && getListBranch();
-        // mounted && getListPlatformRoles();
-
 
         return () => {
             mounted = false;
