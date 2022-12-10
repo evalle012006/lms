@@ -56,25 +56,57 @@ const ClientsProspectPage = () => {
         let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list'
         if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
             url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id });
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                let groupList = [];
+                await response.groups && response.groups.map(group => {
+                    groupList.push({
+                        ...group,
+                        value: group._id,
+                        label: UppercaseFirstLetter(group.name)
+                    });
+                });
+                dispatch(setGroupList(groupList));
+                setLoading(false);
+            } else if (response.error) {
+                toast.error(response.message);
+                setLoading(false);
+            }
         } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
             url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id });
-        }
-
-        const response = await fetchWrapper.get(url);
-        if (response.success) {
-            let groupList = [];
-            await response.groups && response.groups.map(group => {
-                groupList.push({
-                    ...group,
-                    value: group._id,
-                    label: UppercaseFirstLetter(group.name)
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                let groupList = [];
+                await response.groups && response.groups.map(group => {
+                    groupList.push({
+                        ...group,
+                        value: group._id,
+                        label: UppercaseFirstLetter(group.name)
+                    });
                 });
-            });
-            dispatch(setGroupList(groupList));
-            setLoading(false);
-        } else if (response.error) {
-            toast.error(response.message);
-            setLoading(false);
+                dispatch(setGroupList(groupList));
+                setLoading(false);
+            } else if (response.error) {
+                toast.error(response.message);
+                setLoading(false);
+            }
+        } else if (branchList.length > 0) {
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                let groupList = [];
+                await response.groups && response.groups.map(group => {
+                    groupList.push({
+                        ...group,
+                        value: group._id,
+                        label: UppercaseFirstLetter(group.name)
+                    });
+                });
+                dispatch(setGroupList(groupList));
+                setLoading(false);
+            } else if (response.error) {
+                toast.error(response.message);
+                setLoading(false);
+            }
         }
     }
 
@@ -104,28 +136,49 @@ const ClientsProspectPage = () => {
     // }
 
     const getListUser = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
         if (currentUser.root !== true && (currentUser.role.rep === 3 || currentUser.role.rep === 4) && branchList.length > 0) {
+            let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
             url = url + '?' + new URLSearchParams({ branchCode: branchList[0].code });
-        }
-        const response = await fetchWrapper.get(url);
-        if (response.success) {
-            let userList = [];
-            response.users && response.users.map(u => {
-                const name = `${u.firstName} ${u.lastName}`;
-                userList.push(
-                    {
-                        ...u,
-                        value: u._id,
-                        label: UppercaseFirstLetter(name)
-                    }
-                );
-            });
-            dispatch(setUserList(userList));
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                let userList = [];
+                response.users && response.users.map(u => {
+                    const name = `${u.firstName} ${u.lastName}`;
+                    userList.push(
+                        {
+                            ...u,
+                            value: u._id,
+                            label: UppercaseFirstLetter(name)
+                        }
+                    );
+                });
+                dispatch(setUserList(userList));
+            } else {
+                toast.error('Error retrieving user list.');
+            }
+
             setLoading(false);
-        } else {
+        } else if (branchList.length > 0) {
+            let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                let userList = [];
+                response.users && response.users.filter(u => u.role.rep === 4).map(u => {
+                    const name = `${u.firstName} ${u.lastName}`;
+                    userList.push(
+                        {
+                            ...u,
+                            value: u._id,
+                            label: UppercaseFirstLetter(name)
+                        }
+                    );
+                });
+                dispatch(setUserList(userList));
+            } else {
+                toast.error('Error retrieving user list.');
+            }
+
             setLoading(false);
-            toast.error('Error retrieving user list.');
         }
     }
 

@@ -19,12 +19,21 @@ async function deleteBranch(req, res) {
         .toArray();
 
     if (branches.length > 0) {
-        await db
-            .collection('branches')
-            .deleteOne({ _id: ObjectId(_id) });
+        const groups = await db.collection('groups').find({ branchId: branches[0]._id + '' }).toArray();
 
-        response = {
-            success: true
+        if (groups.length > 0) {
+            response = {
+                error: true,
+                message: `Can't delete branch ${branches[0].name} it is currently used in groups.`
+            };
+        } else {
+            await db
+                .collection('branches')
+                .deleteOne({ _id: ObjectId(_id) });
+
+            response = {
+                success: true
+            }
         }
     } else {
         response = {

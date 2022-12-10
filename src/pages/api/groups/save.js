@@ -30,7 +30,7 @@ async function save(req, res) {
         response = {
             error: true,
             fields: ['name', 'branchId'],
-            message: `Group with the name "${name}" already exists in branch "${branch[0].name}"`
+            message: `Group with the name "${groupData.name}" already exists in branch "${branch[0].name}"`
         };
     } else {
         const group = await db.collection('groups').insertOne({

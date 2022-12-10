@@ -118,6 +118,7 @@ const BranchesPage = () => {
                         setLoading(false);
                         getListBranch();
                     } else if (response.error) {
+                        setLoading(false);
                         toast.error(response.message);
                     } else {
                         console.log(response);
@@ -137,8 +138,6 @@ const BranchesPage = () => {
         let mounted = true;
 
         mounted && getListBranch();
-        // mounted && getListPlatformRoles();
-
 
         return () => {
             mounted = false;
