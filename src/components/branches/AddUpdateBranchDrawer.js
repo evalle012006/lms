@@ -133,6 +133,7 @@ const AddUpdateBranch = ({ mode = 'add', branch = {}, showSidebar, setShowSideba
                                             label="Code"
                                             placeholder="Enter Code"
                                             setFieldValue={setFieldValue}
+                                            disabled={mode !== 'add'}
                                             errors={touched.code && errors.code ? errors.code : undefined} />
                                     </div>
                                     <div className="mt-4">
