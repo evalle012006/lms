@@ -81,7 +81,7 @@ async function getAllLoansPerGroup(req, res) {
                                         ]}} },
                                         { $group: { 
                                                 _id: '$$groupName',
-                                                activeClients: { $sum: 1 },
+                                                activeClients: { $sum: { $cond:{if: { $ne: ['$status', 'pending']}, then: 1, else: 0} } },
                                                 activeBorrowers: { $sum: { $cond:{if: { $and: [{$ne: ['$status', 'pending']}, {$gt: ['$loanBalance', 0]}] }, then: 1, else: 0} } },
                                                 mispayment: { $sum: { $cond:{if: { $ne: ['$status', 'pending']}, then: '$mispayment', else: 0} } },
                                                 // mispayment: { $sum: '$mispayment' },
@@ -206,7 +206,7 @@ async function getAllLoansPerGroup(req, res) {
                             ]}} },
                             { $group: { 
                                     _id: '$$groupName',
-                                    activeClients: { $sum: 1 },
+                                    activeClients: { $sum: { $cond:{if: { $ne: ['$status', 'pending']}, then: 1, else: 0} } },
                                     activeBorrowers: { $sum: { $cond:{if: { $and: [{$ne: ['$status', 'pending']}, {$gt: ['$loanBalance', 0]}] }, then: 1, else: 0} } },
                                     mispayment: { $sum: { $cond:{if: { $ne: ['$status', 'pending']}, then: '$mispayment', else: 0} } },
                                     // mispayment: { $sum: '$mispayment' },
