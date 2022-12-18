@@ -85,7 +85,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         //     .required('Please enter co-maker')
     });
 
-    const handleGroupChange = (field, value) => {
+    const handleGroupIdChange = (field, value) => {
         setLoading(true);
         const form = formikRef.current;
         setSelectedGroup(value);
@@ -105,6 +105,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         }
 
         form.setFieldValue(field, value);
+        getListClient(clientType, value);
         setLoading(false);
     }
 
@@ -274,20 +275,20 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         }
     }
 
-    const getListClient = async (status) => {
+    const getListClient = async (status, groupId) => {
         setLoading(true);
         let url = process.env.NEXT_PUBLIC_API_URL + 'clients/list';
         if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) {
             if (status === 'active') {
-                url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", branchId: branchList[0]._id, groupId: selectedGroup, status: status });
+                url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", branchId: branchList[0]._id, groupId: groupId, status: status });
             } else {
-                url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", loId: currentUser._id, groupId: selectedGroup, status: status });
+                url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", loId: currentUser._id, groupId: groupId, status: status });
             }
         } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
             if (status === 'active') {
-                url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", branchId: branchList[0]._id, groupId: selectedGroup, status: status });
+                url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", branchId: branchList[0]._id, groupId: groupId, status: status });
             } else {
-                url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", branchId: branchList[0]._id, status: status });
+                url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", branchId: branchList[0]._id, groupId: groupId, status: status });
             }
         }
 
@@ -364,11 +365,11 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         };
     }, [mode]);
 
-    useEffect(() => {
-        if (selectedGroup) {
-            getListClient(clientType);
-        }
-    }, [selectedGroup]);
+    // useEffect(() => {
+    //     if (selectedGroup) {
+    //         getListClient(clientType);
+    //     }
+    // }, [selectedGroup]);
 
     return (
         <React.Fragment>
@@ -410,7 +411,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                                     value={selectedGroup}
                                                     label="Group"
                                                     options={groupList}
-                                                    onChange={(field, value) => handleGroupChange(field, value)}
+                                                    onChange={(field, value) => handleGroupIdChange(field, value)}
                                                     onBlur={setFieldTouched}
                                                     placeholder="Select Group"
                                                     errors={touched.groupId && errors.groupId ? errors.groupId : undefined}

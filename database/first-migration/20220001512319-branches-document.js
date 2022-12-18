@@ -149,6 +149,22 @@ module.exports = {
         phoneNumber: '123',
         address: 'Rizal',
         dateAdded: new Date()
+      },
+      {
+        name: 'Rizal II',
+        code: 'B020',
+        email: 'acrizal2@ambercashph.com',
+        phoneNumber: '123',
+        address: 'Rizal',
+        dateAdded: new Date()
+      },
+      {
+        name: 'Porac',
+        code: 'B021',
+        email: 'acporac@ambercashph.com',
+        phoneNumber: '123',
+        address: 'Pampanga',
+        dateAdded: new Date()
       }
     ]);
   },

@@ -106,7 +106,7 @@ module.exports = {
                     day: "all",
                     dayNo: 6,
                     time: "7:30AM-7:45AM",
-                    groupNo: 1,
+                    groupNo: 6,
                     occurence: "daily",
                     loanOfficerId: user._id + '',
                     loanOfficerName: user.lastName + ', ' + user.firstName,

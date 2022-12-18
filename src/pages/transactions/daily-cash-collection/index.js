@@ -50,53 +50,53 @@ const DailyCashCollectionPage = () => {
         setLoading(false);
     }
 
-    const getListUser = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
-        if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
-            url = url + '?' + new URLSearchParams({ branchCode: branchList[0].code });
-            const response = await fetchWrapper.get(url);
-            if (response.success) {
-                let userList = [];
-                response.users && response.users.filter(u => u.role.rep === 4).map(u => {
-                    const name = `${u.firstName} ${u.lastName}`;
-                    userList.push(
-                        {
-                            ...u,
-                            name: name,
-                            label: name,
-                            value: u._id
-                        }
-                    );
-                });
-                dispatch(setUserList(userList));
-                setLoading(false);
-            } else {
-                setLoading(false);
-                toast.error('Error retrieving user list.');
-            }
-        } else if (branchList.length > 0) {
-            const response = await fetchWrapper.get(url);
-            if (response.success) {
-                let userList = [];
-                response.users && response.users.filter(u => u.role.rep === 4).map(u => {
-                    const name = `${u.firstName} ${u.lastName}`;
-                    userList.push(
-                        {
-                            ...u,
-                            name: name,
-                            label: name,
-                            value: u._id
-                        }
-                    );
-                });
-                dispatch(setUserList(userList));
-                setLoading(false);
-            } else {
-                setLoading(false);
-                toast.error('Error retrieving user list.');
-            }
-        }
-    }
+    // const getListUser = async () => {
+    //     let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
+    //     if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
+    //         url = url + '?' + new URLSearchParams({ branchCode: branchList[0].code });
+    //         const response = await fetchWrapper.get(url);
+    //         if (response.success) {
+    //             let userList = [];
+    //             response.users && response.users.filter(u => u.role.rep === 4).map(u => {
+    //                 const name = `${u.firstName} ${u.lastName}`;
+    //                 userList.push(
+    //                     {
+    //                         ...u,
+    //                         name: name,
+    //                         label: name,
+    //                         value: u._id
+    //                     }
+    //                 );
+    //             });
+    //             dispatch(setUserList(userList));
+    //             setLoading(false);
+    //         } else {
+    //             setLoading(false);
+    //             toast.error('Error retrieving user list.');
+    //         }
+    //     } else if (branchList.length > 0) {
+    //         const response = await fetchWrapper.get(url);
+    //         if (response.success) {
+    //             let userList = [];
+    //             response.users && response.users.filter(u => u.role.rep === 4).map(u => {
+    //                 const name = `${u.firstName} ${u.lastName}`;
+    //                 userList.push(
+    //                     {
+    //                         ...u,
+    //                         name: name,
+    //                         label: name,
+    //                         value: u._id
+    //                     }
+    //                 );
+    //             });
+    //             dispatch(setUserList(userList));
+    //             setLoading(false);
+    //         } else {
+    //             setLoading(false);
+    //             toast.error('Error retrieving user list.');
+    //         }
+    //     }
+    // }
 
     useEffect(() => {
         let mounted = true;
@@ -110,7 +110,7 @@ const DailyCashCollectionPage = () => {
 
     useEffect(() => {
         if (branchList.length > 0) {
-            getListUser();
+            // getListUser();
             localStorage.setItem('cashCollectionDateFilter', currentDate);
 
             if (currentUser.role.rep < 4) {
