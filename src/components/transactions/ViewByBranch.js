@@ -5,7 +5,6 @@ import { useDispatch, useSelector } from "react-redux";
 import Spinner from "@/components/Spinner";
 import toast from 'react-hot-toast';
 import { useRouter } from "node_modules/next/router";
-import { setBranchList } from "@/redux/actions/branchActions";
 import moment from 'moment';
 import { formatPricePhp, getTotal } from "@/lib/utils";
 
