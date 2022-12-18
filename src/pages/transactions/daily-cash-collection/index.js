@@ -10,6 +10,7 @@ import DetailsHeader from "@/components/transactions/DetailsHeaderMain";
 import { setUserList } from "@/redux/actions/userActions";
 import ViewByLoanOfficerPage from "@/components/transactions/ViewByLoanOfficer";
 import ViewDailyCashCollectionPage from "@/components/transactions/ViewDailyCashCollection";
+import ViewByBranchPage from "@/components/transactions/ViewByBranch";
 
 const DailyCashCollectionPage = () => {
     const dispatch = useDispatch();
@@ -48,7 +49,6 @@ const DailyCashCollectionPage = () => {
 
         setLoading(false);
     }
-
 
     const getListUser = async () => {
         let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
@@ -112,6 +112,24 @@ const DailyCashCollectionPage = () => {
         if (branchList.length > 0) {
             getListUser();
             localStorage.setItem('cashCollectionDateFilter', currentDate);
+
+            if (currentUser.role.rep < 4) {
+                const initGroupCollectionSummary = async () => {
+                    branchList.map(async branch => {
+                        const data = {
+                            branchId: branch._id,
+                            mode: 'daily',
+                            status: 'pending',
+                            currentUser: currentUser._id,
+                            groupSummaryIds: []
+                        };
+            
+                        await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary', data);
+                    });
+                }
+        
+                initGroupCollectionSummary();
+            }
         }
     }, [branchList]);
 
@@ -124,12 +142,13 @@ const DailyCashCollectionPage = () => {
             ) : (
                 <React.Fragment>
                     <div className="overflow-x-auto">
-                        {branchList && <DetailsHeader pageTitle='Daily Cash Collections' 
+                        {branchList && <DetailsHeader pageTitle='Daily Cash Collections' pageName={currentUser.role.rep === 1 ? "branch-view" : ""}
                             page={1} mode={'daily'} currentDate={moment(currentDate).format('dddd, MMMM DD, YYYY')} 
                             dateFilter={dateFilter} handleDateFilter={handleDateFilter}
                         />}
                         <div className={`p-4 ${currentUser.role.rep < 4 ? 'mt-[8rem]' : 'mt-[6rem]'} `}>
-                            {currentUser.role.rep <= 3 && <ViewByLoanOfficerPage dateFilter={dateFilter} />}
+                            {currentUser.role.rep < 3 && <ViewByBranchPage />}
+                            {currentUser.role.rep === 3 && <ViewByLoanOfficerPage pageNo={1} dateFilter={dateFilter} />}
                             {currentUser.role.rep === 4 && (
                                 <div className='p-4 mt-[2rem]'>
                                     <ViewDailyCashCollectionPage pageNo={1} dateFilter={dateFilter} />

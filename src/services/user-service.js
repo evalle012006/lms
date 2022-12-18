@@ -35,7 +35,9 @@ function login(username, password) {
 }
 
 function logout() {
+    localStorage.removeItem('selectedBranch');
     localStorage.removeItem('selectedLO');
+    localStorage.removeItem('cashCollectionDateFilter');
     localStorage.removeItem('acuser');
     userSubject.next(null);
     Router.push('/login');

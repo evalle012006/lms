@@ -162,10 +162,10 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
         let mounted = true;
 
         if (Object.keys(group).length > 0) {
-            setDay(group.day.toLowerCase());
-            setDayNo(group.dayNo);
-            setOccurence(group.occurence);
-            setBranchId(group.branchId);
+            setDay(group && group.day ? group.day.toLowerCase() : 'all');
+            setDayNo(group && group.dayNo);
+            setOccurence(group && group.occurence);
+            setBranchId(group && group.branchId);
         }
 
         mounted && setLoading(false);

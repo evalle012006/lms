@@ -22,7 +22,8 @@ import {
   LockClosedIcon, 
   LockOpenIcon,
   XCircleIcon,
-  ArrowPathIcon
+  ArrowPathIcon,
+  KeyIcon
 } from '@heroicons/react/24/solid';
 import CheckBox from "./ui/checkbox";
 import { useEffect } from "react";
@@ -400,6 +401,11 @@ const ActionButton = ({ row, rowActionButtons }) => {
                           <XCircleIcon className="cursor-pointer h-5" />
                         </div>
                       )}
+                      {item.label === 'Reset Password' && (
+                        <div className="px-1" onClick={() => item.action(row)} title="Reset Password">
+                          <KeyIcon className="cursor-pointer h-5" />
+                        </div>
+                      )}
                     </React.Fragment>
                 );
               })}
@@ -482,8 +488,8 @@ const TableComponent = ({
   }
 
   useEffect(() => {
-    state.pageSize = 20;
-  }, [state]);
+    setPageSize(20);
+  }, []);
 
   // Render the UI for your table
   return (

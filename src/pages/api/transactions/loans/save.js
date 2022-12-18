@@ -1,6 +1,6 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
-import moment from 'moment'
+import moment from 'moment';
 
 export default apiHandler({
     post: save
@@ -10,6 +10,8 @@ async function save(req, res) {
     const loanData = req.body;
 
     const { db } = await connectToDatabase();
+    let response = {};
+    let statusCode = 200;
 
     let mode;
     let oldLoanId;
@@ -21,45 +23,53 @@ async function save(req, res) {
         delete loanData.oldLoanId;
     }
 
-    const loans = await db
-        .collection('loans')
-        .find({ clientId: loanData.clientId, status: 'active' })
-        .toArray();
-    
-    // const spotAvailable = await db.collection('groups').find({ groupId: loanData.groupId, availableSlots: { $elemMatch: { $eq: loanData.slotNo } } }).toArray(); // if there's result, then available else taken;
-    
-    let response = {};
-    let statusCode = 200;
+    const spotExist = await db.collection('loans').find({ $expr: { $and: [{$eq: ["$slotNo", loanData.slotNo]}, {$eq: ["$groupId", loanData.groupId]}, { $or: [{$eq: ["$status", "active"]}, {$eq: ["$status", "completed"]}] }] } }).toArray();
 
-    if (loans.length > 0) {
-        response = {
-            error: true,
-            fields: ['clientId'],
-            message: `Client "${loanData.fullName}" already have an active loan`
-        };
-    // } else if (mode !== 'reloan' && spotAvailable.length === 0) {
-    //     response = {
-    //         error: true,
-    //         fields: ['clientId', ['slotNo']],
-    //         message: `Slot Number "${loanData.slotNo}" is not available`
-    //     };
+    if (mode !== 'reloan' && spotExist.length > 0) {
+            response = {
+                error: true,
+                fields: [['slotNo']],
+                message: `Slot Number ${loanData.slotNo} is already taken in group ${loanData.groupName}`
+            };
     } else {
-        const loan = await db.collection('loans').insertOne({
-            ...loanData,
-            dateGranted: moment(new Date()).format('YYYY-MM-DD')
-        });
+        const loans = await db
+            .collection('loans')
+            .find({ clientId: loanData.clientId, status: 'active' })
+            .toArray();
 
-        if (mode === 'reloan') {
-            updateLoan(oldLoanId);
+        
+
+        if (loans.length > 0) {
+            response = {
+                error: true,
+                fields: ['clientId'],
+                message: `Client ${loanData.fullName} already have an active loan`
+            };
         } else {
-            updateGroup(loanData);
-        }
+            const loan = await db.collection('loans').insertOne({
+                ...loanData,
+                dateGranted: moment(new Date()).format('YYYY-MM-DD')
+            });
 
-        response = {
-            success: true,
-            loan: loan
+            if (mode === 'reloan') {
+                await updateLoan(oldLoanId);
+            } else {
+                await updateGroup(loanData);
+            }
+
+            const groupSummary = await saveGroupSummary(loanData);
+
+            if (groupSummary.success) {
+                await saveCashCollection(loanData);
+            }
+
+            response = {
+                success: true,
+                loan: loan
+            }
         }
     }
+    
 
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')
@@ -113,5 +123,102 @@ async function updateLoan(loanId) {
                     $set: { ...loan }
                 }, 
                 { upsert: false });
+    }
+}
+
+async function saveGroupSummary(loan) {
+    const { db } = await connectToDatabase();
+    const ObjectId = require('mongodb').ObjectId;
+
+    const groupSummary = await db.collection('groupCashCollections').find({ dateAdded: moment(new Date()).format('YYYY-MM-DD'), groupId: loan.groupId }).toArray();
+
+    if (groupSummary.length === 0) {
+        let group = await db.collection('groups').find({ _id: ObjectId(loan.groupId) }).toArray();
+
+        if (group.length > 0) {
+            group = group[0];
+
+            const data = {
+                branchId: loan.branchId,
+                groupId: loan.groupId,
+                groupName: group.name,
+                loId: group.loanOfficerId,
+                dateAdded: moment(new Date()).format('YYYY-MM-DD'),
+                insertBy: loan.insertedBy,
+                mode: group.occurence,
+                status: "pending"
+            };
+
+            const resp = await db.collection('groupCashCollections').insertOne({ ...data });
+
+            return { success: true, data: resp };
+        }
+    }
+
+    return { success: true };
+}
+
+async function saveCashCollection(loan) {
+    const { db } = await connectToDatabase();
+    const currentDate = moment(new Date()).format('YYYY-MM-DD');
+
+    let groupSummary = await db.collection('groupCashCollections').find({ dateAdded: currentDate, groupId: loan.groupId }).toArray();
+
+    if (groupSummary.length > 0) {
+        groupSummary = groupSummary[0];
+
+        let loanData = await db.collection("loans")
+            .aggregate([
+                { $match: {clientId: loan.clientId, status: "pending"} },
+                {
+                    $addFields: { clientIdObj: { $toObjectId: "$clientId" } }
+                },
+                {
+                    $lookup: {
+                        from: "client",
+                        localField: "clientIdObj",
+                        foreignField: "_id",
+                        as: "client"
+                    }
+                }
+            ]).toArray();
+        if (loanData.length > 0) {
+            loanData = loanData[0];
+
+            const cashCollection = await db.collection('cashCollections').find({ groupCollectionId: groupSummary._id + '', clientId: loanData.clientId, dateAdded: currentDate }).toArray();
+
+            if (cashCollection.length === 0) {
+                const data = {
+                    loanId: loanData._id + '',
+                    branchId: loanData.branchId,
+                    groupId: loanData.groupId,
+                    clientId: loanData.clientId,
+                    slotNo: loanData.slotNo,
+                    fullName: loanData.client.length > 0 ? loanData.client[0].lastName + ', ' + loanData.client[0].firstName : '',
+                    loanCycle: loanData.loanCycle,
+                    mispayment: false,
+                    mispaymentStr: 'No',
+                    collection: 0,
+                    excess: 0,
+                    total: 0,
+                    noOfPayments: 0,
+                    activeLoan: loanData.activeLoan,
+                    targetCollection: loanData.activeLoan,
+                    amountRelease: loanData.amountRelease,
+                    loanBalance: loanData.loanBalance,
+                    paymentCollection: 0,
+                    occurence: groupSummary.mode,
+                    currentReleaseAmount: 0,
+                    fullPayment: 0,
+                    remarks: '',
+                    status: loanData.status,
+                    dateAdded: moment(new Date()).format('YYYY-MM-DD'),
+                    groupCollectionId: groupSummary._id + '',
+                    origin: 'automation'
+                };
+    
+                await db.collection('cashCollections').insertOne({ ...data });
+            }
+        }
     }
 }

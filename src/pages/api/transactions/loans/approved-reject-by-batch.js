@@ -1,5 +1,6 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
+import moment from 'moment';
 
 export default apiHandler({
     post: processData
@@ -41,8 +42,9 @@ async function processData(req, res) {
                         await updateGroup(groupData);
                     }
                 }
-            
+                
                 await updateLoan(loanId, loan);
+                await saveCashCollection(loan);
             }
         }
     });
@@ -157,4 +159,87 @@ async function updateClient(clientId) {
     }
     
     return {success: true, client}
+}
+
+async function saveCashCollection(loan) {
+    const { db } = await connectToDatabase();
+    const currentDate = moment(new Date()).format('YYYY-MM-DD');
+
+    let groupSummary = await db.collection('groupCashCollections').find({ dateAdded: currentDate, groupId: loan.groupId }).toArray();
+
+    if (groupSummary.length > 0) {
+        groupSummary = groupSummary[0];
+
+        let loanData = await db.collection("loans")
+            .aggregate([
+                { $match: {clientId: loan.clientId, status: "active"} },
+                {
+                    $addFields: { clientIdObj: { $toObjectId: "$clientId" } }
+                },
+                {
+                    $lookup: {
+                        from: "client",
+                        localField: "clientIdObj",
+                        foreignField: "_id",
+                        as: "client"
+                    }
+                }
+            ]).toArray();
+
+        if (loanData.length > 0) {
+            loanData = loanData[0];
+
+            const status = loanData.status === "active" ? "tomorrow" : loanData.status;
+
+            let cashCollection = await db.collection('cashCollections').find({ groupCollectionId: groupSummary._id + '', clientId: loan.clientId, dateAdded: currentDate }).toArray();
+
+            if (cashCollection.length > 0) {
+                cashCollection = cashCollection[0];
+                const ccId = cashCollection._id;
+                delete cashCollection._id;
+
+                cashCollection.currentReleaseAmount = cashCollection.amountRelease;
+
+                await db.collection('cashCollections')
+                    .updateOne(
+                        { _id: ccId }, 
+                        {
+                            $set: { ...cashCollection, status: status }
+                        }, 
+                        { upsert: false }
+                    );
+            } else {
+                const data = {
+                    loanId: loanData._id + '',
+                    branchId: loanData.branchId,
+                    groupId: loanData.groupId,
+                    clientId: loanData.clientId,
+                    slotNo: loanData.slotNo,
+                    fullName: loanData.client.length > 0 ? loanData.client[0].lastName + ', ' + loanData.client[0].firstName : '',
+                    loanCycle: loanData.loanCycle,
+                    mispayment: false,
+                    mispaymentStr: 'No',
+                    collection: 0,
+                    excess: 0,
+                    total: 0,
+                    noOfPayments: 0,
+                    activeLoan: loanData.activeLoan,
+                    targetCollection: loanData.activeLoan,
+                    amountRelease: loanData.amountRelease,
+                    loanBalance: loanData.loanBalance,
+                    paymentCollection: 0,
+                    occurence: groupSummary.mode,
+                    currentReleaseAmount: loanData.amountRelease,
+                    fullPayment: 0,
+                    remarks: '',
+                    status: status,
+                    dateAdded: moment(new Date()).format('YYYY-MM-DD'),
+                    groupCollectionId: groupSummary._id + '',
+                    origin: 'automation'
+                };
+    
+                await db.collection('cashCollections').insertOne({ ...data });
+            }
+        }
+    }
 }

@@ -55,49 +55,78 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                 toast.error(response.message);
             }
         } else if (!currentUser.root) {
-            const currentUserBranch = branchList.find(b => b.code === currentUser.designatedBranch);
-            if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) {
-                url = url + '?' + new URLSearchParams({ mode: "view_by_lo", loId: currentUser._id, status: status });
-                const response = await fetchWrapper.get(url);
-                if (response.success) {
-                    let clients = [];
-                    await response.clients && response.clients.map(client => {
-                        clients.push({
-                            ...client,
-                            middleName: client.middleName ? client.middleName : '',
-                            imgUrl: client.profile ? imgpath + '/images/profiles/' + client.profile : '',
-                            slotNo: client.loans.length > 0 ? client.loans[0].slotNo : '-',
-                            loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
-                            activeLoanStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].activeLoan) : '0.00',
-                            loanBalanceStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].loanBalance) : '0.00',
-                            missPayments: client.loans.length > 0 ?  client.loans[0].missPayments : 0,
-                            noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
-                            delinquent: client.delinquent === true ? 'Yes' : 'No',
-                            loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : ''
+            if (currentUser.role.rep > 2) {
+                const currentUserBranch = branchList.find(b => b.code === currentUser.designatedBranch);
+                if (currentUser.role.rep === 4 && branchList.length > 0) {
+                    url = url + '?' + new URLSearchParams({ mode: "view_by_lo", loId: currentUser._id, status: status });
+                    const response = await fetchWrapper.get(url);
+                    if (response.success) {
+                        let clients = [];
+                        await response.clients && response.clients.map(client => {
+                            clients.push({
+                                ...client,
+                                middleName: client.middleName ? client.middleName : '',
+                                imgUrl: client.profile ? imgpath + '/images/profiles/' + client.profile : '',
+                                slotNo: client.loans.length > 0 ? client.loans[0].slotNo : '-',
+                                loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
+                                activeLoanStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].activeLoan) : '0.00',
+                                loanBalanceStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].loanBalance) : '0.00',
+                                missPayments: client.loans.length > 0 ?  client.loans[0].missPayments : 0,
+                                noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
+                                delinquent: client.delinquent === true ? 'Yes' : 'No',
+                                loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : ''
+                            });
                         });
-                    });
-                    dispatch(setClientList(clients));
-                } else if (response.error) {
-                    toast.error(response.message);
+                        dispatch(setClientList(clients));
+                    } else if (response.error) {
+                        toast.error(response.message);
+                    }
+                } else if (currentUser.role.rep === 3 && branchList.length > 0 && currentUserBranch) {
+                    url = url + '?' + new URLSearchParams({ mode: "view_all_by_branch", branchId: currentUserBranch._id, status: status });
+                    const response = await fetchWrapper.get(url);
+                    if (response.success) {
+                        let clients = [];
+                        await response.clients && response.clients.map(client => {
+                            clients.push({
+                                ...client,
+                                middleName: client.middleName ? client.middleName : '',
+                                imgUrl: client.profile ? imgpath + '/images/profiles/' + client.profile : '',
+                                slotNo: client.loans.length > 0 ? client.loans[0].slotNo : '-',
+                                loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
+                                activeLoanStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].activeLoan) : '0.00',
+                                loanBalanceStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].loanBalance) : '0.00',
+                                missPayments: client.loans.length > 0 ?  client.loans[0].missPayments : 0,
+                                noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
+                                delinquent: client.delinquent === true ? 'Yes' : 'No',
+                                loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : ''
+                            });
+                        });
+                        dispatch(setClientList(clients));
+                    } else if (response.error) {
+                        toast.error(response.message);
+                    }
                 }
-            } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0 && currentUserBranch) {
-                url = url + '?' + new URLSearchParams({ mode: "view_all_by_branch", branchId: currentUserBranch._id, status: status });
+            } else if (branchList.length > 0) {
+                url = url + '?' + new URLSearchParams({ mode: "view_all_by_branch_codes", branchCodes: currentUser.designatedBranch, status: status });
                 const response = await fetchWrapper.get(url);
                 if (response.success) {
                     let clients = [];
-                    await response.clients && response.clients.map(client => {
-                        clients.push({
-                            ...client,
-                            middleName: client.middleName ? client.middleName : '',
-                            imgUrl: client.profile ? imgpath + '/images/profiles/' + client.profile : '',
-                            slotNo: client.loans.length > 0 ? client.loans[0].slotNo : '-',
-                            loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
-                            activeLoanStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].activeLoan) : '0.00',
-                            loanBalanceStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].loanBalance) : '0.00',
-                            missPayments: client.loans.length > 0 ?  client.loans[0].missPayments : 0,
-                            noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
-                            delinquent: client.delinquent === true ? 'Yes' : 'No',
-                            loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : ''
+                    await response.clients && response.clients.map(branch => {
+                        branch.clients.map(client => {
+                            clients.push({
+                                ...client,
+                                middleName: client.middleName ? client.middleName : '',
+                                imgUrl: client.profile ? imgpath + '/images/profiles/' + client.profile : '',
+                                slotNo: client.loans.length > 0 ? client.loans[0].slotNo : '-',
+                                loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
+                                activeLoanStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].activeLoan) : '0.00',
+                                loanBalanceStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].loanBalance) : '0.00',
+                                missPayments: client.loans.length > 0 ?  client.loans[0].missPayments : 0,
+                                noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
+                                delinquent: client.delinquent === true ? 'Yes' : 'No',
+                                loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : '',
+                                branchName: branch.name
+                            });
                         });
                     });
                     dispatch(setClientList(clients));
@@ -105,7 +134,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                     toast.error(response.message);
                 }
             }
-        } else {
+        }  else {
             const response = await fetchWrapper.get(url + '?' + new URLSearchParams({ status: status }));
             if (response.success) {
                 let clients = [];
@@ -114,7 +143,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                         ...client,
                         middleName: client.middleName ? client.middleName : '',
                         imgUrl: client.profile ? imgpath + '/images/clients/' + client.profile : '',
-                        groupName: client.loans.length > 0 ? client.loans[0].groupName : '-',
+                        groupName: client.groupName ? client.groupName : '-',
                         slotNo: client.loans.length > 0 ? client.loans[0].slotNo : '-',
                         loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
                         activeLoanStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].activeLoan) : '0.00',
@@ -260,6 +289,71 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                     Cell: StatusPill
                 }
             ];
+        } else if (currentUser.role.rep === 3) {
+            activeColumns = [
+                {
+                    Header: "Last Name",
+                    accessor: 'lastName',
+                    Cell: AvatarCell,
+                    imgAccessor: "imgUrl",
+                },
+                {
+                    Header: "First Name",
+                    accessor: 'firstName'
+                },
+                {
+                    Header: "Middle Name",
+                    accessor: 'middleName'
+                },
+                {
+                    Header: "Group",
+                    accessor: 'groupName',
+                    Filter: SelectColumnFilter,
+                    filter: 'includes'
+                },
+                {
+                    Header: "Loan Officer",
+                    accessor: 'loName',
+                    Filter: SelectColumnFilter,
+                    filter: 'includes'
+                },
+                {
+                    Header: "Slot No.",
+                    accessor: 'slotNo'
+                },
+                {
+                    Header: "Loan Status",
+                    accessor: 'loanStatus',
+                    Cell: StatusPill
+                },
+                {
+                    Header: "Active Loan",
+                    accessor: 'activeLoanStr',
+                },
+                {
+                    Header: "Loan Balance",
+                    accessor: 'loanBalanceStr'
+                },
+                // {
+                //     Header: "Miss Payments",
+                //     accessor: 'missPayments',
+                // },
+                // {
+                //     Header: "No. of Payment",
+                //     accessor: 'noOfPayment'
+                // },
+                {
+                    Header: "Delinquent",
+                    accessor: 'delinquent',
+                    Filter: SelectColumnFilter,
+                    filter: 'includes'
+                },
+                {
+                    Header: "Status",
+                    accessor: 'status',
+                    Cell: StatusPill
+                }
+            ];
         } else {
             activeColumns = [
                 {
@@ -277,14 +371,20 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                     accessor: 'middleName'
                 },
                 {
-                    Header: "Loan Officer",
-                    accessor: 'loName',
+                    Header: "Branch",
+                    accessor: 'branchName',
                     Filter: SelectColumnFilter,
                     filter: 'includes'
                 },
                 {
                     Header: "Group",
                     accessor: 'groupName',
+                    Filter: SelectColumnFilter,
+                    filter: 'includes'
+                },
+                {
+                    Header: "Loan Officer",
+                    accessor: 'loName',
                     Filter: SelectColumnFilter,
                     filter: 'includes'
                 },

@@ -317,6 +317,7 @@ const LoanApplicationPage = () => {
         delete loanData.loanBalanceStr;
         delete loanData.mcbuStr;
 
+        loanData.insertedBy = currentUser._id;
         if (loanData.status === 'pending' && updatedValue === 'active') {
             loanData.dateGranted = moment(new Date()).format('YYYY-MM-DD');
             loanData.status = updatedValue;
@@ -359,7 +360,6 @@ const LoanApplicationPage = () => {
 
     const handleCloseAddDrawer = () => {
         setLoading(true);
-        // getListClient();
         getListLoan();
         getListGroup();
         setMode('add');
@@ -412,6 +412,7 @@ const LoanApplicationPage = () => {
                 temp.startDate = moment(new Date()).add(1, 'days').format('YYYY-MM-DD');
                 temp.endDate = getEndDate(temp.dateGranted, group.occurence === 'daily' ? 60 : 24 );
                 temp.mispayment = 0;
+                temp.insertedBy = currentUser._id;
 
                 return temp;
             });
@@ -476,6 +477,7 @@ const LoanApplicationPage = () => {
                         toast.success('Loan successfully deleted.');
                         setLoading(false);
                         getListLoan();
+                        getListGroup();
                     } else if (response.error) {
                         toast.error(response.message);
                     } else {
@@ -500,6 +502,25 @@ const LoanApplicationPage = () => {
             getListGroup();
             getListLoan();
             getHistoyListLoan();
+
+            const initGroupCollectionSummary = async () => {
+                
+                branchList.map(async branch => {
+                    const data = {
+                        branchId: branch._id,
+                        mode: 'daily',
+                        status: 'pending',
+                        currentUser: currentUser._id,
+                        groupSummaryIds: []
+                    };
+        
+                    await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary', data);
+                });
+            }
+    
+            if (branchList.length > 0) {
+                initGroupCollectionSummary();
+            }
         }
     }, [branchList]);
 

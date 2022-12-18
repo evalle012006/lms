@@ -15,12 +15,12 @@ async function save(req, res) {
     data.collection = JSON.parse(data.collection);
     if (data.collection.length > 0) {
         const groupHeaderId = data._id;
-        await saveUpdateGroupHeader(data);
+        // await saveUpdateGroupHeader(data);
         data.collection.map(async cc => {
-            const collection = {...cc, groupCollectionId: groupHeaderId}
+            const collection = {...cc, groupCollectionId: groupHeaderId};
             const respCollection = await saveCollection(collection);
 
-            if (respCollection.success) {
+            if (respCollection.success && (cc.status === "active" || cc.status === "completed" || cc.status === "closed")) {
                 const respLoan = await updateLoan(collection);
                 if (respLoan.success) {
                     if (typeof cc.remarks === 'object') {
@@ -38,29 +38,6 @@ async function save(req, res) {
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')
         .end(JSON.stringify(response));
-}
-
-async function saveUpdateGroupHeader(header) {
-    const { db } = await connectToDatabase();
-    const ObjectId = require('mongodb').ObjectId;
-    const currentDate = moment(new Date()).format('YYYY-MM-DD');
-    let groupHeader = await db.collection('groupCashCollections').find({ dateAdded: currentDate, groupId: header.groupId }).toArray();
-    let headerData = {...header};
-    delete headerData.collection;
-    if (groupHeader.length > 0) {
-        delete headerData._id;
-
-        groupHeader = await db.collection('groupCashCollections')
-            .updateOne(
-                { _id: ObjectId(header._id) },
-                {
-                    $set: {...headerData}
-                },
-                { upsert: false }
-            );
-    }
-
-    return {success: true};
 }
 
 async function saveCollection(collection) {
@@ -89,10 +66,12 @@ async function saveCollection(collection) {
 }
 
 async function updateLoan(collection) {
+    console.log('updating loan')
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
 
     let loan = await db.collection('loans').find({ _id: ObjectId(collection.loanId) }).toArray();
+    console.log(loan);
     if (loan.length > 0) {
         loan = loan[0];
 
@@ -194,6 +173,7 @@ async function updateLoanClose(loanData) {
 }
 
 async function updateGroup(loan) {
+    console.log(loan)
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
 

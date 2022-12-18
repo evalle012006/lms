@@ -39,7 +39,7 @@ const InputText = ({ name, value = '', label, placeholder, disabled, onChange, o
                         onChange={onChange}
                     />
                 </div>
-                {closeIcon && (<div onClick={handleClick} className={`${value == '' && 'hide'} flex w-6 items-center justify-center`}>
+                {closeIcon && (<div onClick={handleClick} className={`${(value == '' || disabled) && 'hide'} flex w-6 items-center justify-center`}>
                     {filter ? <CalendarDaysIcon className="cursor-pointer h-5" /> : <XCircleIcon className="cursor-pointer h-5" /> }
                 </div>)}
             </div>

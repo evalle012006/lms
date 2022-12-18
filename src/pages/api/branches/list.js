@@ -11,13 +11,16 @@ async function list(req, res) {
     let response = {};
     let branches;
 
-    const { branchCode } = req.query;
+    const { branchCode, branchCodes } = req.query;
 
     if (branchCode) {
         branches = await db
             .collection('branches')
             .find({ code: branchCode })
             .toArray();
+    } else if (branchCodes) {
+        const codes = branchCodes.trim().split(",");
+        branches = await db.collection('branches').find({ $expr: {$in: ["$code", codes]} }).toArray();
     } else {
         branches = await db
             .collection('branches')

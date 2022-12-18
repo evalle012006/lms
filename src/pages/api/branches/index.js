@@ -11,10 +11,10 @@ export default apiHandler({
 async function getBranch(req, res) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
-    const { id } = req.query;
+    const { _id } = req.query;
     let statusCode = 200;
     let response = {};
-    const branch = await db.collection('branches').find({ _id: ObjectId(id)}).toArray();
+    const branch = await db.collection('branches').find({ _id: ObjectId(_id)}).toArray();
     response = { success: true, branch: branch[0] };
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')
