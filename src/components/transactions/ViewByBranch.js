@@ -5,7 +5,6 @@ import { useDispatch, useSelector } from "react-redux";
 import Spinner from "@/components/Spinner";
 import toast from 'react-hot-toast';
 import { useRouter } from "node_modules/next/router";
-import { setBranchList } from "@/redux/actions/branchActions";
 import moment from 'moment';
 import { formatPricePhp, getTotal } from "@/lib/utils";
 
@@ -267,7 +266,7 @@ const ViewByBranchPage = () => {
                     <div className="absolute top-1/2 left-1/2">
                         <Spinner />
                     </div>
-                ) : <TableComponent columns={columns} data={branchCollectionData} hasActionButtons={false} rowActionButtons={false} showFilters={false} rowClick={handleRowClick} />}
+                ) : <TableComponent columns={columns} data={branchCollectionData} hasActionButtons={false} rowActionButtons={false} showFilters={false} pageSize={50} rowClick={handleRowClick} />}
         </React.Fragment>
     );
 }
