@@ -267,7 +267,7 @@ const ViewByBranchPage = () => {
                     <div className="absolute top-1/2 left-1/2">
                         <Spinner />
                     </div>
-                ) : <TableComponent columns={columns} data={branchCollectionData} hasActionButtons={false} rowActionButtons={false} showFilters={false} rowClick={handleRowClick} />}
+                ) : <TableComponent columns={columns} data={branchCollectionData} hasActionButtons={false} rowActionButtons={false} showFilters={false} pageSize={50} rowClick={handleRowClick} />}
         </React.Fragment>
     );
 }

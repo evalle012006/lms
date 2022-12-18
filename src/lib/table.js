@@ -439,7 +439,8 @@ const TableComponent = ({
   noPadding = false,
   border = false,
   multiSelect = false,
-  multiSelectActionFn = null
+  multiSelectActionFn = null,
+  pageSize = 20
 }) => {
   // Use the state and functions returned from useTable to build your UI
   const {
@@ -488,8 +489,8 @@ const TableComponent = ({
   }
 
   useEffect(() => {
-    setPageSize(20);
-  }, []);
+    setPageSize(pageSize);
+  }, [pageSize]);
 
   // Render the UI for your table
   return (
