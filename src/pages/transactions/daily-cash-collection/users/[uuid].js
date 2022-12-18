@@ -81,32 +81,32 @@ const CashCollectionDetailsPage = () => {
         }
     }
 
-    const getListUser = async () => {
-        setLoading(true);
-        let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
-        if (branchList.length > 0) {
-            const response = await fetchWrapper.get(url);
-            if (response.success) {
-                let userList = [];
-                response.users && response.users.map(u => {
-                    const name = `${u.firstName} ${u.lastName}`;
-                    userList.push(
-                        {
-                            ...u,
-                            name: name,
-                            label: name,
-                            value: u._id
-                        }
-                    );
-                });
-                dispatch(setUserList(userList));
-                setLoading(false);
-            } else {
-                setLoading(false);
-                toast.error('Error retrieving user list.');
-            }
-        }
-    }
+    // const getListUser = async () => {
+    //     setLoading(true);
+    //     let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
+    //     if (branchList.length > 0) {
+    //         const response = await fetchWrapper.get(url);
+    //         if (response.success) {
+    //             let userList = [];
+    //             response.users && response.users.map(u => {
+    //                 const name = `${u.firstName} ${u.lastName}`;
+    //                 userList.push(
+    //                     {
+    //                         ...u,
+    //                         name: name,
+    //                         label: name,
+    //                         value: u._id
+    //                     }
+    //                 );
+    //             });
+    //             dispatch(setUserList(userList));
+    //             setLoading(false);
+    //         } else {
+    //             setLoading(false);
+    //             toast.error('Error retrieving user list.');
+    //         }
+    //     }
+    // }
 
 
     useEffect(() => {
@@ -131,11 +131,11 @@ const CashCollectionDetailsPage = () => {
         };
     }, [uuid]);
 
-    useEffect(() => {
-        if (branchList) {
-            getListUser();
-        }
-    }, [branchList]);
+    // useEffect(() => {
+    //     if (branchList) {
+    //         getListUser();
+    //     }
+    // }, [branchList]);
 
     useEffect(() => {
         if (branch) {

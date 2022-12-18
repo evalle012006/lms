@@ -43,6 +43,8 @@ module.exports = {
     const loanOfficerRole = await db.collection('roles').find({ rep: 4 }).project({ _id: 0 }).toArray();
     const branches = await db.collection('branches').find().toArray();
 
+    const romanArr = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XV', 'XVII', 'XVIII', 'XVIXX'];
+
     db.collection('users').insertOne(
       {
         firstName: 'SUPER',
@@ -64,22 +66,37 @@ module.exports = {
       branches.map(branch => {
         const nameArr = branch.name.split(' ');
         let name = branch.name.toLowerCase();
+        let passwordName = branch.name.toLowerCase();
         if (nameArr.length === 2) {
-          name = nameArr[0] + roman_to_Int(nameArr[1]);
+          if (romanArr.includes(nameArr[1])) {
+            name = nameArr[0] + roman_to_Int(nameArr[1]);
+            passwordName = nameArr[0].toLowerCase();
+          } else {
+            name = nameArr[0] + nameArr[1];
+            passwordName = (nameArr[0] + nameArr[1]).toLowerCase();
+          }
           name = name.toLowerCase();
         } else if (nameArr.length === 3) {
+          if (romanArr.includes(nameArr[2])) {
+            name = nameArr[0] + nameArr[1] + roman_to_Int(nameArr[2]);
+            passwordName = (nameArr[0] + nameArr[1]).toLowerCase();
+          } else {
+            name = nameArr[0] + nameArr[1] + nameArr[2];
+            passwordName = (nameArr[0] + nameArr[1] + nameArr[2]).toLowerCase();
+          }
           name = nameArr[0] + nameArr[1] + roman_to_Int(nameArr[2]);
           name = name.toLowerCase();
         }
         
         const email = name + '@ambercashph.com';
+        const passwrd = ("*" + passwordName + branch.code).toLowerCase();
         
         db.collection('users').insertMany([
           // {
           //   firstName: 'Area Manager',
           //   lastName: branch.name,
           //   email: 'AM' + email,
-          //   password: bcrypt.hashSync('password', bcrypt.genSaltSync(8), null), // remove in official
+          //   password: bcrypt.hashSync(password, bcrypt.genSaltSync(8), null), // remove in official
           //   number: '04911111111',
           //   position: 'Area Manager',
           //   logged: false,
@@ -92,7 +109,7 @@ module.exports = {
             firstName: 'Branch Manager',
             lastName: branch.name,
             email: 'BM' + email,
-            password: bcrypt.hashSync('password', bcrypt.genSaltSync(8), null), // remove in official
+            password: bcrypt.hashSync(passwrd, bcrypt.genSaltSync(8), null), // remove in official
             number: '04911111111',
             position: 'Branch Manager',
             logged: false,
@@ -107,7 +124,7 @@ module.exports = {
             firstName: 'LO 1',
             lastName: branch.name,
             email: 'lo1' + email,
-            password: bcrypt.hashSync('password', bcrypt.genSaltSync(8), null), // remove in official
+            password: bcrypt.hashSync(passwrd, bcrypt.genSaltSync(8), null), // remove in official
             number: '04911111111',
             position: 'Loan Officer',
             logged: false,
@@ -122,7 +139,7 @@ module.exports = {
             firstName: 'LO 2',
             lastName: branch.name,
             email: 'lo2' + email,
-            password: bcrypt.hashSync('password', bcrypt.genSaltSync(8), null), // remove in official
+            password: bcrypt.hashSync(passwrd, bcrypt.genSaltSync(8), null), // remove in official
             number: '04911111111',
             position: 'Loan Officer',
             logged: false,
@@ -137,7 +154,7 @@ module.exports = {
             firstName: 'LO 3',
             lastName: branch.name,
             email: 'lo3' + email,
-            password: bcrypt.hashSync('password', bcrypt.genSaltSync(8), null), // remove in official
+            password: bcrypt.hashSync(passwrd, bcrypt.genSaltSync(8), null), // remove in official
             number: '04911111111',
             position: 'Loan Officer',
             logged: false,
@@ -152,7 +169,7 @@ module.exports = {
             firstName: 'LO 4',
             lastName: branch.name,
             email: 'lo4' + email,
-            password: bcrypt.hashSync('password', bcrypt.genSaltSync(8), null), // remove in official
+            password: bcrypt.hashSync(passwrd, bcrypt.genSaltSync(8), null), // remove in official
             number: '04911111111',
             position: 'Loan Officer',
             logged: false,
@@ -167,7 +184,7 @@ module.exports = {
             firstName: 'LO 5',
             lastName: branch.name,
             email: 'lo5' + email,
-            password: bcrypt.hashSync('password', bcrypt.genSaltSync(8), null), // remove in official
+            password: bcrypt.hashSync(passwrd, bcrypt.genSaltSync(8), null), // remove in official
             number: '04911111111',
             position: 'Loan Officer',
             logged: false,
@@ -182,7 +199,7 @@ module.exports = {
             firstName: 'LO 6',
             lastName: branch.name,
             email: 'lo6' + email,
-            password: bcrypt.hashSync('password', bcrypt.genSaltSync(8), null), // remove in official
+            password: bcrypt.hashSync(passwrd, bcrypt.genSaltSync(8), null), // remove in official
             number: '04911111111',
             position: 'Loan Officer',
             logged: false,
@@ -197,7 +214,7 @@ module.exports = {
             firstName: 'LO 7',
             lastName: branch.name,
             email: 'lo7' + email,
-            password: bcrypt.hashSync('password', bcrypt.genSaltSync(8), null), // remove in official
+            password: bcrypt.hashSync(passwrd, bcrypt.genSaltSync(8), null), // remove in official
             number: '04911111111',
             position: 'Loan Officer',
             logged: false,
@@ -212,7 +229,7 @@ module.exports = {
             firstName: 'LO 8',
             lastName: branch.name,
             email: 'lo8' + email,
-            password: bcrypt.hashSync('password', bcrypt.genSaltSync(8), null), // remove in official
+            password: bcrypt.hashSync(passwrd, bcrypt.genSaltSync(8), null), // remove in official
             number: '04911111111',
             position: 'Loan Officer',
             logged: false,
@@ -227,7 +244,7 @@ module.exports = {
             firstName: 'LO 9',
             lastName: branch.name,
             email: 'lo9' + email,
-            password: bcrypt.hashSync('password', bcrypt.genSaltSync(8), null), // remove in official
+            password: bcrypt.hashSync(passwrd, bcrypt.genSaltSync(8), null), // remove in official
             number: '04911111111',
             position: 'Loan Officer',
             logged: false,
@@ -242,7 +259,7 @@ module.exports = {
             firstName: 'LO 10',
             lastName: branch.name,
             email: 'lo10' + email,
-            password: bcrypt.hashSync('password', bcrypt.genSaltSync(8), null), // remove in official
+            password: bcrypt.hashSync(passwrd, bcrypt.genSaltSync(8), null), // remove in official
             number: '04911111111',
             position: 'Loan Officer',
             logged: false,
