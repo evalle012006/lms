@@ -893,8 +893,8 @@ const CashCollectionDetailsPage = () => {
                             temp.error = true;
                             temp.paymentCollection = 0;
                         } else if (parseFloat(payment) % parseFloat(temp.activeLoan) !== 0) {
-                            console.log({payment: payment, here: temp.activeLoan})
-                            console.log(parseFloat(payment) % parseFloat(temp.activeLoan))
+                            // console.log({payment: payment, here: temp.activeLoan})
+                            // console.log(parseFloat(payment) % parseFloat(temp.activeLoan))
                             toast.error("Actual collection should be divisible by 100.");
                             temp.error = true;
                             temp.paymentCollection = 0;
@@ -924,7 +924,7 @@ const CashCollectionDetailsPage = () => {
                             remarks: remarks
                         }
                     }
-
+                    // for pending remarks - this slot no should still be able to change by the following day to change the remarks
                     if (remarks.value === 'offset') {
                         if (parseFloat(temp.loanBalance) !== 0) {
                             toast.error("Please enter the full balance before closing the loan account.");
@@ -956,6 +956,8 @@ const CashCollectionDetailsPage = () => {
     }
 
     const handleRevert = (e, selected, index) => {
+        // remove next loans (approved or pending)
+        // target collection turn 0 (because of reloan)
         e.stopPropagation();
         let origList = [...data];
         let temp = {...selected};
@@ -1349,7 +1351,7 @@ const CashCollectionDetailsPage = () => {
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
                                                     { cc.status === 'active' && editMode && (!cc.hasOwnProperty('_id') || revertMode) ? (
                                                         <React.Fragment>
-                                                            <input type="number" name={cc.clientId} onBlur={(e) => handlePaymentCollectionChange(e, index, 'amount', cc.activeLoan)}
+                                                            <input type="number" name={cc.clientId} onChange={(e) => handlePaymentCollectionChange(e, index, 'amount', cc.activeLoan)}
                                                                 onClick={(e) => e.stopPropagation()} defaultValue={cc.paymentCollection} tabIndex={index + 1}
                                                                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg 
                                                                             focus:ring-main focus:border-main block p-2.5" style={{ width: '100px' }}/>

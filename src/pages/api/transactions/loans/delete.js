@@ -20,21 +20,19 @@ async function deleteLoan(req, res) {
 
     if (loans.length > 0) {
         // delete loanData._id;
-        await db
+        if (loans[0].status === 'pending') {
+            await db
             .collection('loans')
-            // .updateOne(
-            //     {  _id: ObjectId(loans[0]._id) },
-            //     {
-            //         $set: { ...loanData }
-            //     }, 
-            //     { upsert: false }
-            // );
             .deleteOne({ _id: ObjectId(loanData._id) });
         
-        updateGroup(loans[0]);
+            updateGroup(loans[0]);
 
-        response = {
-            success: true
+            response = { success: true }
+        } else {
+            response = {
+                error: true,
+                message: `Error. Loan is already active. Please contact your branch manager.`
+            };
         }
     } else {
         response = {

@@ -17,7 +17,8 @@ const ViewByBranchPage = () => {
     const [currentDate, setCurrentDate] = useState(moment(new Date()).format('YYYY-MM-DD'));
 
     const router = useRouter();
-
+    // check group status if there is pending change row color to orange/yellow else white
+    // save all totals per branch ? or lo? to a new table then get it from there
     const getBranchCashCollections = async (date) => {
         let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/get-all-loans-per-branch?' + new URLSearchParams({ date: date ? date : currentDate, mode: 'daily' });
         
