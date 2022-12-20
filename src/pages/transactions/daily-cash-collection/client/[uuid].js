@@ -1052,15 +1052,12 @@ const CashCollectionDetailsPage = () => {
                     });
                 } else {
                     const index = cashCollection.indexOf(existData);
-                    console.log(index);
-                    console.log(existData)
                     cashCollection[index] = {
                         ...existData,
                         group: currentGroup
                     }
                 }
             }
-            console.log(cashCollection)
             cashCollection.sort((a, b) => { return a.slotNo - b.slotNo; });
 
             if (totalIdx > -1) {
@@ -1077,7 +1074,7 @@ const CashCollectionDetailsPage = () => {
         } else {
             for (let i = 1; i <= groupCapacity; i++) {
                 const existData = cashCollection.find(cc => cc.slotNo === i);
-
+                console.log(existData)
                 if (!existData) {
                     cashCollection.push({
                         slotNo: i,
@@ -1099,6 +1096,7 @@ const CashCollectionDetailsPage = () => {
                     });
                 } else {
                     const index = cashCollection.indexOf(existData);
+                    console.log(index);
                     cashCollection[index] = {
                         ...existData,
                         group: currentGroup
@@ -1113,7 +1111,7 @@ const CashCollectionDetailsPage = () => {
             } else {
                 cashCollection.push(calculateTotals(cashCollection));
             }
-
+            console.log(cashCollection)
             // setTimeout(() => {
             //     dispatch(setCashCollectionGroup(cashCollection));
             //     setLoading(false);
