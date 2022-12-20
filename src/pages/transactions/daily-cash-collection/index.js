@@ -7,7 +7,6 @@ import toast from 'react-hot-toast';
 import { setBranchList } from "@/redux/actions/branchActions";
 import moment from 'moment';
 import DetailsHeader from "@/components/transactions/DetailsHeaderMain";
-import { setUserList } from "@/redux/actions/userActions";
 import ViewByLoanOfficerPage from "@/components/transactions/ViewByLoanOfficer";
 import ViewDailyCashCollectionPage from "@/components/transactions/ViewDailyCashCollection";
 import ViewByBranchPage from "@/components/transactions/ViewByBranch";
