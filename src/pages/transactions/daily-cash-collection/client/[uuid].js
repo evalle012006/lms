@@ -103,159 +103,136 @@ const CashCollectionDetailsPage = () => {
                 setGroupSummaryIsClose(true);
             }
             
-            // if (response.data.flag === 'existing') {
-            //     response.data.collection.map(cc => {
-            //         let temp = {...cc};
-            //         if (temp.status === 'active' || temp.status === 'completed' || temp.status === 'closed') {
-            //             temp.targetCollectionStr = formatPricePhp(temp.targetCollectionStr);
-            //             temp.amountReleaseStr = formatPricePhp(temp.amountRelease);
-            //             temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
-            //             temp.excessStr = formatPricePhp(temp.excess);
-            //             temp.totalStr = formatPricePhp(temp.total);
-            //             temp.currentReleaseAmountStr = temp.currentReleaseAmount ? formatPricePhp(temp.currentReleaseAmount) : '-';
-            //             temp.fullPaymentStr = temp.fullPayment ? formatPricePhp(temp.fullPayment) : '-';
-            //             temp.paymentCollectionStr = formatPricePhp(temp.paymentCollection);
-            //             temp.targetCollectionStr = formatPricePhp(temp.targetCollection);
-            //             temp.noOfPaymentStr = (temp.noOfPayments !== '-' && temp.status !== 'totals') ? temp.noOfPayments + ' / ' + maxDays : '-';
-            //             temp.mispaymentStr = temp.mispayment ? 'Yes' : 'No';
-            //             temp.fullName = UppercaseFirstLetter(`${cc.client.lastName}, ${cc.client.firstName} ${cc.client.middleName ? cc.client.middleName : ''}`);
-            //             // temp.status = temp.loan.status;
-            //         }
+            response.data.collection.map(cc => {
+                let collection;
+                if (cc.status === "tomorrow" || cc.status === "pending") {
+                    collection = {
+                        ...cc,
+                        group: cc.group,
+                        loanId: cc.loanId,
+                        branchId: cc.branchId,
+                        groupId: cc.groupId,
+                        groupName: cc.groupName,
+                        clientId: cc.clientId,
+                        slotNo: cc.slotNo,
+                        fullName: cc.client.lastName + ', ' + cc.client.firstName,
+                        loanCycle: cc.loanCycle,
+                        mispayment: '-',
+                        mispaymentStr: '-',
+                        collection: 0,
+                        excess: cc.excess > 0 ? cc.excess : 0,
+                        excessStr: cc.excess > 0 ? formatPricePhp(cc.excess) : '-',
+                        total: 0,
+                        totalStr: '-',
+                        noOfPayments: '-',
+                        noOfPaymentStr: '-',
+                        activeLoan: '-',
+                        targetCollection: 0,
+                        targetCollectionStr: '-',
+                        amountRelease: '-',
+                        amountReleaseStr: '-',
+                        loanBalance: '-',
+                        loanBalanceStr: '-',
+                        paymentCollection: 0,
+                        paymentCollectionStr: cc.paymentCollection > 0 ? formatPricePhp(cc.paymentCollection) : '-',
+                        occurence: cc.group.occurence,
+                        currentReleaseAmount: cc.currentReleaseAmount,
+                        currentReleaseAmountStr: formatPricePhp(cc.currentReleaseAmount),
+                        fullPayment: 0,
+                        fullPaymentStr: '-',
+                        remarks: cc.remarks ? cc.remarks : '',
+                        clientStatus: cc.client.status ? cc.client.status : '-',
+                        fullPaymentDate: cc.fullPaymentDate ? cc.fullPaymentDate : null,
+                        history: cc.hasOwnProperty('history') ? cc.history : null,
+                        prevData: cc.hasOwnProperty('prevData') ? cc.prevData : null
+                    }
+                } else {
+                    collection = {
+                        group: cc.group,
+                        loanId: cc._id,
+                        branchId: cc.branchId,
+                        groupId: cc.groupId,
+                        groupName: cc.groupName,
+                        clientId: cc.clientId,
+                        slotNo: cc.slotNo,
+                        fullName: cc.client.lastName + ', ' + cc.client.firstName,
+                        loanCycle: cc.loanCycle,
+                        mispayment: false,
+                        mispaymentStr: 'No',
+                        collection: 0,
+                        excess: cc.excess,
+                        excessStr: cc.excess > 0 ? formatPricePhp(cc.excess) : '-',
+                        total: 0,
+                        totalStr: '-',
+                        noOfPayments: cc.noOfPayments,
+                        noOfPaymentStr: cc.noOfPayments + ' / ' + maxDays,
+                        activeLoan: cc.activeLoan,
+                        targetCollection: cc.activeLoan,
+                        targetCollectionStr: cc.activeLoan > 0 ? formatPricePhp(cc.activeLoan) : '-',
+                        amountRelease: cc.amountRelease,
+                        amountReleaseStr: cc.amountRelease > 0 ? formatPricePhp(cc.amountRelease) : '-',
+                        loanBalance: cc.loanBalance,
+                        loanBalanceStr: cc.loanBalance > 0 ? formatPricePhp(cc.loanBalance) : '-',
+                        paymentCollection: cc.paymentCollection ? cc.paymentCollection : 0,
+                        paymentCollectionStr: formatPricePhp(cc.paymentCollection),
+                        occurence: cc.group.occurence,
+                        currentReleaseAmount: cc.currentReleaseAmount,
+                        currentReleaseAmountStr: formatPricePhp(cc.currentReleaseAmount),
+                        fullPayment: cc.fullPaymentAmount,
+                        fullPaymentStr: cc.fullPaymentAmount > 0 ? formatPricePhp(cc.fullPaymentAmount) : '-',
+                        remarks: cc.remarks ? cc.remarks : '',
+                        clientStatus: cc.client.status ? cc.client.status : '-',
+                        fullPaymentDate: cc.fullPaymentDate ? cc.fullPaymentDate : null,
+                        history: cc.hasOwnProperty('history') ? cc.history : null,
+                        status: cc.status
+                    }
 
-            //         cashCollection.push(temp);
-            //     });
-            // } else {
-                response.data.collection.map(cc => {
-                    let collection;
-                    if (cc.status === "tomorrow" || cc.status === "pending") {
-                        collection = {
-                            ...cc,
-                            group: cc.group,
-                            loanId: cc.loanId,
-                            branchId: cc.branchId,
-                            groupId: cc.groupId,
-                            groupName: cc.groupName,
-                            clientId: cc.clientId,
-                            slotNo: cc.slotNo,
-                            fullName: cc.client.lastName + ', ' + cc.client.firstName,
-                            loanCycle: cc.loanCycle,
-                            mispayment: '-',
-                            mispaymentStr: '-',
-                            collection: 0,
-                            excess: cc.excess > 0 ? cc.excess : 0,
-                            excessStr: cc.excess > 0 ? formatPricePhp(cc.excess) : '-',
-                            total: 0,
-                            totalStr: '-',
-                            noOfPayments: '-',
-                            noOfPaymentStr: '-',
-                            activeLoan: '-',
-                            targetCollection: 0,
-                            targetCollectionStr: '-',
-                            amountRelease: '-',
-                            amountReleaseStr: '-',
-                            loanBalance: '-',
-                            loanBalanceStr: '-',
-                            paymentCollection: 0,
-                            paymentCollectionStr: cc.paymentCollection > 0 ? formatPricePhp(cc.paymentCollection) : '-',
-                            occurence: cc.group.occurence,
-                            currentReleaseAmount: cc.currentReleaseAmount,
-                            currentReleaseAmountStr: formatPricePhp(cc.currentReleaseAmount),
-                            fullPayment: 0,
-                            fullPaymentStr: '-',
-                            remarks: cc.remarks ? cc.remarks : '',
-                            clientStatus: cc.client.status ? cc.client.status : '-',
-                            fullPaymentDate: cc.fullPaymentDate ? cc.fullPaymentDate : null,
-                            history: cc.hasOwnProperty('history') ? cc.history : null,
-                            prevData: cc.hasOwnProperty('prevData') ? cc.prevData : null
-                        }
-                    } else {
-                        collection = {
-                            group: cc.group,
-                            loanId: cc._id,
-                            branchId: cc.branchId,
-                            groupId: cc.groupId,
-                            groupName: cc.groupName,
-                            clientId: cc.clientId,
-                            slotNo: cc.slotNo,
-                            fullName: cc.client.lastName + ', ' + cc.client.firstName,
-                            loanCycle: cc.loanCycle,
-                            mispayment: false,
-                            mispaymentStr: 'No',
-                            collection: 0,
-                            excess: cc.excess,
-                            excessStr: cc.excess > 0 ? formatPricePhp(cc.excess) : '-',
-                            total: 0,
-                            totalStr: '-',
-                            noOfPayments: cc.noOfPayments,
-                            noOfPaymentStr: cc.noOfPayments + ' / ' + maxDays,
-                            activeLoan: cc.activeLoan,
-                            targetCollection: cc.activeLoan,
-                            targetCollectionStr: cc.activeLoan > 0 ? formatPricePhp(cc.activeLoan) : '-',
-                            amountRelease: cc.amountRelease,
-                            amountReleaseStr: cc.amountRelease > 0 ? formatPricePhp(cc.amountRelease) : '-',
-                            loanBalance: cc.loanBalance,
-                            loanBalanceStr: cc.loanBalance > 0 ? formatPricePhp(cc.loanBalance) : '-',
-                            paymentCollection: cc.paymentCollection ? cc.paymentCollection : 0,
-                            paymentCollectionStr: formatPricePhp(cc.paymentCollection),
-                            occurence: cc.group.occurence,
-                            currentReleaseAmount: cc.currentReleaseAmount,
-                            currentReleaseAmountStr: formatPricePhp(cc.currentReleaseAmount),
-                            fullPayment: cc.fullPaymentAmount,
-                            fullPaymentStr: cc.fullPaymentAmount > 0 ? formatPricePhp(cc.fullPaymentAmount) : '-',
-                            remarks: cc.remarks ? cc.remarks : '',
-                            clientStatus: cc.client.status ? cc.client.status : '-',
-                            fullPaymentDate: cc.fullPaymentDate ? cc.fullPaymentDate : null,
-                            history: cc.hasOwnProperty('history') ? cc.history : null,
-                            status: cc.status
-                        }
-
-                        delete cc._id;
-                        if (cc.hasOwnProperty('current') && cc.current.length > 0) {
-                            collection.excess = cc.current[0].excess;
-                            collection.excessStr = formatPricePhp(cc.current[0].excess);
-                            collection.paymentCollection = cc.current[0].paymentCollection;
-                            collection.paymentCollectionStr = formatPricePhp(cc.current[0].paymentCollection);
-                            collection.mispayment = cc.current[0].mispayment;
-                            collection.mispaymentStr = cc.current[0].mispaymentStr;
-                            collection.remarks = cc.current[0].remarks;
-                            collection._id = cc.current[0]._id;
-                            collection.prevData = cc.current[0].prevData;
-                            setEditMode(false);
-                        }
-        
-                        // if (cc.history.length > 0) {
-                        //     // collection.collection = formatPricePhp(cc.history[0].collection);
-                        //     // collection.excess = cc.history[0].excess;
-                        //     // collection.excessStr = formatPricePhp(cc.history[0].excess);
-                        //     collection.total = cc.history[0].total;
-                        //     collection.totalStr = formatPricePhp(cc.history[0].total);
-                        //     collection.history = cc.history[0];
-                        // }
-        
-                        if (cc.currentRelease.length > 0) {
-                            collection.currentReleaseAmount = cc.currentRelease[0].currentReleaseAmount;
-                            collection.currentReleaseAmountStr = cc.currentRelease[0].currentReleaseAmount ? formatPricePhp(cc.currentRelease[0].currentReleaseAmount) : '-';
-                        }
-        
-                        if (cc.fullPayment.length > 0) {
-                            collection.fullPayment = cc.fullPayment[0].fullPaymentAmount;
-                            collection.fullPaymentStr = cc.fullPayment[0].fullPaymentAmount ? formatPricePhp(cc.fullPayment[0].fullPaymentAmount) : '-';
-                        }
-        
-                        if (cc.loanBalance <= 0) {
-                            if (cc.fullPaymentDate === currentDate) {
-                                collection.paymentCollection = cc.history ? cc.history.collection : 0;
-                                collection.paymentCollectionStr = formatPricePhp(collection.paymentCollection);
-                            }
-    
-                            collection.notCalculate = true;
-                            collection.remarks = cc.history ? cc.history.remarks : '-';
-                        }
+                    delete cc._id;
+                    if (cc.hasOwnProperty('current') && cc.current.length > 0) {
+                        collection.excess = cc.current[0].excess;
+                        collection.excessStr = formatPricePhp(cc.current[0].excess);
+                        collection.paymentCollection = cc.current[0].paymentCollection;
+                        collection.paymentCollectionStr = formatPricePhp(cc.current[0].paymentCollection);
+                        collection.mispayment = cc.current[0].mispayment;
+                        collection.mispaymentStr = cc.current[0].mispaymentStr;
+                        collection.remarks = cc.current[0].remarks;
+                        collection._id = cc.current[0]._id;
+                        collection.prevData = cc.current[0].prevData;
+                        setEditMode(false);
                     }
     
-                    cashCollection.push(collection);
-                });
-            // }
+                    // if (cc.history.length > 0) {
+                    //     // collection.collection = formatPricePhp(cc.history[0].collection);
+                    //     // collection.excess = cc.history[0].excess;
+                    //     // collection.excessStr = formatPricePhp(cc.history[0].excess);
+                    //     collection.total = cc.history[0].total;
+                    //     collection.totalStr = formatPricePhp(cc.history[0].total);
+                    //     collection.history = cc.history[0];
+                    // }
+    
+                    if (cc.currentRelease.length > 0) {
+                        collection.currentReleaseAmount = cc.currentRelease[0].currentReleaseAmount;
+                        collection.currentReleaseAmountStr = cc.currentRelease[0].currentReleaseAmount ? formatPricePhp(cc.currentRelease[0].currentReleaseAmount) : '-';
+                    }
+    
+                    if (cc.fullPayment.length > 0) {
+                        collection.fullPayment = cc.fullPayment[0].fullPaymentAmount;
+                        collection.fullPaymentStr = cc.fullPayment[0].fullPaymentAmount ? formatPricePhp(cc.fullPayment[0].fullPaymentAmount) : '-';
+                    }
+    
+                    if (cc.loanBalance <= 0) {
+                        if (cc.fullPaymentDate === currentDate) {
+                            collection.paymentCollection = cc.history ? cc.history.collection : 0;
+                            collection.paymentCollectionStr = formatPricePhp(collection.paymentCollection);
+                        }
+
+                        collection.notCalculate = true;
+                        collection.remarks = cc.history ? cc.history.remarks : '-';
+                    }
+                }
+
+                cashCollection.push(collection);
+            });
 
             response.data.tomorrowPending.map(loan => {
                 const currentLoan = cashCollection.find(l => l.clientId === loan.clientId);
@@ -1045,26 +1022,6 @@ const CashCollectionDetailsPage = () => {
         setShowRemarksModal(false);
     }
 
-    // const handleCloseAccount = (e, selected) => {
-    //     e.stopPropagation();
-    //     setLoan(selected);
-    //     setShowRemarksModal(true);
-    // }
-
-    // const closeAccount = () => {
-    //     setLoading(true);
-    //     fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'clients/close-account', {...loan, remarks: closeAccountRemarks})
-    //         .then(response => {
-    //             setLoading(false);
-    //             toast.success('Loan successfully closed.');
-    //             getCashCollections();
-    //             setShowRemarksModal(false);
-    //             setCloseAccountRemarks('');
-    //         }).catch(error => {
-    //             console.log(error);
-    //         });
-    // }
-
     const addBlankAndTotal = (isFiltering, dataArr) => {
         let cashCollection = [...dataArr];
         const groupCapacity = currentGroup && currentGroup.capacity;
@@ -1095,13 +1052,15 @@ const CashCollectionDetailsPage = () => {
                     });
                 } else {
                     const index = cashCollection.indexOf(existData);
+                    console.log(index);
+                    console.log(existData)
                     cashCollection[index] = {
                         ...existData,
                         group: currentGroup
                     }
                 }
             }
-
+            console.log(cashCollection)
             cashCollection.sort((a, b) => { return a.slotNo - b.slotNo; });
 
             if (totalIdx > -1) {
