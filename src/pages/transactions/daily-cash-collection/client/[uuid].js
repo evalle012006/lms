@@ -1051,7 +1051,6 @@ const CashCollectionDetailsPage = () => {
                         status: 'open'
                     });
                 } else if (!existData.group) {
-                    console.log('no group...')
                     const index = cashCollection.indexOf(existData);
                     cashCollection[index] = {
                         ...existData,
@@ -1075,7 +1074,6 @@ const CashCollectionDetailsPage = () => {
         } else {
             for (let i = 1; i <= groupCapacity; i++) {
                 const existData = cashCollection.find(cc => cc.slotNo === i);
-                console.log(existData)
                 if (!existData) {
                     cashCollection.push({
                         slotNo: i,
@@ -1096,9 +1094,7 @@ const CashCollectionDetailsPage = () => {
                         status: 'open'
                     });
                 } else if (!existData.group) {
-                    console.log('no group... not filter')
                     const index = cashCollection.indexOf(existData);
-                    console.log(index);
                     cashCollection[index] = {
                         ...existData,
                         group: currentGroup
@@ -1113,7 +1109,6 @@ const CashCollectionDetailsPage = () => {
             } else {
                 cashCollection.push(calculateTotals(cashCollection));
             }
-            console.log(cashCollection)
             // setTimeout(() => {
             //     dispatch(setCashCollectionGroup(cashCollection));
             //     setLoading(false);

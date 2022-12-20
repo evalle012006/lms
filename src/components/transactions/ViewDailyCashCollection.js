@@ -97,8 +97,8 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                         collectionStr: cc.cashCollections[0].collection ? formatPricePhp(cc.cashCollections[0].collection) : 0,
                         excess: cc.cashCollections[0].excess && cc.cashCollections[0].excess,
                         excessStr: cc.cashCollections[0].excess ? formatPricePhp(cc.cashCollections[0].excess) : 0,
-                        total: cc.cashCollections[0].total && cc.cashCollections[0].total,
-                        totalStr: cc.cashCollections[0].total ? formatPricePhp(cc.cashCollections[0].total) : 0.00
+                        // total: cc.cashCollections[0].collection && cc.cashCollections[0].collection,
+                        // totalStr: cc.cashCollections[0].collection ? formatPricePhp(cc.cashCollections[0].collection) : 0
                     };
                 }
 
@@ -161,7 +161,7 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                     currentReleaseAmount += cc.currentReleaseAmount ? cc.currentReleaseAmount : 0;
                     targetLoanCollection += cc.loanTarget ? cc.loanTarget : 0;
                     excess += cc.excess ? cc.excess : 0;
-                    totalLoanCollection += cc.total ? cc.total : 0;
+                    totalLoanCollection += cc.collection ? cc.collection : 0;
                     fullPaymentAmount += cc.fullPaymentAmount ? cc.fullPaymentAmount : 0;
                     noOfFullPayment += cc.noOfFullPayment && cc.noOfFullPayment !== '-' ? cc.noOfFullPayment: 0;
                     noOfNewfullPayment += cc.newFullPayment ? cc.newFullPayment : 0;
@@ -180,7 +180,7 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                 totalLoanBalanceStr: totalsLoanBalance ? formatPricePhp(totalsLoanBalance) : 0,
                 loanTargetStr: targetLoanCollection ? formatPricePhp(targetLoanCollection) : 0,
                 excessStr: excess ? formatPricePhp(excess) : 0,
-                totalStr: totalLoanCollection ? formatPricePhp(totalLoanCollection) : 0,
+                collectionStr: totalLoanCollection ? formatPricePhp(totalLoanCollection) : 0,
                 mispayment: mispayment + ' / ' + noOfClients,
                 fullPaymentAmountStr: fullPaymentAmount ? formatPricePhp(fullPaymentAmount) : 0,
                 noOfFullPayment: noOfFullPayment,
@@ -270,7 +270,7 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
         },
         {
             Header: "Actual Loan Collection",
-            accessor: 'totalStr',
+            accessor: 'collectionStr',
             Filter: SelectColumnFilter,
             filter: 'includes'
         },

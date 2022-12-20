@@ -92,7 +92,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter }) => {
                     
                     if (group.cashCollections.length > 0) {
                         excess += group.cashCollections[0].excess;
-                        totalLoanCollection += group.cashCollections[0].total;
+                        totalLoanCollection += group.cashCollections[0].collection;
                         mispayment += group.cashCollections[0].mispayment;
                     }
 

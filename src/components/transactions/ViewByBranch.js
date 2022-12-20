@@ -30,6 +30,7 @@ const ViewByBranchPage = () => {
                 let collection = {
                     _id: branch._id,
                     name: branch.name,
+                    code: branch.code,
                     noCurrentReleaseStr: '-',
                     currentReleaseAmountStr: '-',
                     activeClients: '-',
@@ -74,7 +75,7 @@ const ViewByBranchPage = () => {
                         
                         if (group.cashCollections.length > 0) {
                             excess += group.cashCollections[0].excess;
-                            totalLoanCollection += group.cashCollections[0].total;
+                            totalLoanCollection += group.cashCollections[0].collection;
                             mispayment += group.cashCollections[0].mispayment;
                         }
     
@@ -168,6 +169,12 @@ const ViewByBranchPage = () => {
         {
             Header: "Branch Name",
             accessor: 'name',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "Branch Code",
+            accessor: 'code',
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
