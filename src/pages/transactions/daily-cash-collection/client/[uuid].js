@@ -1214,18 +1214,6 @@ const CashCollectionDetailsPage = () => {
         setAllData(cashCollections);
     }, [groupClients, dateFilter]);
 
-    // useEffect(() => {
-    //     // if (currentGroup && !queryMain && !groupSummaryIsClose) {
-    //     //     getTomorrowPendingLoans(currentGroup._id);
-    //     // }
-
-    //     if (groupSummaryIsClose && currentGroup) {
-    //         setEditMode(false);
-    //         addBlankAndTotal(false, data);
-    //     } else {
-    //         setEditMode(true);
-    //     }
-    // }, [currentGroup, queryMain, groupSummaryIsClose]);
 
     useEffect(() => {
         // issue in date filter wherein the data is not consistent
