@@ -110,7 +110,6 @@ const DailyCashCollectionPage = () => {
 
     useEffect(() => {
         if (branchList.length > 0) {
-            // getListUser();
             localStorage.setItem('cashCollectionDateFilter', currentDate);
 
             if (currentUser.role.rep < 4) {
