@@ -1050,10 +1050,9 @@ const CashCollectionDetailsPage = () => {
                         clientStatus: '-',
                         status: 'open'
                     });
-                } else {
+                } else if (!existData.group) {
+                    console.log('no group...')
                     const index = cashCollection.indexOf(existData);
-                    console.log(index);
-                    console.log(existData)
                     cashCollection[index] = {
                         ...existData,
                         group: currentGroup
@@ -1096,9 +1095,9 @@ const CashCollectionDetailsPage = () => {
                         clientStatus: '-',
                         status: 'open'
                     });
-                } else {
+                } else if (!existData.group) {
+                    console.log('no group... not filter')
                     const index = cashCollection.indexOf(existData);
-                    console.log(index);
                     cashCollection[index] = {
                         ...existData,
                         group: currentGroup
