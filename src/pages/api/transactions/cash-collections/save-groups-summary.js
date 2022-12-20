@@ -16,7 +16,7 @@ async function processLOSummary(req, res) {
 
     let groups;
     if (branchId) {
-        groups = await db.collection('groups').find({ branchId: branchId }).toArray();
+        groups = await db.collection('groups').find({ $expr: { $and: [{$eq: ['$branchId', branchId] }, {$gt: ['$noOfClients', 0]}] } }).toArray();
     } else {
         groupSummaryIds.map(async gs => {
             const data = {
