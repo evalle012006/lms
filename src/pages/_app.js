@@ -2,6 +2,8 @@ import Head from 'next/head';
 import { Toaster } from 'react-hot-toast';
 import { RouteGuard } from '@/components/RouteGuard';
 import { wrapper } from '@/redux/store';
+import ReactGA from 'react-ga';
+import { useEffect } from 'react';
 
 import 'tailwindcss/tailwind.css';
 import 'react-phone-number-input/style.css';
@@ -12,8 +14,14 @@ import '@/styles/common-forms.css';
 import '@/styles/settings.css';
 import '@/styles/table.css';
 import '@/styles/avatar.css';
+import { useRouter } from 'node_modules/next/router';
 
 const ACLoanManagementApp = ({ Component, pageProps }) => {
+    const router = useRouter();
+    useEffect(() => {
+        ReactGA.initialize('G-YWQQS28LLX');
+        ReactGA.pageview(window.location.pathname + window.location.search);
+    }, [router]);
     return (
         <>
             <Head>
