@@ -66,12 +66,10 @@ async function saveCollection(collection) {
 }
 
 async function updateLoan(collection) {
-    console.log('updating loan')
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
 
     let loan = await db.collection('loans').find({ _id: ObjectId(collection.loanId) }).toArray();
-    console.log(loan);
     if (loan.length > 0) {
         loan = loan[0];
 
