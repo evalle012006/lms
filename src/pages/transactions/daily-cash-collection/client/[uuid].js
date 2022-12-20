@@ -658,12 +658,15 @@ const CashCollectionDetailsPage = () => {
 
         groupClients && groupClients.map(cc => {
             if (cc.status === 'active') {
-                if (cc.error) {
-                    errorMsg.add('Error occured. Please double check the Actual Collection column.');
-                }
-
-                if (parseFloat(cc.paymentCollection) === 0 && !cc.remarks) {
+                console.log(cc.paymentCollection)
+                if (parseFloat(cc.paymentCollection) < cc.targetCollection) {
+                    errorMsg.add("Actual collection is below the target collection.");
+                } else if (parseFloat(cc.paymentCollection) % parseFloat(cc.activeLoan) !== 0) {
+                    errorMsg.add("Actual collection should be divisible by 100.");
+                } else if (parseFloat(cc.paymentCollection) === 0 && !cc.remarks) {
                     errorMsg.add('Error occured. Please select a remarks for 0 or no payment Actual Collection.');
+                } else if (cc.error) {
+                    errorMsg.add('Error occured. Please double check the Actual Collection column.');
                 }
 
                 if (parseFloat(cc.loanBalance) && (cc.remarks && cc.remarks.value === 'offset')) {
@@ -753,7 +756,7 @@ const CashCollectionDetailsPage = () => {
                 
                     return temp;   
                 }).filter(cc => cc.status !== 'totals');
-                console.log(dataArr)
+
                 if (save) {
                     let cashCollection;
                     if (editMode) {
@@ -804,6 +807,30 @@ const CashCollectionDetailsPage = () => {
                 let temp = {...cc};
                 if (temp.status !== 'open') {
                     if (idx === index) {
+                        if (temp.hasOwnProperty('prevData')) {
+                            temp.loanBalance = temp.prevData.loanBalance;
+                            temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
+                            temp.total = temp.prevData.total;
+                            temp.noOfPayments = temp.prevData.noOfPayments;
+                            temp.amountRelease = temp.prevData.amountRelease;
+                            temp.amountReleaseStr = formatPricePhp(temp.prevData.amountRelease);
+                            temp.excess = temp.prevData.excess;
+                            temp.excessStr = (temp.excess > 0 || temp.excess !== '-') ? formatPricePhp(temp.excess) : '-';
+                            temp.fullPaymentStr = '-';
+                            temp.remarks = '';
+                            temp.status = 'active';
+                        } else {
+                            temp.prevData = {
+                                amountRelease: temp.amountRelease,
+                                paymentCollection: payment,
+                                excess: temp.excess !== '-' ? temp.excess : 0,
+                                loanBalance: temp.loanBalance,
+                                activeLoan: temp.activeLoan,
+                                noOfPayments: temp.noOfPayments,
+                                total: temp.total
+                            };
+                        }
+                        
                         if (containsAnyLetters(value)) {
                             toast.error("Invalid amount in actual collection. Please input numeric only.");
                             temp.error = true;
@@ -817,26 +844,6 @@ const CashCollectionDetailsPage = () => {
                             || parseFloat(payment) === parseFloat(temp.loanBalance)) {
                             temp.dirty = true;
                             temp.error = false;
-                            if (temp.hasOwnProperty('prevData')) {
-                                temp.loanBalance = temp.prevData.loanBalance;
-                                temp.total = temp.prevData.total;
-                                temp.noOfPayments = temp.prevData.noOfPayments;
-                                temp.amountRelease = temp.prevData.amountRelease;
-                                temp.amountReleaseStr = formatPricePhp(temp.prevData.amountRelease);
-                                temp.fullPaymentStr = '-';
-                                temp.remarks = '';
-                                temp.status = 'active';
-                            } else {
-                                temp.prevData = {
-                                    amountRelease: temp.amountRelease,
-                                    paymentCollection: payment,
-                                    excess: temp.excess,
-                                    loanBalance: temp.loanBalance,
-                                    activeLoan: temp.activeLoan,
-                                    noOfPayments: temp.noOfPayments,
-                                    total: temp.total
-                                };
-                            }
     
                             temp.paymentCollection = parseFloat(payment);
                             temp.paymentCollectionStr = formatPricePhp(payment);
@@ -889,15 +896,13 @@ const CashCollectionDetailsPage = () => {
                                 temp.amountReleaseStr = 0;
                             }
                         } else if (parseFloat(payment) < targetCollection) {
-                            toast.error("Actual collection is below the target collection.");
+                            // toast.error("Actual collection is below the target collection.");
                             temp.error = true;
-                            temp.paymentCollection = 0;
+                            temp.paymentCollection = payment;
                         } else if (parseFloat(payment) % parseFloat(temp.activeLoan) !== 0) {
-                            // console.log({payment: payment, here: temp.activeLoan})
-                            // console.log(parseFloat(payment) % parseFloat(temp.activeLoan))
-                            toast.error("Actual collection should be divisible by 100.");
+                            // toast.error("Actual collection should be divisible by 100.");
                             temp.error = true;
-                            temp.paymentCollection = 0;
+                            temp.paymentCollection = payment;
                         }
                     } 
                 } 
