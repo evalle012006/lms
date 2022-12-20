@@ -1052,6 +1052,8 @@ const CashCollectionDetailsPage = () => {
                     });
                 } else {
                     const index = cashCollection.indexOf(existData);
+                    console.log(index);
+                    console.log(existData)
                     cashCollection[index] = {
                         ...existData,
                         group: currentGroup
