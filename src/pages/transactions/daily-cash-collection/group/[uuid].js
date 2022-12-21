@@ -35,12 +35,12 @@ const CashCollectionDetailsPage = () => {
         setDateFilter(filteredDate);
     }
 
-    const handleRowClick = (selected) => {
-        // console.log(selected);
-        if (selected.status === 'open') {
-            console.log('open')
-        }
-    }
+    // const handleRowClick = (selected) => {
+    //     // console.log(selected);
+    //     if (selected.status === 'open') {
+    //         console.log('open')
+    //     }
+    // }
 
     const getListBranch = async () => {
         const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'branches/list');
