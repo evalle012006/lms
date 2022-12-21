@@ -304,6 +304,51 @@ async function list(req, res) {
                 { $project: { branchIdObj: 0, groupIdObj: 0, clientIdObj: 0 } }
             ])
             .toArray();
+        } else {
+            loans = await db
+            .collection('loans')
+            .aggregate([
+                { $match: { status: 'pending' } },
+                {
+                    $addFields: {
+                        "branchIdObj": { $toObjectId: "$branchId" },
+                        "groupIdObj": { $toObjectId: "$groupId" },
+                        "clientIdObj": { $toObjectId: "$clientId" }
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "branches",
+                        localField: "branchIdObj",
+                        foreignField: "_id",
+                        as: "branch"
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "groups",
+                        localField: "groupIdObj",
+                        foreignField: "_id",
+                        as: "group"
+                    }
+                },
+                {
+                    $unwind: "$group"
+                },
+                {
+                    $lookup: {
+                        from: "client",
+                        localField: "clientIdObj",
+                        foreignField: "_id",
+                        as: "client"
+                    }
+                },
+                {
+                    $unwind: "$client"
+                },
+                { $project: { branchIdObj: 0, groupIdObj: 0, clientIdObj: 0 } }
+            ])
+            .toArray();
         }
     }
 

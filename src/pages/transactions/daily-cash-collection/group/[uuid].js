@@ -13,6 +13,7 @@ import { BehaviorSubject } from 'rxjs';
 import { setBranchList } from '@/redux/actions/branchActions';
 
 const CashCollectionDetailsPage = () => {
+    const selectedBranchSubject = new BehaviorSubject(process.browser && localStorage.getItem('selectedBranch'));
     const dateFilterSubject = new BehaviorSubject(process.browser && localStorage.getItem('cashCollectionDateFilter'));
     const dispatch = useDispatch();
     const router = useRouter();
@@ -55,7 +56,9 @@ const CashCollectionDetailsPage = () => {
 
             if (currentUser.root !== true && (currentUser.role.rep === 3 || currentUser.role.rep === 4)) {
                 branches = [branches.find(b => b.code === currentUser.designatedBranch)];
-            } 
+            } else if (selectedBranchSubject.value) {
+                branches = [branches.find(b => b._id === selectedBranchSubject.value)];
+            }
             
             dispatch(setBranchList(branches));
         } else {
@@ -88,27 +91,8 @@ const CashCollectionDetailsPage = () => {
     useEffect(() => {
         const getListUser = async () => {
             let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
-            if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
+            if (branchList.length > 0) {
                 url = url + '?' + new URLSearchParams({ branchCode: branchList[0].code });
-                const response = await fetchWrapper.get(url);
-                if (response.success) {
-                    let userList = [];
-                    response.users && response.users.filter(u => u.role.rep === 4).map(u => {
-                        const name = `${u.firstName} ${u.lastName}`;
-                        userList.push(
-                            {
-                                ...u,
-                                name: name,
-                                label: name,
-                                value: u._id
-                            }
-                        );
-                    });
-                    dispatch(setUserList(userList));
-                } else {
-                    toast.error('Error retrieving user list.');
-                }
-            } else if (branchList.length > 0) {
                 const response = await fetchWrapper.get(url);
                 if (response.success) {
                     let userList = [];
@@ -147,7 +131,7 @@ const CashCollectionDetailsPage = () => {
     return (
         <Layout header={false} noPad={true}>
             <div className="overflow-x-auto">
-                {currentLO && <DetailsHeader page={2} mode={'daily'} currentDate={moment(currentDate).format('dddd, MMMM DD, YYYY')} 
+                {currentLO && <DetailsHeader page={2} pageName="lo-view" mode={'daily'} currentDate={moment(currentDate).format('dddd, MMMM DD, YYYY')} 
                     selectedLO={currentLO} handleLOFilter={handleLOFilter} 
                     dateFilter={dateFilter} handleDateFilter={handleDateFilter}
                 />}

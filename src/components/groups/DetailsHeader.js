@@ -15,7 +15,6 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
     const groupList = useSelector(state => state.group.list);
     const group = useSelector(state => state.group.data);
     const [showCalendar, setShowCalendar] = useState(false);
-
     const statusClass = {
         'available': "text-green-700 bg-green-100",
         'full': "text-red-400 bg-red-100",
@@ -50,52 +49,6 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
         router.back();
     }
 
-    // useEffect(() => {
-    //     if (data) {
-    //         const options = new Set();
-    //         options.add('all');
-    //         data.map((d) => {
-    //             options.add(d.remarks);
-    //         });
-    //         let temp = [...options.values()];
-    //         temp = temp.filter(t => t !== '');
-    //         temp = temp.filter(t => t !== '-');
-            
-    //         temp = temp.map(t => {
-    //             return { label: UppercaseFirstLetter(t), value: t }
-    //         });
-
-    //         setRemarksArr(temp);
-    //     }
-    // }, [data])
-
-    // useEffect(() => {
-    //     const handleClickOutside = (e) => {
-    //         if (calendarRef.current && !calendarRef.current.contains(e.target)) {
-    //             setShowCalendar(false);
-    //         }
-    //     };
-
-    //     document.addEventListener('click', handleClickOutside, true);
-
-    //     return () => {
-    //         document.removeEventListener('click', handleClickOutside, true);
-    //     }
-    // }, []);
-
-    // useEffect(() => {
-    //     if (data && data.length > 0) {
-    //         const hasId = data.some(obj => { return obj.hasOwnProperty('_id') });
-    //         if (hasId) {
-    //             setHideSubmitButton(true);
-    //         }
-    //     }
-    // }, [data]);
-
-    // useEffect(() => {
-        
-    // }, [dateFilter]);
-
     return (
         <div className="bg-white px-7 py-2 fixed w-screen z-10">
             <div className="flex flex-row justify-between w-11/12">
@@ -103,16 +56,10 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
             </div>
             {group && (
                 <div className="py-2 proxima-regular">
-                    {page === 'transaction' ? (
-                        <div className="flex flex-row alternate-gothic text-2xl">
-                            <span><ArrowLeftCircleIcon className="w-5 h-5 mr-6 cursor-pointer" title="Back" onClick={handleBack} /></span>
-                            <span>{group.name}</span>
-                        </div>
-                    ) : (
-                        <div className="alternate-gothic text-2xl">
-                            {group.name}
-                        </div>
-                    )}
+                    <div className="flex flex-row alternate-gothic text-2xl">
+                        <span><ArrowLeftCircleIcon className="w-5 h-5 mr-6 cursor-pointer" title="Back" onClick={handleBack} /></span>
+                        <span>{group.name}</span>
+                    </div>
                     <div className="flex justify-between w-11/12">
                         <div className="flex flex-row justify-items-start space-x-5 py-4" style={{ height: '40px' }}>
                             <div className="space-x-2 flex items-center">

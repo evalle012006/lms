@@ -7,32 +7,33 @@ import moment from 'moment';
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { formatPricePhp, getTotal } from "@/lib/utils";
 import { toast } from 'react-hot-toast';
+import { BehaviorSubject } from 'rxjs';
 
-const ViewByLoanOfficerPage = ({ dateFilter }) => {
+const ViewByLoanOfficerPage = ({ pageNo, dateFilter }) => {
+    const selectedBranchSubject = new BehaviorSubject(process.browser && localStorage.getItem('selectedBranch'));
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
     const [userLOList, setUserLOList] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [branchFilter, setBranchFilter] = useState();
     const [currentDate, setCurrentDate] = useState(moment(new Date()).format('YYYY-MM-DD'));
    
     const router = useRouter();
 
-    // for area manager and up...
-    const handleBranchFilterChange = (selected) => {
-        setBranchFilter(selected.code);
-        getGroupCashCollections(selected.code);
-    }
-
     const handleRowClick = (selected) => {
         if (selected && selected.hasOwnProperty('_id')) {
             localStorage.setItem('selectedLO', selected._id);
-            router.push('./daily-cash-collection/group/' + selected._id);
+
+            if (pageNo === 1) {
+                router.push('./daily-cash-collection/group/' + selected._id);
+            } else if (pageNo === 2) {
+                router.push('/transactions/daily-cash-collection/group/' + selected._id);
+            }
         }
     };
 
     const getGroupCashCollections = async (selectedBranch, date) => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/get-all-loans-per-group?' + new URLSearchParams({ date: date ? date : currentDate, mode: 'daily', branchCode: selectedBranch ? selectedBranch : branchFilter });
+        setLoading(true);
+        let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/get-all-loans-per-group?' + new URLSearchParams({ date: date ? date : currentDate, mode: 'daily', branchCode: selectedBranch });
         
         const response = await fetchWrapper.get(url);
         if (response.success) {
@@ -351,21 +352,24 @@ const ViewByLoanOfficerPage = ({ dateFilter }) => {
                 { label: 'Open', action: handleOpen}
             ]);
         }
-        if (branchList) {
-            if (currentUser.role.rep === 3 || currentUser.role.rep === 4) {
-                const currentBranch = branchList.find(b => b.code === currentUser.designatedBranch);
-                mounted && setBranchFilter(currentBranch.code);
+        if (branchList.length > 0) {
+            let currentBranch;
+            
+            if (currentUser.role.rep <= 2 && selectedBranchSubject.value) {
+                currentBranch = branchList.find(b => b._id === selectedBranchSubject.value);
+            } else {
+                currentBranch = branchList.find(b => b.code === currentUser.designatedBranch);
+            }
 
-                if (dateFilter) {
-                    const date = moment(dateFilter).format('YYYY-MM-DD');
-                    if (date !== currentDate) {
-                        mounted && getGroupCashCollections(currentBranch.code, date);
-                    } else {
-                        mounted && getGroupCashCollections(currentBranch.code);
-                    }
+            if (dateFilter && currentBranch) {
+                const date = moment(dateFilter).format('YYYY-MM-DD');
+                if (date !== currentDate) {
+                    mounted && getGroupCashCollections(currentBranch.code, date);
                 } else {
                     mounted && getGroupCashCollections(currentBranch.code);
                 }
+            } else {
+                mounted && getGroupCashCollections(currentBranch.code);
             }
             
             setLoading(false);
@@ -374,7 +378,7 @@ const ViewByLoanOfficerPage = ({ dateFilter }) => {
         return () => {
             mounted = false;
         };
-    }, [currentUser, branchList, dateFilter]);
+    }, [branchList, dateFilter]);
 
     return (
         <React.Fragment>

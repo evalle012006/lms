@@ -5,11 +5,14 @@ import { ChevronRightIcon } from '@heroicons/react/24/solid';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { UppercaseFirstLetter } from '@/lib/utils';
 import { useSelector } from 'react-redux';
+import { BehaviorSubject } from 'rxjs';
 
 const Breadcrumbs = () => {
+    const selectedBranchSubject = new BehaviorSubject(process.browser && localStorage.getItem('selectedBranch'));
     const router = useRouter();
     const currentUser = useSelector(state => state.user.data);
     const [breadcrumbs, setBreadcrumbs] = useState([]);
+    const { uuid } = router.query;
     const paths = router.asPath
         .split('/')
         .filter((p, i) => i !== 0);
@@ -58,11 +61,20 @@ const Breadcrumbs = () => {
                             `${process.env.NEXT_PUBLIC_URL}/transactions/${paths[1]}`,
                             null
                         ];
-                    } else if (paths[2] ==='client') {
+                    } else if (paths[2] === 'client') {
                         response = await fetchWrapper.get(`${process.env.NEXT_PUBLIC_API_URL}groups?` + new URLSearchParams(params));
                         data = response.group;
                         labels = [title, data.name];
                         links = [   // need to retrived the selected LO
+                            `${process.env.NEXT_PUBLIC_URL}/transactions/${paths[1]}`,
+                            null
+                        ];
+                    } else if (paths[2] === 'users') {
+                        params = {_id: selectedBranchSubject.value}
+                        response = await fetchWrapper.get(`${process.env.NEXT_PUBLIC_API_URL}branches?` + new URLSearchParams(params));
+                        data = response.branch;
+                        labels = [title, data.name];
+                        links = [  
                             `${process.env.NEXT_PUBLIC_URL}/transactions/${paths[1]}`,
                             null
                         ];

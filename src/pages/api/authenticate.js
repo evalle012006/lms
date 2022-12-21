@@ -40,7 +40,7 @@ async function authenticate(req, res) {
         };
         logger.debug({page: 'login', message: 'Email or Password is incorrect'});
     } else {
-        const token = jwt.sign({ sub: user._id }, serverRuntimeConfig.secret, { expiresIn: '7d' });
+        const token = jwt.sign({ sub: user._id }, serverRuntimeConfig.secret, { expiresIn: '20h' });
         // delete user._id;
         delete user.password;
         const query = await db

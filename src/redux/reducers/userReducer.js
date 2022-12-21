@@ -1,11 +1,12 @@
-import { SET_ADD_UPDATE_USER, SET_FILTERED_DATA, SET_IS_FILTERING, SET_USER, SET_USER_LIST } from '@/redux/actions/userActions'
+import { SET_ADD_UPDATE_USER, SET_FILTERED_DATA, SET_IS_FILTERING, SET_SELECTED_LO, SET_USER, SET_USER_LIST } from '@/redux/actions/userActions'
 
 const initialUserState = {
     data: {},
     addUpdate: {},
     list: [],
     isFiltering: false,
-    filteredData: []
+    filteredData: [],
+    selectedLO: {}
 };
 
 const userReducer = (state = initialUserState, action) => {
@@ -20,6 +21,8 @@ const userReducer = (state = initialUserState, action) => {
             return { ...state, isFiltering: action.payload }
         case SET_FILTERED_DATA:
             return { ...state, filteredData: action.payload }
+        case SET_SELECTED_LO:
+            return { ...state, selectedLO: action.payload }
         default:
             return { ...state }
     }

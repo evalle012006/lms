@@ -42,7 +42,9 @@ const ClientsProspectPage = () => {
 
             if (currentUser.root !== true && (currentUser.role.rep === 3 || currentUser.role.rep === 4)) {
                 branches = [branches.find(b => b.code === currentUser.designatedBranch)];
-            } 
+            } else if (currentUser.role.rep === 2) {
+                branches = branches.filter(b => currentUser.designatedBranch.includes(b.code));
+            }
 
             dispatch(setBranchList(branches));
             setLoading(false);

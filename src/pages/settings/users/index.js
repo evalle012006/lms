@@ -49,13 +49,15 @@ const TeamPage = () => {
         const response = await fetchWrapper.get(url);
         let users = [];
         response.users && response.users.filter(u => !u.root).map((user) => {
+            const designatedBranch = user.role.rep === 2 ? user.designatedBranch.join(', ') : user.designatedBranch;
+
             users.push({
                 _id: user._id,
                 name: user.firstName + ' ' + user.lastName,
                 email: user.email,
                 number: user.number,
                 position: user.position,
-                designatedBranch: user.designatedBranch,
+                designatedBranch: designatedBranch,
                 roleId: user.role.rep,
                 role: UppercaseFirstLetter(user.role.name),
                 loNo: user.loNo,
@@ -238,10 +240,7 @@ const TeamPage = () => {
         setShowDeleteDialog(true);
     }
 
-    const rowActionButtons = [
-        { label: 'Edit', action: handleEditAction },
-        { label: 'Delete', action: handleDeleteAction }
-    ];
+    const [rowActionButtons, setRowActionButtons] = useState([]);
 
     const handleDelete = () => {
         if (userData) {
@@ -260,6 +259,21 @@ const TeamPage = () => {
                     }
                 });
         }
+    }
+
+    const handleResetUserPassword = (row) => {
+        let rowOriginal = row.original;
+        setLoading(true);
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'users/reset-password';
+        fetchWrapper.post(apiUrl, rowOriginal)
+            .then(response => {
+                setLoading(false);
+                if (response.success) {
+                    toast.success('User password was reset. Please login the user and use any kind of password and enter a new password on the next screen.', {autoClose: 5000});
+                }
+            }).catch(error => {
+                console.log(error);
+            });
     }
 
     const handleSearchFilter = (selected) => {
@@ -309,6 +323,24 @@ const TeamPage = () => {
     useEffect(() => {
         setUserListData(list);
     }, [list]);
+
+    useEffect(() => {
+        let rowActionBtn = [];
+        if (currentUser.role.rep === 1) {
+            rowActionBtn = [
+                { label: 'Edit', action: handleEditAction },
+                { label: 'Delete', action: handleDeleteAction },
+                { label: 'Reset Password', action: handleResetUserPassword }
+            ];
+        } else {
+            rowActionBtn = [
+                { label: 'Edit', action: handleEditAction },
+                { label: 'Delete', action: handleDeleteAction }
+            ];
+        }
+
+        setRowActionButtons(rowActionBtn);
+    }, [currentUser]);
 
     useEffect(() => {
         // to set user permissions

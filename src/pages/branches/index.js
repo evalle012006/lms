@@ -31,16 +31,36 @@ const BranchesPage = () => {
 
     const getListBranch = async () => {
         let url = process.env.NEXT_PUBLIC_API_URL + 'branches/list';
-        if (currentUser.root !== true && currentUser.role.rep === 3) {
+        if (currentUser.role.rep === 1) {
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                dispatch(setBranchList(response.branches));
+                setLoading(false);
+            } else if (response.error) {
+                setLoading(false);
+                toast.error(response.message);
+            }
+        } else if (currentUser.role.rep === 2) {
+            url = url + '?' + new URLSearchParams({ branchCodes: currentUser.designatedBranch });
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                dispatch(setBranchList(response.branches));
+                setLoading(false);
+            } else if (response.error) {
+                setLoading(false);
+                toast.error(response.message);
+            }
+        } else if (currentUser.role.rep === 3) {
             url = url + '?' + new URLSearchParams({ branchCode: currentUser.designatedBranch });
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                dispatch(setBranchList(response.branches));
+                setLoading(false);
+            } else if (response.error) {
+                setLoading(false);
+                toast.error(response.message);
+            }
         }
-        const response = await fetchWrapper.get(url);
-        if (response.success) {
-            dispatch(setBranchList(response.branches));
-        } else if (response.error) {
-            toast.error(response.message);
-        }
-        setLoading(false);
     }
 
     const [columns, setColumns] = useState([

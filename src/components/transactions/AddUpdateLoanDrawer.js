@@ -103,7 +103,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
 
             setSlotNumber(slotArr);
         }
-        
+
         form.setFieldValue(field, value);
         setLoading(false);
     }
@@ -179,6 +179,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                 values.status = 'pending';
                 values.loanCycle = values.loanCycle ? values.loanCycle : 1;
                 values.noOfPayments = 0;
+                values.insertedBy = currentUser._id;
 
                 fetchWrapper.post(apiUrl, values)
                     .then(response => {
@@ -202,6 +203,8 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             } else if (mode === 'edit') {
                 const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans';
                 values._id = loan._id;
+                values.modifiedBy = currentUser._id;
+                values.modifiedDate = moment(new Date()).format("YYYY-MM-DD");
                 fetchWrapper.post(apiUrl, values)
                     .then(response => {
                         if (response.success) {

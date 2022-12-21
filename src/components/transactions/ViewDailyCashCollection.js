@@ -347,6 +347,12 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                 } else {
                     getCashCollections(null, date);
                 }
+            } else {
+                if (currentUser.role.rep < 4 && selectedLOSubject.value.length > 0) {
+                    getCashCollections(selectedLOSubject.value, null);
+                } else {
+                    getCashCollections();
+                }
             }
         }
 
@@ -365,7 +371,6 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
             await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary', data);
         }
 
-        console.log('init group summary')
         initGroupCollectionSummary();
     }, []);
 
