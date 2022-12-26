@@ -168,6 +168,7 @@ const LoanApplicationPage = () => {
                         activeLoanStr: formatPricePhp(loan.activeLoan),
                         loanBalanceStr: formatPricePhp(loan.loanBalance),
                         fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
+                        allowApproved: loan.groupCashCollections.allowApproved,
                         selected: false
                     });
                 });
@@ -192,6 +193,7 @@ const LoanApplicationPage = () => {
                         activeLoanStr: formatPricePhp(loan.activeLoan),
                         loanBalanceStr: formatPricePhp(loan.loanBalance),
                         fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
+                        allowApproved: loan.groupCashCollections.allowApproved,
                         selected: false
                     });
                 });
@@ -215,6 +217,7 @@ const LoanApplicationPage = () => {
                         activeLoanStr: formatPricePhp(loan.activeLoan),
                         loanBalanceStr: formatPricePhp(loan.loanBalance),
                         fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
+                        allowApproved: loan.groupCashCollections.allowApproved,
                         selected: false
                     });
                 });
@@ -371,7 +374,11 @@ const LoanApplicationPage = () => {
             if (mode === 'all') {
                 const tempList = list.map(loan => {
                     let temp = {...loan};
-                    temp.selected = selectAll;
+
+                    if (temp.allowApproved) {
+                        temp.selected = selectAll;
+                    }
+                    
                     return temp;
                 });
                 dispatch(setLoanList(tempList));
@@ -625,7 +632,7 @@ const LoanApplicationPage = () => {
     }, [groupList]);
 
     return (
-        <Layout actionButtons={actionButtons}>
+        <Layout actionButtons={currentUser.role.rep > 2 && actionButtons}>
             <div className="pb-4">
                 {loading ?
                     (
@@ -648,7 +655,7 @@ const LoanApplicationPage = () => {
                             </nav>
                             <div>
                                 <TabPanel hidden={selectedTab !== "application"}>
-                                    <TableComponent columns={columns} data={list} hasActionButtons={true} rowActionButtons={rowActionButtons} showFilters={false} multiSelect={currentUser.role.rep <= 3 ? true : false} multiSelectActionFn={handleMultiSelect} />
+                                    <TableComponent columns={columns} data={list} hasActionButtons={currentUser.role.rep > 2 ? true : false} rowActionButtons={rowActionButtons} showFilters={false} multiSelect={currentUser.role.rep === 3 ? true : false} multiSelectActionFn={handleMultiSelect} />
                                 </TabPanel>
                                 <TabPanel hidden={selectedTab !== 'history'}>
                                     <TableComponent columns={columns} data={historyList} hasActionButtons={false} showFilters={false} />

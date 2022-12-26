@@ -18,7 +18,7 @@ async function processData(req, res) {
     loanData.map(async loan => {
         const loanId = loan._id;
         delete loan._id;
-
+        
         let groupData = await checkGroupStatus(loan.groupId);
         if (groupData.length > 0) {
             groupData = groupData[0];

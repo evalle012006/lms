@@ -224,7 +224,7 @@ const ClientsProspectPage = () => {
     }, [branchList]);
 
     return (
-        <Layout actionButtons={actionButtons}>
+        <Layout actionButtons={currentUser.role.rep > 2 && actionButtons}>
             {loading ? (
                 <div className="absolute top-1/2 left-1/2">
                     <Spinner />

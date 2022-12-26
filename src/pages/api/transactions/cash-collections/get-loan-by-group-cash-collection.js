@@ -113,7 +113,7 @@ async function getLoanWithCashCollection(req, res) {
                     ])
                     .toArray();
 
-                if (groupCashCollectionDay.status === 'pending') {
+                // if (groupCashCollectionDay.status === 'pending' || cashCollectionDay.length === 0) {
                     tomorrowPending = await db
                         .collection('loans')
                         .aggregate([
@@ -172,7 +172,7 @@ async function getLoanWithCashCollection(req, res) {
                             { $project: { branchIdObj: 0, groupIdObj: 0, clientIdObj: 0 } }
                         ])
                         .toArray();
-                }
+                // }
             } else if (type === 'filter') {
                 cashCollectionDay = await db
                     .collection('cashCollections')

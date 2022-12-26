@@ -306,7 +306,7 @@ const ViewByGroupsPage = () => {
                         ) : <TableComponent columns={columns} data={list} hasActionButtons={false} showFilters={false} rowClick={handleRowClick} />}
                 </div>
             ) : (
-                <Layout actionButtons={actionButtons}>
+                <Layout actionButtons={currentUser.role.rep > 2 && actionButtons}>
                     <div className="pb-4">
                         {loading ?
                             (
@@ -315,7 +315,7 @@ const ViewByGroupsPage = () => {
                                 </div>
                             ) : (
                                 <div>
-                                    <TableComponent columns={columns} data={list} hasActionButtons={true} rowActionButtons={rowActionButtons} showFilters={false} rowClick={handleRowClick} />
+                                    <TableComponent columns={columns} data={list} hasActionButtons={currentUser.role.rep > 2 ? true : false} rowActionButtons={currentUser.role.rep > 2 && rowActionButtons} showFilters={false} rowClick={handleRowClick} />
                                 </div>
                             )}
                     </div>

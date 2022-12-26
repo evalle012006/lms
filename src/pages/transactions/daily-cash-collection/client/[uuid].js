@@ -528,12 +528,14 @@ const CashCollectionDetailsPage = () => {
 
         groupClients && groupClients.map(cc => {
             if (cc.status === 'active') {
-                if (parseFloat(cc.paymentCollection) < cc.targetCollection && (cc.remarks && cc.remarks !== "delinquent")) {
+                if (parseFloat(cc.paymentCollection) === 0 && !cc.remarks) {
+                    errorMsg.add('Error occured. Please select a remarks for 0 or no payment Actual Collection.');
+                } else if ((cc.remarks && cc.remarks.value !== "delinquent") && parseFloat(cc.paymentCollection) === 0) {
+                    errorMsg.add("Error occured. 0 payment should be mark as DELINQUENT in remarks.");
+                } else if (parseFloat(cc.paymentCollection) > 0 && parseFloat(cc.paymentCollection) < cc.targetCollection) {
                     errorMsg.add("Actual collection is below the target collection.");
                 } else if (parseFloat(cc.paymentCollection) % parseFloat(cc.activeLoan) !== 0) {
                     errorMsg.add("Actual collection should be divisible by 100.");
-                } else if (parseFloat(cc.paymentCollection) === 0 && !cc.remarks) {
-                    errorMsg.add('Error occured. Please select a remarks for 0 or no payment Actual Collection.');
                 } else if (cc.status === "active" && cc.loanBalance === 0 && !cc.remarks ) {
                     errorMsg.add('Error occured. Please select PENDING, RELOANER or OFFSET remarks for full payment transaction.');
                 } else if ((cc.remarks && cc.remarks.value === "double payment") && parseFloat(cc.paymentCollection) !== (cc.activeLoan * 2)) {
@@ -1162,7 +1164,7 @@ const CashCollectionDetailsPage = () => {
                 </div>
             ) : (
                 <div className="overflow-x-auto">
-                    {data && <DetailsHeader page={'transaction'} showSaveButton={editMode}
+                    {data && <DetailsHeader page={'transaction'} showSaveButton={currentUser.role.rep > 2 ? editMode : false}
                         handleSaveUpdate={handleSaveUpdate} data={allData} setData={setFilteredData} 
                         dateFilter={dateFilter} setDateFilter={setDateFilter} handleDateFilter={handleDateFilter} currentGroup={uuid} 
                         groupFilter={groupFilter} handleGroupFilter={handleGroupFilter} groupTransactionStatus={groupSummaryIsClose ? 'close' : 'open'} />}
@@ -1220,7 +1222,7 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.targetCollectionStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.excessStr }</td>
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
-                                                    { cc.status === 'active' && editMode && (!cc.hasOwnProperty('_id') || revertMode) ? (
+                                                    { currentUser.role.rep > 2 && cc.status === 'active' && editMode && (!cc.hasOwnProperty('_id') || revertMode) ? (
                                                         <React.Fragment>
                                                             <input type="number" name={cc.clientId} onChange={(e) => handlePaymentCollectionChange(e, index, 'amount', cc.activeLoan)}
                                                                 onClick={(e) => e.stopPropagation()} defaultValue={cc.paymentCollection} tabIndex={index + 1}
@@ -1235,7 +1237,7 @@ const CashCollectionDetailsPage = () => {
                                                 </td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.fullPaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.mispaymentStr }</td>
-                                                { ((cc.status === 'active' || cc.status === 'completed') && (editMode || !groupSummaryIsClose) 
+                                                { (currentUser.role.rep > 2 && (cc.status === 'active' || cc.status === 'completed') && (editMode || !groupSummaryIsClose) 
                                                     && (!cc.hasOwnProperty('_id') || revertMode) && !filter) || ((cc.remarks && cc.remarks.value === "pending") && !groupSummaryIsClose) ? (
                                                         <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">
                                                             { cc.remarks !== '-' ? (
@@ -1253,13 +1255,21 @@ const CashCollectionDetailsPage = () => {
                                                         </td>
                                                     ) : (
                                                         <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">
-                                                            { cc.remarks || (filter && cc.remarks) ? cc.remarks.label === 'Remarks' ? 'No Remarks' : cc.remarks.label : '-'}
+                                                            { cc.status !== 'closed' ? (
+                                                                <React.Fragment>
+                                                                    { cc.remarks ? cc.remarks.label === 'Remarks' ? 'No Remarks' : cc.remarks.label : '-'}
+                                                                </React.Fragment>
+                                                            ) : (
+                                                                <React.Fragment>
+                                                                    { cc.remarks }
+                                                                </React.Fragment>
+                                                            ) }
                                                         </td>
                                                     )
                                                 }
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">
                                                     <React.Fragment>
-                                                        {((cc.status === 'active' || cc.status === 'completed') && !groupSummaryIsClose) && (
+                                                        {(currentUser.role.rep > 2 &&  (cc.status === 'active' || cc.status === 'completed') && !groupSummaryIsClose) && (
                                                             <div className='flex flex-row p-4'>
                                                                 {(cc.hasOwnProperty('_id') && !filter) && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleRevert(e, cc, index)} />}
                                                                 {(cc.status === 'completed' || (cc.hasOwnProperty('tomorrow') && !cc.tomorrow)) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
