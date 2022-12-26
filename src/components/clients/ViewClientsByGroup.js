@@ -438,7 +438,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                         <div className="absolute top-1/2 left-1/2">
                             <Spinner />
                         </div>
-                    ) : <TableComponent columns={columns} data={list} hasActionButtons={groupId ? false : true} rowActionButtons={rowActionButtons} showFilters={true} rowClick={handleShowClientInfoModal}/>}
+                    ) : <TableComponent columns={columns} data={list} hasActionButtons={groupId ? false : true} rowActionButtons={currentUser.role.rep > 2 && rowActionButtons} showFilters={true} rowClick={handleShowClientInfoModal}/>}
             </div>
             <Modal title="Client Detail Info" show={showClientInfoModal} onClose={handleCloseClientInfoModal} width="60rem">
                 <ClientDetailPage />

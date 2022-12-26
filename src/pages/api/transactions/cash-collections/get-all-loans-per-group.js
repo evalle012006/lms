@@ -96,7 +96,21 @@ async function getAllLoansPerGroup(req, res) {
                                     mispayment: { $sum: { $cond:{if: { $ne: ['$status', 'pending']}, then: '$mispayment', else: 0} } },
                                     totalRelease: { $sum: { $cond:{if: { $ne: ['$status', 'pending']}, then: '$amountRelease', else: 0} } },
                                     totalLoanBalance: { $sum: { $cond:{if: { $ne: ['$status', 'pending']}, then: '$loanBalance', else: 0} } },
-                                    loanTarget: { $sum: { $cond:{if: { $ne: ['$status', 'pending']}, then: '$activeLoan', else: 0} } },
+                                    loanTarget: { 
+                                        $sum: { 
+                                            $cond: {
+                                                if: { $ne: ['$status', 'pending']}, 
+                                                then: { 
+                                                    $cond: {
+                                                        if: { $eq: ['$activeLoan', 0] },
+                                                        then: '$history.activeLoan',
+                                                        else: '$activeLoan'
+                                                    } 
+                                                }, 
+                                                else: 0
+                                            } 
+                                        }
+                                    },
                                     collection: { $sum: 0 },
                                     excess: { $sum: 0 },
                                     total: { $sum: 0 }
@@ -360,7 +374,21 @@ async function getAllLoansPerGroup(req, res) {
                                     mispayment: { $sum: { $cond:{if: { $ne: ['$status', 'pending']}, then: '$mispayment', else: 0} } },
                                     totalRelease: { $sum: { $cond:{if: { $ne: ['$status', 'pending']}, then: '$amountRelease', else: 0} } },
                                     totalLoanBalance: { $sum: { $cond:{if: { $ne: ['$status', 'pending']}, then: '$loanBalance', else: 0} } },
-                                    loanTarget: { $sum: { $cond:{if: { $ne: ['$status', 'pending']}, then: '$activeLoan', else: 0} } },
+                                    loanTarget: { 
+                                        $sum: { 
+                                            $cond: {
+                                                if: { $ne: ['$status', 'pending']}, 
+                                                then: { 
+                                                    $cond: {
+                                                        if: { $eq: ['$activeLoan', 0] },
+                                                        then: '$history.activeLoan',
+                                                        else: '$activeLoan'
+                                                    } 
+                                                }, 
+                                                else: 0
+                                            } 
+                                        }
+                                    },
                                     collection: { $sum: 0 },
                                     excess: { $sum: 0 },
                                     total: { $sum: 0 }

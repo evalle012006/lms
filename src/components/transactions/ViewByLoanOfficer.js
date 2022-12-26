@@ -422,7 +422,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter }) => {
     useEffect(() => {
         let mounted = true;
 
-        if (currentUser.role.rep < 4) {
+        if (currentUser.role.rep === 3) {
             mounted && setRowActionButtons([
                 { label: 'Close', action: handleClose},
                 { label: 'Open', action: handleOpen}

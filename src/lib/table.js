@@ -602,6 +602,8 @@ const TableComponent = ({
                                 const delinquent = row.original.delinquent;
                                 const totalData = row.original.hasOwnProperty('totalData') ? row.original.totalData : false;
                                 const selected = row.original.hasOwnProperty('selected') ? row.original.selected : false;
+                                const allowApproved = row.original.hasOwnProperty('allowApproved') ? row.original.allowApproved : false;
+
                                 return (
                                 <tr {...row.getRowProps()} className={`hover:bg-slate-200 ${delinquent === 'Yes' && 'bg-red-100'} even:bg-gray-100`}>
                                     {multiSelect && (
@@ -609,7 +611,8 @@ const TableComponent = ({
                                         <CheckBox name={`select-${i}`}
                                             value={selected} 
                                             onChange={() => handleSelectRow(row.original, i)}
-                                            size={"md"} 
+                                            size={"md"}
+                                            disabled={!allowApproved}
                                         />
                                       </td>
                                     )}

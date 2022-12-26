@@ -44,7 +44,7 @@ const ViewByBranchPage = () => {
             response.data.map(branch => {
                 let collection = {
                     _id: branch._id,
-                    name: branch.code + ' ' + branch.name,
+                    name: branch.code + ' - ' + branch.name,
                     noCurrentReleaseStr: '-',
                     currentReleaseAmountStr: '-',
                     activeClients: '-',
