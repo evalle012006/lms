@@ -18,12 +18,18 @@ const Index = () => {
             }
         }
 
+        const updateLoanData = async () => {
+            await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}transactions/loans/update-loan-data`);
+        }
+
+
         // const updateGroupClients = async () => {
         //     await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}groups/update-group-clients`);
         // }
 
         mounted && getSystemSettings();
         // mounted && updateGroupClients();
+        mounted && updateLoanData();
 
         return () => {
             mounted = false;
