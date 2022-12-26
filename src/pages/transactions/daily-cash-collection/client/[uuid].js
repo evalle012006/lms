@@ -306,10 +306,10 @@ const CashCollectionDetailsPage = () => {
                             excessStr: formatPricePhp(currentLoan.history.excess),
                             paymentCollection: currentLoan.history.collection,
                             paymentCollectionStr: formatPricePhp(currentLoan.history.collection),
-                            remarks: currentLoan.remarks,
+                            remarks: currentLoan.history.remarks,
                             fullPayment: currentLoan.fullPayment,
                             fullPaymentStr: currentLoan.fullPayment ? currentLoan.fullPaymentStr : 0,
-                            status: loan.status,
+                            status: loan.status === "active" ? "tomorrow" : loan.status,
                             pending: loan.status === 'pending' ? true : false,
                             tomorrow: loan.status === 'active' ? true : false
                         };
@@ -634,8 +634,8 @@ const CashCollectionDetailsPage = () => {
                     }
                 
                     return temp;   
-                });
-                console.log(dataArr)
+                }).filter(cc => cc.status !== "totals");
+
                 if (save) {
                     let cashCollection;
                     if (editMode) {
@@ -827,6 +827,7 @@ const CashCollectionDetailsPage = () => {
                             setShowRemarksModal(true);
                             setCloseLoan(cc);
                             temp.error = false;
+                            setEditMode(true);
                         }
                     } else {
                         temp.closeRemarks = '';
@@ -1235,7 +1236,7 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.fullPaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.mispaymentStr }</td>
                                                 { ((cc.status === 'active' || cc.status === 'completed') && (editMode || !groupSummaryIsClose) 
-                                                    && (!cc.hasOwnProperty('_id') || revertMode) && !filter) || (cc.remarks && cc.remarks.value === "pending") ? (
+                                                    && (!cc.hasOwnProperty('_id') || revertMode) && !filter) || ((cc.remarks && cc.remarks.value === "pending") && !groupSummaryIsClose) ? (
                                                         <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">
                                                             { cc.remarks !== '-' ? (
                                                                 <Select 
@@ -1258,9 +1259,9 @@ const CashCollectionDetailsPage = () => {
                                                 }
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">
                                                     <React.Fragment>
-                                                        {(cc.status === 'active' || cc.status === 'completed') && (
+                                                        {((cc.status === 'active' || cc.status === 'completed') && !groupSummaryIsClose) && (
                                                             <div className='flex flex-row p-4'>
-                                                                {(cc.hasOwnProperty('_id') && !groupSummaryIsClose && !filter) && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleRevert(e, cc, index)} />}
+                                                                {(cc.hasOwnProperty('_id') && !filter) && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleRevert(e, cc, index)} />}
                                                                 {(cc.status === 'completed' || (cc.hasOwnProperty('tomorrow') && !cc.tomorrow)) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
                                                             </div>
                                                         )}
