@@ -21,6 +21,7 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
     const [loading, setLoading] = useState(true);
 
     const getCashCollections = async (selectedLO, dateFilter) => {
+        setLoading(true);
         let url = process.env.NEXT_PUBLIC_API_URL + 
             'transactions/cash-collections/get-all-loans-per-group?' 
             + new URLSearchParams({ 
@@ -32,10 +33,25 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
         const response = await fetchWrapper.get(url);
         if (response.success) {
             let collectionData = [];
+            let noOfClients = 0;
+            let noOfBorrowers = 0;
+            let totalsLoanRelease = 0;
+            let totalsLoanBalance = 0;
+            let noOfNewCurrentRelease = 0;
+            let noOfReCurrentRelease = 0;
+            let currentReleaseAmount = 0;
+            let targetLoanCollection = 0;
+            let excess = 0;
+            let totalLoanCollection = 0;
+            let noOfFullPayment = 0;
+            let fullPaymentAmount = 0;
+            let mispayment = 0;
+
             response.data && response.data.map(cc => {
                 let collection = {
                     groupId: cc._id,
                     group: cc.name,
+                    noOfClients: cc.noOfClients,
                     noCurrentReleaseStr: '-',
                     currentReleaseAmountStr: '-',
                     activeClients: '-',
@@ -52,9 +68,23 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                     status: '-'
                 };
 
+                // if (cc.cashCollectionPerGroup.length > 0) {
+                //     const ccGroup = cc.cashCollectionPerGroup[0];
+                //     collection = {
+                //         ...collection,
+                //         ...ccGroup,
+                //         currentReleaseAmountStr: formatPricePhp(ccGroup.currentReleaseAmount),
+                //         excessStr: formatPricePhp(ccGroup.excess),
+                //         totalReleasesStr: formatPricePhp(ccGroup.amountRelease),
+                //         totalLoanBalanceStr: formatPricePhp(ccGroup.loanBalance),
+                //         loanTargetStr: formatPricePhp(ccGroup.targetCollection),
+                //         collectionStr: formatPricePhp(ccGroup.paymentCollection),
+                //         mispayment: ccGroup.mispaymentStr,
+                //         fullPaymentAmountStr: formatPricePhp(ccGroup.fullPayment),
+                //         status: cc.groupCashCollections.length > 0 ? cc.groupCashCollections[0].status : 'No Saved Transaction',
+                //     }
+                // } 
                 let noCurrentRelease = '0 / 0';
-                // let noFullPayment = '0 / 0';
-
                 if (cc.loans.length > 0) {
                     collection = {
                         groupId: cc._id,
@@ -65,8 +95,8 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                         currentReleaseAmount: 0,
                         currentReleaseAmountStr: 0,
                         // noOfPaidClients: 0,
-                        activeClients: cc.loans[0].activeClients ? cc.loans[0].activeClients : 0,
-                        activeBorrowers: cc.loans[0].activeBorrowers ? cc.loans[0].activeBorrowers : 0,
+                        activeClients: 0,
+                        activeBorrowers: 0,
                         mispayment: collection.mispayment,
                         loanTarget: cc.loans[0].loanTarget && cc.loans[0].loanTarget,
                         loanTargetStr: cc.loans[0].loanTarget ? formatPricePhp(cc.loans[0].loanTarget) : 0,
@@ -88,7 +118,22 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                         status: cc.groupCashCollections.length > 0 ? cc.groupCashCollections[0].status : 'No Saved Transaction',
                         page: 'collection'
                     };
+
+                    totalsLoanRelease += cc.loans[0].totalRelease ? cc.loans[0].totalRelease : 0;
+                    totalsLoanBalance += cc.loans[0].totalLoanBalance ? cc.loans[0].totalLoanBalance : 0;
+                    targetLoanCollection += cc.loans[0].loanTarget ? cc.loans[0].loanTarget : 0;
                 } 
+
+                if (cc.activeLoans.length > 0) {
+                    collection = {
+                        ...collection,
+                        activeClients: cc.activeLoans[0].activeClients,
+                        activeBorrowers: cc.activeLoans[0].activeBorrowers
+                    }
+
+                    noOfClients += cc.activeLoans[0].activeClients ? cc.activeLoans[0].activeClients : 0;
+                    noOfBorrowers += cc.activeLoans[0].activeBorrowers ? cc.activeLoans[0].activeBorrowers : 0;
+                }
                 
                 if (cc.cashCollections.length > 0) {
                     collection = { ...collection,
@@ -100,6 +145,10 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                         // total: cc.cashCollections[0].collection && cc.cashCollections[0].collection,
                         // totalStr: cc.cashCollections[0].collection ? formatPricePhp(cc.cashCollections[0].collection) : 0
                     };
+
+                    excess += cc.cashCollections[0].excess ? cc.cashCollections[0].excess : 0;
+                    totalLoanCollection += cc.cashCollections[0].collection ? cc.cashCollections[0].collection : 0;
+                    mispayment += cc.cashCollections[0].mispayment ? cc.cashCollections[0].mispayment : 0;
                 }
 
                 if (cc.currentRelease.length > 0) {
@@ -113,6 +162,10 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                         currentReleaseAmountStr: cc.currentRelease[0].currentReleaseAmount ? formatPricePhp(cc.currentRelease[0].currentReleaseAmount) : 0,
                         status: cc.groupCashCollections.length > 0 ? cc.groupCashCollections[0].status : 'No Saved Transaction',
                     };
+
+                    noOfNewCurrentRelease += cc.currentRelease[0].newCurrentRelease ? cc.currentRelease[0].newCurrentRelease : 0;
+                    noOfReCurrentRelease += cc.currentRelease[0].reCurrentRelease ? cc.currentRelease[0].reCurrentRelease : 0;
+                    currentReleaseAmount += cc.currentRelease[0].currentReleaseAmount ? cc.currentRelease[0].currentReleaseAmount : 0;
                 }
 
                 if (cc.fullPayment.length > 0) {
@@ -127,49 +180,14 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                         reFullPayment: cc.fullPayment.length > 0 ? cc.fullPayment[0].reFullPayment : 0,
                         status: cc.groupCashCollections.length > 0 ? cc.groupCashCollections[0].status : 'No Saved Transaction',
                     };
+
+                    fullPaymentAmount += cc.fullPayment[0].fullPaymentAmount ? cc.fullPayment[0].fullPaymentAmount : 0;
+                    noOfFullPayment += cc.fullPayment[0].noOfFullPayment ? cc.fullPayment[0].noOfFullPayment : 0;
                 }
 
                 collectionData.push(collection);
             });
-
-            let noOfClients = 0;
-            let noOfBorrowers = 0;
-            let totalsLoanRelease = 0;
-            let totalsLoanBalance = 0;
-            // let noOfCurrentRelease = 0;
-            let noOfNewCurrentRelease = 0;
-            let noOfReCurrentRelease = 0;
-            let currentReleaseAmount = 0;
-            let targetLoanCollection = 0;
-            let excess = 0;
-            let totalLoanCollection = 0;
-            let noOfFullPayment = 0;
-            let noOfNewfullPayment = 0;
-            let reOfNewfullPayment = 0;
-            let fullPaymentAmount = 0;
-            let mispayment = 0;
             
-            collectionData.map(cc => {
-                if (cc.status !== '-') {
-                    noOfClients += (cc.activeClients && cc.activeClients !== '-') ? cc.activeClients : 0;
-                    noOfBorrowers += (cc.activeBorrowers && cc.activeBorrowers !== '-') ? cc.activeBorrowers : 0;
-                    totalsLoanRelease += cc.totalReleases ? cc.totalReleases : 0;
-                    totalsLoanBalance += cc.totalLoanBalance ? cc.totalLoanBalance : 0;
-                    // noOfCurrentRelease += cc.noCurrentRelease ? cc.noCurrentRelease : 0;
-                    noOfNewCurrentRelease += cc.newCurrentRelease ? cc.newCurrentRelease : 0;
-                    noOfReCurrentRelease += cc.reCurrentRelease ? cc.reCurrentRelease : 0;
-                    currentReleaseAmount += cc.currentReleaseAmount ? cc.currentReleaseAmount : 0;
-                    targetLoanCollection += cc.loanTarget ? cc.loanTarget : 0;
-                    excess += cc.excess ? cc.excess : 0;
-                    totalLoanCollection += cc.collection ? cc.collection : 0;
-                    fullPaymentAmount += cc.fullPaymentAmount ? cc.fullPaymentAmount : 0;
-                    noOfFullPayment += cc.noOfFullPayment && cc.noOfFullPayment !== '-' ? cc.noOfFullPayment: 0;
-                    noOfNewfullPayment += cc.newFullPayment ? cc.newFullPayment : 0;
-                    reOfNewfullPayment += cc.reFullPayment ? cc.reFullPayment : 0;
-                    mispayment += cc.mispayment && cc.mispayment !== '-' ? cc.mispayment : 0;
-                }
-            });
-            // totals
             const totals = {
                 group: 'TOTALS',
                 noCurrentReleaseStr: noOfNewCurrentRelease + ' / ' + noOfReCurrentRelease,
@@ -187,14 +205,50 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                 totalData: true,
                 status: '-'
             }
+            // let totals = {
+            //     group: 'TOTALS',
+            //     noCurrentReleaseStr: '0 / 0',
+            //     currentReleaseAmountStr: 0,
+            //     activeClients: 0,
+            //     activeBorrowers: 0,
+            //     totalReleasesStr: 0,
+            //     totalLoanBalanceStr: 0,
+            //     loanTargetStr: 0,
+            //     excessStr: 0,
+            //     collectionStr: 0,
+            //     mispayment: '0 / 0',
+            //     fullPaymentAmountStr: 0,
+            //     noOfFullPayment: 0,
+            //     totalData: true,
+            //     status: '-'
+            // }
+
+            // if (response.data.totals) {
+            //     const totalData =  response.data.totals;
+            //     totals = {
+            //         ...totals,
+            //         activeClients: totalData.activeClients,
+            //         activeBorrowers: totalData.activeBorrowers,
+            //         noCurrentReleaseStr: `${totalData.noOfNewCurrentRelease ? totalData.noOfNewCurrentRelease : 0} / ${totalData.noOfReCurrentRelease ? totalData.noOfReCurrentRelease : 0}`,
+            //         currentReleaseAmountStr: formatPricePhp(totalData.currentReleaseAmount),
+            //         totalReleasesStr: formatPricePhp(totalData.totalsLoanRelease),
+            //         totalLoanBalanceStr: formatPricePhp(totalData.totalLoanBalance),
+            //         loanTargetStr: formatPricePhp(totalData.loanTarget),
+            //         excessStr: formatPricePhp(totalData.excess),
+            //         collectionStr: formatPricePhp(totalData.collection),
+            //         mispayment: totalData.mispayment + ' / ' + totalData.activeClients,
+            //         fullPaymentAmountStr: formatPricePhp(totalData.fullPaymentAmount)
+            //     }
+            // }
+
             collectionData.push(totals);
 
             dispatch(setCashCollectionList(collectionData));
+            setLoading(false);
         } else {
+            setLoading(false);
             toast.error('Error retrieving branches list.');
         }
-
-        setLoading(false);
     }
 
     const handleRowClick = (selected) => {
@@ -323,44 +377,78 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
         //     setLoading(false);
         // }
 
-        if (branchList) {
-            if (currentUser.role.rep < 4 && selectedLOSubject.value.length > 0) {
-                mounted && getCashCollections(selectedLOSubject.value);
-            } else {
-                mounted && getCashCollections();
-            }
-        }
+        // if (branchList) {
+        //     if (currentUser.role.rep < 4 && selectedLOSubject.value.length > 0) {
+        //         mounted && getCashCollections(selectedLOSubject.value);
+        //     } else {
+        //         mounted && getCashCollections();
+        //     }
+        // }
 
-        setLoading(false);
-
-        return () => {
-            mounted = false;
-        };
-    }, [branchList]);
-
-    useEffect(() => {
         if (dateFilter) {
             const date = moment(dateFilter).format('YYYY-MM-DD');
             if (date !== currentDate) {
                 if (currentUser.role.rep < 4 && selectedLOSubject.value.length > 0) {
-                    getCashCollections(selectedLOSubject.value, date);
+                    mounted && getCashCollections(selectedLOSubject.value, date);
                 } else {
-                    getCashCollections(null, date);
+                    mounted && getCashCollections(null, date);
                 }
             } else {
                 if (currentUser.role.rep < 4 && selectedLOSubject.value.length > 0) {
-                    getCashCollections(selectedLOSubject.value, null);
+                    mounted && getCashCollections(selectedLOSubject.value, null);
                 } else {
-                    getCashCollections();
+                    mounted && getCashCollections();
                 }
             }
         }
 
+        return () => {
+            mounted = false;
+        };
     }, [dateFilter]);
+
+    // useEffect(() => {
+    //     if (dateFilter) {
+    //         const date = moment(dateFilter).format('YYYY-MM-DD');
+    //         if (date !== currentDate) {
+    //             if (currentUser.role.rep < 4 && selectedLOSubject.value.length > 0) {
+    //                 getCashCollections(selectedLOSubject.value, date);
+    //             } else {
+    //                 getCashCollections(null, date);
+    //             }
+    //         } else {
+    //             if (currentUser.role.rep < 4 && selectedLOSubject.value.length > 0) {
+    //                 getCashCollections(selectedLOSubject.value, null);
+    //             } else {
+    //                 getCashCollections();
+    //             }
+    //         }
+    //     }
+
+    // }, [dateFilter]);
+
+    // useEffect(() => {
+    //     if (cashCollectionList) {
+    //         const saveTotals = async () => {
+    //             let totalData = cashCollectionList.find(c => c.group === "TOTALS");
+
+    //             if (totalData) {
+    //                 totalData = {
+    //                     ...totalData,
+    //                     loId: currentUser.role.rep === 4 ? currentUser._id : selectedLOSubject.value.length > 0 && selectedLOSubject.value
+    //                 }
+
+    //                 await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-totals', totalData);                
+    //             }
+    //         }
+
+    //         saveTotals();
+    //     }
+    // }, [cashCollectionList]);
 
     useEffect(() => {
         const initGroupCollectionSummary = async () => {
-            let data = {
+            const data = {
                 _id: currentUser.role.rep === 4 ? currentUser._id : selectedLOSubject.value.length > 0 && selectedLOSubject.value,
                 mode: 'daily',
                 status: 'pending',

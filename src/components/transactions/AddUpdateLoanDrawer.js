@@ -36,6 +36,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
 
     const initialValues = {
         branchId: loan.branchId,
+        loId: loan.loId,
         groupId: loan.groupId,
         slotNo: loan.slotNo,
         clientId: loan.clientId,
@@ -102,6 +103,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             });
 
             setSlotNumber(slotArr);
+            form.setFieldValue('loId', group.loanOfficerId);
         }
 
         form.setFieldValue(field, value);
@@ -147,8 +149,10 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                 const branch = branchList.find(b => b._id === group.branchId);
                 values.branchId = branch._id;
                 values.brancName = branch.name;
+                values.loId = group.loanOfficerId;
             } else {
                 group = loan.group;
+                values.loId = group.loanOfficerId;
                 values.groupId = loan.groupId;
                 values.groupName = loan.groupName;
                 values.mode = 'reloan';
@@ -497,7 +501,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                         </React.Fragment>
                                     )}
                                     <div className="mt-4">
-                                        {clientType === 'pending' || clientType === 'offset' ? (
+                                        {((clientType === 'pending' || clientType === 'offset') && mode !== 'reloan') ? (
                                             <InputNumber
                                                 name="loanCycle"
                                                 value={1}

@@ -18,19 +18,34 @@ const ViewByBranchPage = () => {
 
     const router = useRouter();
     // check group status if there is pending change row color to orange/yellow else white
-    // save all totals per branch ? or lo? to a new table then get it from there
+    // save all totals per branch ? or branch? to a new table then get it from there
     const getBranchCashCollections = async (date) => {
         let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/get-all-loans-per-branch?' + new URLSearchParams({ date: date ? date : currentDate, mode: 'daily' });
         
         const response = await fetchWrapper.get(url);
         if (response.success) {
             let collectionData = [];
+
+            let noOfClients = 0;
+            let noOfBorrowers = 0;
+            let totalsLoanRelease = 0;
+            let totalsLoanBalance = 0;
+            let noOfNewCurrentRelease = 0;
+            let noOfReCurrentRelease = 0;
+            let currentReleaseAmount = 0;
+            let targetLoanCollection = 0;
+            let excess = 0;
+            let totalLoanCollection = 0;
+            let noOfFullPayment = 0;
+            // let noOfNewfullPayment = 0;
+            // let noOfRefullPayment = 0;
+            let fullPaymentAmount = 0;
+            let mispayment = 0;
             
             response.data.map(branch => {
                 let collection = {
                     _id: branch._id,
-                    name: branch.name,
-                    code: branch.code,
+                    name: branch.code + ' ' + branch.name,
                     noCurrentReleaseStr: '-',
                     currentReleaseAmountStr: '-',
                     activeClients: '-',
@@ -47,111 +62,146 @@ const ViewByBranchPage = () => {
                     status: '-'
                 };
 
-                let noOfClients = 0;
-                let noOfBorrowers = 0;
-                let totalsLoanRelease = 0;
-                let totalsLoanBalance = 0;
-                let noOfNewCurrentRelease = 0;
-                let noOfReCurrentRelease = 0;
-                let currentReleaseAmount = 0;
-                let targetLoanCollection = 0;
-                let excess = 0;
-                let totalLoanCollection = 0;
-                let noOfFullPayment = 0;
-                let noOfNewfullPayment = 0;
-                let noOfRefullPayment = 0;
-                let fullPaymentAmount = 0;
-                let mispayment = 0;
-
-                branch.users.map(lo => {
-                    lo.groups.map(group => {
-                        if (group.loans.length > 0) {
-                            noOfClients += group.loans[0].activeClients;
-                            noOfBorrowers += group.loans[0].activeBorrowers;
-                            totalsLoanRelease += group.loans[0].totalRelease;
-                            totalsLoanBalance += group.loans[0].totalLoanBalance;
-                            targetLoanCollection += group.loans[0].loanTarget;
-                        }
-                        
-                        if (group.cashCollections.length > 0) {
-                            excess += group.cashCollections[0].excess;
-                            totalLoanCollection += group.cashCollections[0].collection;
-                            mispayment += group.cashCollections[0].mispayment;
-                        }
-    
-                        if (group.currentRelease.length > 0) {
-                            noOfNewCurrentRelease += group.currentRelease[0].newCurrentRelease;
-                            noOfReCurrentRelease += group.currentRelease[0].reCurrentRelease;
-                            currentReleaseAmount += group.currentRelease[0].currentReleaseAmount;
-                        }
-    
-                        if (group.fullPayment.length > 0) {
-                            fullPaymentAmount += group.fullPayment[0].fullPaymentAmount;
-                            noOfFullPayment += group.fullPayment[0].noOfFullPayment;
-                            noOfNewfullPayment += group.fullPayment[0].newFullPayment;
-                            noOfRefullPayment += group.fullPayment[0].reFullPayment;
-                        }
-                    });
-                });
-    
-                collection = {
-                    ...collection,
-                    noOfNewCurrentRelease: noOfNewCurrentRelease,
-                    noOfReCurrentRelease: noOfReCurrentRelease,
-                    noCurrentReleaseStr: noOfNewCurrentRelease + ' / ' + noOfReCurrentRelease,
-                    currentReleaseAmount: currentReleaseAmount,
-                    currentReleaseAmountStr: currentReleaseAmount ? formatPricePhp(currentReleaseAmount) : 0,
-                    activeClients: noOfClients,
-                    activeBorrowers: noOfBorrowers,
-                    totalReleases: totalsLoanRelease,
-                    totalReleasesStr: totalsLoanRelease ? formatPricePhp(totalsLoanRelease) : 0,
-                    totalLoanBalance: totalsLoanBalance,
-                    totalLoanBalanceStr: totalsLoanBalance ? formatPricePhp(totalsLoanBalance) : 0,
-                    loanTarget: targetLoanCollection,
-                    loanTargetStr: targetLoanCollection ? formatPricePhp(targetLoanCollection) : 0,
-                    excess: excess,
-                    excessStr: excess ? formatPricePhp(excess) : 0,
-                    total: totalLoanCollection,
-                    totalStr: totalLoanCollection ? formatPricePhp(totalLoanCollection) : 0,
-                    mispayment: mispayment,
-                    mispaymentStr: mispayment + ' / ' + noOfClients,
-                    fullPaymentAmount: fullPaymentAmount,
-                    fullPaymentAmountStr: fullPaymentAmount ? formatPricePhp(fullPaymentAmount) : 0,
-                    noOfFullPayment: noOfFullPayment
+                if (branch.activeLoans.length > 0) {
+                    collection.activeClients = branch.activeLoans[0].activeClients; 
+                    collection.activeBorrowers = branch.activeLoans[0].activeBorrowers;
+                    noOfClients += branch.activeLoans[0].activeClients;
+                    noOfBorrowers += branch.activeLoans[0].activeBorrowers;
                 }
+
+                if (branch.loans.length > 0) {
+                    collection.totalReleasesStr = formatPricePhp(branch.loans[0].totalRelease);
+                    collection.totalLoanBalanceStr = formatPricePhp(branch.loans[0].totalLoanBalance);
+                    collection.loanTargetStr = formatPricePhp(branch.loans[0].loanTarget);
+
+                    totalsLoanRelease += branch.loans[0].totalRelease;
+                    totalsLoanBalance += branch.loans[0].totalLoanBalance;
+                    targetLoanCollection += branch.loans[0].loanTarget;
+                }
+
+                // if (branch.groupCashCollections.length > 0) {
+                //     collection.groupSummaryIds.push.apply(collection.groupSummaryIds, branch.groupCashCollections[0].groupSummaryIds);
+                //     collection.status = branch.groupCashCollections[0].statusArr.find(s => s === 'pending') === 'pending' ? 'open' : 'close';
+                // }
+                
+                if (branch.cashCollections.length > 0) {
+                    collection.excessStr = formatPricePhp(branch.cashCollections[0].excess);
+                    collection.totalStr = formatPricePhp(branch.cashCollections[0].collection);
+                    collection.mispaymentStr = branch.cashCollections[0].mispayment;
+
+                    excess += branch.cashCollections[0].excess;
+                    totalLoanCollection += branch.cashCollections[0].collection;
+                    mispayment += branch.cashCollections[0].mispayment;
+                }
+
+                if (branch.currentRelease.length > 0) {
+                    const newReleasePerson = branch.currentRelease[0].newCurrentRelease ? branch.currentRelease[0].newCurrentRelease : 0;
+                    const reReleasePerson = branch.currentRelease[0].reCurrentRelease ? branch.currentRelease[0].reCurrentRelease : 0;
+                    collection.noCurrentReleaseStr = newReleasePerson + ' / ' + reReleasePerson;
+                    collection.currentReleaseAmountStr = formatPricePhp(branch.currentRelease[0].currentReleaseAmount);
+
+                    noOfNewCurrentRelease += branch.currentRelease[0].newCurrentRelease;
+                    noOfReCurrentRelease += branch.currentRelease[0].reCurrentRelease;
+                    currentReleaseAmount += branch.currentRelease[0].currentReleaseAmount;
+                }
+
+                if (branch.fullPayment.length > 0) {
+                    collection.noOfFullPayment = branch.fullPayment[0].noOfFullPayment;
+                    collection.fullPaymentAmountStr = formatPricePhp(branch.fullPayment[0].fullPaymentAmount);
+
+                    fullPaymentAmount += branch.fullPayment[0].fullPaymentAmount;
+                    noOfFullPayment += branch.fullPayment[0].noOfFullPayment;
+                    // noOfNewfullPayment += branch.fullPayment[0].newFullPayment;
+                    // noOfRefullPayment += branch.fullPayment[0].reFullPayment;
+                }
+
+                // branch.users.map(branch => {
+                    // if (branch.loans.length > 0) {
+                    //     noOfClients += group.loans[0].activeClients;
+                    //     noOfBorrowers += group.loans[0].activeBorrowers;
+                    //     totalsLoanRelease += group.loans[0].totalRelease;
+                    //     totalsLoanBalance += group.loans[0].totalLoanBalance;
+                    //     targetLoanCollection += group.loans[0].loanTarget;
+                    // }
+                    
+                    // if (branch.cashCollections.length > 0) {
+                    //     excess += group.cashCollections[0].excess;
+                    //     totalLoanCollection += group.cashCollections[0].collection;
+                    //     mispayment += group.cashCollections[0].mispayment;
+                    // }
+
+                    // if (branch.currentRelease.length > 0) {
+                    //     noOfNewCurrentRelease += group.currentRelease[0].newCurrentRelease;
+                    //     noOfReCurrentRelease += group.currentRelease[0].reCurrentRelease;
+                    //     currentReleaseAmount += group.currentRelease[0].currentReleaseAmount;
+                    // }
+
+                    // if (branch.fullPayment.length > 0) {
+                    //     fullPaymentAmount += group.fullPayment[0].fullPaymentAmount;
+                    //     noOfFullPayment += group.fullPayment[0].noOfFullPayment;
+                    //     noOfNewfullPayment += group.fullPayment[0].newFullPayment;
+                    //     noOfRefullPayment += group.fullPayment[0].reFullPayment;
+                    // }
+                // });
+    
+                // collection = {
+                //     ...collection,
+                //     noOfNewCurrentRelease: noOfNewCurrentRelease,
+                //     noOfReCurrentRelease: noOfReCurrentRelease,
+                //     noCurrentReleaseStr: noOfNewCurrentRelease + ' / ' + noOfReCurrentRelease,
+                //     currentReleaseAmount: currentReleaseAmount,
+                //     currentReleaseAmountStr: currentReleaseAmount ? formatPricePhp(currentReleaseAmount) : 0,
+                //     activeClients: noOfClients,
+                //     activeBorrowers: noOfBorrowers,
+                //     totalReleases: totalsLoanRelease,
+                //     totalReleasesStr: totalsLoanRelease ? formatPricePhp(totalsLoanRelease) : 0,
+                //     totalLoanBalance: totalsLoanBalance,
+                //     totalLoanBalanceStr: totalsLoanBalance ? formatPricePhp(totalsLoanBalance) : 0,
+                //     loanTarget: targetLoanCollection,
+                //     loanTargetStr: targetLoanCollection ? formatPricePhp(targetLoanCollection) : 0,
+                //     excess: excess,
+                //     excessStr: excess ? formatPricePhp(excess) : 0,
+                //     total: totalLoanCollection,
+                //     totalStr: totalLoanCollection ? formatPricePhp(totalLoanCollection) : 0,
+                //     mispayment: mispayment,
+                //     mispaymentStr: mispayment + ' / ' + noOfClients,
+                //     fullPaymentAmount: fullPaymentAmount,
+                //     fullPaymentAmountStr: fullPaymentAmount ? formatPricePhp(fullPaymentAmount) : 0,
+                //     noOfFullPayment: noOfFullPayment
+                // }
 
                 collectionData.push(collection);
             });
 
             // totals
-            let totalNoOfClients = getTotal(collectionData, 'activeClients');
-            let totalNoOfBorrowers = getTotal(collectionData, 'activeBorrowers');
-            let totalsLoanRelease = getTotal(collectionData, 'totalReleases');
-            let totalsLoanBalance = getTotal(collectionData, 'totalLoanBalance');
-            let totalNoOfNewCurrentRelease = getTotal(collectionData, 'noOfNewCurrentRelease');
-            let totalNoOfReCurrentRelease = getTotal(collectionData, 'noOfReCurrentRelease');
-            let totalCurrentReleaseAmount = getTotal(collectionData, 'currentReleaseAmount');
-            let totalTargetLoanCollection = getTotal(collectionData, 'loanTarget');
-            let totalExcess = getTotal(collectionData, 'excess');
-            let totalLoanCollection = getTotal(collectionData, 'total');
-            let totalNoOfFullPayment = getTotal(collectionData, 'noOfFullPayment');
-            let totalFullPaymentAmount = getTotal(collectionData, 'fullPaymentAmount');
-            let totalMispayment = getTotal(collectionData, 'mispayment');
+            // let totalNoOfClients = getTotal(collectionData, 'activeClients');
+            // let totalNoOfBorrowers = getTotal(collectionData, 'activeBorrowers');
+            // let totalsLoanRelease = getTotal(collectionData, 'totalReleases');
+            // let totalsLoanBalance = getTotal(collectionData, 'totalLoanBalance');
+            // let totalNoOfNewCurrentRelease = getTotal(collectionData, 'noOfNewCurrentRelease');
+            // let totalNoOfReCurrentRelease = getTotal(collectionData, 'noOfReCurrentRelease');
+            // let totalCurrentReleaseAmount = getTotal(collectionData, 'currentReleaseAmount');
+            // let totalTargetLoanCollection = getTotal(collectionData, 'loanTarget');
+            // let totalExcess = getTotal(collectionData, 'excess');
+            // let totalLoanCollection = getTotal(collectionData, 'total');
+            // let totalNoOfFullPayment = getTotal(collectionData, 'noOfFullPayment');
+            // let totalFullPaymentAmount = getTotal(collectionData, 'fullPaymentAmount');
+            // let totalMispayment = getTotal(collectionData, 'mispayment');
 
             const branchTotals = {
                 name: 'TOTALS',
-                noCurrentReleaseStr: totalNoOfNewCurrentRelease + ' / ' + totalNoOfReCurrentRelease,
-                currentReleaseAmountStr: formatPricePhp(totalCurrentReleaseAmount),
-                activeClients: totalNoOfClients,
-                activeBorrowers: totalNoOfBorrowers,
+                noCurrentReleaseStr: noOfNewCurrentRelease + ' / ' + noOfReCurrentRelease,
+                currentReleaseAmountStr: formatPricePhp(currentReleaseAmount),
+                activeClients: noOfClients,
+                activeBorrowers: noOfBorrowers,
                 totalReleasesStr: formatPricePhp(totalsLoanRelease),
                 totalLoanBalanceStr: formatPricePhp(totalsLoanBalance),
-                loanTargetStr: formatPricePhp(totalTargetLoanCollection),
-                excessStr: formatPricePhp(totalExcess),
+                loanTargetStr: formatPricePhp(targetLoanCollection),
+                excessStr: formatPricePhp(excess),
                 totalStr: formatPricePhp(totalLoanCollection),
-                mispaymentStr: totalMispayment + ' / ' + totalNoOfClients,
-                fullPaymentAmountStr: formatPricePhp(totalFullPaymentAmount),
-                noOfFullPayment: totalNoOfFullPayment,
+                mispaymentStr: mispayment + ' / ' + noOfClients,
+                fullPaymentAmountStr: formatPricePhp(fullPaymentAmount),
+                noOfFullPayment: noOfFullPayment,
                 totalData: true
             };
 
@@ -169,12 +219,6 @@ const ViewByBranchPage = () => {
         {
             Header: "Branch Name",
             accessor: 'name',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
-        {
-            Header: "Branch Code",
-            accessor: 'code',
             Filter: SelectColumnFilter,
             filter: 'includes'
         },

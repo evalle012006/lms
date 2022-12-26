@@ -51,6 +51,7 @@ const CashCollectionDetailsPage = () => {
         { label: 'Remarks', value: ''},
         { label: 'Pending', value: 'pending'},
         { label: 'Excused', value: 'excused'},
+        { label: 'Excused Due to Calamity', value: 'excused'},
         { label: 'Double Payment', value: 'double payment'},
         { label: 'Advance Payment', value: 'advance payment'},
         { label: 'Delinquent', value: 'delinquent'},
@@ -111,6 +112,7 @@ const CashCollectionDetailsPage = () => {
                         group: cc.group,
                         loanId: cc.loanId,
                         branchId: cc.branchId,
+                        loId: cc.loId,
                         groupId: cc.groupId,
                         groupName: cc.groupName,
                         clientId: cc.clientId,
@@ -146,10 +148,53 @@ const CashCollectionDetailsPage = () => {
                         history: cc.hasOwnProperty('history') ? cc.history : null,
                         prevData: cc.hasOwnProperty('prevData') ? cc.prevData : null
                     }
-                } else {
+                } else if (cc.status === "closed" && cc.fullPaymentDate === currentDate) {
+                    collection = {
+                        ...cc,
+                        group: cc.group,
+                        loId: cc.loId,
+                        loanId: cc.loanId,
+                        branchId: cc.branchId,
+                        groupId: cc.groupId,
+                        groupName: cc.groupName,
+                        clientId: cc.clientId,
+                        slotNo: cc.slotNo,
+                        fullName: cc.client.lastName + ', ' + cc.client.firstName,
+                        loanCycle: cc.history.loanCycle,
+                        mispayment: cc.mispayment === 0 ? false : true,
+                        mispaymentStr: cc.mispayment === 0 ? 'No' : 'Yes',
+                        collection: 0,
+                        excess: cc.history.excess > 0 ? cc.history.excess : 0,
+                        excessStr: cc.history.excess > 0 ? formatPricePhp(cc.history.excess) : '-',
+                        total: 0,
+                        totalStr: '-',
+                        noOfPayments: cc.noOfPayments,
+                        noOfPaymentStr: cc.noOfPayments + ' / ' + maxDays,
+                        activeLoan: cc.history.activeLoan,
+                        targetCollection: cc.history.activeLoan,
+                        targetCollectionStr: cc.history.activeLoan > 0 ? formatPricePhp(cc.history.activeLoan) : '-',
+                        amountRelease: '-',
+                        amountReleaseStr: '-',
+                        loanBalance: '-',
+                        loanBalanceStr: '-',
+                        paymentCollection: cc.history.collection ? cc.history.collection : 0,
+                        paymentCollectionStr: cc.history.collection > 0 ? formatPricePhp(cc.history.collection) : '-',
+                        occurence: cc.group.occurence,
+                        currentReleaseAmount: 0,
+                        currentReleaseAmountStr: '-',
+                        fullPayment: cc.fullPayment.length > 0 ? cc.fullPayment[0].fullPaymentAmount : 0,
+                        fullPaymentStr: cc.fullPayment.length > 0 ? formatPricePhp(cc.fullPayment[0].fullPaymentAmount) : '-',
+                        remarks: cc.remarks ? cc.remarks : '',
+                        clientStatus: cc.client.status ? cc.client.status : '-',
+                        fullPaymentDate: cc.fullPaymentDate ? cc.fullPaymentDate : null,
+                        history: cc.hasOwnProperty('history') ? cc.history : null,
+                        prevData: cc.hasOwnProperty('prevData') ? cc.prevData : null
+                    }
+                } else if (cc.status !== "closed") {
                     collection = {
                         group: cc.group,
                         loanId: cc._id,
+                        loId: cc.loId,
                         branchId: cc.branchId,
                         groupId: cc.groupId,
                         groupName: cc.groupName,
@@ -158,14 +203,14 @@ const CashCollectionDetailsPage = () => {
                         fullName: cc.client.lastName + ', ' + cc.client.firstName,
                         loanCycle: cc.loanCycle,
                         mispayment: false,
-                        mispaymentStr: 'No',
+                        mispaymentStr: (cc.status === "active" || (cc.status === "completed" && cc.fullPaymentDate === currentDate)) ? 'No' : '-',
                         collection: 0,
                         excess: cc.excess,
                         excessStr: cc.excess > 0 ? formatPricePhp(cc.excess) : '-',
                         total: 0,
                         totalStr: '-',
-                        noOfPayments: cc.noOfPayments,
-                        noOfPaymentStr: cc.noOfPayments + ' / ' + maxDays,
+                        noOfPayments: (cc.status === "active" || (cc.status === "completed" && cc.fullPaymentDate === currentDate)) ? cc.noOfPayments : 0,
+                        noOfPaymentStr: (cc.status === "active" || (cc.status === "completed" && cc.fullPaymentDate === currentDate)) ? cc.noOfPayments + ' / ' + maxDays : '-',
                         activeLoan: cc.activeLoan,
                         targetCollection: cc.activeLoan,
                         targetCollectionStr: cc.activeLoan > 0 ? formatPricePhp(cc.activeLoan) : '-',
@@ -174,11 +219,11 @@ const CashCollectionDetailsPage = () => {
                         loanBalance: cc.loanBalance,
                         loanBalanceStr: cc.loanBalance > 0 ? formatPricePhp(cc.loanBalance) : '-',
                         paymentCollection: cc.paymentCollection ? cc.paymentCollection : 0,
-                        paymentCollectionStr: formatPricePhp(cc.paymentCollection),
+                        paymentCollectionStr: cc.paymentCollection ? formatPricePhp(cc.paymentCollection) : '-',
                         occurence: cc.group.occurence,
-                        currentReleaseAmount: cc.currentReleaseAmount,
-                        currentReleaseAmountStr: formatPricePhp(cc.currentReleaseAmount),
-                        fullPayment: cc.fullPaymentAmount,
+                        currentReleaseAmount: cc.currentReleaseAmount ? cc.currentReleaseAmount : 0,
+                        currentReleaseAmountStr: cc.currentReleaseAmount ? formatPricePhp(cc.currentReleaseAmount) : '-',
+                        fullPayment: cc.fullPaymentAmount ? cc.fullPaymentAmount : 0,
                         fullPaymentStr: cc.fullPaymentAmount > 0 ? formatPricePhp(cc.fullPaymentAmount) : '-',
                         remarks: cc.remarks ? cc.remarks : '',
                         clientStatus: cc.client.status ? cc.client.status : '-',
@@ -189,6 +234,9 @@ const CashCollectionDetailsPage = () => {
 
                     delete cc._id;
                     if (cc.hasOwnProperty('current') && cc.current.length > 0) {
+                        collection.activeLoan = cc.current[0].activeLoan;
+                        collection.targetCollection = collection.activeLoan;
+                        collection.targetCollectionStr = formatPricePhp(collection.activeLoan);
                         collection.excess = cc.current[0].excess;
                         collection.excessStr = formatPricePhp(cc.current[0].excess);
                         collection.paymentCollection = cc.current[0].paymentCollection;
@@ -196,19 +244,11 @@ const CashCollectionDetailsPage = () => {
                         collection.mispayment = cc.current[0].mispayment;
                         collection.mispaymentStr = cc.current[0].mispaymentStr;
                         collection.remarks = cc.current[0].remarks;
+                        collection.delinquent = cc.current[0].hasOwnProperty('delinquent') ? cc.current[0].delinquent : false;
                         collection._id = cc.current[0]._id;
                         collection.prevData = cc.current[0].prevData;
                         setEditMode(false);
                     }
-    
-                    // if (cc.history.length > 0) {
-                    //     // collection.collection = formatPricePhp(cc.history[0].collection);
-                    //     // collection.excess = cc.history[0].excess;
-                    //     // collection.excessStr = formatPricePhp(cc.history[0].excess);
-                    //     collection.total = cc.history[0].total;
-                    //     collection.totalStr = formatPricePhp(cc.history[0].total);
-                    //     collection.history = cc.history[0];
-                    // }
     
                     if (cc.currentRelease.length > 0) {
                         collection.currentReleaseAmount = cc.currentRelease[0].currentReleaseAmount;
@@ -229,6 +269,8 @@ const CashCollectionDetailsPage = () => {
                         collection.notCalculate = true;
                         collection.remarks = cc.history ? cc.history.remarks : '-';
                     }
+                } else {
+                    return;
                 }
 
                 cashCollection.push(collection);
@@ -241,10 +283,10 @@ const CashCollectionDetailsPage = () => {
                     if ((currentLoan.fullPaymentDate === currentDate)) { // fullpayment with pending/tomorrow
                         cashCollection[index] = {
                             slotNo: loan.slotNo,
-                            slotNo: loan.slotNo,
                             loanId: loan._id,
                             groupId: loan.groupId,
                             branchId: loan.branchId,
+                            loId: loan.loId,
                             clientId: loan.clientId,
                             fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
                             loanCycle: loan.loanCycle,
@@ -271,11 +313,15 @@ const CashCollectionDetailsPage = () => {
                             pending: loan.status === 'pending' ? true : false,
                             tomorrow: loan.status === 'active' ? true : false
                         };
+                        if (loan.current.length > 0) {
+                            cashCollection[index]._id = loan.current[0]._id;
+                        }
                     } else if (currentLoan.status !== 'active') {
                         cashCollection[index] = {
                             slotNo: loan.slotNo,
                             loanId: loan._id,
                             groupId: loan.groupId,
+                            loId: loan.loId,
                             branchId: loan.branchId,
                             clientId: loan.clientId,
                             fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
@@ -295,6 +341,10 @@ const CashCollectionDetailsPage = () => {
                             fullPaymentStr: '-',
                             status: loan.status === 'active' ? 'tomorrow' : 'pending'
                         };
+
+                        if (loan.current.length > 0) {
+                            cashCollection[index]._id = loan.current[0]._id;
+                        }
                     }
                 } else {
                     const slot = cashCollection.find(c => c.slotNo === loan.slotNo);
@@ -306,6 +356,7 @@ const CashCollectionDetailsPage = () => {
                             groupId: loan.groupId,
                             branchId: loan.branchId,
                             clientId: loan.clientId,
+                            loId: loan.loId,
                             fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
                             loanCycle: loan.loanCycle,
                             amountReleaseStr: '-',
@@ -324,13 +375,18 @@ const CashCollectionDetailsPage = () => {
                             fullPaymentStr: '-',
                             status: loan.status === 'active' ? 'tomorrow' : 'pending'
                         };
+
+                        if (loan.current.length > 0) {
+                            cashCollection[index]._id = loan.current[0]._id;
+                        }
                     } else { // tomorrow && pending
-                        cashCollection.push({
+                        let pendingTomorrow = {
                             slotNo: loan.slotNo,
                             loanId: loan._id,
                             groupId: loan.groupId,
                             branchId: loan.branchId,
                             clientId: loan.clientId,
+                            loId: loan.loId,
                             fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
                             loanCycle: loan.loanCycle,
                             amountReleaseStr: '-',
@@ -348,7 +404,13 @@ const CashCollectionDetailsPage = () => {
                             remarks: '-',
                             fullPaymentStr: '-',
                             status: loan.status === 'active' ? 'tomorrow' : 'pending'
-                        });
+                        };
+
+                        if (loan.current.length > 0) {
+                            pendingTomorrow._id = loan.current[0]._id;
+                        }
+
+                        cashCollection.push(pendingTomorrow);
                     }
                 }
             });
@@ -364,213 +426,6 @@ const CashCollectionDetailsPage = () => {
         }
     }
 
-    const getTomorrowPendingLoans = async (groupId) => {
-        setLoading(true);
-        let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/list-tomorrow-pending?';
-
-        if (filter) {
-            url = url + new URLSearchParams({ groupId: groupId, type: 'filter' });
-        } else {
-            url = url + new URLSearchParams({ groupId: groupId });
-        }
-
-        const response = await fetchWrapper.get(url);
-        if (response.success) {
-            let currentData = [...data];
-            await response.loans && response.loans.map(loan => {
-                const currentLoan = currentData.find(l => l.clientId === loan.clientId);
-                if (currentLoan && currentLoan.status !== 'pending') {
-                    const index = currentData.indexOf(currentLoan);
-                    if ((currentLoan.fullPaymentDate === currentDate)) { // fullpayment with pending/tomorrow
-                        currentData[index] = {
-                            slotNo: loan.slotNo,
-                            fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
-                            loanCycle: loan.loanCycle,
-                            amountRelease: 0, // loan.amountRelease + currentLoan.loanBalance,
-                            amountReleaseStr: 0, // formatPricePhp(currentLoan.amountRelease),
-                            loanBalance: 0,
-                            loanBalanceStr: 0,
-                            targetCollection: currentLoan.history.activeLoan,
-                            targetCollectionStr: formatPricePhp(currentLoan.history.activeLoan),
-                            mispayment: currentLoan.mispayment,
-                            mispaymentStr: currentLoan.mispayment ? 'Yes' : 'No',
-                            currentReleaseAmount: loan.amountRelease,
-                            currentReleaseAmountStr: loan.amountRelease ? formatPricePhp(loan.amountRelease) : 0,
-                            noOfPayments: '-',
-                            noOfPaymentStr: (currentLoan.noOfPayments !== '-' && currentLoan.status !== 'totals') ? currentLoan.noOfPayments + ' / ' + maxDays : '-',
-                            excess: currentLoan.history.excess,
-                            excessStr: formatPricePhp(currentLoan.history.excess),
-                            paymentCollection: currentLoan.history.collection,
-                            paymentCollectionStr: formatPricePhp(currentLoan.history.collection),
-                            remarks: currentLoan.remarks,
-                            fullPayment: currentLoan.fullPayment,
-                            fullPaymentStr: currentLoan.fullPayment ? currentLoan.fullPaymentStr : 0,
-                            status: loan.status,
-                            pending: loan.status === 'pending' ? true : false,
-                            tomorrow: loan.status === 'active' ? true : false
-                        };
-                    } else if (currentLoan.status !== 'active') {
-                        currentData[index] = {
-                            slotNo: loan.slotNo,
-                            fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
-                            loanCycle: loan.loanCycle,
-                            amountReleaseStr: '-',
-                            loanBalanceStr: '-',
-                            targetCollectionStr: '-',
-                            mispayment: false,
-                            mispaymentStr: '-',
-                            currentReleaseAmount: loan.amountRelease,
-                            currentReleaseAmountStr: loan.amountRelease ? formatPricePhp(loan.amountRelease) : '-',
-                            noOfPayments: '-',
-                            targetCollectionStr: '-',
-                            excessStr: '-',
-                            paymentCollectionStr: currentLoan.prevData ? formatPricePhp(currentLoan.prevData.paymentCollection) : '-',
-                            remarks: '-',
-                            fullPaymentStr: '-',
-                            status: loan.status === 'active' ? 'tomorrow' : 'pending'
-                        };
-                    }
-                } else {
-                    const slot = currentData.find(c => c.slotNo === loan.slotNo);
-                    if (slot) {
-                        const index = currentData.indexOf(slot);
-                        currentData[index] = {
-                            slotNo: loan.slotNo,
-                            loanId: loan._id,
-                            groupId: loan.groupId,
-                            branchId: loan.branchId,
-                            fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
-                            loanCycle: loan.loanCycle,
-                            amountReleaseStr: '-',
-                            loanBalanceStr: '-',
-                            targetCollectionStr: '-',
-                            mispayment: false,
-                            mispaymentStr: '-',
-                            currentReleaseAmount: loan.amountRelease,
-                            currentReleaseAmountStr: formatPricePhp(loan.amountRelease),
-                            noOfPayments: '-',
-                            noOfPaymentStr: '-',
-                            targetCollectionStr: '-',
-                            excessStr: '-',
-                            paymentCollectionStr: '-',
-                            remarks: '-',
-                            fullPaymentStr: '-',
-                            status: loan.status === 'active' ? 'tomorrow' : 'pending'
-                        };
-                    } else { // tomorrow && pending
-                        currentData.push({
-                            slotNo: loan.slotNo,
-                            loanId: loan._id,
-                            groupId: loan.groupId,
-                            branchId: loan.branchId,
-                            fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
-                            loanCycle: loan.loanCycle,
-                            amountReleaseStr: '-',
-                            loanBalanceStr: '-',
-                            targetCollectionStr: '-',
-                            mispayment: false,
-                            mispaymentStr: '-',
-                            currentReleaseAmount: loan.amountRelease,
-                            currentReleaseAmountStr: loan.amountRelease ? formatPricePhp(loan.amountRelease) : '-',
-                            noOfPayments: '-',
-                            noOfPaymentStr: '-',
-                            targetCollectionStr: '-',
-                            excessStr: '-',
-                            paymentCollectionStr: '-',
-                            remarks: '-',
-                            fullPaymentStr: '-',
-                            status: loan.status === 'active' ? 'tomorrow' : 'pending'
-                        });
-                    }
-                }
-            });
-
-            const totalIdx = currentData.findIndex(cc => cc.status === 'totals');
-            const groupCapacity = currentGroup && currentGroup.capacity;
-
-            if (!groupSummaryIsClose) {
-                for (let i = 1; i <= groupCapacity; i++) {
-                    const existData = currentData.find(cc => cc.slotNo === i);
-
-                    if (!existData) {
-                        currentData.push({
-                            slotNo: i,
-                            fullName: '-',
-                            loanCycle: '-',
-                            amountReleaseStr: '-',
-                            mispayment: false,
-                            mispaymentStr: '-',
-                            loanBalanceStr: '-',
-                            currentReleaseAmountStr: '-',
-                            noOfPayments: '-',
-                            targetCollectionStr: '-',
-                            excessStr: '-',
-                            paymentCollectionStr: '-',
-                            remarks: '-',
-                            fullPaymentStr: '-',
-                            clientStatus: '-',
-                            status: 'open'
-                        });
-                    } else {
-                        const index = currentData.indexOf(existData);
-                        currentData[index] = {
-                            ...existData,
-                            group: currentGroup
-                        }
-                    }
-                }
-
-                if (totalIdx > -1) {
-                    currentData[totalIdx] = calculateTotals(currentData);
-                } else {
-                    currentData.push(calculateTotals(currentData));
-                }
-                
-            } else {
-                if (totalIdx > -1) {
-                    currentData[totalIdx] = calculateTotals(currentData);
-                } else {
-                    currentData.push(calculateTotals(currentData));
-                }
-
-                if (currentData.length < groupCapacity) {
-                    currentGroup && currentGroup.availableSlots.map(g => {
-                        if (g <= groupCapacity) {
-                            currentData.push({
-                                slotNo: g,
-                                fullName: '-',
-                                loanCycle: '-',
-                                amountReleaseStr: '-',
-                                mispayment: false,
-                                mispaymentStr: '-',
-                                loanBalanceStr: '-',
-                                currentReleaseAmountStr: '-',
-                                noOfPayments: '-',
-                                targetCollectionStr: '-',
-                                excessStr: '-',
-                                paymentCollectionStr: '-',
-                                remarks: '-',
-                                fullPaymentStr: '-',
-                                clientStatus: '-',
-                                status: 'open'
-                            });
-                        }
-                    });
-                }
-            }
-
-            currentData.sort((a, b) => { return a.slotNo - b.slotNo; });
-
-            setTimeout(() => {
-                dispatch(setCashCollectionGroup(currentData));
-                setLoading(false);
-            }, 200);
-        } else if (response.error) {
-            setLoading(false);
-            toast.error(response.message);
-        }
-    }
-
     const calculateTotals = (dataArr) => {
         let totalLoanRelease = 0;
         let totalLoanBalance = 0;
@@ -581,17 +436,46 @@ const CashCollectionDetailsPage = () => {
         let totalLoanCollection = 0;
         let totalFullPayment = 0;
         let totalMispayment = 0;
+        let totalActiveClients = 0;
+        let totalActiveBorrowers = 0;
+        let totalNoOfFullPayments = 0;
+        let totalNoNewCurrentRelease = 0;
+        let totalNoReCurrentRelease = 0;
 
         dataArr.map(collection => {
             if (collection.status !== 'open' && collection.status !== 'totals') {
                 if (collection.status === 'active') {
+                    // totalActiveBorrowers += 1;
                     totalLoanRelease += collection.amountRelease ? collection.amountRelease !== '-' ? collection.amountRelease : 0 : 0;
                     totalLoanBalance += collection.loanBalance ? collection.loanBalance !== '-' ? collection.loanBalance : 0 : 0;
                 }
 
+                // if (collection.status === 'completed' || collection.status === 'active' || collection.status === 'tomorrow') {
+                //     totalActiveClients += 1;
+                // }
+
                 if (collection.status === 'tomorrow' || (collection.hasOwnProperty('tomorrow') && collection.tomorrow)) {
                     totalReleaseAmount += collection.currentReleaseAmount ? collection.currentReleaseAmount !== '-' ? collection.currentReleaseAmount : 0 : 0;
                 }
+
+                // if (collection.fullPayment > 0) {
+                //     totalNoOfFullPayments += 1;
+                // }
+
+                // if (collection.status === "tomorrow" || collection.status === "completed") {
+                //     if (collection.currentReleaseAmount > 0 && collection.loanCycle === 1) {
+                //         totalNoNewCurrentRelease += 1;
+                //     } else if (collection.currentReleaseAmount > 0 && collection.loanCycle > 1) {
+                //         totalNoReCurrentRelease += 1;
+                //     } else if (collection.currentReleaseAmount > 0) {
+                //         const loanCycle = collection.history.loanCycle;
+                //         if (loanCycle === 1) {
+                //             totalNoNewCurrentRelease += 1;
+                //         } else if (loanCycle > 1) {
+                //             totalNoReCurrentRelease += 1;
+                //         }
+                //     }
+                // }
 
                 // totalPayments += collection.noOfPayments;
                 totalTargetLoanCollection += collection.targetCollection  ? collection.targetCollection !== '-' ? collection.targetCollection : 0 : 0;
@@ -601,8 +485,17 @@ const CashCollectionDetailsPage = () => {
                 totalMispayment += collection.mispaymentStr === 'Yes' ? 1 : 0;
             }
         });
-
         const totals = {
+            // branchId: currentGroup && currentGroup.branchId,
+            // groupId: currentGroup && currentGroup._id,
+            // loId: currentGroup && currentGroup.loanOfficerId,
+            // mode: currentGroup && currentGroup.occurence,
+            // activeClients: totalActiveClients,
+            // activeBorrowers: totalActiveBorrowers,
+            // noCurrentReleaseStr: totalNoNewCurrentRelease + " / " + totalNoReCurrentRelease,
+            // noNewCurrentRelease: totalNoNewCurrentRelease,
+            // noReCurrentRelease: totalNoReCurrentRelease,
+            // noOfFullPayment: totalNoOfFullPayments,
             slotNo: 100,
             fullName: 'TOTALS',
             loanCycle: '',
@@ -635,13 +528,18 @@ const CashCollectionDetailsPage = () => {
 
         groupClients && groupClients.map(cc => {
             if (cc.status === 'active') {
-                console.log(cc.paymentCollection)
-                if (parseFloat(cc.paymentCollection) < cc.targetCollection) {
+                if (parseFloat(cc.paymentCollection) < cc.targetCollection && (cc.remarks && cc.remarks !== "delinquent")) {
                     errorMsg.add("Actual collection is below the target collection.");
                 } else if (parseFloat(cc.paymentCollection) % parseFloat(cc.activeLoan) !== 0) {
                     errorMsg.add("Actual collection should be divisible by 100.");
                 } else if (parseFloat(cc.paymentCollection) === 0 && !cc.remarks) {
                     errorMsg.add('Error occured. Please select a remarks for 0 or no payment Actual Collection.');
+                } else if (cc.status === "active" && cc.loanBalance === 0 && !cc.remarks ) {
+                    errorMsg.add('Error occured. Please select PENDING, RELOANER or OFFSET remarks for full payment transaction.');
+                } else if ((cc.remarks && cc.remarks.value === "double payment") && parseFloat(cc.paymentCollection) !== (cc.activeLoan * 2)) {
+                    errorMsg.add('Error occured. Actual collection is not a double payment.');
+                } else if ((cc.remarks && cc.remarks.value === "advance payment") && (parseFloat(cc.paymentCollection) === (cc.activeLoan * 2)) || (parseFloat(cc.paymentCollection) % parseFloat(cc.activeLoan) !== 0)) {
+                    errorMsg.add('Error occured. Actual collection is not a advance payment.');
                 } else if (cc.error) {
                     errorMsg.add('Error occured. Please double check the Actual Collection column.');
                 }
@@ -649,6 +547,8 @@ const CashCollectionDetailsPage = () => {
                 if (parseFloat(cc.loanBalance) && (cc.remarks && cc.remarks.value === 'offset')) {
                     errorMsg.add('Error occured. Please input the full balance amount before closing the loan account.');
                 }
+            } else if (cc.status === 'completed' && (cc.remarks && !(cc.remarks.value === 'pending' || cc.remarks.value === 'reloaner' || cc.remarks.value === 'offset'))) {
+                errorMsg.add("Invalid remarks. Please set it to PENDING, RELOANER OR OFFSET.");
             }
         });
 
@@ -688,7 +588,7 @@ const CashCollectionDetailsPage = () => {
                     delete temp.error;
                     delete temp.dirty;
                     delete temp.group;
-                    delete temp.clientStatus;
+                    // delete temp.clientStatus;
 
                     if (cc.hasOwnProperty('_id')) {
                         temp.modifiedBy = currentUser._id;
@@ -727,13 +627,15 @@ const CashCollectionDetailsPage = () => {
                             if (temp.remarks.value === 'offset') {
                                 temp.status = 'closed';
                                 temp.clientStatus = 'offset';
+                            } else if (temp.remarks.value === 'delinquent') {
+                                temp.clientStatus = "offset";
                             }
                         }
                     }
                 
                     return temp;   
-                }).filter(cc => cc.status !== 'totals');
-
+                });
+                console.log(dataArr)
                 if (save) {
                     let cashCollection;
                     if (editMode) {
@@ -796,6 +698,7 @@ const CashCollectionDetailsPage = () => {
                             temp.fullPaymentStr = '-';
                             temp.remarks = '';
                             temp.status = 'active';
+                            delete temp.delinquent;
                         } else {
                             temp.prevData = {
                                 amountRelease: temp.amountRelease,
@@ -866,13 +769,18 @@ const CashCollectionDetailsPage = () => {
                                     collection: temp.paymentCollection,
                                     remarks: temp.remarks
                                 };
+
+                                if (temp.remarks === "offset") {
+                                    temp.history.loanCycle = temp.loanCycle;
+                                }
+
                                 temp.fullPayment = temp.amountRelease;
                                 temp.fullPaymentStr = formatPricePhp(temp.fullPayment);
                                 temp.loanBalanceStr = 0;
                                 temp.amountRelease = 0;
                                 temp.amountReleaseStr = 0;
                             }
-                        } else if (parseFloat(payment) < targetCollection) {
+                        } else if (parseFloat(payment) < targetCollection && (temp.remarks && temp.remarks.value !== "delinquent")) {
                             // toast.error("Actual collection is below the target collection.");
                             temp.error = true;
                             temp.paymentCollection = payment;
@@ -880,6 +788,8 @@ const CashCollectionDetailsPage = () => {
                             // toast.error("Actual collection should be divisible by 100.");
                             temp.error = true;
                             temp.paymentCollection = payment;
+                        } else if ((temp.remarks && temp.remarks.value === "delinquent")) {
+                            temp.delinquent = true;
                         }
                     } 
                 } 
@@ -906,7 +816,9 @@ const CashCollectionDetailsPage = () => {
                             remarks: remarks
                         }
                     }
+                    // only pending and reloaner remarks can reloan else don't submit transaction... (done)
                     // for pending remarks - this slot no should still be able to change by the following day to change the remarks
+                    // by tomorrow only reloaner and offsets...
                     if (remarks.value === 'offset') {
                         if (parseFloat(temp.loanBalance) !== 0) {
                             toast.error("Please enter the full balance before closing the loan account.");
@@ -975,6 +887,8 @@ const CashCollectionDetailsPage = () => {
             temp.noOfPaymentStr = temp.noOfPayments + ' / ' + maxDays;
             temp.total = temp.prevData.total;
             temp.totalStr = formatPricePhp(temp.prevData.total);
+            temp.targetCollection = temp.prevData.activeLoan;
+            temp.targetCollectionStr = formatPricePhp(temp.targetCollection);   
             temp.fullPayment = 0;
             temp.fullPaymentStr = 0;
             temp.remarks = '';
@@ -996,9 +910,14 @@ const CashCollectionDetailsPage = () => {
 
     const handleReloan = (e, selected) => {
         e.stopPropagation();
-        setShowAddDrawer(true);
-        selected.group = currentGroup;
-        setLoan(selected);
+        
+        if (selected.remarks && (selected.remarks.value === "pending" || selected.remarks.value === "reloaner")) {
+            setShowAddDrawer(true);
+            selected.group = currentGroup;
+            setLoan(selected);
+        } else {
+            toast.error("This client can't reloan because it is not tagged as reloaner or pending in remarks.");
+        }
     }
 
     const handleCloseAddDrawer = () => {
@@ -1277,6 +1196,10 @@ const CashCollectionDetailsPage = () => {
                                             rowBg = 'bg-green-100';
                                         } else if (cc.status === 'tomorrow') {
                                             rowBg = 'bg-lime-100';
+                                        } else if (cc.status === "closed") {
+                                            rowBg = 'bg-zinc-200';
+                                        } else if (cc.clientStatus === "offset") {
+                                            rowBg = 'bg-orange-100';
                                         }
 
                                         if (cc.error) {
@@ -1311,7 +1234,8 @@ const CashCollectionDetailsPage = () => {
                                                 </td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.fullPaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.mispaymentStr }</td>
-                                                { (cc.status === 'active' || (cc.status === 'completed' && cc.fullPaymentDate === currentDate)) && (editMode || !groupSummaryIsClose) && !filter ? (
+                                                { ((cc.status === 'active' || cc.status === 'completed') && (editMode || !groupSummaryIsClose) 
+                                                    && (!cc.hasOwnProperty('_id') || revertMode) && !filter) || (cc.remarks && cc.remarks.value === "pending") ? (
                                                         <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">
                                                             { cc.remarks !== '-' ? (
                                                                 <Select 
@@ -1334,8 +1258,6 @@ const CashCollectionDetailsPage = () => {
                                                 }
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">
                                                     <React.Fragment>
-                                                    {/* {console.log(cc)}
-                                                    {console.log({name: cc.fullName, status: cc.status})} */}
                                                         {(cc.status === 'active' || cc.status === 'completed') && (
                                                             <div className='flex flex-row p-4'>
                                                                 {(cc.hasOwnProperty('_id') && !groupSummaryIsClose && !filter) && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleRevert(e, cc, index)} />}

@@ -122,6 +122,7 @@ async function getLoanWithCashCollection(req, res) {
                             ]}} },
                             {
                                 $addFields: {
+                                    "loanIdStr": { $toString: "$_id" },
                                     "branchIdObj": { $toObjectId: "$branchId" },
                                     "groupIdObj": { $toObjectId: "$groupId" },
                                     "clientIdObj": { $toObjectId: "$clientId" }
@@ -145,6 +146,17 @@ async function getLoanWithCashCollection(req, res) {
                             },
                             {
                                 $unwind: "$group"
+                            },
+                            {
+                                $lookup: {
+                                    from: "cashCollections",
+                                    localField: "loanIdStr",
+                                    foreignField: "loanId",
+                                    pipeline: [
+                                        { $match: { dateAdded: date } }
+                                    ],
+                                    as: "current"
+                                }
                             },
                             {
                                 $lookup: {
