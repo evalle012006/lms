@@ -818,7 +818,6 @@ const CashCollectionDetailsPage = () => {
                             remarks: remarks
                         }
                     }
-                    // only pending and reloaner remarks can reloan else don't submit transaction... (done)
                     // for pending remarks - this slot no should still be able to change by the following day to change the remarks
                     // by tomorrow only reloaner and offsets...
                     if (remarks.value === 'offset') {
