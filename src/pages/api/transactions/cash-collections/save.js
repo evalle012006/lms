@@ -2,6 +2,7 @@ import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
 import moment from 'moment';
 
+const currentDate = moment(new Date()).format('YYYY-MM-DD');
 
 export default apiHandler({
     post: save
@@ -15,20 +16,23 @@ async function save(req, res) {
     data.collection = JSON.parse(data.collection);
     if (data.collection.length > 0) {
         const groupHeaderId = data._id;
-        // await saveUpdateGroupHeader(data);
         data.collection.map(async cc => {
-            const collection = {...cc, groupCollectionId: groupHeaderId};
-            const respCollection = await saveCollection(collection);
+            if (cc.status !== "totals") {
+                const collection = {...cc, groupCollectionId: groupHeaderId};
+                const respCollection = await saveCollection(collection);
 
-            if (respCollection.success && (cc.status === "active" || cc.status === "completed" || cc.status === "closed")) {
-                const respLoan = await updateLoan(collection);
-                if (respLoan.success) {
-                    if (typeof cc.remarks === 'object') {
-                        if (cc.remarks.value === 'offset') {
-                            await updateClient(collection);
+                if (respCollection.success && (cc.status === "active" || cc.status === "completed" || cc.status === "closed")) {
+                    const respLoan = await updateLoan(collection);
+                    if (respLoan.success) {
+                        if (typeof cc.remarks === 'object') {
+                            if (cc.remarks.value === 'offset') {
+                                await updateClient(collection);
+                            }
                         }
                     }
                 }
+            } else {
+                // await saveUpdateTotals(cc);
             }
         });
     }
@@ -78,8 +82,8 @@ async function updateLoan(collection) {
         loan.amountRelease = collection.amountRelease;
         loan.noOfPayments = collection.noOfPayments !== '-' ? collection.noOfPayments : 0;
         loan.fullPaymentDate = '';
-        loan.history = {};
         loan.status = collection.status;
+        // loan.prevData = collection.prevData;
         
         if (collection.mispayment) {
             loan.mispayment = loan.mispayment + 1;
@@ -88,17 +92,18 @@ async function updateLoan(collection) {
         if (collection.loanBalance <= 0) {
             loan.status = 'completed';
             loan.fullPaymentDate = collection.fullPaymentDate;
+            loan.history = {};
             loan.history = collection.history;
             loan.activeLoan = 0;
             loan.amountRelease = 0;
         }
 
         // check if client is closed and update it
-        if (collection.clientStatus === 'offset') {
-            await updateClient(collection);
-        }
+        // if (collection.clientStatus === 'offset') {
+        //     await updateClient(collection);
+        // }
 
-        loan.lastUpdated = moment().format('YYYY-MM-DD');
+        loan.lastUpdated = currentDate;
 
         delete loan._id;
         await db.collection('loans').updateOne(
@@ -137,10 +142,7 @@ async function updateClient(loan) {
                 }, 
                 { upsert: false });
         
-        if (loan.clientStatus === 'offset') {
-            await updateLoanClose(loan);
-        }
-        
+        await updateLoanClose(loan);
         await updateGroup(loan);
     }
 }
@@ -157,7 +159,7 @@ async function updateLoanClose(loanData) {
         loan.loanCycle = 0;
         loan.remarks = loanData.closeRemarks;
         loan.status = 'closed';
-        loan.dateModified = moment(new Date()).format('YYYY-MM-DD');
+        loan.dateModified = currentDate;
         delete loan._id;
         await db
             .collection('loans')
@@ -171,11 +173,10 @@ async function updateLoanClose(loanData) {
 }
 
 async function updateGroup(loan) {
-    console.log(loan)
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
-
     let group = await db.collection('groups').find({ _id: ObjectId(loan.groupId) }).toArray();
+
     if (group.length > 0) {
         group = group[0];
 
@@ -207,29 +208,24 @@ async function updateGroup(loan) {
     }
 }
 
-// async function updateGroup(loan) {
-//     const { db } = await connectToDatabase();
-//     const ObjectId = require('mongodb').ObjectId;
+async function saveUpdateTotals (total) {
+    const { db } = await connectToDatabase();
 
-//     let group = await db.collection('groups').find({ _id: ObjectId(loan.groupId) }).toArray();
-//     if (group.length > 0) {
-//         group = group[0];
+    delete total.slotNo;
+    delete total.fullName;
+    delete total.loanCycle;
+    delete total.remarks;
+    delete total.clientStatus;
+    delete total.status;
+    delete total.noOfPayments;
 
-//         if (group.status === 'full') {
-//             group.status = 'available';
-//         }
+    const currentTotal = await db.collection('cashCollectionTotals').find({ dateAdded: currentDate, loId: total.loId, groupId: total.groupId }).toArray();
 
-//         group.availableSlots.push(loan.slotNo);
-//         group.availableSlots.sort((a, b) => { return a - b; });
-//         group.noOfClients = group.noOfClients - 1;
-
-//         delete group._id;
-//         await db.collection('groups').updateOne(
-//             {  _id: ObjectId(loan.groupId) },
-//             {
-//                 $set: { ...group }
-//             }, 
-//             { upsert: false }
-//         );
-//     }
-// }
+    if (currentTotal.length > 0) {
+        total.dateModified = currentDate;
+        await db.collection('cashCollectionTotals').updateOne({ _id: currentTotal[0]._id }, { $set: { ...total } }, { upsert: false });
+    } else {
+        total.dateAdded = currentDate;
+        await db.collection('cashCollectionTotals').insertOne({ ...total });
+    }
+}

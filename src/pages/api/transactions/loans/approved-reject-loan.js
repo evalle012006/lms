@@ -6,6 +6,8 @@ export default apiHandler({
     post: updateLoan
 });
 
+const currentDate = moment(new Date()).format('YYYY-MM-DD');
+
 async function updateLoan(req, res) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
@@ -64,6 +66,8 @@ async function updateLoan(req, res) {
                 if (groupSummary.success) {
                     await saveCashCollection(loan);
                 }
+
+                await saveUpdateTotals(loan, groupData);
                 
                 response = { success: true, loan: loanResp };
             }
@@ -165,7 +169,7 @@ async function saveGroupSummary(loan) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
 
-    const groupSummary = await db.collection('groupCashCollections').find({ dateAdded: moment(new Date()).format('YYYY-MM-DD'), groupId: loan.groupId }).toArray();
+    const groupSummary = await db.collection('groupCashCollections').find({ dateAdded: currentDate, groupId: loan.groupId }).toArray();
 
     if (groupSummary.length === 0) {
         let group = await db.collection('groups').find({ _id: ObjectId(loan.groupId) }).toArray();
@@ -178,7 +182,7 @@ async function saveGroupSummary(loan) {
                 groupId: loan.groupId,
                 groupName: group.name,
                 loId: group.loanOfficerId,
-                dateAdded: moment(new Date()).format('YYYY-MM-DD'),
+                dateAdded: currentDate,
                 insertBy: loan.insertedBy,
                 mode: group.occurence,
                 status: "pending"
@@ -195,7 +199,6 @@ async function saveGroupSummary(loan) {
 
 async function saveCashCollection(loan) {
     const { db } = await connectToDatabase();
-    const currentDate = moment(new Date()).format('YYYY-MM-DD');
 
     let groupSummary = await db.collection('groupCashCollections').find({ dateAdded: currentDate, groupId: loan.groupId }).toArray();
 
@@ -265,7 +268,7 @@ async function saveCashCollection(loan) {
                     fullPayment: 0,
                     remarks: '',
                     status: status,
-                    dateAdded: moment(new Date()).format('YYYY-MM-DD'),
+                    dateAdded: currentDate,
                     groupCollectionId: groupSummary._id + '',
                     origin: 'automation'
                 };
@@ -273,5 +276,71 @@ async function saveCashCollection(loan) {
                 await db.collection('cashCollections').insertOne({ ...data });
             }
         }
+    }
+}
+
+async function saveUpdateTotals (loan, group) {
+    const { db } = await connectToDatabase();
+
+    const currentTotal = await db.collection('cashCollectionTotals').find({ dateAdded: currentDate, groupId: loan.groupId }).toArray();
+    if (currentTotal.length > 0) {
+        const existActiveClients = currentTotal[0].activeClients ? currentTotal[0].activeClients : 0;
+        const activeClients = existActiveClients + 1;
+        const existActiveBorrowers = currentTotal[0].activeBorrowers ? currentTotal[0].activeBorrowers : 0;
+        const activeBorrowers = existActiveBorrowers + 1;
+        let noNewCurrentRelease = currentTotal[0].noNewCurrentRelease;
+        let noReCurrentRelease = currentTotal[0].noReCurrentRelease;
+        const existingCurrentReleaseAmount = currentTotal[0].currentReleaseAmount ? currentTotal[0].currentReleaseAmount : 0;
+        const currentReleaseAmount = existingCurrentReleaseAmount + loan.amountRelease;
+
+        if (loan.loanCycle === 1) {
+            noNewCurrentRelease += 1;
+        } else if (loan.loanCycle > 1) {
+            noReCurrentRelease += 1;
+        }
+        const noCurrentReleaseStr = noNewCurrentRelease + " / " + noReCurrentRelease;
+        const totalData = {
+            ...currentTotal[0], 
+            activeClients: activeClients,
+            activeBorrowers: activeBorrowers,
+            noNewCurrentRelease: noNewCurrentRelease, 
+            noReCurrentRelease: noReCurrentRelease, 
+            noCurrentReleaseStr: noCurrentReleaseStr,
+            currentReleaseAmount: currentReleaseAmount,
+            dateModified: currentDate
+        };
+        delete totalData._id;
+        await db.collection('cashCollectionTotals').updateOne({ _id: currentTotal[0]._id }, { $set: { ...totalData } }, { upsert: false });
+    } else {
+        let noNewCurrentRelease = 0;
+        let noReCurrentRelease = 0;
+        if (loan.loanCycle === 1) {
+            noNewCurrentRelease += 1;
+        } else if (loan.loanCycle > 1) {
+            noReCurrentRelease += 1;
+        }
+        const noCurrentReleaseStr = noNewCurrentRelease + " / " + noReCurrentRelease;
+        const totalData = {
+            branchId: group.branchId,
+            groupId: group._id + "",
+            loId: group.loanOfficerId,
+            mode: group.occurence,
+            activeClients: 1,
+            activeBorrowers: 0,
+            noNewCurrentRelease: noNewCurrentRelease,
+            noReCurrentRelease: noReCurrentRelease,
+            noCurrentReleaseStr: noCurrentReleaseStr,
+            noOfFullPayment: 0,
+            currentReleaseAmount: loan.amountRelease,
+            loanBalance: 0,
+            amountRelease: 0,
+            mispaymentStr: 0,
+            targetCollection: 0,
+            excess: 0,
+            paymentCollection: 0,
+            fullPayment: 0,
+            dateAdded: currentDate,
+        }
+        await db.collection('cashCollectionTotals').insertOne({ ...totalData });
     }
 }

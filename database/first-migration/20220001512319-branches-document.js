@@ -63,6 +63,14 @@ module.exports = {
         dateAdded: new Date()
       },
       {
+        name: 'Sangali',
+        code: 'B008',
+        email: 'acsangali@ambercashph.com',
+        phoneNumber: '123',
+        address: 'Zamboanga',
+        dateAdded: new Date()
+      },
+      {
         name: 'Floridablanca',
         code: 'B009',
         email: 'acfloridablanca@ambercashph.com',
