@@ -11,7 +11,6 @@ import { formatPricePhp, getTotal } from "@/lib/utils";
 const ViewByBranchPage = () => {
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
-    const list = useSelector(state => state.branch.list);
     const [loading, setLoading] = useState(true);
     const [branchCollectionData, setBranchCollectionData] = useState([]);
     const [currentDate, setCurrentDate] = useState(moment(new Date()).format('YYYY-MM-DD'));
