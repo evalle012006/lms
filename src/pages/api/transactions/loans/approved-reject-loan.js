@@ -67,7 +67,7 @@ async function updateLoan(req, res) {
                     await saveCashCollection(loan);
                 }
 
-                await saveUpdateTotals(loan, groupData);
+                // await saveUpdateTotals(loan, groupData);
                 
                 response = { success: true, loan: loanResp };
             }

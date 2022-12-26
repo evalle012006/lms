@@ -447,8 +447,6 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter }) => {
             } else {
                 mounted && getGroupCashCollections(currentBranch.code);
             }
-            
-            setLoading(false);
         }
 
         return () => {

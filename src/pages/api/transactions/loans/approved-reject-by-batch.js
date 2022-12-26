@@ -35,7 +35,7 @@ async function processData(req, res) {
                 if (loan.status === 'active') {
                     await updateClient(loan.clientId);
                     await updateExistingLoan(loan.clientId);
-                    await saveUpdateTotals(loan, groupData);
+                    // await saveUpdateTotals(loan, groupData);
                 }  else if (loan.status === 'reject') {
                     if (!groupData.availableSlots.includes(loan.slotNo)) {
                         groupData.availableSlots.push(loan.slotNo);
