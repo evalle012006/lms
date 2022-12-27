@@ -127,31 +127,6 @@ const LoanApplicationPage = () => {
         }
     }
 
-    // const getListClient = async () => {
-    //     let url = process.env.NEXT_PUBLIC_API_URL + 'clients/list';
-    //     if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
-    //         url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", loId: currentUser._id, status: 'pending' });
-    //     } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
-    //         url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", branchId: branchList[0]._id, status: 'pending' });
-    //     }
-
-    //     const response = await fetchWrapper.get(url);
-    //     if (response.success) {
-    //         let clients = [];
-    //         await response.clients && response.clients.map(client => {
-    //             clients.push({
-    //                 ...client,
-    //                 label: UppercaseFirstLetter(`${client.lastName}, ${client.firstName}`),
-    //                 value: client._id
-    //             });
-    //         });
-    //         dispatch(setClientList(clients));
-    //     } else if (response.error) {
-    //         toast.error(response.message);
-    //     }
-    //     setLoading(false);
-    // }
-
     const getListLoan = async () => {
         let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/list';
         if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
