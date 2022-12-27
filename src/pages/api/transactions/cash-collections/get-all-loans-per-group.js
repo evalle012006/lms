@@ -88,14 +88,30 @@ async function getAllLoansPerGroup(req, res) {
                         foreignField: "loId",
                         pipeline: [
                             { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
-                            { $match: {$expr: { $and: [
-                                {$or: [{$eq: ['$status', 'active']}, {$eq: ['$status', 'pending']}, {$eq: ['$status', 'completed']}]}, {$lte: ['$startDateObj', '$currentDateObj']}
-                            ]}} },
+                            { $match: {$expr:  {$lte: ['$startDateObj', '$currentDateObj']} } }  ,
                             { $group: { 
                                     _id: '$loId',
-                                    mispayment: { $sum: { $cond:{if: { $ne: ['$status', 'pending']}, then: '$mispayment', else: 0} } },
-                                    totalRelease: { $sum: { $cond:{if: { $ne: ['$status', 'pending']}, then: '$amountRelease', else: 0} } },
-                                    totalLoanBalance: { $sum: { $cond:{if: { $ne: ['$status', 'pending']}, then: '$loanBalance', else: 0} } },
+                                    mispayment: { $sum: { $cond:{
+                                        if: { $or: [{$ne: ['$status', 'pending']}, {$ne: ['$status', 'closed']}] }, 
+                                        then: '$mispayment',
+                                        else: {
+                                                $cond: {
+                                                    if: { $and: [{$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}] },
+                                                    then: '$mispayment',
+                                                    else: 0
+                                                }
+                                            }
+                                    } } },
+                                    totalRelease: { $sum: { $cond:{
+                                            if: { $or: [{$ne: ['$status', 'pending']}, {$ne: ['$status', 'closed']}] }, 
+                                            then: '$amountRelease', 
+                                            else: 0
+                                    } } },
+                                    totalLoanBalance: { $sum: { $cond:{
+                                        if: { $or: [{$ne: ['$status', 'pending']}, {$ne: ['$status', 'closed']}] }, 
+                                        then: '$loanBalance', 
+                                        else: 0
+                                    } } },
                                     loanTarget: { 
                                         $sum: { 
                                             $cond: {
@@ -366,14 +382,30 @@ async function getAllLoansPerGroup(req, res) {
                         foreignField: "groupId",
                         pipeline: [
                             { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
-                            { $match: {$expr: { $and: [
-                                {$or: [{$eq: ['$status', 'active']}, {$eq: ['$status', 'pending']}, {$eq: ['$status', 'completed']}]}, {$lte: ['$startDateObj', '$currentDateObj']}
-                            ]}} },
+                            { $match: {$expr:  {$lte: ['$startDateObj', '$currentDateObj']} } }  ,
                             { $group: { 
-                                    _id: '$$groupName',
-                                    mispayment: { $sum: { $cond:{if: { $ne: ['$status', 'pending']}, then: '$mispayment', else: 0} } },
-                                    totalRelease: { $sum: { $cond:{if: { $ne: ['$status', 'pending']}, then: '$amountRelease', else: 0} } },
-                                    totalLoanBalance: { $sum: { $cond:{if: { $ne: ['$status', 'pending']}, then: '$loanBalance', else: 0} } },
+                                    _id: '$loId',
+                                    mispayment: { $sum: { $cond:{
+                                        if: { $or: [{$ne: ['$status', 'pending']}, {$ne: ['$status', 'closed']}] }, 
+                                        then: '$mispayment',
+                                        else: {
+                                                $cond: {
+                                                    if: { $and: [{$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}] },
+                                                    then: '$mispayment',
+                                                    else: 0
+                                                }
+                                            }
+                                    } } },
+                                    totalRelease: { $sum: { $cond:{
+                                            if: { $or: [{$ne: ['$status', 'pending']}, {$ne: ['$status', 'closed']}] }, 
+                                            then: '$amountRelease', 
+                                            else: 0
+                                    } } },
+                                    totalLoanBalance: { $sum: { $cond:{
+                                        if: { $or: [{$ne: ['$status', 'pending']}, {$ne: ['$status', 'closed']}] }, 
+                                        then: '$loanBalance', 
+                                        else: 0
+                                    } } },
                                     loanTarget: { 
                                         $sum: { 
                                             $cond: {
