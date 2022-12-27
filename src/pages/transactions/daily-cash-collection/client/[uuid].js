@@ -1260,7 +1260,7 @@ const CashCollectionDetailsPage = () => {
                                                                 </React.Fragment>
                                                             ) : (
                                                                 <React.Fragment>
-                                                                    { cc.remarks }
+                                                                    { cc.history.remarks.label }
                                                                 </React.Fragment>
                                                             ) }
                                                         </td>
