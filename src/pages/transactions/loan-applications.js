@@ -162,6 +162,7 @@ const LoanApplicationPage = () => {
                 await response.loans && response.loans.map(loan => {
                     loanList.push({
                         ...loan,
+                        loanOfficerName: `${loan.loanOfficer.lastName}, ${loan.loanOfficer.firstName}`,
                         groupName: loan.group.name,
                         principalLoanStr: formatPricePhp(loan.principalLoan),
                         mcbuStr: formatPricePhp(loan.mcbu),
@@ -187,6 +188,7 @@ const LoanApplicationPage = () => {
                 await response.loans && response.loans.map(loan => {
                     loanList.push({
                         ...loan,
+                        loanOfficerName: `${loan.loanOfficer.lastName}, ${loan.loanOfficer.firstName}`,
                         groupName: loan.group.name,
                         principalLoanStr: formatPricePhp(loan.principalLoan),
                         mcbuStr: formatPricePhp(loan.mcbu),
@@ -211,6 +213,7 @@ const LoanApplicationPage = () => {
                 await response.loans && response.loans.map(loan => {
                     loanList.push({
                         ...loan,
+                        loanOfficerName: `${loan.loanOfficer.lastName}, ${loan.loanOfficer.firstName}`,
                         groupName: loan.group.name,
                         principalLoanStr: formatPricePhp(loan.principalLoan),
                         mcbuStr: formatPricePhp(loan.mcbu),
@@ -539,21 +542,15 @@ const LoanApplicationPage = () => {
                 },
                 {
                     Header: "Slot No.",
-                    accessor: 'slotNo',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
+                    accessor: 'slotNo'
                 },
                 {
                     Header: "Client Name",
-                    accessor: 'fullName',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
+                    accessor: 'fullName'
                 },
                 {
                     Header: "Admission Date",
-                    accessor: 'admissionDate',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
+                    accessor: 'admissionDate'
                 },
                 // {
                 //     Header: "MCBU",
@@ -563,21 +560,15 @@ const LoanApplicationPage = () => {
                 // },
                 {
                     Header: "Principal Loan",
-                    accessor: 'principalLoanStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
+                    accessor: 'principalLoanStr'
                 },
                 {
                     Header: "Active Loan",
-                    accessor: 'activeLoanStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
+                    accessor: 'activeLoanStr'
                 },
                 {
                     Header: "Loan Balance",
-                    accessor: 'loanBalanceStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
+                    accessor: 'loanBalanceStr'
                 },
                 {
                     Header: "Status",
@@ -587,28 +578,21 @@ const LoanApplicationPage = () => {
                     // Options: statuses,
                     // valueIdAccessor: 'status',
                     // selectOnChange: updateClientStatus,
-                    Filter: SelectColumnFilter,
-                    filter: 'includes',
+                    // Filter: SelectColumnFilter,
+                    // filter: 'includes',
                 }
             );
 
-            // let updatedColumns = cols.map(col => {
-            //     let temp = {...col}; 
-            //     if ((currentUser.role && currentUser.role.rep > 3)) {        
-            //         if (col.accessor === 'status') {
-            //             // delete temp.Cell;
-            //             temp.Cell = StatusPill;
-            //         }
-            //     } else {
-            //         // need to set the Options again since it was blank after checking for permissions
-            //         if (col.accessor === 'status') {
-            //             // temp.Options = statuses;
-            //             // temp.selectOnChange = updateClientStatus;
-            //         }
-            //     }
-
-            //     return temp;
-            // });
+            if ((currentUser.role && currentUser.role.rep < 4)) {
+                cols.unshift(
+                    {
+                        Header: "Loan Officer",
+                        accessor: 'loanOfficerName',
+                        Filter: SelectColumnFilter,
+                        filter: 'includes'
+                    }
+                )
+            }
 
             let rowActionBtn = [];
 
@@ -655,7 +639,7 @@ const LoanApplicationPage = () => {
                             </nav>
                             <div>
                                 <TabPanel hidden={selectedTab !== "application"}>
-                                    <TableComponent columns={columns} data={list} hasActionButtons={currentUser.role.rep > 2 ? true : false} rowActionButtons={rowActionButtons} showFilters={false} multiSelect={currentUser.role.rep === 3 ? true : false} multiSelectActionFn={handleMultiSelect} />
+                                    <TableComponent columns={columns} data={list} hasActionButtons={currentUser.role.rep > 2 ? true : false} rowActionButtons={rowActionButtons} showFilters={currentUser.role.rep === 4 ? false : true} multiSelect={currentUser.role.rep === 3 ? true : false} multiSelectActionFn={handleMultiSelect} />
                                 </TabPanel>
                                 <TabPanel hidden={selectedTab !== 'history'}>
                                     <TableComponent columns={columns} data={historyList} hasActionButtons={false} showFilters={false} />

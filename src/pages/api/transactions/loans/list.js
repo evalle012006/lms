@@ -26,7 +26,8 @@ async function list(req, res) {
                     $addFields: {
                         "branchIdObj": { $toObjectId: "$branchId" },
                         "groupIdObj": { $toObjectId: "$groupId" },
-                        "clientIdObj": { $toObjectId: "$clientId" }
+                        "clientIdObj": { $toObjectId: "$clientId" },
+                        "loIdObj": { $toObjectId: "$loId" }
                     }
                 },
                 {
@@ -81,9 +82,20 @@ async function list(req, res) {
                     $unwind: "$client"
                 },
                 {
+                    $lookup: {
+                        from: "users",
+                        localField: 'loIdObj',
+                        foreignField: '_id',
+                        as: 'loanOfficer'
+                    }
+                },
+                {
+                    $unwind: "$loanOfficer"
+                },
+                {
                     $sort: { "dateAdded": -1 }
                 },
-                { $project: { branchIdObj: 0, groupIdObj: 0, clientIdObj: 0 } }
+                { $project: { branchIdObj: 0, groupIdObj: 0, clientIdObj: 0, loIdObj: 0, password: 0 } }
             ])
             .toArray();
         } else if (branchId) {
@@ -95,7 +107,8 @@ async function list(req, res) {
                     $addFields: {
                         "branchIdObj": { $toObjectId: "$branchId" },
                         "groupIdObj": { $toObjectId: "$groupId" },
-                        "clientIdObj": { $toObjectId: "$clientId" }
+                        "clientIdObj": { $toObjectId: "$clientId" },
+                        "loIdObj": { $toObjectId: "$loId" }
                     }
                 },
                 {
@@ -143,7 +156,18 @@ async function list(req, res) {
                 {
                     $unwind: "$client"
                 },
-                { $project: { branchIdObj: 0, groupIdObj: 0, clientIdObj: 0 } }
+                {
+                    $lookup: {
+                        from: "users",
+                        localField: 'loIdObj',
+                        foreignField: '_id',
+                        as: 'loanOfficer'
+                    }
+                },
+                {
+                    $unwind: "$loanOfficer"
+                },
+                { $project: { branchIdObj: 0, groupIdObj: 0, clientIdObj: 0, loIdObj: 0, password: 0 } }
             ])
             .toArray();
         } else if (groupId) {
@@ -155,7 +179,8 @@ async function list(req, res) {
                     $addFields: {
                         "branchIdObj": { $toObjectId: "$branchId" },
                         "groupIdObj": { $toObjectId: "$groupId" },
-                        "clientIdObj": { $toObjectId: "$clientId" }
+                        "clientIdObj": { $toObjectId: "$clientId" },
+                        "loIdObj": { $toObjectId: "$loId" }
                     }
                 },
                 {
@@ -203,7 +228,18 @@ async function list(req, res) {
                 {
                     $unwind: "$client"
                 },
-                { $project: { branchIdObj: 0, groupIdObj: 0, clientIdObj: 0 } }
+                {
+                    $lookup: {
+                        from: "users",
+                        localField: 'loIdObj',
+                        foreignField: '_id',
+                        as: 'loanOfficer'
+                    }
+                },
+                {
+                    $unwind: "$loanOfficer"
+                },
+                { $project: { branchIdObj: 0, groupIdObj: 0, clientIdObj: 0, loIdObj: 0, password: 0 } }
             ])
             .toArray();
         }
@@ -217,7 +253,8 @@ async function list(req, res) {
                     $addFields: {
                         "branchIdObj": { $toObjectId: "$branchId" },
                         "groupIdObj": { $toObjectId: "$groupId" },
-                        "clientIdObj": { $toObjectId: "$clientId" }
+                        "clientIdObj": { $toObjectId: "$clientId" },
+                        "loIdObj": { $toObjectId: "$loId" }
                     }
                 },
                 {
@@ -272,9 +309,20 @@ async function list(req, res) {
                     $unwind: "$client"
                 },
                 {
+                    $lookup: {
+                        from: "users",
+                        localField: 'loIdObj',
+                        foreignField: '_id',
+                        as: 'loanOfficer'
+                    }
+                },
+                {
+                    $unwind: "$loanOfficer"
+                },
+                {
                     $sort: { "dateAdded": -1 }
                 },
-                { $project: { branchIdObj: 0, groupIdObj: 0, clientIdObj: 0 } }
+                { $project: { branchIdObj: 0, groupIdObj: 0, clientIdObj: 0, loIdObj: 0, password: 0 } }
             ])
             .toArray();
         } else if (branchId) {
@@ -286,7 +334,8 @@ async function list(req, res) {
                     $addFields: {
                         "branchIdObj": { $toObjectId: "$branchId" },
                         "groupIdObj": { $toObjectId: "$groupId" },
-                        "clientIdObj": { $toObjectId: "$clientId" }
+                        "clientIdObj": { $toObjectId: "$clientId" },
+                        "loIdObj": { $toObjectId: "$loId" }
                     }
                 },
                 {
@@ -334,7 +383,18 @@ async function list(req, res) {
                 {
                     $unwind: "$client"
                 },
-                { $project: { branchIdObj: 0, groupIdObj: 0, clientIdObj: 0 } }
+                {
+                    $lookup: {
+                        from: "users",
+                        localField: 'loIdObj',
+                        foreignField: '_id',
+                        as: 'loanOfficer'
+                    }
+                },
+                {
+                    $unwind: "$loanOfficer"
+                },
+                { $project: { branchIdObj: 0, groupIdObj: 0, clientIdObj: 0, loIdObj: 0, password: 0 } }
             ])
             .toArray();
         } else if (groupId) {
@@ -346,7 +406,8 @@ async function list(req, res) {
                     $addFields: {
                         "branchIdObj": { $toObjectId: "$branchId" },
                         "groupIdObj": { $toObjectId: "$groupId" },
-                        "clientIdObj": { $toObjectId: "$clientId" }
+                        "clientIdObj": { $toObjectId: "$clientId" },
+                        "loIdObj": { $toObjectId: "$loId" }
                     }
                 },
                 {
@@ -394,7 +455,18 @@ async function list(req, res) {
                 {
                     $unwind: "$client"
                 },
-                { $project: { branchIdObj: 0, groupIdObj: 0, clientIdObj: 0 } }
+                {
+                    $lookup: {
+                        from: "users",
+                        localField: 'loIdObj',
+                        foreignField: '_id',
+                        as: 'loanOfficer'
+                    }
+                },
+                {
+                    $unwind: "$loanOfficer"
+                },
+                { $project: { branchIdObj: 0, groupIdObj: 0, clientIdObj: 0, loIdObj: 0, password: 0 } }
             ])
             .toArray();
         } else {
@@ -406,7 +478,8 @@ async function list(req, res) {
                     $addFields: {
                         "branchIdObj": { $toObjectId: "$branchId" },
                         "groupIdObj": { $toObjectId: "$groupId" },
-                        "clientIdObj": { $toObjectId: "$clientId" }
+                        "clientIdObj": { $toObjectId: "$clientId" },
+                        "loIdObj": { $toObjectId: "$loId" }
                     }
                 },
                 {
@@ -454,7 +527,18 @@ async function list(req, res) {
                 {
                     $unwind: "$client"
                 },
-                { $project: { branchIdObj: 0, groupIdObj: 0, clientIdObj: 0 } }
+                {
+                    $lookup: {
+                        from: "users",
+                        localField: 'loIdObj',
+                        foreignField: '_id',
+                        as: 'loanOfficer'
+                    }
+                },
+                {
+                    $unwind: "$loanOfficer"
+                },
+                { $project: { branchIdObj: 0, groupIdObj: 0, clientIdObj: 0, loIdObj: 0, password: 0 } }
             ])
             .toArray();
         }
