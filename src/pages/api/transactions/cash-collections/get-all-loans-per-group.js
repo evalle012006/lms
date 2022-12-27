@@ -102,7 +102,7 @@ async function getAllLoansPerGroup(req, res) {
                                                 if: { $ne: ['$status', 'pending']}, 
                                                 then: { 
                                                     $cond: {
-                                                        if: { $eq: ['$activeLoan', 0] },
+                                                        if: { $and: [{$eq: ['$activeLoan', 0]}, {$eq: ['$fullPaymentDate', date]}] },
                                                         then: '$history.activeLoan',
                                                         else: '$activeLoan'
                                                     } 
@@ -380,7 +380,7 @@ async function getAllLoansPerGroup(req, res) {
                                                 if: { $ne: ['$status', 'pending']}, 
                                                 then: { 
                                                     $cond: {
-                                                        if: { $eq: ['$activeLoan', 0] },
+                                                        if: { $and: [{$eq: ['$activeLoan', 0]}, {$eq: ['$fullPaymentDate', date]}] },
                                                         then: '$history.activeLoan',
                                                         else: '$activeLoan'
                                                     } 
