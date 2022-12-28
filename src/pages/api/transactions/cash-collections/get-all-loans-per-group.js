@@ -88,7 +88,7 @@ async function getAllLoansPerGroup(req, res) {
                         foreignField: "loId",
                         pipeline: [
                             { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
-                            { $match: {$expr:  {$lte: ['$startDateObj', '$currentDateObj']} } }  ,
+                            { $match: {$expr:  {$and: [{$ne: ['$status', 'reject']}, {$lte: ['$startDateObj', '$currentDateObj']}]} } },
                             { $group: { 
                                     _id: '$loId',
                                     mispayment: { $sum: { $cond:{
@@ -382,7 +382,7 @@ async function getAllLoansPerGroup(req, res) {
                         foreignField: "groupId",
                         pipeline: [
                             { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
-                            { $match: {$expr:  {$lte: ['$startDateObj', '$currentDateObj']} } }  ,
+                            { $match: {$expr:  {$and: [{$ne: ['$status', 'reject']}, {$lte: ['$startDateObj', '$currentDateObj']}]} } },
                             { $group: { 
                                     _id: '$loId',
                                     mispayment: { $sum: { $cond:{
