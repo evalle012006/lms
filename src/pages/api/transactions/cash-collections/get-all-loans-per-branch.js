@@ -1,7 +1,6 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
 
-
 export default apiHandler({
     get: getAllLoansPerGroup
 });
