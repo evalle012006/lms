@@ -123,21 +123,6 @@ const ViewByBranchPage = (dateFilter) => {
                 collectionData.push(collection);
             });
 
-            // totals
-            // let totalNoOfClients = getTotal(collectionData, 'activeClients');
-            // let totalNoOfBorrowers = getTotal(collectionData, 'activeBorrowers');
-            // let totalsLoanRelease = getTotal(collectionData, 'totalReleases');
-            // let totalsLoanBalance = getTotal(collectionData, 'totalLoanBalance');
-            // let totalNoOfNewCurrentRelease = getTotal(collectionData, 'noOfNewCurrentRelease');
-            // let totalNoOfReCurrentRelease = getTotal(collectionData, 'noOfReCurrentRelease');
-            // let totalCurrentReleaseAmount = getTotal(collectionData, 'currentReleaseAmount');
-            // let totalTargetLoanCollection = getTotal(collectionData, 'loanTarget');
-            // let totalExcess = getTotal(collectionData, 'excess');
-            // let totalLoanCollection = getTotal(collectionData, 'total');
-            // let totalNoOfFullPayment = getTotal(collectionData, 'noOfFullPayment');
-            // let totalFullPaymentAmount = getTotal(collectionData, 'fullPaymentAmount');
-            // let totalMispayment = getTotal(collectionData, 'mispayment');
-
             const branchTotals = {
                 name: 'TOTALS',
                 noCurrentReleaseStr: noOfNewCurrentRelease + ' / ' + noOfReCurrentRelease,
