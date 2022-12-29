@@ -209,41 +209,6 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                 totalData: true,
                 status: '-'
             }
-            // let totals = {
-            //     group: 'TOTALS',
-            //     noCurrentReleaseStr: '0 / 0',
-            //     currentReleaseAmountStr: 0,
-            //     activeClients: 0,
-            //     activeBorrowers: 0,
-            //     totalReleasesStr: 0,
-            //     totalLoanBalanceStr: 0,
-            //     loanTargetStr: 0,
-            //     excessStr: 0,
-            //     collectionStr: 0,
-            //     mispayment: '0 / 0',
-            //     fullPaymentAmountStr: 0,
-            //     noOfFullPayment: 0,
-            //     totalData: true,
-            //     status: '-'
-            // }
-
-            // if (response.data.totals) {
-            //     const totalData =  response.data.totals;
-            //     totals = {
-            //         ...totals,
-            //         activeClients: totalData.activeClients,
-            //         activeBorrowers: totalData.activeBorrowers,
-            //         noCurrentReleaseStr: `${totalData.noOfNewCurrentRelease ? totalData.noOfNewCurrentRelease : 0} / ${totalData.noOfReCurrentRelease ? totalData.noOfReCurrentRelease : 0}`,
-            //         currentReleaseAmountStr: formatPricePhp(totalData.currentReleaseAmount),
-            //         totalReleasesStr: formatPricePhp(totalData.totalsLoanRelease),
-            //         totalLoanBalanceStr: formatPricePhp(totalData.totalLoanBalance),
-            //         loanTargetStr: formatPricePhp(totalData.loanTarget),
-            //         excessStr: formatPricePhp(totalData.excess),
-            //         collectionStr: formatPricePhp(totalData.collection),
-            //         mispayment: totalData.mispayment + ' / ' + totalData.activeClients,
-            //         fullPaymentAmountStr: formatPricePhp(totalData.fullPaymentAmount)
-            //     }
-            // }
 
             collectionData.push(totals);
 
