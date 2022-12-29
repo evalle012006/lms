@@ -24,11 +24,12 @@ async function save(req, res) {
                 if (respCollection.success && (cc.status === "active" || cc.status === "completed" || cc.status === "closed")) {
                     const respLoan = await updateLoan(collection);
                     if (respLoan.success) {
-                        if (typeof cc.remarks === 'object') {
-                            if (cc.remarks.value === 'offset') {
-                                await updateClient(collection);
-                            }
-                        }
+                        await updateClient(collection);
+                        // if (typeof cc.remarks === 'object') {
+                        //     if (cc.remarks.value === 'offset' || cc.remarks.value === 'delinquent') {
+                                
+                        //     }
+                        // }
                     }
                 }
             } else {
@@ -49,6 +50,10 @@ async function saveCollection(collection) {
     const ObjectId = require('mongodb').ObjectId;
     
     if (collection._id) {
+        if (collection.remarks && collection.remarks.value === "delinquent") {
+            collection.targetCollection = 0;
+        }
+
         const collectionId = collection._id;
         delete collection._id;
         await db.collection('cashCollections')
@@ -80,7 +85,9 @@ async function updateLoan(collection) {
         loan.loanBalance = collection.loanBalance;
         loan.activeLoan = collection.activeLoan;
         loan.amountRelease = collection.amountRelease;
-        loan.noOfPayments = collection.noOfPayments !== '-' ? collection.noOfPayments : 0;
+        if (collection.remarks && (collection.remarks !== 'delinquent' && collection.remarks !== 'excused' && collection.remarks !== 'past due')) {
+            loan.noOfPayments = collection.noOfPayments !== '-' ? collection.noOfPayments : 0;
+        }
         loan.fullPaymentDate = '';
         loan.status = collection.status;
         // loan.prevData = collection.prevData;
@@ -129,7 +136,7 @@ async function updateClient(loan) {
 
         client.status = loan.clientStatus;
 
-        if (loan.remarks.label.toLowerCase().includes('delinquent')) {
+        if (loan.remarks.value === 'delinquent') {
             client.delinquent = true;
         }
 
@@ -142,8 +149,10 @@ async function updateClient(loan) {
                 }, 
                 { upsert: false });
         
-        await updateLoanClose(loan);
-        await updateGroup(loan);
+        if (loan.remarks.value === "offset") {
+            await updateLoanClose(loan);
+            await updateGroup(loan);
+        }
     }
 }
 

@@ -49,17 +49,18 @@ const CashCollectionDetailsPage = () => {
     const [closeLoan, setCloseLoan] = useState();
     const remarksArr = [
         { label: 'Remarks', value: ''},
-        { label: 'Pending', value: 'pending'},
-        { label: 'Excused', value: 'excused'},
-        { label: 'Excused Due to Calamity', value: 'excused'},
         { label: 'Double Payment', value: 'double payment'},
         { label: 'Advance Payment', value: 'advance payment'},
-        { label: 'Delinquent', value: 'delinquent'},
-        { label: 'Hospitalization', value: 'hospitalization'},
-        { label: 'Death of Clients/Family Member', value: 'death of clients/family member'},
         { label: 'Reloaner', value: 'reloaner'},
+        { label: 'Pending', value: 'pending'},
         { label: 'For Close/Offset - Good Client', value: 'offset'},
-        { label: 'For Close/Offset - Delinquent Client', value: 'offset'}
+        { label: 'For Close/Offset - Delinquent Client', value: 'offset'},
+        { label: 'Past Due', value: 'past due'},
+        { label: 'Delinquent', value: 'delinquent'},
+        // { label: 'Excused', value: 'excused'},
+        { label: 'Excused Due to Calamity', value: 'excused'},
+        { label: 'Excused - Hospitalization', value: 'excused'},
+        { label: 'Excused - Death of Clients/Family Member', value: 'excused'}
     ];
     const [filter, setFilter] = useState(false);
     const maxDays = 60;
@@ -143,12 +144,16 @@ const CashCollectionDetailsPage = () => {
                         fullPayment: 0,
                         fullPaymentStr: '-',
                         remarks: cc.remarks ? cc.remarks : '',
+                        pastDue: cc.pastDue ? cc.pastDue : 0,
+                        pastDueStr: cc.pastDue ? formatPricePhp(cc.pastDue) : '-',
                         clientStatus: cc.client.status ? cc.client.status : '-',
+                        delinquent: cc.client.delinquent,
                         fullPaymentDate: cc.fullPaymentDate ? cc.fullPaymentDate : null,
                         history: cc.hasOwnProperty('history') ? cc.history : null,
                         prevData: cc.hasOwnProperty('prevData') ? cc.prevData : null
                     }
                 } else if (cc.status === "closed" && cc.fullPaymentDate === currentDate) {
+                    console.log(cc)
                     collection = {
                         ...cc,
                         group: cc.group,
@@ -185,7 +190,10 @@ const CashCollectionDetailsPage = () => {
                         fullPayment: cc.fullPayment.length > 0 ? cc.fullPayment[0].fullPaymentAmount : 0,
                         fullPaymentStr: cc.fullPayment.length > 0 ? formatPricePhp(cc.fullPayment[0].fullPaymentAmount) : '-',
                         remarks: cc.remarks ? cc.remarks : '',
+                        pastDue: cc.pastDue ? cc.pastDue : 0,
+                        pastDueStr: cc.pastDue ? formatPricePhp(cc.pastDue) : '-',
                         clientStatus: cc.client.status ? cc.client.status : '-',
+                        delinquent: cc.client.delinquent,
                         fullPaymentDate: cc.fullPaymentDate ? cc.fullPaymentDate : null,
                         history: cc.hasOwnProperty('history') ? cc.history : null,
                         prevData: cc.hasOwnProperty('prevData') ? cc.prevData : null
@@ -226,7 +234,10 @@ const CashCollectionDetailsPage = () => {
                         fullPayment: cc.fullPaymentAmount ? cc.fullPaymentAmount : 0,
                         fullPaymentStr: cc.fullPaymentAmount > 0 ? formatPricePhp(cc.fullPaymentAmount) : '-',
                         remarks: cc.remarks ? cc.remarks : '',
+                        pastDue: cc.pastDue ? cc.pastDue : 0,
+                        pastDueStr: cc.pastDue ? formatPricePhp(cc.pastDue) : '-',
                         clientStatus: cc.client.status ? cc.client.status : '-',
+                        delinquent: cc.client.delinquent,
                         fullPaymentDate: cc.fullPaymentDate ? cc.fullPaymentDate : null,
                         history: cc.hasOwnProperty('history') ? cc.history : null,
                         status: cc.status
@@ -234,9 +245,9 @@ const CashCollectionDetailsPage = () => {
 
                     delete cc._id;
                     if (cc.hasOwnProperty('current') && cc.current.length > 0) {
-                        collection.activeLoan = cc.current[0].activeLoan;
-                        collection.targetCollection = collection.activeLoan;
-                        collection.targetCollectionStr = formatPricePhp(collection.activeLoan);
+                        // collection.activeLoan = cc.current[0].activeLoan;
+                        collection.targetCollection = cc.current[0].targetCollection;
+                        collection.targetCollectionStr = formatPricePhp(cc.current[0].targetCollection);
                         collection.excess = cc.current[0].excess;
                         collection.excessStr = formatPricePhp(cc.current[0].excess);
                         collection.paymentCollection = cc.current[0].paymentCollection;
@@ -247,6 +258,8 @@ const CashCollectionDetailsPage = () => {
                         collection.delinquent = cc.current[0].hasOwnProperty('delinquent') ? cc.current[0].delinquent : false;
                         collection._id = cc.current[0]._id;
                         collection.prevData = cc.current[0].prevData;
+                        collection.pastDue = cc.current[0].pastDue ? cc.current[0].pastDue : 0;
+                        collection.pastDueStr = cc.current[0].pastDue ? formatPricePhp(cc.current[0].pastDue) : '-',
                         setEditMode(false);
                     }
     
@@ -309,6 +322,10 @@ const CashCollectionDetailsPage = () => {
                             remarks: currentLoan.history.remarks,
                             fullPayment: currentLoan.fullPayment,
                             fullPaymentStr: currentLoan.fullPayment ? currentLoan.fullPaymentStr : 0,
+                            pastDue: currentLoan.pastDue ? currentLoan.pastDue : 0,
+                            pastDueStr: currentLoan.pastDue ? formatPricePhp(currentLoan.pastDue) : '-',
+                            clientStatus: currentLoan.clientStatus,
+                            delinquent: currentLoan.delinquent,
                             status: loan.status === "active" ? "tomorrow" : loan.status,
                             pending: loan.status === 'pending' ? true : false,
                             tomorrow: loan.status === 'active' ? true : false
@@ -373,6 +390,7 @@ const CashCollectionDetailsPage = () => {
                             paymentCollectionStr: '-',
                             remarks: '-',
                             fullPaymentStr: '-',
+                            pastDueStr: '-',
                             status: loan.status === 'active' ? 'tomorrow' : 'pending'
                         };
 
@@ -402,6 +420,7 @@ const CashCollectionDetailsPage = () => {
                             excessStr: '-',
                             paymentCollectionStr: '-',
                             remarks: '-',
+                            pastDueStr: '-',
                             fullPaymentStr: '-',
                             status: loan.status === 'active' ? 'tomorrow' : 'pending'
                         };
@@ -441,6 +460,7 @@ const CashCollectionDetailsPage = () => {
         let totalNoOfFullPayments = 0;
         let totalNoNewCurrentRelease = 0;
         let totalNoReCurrentRelease = 0;
+        let totalPastDue = 0;
 
         dataArr.map(collection => {
             if (collection.status !== 'open' && collection.status !== 'totals') {
@@ -478,11 +498,15 @@ const CashCollectionDetailsPage = () => {
                 // }
 
                 // totalPayments += collection.noOfPayments;
-                totalTargetLoanCollection += collection.targetCollection  ? collection.targetCollection !== '-' ? collection.targetCollection : 0 : 0;
+                if (!collection.remarks || (collection.remarks && collection.remarks.value !== "delinquent" && collection.remarks.value !== "past due" && collection.remarks.value !== "excused")) {
+                    totalTargetLoanCollection += collection.targetCollection  ? collection.targetCollection !== '-' ? collection.targetCollection : 0 : 0;
+                }
+
                 totalExcess += collection.excess ? collection.excess !== '-' ? collection.excess : 0 : 0;
                 totalLoanCollection += collection.paymentCollection ? collection.paymentCollection !== '-' ? collection.paymentCollection : 0 : 0;
                 totalFullPayment += collection.fullPayment ? collection.fullPayment !== '-' ? collection.fullPayment : 0 : 0;
                 totalMispayment += collection.mispaymentStr === 'Yes' ? 1 : 0;
+                totalPastDue += collection.pastDue !== '-' ? collection.pastDue : 0;
             }
         });
         const totals = {
@@ -516,6 +540,8 @@ const CashCollectionDetailsPage = () => {
             remarks: '-',
             fullPayment: totalFullPayment,
             fullPaymentStr: totalFullPayment ? formatPricePhp(totalFullPayment) : 0,
+            pastDue: totalPastDue,
+            pastDueStr: formatPricePhp(totalPastDue),
             clientStatus: '-',
             status: 'totals'
         };
@@ -530,9 +556,11 @@ const CashCollectionDetailsPage = () => {
             if (cc.status === 'active') {
                 if (parseFloat(cc.paymentCollection) === 0 && !cc.remarks) {
                     errorMsg.add('Error occured. Please select a remarks for 0 or no payment Actual Collection.');
-                } else if ((cc.remarks && cc.remarks.value !== "delinquent") && parseFloat(cc.paymentCollection) === 0) {
-                    errorMsg.add("Error occured. 0 payment should be mark as DELINQUENT in remarks.");
-                } else if (parseFloat(cc.paymentCollection) > 0 && parseFloat(cc.paymentCollection) < cc.targetCollection) {
+                } else if (parseFloat(cc.paymentCollection) === 0 && (cc.remarks.value !== "delinquent" && cc.remarks.value !== "past due" && cc.remarks.value !== "excused") ) {
+                    errorMsg.add("Error occured. 0 payment should be mark either PAST DUE, DELINQUENT OR EXCUSED in remarks.");
+                } else if ((cc.remarks && cc.remarks.value === "past due") && parseFloat(cc.pastDue) < parseFloat(cc.activeLoan)) {
+                    errorMsg.add("Error occured. Past due is less than the target collection.");
+                }else if (parseFloat(cc.paymentCollection) > 0 && parseFloat(cc.paymentCollection) < cc.targetCollection) {
                     errorMsg.add("Actual collection is below the target collection.");
                 } else if (parseFloat(cc.paymentCollection) % parseFloat(cc.activeLoan) !== 0) {
                     errorMsg.add("Actual collection should be divisible by 100.");
@@ -540,7 +568,7 @@ const CashCollectionDetailsPage = () => {
                     errorMsg.add('Error occured. Please select PENDING, RELOANER or OFFSET remarks for full payment transaction.');
                 } else if ((cc.remarks && cc.remarks.value === "double payment") && parseFloat(cc.paymentCollection) !== (cc.activeLoan * 2)) {
                     errorMsg.add('Error occured. Actual collection is not a double payment.');
-                } else if ((cc.remarks && cc.remarks.value === "advance payment") && (parseFloat(cc.paymentCollection) === (cc.activeLoan * 2)) || (parseFloat(cc.paymentCollection) % parseFloat(cc.activeLoan) !== 0)) {
+                } else if ((cc.remarks && cc.remarks.value === "advance payment") && (parseFloat(cc.paymentCollection) === (cc.activeLoan * 2)) && (parseFloat(cc.paymentCollection) % parseFloat(cc.activeLoan) !== 0)) {
                     errorMsg.add('Error occured. Actual collection is not a advance payment.');
                 } else if (cc.error) {
                     errorMsg.add('Error occured. Please double check the Actual Collection column.');
@@ -629,9 +657,10 @@ const CashCollectionDetailsPage = () => {
                             if (temp.remarks.value === 'offset') {
                                 temp.status = 'closed';
                                 temp.clientStatus = 'offset';
-                            } else if (temp.remarks.value === 'delinquent') {
-                                temp.clientStatus = "offset";
-                            }
+                            } 
+                            // else if (temp.remarks.value === 'delinquent') {
+                            //     temp.clientStatus = "offset";
+                            // }
                         }
                     }
                 
@@ -682,7 +711,7 @@ const CashCollectionDetailsPage = () => {
             let payment = value ? value : 0;
 
             const totalObj = data.find(o => o.status === 'totals');
-            const totalIdx = data.indexOf(totalObj);
+            const totalIdx = data.indexOf(totalObj);    
 
             let list = data.map((cc, idx) => {
                 let temp = {...cc};
@@ -697,8 +726,11 @@ const CashCollectionDetailsPage = () => {
                             temp.amountReleaseStr = formatPricePhp(temp.prevData.amountRelease);
                             temp.excess = temp.prevData.excess;
                             temp.excessStr = (temp.excess > 0 || temp.excess !== '-') ? formatPricePhp(temp.excess) : '-';
+                            temp.fullPayment = 0;
                             temp.fullPaymentStr = '-';
                             temp.remarks = '';
+                            temp.pastDue = 0;
+                            temp.pastDueStr = '-';
                             temp.status = 'active';
                             delete temp.delinquent;
                         } else {
@@ -769,6 +801,7 @@ const CashCollectionDetailsPage = () => {
                                     activeLoan: temp.activeLoan,
                                     excess: temp.excess,
                                     collection: temp.paymentCollection,
+                                    loanCycle: temp.loanCycle,
                                     remarks: temp.remarks
                                 };
 
@@ -782,7 +815,7 @@ const CashCollectionDetailsPage = () => {
                                 temp.amountRelease = 0;
                                 temp.amountReleaseStr = 0;
                             }
-                        } else if (parseFloat(payment) < targetCollection && (temp.remarks && temp.remarks.value !== "delinquent")) {
+                        } else if (parseFloat(payment) > 0 && parseFloat(payment) < targetCollection) {
                             // toast.error("Actual collection is below the target collection.");
                             temp.error = true;
                             temp.paymentCollection = payment;
@@ -790,8 +823,11 @@ const CashCollectionDetailsPage = () => {
                             // toast.error("Actual collection should be divisible by 100.");
                             temp.error = true;
                             temp.paymentCollection = payment;
-                        } else if ((temp.remarks && temp.remarks.value === "delinquent")) {
-                            temp.delinquent = true;
+                        } else if ((temp.remarks && (temp.remarks.value === "delinquent" || temp.remarks.value === "past due" || temp.remarks.value === "excused"))) {
+                            temp.targetCollectionStr = 0;
+                            if (temp.remarks.value === "delinquent") {
+                                temp.delinquent = true;
+                            }
                         }
                     } 
                 } 
@@ -802,6 +838,39 @@ const CashCollectionDetailsPage = () => {
             list[totalIdx] = totalsObj;
 
             list.sort((a, b) => { return a.slotNo - b.slotNo; });
+            dispatch(setCashCollectionGroup(list));
+        } else if (type === 'pastDue') {
+            const value = e.target.value;
+            let pastDue = value ? value : 0;
+
+            let list = data.map((cc, idx) => {
+                let temp = {...cc};
+                if (temp.status !== 'open') {
+                    if (idx === index) {
+                        if (temp.hasOwnProperty('prevData')) {
+                            temp.pastDue = 0;
+                        }
+                        
+                        if (containsAnyLetters(value)) {
+                            toast.error("Invalid amount in past due. Please input numeric only.");
+                            temp.error = true;
+                            temp.pastDue = 0;
+                        } else if (parseFloat(pastDue) < targetCollection) {
+                            // toast.error("Past due not equal to target collection.");
+                            temp.error = true;
+                            temp.pastDue = 0;
+                        } else {
+                            temp.dirty = true;
+                            temp.error = false;
+    
+                            temp.pastDue = parseFloat(pastDue);
+                            temp.pastDueStr = formatPricePhp(pastDue);
+                        }
+                    } 
+                } 
+                return temp;
+            });
+
             dispatch(setCashCollectionGroup(list));
         } else if (type === 'remarks') {
             const remarks = e;
@@ -830,10 +899,18 @@ const CashCollectionDetailsPage = () => {
                             temp.error = false;
                             setEditMode(true);
                         }
+
+                        temp.mispayment = false;
+                        temp.mispaymentStr = 'No';
+                    } else if (remarks.value === "delinquent" || remarks.value === "past due" || remarks.value === "excused") {
+                        temp.mispayment = true;
+                        temp.mispaymentStr = 'Yes';
                     } else {
                         temp.closeRemarks = '';
                         setCloseLoan();
                         temp.error = false;
+                        temp.mispayment = false;
+                        temp.mispaymentStr = 'No';
                     }
                 }
 
@@ -872,7 +949,7 @@ const CashCollectionDetailsPage = () => {
                 noOfPayments: temp.noOfPayments,
                 total: temp.total
             };
-            temp.error = true;
+            // temp.error = true;
         }
 
         if (allow && temp.hasOwnProperty('prevData')) {
@@ -880,7 +957,7 @@ const CashCollectionDetailsPage = () => {
             temp.amountReleaseStr = formatPricePhp(temp.prevData.amountRelease);
             temp.paymentCollection = parseFloat(temp.prevData.paymentCollection);
             temp.excess = temp.prevData.excess;
-            temp.excessStr = formatPricePhp(temp.prevData.excess);
+            temp.excessStr = temp.prevData.excess > 0 ? formatPricePhp(temp.prevData.excess) : '-';
             temp.mispayment = false;
             temp.mispaymentStr = 'No';
             temp.loanBalance = temp.prevData.loanBalance;
@@ -889,11 +966,15 @@ const CashCollectionDetailsPage = () => {
             temp.noOfPaymentStr = temp.noOfPayments + ' / ' + maxDays;
             temp.total = temp.prevData.total;
             temp.totalStr = formatPricePhp(temp.prevData.total);
-            temp.targetCollection = temp.prevData.activeLoan;
+            temp.targetCollection = temp.activeLoan === 0 ? temp.prevData.activeLoan : temp.activeLoan;
             temp.targetCollectionStr = formatPricePhp(temp.targetCollection);   
             temp.fullPayment = 0;
-            temp.fullPaymentStr = 0;
+            temp.fullPaymentStr = '-';
+            temp.pastDue = 0;
+            temp.pastDueStr = '-'
             temp.remarks = '';
+            temp.clientStatus = "active";
+            temp.delinquent = false;
 
             if (temp.status === 'completed' || temp.status === 'closed') {
                 temp.status = 'active';
@@ -1184,6 +1265,7 @@ const CashCollectionDetailsPage = () => {
                                         <th className="p-2 text-center">Actual Collection</th>
                                         <th className="p-2 text-center">Full Payment</th>
                                         <th className="p-2 text-center">Mispay</th>
+                                        <th className="p-2 text-center">Past Due</th>
                                         <th className="p-2 text-center">Remarks</th>
                                         {/* <th className="p-2 text-center">Client Status</th> */}
                                         <th className="p-2 text-center">Actions</th>
@@ -1236,6 +1318,24 @@ const CashCollectionDetailsPage = () => {
                                                 </td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.fullPaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.mispaymentStr }</td>
+                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">
+                                                    { (cc.remarks && cc.remarks.value === 'past due') ? (
+                                                        <React.Fragment>
+                                                            {editMode || revertMode ? (
+                                                                <React.Fragment>
+                                                                    <input type="number" name={cc.clientId} onChange={(e) => handlePaymentCollectionChange(e, index, 'pastDue', cc.activeLoan)}
+                                                                        onClick={(e) => e.stopPropagation()} defaultValue={cc.pastDue} tabIndex={index + 1}
+                                                                        className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg 
+                                                                                    focus:ring-main focus:border-main block p-2.5" style={{ width: '100px' }}/>
+                                                                </React.Fragment>
+                                                            ) : (
+                                                                <React.Fragment>{ cc.pastDueStr }</React.Fragment>        
+                                                            )}
+                                                        </React.Fragment>
+                                                    ) : (
+                                                        <React.Fragment>{ cc.pastDueStr }</React.Fragment>
+                                                    ) }
+                                                </td>
                                                 { (currentUser.role.rep > 2 && (cc.status === 'active' || cc.status === 'completed') && (editMode || !groupSummaryIsClose) 
                                                     && (!cc.hasOwnProperty('_id') || revertMode) && !filter) || ((cc.remarks && cc.remarks.value === "pending") && !groupSummaryIsClose) ? (
                                                         <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">

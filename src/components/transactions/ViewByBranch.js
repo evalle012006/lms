@@ -71,6 +71,7 @@ const ViewByBranchPage = () => {
                 if (branch.loans.length > 0) {
                     collection.totalReleasesStr = formatPricePhp(branch.loans[0].totalRelease);
                     collection.totalLoanBalanceStr = formatPricePhp(branch.loans[0].totalLoanBalance);
+                    collection.loanTarget = branch.loans[0].loanTarget;
                     collection.loanTargetStr = formatPricePhp(branch.loans[0].loanTarget);
 
                     totalsLoanRelease += branch.loans[0].totalRelease;
@@ -84,6 +85,10 @@ const ViewByBranchPage = () => {
                 // }
                 
                 if (branch.cashCollections.length > 0) {
+                    const loanTarget = collection.loanTarget - branch.cashCollections[0].loanTarget;
+
+                    collection.loanTarget = loanTarget;
+                    collection.loanTargetStr = loanTarget > 0 ? formatPricePhp(loanTarget) : 0;
                     collection.excessStr = formatPricePhp(branch.cashCollections[0].excess);
                     collection.totalStr = formatPricePhp(branch.cashCollections[0].collection);
                     collection.mispaymentStr = branch.cashCollections[0].mispayment;
@@ -91,6 +96,7 @@ const ViewByBranchPage = () => {
                     excess += branch.cashCollections[0].excess;
                     totalLoanCollection += branch.cashCollections[0].collection;
                     mispayment += branch.cashCollections[0].mispayment;
+                    targetLoanCollection = targetLoanCollection - branch.cashCollections[0].loanTarget;
                 }
 
                 if (branch.currentRelease.length > 0) {

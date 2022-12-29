@@ -136,19 +136,23 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                 }
                 
                 if (cc.cashCollections.length > 0) {
+                    // subtract the delinquent loan target from here...
+                    const loanTarget = collection.loanTarget - cc.cashCollections[0].loanTarget;
                     collection = { ...collection,
                         mispayment: cc.cashCollections[0].mispayment ? cc.cashCollections[0].mispayment : 0,
                         collection: cc.cashCollections[0].collection && cc.cashCollections[0].collection,
                         collectionStr: cc.cashCollections[0].collection ? formatPricePhp(cc.cashCollections[0].collection) : 0,
                         excess: cc.cashCollections[0].excess && cc.cashCollections[0].excess,
                         excessStr: cc.cashCollections[0].excess ? formatPricePhp(cc.cashCollections[0].excess) : 0,
+                        loanTarget: loanTarget,
+                        loanTargetStr: loanTarget > 0 ? formatPricePhp(loanTarget) : 0,
                         // total: cc.cashCollections[0].collection && cc.cashCollections[0].collection,
                         // totalStr: cc.cashCollections[0].collection ? formatPricePhp(cc.cashCollections[0].collection) : 0
                     };
-
                     excess += cc.cashCollections[0].excess ? cc.cashCollections[0].excess : 0;
                     totalLoanCollection += cc.cashCollections[0].collection ? cc.cashCollections[0].collection : 0;
                     mispayment += cc.cashCollections[0].mispayment ? cc.cashCollections[0].mispayment : 0;
+                    targetLoanCollection = targetLoanCollection - cc.cashCollections[0].loanTarget;
                 }
 
                 if (cc.currentRelease.length > 0) {

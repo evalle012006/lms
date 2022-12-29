@@ -48,9 +48,16 @@ async function getAllLoansPerGroup(req, res) {
                                     _id: '$branchId',
                                     // noOfClients: { $sum: { $cond: {if: { $gt: ['$paymentCollection', 0] }, then: 1, else: 0} } },
                                     mispayment: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },
-                                    loanTarget: { $sum: '$activeLoan' },
+                                    loanTarget: { $sum: {
+                                        $cond: {
+                                            if: { $or: [{$eq: ['$remarks.value', 'delinquent']}, {$eq: ['$remarks.value', 'excused']}, {$eq: ['$remarks.value', 'past due']}] },
+                                            then: '$activeLoan',
+                                            else: 0
+                                        }
+                                    } },
                                     collection: { $sum: '$paymentCollection' },
                                     excess: { $sum: '$excess' },
+                                    pastDue: { $sum: '$pastDue' },
                                     total: { $sum: '$total' }
                                 } 
                             }
@@ -86,7 +93,7 @@ async function getAllLoansPerGroup(req, res) {
                             { $group: { 
                                     _id: '$loId',
                                     mispayment: { $sum: { $cond:{
-                                        if: { $or: [{$ne: ['$status', 'pending']}, {$ne: ['$status', 'closed']}] }, 
+                                        if: { $and: [{$ne: ['$status', 'pending']}, {$ne: ['$status', 'closed']}] }, 
                                         then: '$mispayment',
                                         else: {
                                                 $cond: {
@@ -97,12 +104,12 @@ async function getAllLoansPerGroup(req, res) {
                                             }
                                     } } },
                                     totalRelease: { $sum: { $cond:{
-                                            if: { $or: [{$ne: ['$status', 'pending']}, {$ne: ['$status', 'closed']}] }, 
+                                            if: { $and: [{$ne: ['$status', 'pending']}, {$ne: ['$status', 'closed']}] }, 
                                             then: '$amountRelease', 
                                             else: 0
                                     } } },
                                     totalLoanBalance: { $sum: { $cond:{
-                                        if: { $or: [{$ne: ['$status', 'pending']}, {$ne: ['$status', 'closed']}] }, 
+                                        if: { $and: [{$ne: ['$status', 'pending']}, {$ne: ['$status', 'closed']}] }, 
                                         then: '$loanBalance', 
                                         else: 0
                                     } } },
