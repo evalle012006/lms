@@ -153,7 +153,6 @@ const CashCollectionDetailsPage = () => {
                         prevData: cc.hasOwnProperty('prevData') ? cc.prevData : null
                     }
                 } else if (cc.status === "closed" && cc.fullPaymentDate === currentDate) {
-                    console.log(cc)
                     collection = {
                         ...cc,
                         group: cc.group,

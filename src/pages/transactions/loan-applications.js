@@ -14,7 +14,7 @@ import ButtonSolid from "@/lib/ui/ButtonSolid";
 import { setLoanList } from "@/redux/actions/loanActions";
 import { setGroupList } from "@/redux/actions/groupActions";
 import { setClientList } from "@/redux/actions/clientActions";
-import { formatPricePhp, getEndDate, UppercaseFirstLetter } from "@/lib/utils";
+import { formatPricePhp, getEndDate, getTotal, UppercaseFirstLetter } from "@/lib/utils";
 import AddUpdateLoan from "@/components/transactions/AddUpdateLoanDrawer";
 import moment from 'moment';
 import { TabPanel, useTabs } from "react-headless-tabs";
@@ -40,6 +40,9 @@ const LoanApplicationPage = () => {
         'application',
         'history'
     ]);
+
+    const [noOfPendingLoans, setNoOfPendingLoans] = useState(0);
+    const [totalAmountRelease, setTotalAmountRelease] = useState(0);
 
     const router = useRouter();
 
@@ -107,6 +110,24 @@ const LoanApplicationPage = () => {
                 setLoading(false);
                 toast.error(response.message);
             }
+        } else if (currentUser.role.rep === 2 && branchList.length > 0) {
+            url = url + '?' + new URLSearchParams({ areaManagerId: currentUser._id });
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                let groupList = [];
+                await response.groups && response.groups.map(group => {
+                    groupList.push({
+                        ...group,
+                        value: group._id,
+                        label: UppercaseFirstLetter(group.name)
+                    });
+                });
+                dispatch(setGroupList(groupList));
+                setLoading(false);
+            } else if (response.error) {
+                toast.error(response.message);
+                setLoading(false);
+            }
         } else if (branchList.length > 0) {
             const response = await fetchWrapper.get(url);
             if (response.success) {
@@ -143,6 +164,8 @@ const LoanApplicationPage = () => {
                         mcbuStr: formatPricePhp(loan.mcbu),
                         activeLoanStr: formatPricePhp(loan.activeLoan),
                         loanBalanceStr: formatPricePhp(loan.loanBalance),
+                        loanRelease: loan.amountRelease,
+                        loanReleaseStr: formatPricePhp(loan.amountRelease),
                         fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
                         allowApproved: loan.groupCashCollections.allowApproved,
                         selected: false
@@ -169,6 +192,37 @@ const LoanApplicationPage = () => {
                         mcbuStr: formatPricePhp(loan.mcbu),
                         activeLoanStr: formatPricePhp(loan.activeLoan),
                         loanBalanceStr: formatPricePhp(loan.loanBalance),
+                        loanRelease: loan.amountRelease,
+                        loanReleaseStr: formatPricePhp(loan.amountRelease),
+                        fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
+                        allowApproved: loan.groupCashCollections.allowApproved,
+                        selected: false
+                    });
+                });
+
+                dispatch(setLoanList(loanList));
+                setLoading(false);
+            } else if (response.error) {
+                setLoading(false);
+                toast.error(response.message);
+            }
+        } else if (currentUser.role.rep === 2 && branchList.length > 0) {
+            url = url + '?' + new URLSearchParams({ status: 'pending', areaManagerId: currentUser._id });
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                let loanList = [];
+                await response.loans && response.loans.map(loan => {
+                    loanList.push({
+                        ...loan,
+                        branchName: `${loan.branch[0].code} - ${loan.branch[0].name}`,
+                        loanOfficerName: `${loan.loanOfficer.lastName}, ${loan.loanOfficer.firstName}`,
+                        groupName: loan.group.name,
+                        principalLoanStr: formatPricePhp(loan.principalLoan),
+                        mcbuStr: formatPricePhp(loan.mcbu),
+                        activeLoanStr: formatPricePhp(loan.activeLoan),
+                        loanBalanceStr: formatPricePhp(loan.loanBalance),
+                        loanRelease: loan.amountRelease,
+                        loanReleaseStr: formatPricePhp(loan.amountRelease),
                         fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
                         allowApproved: loan.groupCashCollections.allowApproved,
                         selected: false
@@ -182,18 +236,22 @@ const LoanApplicationPage = () => {
                 toast.error(response.message);
             }
         } else if (branchList.length > 0) {
+            url = url + '?' + new URLSearchParams({ status: 'pending'});
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let loanList = [];
                 await response.loans && response.loans.map(loan => {
                     loanList.push({
                         ...loan,
+                        branchName: `${loan.branch[0].code} - ${loan.branch[0].name}`,
                         loanOfficerName: `${loan.loanOfficer.lastName}, ${loan.loanOfficer.firstName}`,
                         groupName: loan.group.name,
                         principalLoanStr: formatPricePhp(loan.principalLoan),
                         mcbuStr: formatPricePhp(loan.mcbu),
                         activeLoanStr: formatPricePhp(loan.activeLoan),
                         loanBalanceStr: formatPricePhp(loan.loanBalance),
+                        loanRelease: loan.amountRelease,
+                        loanReleaseStr: formatPricePhp(loan.amountRelease),
                         fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
                         allowApproved: loan.groupCashCollections.allowApproved,
                         selected: false
@@ -542,7 +600,11 @@ const LoanApplicationPage = () => {
                     accessor: 'activeLoanStr'
                 },
                 {
-                    Header: "Loan Balance",
+                    Header: "Loan Release",
+                    accessor: 'loanReleaseStr'
+                },
+                {
+                    Header: "Loan Blanace",
                     accessor: 'loanBalanceStr'
                 },
                 {
@@ -558,11 +620,28 @@ const LoanApplicationPage = () => {
                 }
             );
 
-            if ((currentUser.role && currentUser.role.rep < 4)) {
+            if (currentUser.role.rep === 3) {
                 cols.unshift(
                     {
                         Header: "Loan Officer",
                         accessor: 'loanOfficerName',
+                        Filter: SelectColumnFilter,
+                        filter: 'includes'
+                    }
+                );
+            } else if (currentUser.role.rep === 2 || currentUser.role.rep === 1 ) {
+                cols.unshift(
+                    {
+                        Header: "Loan Officer",
+                        accessor: 'loanOfficerName',
+                        Filter: SelectColumnFilter,
+                        filter: 'includes'
+                    }
+                );
+                cols.unshift(
+                    {
+                        Header: "Branch",
+                        accessor: 'branchName',
                         Filter: SelectColumnFilter,
                         filter: 'includes'
                     }
@@ -590,6 +669,11 @@ const LoanApplicationPage = () => {
         }
     }, [groupList]);
 
+    useEffect(() => {
+        setNoOfPendingLoans(list.length);
+        setTotalAmountRelease(getTotal(list, 'loanRelease'));
+    }, [list]);
+
     return (
         <Layout actionButtons={currentUser.role.rep > 2 && actionButtons}>
             <div className="pb-4">
@@ -614,7 +698,19 @@ const LoanApplicationPage = () => {
                             </nav>
                             <div>
                                 <TabPanel hidden={selectedTab !== "application"}>
-                                    <TableComponent columns={columns} data={list} hasActionButtons={currentUser.role.rep > 2 ? true : false} rowActionButtons={rowActionButtons} showFilters={currentUser.role.rep === 4 ? false : true} multiSelect={currentUser.role.rep === 3 ? true : false} multiSelectActionFn={handleMultiSelect} />
+                                    <TableComponent columns={columns} data={list} hasActionButtons={currentUser.role.rep > 2 ? true : false} rowActionButtons={rowActionButtons} showFilters={true} multiSelect={currentUser.role.rep === 3 ? true : false} multiSelectActionFn={handleMultiSelect} />
+                                    <footer className="pl-64 text-md font-bold text-center fixed inset-x-0 bottom-0">
+                                        <div className="flex flex-row justify-center bg-white px-4 py-2 shadow-inner border-t-4 border-zinc-200">
+                                            <div className="flex flex-row">
+                                                <span className="pr-6">No. of Pending Loans: </span>
+                                                <span className="pr-6">{ noOfPendingLoans }</span>
+                                            </div>
+                                            <div className="flex flex-row">
+                                                <span className="pr-6">Total Amount Release: </span>
+                                                <span className="pr-6">{ formatPricePhp(totalAmountRelease) }</span>
+                                            </div>
+                                        </div>
+                                    </footer>
                                 </TabPanel>
                                 <TabPanel hidden={selectedTab !== 'history'}>
                                     <TableComponent columns={columns} data={historyList} hasActionButtons={false} showFilters={false} />
