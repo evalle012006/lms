@@ -8,7 +8,7 @@ import { useRouter } from "node_modules/next/router";
 import moment from 'moment';
 import { formatPricePhp, getTotal } from "@/lib/utils";
 
-const ViewByBranchPage = () => {
+const ViewByBranchPage = (dateFilter) => {
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
     const [loading, setLoading] = useState(true);
@@ -40,6 +40,7 @@ const ViewByBranchPage = () => {
             // let noOfRefullPayment = 0;
             let fullPaymentAmount = 0;
             let mispayment = 0;
+            let totalPastDue = 0;
             
             response.data.map(branch => {
                 let collection = {
@@ -57,6 +58,7 @@ const ViewByBranchPage = () => {
                     mispaymentStr: '-',
                     fullPaymentAmountStr: '-',
                     noOfFullPayment: '-',
+                    pastDueStr: '-',
                     page: 'branch-summary',
                     status: '-'
                 };
@@ -87,11 +89,14 @@ const ViewByBranchPage = () => {
                     collection.excessStr = formatPricePhp(branch.cashCollections[0].excess);
                     collection.totalStr = formatPricePhp(branch.cashCollections[0].collection);
                     collection.mispaymentStr = branch.cashCollections[0].mispayment;
+                    collection.pastDue = branch.cashCollections[0].pastDue ? branch.cashCollections[0].pastDue : 0;
+                    collection.pastDueStr = formatPricePhp(collection.pastDue);
 
                     excess += branch.cashCollections[0].excess;
                     totalLoanCollection += branch.cashCollections[0].collection;
                     mispayment += branch.cashCollections[0].mispayment;
                     targetLoanCollection = targetLoanCollection - branch.cashCollections[0].loanTarget;
+                    totalPastDue += collection.pastDue;
                 }
 
                 if (branch.currentRelease.length > 0) {
@@ -202,6 +207,7 @@ const ViewByBranchPage = () => {
                 mispaymentStr: mispayment + ' / ' + noOfClients,
                 fullPaymentAmountStr: formatPricePhp(fullPaymentAmount),
                 noOfFullPayment: noOfFullPayment,
+                pastDueStr: formatPricePhp(totalPastDue),
                 totalData: true
             };
 
@@ -293,7 +299,11 @@ const ViewByBranchPage = () => {
             accessor: 'mispaymentStr',
             Filter: SelectColumnFilter,
             filter: 'includes'
-        }
+        },
+        {
+            Header: "Past Due",
+            accessor: 'pastDueStr'
+        },
     ]);
 
     const handleRowClick = (selected) => {
@@ -304,12 +314,21 @@ const ViewByBranchPage = () => {
     useEffect(() => {
         let mounted = true;
 
-        mounted && getBranchCashCollections();
+        if (dateFilter.dateFilter) {
+            const date = moment(dateFilter.dateFilter).format('YYYY-MM-DD');
+            if (date !== currentDate) {
+                mounted && getBranchCashCollections(date);
+            } else {
+                mounted && getBranchCashCollections();
+            }
+        } else {
+            mounted && getBranchCashCollections();
+        }
 
         return () => {
             mounted = false;
         };
-    }, []);
+    }, [dateFilter]);
 
     return (
         <React.Fragment>

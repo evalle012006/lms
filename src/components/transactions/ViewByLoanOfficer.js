@@ -53,6 +53,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter }) => {
             // let noOfRefullPayment = 0;
             let fullPaymentAmount = 0;
             let mispayment = 0;
+            let totalPastDue = 0;
 
             response.data && response.data.map(lo => {
                 let collection = {
@@ -71,6 +72,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter }) => {
                     fullPaymentAmountStr: '-',
                     noOfFullPayment: '-',
                     groupSummaryIds: [],
+                    pastDueStr: '-',
                     page: 'loan-officer-summary',
                     status: '-'
                 };
@@ -105,11 +107,14 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter }) => {
                     collection.excessStr = formatPricePhp(lo.cashCollections[0].excess);
                     collection.totalStr = formatPricePhp(lo.cashCollections[0].collection);
                     collection.mispaymentStr = lo.cashCollections[0].mispayment;
+                    collection.pastDue = lo.cashCollections[0].pastDue ? lo.cashCollections[0].pastDue : 0;
+                    collection.pastDueStr = formatPricePhp(collection.pastDue);
 
                     excess += lo.cashCollections[0].excess;
                     totalLoanCollection += lo.cashCollections[0].collection;
                     mispayment += lo.cashCollections[0].mispayment;
                     targetLoanCollection = targetLoanCollection - lo.cashCollections[0].loanTarget;
+                    totalPastDue += collection.pastDue;
                 }
 
                 if (lo.currentRelease.length > 0) {
@@ -254,6 +259,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter }) => {
                 mispaymentStr: mispayment + ' / ' + noOfClients,
                 fullPaymentAmountStr: formatPricePhp(fullPaymentAmount),
                 noOfFullPayment: noOfFullPayment,
+                pastDueStr: formatPricePhp(totalPastDue),
                 totalData: true
             };
 
@@ -420,7 +426,11 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter }) => {
             accessor: 'mispaymentStr',
             Filter: SelectColumnFilter,
             filter: 'includes'
-        }
+        },
+        {
+            Header: "Past Due",
+            accessor: 'pastDueStr'
+        },
     ];
 
 

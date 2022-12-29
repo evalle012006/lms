@@ -45,6 +45,7 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
             let totalLoanCollection = 0;
             let noOfFullPayment = 0;
             let fullPaymentAmount = 0;
+            let totalPastDue = 0;
             let mispayment = 0;
 
             response.data && response.data.map(cc => {
@@ -64,6 +65,7 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                     collectionStr: '-',
                     mispayment: '-',
                     fullPaymentAmountStr: '-',
+                    pastDueStr: '-',
                     noOfFullPayment: '-',
                     status: '-'
                 };
@@ -115,6 +117,8 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                         noOfFullPayment: 0,
                         newFullPayment: 0,
                         reFullPayment: 0,
+                        pastDue: 0,
+                        pastDueStr: '-',
                         status: cc.groupCashCollections.length > 0 ? cc.groupCashCollections[0].status : 'No Saved Transaction',
                         page: 'collection'
                     };
@@ -146,6 +150,8 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                         excessStr: cc.cashCollections[0].excess ? formatPricePhp(cc.cashCollections[0].excess) : 0,
                         loanTarget: loanTarget,
                         loanTargetStr: loanTarget > 0 ? formatPricePhp(loanTarget) : 0,
+                        pastDue: cc.cashCollections[0].pastDue ? cc.cashCollections[0].pastDue : 0,
+                        pastDueStr: cc.cashCollections[0].pastDue ? formatPricePhp(cc.cashCollections[0].pastDue) : 0
                         // total: cc.cashCollections[0].collection && cc.cashCollections[0].collection,
                         // totalStr: cc.cashCollections[0].collection ? formatPricePhp(cc.cashCollections[0].collection) : 0
                     };
@@ -153,6 +159,7 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                     totalLoanCollection += cc.cashCollections[0].collection ? cc.cashCollections[0].collection : 0;
                     mispayment += cc.cashCollections[0].mispayment ? cc.cashCollections[0].mispayment : 0;
                     targetLoanCollection = targetLoanCollection - cc.cashCollections[0].loanTarget;
+                    totalPastDue += cc.cashCollections[0].pastDue ? cc.cashCollections[0].pastDue : 0;
                 }
 
                 if (cc.currentRelease.length > 0) {
@@ -206,6 +213,7 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                 mispayment: mispayment + ' / ' + noOfClients,
                 fullPaymentAmountStr: fullPaymentAmount ? formatPricePhp(fullPaymentAmount) : 0,
                 noOfFullPayment: noOfFullPayment,
+                pastDueStr: formatPricePhp(totalPastDue),
                 totalData: true,
                 status: '-'
             }
@@ -314,6 +322,10 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
             accessor: 'mispayment',
             Filter: SelectColumnFilter,
             filter: 'includes'
+        },
+        {
+            Header: "Past Due",
+            accessor: 'pastDueStr'
         },
         {
             Header: "Save Status",
