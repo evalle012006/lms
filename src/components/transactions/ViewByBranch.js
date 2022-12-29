@@ -120,61 +120,6 @@ const ViewByBranchPage = (dateFilter) => {
                     // noOfRefullPayment += branch.fullPayment[0].reFullPayment;
                 }
 
-                // branch.users.map(branch => {
-                    // if (branch.loans.length > 0) {
-                    //     noOfClients += group.loans[0].activeClients;
-                    //     noOfBorrowers += group.loans[0].activeBorrowers;
-                    //     totalsLoanRelease += group.loans[0].totalRelease;
-                    //     totalsLoanBalance += group.loans[0].totalLoanBalance;
-                    //     targetLoanCollection += group.loans[0].loanTarget;
-                    // }
-                    
-                    // if (branch.cashCollections.length > 0) {
-                    //     excess += group.cashCollections[0].excess;
-                    //     totalLoanCollection += group.cashCollections[0].collection;
-                    //     mispayment += group.cashCollections[0].mispayment;
-                    // }
-
-                    // if (branch.currentRelease.length > 0) {
-                    //     noOfNewCurrentRelease += group.currentRelease[0].newCurrentRelease;
-                    //     noOfReCurrentRelease += group.currentRelease[0].reCurrentRelease;
-                    //     currentReleaseAmount += group.currentRelease[0].currentReleaseAmount;
-                    // }
-
-                    // if (branch.fullPayment.length > 0) {
-                    //     fullPaymentAmount += group.fullPayment[0].fullPaymentAmount;
-                    //     noOfFullPayment += group.fullPayment[0].noOfFullPayment;
-                    //     noOfNewfullPayment += group.fullPayment[0].newFullPayment;
-                    //     noOfRefullPayment += group.fullPayment[0].reFullPayment;
-                    // }
-                // });
-    
-                // collection = {
-                //     ...collection,
-                //     noOfNewCurrentRelease: noOfNewCurrentRelease,
-                //     noOfReCurrentRelease: noOfReCurrentRelease,
-                //     noCurrentReleaseStr: noOfNewCurrentRelease + ' / ' + noOfReCurrentRelease,
-                //     currentReleaseAmount: currentReleaseAmount,
-                //     currentReleaseAmountStr: currentReleaseAmount ? formatPricePhp(currentReleaseAmount) : 0,
-                //     activeClients: noOfClients,
-                //     activeBorrowers: noOfBorrowers,
-                //     totalReleases: totalsLoanRelease,
-                //     totalReleasesStr: totalsLoanRelease ? formatPricePhp(totalsLoanRelease) : 0,
-                //     totalLoanBalance: totalsLoanBalance,
-                //     totalLoanBalanceStr: totalsLoanBalance ? formatPricePhp(totalsLoanBalance) : 0,
-                //     loanTarget: targetLoanCollection,
-                //     loanTargetStr: targetLoanCollection ? formatPricePhp(targetLoanCollection) : 0,
-                //     excess: excess,
-                //     excessStr: excess ? formatPricePhp(excess) : 0,
-                //     total: totalLoanCollection,
-                //     totalStr: totalLoanCollection ? formatPricePhp(totalLoanCollection) : 0,
-                //     mispayment: mispayment,
-                //     mispaymentStr: mispayment + ' / ' + noOfClients,
-                //     fullPaymentAmount: fullPaymentAmount,
-                //     fullPaymentAmountStr: fullPaymentAmount ? formatPricePhp(fullPaymentAmount) : 0,
-                //     noOfFullPayment: noOfFullPayment
-                // }
-
                 collectionData.push(collection);
             });
 
