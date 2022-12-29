@@ -78,11 +78,6 @@ const ViewByBranchPage = () => {
                     totalsLoanBalance += branch.loans[0].totalLoanBalance;
                     targetLoanCollection += branch.loans[0].loanTarget;
                 }
-
-                // if (branch.groupCashCollections.length > 0) {
-                //     collection.groupSummaryIds.push.apply(collection.groupSummaryIds, branch.groupCashCollections[0].groupSummaryIds);
-                //     collection.status = branch.groupCashCollections[0].statusArr.find(s => s === 'pending') === 'pending' ? 'open' : 'close';
-                // }
                 
                 if (branch.cashCollections.length > 0) {
                     const loanTarget = collection.loanTarget - branch.cashCollections[0].loanTarget;
