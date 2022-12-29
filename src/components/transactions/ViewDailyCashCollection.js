@@ -399,26 +399,6 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
     }, [dateFilter]);
 
     // useEffect(() => {
-    //     if (dateFilter) {
-    //         const date = moment(dateFilter).format('YYYY-MM-DD');
-    //         if (date !== currentDate) {
-    //             if (currentUser.role.rep < 4 && selectedLOSubject.value.length > 0) {
-    //                 getCashCollections(selectedLOSubject.value, date);
-    //             } else {
-    //                 getCashCollections(null, date);
-    //             }
-    //         } else {
-    //             if (currentUser.role.rep < 4 && selectedLOSubject.value.length > 0) {
-    //                 getCashCollections(selectedLOSubject.value, null);
-    //             } else {
-    //                 getCashCollections();
-    //             }
-    //         }
-    //     }
-
-    // }, [dateFilter]);
-
-    // useEffect(() => {
     //     if (cashCollectionList) {
     //         const saveTotals = async () => {
     //             let totalData = cashCollectionList.find(c => c.group === "TOTALS");
