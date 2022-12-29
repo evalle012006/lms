@@ -85,6 +85,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter }) => {
                 if (lo.loans.length > 0) {
                     collection.totalReleasesStr = formatPricePhp(lo.loans[0].totalRelease);
                     collection.totalLoanBalanceStr = formatPricePhp(lo.loans[0].totalLoanBalance);
+                    collection.loanTarget = lo.loans[0].loanTarget;
                     collection.loanTargetStr = formatPricePhp(lo.loans[0].loanTarget);
 
                     totalsLoanRelease += lo.loans[0].totalRelease;
@@ -98,6 +99,9 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter }) => {
                 }
                 
                 if (lo.cashCollections.length > 0) {
+                    const loanTarget = collection.loanTarget - lo.cashCollections[0].loanTarget;
+                    collection.loanTarget = loanTarget;
+                    collection.loanTargetStr = loanTarget > 0 ? formatPricePhp(loanTarget) : 0;
                     collection.excessStr = formatPricePhp(lo.cashCollections[0].excess);
                     collection.totalStr = formatPricePhp(lo.cashCollections[0].collection);
                     collection.mispaymentStr = lo.cashCollections[0].mispayment;
@@ -105,6 +109,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter }) => {
                     excess += lo.cashCollections[0].excess;
                     totalLoanCollection += lo.cashCollections[0].collection;
                     mispayment += lo.cashCollections[0].mispayment;
+                    targetLoanCollection = targetLoanCollection - lo.cashCollections[0].loanTarget;
                 }
 
                 if (lo.currentRelease.length > 0) {

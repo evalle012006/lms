@@ -28,9 +28,22 @@ async function getLoanWithCashCollection(req, res) {
                     .collection('loans')
                     .aggregate([
                         { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
-                        { $match: {$expr: { $and: [
-                            {$eq: ['$groupId', groupId]}, {$or: [ {$eq: ['$status', 'active']}, {$eq: ['$status', 'completed']}, {$eq: ['$status', 'closed']}]}, {$lte: ['$startDateObj', '$currentDateObj']}
-                        ]}} },
+                        { $match: {
+                            $expr: { 
+                                $and: [
+                                    {$eq: ['$groupId', groupId]}, 
+                                    {$or: [ 
+                                        {$eq: ['$status', 'active']}, 
+                                        {$eq: ['$status', 'completed']}, 
+                                        {$and: [
+                                            {$eq: ['$status', 'closed']},
+                                            {$eq: ['$fullPaymentDate', date]}
+                                        ]}
+                                    ]}, 
+                                    {$lte: ['$startDateObj', '$currentDateObj']}
+                                ]
+                            }
+                        } },
                         {
                             $addFields: {
                                 "clientIdObj": { $toObjectId: "$clientId" },
