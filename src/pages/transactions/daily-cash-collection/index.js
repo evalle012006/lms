@@ -94,7 +94,7 @@ const DailyCashCollectionPage = () => {
                             dateFilter={dateFilter} handleDateFilter={handleDateFilter}
                         />}
                         <div className={`p-4 ${currentUser.role.rep < 4 ? 'mt-[8rem]' : 'mt-[6rem]'} `}>
-                            {currentUser.role.rep < 3 && <ViewByBranchPage />}
+                            {currentUser.role.rep < 3 && <ViewByBranchPage dateFilter={dateFilter} />}
                             {currentUser.role.rep === 3 && <ViewByLoanOfficerPage pageNo={1} dateFilter={dateFilter} />}
                             {currentUser.role.rep === 4 && (
                                 <div className='p-4 mt-[2rem]'>

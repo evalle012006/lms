@@ -8,7 +8,7 @@ import { useRouter } from "node_modules/next/router";
 import moment from 'moment';
 import { formatPricePhp, getTotal } from "@/lib/utils";
 
-const ViewByBranchPage = () => {
+const ViewByBranchPage = (dateFilter) => {
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
     const [loading, setLoading] = useState(true);
@@ -40,6 +40,7 @@ const ViewByBranchPage = () => {
             // let noOfRefullPayment = 0;
             let fullPaymentAmount = 0;
             let mispayment = 0;
+            let totalPastDue = 0;
             
             response.data.map(branch => {
                 let collection = {
@@ -57,6 +58,7 @@ const ViewByBranchPage = () => {
                     mispaymentStr: '-',
                     fullPaymentAmountStr: '-',
                     noOfFullPayment: '-',
+                    pastDueStr: '-',
                     page: 'branch-summary',
                     status: '-'
                 };
@@ -87,11 +89,14 @@ const ViewByBranchPage = () => {
                     collection.excessStr = formatPricePhp(branch.cashCollections[0].excess);
                     collection.totalStr = formatPricePhp(branch.cashCollections[0].collection);
                     collection.mispaymentStr = branch.cashCollections[0].mispayment;
+                    collection.pastDue = branch.cashCollections[0].pastDue ? branch.cashCollections[0].pastDue : 0;
+                    collection.pastDueStr = formatPricePhp(collection.pastDue);
 
                     excess += branch.cashCollections[0].excess;
                     totalLoanCollection += branch.cashCollections[0].collection;
                     mispayment += branch.cashCollections[0].mispayment;
                     targetLoanCollection = targetLoanCollection - branch.cashCollections[0].loanTarget;
+                    totalPastDue += collection.pastDue;
                 }
 
                 if (branch.currentRelease.length > 0) {
@@ -115,78 +120,8 @@ const ViewByBranchPage = () => {
                     // noOfRefullPayment += branch.fullPayment[0].reFullPayment;
                 }
 
-                // branch.users.map(branch => {
-                    // if (branch.loans.length > 0) {
-                    //     noOfClients += group.loans[0].activeClients;
-                    //     noOfBorrowers += group.loans[0].activeBorrowers;
-                    //     totalsLoanRelease += group.loans[0].totalRelease;
-                    //     totalsLoanBalance += group.loans[0].totalLoanBalance;
-                    //     targetLoanCollection += group.loans[0].loanTarget;
-                    // }
-                    
-                    // if (branch.cashCollections.length > 0) {
-                    //     excess += group.cashCollections[0].excess;
-                    //     totalLoanCollection += group.cashCollections[0].collection;
-                    //     mispayment += group.cashCollections[0].mispayment;
-                    // }
-
-                    // if (branch.currentRelease.length > 0) {
-                    //     noOfNewCurrentRelease += group.currentRelease[0].newCurrentRelease;
-                    //     noOfReCurrentRelease += group.currentRelease[0].reCurrentRelease;
-                    //     currentReleaseAmount += group.currentRelease[0].currentReleaseAmount;
-                    // }
-
-                    // if (branch.fullPayment.length > 0) {
-                    //     fullPaymentAmount += group.fullPayment[0].fullPaymentAmount;
-                    //     noOfFullPayment += group.fullPayment[0].noOfFullPayment;
-                    //     noOfNewfullPayment += group.fullPayment[0].newFullPayment;
-                    //     noOfRefullPayment += group.fullPayment[0].reFullPayment;
-                    // }
-                // });
-    
-                // collection = {
-                //     ...collection,
-                //     noOfNewCurrentRelease: noOfNewCurrentRelease,
-                //     noOfReCurrentRelease: noOfReCurrentRelease,
-                //     noCurrentReleaseStr: noOfNewCurrentRelease + ' / ' + noOfReCurrentRelease,
-                //     currentReleaseAmount: currentReleaseAmount,
-                //     currentReleaseAmountStr: currentReleaseAmount ? formatPricePhp(currentReleaseAmount) : 0,
-                //     activeClients: noOfClients,
-                //     activeBorrowers: noOfBorrowers,
-                //     totalReleases: totalsLoanRelease,
-                //     totalReleasesStr: totalsLoanRelease ? formatPricePhp(totalsLoanRelease) : 0,
-                //     totalLoanBalance: totalsLoanBalance,
-                //     totalLoanBalanceStr: totalsLoanBalance ? formatPricePhp(totalsLoanBalance) : 0,
-                //     loanTarget: targetLoanCollection,
-                //     loanTargetStr: targetLoanCollection ? formatPricePhp(targetLoanCollection) : 0,
-                //     excess: excess,
-                //     excessStr: excess ? formatPricePhp(excess) : 0,
-                //     total: totalLoanCollection,
-                //     totalStr: totalLoanCollection ? formatPricePhp(totalLoanCollection) : 0,
-                //     mispayment: mispayment,
-                //     mispaymentStr: mispayment + ' / ' + noOfClients,
-                //     fullPaymentAmount: fullPaymentAmount,
-                //     fullPaymentAmountStr: fullPaymentAmount ? formatPricePhp(fullPaymentAmount) : 0,
-                //     noOfFullPayment: noOfFullPayment
-                // }
-
                 collectionData.push(collection);
             });
-
-            // totals
-            // let totalNoOfClients = getTotal(collectionData, 'activeClients');
-            // let totalNoOfBorrowers = getTotal(collectionData, 'activeBorrowers');
-            // let totalsLoanRelease = getTotal(collectionData, 'totalReleases');
-            // let totalsLoanBalance = getTotal(collectionData, 'totalLoanBalance');
-            // let totalNoOfNewCurrentRelease = getTotal(collectionData, 'noOfNewCurrentRelease');
-            // let totalNoOfReCurrentRelease = getTotal(collectionData, 'noOfReCurrentRelease');
-            // let totalCurrentReleaseAmount = getTotal(collectionData, 'currentReleaseAmount');
-            // let totalTargetLoanCollection = getTotal(collectionData, 'loanTarget');
-            // let totalExcess = getTotal(collectionData, 'excess');
-            // let totalLoanCollection = getTotal(collectionData, 'total');
-            // let totalNoOfFullPayment = getTotal(collectionData, 'noOfFullPayment');
-            // let totalFullPaymentAmount = getTotal(collectionData, 'fullPaymentAmount');
-            // let totalMispayment = getTotal(collectionData, 'mispayment');
 
             const branchTotals = {
                 name: 'TOTALS',
@@ -202,6 +137,7 @@ const ViewByBranchPage = () => {
                 mispaymentStr: mispayment + ' / ' + noOfClients,
                 fullPaymentAmountStr: formatPricePhp(fullPaymentAmount),
                 noOfFullPayment: noOfFullPayment,
+                pastDueStr: formatPricePhp(totalPastDue),
                 totalData: true
             };
 
@@ -293,7 +229,11 @@ const ViewByBranchPage = () => {
             accessor: 'mispaymentStr',
             Filter: SelectColumnFilter,
             filter: 'includes'
-        }
+        },
+        {
+            Header: "Past Due",
+            accessor: 'pastDueStr'
+        },
     ]);
 
     const handleRowClick = (selected) => {
@@ -304,12 +244,21 @@ const ViewByBranchPage = () => {
     useEffect(() => {
         let mounted = true;
 
-        mounted && getBranchCashCollections();
+        if (dateFilter.dateFilter) {
+            const date = moment(dateFilter.dateFilter).format('YYYY-MM-DD');
+            if (date !== currentDate) {
+                mounted && getBranchCashCollections(date);
+            } else {
+                mounted && getBranchCashCollections();
+            }
+        } else {
+            mounted && getBranchCashCollections();
+        }
 
         return () => {
             mounted = false;
         };
-    }, []);
+    }, [dateFilter]);
 
     return (
         <React.Fragment>
