@@ -19,7 +19,13 @@ const ViewByBranchPage = (dateFilter) => {
     // check group status if there is pending change row color to orange/yellow else white
     const getBranchCashCollections = async (date) => {
         setLoading(true);
-        let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/get-all-loans-per-branch?' + new URLSearchParams({ date: date ? date : currentDate, mode: 'daily' });
+        let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/get-all-loans-per-branch';
+
+        if (currentUser.role.rep === 2) {
+            url = url + "?" + new URLSearchParams({ date: date ? date : currentDate, mode: 'daily', areaManagerId: currentUser._id });
+        } else {
+            url = url + "?" + new URLSearchParams({ date: date ? date : currentDate, mode: 'daily' });
+        }
         
         const response = await fetchWrapper.get(url);
         if (response.success) {
@@ -41,6 +47,7 @@ const ViewByBranchPage = (dateFilter) => {
             let fullPaymentAmount = 0;
             let mispayment = 0;
             let totalPastDue = 0;
+            let totalNoPastDue = 0;
             
             response.data.map(branch => {
                 let collection = {
@@ -59,6 +66,7 @@ const ViewByBranchPage = (dateFilter) => {
                     fullPaymentAmountStr: '-',
                     noOfFullPayment: '-',
                     pastDueStr: '-',
+                    noPastDue: '-',
                     page: 'branch-summary',
                     status: '-'
                 };
@@ -91,12 +99,14 @@ const ViewByBranchPage = (dateFilter) => {
                     collection.mispaymentStr = branch.cashCollections[0].mispayment;
                     collection.pastDue = branch.cashCollections[0].pastDue ? branch.cashCollections[0].pastDue : 0;
                     collection.pastDueStr = formatPricePhp(collection.pastDue);
+                    collection.noPastDue = branch.cashCollections[0].noPastDue ? branch.cashCollections[0].noPastDue : 0;
 
                     excess += branch.cashCollections[0].excess;
                     totalLoanCollection += branch.cashCollections[0].collection;
                     mispayment += branch.cashCollections[0].mispayment;
                     targetLoanCollection = targetLoanCollection - branch.cashCollections[0].loanTarget;
                     totalPastDue += collection.pastDue;
+                    totalNoPastDue += collection.noPastDue;
                 }
 
                 if (branch.currentRelease.length > 0) {
@@ -138,6 +148,7 @@ const ViewByBranchPage = (dateFilter) => {
                 fullPaymentAmountStr: formatPricePhp(fullPaymentAmount),
                 noOfFullPayment: noOfFullPayment,
                 pastDueStr: formatPricePhp(totalPastDue),
+                noPastDue: totalNoPastDue,
                 totalData: true
             };
 
@@ -231,9 +242,13 @@ const ViewByBranchPage = (dateFilter) => {
             filter: 'includes'
         },
         {
-            Header: "Past Due",
-            accessor: 'pastDueStr'
+            Header: "PD #",
+            accessor: 'noPastDue'
         },
+        {
+            Header: "PD Amount",
+            accessor: 'pastDueStr'
+        }
     ]);
 
     const handleRowClick = (selected) => {

@@ -64,6 +64,7 @@ async function getAllLoansPerGroup(req, res) {
                                     collection: { $sum: '$paymentCollection' },
                                     excess: { $sum: '$excess' },
                                     pastDue: { $sum: '$pastDue' },
+                                    noPastDue: { $sum: {$cond: { if: { $eq: ['$remarks.value', 'past due'] }, then: 1, else: 0 } }},
                                     total: { $sum: '$total' }
                                 } 
                             }
@@ -363,6 +364,7 @@ async function getAllLoansPerGroup(req, res) {
                                     collection: { $sum: '$paymentCollection' },
                                     excess: { $sum: '$excess' },
                                     pastDue: { $sum: '$pastDue' },
+                                    noPastDue: { $sum: {$cond: { if: { $eq: ['$remarks.value', 'past due'] }, then: 1, else: 0 } }},
                                     total: { $sum: '$total' }
                                 } 
                             }

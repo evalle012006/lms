@@ -92,6 +92,24 @@ const ClientsProspectPage = () => {
                 toast.error(response.message);
                 setLoading(false);
             }
+        } else if (currentUser.role.rep === 2 && branchList.length > 0) {
+            url = url + '?' + new URLSearchParams({ areaManagerId: currentUser._id });
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                let groupList = [];
+                await response.groups && response.groups.map(group => {
+                    groupList.push({
+                        ...group,
+                        value: group._id,
+                        label: UppercaseFirstLetter(group.name)
+                    });
+                });
+                dispatch(setGroupList(groupList));
+                setLoading(false);
+            } else if (response.error) {
+                toast.error(response.message);
+                setLoading(false);
+            }
         } else if (branchList.length > 0) {
             const response = await fetchWrapper.get(url);
             if (response.success) {
@@ -145,6 +163,27 @@ const ClientsProspectPage = () => {
             if (response.success) {
                 let userList = [];
                 response.users && response.users.map(u => {
+                    const name = `${u.firstName} ${u.lastName}`;
+                    userList.push(
+                        {
+                            ...u,
+                            value: u._id,
+                            label: UppercaseFirstLetter(name)
+                        }
+                    );
+                });
+                dispatch(setUserList(userList));
+            } else {
+                toast.error('Error retrieving user list.');
+            }
+
+            setLoading(false);
+        } else if (currentUser.role.rep === 2 && branchList.length > 0) {
+            let url = process.env.NEXT_PUBLIC_API_URL + 'users/list?' + new URLSearchParams({ areaManagerId: currentUser._id, branchCode: branchList[0].code });;
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                let userList = [];
+                response.users && response.users.filter(u => u.role.rep === 4).map(u => {
                     const name = `${u.firstName} ${u.lastName}`;
                     userList.push(
                         {

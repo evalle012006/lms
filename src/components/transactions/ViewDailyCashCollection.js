@@ -46,6 +46,7 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
             let noOfFullPayment = 0;
             let fullPaymentAmount = 0;
             let totalPastDue = 0;
+            let totalNoPastDue = 0;
             let mispayment = 0;
 
             response.data && response.data.map(cc => {
@@ -66,6 +67,7 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                     mispayment: '-',
                     fullPaymentAmountStr: '-',
                     pastDueStr: '-',
+                    noPastDue: '-',
                     noOfFullPayment: '-',
                     status: '-'
                 };
@@ -119,6 +121,7 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                         reFullPayment: 0,
                         pastDue: 0,
                         pastDueStr: '-',
+                        noPastDue: '-',
                         status: cc.groupCashCollections.length > 0 ? cc.groupCashCollections[0].status : 'No Saved Transaction',
                         page: 'collection'
                     };
@@ -151,7 +154,8 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                         loanTarget: loanTarget,
                         loanTargetStr: loanTarget > 0 ? formatPricePhp(loanTarget) : 0,
                         pastDue: cc.cashCollections[0].pastDue ? cc.cashCollections[0].pastDue : 0,
-                        pastDueStr: cc.cashCollections[0].pastDue ? formatPricePhp(cc.cashCollections[0].pastDue) : 0
+                        pastDueStr: cc.cashCollections[0].pastDue ? formatPricePhp(cc.cashCollections[0].pastDue) : 0,
+                        noPastDue: cc.cashCollections[0].noPastDue ? cc.cashCollections[0].noPastDue : 0
                         // total: cc.cashCollections[0].collection && cc.cashCollections[0].collection,
                         // totalStr: cc.cashCollections[0].collection ? formatPricePhp(cc.cashCollections[0].collection) : 0
                     };
@@ -160,6 +164,7 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                     mispayment += cc.cashCollections[0].mispayment ? cc.cashCollections[0].mispayment : 0;
                     targetLoanCollection = targetLoanCollection - cc.cashCollections[0].loanTarget;
                     totalPastDue += cc.cashCollections[0].pastDue ? cc.cashCollections[0].pastDue : 0;
+                    totalNoPastDue += cc.cashCollections[0].noPastDue ? cc.cashCollections[0].noPastDue : 0;
                 }
 
                 if (cc.currentRelease.length > 0) {
@@ -214,6 +219,7 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                 fullPaymentAmountStr: fullPaymentAmount ? formatPricePhp(fullPaymentAmount) : 0,
                 noOfFullPayment: noOfFullPayment,
                 pastDueStr: formatPricePhp(totalPastDue),
+                noPastDue: totalNoPastDue,
                 totalData: true,
                 status: '-'
             }
@@ -324,7 +330,11 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
             filter: 'includes'
         },
         {
-            Header: "Past Due",
+            Header: "PD #",
+            accessor: 'noPastDue'
+        },
+        {
+            Header: "PD Amount",
             accessor: 'pastDueStr'
         },
         {
@@ -387,26 +397,6 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
             mounted = false;
         };
     }, [dateFilter]);
-
-    // useEffect(() => {
-    //     if (dateFilter) {
-    //         const date = moment(dateFilter).format('YYYY-MM-DD');
-    //         if (date !== currentDate) {
-    //             if (currentUser.role.rep < 4 && selectedLOSubject.value.length > 0) {
-    //                 getCashCollections(selectedLOSubject.value, date);
-    //             } else {
-    //                 getCashCollections(null, date);
-    //             }
-    //         } else {
-    //             if (currentUser.role.rep < 4 && selectedLOSubject.value.length > 0) {
-    //                 getCashCollections(selectedLOSubject.value, null);
-    //             } else {
-    //                 getCashCollections();
-    //             }
-    //         }
-    //     }
-
-    // }, [dateFilter]);
 
     // useEffect(() => {
     //     if (cashCollectionList) {
