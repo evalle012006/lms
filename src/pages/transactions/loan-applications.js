@@ -465,7 +465,6 @@ const LoanApplicationPage = () => {
             if (response.success) {
                 setLoading(false);
                 toast.success('Selected loans successfully approved.');
-                // window.location.reload();
                 setTimeout(() => {
                     getListLoan();
                 }, 500);
