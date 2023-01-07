@@ -555,20 +555,27 @@ const CashCollectionDetailsPage = () => {
             if (cc.status === 'active') {
                 if (parseFloat(cc.paymentCollection) === 0 && !cc.remarks) {
                     errorMsg.add('Error occured. Please select a remarks for 0 or no payment Actual Collection.');
-                } else if (parseFloat(cc.paymentCollection) === 0 && (cc.remarks.value !== "delinquent" && cc.remarks.value !== "past due" && cc.remarks.value !== "excused") ) {
+                } else if ((parseFloat(cc.paymentCollection) === 0 || (parseFloat(cc.paymentCollection) > 0 && parseFloat(cc.paymentCollection) < parseFloat(cc.activeLoan))) 
+                        && (!cc.remarks || (cc.remarks && (cc.remarks.value !== "delinquent" && cc.remarks.value !== "past due" && cc.remarks.value !== "excused"))) ) {
                     errorMsg.add("Error occured. 0 payment should be mark either PAST DUE, DELINQUENT OR EXCUSED in remarks.");
                 } else if ((cc.remarks && cc.remarks.value === "past due") && parseFloat(cc.pastDue) < parseFloat(cc.activeLoan)) {
                     errorMsg.add("Error occured. Past due is less than the target collection.");
-                }else if (parseFloat(cc.paymentCollection) > 0 && parseFloat(cc.paymentCollection) < cc.targetCollection) {
+                } else if (cc.remarks && (cc.remarks.value === "past due" || cc.remarks.value === "excused" || cc.remarks.value === "delinquent") ) { 
+                    if (cc.paymentCollection > 0 && cc.paymentCollection % 10 !== 0) {
+                        errorMsg.add("Error occured. Amount collection is not divisible by 10");
+                    }
+                } else if (parseFloat(cc.paymentCollection) > 0 && parseFloat(cc.paymentCollection) < cc.activeLoan) {
                     errorMsg.add("Actual collection is below the target collection.");
                 } else if (parseFloat(cc.paymentCollection) % parseFloat(cc.activeLoan) !== 0) {
-                    errorMsg.add("Actual collection should be divisible by 100.");
+                    if (cc.remarks && (cc.remarks.value !== "past due" && cc.remarks.value !== "excused" && cc.remarks.value !== "delinquent") ) {
+                        errorMsg.add(`Actual collection should be divisible by ${cc.activeLoan}.`);
+                    }
+                } else if (parseFloat(cc.paymentCollection) === (cc.activeLoan * 2) && (!cc.remarks || cc.remarks && cc.remarks.value !== "double payment")) {
+                    errorMsg.add('Error occured. Actual collection is a double payment please set remarks as Double Payment.');
+                } else if ((parseFloat(cc.paymentCollection) === (cc.activeLoan * 2)) || (parseFloat(cc.paymentCollection) % parseFloat(cc.activeLoan) !== 0) && (!cc.remarks || cc.remarks && cc.remarks.value !== "advance payment")) {
+                    errorMsg.add('Error occured. Actual collection is not a advance payment.');
                 } else if (cc.status === "active" && cc.loanBalance === 0 && !cc.remarks ) {
                     errorMsg.add('Error occured. Please select PENDING, RELOANER or OFFSET remarks for full payment transaction.');
-                } else if ((cc.remarks && cc.remarks.value === "double payment") && parseFloat(cc.paymentCollection) !== (cc.activeLoan * 2)) {
-                    errorMsg.add('Error occured. Actual collection is not a double payment.');
-                } else if ((cc.remarks && cc.remarks.value === "advance payment") && (parseFloat(cc.paymentCollection) === (cc.activeLoan * 2)) && (parseFloat(cc.paymentCollection) % parseFloat(cc.activeLoan) !== 0)) {
-                    errorMsg.add('Error occured. Actual collection is not a advance payment.');
                 } else if (cc.error) {
                     errorMsg.add('Error occured. Please double check the Actual Collection column.');
                 }
@@ -666,40 +673,40 @@ const CashCollectionDetailsPage = () => {
                     return temp;   
                 }).filter(cc => cc.status !== "totals");
 
-                if (save) {
-                    let cashCollection;
-                    if (editMode) {
-                        cashCollection = {
-                            ...headerData,
-                            dateModified: moment(new Date()).format('YYYY-MM-DD'),
-                            modifiedBy: currentUser._id,
-                            collection: JSON.stringify(dataArr)
-                        };
-                    } else {
-                        cashCollection = {
-                            ...headerData,
-                            modifiedBy: currentUser._id,
-                            collection: JSON.stringify(dataArr),
-                            mode: 'daily'
-                        };
-                    }
-            
-                    const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save', cashCollection);
-                    if (response.success) {
-                        setLoading(false);
-                        toast.success('Payment collection successfully submitted.');
+                    if (save) {
+                        let cashCollection;
+                        if (editMode) {
+                            cashCollection = {
+                                ...headerData,
+                                dateModified: moment(new Date()).format('YYYY-MM-DD'),
+                                modifiedBy: currentUser._id,
+                                collection: JSON.stringify(dataArr)
+                            };
+                        } else {
+                            cashCollection = {
+                                ...headerData,
+                                modifiedBy: currentUser._id,
+                                collection: JSON.stringify(dataArr),
+                                mode: 'daily'
+                            };
+                        }
+                
+                        const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save', cashCollection);
+                        if (response.success) {
+                            setLoading(false);
+                            toast.success('Payment collection successfully submitted.');
 
-                        // setTimeout(() => {})
-                        // window.location.reload();
-            
-                        setTimeout(() => {
-                            getCashCollections();
-                        }, 500);
+                            // setTimeout(() => {})
+                            // window.location.reload();
+                
+                            setTimeout(() => {
+                                getCashCollections();
+                            }, 500);
+                        }
+                    } else {
+                        toast.warning('No active data to be saved.');
+                        setLoading(false);
                     }
-                } else {
-                    toast.warning('No active data to be saved.');
-                    setLoading(false);
-                }
             }
         }
     }
@@ -721,6 +728,7 @@ const CashCollectionDetailsPage = () => {
                             temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
                             temp.total = temp.prevData.total;
                             temp.noOfPayments = temp.prevData.noOfPayments;
+                            temp.noOfPaymentStr = temp.noOfPayments + " / " + maxDays;
                             temp.amountRelease = temp.prevData.amountRelease;
                             temp.amountReleaseStr = formatPricePhp(temp.prevData.amountRelease);
                             temp.excess = temp.prevData.excess;
@@ -754,10 +762,11 @@ const CashCollectionDetailsPage = () => {
                             temp.paymentCollection = 0;
                         } else if (parseFloat(payment) === 0 || parseFloat(payment) === temp.activeLoan 
                             || (parseFloat(payment) > temp.activeLoan && parseFloat(payment) % parseFloat(temp.activeLoan) === 0)
-                            || parseFloat(payment) === parseFloat(temp.loanBalance)) {
+                            || parseFloat(payment) === parseFloat(temp.loanBalance)
+                            || (parseFloat(payment) > 0 && parseFloat(payment) < parseFloat(temp.activeLoan))) {
                             temp.dirty = true;
                             temp.error = false;
-    
+
                             temp.paymentCollection = parseFloat(payment);
                             temp.paymentCollectionStr = formatPricePhp(payment);
                             const prevLoanBalance = temp.loanBalance;
@@ -779,11 +788,11 @@ const CashCollectionDetailsPage = () => {
                                 temp.mispaymentStr = "No";
                                 temp.noOfPayments = temp.noOfPayments + 1;
                                 // temp.remarks = { label: 'Advance Payment', value: 'advance payment'};
-                            // } else if (parseFloat(payment) < parseFloat(temp.activeLoan)) {
-                            //     temp.excess =  0;
-                            //     temp.mispayment = true;
-                            //     temp.mispaymentStr = 'Yes';
-                            //     temp.noOfPayments = temp.noOfPayments + 1;
+                            } else if (parseFloat(payment) < parseFloat(temp.activeLoan)) {
+                                temp.excess =  0;
+                                temp.mispayment = true;
+                                temp.mispaymentStr = 'Yes';
+                                temp.noOfPayments = temp.noOfPayments + 1;
                                 // temp.remarks = { label: 'Excused', value: 'excused'};
                             } else {
                                 temp.mispayment = false;
@@ -816,12 +825,16 @@ const CashCollectionDetailsPage = () => {
                             }
                         } else if (parseFloat(payment) > 0 && parseFloat(payment) < targetCollection) {
                             // toast.error("Actual collection is below the target collection.");
-                            temp.error = true;
-                            temp.paymentCollection = payment;
+                            if (temp.remarks && (temp.remarks.value !== "past due" && temp.remarks.value !== "excused" && temp.remarks.value !== "delinquent") ) {
+                                temp.error = true;
+                                temp.paymentCollection = parseFloat(payment);
+                            }
                         } else if (parseFloat(payment) % parseFloat(temp.activeLoan) !== 0) {
                             // toast.error("Actual collection should be divisible by 100.");
-                            temp.error = true;
-                            temp.paymentCollection = payment;
+                            if (temp.remarks && (temp.remarks.value !== "past due" && temp.remarks.value !== "excused" && temp.remarks.value !== "delinquent") ) {
+                                temp.error = true;
+                                temp.paymentCollection = parseFloat(payment);
+                            }
                         } else if ((temp.remarks && (temp.remarks.value === "delinquent" || temp.remarks.value === "past due" || temp.remarks.value === "excused"))) {
                             temp.targetCollectionStr = 0;
                             if (temp.remarks.value === "delinquent") {
@@ -923,7 +936,7 @@ const CashCollectionDetailsPage = () => {
     const handleRowClick = (selected) => {
         // console.log(selected);
         if (selected.status === 'open') {
-            console.log('open')
+            // console.log('open')
         }
     }
 
@@ -1049,7 +1062,7 @@ const CashCollectionDetailsPage = () => {
                         remarks: '-',
                         fullPaymentStr: '-',
                         clientStatus: '-',
-                        status: 'open'
+                        status: 'open',
                     });
                 } else if (!existData.group) {
                     const index = cashCollection.indexOf(existData);
@@ -1291,7 +1304,8 @@ const CashCollectionDetailsPage = () => {
 
                                         return (
                                             <tr key={index} onClick={() => handleRowClick(cc)}
-                                                    className={`w-full hover:bg-slate-200 border-b border-b-gray-300 text-gray-600 font-proxima ${rowBg} ${cc.status === 'totals' && 'font-bold font-proxima-bold'}`} >
+                                                    className={`w-full hover:bg-slate-200 border-b border-b-gray-300 font-proxima 
+                                                                ${rowBg} ${cc.status === 'totals' ? 'font-bold font-proxima-bold text-red-400' : 'text-gray-600'}`} >
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.status !== 'totals' ? cc.slotNo : '' }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">{ cc.fullName }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.loanCycle }</td>
