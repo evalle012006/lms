@@ -85,9 +85,7 @@ async function updateLoan(collection) {
         loan.loanBalance = collection.loanBalance;
         loan.activeLoan = collection.activeLoan;
         loan.amountRelease = collection.amountRelease;
-        if (collection.remarks && (collection.remarks !== 'delinquent' && collection.remarks !== 'excused' && collection.remarks !== 'past due')) {
-            loan.noOfPayments = collection.noOfPayments !== '-' ? collection.noOfPayments : 0;
-        }
+        loan.noOfPayments = collection.noOfPayments !== '-' ? collection.noOfPayments : 0;
         loan.fullPaymentDate = '';
         loan.status = collection.status;
         // loan.prevData = collection.prevData;

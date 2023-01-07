@@ -699,7 +699,7 @@ const LoanApplicationPage = () => {
                             <div>
                                 <TabPanel hidden={selectedTab !== "application"}>
                                     <TableComponent columns={columns} data={list} hasActionButtons={currentUser.role.rep > 2 ? true : false} rowActionButtons={rowActionButtons} showFilters={true} multiSelect={currentUser.role.rep === 3 ? true : false} multiSelectActionFn={handleMultiSelect} />
-                                    <footer className="pl-64 text-md font-bold text-center fixed inset-x-0 bottom-0">
+                                    <footer className="pl-64 text-md font-bold text-center fixed inset-x-0 bottom-0 text-red-400">
                                         <div className="flex flex-row justify-center bg-white px-4 py-2 shadow-inner border-t-4 border-zinc-200">
                                             <div className="flex flex-row">
                                                 <span className="pr-6">No. of Pending Loans: </span>
