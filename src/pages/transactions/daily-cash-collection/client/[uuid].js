@@ -572,7 +572,7 @@ const CashCollectionDetailsPage = () => {
                     }
                 } else if (parseFloat(cc.paymentCollection) === (cc.activeLoan * 2) && (!cc.remarks || cc.remarks && cc.remarks.value !== "double payment")) {
                     errorMsg.add('Error occured. Actual collection is a double payment please set remarks as Double Payment.');
-                } else if ((parseFloat(cc.paymentCollection) === (cc.activeLoan * 2)) || (parseFloat(cc.paymentCollection) % parseFloat(cc.activeLoan) !== 0) && (!cc.remarks || cc.remarks && cc.remarks.value !== "advance payment")) {
+                } else if ((parseFloat(cc.paymentCollection) === (cc.activeLoan * 2)) || (parseFloat(cc.paymentCollection) % parseFloat(cc.activeLoan) !== 0) && (!cc.remarks || cc.remarks && cc.remarks.value === "advance payment")) {
                     errorMsg.add('Error occured. Actual collection is not a advance payment.');
                 } else if (cc.status === "active" && cc.loanBalance === 0 && !cc.remarks ) {
                     errorMsg.add('Error occured. Please select PENDING, RELOANER or OFFSET remarks for full payment transaction.');
@@ -793,6 +793,7 @@ const CashCollectionDetailsPage = () => {
                                 temp.mispayment = true;
                                 temp.mispaymentStr = 'Yes';
                                 temp.noOfPayments = temp.noOfPayments + 1;
+                                temp.error = true;
                                 // temp.remarks = { label: 'Excused', value: 'excused'};
                             } else {
                                 temp.mispayment = false;
@@ -823,24 +824,19 @@ const CashCollectionDetailsPage = () => {
                                 temp.amountRelease = 0;
                                 temp.amountReleaseStr = 0;
                             }
-                        } else if (parseFloat(payment) > 0 && parseFloat(payment) < targetCollection) {
-                            // toast.error("Actual collection is below the target collection.");
-                            if (temp.remarks && (temp.remarks.value !== "past due" && temp.remarks.value !== "excused" && temp.remarks.value !== "delinquent") ) {
-                                temp.error = true;
-                                temp.paymentCollection = parseFloat(payment);
-                            }
-                        } else if (parseFloat(payment) % parseFloat(temp.activeLoan) !== 0) {
+                        } 
+                        // else if (parseFloat(payment) > 0 && parseFloat(payment) < targetCollection) {
+                        //     // toast.error("Actual collection is below the target collection.");
+                        //     temp.error = true;
+                        //     temp.paymentCollection = parseFloat(payment);
+                        // } 
+                        else if (parseFloat(payment) % parseFloat(temp.activeLoan) !== 0) {
                             // toast.error("Actual collection should be divisible by 100.");
                             if (temp.remarks && (temp.remarks.value !== "past due" && temp.remarks.value !== "excused" && temp.remarks.value !== "delinquent") ) {
                                 temp.error = true;
                                 temp.paymentCollection = parseFloat(payment);
                             }
-                        } else if ((temp.remarks && (temp.remarks.value === "delinquent" || temp.remarks.value === "past due" || temp.remarks.value === "excused"))) {
-                            temp.targetCollectionStr = 0;
-                            if (temp.remarks.value === "delinquent") {
-                                temp.delinquent = true;
-                            }
-                        }
+                        } 
                     } 
                 } 
                 return temp;
@@ -851,40 +847,42 @@ const CashCollectionDetailsPage = () => {
 
             list.sort((a, b) => { return a.slotNo - b.slotNo; });
             dispatch(setCashCollectionGroup(list));
-        } else if (type === 'pastDue') {
-            const value = e.target.value;
-            let pastDue = value ? value : 0;
+        } 
+        // else if (type === 'pastDue') {
+        //     const value = e.target.value;
+        //     let pastDue = value ? value : 0;
 
-            let list = data.map((cc, idx) => {
-                let temp = {...cc};
-                if (temp.status !== 'open') {
-                    if (idx === index) {
-                        if (temp.hasOwnProperty('prevData')) {
-                            temp.pastDue = 0;
-                        }
+        //     let list = data.map((cc, idx) => {
+        //         let temp = {...cc};
+        //         if (temp.status !== 'open') {
+        //             if (idx === index) {
+        //                 if (temp.hasOwnProperty('prevData')) {
+        //                     temp.pastDue = 0;
+        //                 }
                         
-                        if (containsAnyLetters(value)) {
-                            toast.error("Invalid amount in past due. Please input numeric only.");
-                            temp.error = true;
-                            temp.pastDue = 0;
-                        } else if (parseFloat(pastDue) < targetCollection) {
-                            // toast.error("Past due not equal to target collection.");
-                            temp.error = true;
-                            temp.pastDue = 0;
-                        } else {
-                            temp.dirty = true;
-                            temp.error = false;
+        //                 if (containsAnyLetters(value)) {
+        //                     toast.error("Invalid amount in past due. Please input numeric only.");
+        //                     temp.error = true;
+        //                     temp.pastDue = 0;
+        //                 } else if (parseFloat(pastDue) < targetCollection) {
+        //                     // toast.error("Past due not equal to target collection.");
+        //                     temp.error = true;
+        //                     temp.pastDue = 0;
+        //                 } else {
+        //                     temp.dirty = true;
+        //                     temp.error = false;
     
-                            temp.pastDue = parseFloat(pastDue);
-                            temp.pastDueStr = formatPricePhp(pastDue);
-                        }
-                    } 
-                } 
-                return temp;
-            });
+        //                     temp.pastDue = parseFloat(pastDue);
+        //                     temp.pastDueStr = formatPricePhp(pastDue);
+        //                 }
+        //             } 
+        //         } 
+        //         return temp;
+        //     });
 
-            dispatch(setCashCollectionGroup(list));
-        } else if (type === 'remarks') {
+        //     dispatch(setCashCollectionGroup(list));
+        // } 
+        else if (type === 'remarks') {
             const remarks = e;
 
             let list = data.map((cc, idx) => {
@@ -915,8 +913,19 @@ const CashCollectionDetailsPage = () => {
                         temp.mispayment = false;
                         temp.mispaymentStr = 'No';
                     } else if (remarks.value === "delinquent" || remarks.value === "past due" || remarks.value === "excused") {
+                        temp.targetCollection = 0;
+                        temp.targetCollectionStr = formatPricePhp(temp.targetCollection);
                         temp.mispayment = true;
                         temp.mispaymentStr = 'Yes';
+                        temp.error = false;
+
+                        if (temp.remarks.value === "past due") {
+                            temp.pastDue = temp.loanBalance;
+                            temp.pastDueStr = formatPricePhp(temp.pastDue);
+                        } else if (temp.remarks.value === "delinquent") {
+                            temp.delinquent = true;
+                        }
+
                     } else {
                         temp.closeRemarks = '';
                         setCloseLoan();
@@ -974,7 +983,7 @@ const CashCollectionDetailsPage = () => {
             temp.mispaymentStr = 'No';
             temp.loanBalance = temp.prevData.loanBalance;
             temp.loanBalanceStr = formatPricePhp(temp.prevData.loanBalance);
-            temp.noOfPayments = temp.paymentCollection !== 0 ? temp.noOfPayments - 1 : temp.noOfPayments;
+            temp.noOfPayments = temp.noOfPayments !== 0 ? temp.noOfPayments - 1 : temp.noOfPayments;
             temp.noOfPaymentStr = temp.noOfPayments + ' / ' + maxDays;
             temp.total = temp.prevData.total;
             temp.totalStr = formatPricePhp(temp.prevData.total);
@@ -1332,7 +1341,8 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.fullPaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.mispaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">
-                                                    { (cc.remarks && cc.remarks.value === 'past due') ? (
+                                                    { cc.pastDueStr }
+                                                    {/* { (cc.remarks && cc.remarks.value === 'past due') ? (
                                                         <React.Fragment>
                                                             {editMode || revertMode ? (
                                                                 <React.Fragment>
@@ -1347,7 +1357,7 @@ const CashCollectionDetailsPage = () => {
                                                         </React.Fragment>
                                                     ) : (
                                                         <React.Fragment>{ cc.pastDueStr }</React.Fragment>
-                                                    ) }
+                                                    ) } */}
                                                 </td>
                                                 { (currentUser.role.rep > 2 && (cc.status === 'active' || cc.status === 'completed') && (editMode || !groupSummaryIsClose) 
                                                     && (!cc.hasOwnProperty('_id') || revertMode) && !filter) || ((cc.remarks && cc.remarks.value === "pending") && !groupSummaryIsClose) ? (

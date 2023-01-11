@@ -83,7 +83,7 @@ async function getAllLoansPerGroup(req, res) {
                             localField: "branchIdstr",
                             foreignField: "branchId",
                             pipeline: [
-                                { $match: { status: { $ne: 'closed' } } },
+                                { $match: { status: { $ne: 'closed' },  dateAdded: date } },
                                 { $group: { 
                                         _id: '$branchId',
                                         activeClients: { $sum: 1 },

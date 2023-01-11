@@ -248,6 +248,8 @@ async function saveCashCollection(loan) {
                     loanId: loanData._id + '',
                     branchId: loanData.branchId,
                     groupId: loanData.groupId,
+                    groupname: loanData.groupName,
+                    loId: loanData.loId,
                     clientId: loanData.clientId,
                     slotNo: loanData.slotNo,
                     fullName: loanData.client.length > 0 ? loanData.client[0].lastName + ', ' + loanData.client[0].firstName : '',

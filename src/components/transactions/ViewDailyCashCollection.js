@@ -235,7 +235,7 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
     }
 
     const handleRowClick = (selected) => {
-        if (selected.status !== '-') {
+        if (!selected.totalData) {
             if (pageNo === 1) {
                 router.push('./daily-cash-collection/client/' + selected.groupId);
             } else if (pageNo === 2) {
