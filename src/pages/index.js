@@ -18,9 +18,9 @@ const Index = () => {
             }
         }
 
-        const updateCCData = async () => {
-            await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}transactions/cash-collections/update-cc-data`);
-        }
+        // const updateCCData = async () => {
+        //     await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}transactions/cash-collections/update-cc-data`);
+        // }
 
         // const updateLoanData = async () => {
         //     await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}transactions/loans/update-loan-data`);
@@ -34,7 +34,7 @@ const Index = () => {
         mounted && getSystemSettings();
         // mounted && updateGroupClients();
         // mounted && updateLoanData();
-        mounted && updateCCData();
+        // mounted && updateCCData();
 
         return () => {
             mounted = false;
