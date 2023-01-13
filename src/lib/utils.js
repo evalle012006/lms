@@ -1,4 +1,3 @@
-import e from 'cors';
 import moment from 'moment';
 
 export const FileExists = (url) => {
