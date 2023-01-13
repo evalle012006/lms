@@ -2,14 +2,14 @@ import { useEffect } from "react";
 import { useSelector } from "react-redux";
 import NavComponent from "./Nav";
 
-const Layout = ({ children, bgwhite = false, header = true, noPad = false, actionButtons = [] }) => {
+const Layout = ({ children, bgwhite = false, header = true, noPad = false, actionButtons = [], hScroll = true }) => {
     const state = useSelector(state => state.global);
     const pageTitle = state.title;
 
     return (
         <div className="flex bg-white">
             <NavComponent />
-            <div className={`ml-[16rem] flex flex-col bg-neutral-200 duration-300 w-screen overflow-x-auto h-screen`}>
+            <div className={`ml-[16rem] flex flex-col bg-neutral-200 duration-300 w-screen h-screen ${hScroll ? 'overflow-x-auto' : 'overflow-hidden'}`}>
                 {header && (
                     <div className="bg-white p-6 gap-6 h-20">
                         <div className="flex flex-row justify-between">

@@ -11,10 +11,51 @@ export default apiHandler({
 async function getBranch(req, res) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
-    const { _id } = req.query;
+    const { _id, code } = req.query;
     let statusCode = 200;
     let response = {};
-    const branch = await db.collection('branches').find({ _id: ObjectId(_id)}).toArray();
+
+    let branch;
+
+    if (_id) {
+        branch = await db.collection('branches')
+            // .find({ _id: ObjectId(_id)})
+            .aggregate([
+                { $match: { _id: ObjectId(_id) } },
+                {
+                    $lookup: {
+                        from: "users",
+                        localField: "code",
+                        foreignField: "designatedBranch",
+                        pipeline: [
+                            { $match: { $expr: {$eq: ['$role.rep', 3]} } }
+                        ],
+                        as: "branchManager"
+                    }
+                },
+                { $unwind: '$branchManager' }
+            ])
+            .toArray();
+    } else if (code) {
+        branch = await db.collection('branches')
+            .aggregate([
+                { $match: { code: code } },
+                {
+                    $lookup: {
+                        from: "users",
+                        localField: "code",
+                        foreignField: "designatedBranch",
+                        pipeline: [
+                            { $match: { $expr: {$eq: ['$role.rep', 3]} } }
+                        ],
+                        as: "branchManager"
+                    }
+                },
+                { $unwind: '$branchManager' }
+            ])
+            .toArray();
+    }
+
     response = { success: true, branch: branch[0] };
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')

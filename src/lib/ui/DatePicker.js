@@ -19,7 +19,7 @@ const DatePicker = ({ name, value, onChange, maxDate }) => {
                 type="date" 
                 ref={inputRef}
                 name={name} 
-                value={value}
+                defaultValue={value}
                 onChange={onChange}
                 className="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-1" 
                 placeholder="Select date" 

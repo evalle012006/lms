@@ -9,7 +9,6 @@ import moment from 'moment';
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { toast } from 'react-hot-toast';
 import LOSHeader from "@/components/transactions/los/Header";
-import { formatPricePhp, getDaysOfMonth } from "@/lib/utils";
 
 const LoanOfficerSummary = () => {
     const dispatch = useDispatch();
@@ -18,90 +17,18 @@ const LoanOfficerSummary = () => {
     const list = useSelector(state => state.los.list);
     const [currentDate, setCurrentDate] = useState(moment(new Date()).format('YYYY-MM-DD'));
     const [selectedBranch, setSelectedBranch] = useState();
-    const [days, setDays] = useState();
 
     const getListLos = async (date) => {
         setLoading(true);
         let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/loan-officer-summary';
         let losList = [];
-        days.map(day => {
-            const dayName = moment(day).format('dddd');
-
-            if (dayName === 'Saturday' || dayName === 'Sunday') {
-                return;
-            }
-
-            losList.push({
-                day: day,
-                dayName: dayName,
-                transfer: '-',
-                newMember: '-',
-                offsetPerson: '-',
-                activeClients: '-',
-                loanReleasePerson: '-',
-                loanReleaseAmount: '-',
-                loanReleaseAmountStr: '-',
-                collectionTarget: '-',
-                collectionTargetStr: '-',
-                collectionAdvancePayment: '-',
-                collectionAdvancePaymentStr: '-',
-                collectionActual: '-',
-                collectionActualStr: '-',
-                pastDuePerson: '-',
-                pastDueAmount: '-',
-                pastDueAmountStr: '-',
-                fullPaymentPerson: '-',
-                fullPaymentAmount: '-',
-                fullPaymentAmountStr: '-',
-                activeBorrowers: '-',
-                loanBalance: '-',
-                loanBalanceStr: '-'
-            });
-
-            if (dayName === 'Friday') {
-                losList.push({
-                    day: 'Weekly Total',
-                    transfer: '-',
-                    newMember: '-',
-                    offsetPerson: '-',
-                    activeClients: '-',
-                    loanReleasePerson: '-',
-                    loanReleaseAmount: '-',
-                    loanReleaseAmountStr: '-',
-                    collectionTarget: '-',
-                    collectionTargetStr: '-',
-                    collectionAdvancePayment: '-',
-                    collectionAdvancePaymentStr: '-',
-                    collectionActual: '-',
-                    collectionActualStr: '-',
-                    pastDuePerson: '-',
-                    pastDueAmount: '-',
-                    pastDueAmountStr: '-',
-                    fullPaymentPerson: '-',
-                    fullPaymentAmount: '-',
-                    fullPaymentAmountStr: '-',
-                    activeBorrowers: '-',
-                    loanBalance: '-',
-                    loanBalanceStr: '-',
-                    weekTotal: true
-                });
-            }
-        });
-
         if (currentUser.role.rep === 1) {
             url = url + '?' + new URLSearchParams({ date: date ? date : currentDate });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 response.data.map(los => {
                     losList.push({
-                        ...los,
-                        loanReleaseAmountStr: formatPricePhp(los.loanReleaseAmount),
-                        collectionTargetStr: formatPricePhp(los.collectionTarget),
-                        collectionAdvancePaymentStr: formatPricePhp(los.collectionAdvancePayment),
-                        collectionActualStr: formatPricePhp(los.collectionActual),
-                        pastDueAmountStr: formatPricePhp(los.pastDueAmount),
-                        fullPaymentAmountStr: formatPricePhp(los.fullPaymentAmount),
-                        loanBalanceStr: formatPricePhp(los.loanBalance)
+                        ...los
                     });
                 });
 
@@ -117,14 +44,7 @@ const LoanOfficerSummary = () => {
             if (response.success) {
                 response.data.map(los => {
                     losList.push({
-                        ...los,
-                        loanReleaseAmountStr: formatPricePhp(los.loanReleaseAmount),
-                        collectionTargetStr: formatPricePhp(los.collectionTarget),
-                        collectionAdvancePaymentStr: formatPricePhp(los.collectionAdvancePayment),
-                        collectionActualStr: formatPricePhp(los.collectionActual),
-                        pastDueAmountStr: formatPricePhp(los.pastDueAmount),
-                        fullPaymentAmountStr: formatPricePhp(los.fullPaymentAmount),
-                        loanBalanceStr: formatPricePhp(los.loanBalance)
+                        ...los
                     });
                 });
 
@@ -140,14 +60,7 @@ const LoanOfficerSummary = () => {
             if (response.success) {
                 response.data.map(los => {
                     losList.push({
-                        ...los,
-                        loanReleaseAmountStr: formatPricePhp(los.loanReleaseAmount),
-                        collectionTargetStr: formatPricePhp(los.collectionTarget),
-                        collectionAdvancePaymentStr: formatPricePhp(los.collectionAdvancePayment),
-                        collectionActualStr: formatPricePhp(los.collectionActual),
-                        pastDueAmountStr: formatPricePhp(los.pastDueAmount),
-                        fullPaymentAmountStr: formatPricePhp(los.fullPaymentAmount),
-                        loanBalanceStr: formatPricePhp(los.loanBalance)
+                        ...los
                     });
                 });
 
@@ -162,23 +75,11 @@ const LoanOfficerSummary = () => {
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 response.data.map(los => {
-                    const index = losList.findIndex(d => d.day === los._id);
-                    if (index > -1) {
-                        losList[index] = {
-                            ...los,
-                            day: los._id,
-                            loanReleaseAmountStr: formatPricePhp(los.loanReleaseAmount),
-                            collectionTargetStr: formatPricePhp(los.collectionTarget),
-                            collectionAdvancePaymentStr: formatPricePhp(los.collectionAdvancePayment),
-                            collectionActualStr: formatPricePhp(los.collectionActual),
-                            pastDueAmountStr: formatPricePhp(los.pastDueAmount),
-                            fullPaymentAmountStr: formatPricePhp(los.fullPaymentAmount),
-                            loanBalanceStr: formatPricePhp(los.loanBalance)
-                        };
-                    } else {
-
-                    }
+                    losList.push({
+                        ...los
+                    });
                 });
+
                 dispatch(setLosList(losList));
                 setLoading(false);
             } else if (response.error) {
@@ -187,11 +88,6 @@ const LoanOfficerSummary = () => {
             }
         }
     }
-
-    useEffect(() => {
-        setDays(getDaysOfMonth(moment().year(), moment().month() + 1));
-        // setDays(getDaysOfMonth(2022, 12));
-    }, []);
 
     useEffect(() => {
         let mounted = true;
@@ -211,16 +107,13 @@ const LoanOfficerSummary = () => {
             mounted && getCurrentBranch();
         }
 
-        if (days) {
-            // mounted && getListLos('2022-12-12');
-            mounted && getListLos(currentDate);
-            mounted && setLoading(false);
-        }
+        mounted && getListLos('2022-12-12');
+        mounted && setLoading(false);
 
         return (() => {
             mounted = false;
         })
-    }, [days]);
+    }, []);
 
     return (
         <Layout header={false} noPad={false} hScroll={false}>
@@ -231,9 +124,9 @@ const LoanOfficerSummary = () => {
             ) : (
                 <div className="flex flex-col">
                     <LOSHeader page={1} pageTitle="Loan Officers Summary" selectedBranch={selectedBranch}/>
-                    <div className="flex flex-col h-[55rem] max-h-[55rem] mt-40 pl-6 pr-2 overflow-y-auto">
-                        <div className="block rounded-xl overflow-auto h-[49rem] w-[130rem]">
-                            <table className="relative w-full table-auto border-collapse text-sm bg-white">
+                    <div className="flex flex-col h-[50rem] max-h-[50rem] mt-40 pl-6 pr-2">
+                        <div className="block overflow-auto rounded-xl w-full">
+                            <table className="relative w-full table-auto border-collapse text-sm bg-white mb-6">
                                 <thead>
                                     <tr>
                                         <th rowSpan={3} className="bg-white sticky border border-gray-300 border-l-0 border-t-0 top-0 px-4 py-2 text-gray-500 uppercase">Date</th>
@@ -266,30 +159,25 @@ const LoanOfficerSummary = () => {
                                 </thead>
                                 <tbody className="divide-y">
                                     {list.map((item, index) => {
-                                        let rowBg = 'even:bg-gray-100';
-
-                                        if (item.weekTotal) {
-                                            rowBg = 'bg-blue-100';
-                                        }
-
+                                        // const date = item._id.dateAdded;
                                         return (
-                                            <tr key={index} className={`${rowBg}`}>
-                                                <td className="px-4 py-4 text-center">{ item.day }</td>
+                                            <tr key={index}>
+                                                <td className="px-4 py-4 text-center">{ item._id }</td>
                                                 <td className="px-4 py-4 text-center">{ item.transfer }</td>
                                                 <td className="px-4 py-4 text-center">{ item.newMember }</td>
                                                 <td className="px-4 py-4 text-center">{ item.offsetPerson }</td>
                                                 <td className="px-4 py-4 text-center">{ item.activeClients }</td>
                                                 <td className="px-4 py-4 text-center">{ item.loanReleasePerson }</td>
-                                                <td className="px-4 py-4 text-center">{ item.loanReleaseAmountStr }</td>
-                                                <td className="px-4 py-4 text-center">{ item.collectionTargetStr }</td>
-                                                <td className="px-4 py-4 text-center">{ item.collectionAdvancePaymentStr }</td>
-                                                <td className="px-4 py-4 text-center">{ item.collectionActualStr }</td>
+                                                <td className="px-4 py-4 text-center">{ item.loanReleaseAmount }</td>
+                                                <td className="px-4 py-4 text-center">{ item.collectionTarget }</td>
+                                                <td className="px-4 py-4 text-center">{ item.collectionAdvancePayment }</td>
+                                                <td className="px-4 py-4 text-center">{ item.collectionActual }</td>
                                                 <td className="px-4 py-4 text-center">{ item.pastDuePerson }</td>
-                                                <td className="px-4 py-4 text-center">{ item.pastDueAmountStr }</td>
+                                                <td className="px-4 py-4 text-center">{ item.pastDueAmount }</td>
                                                 <td className="px-4 py-4 text-center">{ item.fullPaymentPerson }</td>
-                                                <td className="px-4 py-4 text-center">{ item.fullPaymentAmountStr }</td>
+                                                <td className="px-4 py-4 text-center">{ item.fullPaymentAmount }</td>
                                                 <td className="px-4 py-4 text-center">{ item.activeBorrowers }</td>
-                                                <td className="px-4 py-4 text-center">{ item.loanBalanceStr }</td>
+                                                <td className="px-4 py-4 text-center">{ item.loanBalance }</td>
                                             </tr>
                                         )
                                     })}
