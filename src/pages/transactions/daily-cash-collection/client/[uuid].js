@@ -469,34 +469,10 @@ const CashCollectionDetailsPage = () => {
                     totalLoanBalance += collection.loanBalance ? collection.loanBalance !== '-' ? collection.loanBalance : 0 : 0;
                 }
 
-                // if (collection.status === 'completed' || collection.status === 'active' || collection.status === 'tomorrow') {
-                //     totalActiveClients += 1;
-                // }
-
                 if (collection.status === 'tomorrow' || (collection.hasOwnProperty('tomorrow') && collection.tomorrow)) {
                     totalReleaseAmount += collection.currentReleaseAmount ? collection.currentReleaseAmount !== '-' ? collection.currentReleaseAmount : 0 : 0;
                 }
 
-                // if (collection.fullPayment > 0) {
-                //     totalNoOfFullPayments += 1;
-                // }
-
-                // if (collection.status === "tomorrow" || collection.status === "completed") {
-                //     if (collection.currentReleaseAmount > 0 && collection.loanCycle === 1) {
-                //         totalNoNewCurrentRelease += 1;
-                //     } else if (collection.currentReleaseAmount > 0 && collection.loanCycle > 1) {
-                //         totalNoReCurrentRelease += 1;
-                //     } else if (collection.currentReleaseAmount > 0) {
-                //         const loanCycle = collection.history.loanCycle;
-                //         if (loanCycle === 1) {
-                //             totalNoNewCurrentRelease += 1;
-                //         } else if (loanCycle > 1) {
-                //             totalNoReCurrentRelease += 1;
-                //         }
-                //     }
-                // }
-
-                // totalPayments += collection.noOfPayments;
                 if (!collection.remarks || (collection.remarks && collection.remarks.value !== "delinquent" && collection.remarks.value !== "past due" && collection.remarks.value !== "excused")) {
                     totalTargetLoanCollection += collection.targetCollection  ? collection.targetCollection !== '-' ? collection.targetCollection : 0 : 0;
                 }
@@ -509,16 +485,6 @@ const CashCollectionDetailsPage = () => {
             }
         });
         const totals = {
-            // branchId: currentGroup && currentGroup.branchId,
-            // groupId: currentGroup && currentGroup._id,
-            // loId: currentGroup && currentGroup.loanOfficerId,
-            // mode: currentGroup && currentGroup.occurence,
-            // activeClients: totalActiveClients,
-            // activeBorrowers: totalActiveBorrowers,
-            // noCurrentReleaseStr: totalNoNewCurrentRelease + " / " + totalNoReCurrentRelease,
-            // noNewCurrentRelease: totalNoNewCurrentRelease,
-            // noReCurrentRelease: totalNoReCurrentRelease,
-            // noOfFullPayment: totalNoOfFullPayments,
             slotNo: 100,
             fullName: 'TOTALS',
             loanCycle: '',
@@ -632,6 +598,17 @@ const CashCollectionDetailsPage = () => {
                     } else {
                         temp.insertedBy = currentUser._id;
                         temp.dateAdded = moment(new Date()).format('YYYY-MM-DD');
+
+                        // if day is weekend add it to friday
+                        // question is are we going to used the groupsummary header on friday? what if it's closed already?
+                        // const dayName = moment(temp.dateAdded).format('dddd');
+                        // if (dayName === 'Saturday') {
+                        //     temp.dateAdded = moment(new Date()).subtract(1, 'days').format('YYYY-MM-DD');
+                        //     temp.insertedDate = moment(new Date()).format('YYYY-MM-DD');
+                        // } else if (dayName === 'Sunday') {
+                        //     temp.dateAdded = moment(new Date()).subtract(2, 'days').format('YYYY-MM-DD');
+                        //     temp.insertedDate = moment(new Date()).format('YYYY-MM-DD');
+                        // }
                     }
     
                     if (cc.status === 'active') {
@@ -735,6 +712,8 @@ const CashCollectionDetailsPage = () => {
                             temp.excessStr = (temp.excess > 0 || temp.excess !== '-') ? formatPricePhp(temp.excess) : '-';
                             temp.fullPayment = 0;
                             temp.fullPaymentStr = '-';
+                            temp.targetCollection = temp.activeLoan;
+                            temp.targetCollectionStr = formatPricePhp(temp.activeLoan);
                             temp.remarks = '';
                             temp.pastDue = 0;
                             temp.pastDueStr = '-';
@@ -918,6 +897,7 @@ const CashCollectionDetailsPage = () => {
                         temp.mispayment = true;
                         temp.mispaymentStr = 'Yes';
                         temp.error = false;
+                        temp.excused = true;
 
                         if (temp.remarks.value === "past due") {
                             temp.pastDue = temp.loanBalance;
@@ -1303,7 +1283,7 @@ const CashCollectionDetailsPage = () => {
                                             rowBg = 'bg-lime-100';
                                         } else if (cc.status === "closed") {
                                             rowBg = 'bg-zinc-200';
-                                        } else if (cc.clientStatus === "offset") {
+                                        } else if (cc.excused) {
                                             rowBg = 'bg-orange-100';
                                         }
 

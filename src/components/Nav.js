@@ -3,6 +3,7 @@ import logo from "/public/images/logo.png";
 import { 
     Squares2X2Icon, 
     BuildingOffice2Icon,
+    ChartBarSquareIcon,
     ClipboardDocumentIcon,
     ClipboardDocumentListIcon,
     ClipboardDocumentCheckIcon,
@@ -261,6 +262,20 @@ const MenuItems = [
             //     active: false,
             //     hasSub: false
             // },
+            {
+                label: "Loan Officer Summary",
+                url: "/transactions/loan-officer-summary", 
+                icon: {
+                    active: (
+                        <ChartBarSquareIcon className="text-gray-800 w-5 h-5" />
+                    ),
+                    notActive: (
+                        <ChartBarSquareIcon className="text-white w-5 h-5" />
+                    ),
+                },
+                active: false,
+                hasSub: false
+            },
         ]
     },
     {

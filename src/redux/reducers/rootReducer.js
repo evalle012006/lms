@@ -1,4 +1,5 @@
 import { combineReducers } from 'redux';
+import los from './losReducer';
 import cashCollection from './cashCollectionReducer';
 import loan from './loanReducer';
 import client from './clientReducer';
@@ -10,6 +11,7 @@ import systemSettings from './systemReducer';
 import global from './globalReducer';
 
 const rootReducer = combineReducers({
+    los: los,
     cashCollection: cashCollection,
     loan: loan,
     client: client,

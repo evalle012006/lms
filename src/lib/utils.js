@@ -1,4 +1,3 @@
-import e from 'cors';
 import moment from 'moment';
 
 export const FileExists = (url) => {
@@ -131,3 +130,16 @@ const char_to_int = (c) => {
         default: return -1;
     }
 }
+
+export const getDaysOfMonth = (year, month) => {
+    var monthDate = moment(year+'-'+month, 'YYYY-MM');
+    var daysInMonth = monthDate.daysInMonth();
+    var arrDays = [];
+
+    while(daysInMonth) { 
+      var current = moment(`${year}-${month}-01`).date(daysInMonth);
+      arrDays.unshift(current.format('YYYY-MM-DD'));
+      daysInMonth--;
+    }
+    return arrDays;
+};

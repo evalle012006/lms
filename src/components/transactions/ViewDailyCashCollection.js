@@ -22,6 +22,8 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
 
     const getCashCollections = async (selectedLO, dateFilter) => {
         setLoading(true);
+        const filter = dateFilter ? true : false;
+
         let url = process.env.NEXT_PUBLIC_API_URL + 
             'transactions/cash-collections/get-all-loans-per-group?' 
             + new URLSearchParams({ 
@@ -72,133 +74,171 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                     status: '-'
                 };
 
-                // if (cc.cashCollectionPerGroup.length > 0) {
-                //     const ccGroup = cc.cashCollectionPerGroup[0];
-                //     collection = {
-                //         ...collection,
-                //         ...ccGroup,
-                //         currentReleaseAmountStr: formatPricePhp(ccGroup.currentReleaseAmount),
-                //         excessStr: formatPricePhp(ccGroup.excess),
-                //         totalReleasesStr: formatPricePhp(ccGroup.amountRelease),
-                //         totalLoanBalanceStr: formatPricePhp(ccGroup.loanBalance),
-                //         loanTargetStr: formatPricePhp(ccGroup.targetCollection),
-                //         collectionStr: formatPricePhp(ccGroup.paymentCollection),
-                //         mispayment: ccGroup.mispaymentStr,
-                //         fullPaymentAmountStr: formatPricePhp(ccGroup.fullPayment),
-                //         status: cc.groupCashCollections.length > 0 ? cc.groupCashCollections[0].status : 'No Saved Transaction',
-                //     }
-                // } 
                 let noCurrentRelease = '0 / 0';
-                if (cc.loans.length > 0) {
-                    collection = {
-                        groupId: cc._id,
-                        group: cc.name,
-                        noCurrentReleaseStr: noCurrentRelease,
-                        newCurrentRelease: 0,
-                        reCurrentRelease: 0,
-                        currentReleaseAmount: 0,
-                        currentReleaseAmountStr: 0,
-                        // noOfPaidClients: 0,
-                        activeClients: 0,
-                        activeBorrowers: 0,
-                        mispayment: collection.mispayment,
-                        loanTarget: cc.loans[0].loanTarget && cc.loans[0].loanTarget,
-                        loanTargetStr: cc.loans[0].loanTarget ? formatPricePhp(cc.loans[0].loanTarget) : 0,
-                        collection: cc.loans[0].collection && cc.loans[0].collection,
-                        collectionStr: cc.loans[0].collection ? formatPricePhp(cc.loans[0].collection) : 0,
-                        excess: cc.loans[0].excess && cc.loans[0].excess,
-                        excessStr: cc.loans[0].excess ? formatPricePhp(cc.loans[0].excess) : 0,
-                        total: cc.loans[0].total,
-                        totalStr: formatPricePhp(cc.loans[0].total),
-                        totalReleases: cc.loans[0].totalRelease && cc.loans[0].totalRelease,
-                        totalReleasesStr: cc.loans[0].totalRelease ? formatPricePhp(cc.loans[0].totalRelease) : 0,
-                        totalLoanBalance: cc.loans[0].totalLoanBalance && cc.loans[0].totalLoanBalance,
-                        totalLoanBalanceStr: cc.loans[0].totalLoanBalance ? formatPricePhp(cc.loans[0].totalLoanBalance) : 0,
-                        fullPaymentAmount: 0,
-                        fullPaymentAmountStr: 0,
-                        noOfFullPayment: 0,
-                        newFullPayment: 0,
-                        reFullPayment: 0,
-                        pastDue: 0,
-                        pastDueStr: '-',
-                        noPastDue: '-',
-                        status: cc.groupCashCollections.length > 0 ? cc.groupCashCollections[0].status : 'No Saved Transaction',
-                        page: 'collection'
-                    };
-
-                    totalsLoanRelease += cc.loans[0].totalRelease ? cc.loans[0].totalRelease : 0;
-                    totalsLoanBalance += cc.loans[0].totalLoanBalance ? cc.loans[0].totalLoanBalance : 0;
-                    targetLoanCollection += cc.loans[0].loanTarget ? cc.loans[0].loanTarget : 0;
-                } 
-
-                if (cc.activeLoans.length > 0) {
-                    collection = {
-                        ...collection,
-                        activeClients: cc.activeLoans[0].activeClients,
-                        activeBorrowers: cc.activeLoans[0].activeBorrowers
+                if (!filter) {
+                    if (cc.loans.length > 0) {
+                        collection = {
+                            groupId: cc._id,
+                            group: cc.name,
+                            noCurrentReleaseStr: noCurrentRelease,
+                            newCurrentRelease: 0,
+                            reCurrentRelease: 0,
+                            currentReleaseAmount: 0,
+                            currentReleaseAmountStr: 0,
+                            // noOfPaidClients: 0,
+                            activeClients: 0,
+                            activeBorrowers: 0,
+                            mispayment: collection.mispayment,
+                            loanTarget: cc.loans[0].loanTarget && cc.loans[0].loanTarget,
+                            loanTargetStr: cc.loans[0].loanTarget ? formatPricePhp(cc.loans[0].loanTarget) : 0,
+                            collection: cc.loans[0].collection && cc.loans[0].collection,
+                            collectionStr: cc.loans[0].collection ? formatPricePhp(cc.loans[0].collection) : 0,
+                            excess: cc.loans[0].excess && cc.loans[0].excess,
+                            excessStr: cc.loans[0].excess ? formatPricePhp(cc.loans[0].excess) : 0,
+                            total: cc.loans[0].total,
+                            totalStr: formatPricePhp(cc.loans[0].total),
+                            totalReleases: cc.loans[0].totalRelease && cc.loans[0].totalRelease,
+                            totalReleasesStr: cc.loans[0].totalRelease ? formatPricePhp(cc.loans[0].totalRelease) : 0,
+                            totalLoanBalance: cc.loans[0].totalLoanBalance && cc.loans[0].totalLoanBalance,
+                            totalLoanBalanceStr: cc.loans[0].totalLoanBalance ? formatPricePhp(cc.loans[0].totalLoanBalance) : 0,
+                            fullPaymentAmount: 0,
+                            fullPaymentAmountStr: 0,
+                            noOfFullPayment: 0,
+                            newFullPayment: 0,
+                            reFullPayment: 0,
+                            pastDue: 0,
+                            pastDueStr: '-',
+                            noPastDue: '-',
+                            status: cc.groupCashCollections.length > 0 ? cc.groupCashCollections[0].status : 'No Saved Transaction',
+                            page: 'collection'
+                        };
+    
+                        totalsLoanRelease += cc.loans[0].totalRelease ? cc.loans[0].totalRelease : 0;
+                        totalsLoanBalance += cc.loans[0].totalLoanBalance ? cc.loans[0].totalLoanBalance : 0;
+                        targetLoanCollection += cc.loans[0].loanTarget ? cc.loans[0].loanTarget : 0;
+                    } 
+    
+                    if (cc.activeLoans.length > 0) {
+                        collection = {
+                            ...collection,
+                            activeClients: cc.activeLoans[0].activeClients,
+                            activeBorrowers: cc.activeLoans[0].activeBorrowers
+                        }
+    
+                        noOfClients += cc.activeLoans[0].activeClients ? cc.activeLoans[0].activeClients : 0;
+                        noOfBorrowers += cc.activeLoans[0].activeBorrowers ? cc.activeLoans[0].activeBorrowers : 0;
                     }
-
-                    noOfClients += cc.activeLoans[0].activeClients ? cc.activeLoans[0].activeClients : 0;
-                    noOfBorrowers += cc.activeLoans[0].activeBorrowers ? cc.activeLoans[0].activeBorrowers : 0;
-                }
-                
-                if (cc.cashCollections.length > 0) {
-                    // subtract the delinquent loan target from here...
-                    const loanTarget = collection.loanTarget - cc.cashCollections[0].loanTarget;
-                    collection = { ...collection,
-                        mispayment: cc.cashCollections[0].mispayment ? cc.cashCollections[0].mispayment : 0,
-                        collection: cc.cashCollections[0].collection && cc.cashCollections[0].collection,
-                        collectionStr: cc.cashCollections[0].collection ? formatPricePhp(cc.cashCollections[0].collection) : 0,
-                        excess: cc.cashCollections[0].excess && cc.cashCollections[0].excess,
-                        excessStr: cc.cashCollections[0].excess ? formatPricePhp(cc.cashCollections[0].excess) : 0,
-                        loanTarget: loanTarget,
-                        loanTargetStr: loanTarget > 0 ? formatPricePhp(loanTarget) : 0,
-                        pastDue: cc.cashCollections[0].pastDue ? cc.cashCollections[0].pastDue : 0,
-                        pastDueStr: cc.cashCollections[0].pastDue ? formatPricePhp(cc.cashCollections[0].pastDue) : 0,
-                        noPastDue: cc.cashCollections[0].noPastDue ? cc.cashCollections[0].noPastDue : 0
-                        // total: cc.cashCollections[0].collection && cc.cashCollections[0].collection,
-                        // totalStr: cc.cashCollections[0].collection ? formatPricePhp(cc.cashCollections[0].collection) : 0
-                    };
-                    excess += cc.cashCollections[0].excess ? cc.cashCollections[0].excess : 0;
-                    totalLoanCollection += cc.cashCollections[0].collection ? cc.cashCollections[0].collection : 0;
-                    mispayment += cc.cashCollections[0].mispayment ? cc.cashCollections[0].mispayment : 0;
-                    targetLoanCollection = targetLoanCollection - cc.cashCollections[0].loanTarget;
-                    totalPastDue += cc.cashCollections[0].pastDue ? cc.cashCollections[0].pastDue : 0;
-                    totalNoPastDue += cc.cashCollections[0].noPastDue ? cc.cashCollections[0].noPastDue : 0;
-                }
-
-                if (cc.currentRelease.length > 0) {
-                    noCurrentRelease = cc.currentRelease[0].newCurrentRelease + ' / ' + cc.currentRelease[0].reCurrentRelease;
-                    collection = {
-                        ...collection,
-                        noCurrentReleaseStr: noCurrentRelease,
-                        newCurrentRelease: cc.currentRelease[0].newCurrentRelease ? cc.currentRelease[0].newCurrentRelease : 0,
-                        reCurrentRelease: cc.currentRelease[0].reCurrentRelease ? cc.currentRelease[0].reCurrentRelease : 0,
-                        currentReleaseAmount: cc.currentRelease[0].currentReleaseAmount ? cc.currentRelease[0].currentReleaseAmount : 0,
-                        currentReleaseAmountStr: cc.currentRelease[0].currentReleaseAmount ? formatPricePhp(cc.currentRelease[0].currentReleaseAmount) : 0,
-                        status: cc.groupCashCollections.length > 0 ? cc.groupCashCollections[0].status : 'No Saved Transaction',
-                    };
-
-                    noOfNewCurrentRelease += cc.currentRelease[0].newCurrentRelease ? cc.currentRelease[0].newCurrentRelease : 0;
-                    noOfReCurrentRelease += cc.currentRelease[0].reCurrentRelease ? cc.currentRelease[0].reCurrentRelease : 0;
-                    currentReleaseAmount += cc.currentRelease[0].currentReleaseAmount ? cc.currentRelease[0].currentReleaseAmount : 0;
-                }
-
-                if (cc.fullPayment.length > 0) {
-                    // noOfFullPayment = cc.fullPayment[0].newFullPayment + ' / ' + cc.fullPayment[0].reFullPayment;
-
-                    collection = {
-                        ...collection,
-                        fullPaymentAmount: cc.fullPayment.length > 0 ? cc.fullPayment[0].fullPaymentAmount : 0,
-                        fullPaymentAmountStr: cc.fullPayment.length > 0 ? formatPricePhp(cc.fullPayment[0].fullPaymentAmount) : 0,
-                        noOfFullPayment: cc.fullPayment.length > 0 ? cc.fullPayment[0].noOfFullPayment : 0,
-                        newFullPayment: cc.fullPayment.length > 0 ? cc.fullPayment[0].newFullPayment : 0,
-                        reFullPayment: cc.fullPayment.length > 0 ? cc.fullPayment[0].reFullPayment : 0,
-                        status: cc.groupCashCollections.length > 0 ? cc.groupCashCollections[0].status : 'No Saved Transaction',
-                    };
-
-                    fullPaymentAmount += cc.fullPayment[0].fullPaymentAmount ? cc.fullPayment[0].fullPaymentAmount : 0;
-                    noOfFullPayment += cc.fullPayment[0].noOfFullPayment ? cc.fullPayment[0].noOfFullPayment : 0;
+                    
+                    if (cc.cashCollections.length > 0) {
+                        // subtract the delinquent loan target from here...
+                        const loanTarget = collection.loanTarget - cc.cashCollections[0].loanTarget;
+                        collection = { ...collection,
+                            mispayment: cc.cashCollections[0].mispayment ? cc.cashCollections[0].mispayment : 0,
+                            collection: cc.cashCollections[0].collection && cc.cashCollections[0].collection,
+                            collectionStr: cc.cashCollections[0].collection ? formatPricePhp(cc.cashCollections[0].collection) : 0,
+                            excess: cc.cashCollections[0].excess && cc.cashCollections[0].excess,
+                            excessStr: cc.cashCollections[0].excess ? formatPricePhp(cc.cashCollections[0].excess) : 0,
+                            loanTarget: loanTarget,
+                            loanTargetStr: loanTarget > 0 ? formatPricePhp(loanTarget) : 0,
+                            pastDue: cc.cashCollections[0].pastDue ? cc.cashCollections[0].pastDue : 0,
+                            pastDueStr: cc.cashCollections[0].pastDue ? formatPricePhp(cc.cashCollections[0].pastDue) : 0,
+                            noPastDue: cc.cashCollections[0].noPastDue ? cc.cashCollections[0].noPastDue : 0
+                            // total: cc.cashCollections[0].collection && cc.cashCollections[0].collection,
+                            // totalStr: cc.cashCollections[0].collection ? formatPricePhp(cc.cashCollections[0].collection) : 0
+                        };
+                        excess += cc.cashCollections[0].excess ? cc.cashCollections[0].excess : 0;
+                        totalLoanCollection += cc.cashCollections[0].collection ? cc.cashCollections[0].collection : 0;
+                        mispayment += cc.cashCollections[0].mispayment ? cc.cashCollections[0].mispayment : 0;
+                        targetLoanCollection = targetLoanCollection - cc.cashCollections[0].loanTarget;
+                        totalPastDue += cc.cashCollections[0].pastDue ? cc.cashCollections[0].pastDue : 0;
+                        totalNoPastDue += cc.cashCollections[0].noPastDue ? cc.cashCollections[0].noPastDue : 0;
+                    }
+    
+                    if (cc.currentRelease.length > 0) {
+                        noCurrentRelease = cc.currentRelease[0].newCurrentRelease + ' / ' + cc.currentRelease[0].reCurrentRelease;
+                        collection = {
+                            ...collection,
+                            noCurrentReleaseStr: noCurrentRelease,
+                            newCurrentRelease: cc.currentRelease[0].newCurrentRelease ? cc.currentRelease[0].newCurrentRelease : 0,
+                            reCurrentRelease: cc.currentRelease[0].reCurrentRelease ? cc.currentRelease[0].reCurrentRelease : 0,
+                            currentReleaseAmount: cc.currentRelease[0].currentReleaseAmount ? cc.currentRelease[0].currentReleaseAmount : 0,
+                            currentReleaseAmountStr: cc.currentRelease[0].currentReleaseAmount ? formatPricePhp(cc.currentRelease[0].currentReleaseAmount) : 0,
+                            status: cc.groupCashCollections.length > 0 ? cc.groupCashCollections[0].status : 'No Saved Transaction',
+                        };
+    
+                        noOfNewCurrentRelease += cc.currentRelease[0].newCurrentRelease ? cc.currentRelease[0].newCurrentRelease : 0;
+                        noOfReCurrentRelease += cc.currentRelease[0].reCurrentRelease ? cc.currentRelease[0].reCurrentRelease : 0;
+                        currentReleaseAmount += cc.currentRelease[0].currentReleaseAmount ? cc.currentRelease[0].currentReleaseAmount : 0;
+                    }
+    
+                    if (cc.fullPayment.length > 0) {
+                        // noOfFullPayment = cc.fullPayment[0].newFullPayment + ' / ' + cc.fullPayment[0].reFullPayment;
+    
+                        collection = {
+                            ...collection,
+                            fullPaymentAmount: cc.fullPayment.length > 0 ? cc.fullPayment[0].fullPaymentAmount : 0,
+                            fullPaymentAmountStr: cc.fullPayment.length > 0 ? formatPricePhp(cc.fullPayment[0].fullPaymentAmount) : 0,
+                            noOfFullPayment: cc.fullPayment.length > 0 ? cc.fullPayment[0].noOfFullPayment : 0,
+                            newFullPayment: cc.fullPayment.length > 0 ? cc.fullPayment[0].newFullPayment : 0,
+                            reFullPayment: cc.fullPayment.length > 0 ? cc.fullPayment[0].reFullPayment : 0,
+                            status: cc.groupCashCollections.length > 0 ? cc.groupCashCollections[0].status : 'No Saved Transaction',
+                        };
+    
+                        fullPaymentAmount += cc.fullPayment[0].fullPaymentAmount ? cc.fullPayment[0].fullPaymentAmount : 0;
+                        noOfFullPayment += cc.fullPayment[0].noOfFullPayment ? cc.fullPayment[0].noOfFullPayment : 0;
+                    }
+                } else {
+                    if (cc.cashCollections.length > 0) {
+                        noCurrentRelease = cc.cashCollections[0].newCurrentRelease + ' / ' + cc.cashCollections[0].reCurrentRelease;
+                        collection = {
+                            groupId: cc._id,
+                            group: cc.name,
+                            noCurrentReleaseStr: noCurrentRelease,
+                            newCurrentRelease: cc.cashCollections[0].newCurrentRelease,
+                            reCurrentRelease: cc.cashCollections[0].reCurrentRelease,
+                            currentReleaseAmount: cc.cashCollections[0].currentReleaseAmount,
+                            currentReleaseAmountStr: formatPricePhp(cc.cashCollections[0].currentReleaseAmount),
+                            activeClients: cc.cashCollections[0].activeClients,
+                            activeBorrowers: cc.cashCollections[0].activeBorrowers,
+                            mispayment: cc.cashCollections[0].mispayment,
+                            collection: cc.cashCollections[0].collection,
+                            collectionStr: formatPricePhp(cc.cashCollections[0].collection),
+                            excess: cc.cashCollections[0].excess,
+                            excessStr: formatPricePhp(cc.cashCollections[0].excess),
+                            loanTarget: cc.cashCollections[0].loanTarget,
+                            loanTargetStr: formatPricePhp(cc.cashCollections[0].loanTarget),
+                            pastDue: cc.cashCollections[0].pastDue,
+                            pastDueStr: formatPricePhp(cc.cashCollections[0].pastDue),
+                            noPastDue: cc.cashCollections[0].noPastDue,
+                            totalReleases: cc.cashCollections[0].totalRelease,
+                            totalReleasesStr: formatPricePhp(cc.cashCollections[0].totalRelease),
+                            totalLoanBalance: cc.cashCollections[0].totalLoanBalance,
+                            totalLoanBalanceStr: formatPricePhp(cc.cashCollections[0].totalLoanBalance),
+                            fullPaymentAmount: cc.cashCollections[0].fullPaymentAmount,
+                            fullPaymentAmountStr: formatPricePhp(cc.cashCollections[0].fullPaymentAmount),
+                            noOfFullPayment: cc.cashCollections[0].noOfFullPayment,
+                            newFullPayment: cc.cashCollections[0].newFullPayment,
+                            reFullPayment: cc.cashCollections[0].reFullPayment,
+                            status: '',
+                            page: 'collection'
+                        };
+    
+                        noOfNewCurrentRelease += cc.cashCollections[0].newCurrentRelease;
+                        noOfReCurrentRelease += cc.cashCollections[0].reCurrentRelease;
+                        currentReleaseAmount += cc.cashCollections[0].currentReleaseAmount;
+                        noOfClients += cc.cashCollections[0].activeClients;
+                        noOfBorrowers += cc.cashCollections[0].activeBorrowers;
+                        excess += cc.cashCollections[0].excess;
+                        totalLoanCollection += cc.cashCollections[0].collection;
+                        mispayment += cc.cashCollections[0].mispayment;
+                        totalPastDue += cc.cashCollections[0].pastDue;
+                        totalNoPastDue += cc.cashCollections[0].noPastDue;
+                        totalsLoanRelease += cc.cashCollections[0].totalRelease;
+                        totalsLoanBalance += cc.cashCollections[0].totalLoanBalance;
+                        targetLoanCollection += cc.cashCollections[0].loanTarget;
+                        fullPaymentAmount += cc.cashCollections[0].fullPaymentAmount;
+                        noOfFullPayment += cc.cashCollections[0].noOfFullPayment;
+                    } 
                 }
 
                 collectionData.push(collection);
