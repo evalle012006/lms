@@ -132,12 +132,14 @@ const char_to_int = (c) => {
 }
 
 export const getDaysOfMonth = (year, month) => {
-    var monthDate = moment(year+'-'+month, 'YYYY-MM');
-    var daysInMonth = monthDate.daysInMonth();
-    var arrDays = [];
+    const strMonth = typeof month === 'number' ? '0' + month : month;
+    const monthDate = moment(year + '-' + strMonth, 'YYYY-MM');
+
+    let daysInMonth = monthDate.daysInMonth();
+    let arrDays = [];
 
     while(daysInMonth) { 
-      var current = moment(`${year}-${month}-01`).date(daysInMonth);
+      const current = moment(`${year}-${strMonth}-01`).date(daysInMonth);
       arrDays.unshift(current.format('YYYY-MM-DD'));
       daysInMonth--;
     }
