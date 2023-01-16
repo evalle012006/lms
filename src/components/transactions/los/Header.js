@@ -10,12 +10,38 @@ import moment from 'moment';
 import { useRouter } from 'next/router';
 import { ArrowLeftCircleIcon } from '@heroicons/react/24/solid';
 
-const LOSHeader = ({ pageTitle, page, dateFilter, handleDateFilter, selectedBranch }) => {
+const LOSHeader = ({ pageTitle, page, selectedMonth, handleMonthFilter, selectedYear, handleYearFilter, selectedBranch }) => {
     const router = useRouter();
     const currentUser = useSelector(state => state.user.data);
     const [currentDate, setCurrentDate] = useState(moment(new Date()).format('YYYY-MM-DD'));
     const [showCalendar, setShowCalendar] = useState(false);
     const [loanOfficer, setLoanOfficer] = useState();
+    const months = [
+        { label: 'January', value: '01' },
+        { label: 'February', value: '02' },
+        { label: 'March', value: '03' },
+        { label: 'April', value: '04' },
+        { label: 'May', value: '05' },
+        { label: 'June', value: '06' },
+        { label: 'July', value: '07' },
+        { label: 'August', value: '08' },
+        { label: 'September', value: '09' },
+        { label: 'October', value: '10' },
+        { label: 'November', value: '11' },
+        { label: 'December', value: '12' }
+    ];
+
+    const years = [ // the last year should be the current year
+        { label: 2015, value: 2015 },
+        { label: 2016, value: 2016 },
+        { label: 2017, value: 2017 },
+        { label: 2018, value: 2018 },
+        { label: 2019, value: 2019 },
+        { label: 2020, value: 2020 },
+        { label: 2021, value: 2021 },
+        { label: 2022, value: 2022 },
+        { label: 2023, value: 2023 }
+    ];
 
     const openCalendar = () => {
         setShowCalendar(true);
@@ -75,11 +101,37 @@ const LOSHeader = ({ pageTitle, page, dateFilter, handleDateFilter, selectedBran
                     <div className="flex flex-row w-11/12 text-gray-400 text-sm justify-start">
                         <span className="text-gray-400 text-sm mt-1">Filters:</span >
                         {/* filters should be MONTH and YEAR */}
-                        <div className="ml-6 flex w-64">
+                        <div className="ml-4 flex">
+                            <Select 
+                                options={months}
+                                value={selectedMonth && months.find(m => {
+                                    return parseInt(m.value) === selectedMonth
+                                })}
+                                styles={borderStyles}
+                                components={{ DropdownIndicator }}
+                                onChange={handleMonthFilter}
+                                isSearchable={true}
+                                closeMenuOnSelect={true}
+                                placeholder={'Month Filter'}/>
+                        </div>
+                        <div className="ml-4 flex">
+                            <Select 
+                                options={years}
+                                value={selectedYear && years.find(y => {
+                                    return y.value === selectedYear
+                                })}
+                                styles={borderStyles}
+                                components={{ DropdownIndicator }}
+                                onChange={handleYearFilter}
+                                isSearchable={true}
+                                closeMenuOnSelect={true}
+                                placeholder={'Year Filter'}/>
+                        </div>
+                        {/* <div className="ml-6 flex w-64">
                             <div className="relative w-full" onClick={openCalendar}>
                                 <DatePicker name="dateFilter" value={moment(dateFilter).format('YYYY-MM-DD')} maxDate={moment(new Date()).format('YYYY-MM-DD')} onChange={handleDateFilter} />
                             </div>
-                        </div>
+                        </div> */}
                     </div>
                 </div>
             )}
