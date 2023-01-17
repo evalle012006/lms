@@ -33,7 +33,6 @@ async function getSummary(req, res) {
             summary = await db.collection('cashCollections')
                 .aggregate([
                     { $match: { loId: userId, dateAdded: { $gte: startOfMonth, $lte: endOfMonth } } }, //{$sort: {dateAdded: 1}}
-                    // group by: group and date (per day)
                     // consider the group summary collection status it needs to be close 
                         // how to add the group summary collection? query it first per day? this is for BM only
                     {
