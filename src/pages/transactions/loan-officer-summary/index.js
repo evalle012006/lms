@@ -495,7 +495,7 @@ const LoanOfficerSummary = () => {
             totalOffsetperson = fBal.offsetPerson + monthly.offsetPerson;
             totalActiveClients = fBal.activeClients + monthly.activeClients;
             totalLoanReleaseAmount = fBal.loanReleaseAmount + monthly.loanReleaseAmount + monthly.fullPaymentAmount;
-            totalCollectionAdvancePayment = fBal.collectionAdvancePayment + monthly.collectionTarget + monthly.collectionAdvancePayment + monthly.fullPaymentAmount;
+            totalCollectionAdvancePayment = fBal.collectionAdvancePayment + monthly.collectionTarget + monthly.collectionAdvancePayment - monthly.fullPaymentAmount;
             totalCollectionActual = fBal.collectionActual + monthly.collectionActual + monthly.fullPaymentAmount;
             totalPastDuePerson = fBal.pastDuePerson + monthly.pastDuePerson;
             totalPastDueAmount = fBal.pastDueAmount + monthly.pastDueAmount;
