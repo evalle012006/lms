@@ -377,19 +377,6 @@ const LoanOfficerSummary = () => {
                     totalActiveBorrowers = prevWeek.activeBorrowers + totalLoanReleasePerson - totalFullPaymentPerson;
                     totalLoanBalance = prevWeek.loanBalance + totalLoanReleaseAmount - totalCollectionActual;
                 }
-                // const activeBorrowersArr = losSlice.filter(los => los.activeBorrowers !== '-');
-                // totalActiveBorrowers = activeBorrowersArr.length > 0 ? activeBorrowersArr[activeBorrowersArr.length - 1].activeBorrowers : 0;
-                // const activeClientsArr = losSlice.filter(los => los.activeClients !== '-');
-                // totalActiveClients = activeClientsArr.length > 0 ? activeClientsArr[activeClientsArr.length - 1].activeClients : 0;
-                // const loanBalanceArr = losSlice.filter(los => los.loanBalance !== '-');
-                // totalLoanBalance = loanBalanceArr.length > 0 ? loanBalanceArr[loanBalanceArr.length - 1].loanBalance : 0;
-
-                // if (w.weekNumber === 0) { // need to test if it is still needed
-                //     totalActiveClients += fBal.activeClients;
-                //     totalPastDueAmount += fBal.pastDueAmount;
-                //     totalActiveBorrowers += fBal.activeBorrowers;
-                //     totalLoanBalance += fBal.loanBalance;
-                // } 
 
                 losList[index] = {
                     ...w,
