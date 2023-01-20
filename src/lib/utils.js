@@ -132,7 +132,7 @@ const char_to_int = (c) => {
 }
 
 export const getDaysOfMonth = (year, month) => {
-    const strMonth = typeof month === 'number' ? '0' + month : month;
+    const strMonth = typeof month === 'number' ? month < 10 ? '0' + month : month : month;
     const monthDate = moment(year + '-' + strMonth, 'YYYY-MM');
 
     let daysInMonth = monthDate.daysInMonth();

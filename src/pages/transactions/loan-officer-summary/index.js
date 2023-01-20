@@ -46,8 +46,12 @@ const LoanOfficerSummary = () => {
             newMember: 0,
             offsetPerson: 0,
             activeClients: 0,
+            loanReleasePerson: 0,
             loanReleaseAmount: 0,
             loanReleaseAmountStr: 0,
+            activeLoanReleasePerson: 0,
+            activeLoanReleaseAmount: 0,
+            activeLoanReleaseAmountStr: 0,
             collectionAdvancePayment: 0,
             collectionAdvancePaymentStr: 0,
             collectionActual: 0,
@@ -81,6 +85,9 @@ const LoanOfficerSummary = () => {
                 loanReleasePerson: '-',
                 loanReleaseAmount: '-',
                 loanReleaseAmountStr: '-',
+                activeLoanReleasePerson: '-',
+                activeLoanReleaseAmount: '-',
+                activeLoanReleaseAmountStr: '-',
                 collectionTarget: '-',
                 collectionTargetStr: '-',
                 collectionAdvancePayment: '-',
@@ -108,6 +115,9 @@ const LoanOfficerSummary = () => {
                     loanReleasePerson: '-',
                     loanReleaseAmount: '-',
                     loanReleaseAmountStr: '-',
+                    activeLoanReleasePerson: '-',
+                    activeLoanReleaseAmount: '-',
+                    activeLoanReleaseAmountStr: '-',
                     collectionTarget: '-',
                     collectionTargetStr: '-',
                     collectionAdvancePayment: '-',
@@ -211,8 +221,12 @@ const LoanOfficerSummary = () => {
                         newMember: fBal.newMember,
                         offsetPerson: fBal.offsetPerson,
                         activeClients: fBal.activeClients,
+                        loanReleasePerson: fBal.loanReleasePerson,
                         loanReleaseAmount: fBal.loanReleaseAmount,
                         loanReleaseAmountStr: formatPricePhp(fBal.loanReleaseAmount),
+                        activeLoanReleasePerson: fBal.activeLoanReleasePerson,
+                        activeLoanReleaseAmount: fBal.activeLoanReleaseAmount,
+                        activeLoanReleaseAmountStr: formatPricePhp(fBal.activeLoanReleaseAmount),
                         collectionAdvancePayment: fBal.collectionAdvancePayment,
                         collectionAdvancePaymentStr: formatPricePhp(fBal.collectionAdvancePayment),
                         collectionActual: fBal.collectionActual,
@@ -250,6 +264,7 @@ const LoanOfficerSummary = () => {
                     }
                 });
 
+                losList = calculatePersons(losList);
                 losList = calculateWeeklyTotals(losList);
                 losList.push(calculateMonthlyTotals(losList[0], losList.filter(los => los.weekTotal)));
                 losList.push(calculateGrandTotals(losList, filter));
@@ -262,10 +277,50 @@ const LoanOfficerSummary = () => {
         }
     }
 
+    const calculatePersons = (losList) => {
+        const fBal = losList[0];
+        let prevLos;
+        return losList.map((los, index) => {
+            let temp = {...los};
+
+            if (index !== 0 && !los.weekTotal) {
+                const transfer = los.transfer !== '-' ? los.transfer : 0;
+                const newMember = los.newMember !== '-' ? los.newMember : 0;
+                const offsetPerson = los.offsetPerson !== '-' ? los.offsetPerson : 0;
+                const loanReleasePerson = los.loanReleasePerson !== '-' ? los.loanReleasePerson : 0;
+                const fullPaymentPerson = los.fullPaymentPerson !== '-' ? los.fullPaymentPerson : 0;
+                const fullPaymentAmount = los.fullPaymentAmount !== '-' ? los.fullPaymentAmount : 0;
+                const loanReleaseAmount = los.loanReleaseAmount !== '-' ? los.loanReleaseAmount : 0;
+                const collectionActual = los.collectionActual !== '-' ? los.collectionActual : 0;
+
+                if (index === 1) {
+                    temp.activeClients = fBal.activeClients + transfer + newMember - offsetPerson;
+                    temp.activeLoanReleasePerson = fBal.activeLoanReleasePerson + loanReleasePerson - fullPaymentPerson;
+                    temp.activeLoanReleaseAmount = fBal.activeLoanReleaseAmount + loanReleaseAmount - fullPaymentAmount;
+                    temp.activeBorrowers = fBal.activeBorrowers + loanReleasePerson - fullPaymentPerson;
+                    temp.loanBalance = fBal.loanBalance + loanReleaseAmount - collectionActual;
+                    temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
+                } else {
+                    temp.activeClients = prevLos.activeClients + transfer + newMember - offsetPerson;
+                    temp.activeLoanReleasePerson = prevLos.activeLoanReleasePerson + loanReleasePerson - fullPaymentPerson;
+                    temp.activeLoanReleaseAmount = prevLos.activeLoanReleaseAmount + loanReleaseAmount - fullPaymentAmount;
+                    temp.activeBorrowers = prevLos.activeBorrowers + loanReleasePerson - fullPaymentPerson;
+                    temp.loanBalance = prevLos.loanBalance + loanReleaseAmount - collectionActual;
+                    temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
+                }
+
+                prevLos = temp;
+            }
+
+            return temp;
+        });
+    }
+
     const calculateWeeklyTotals = (losList) => {
         const weekTotals = losList.filter(los => los.weekTotal);
         const fBal = losList[0];
 
+        let prevWeek;
         weekTotals.map(w => {
             const index = losList.findIndex(los => los.weekNumber === w.weekNumber);
             if (index > -1) {
@@ -282,6 +337,8 @@ const LoanOfficerSummary = () => {
                 let totalActiveClients = 0; // last row
                 let totalLoanReleasePerson = 0;
                 let totalLoanReleaseAmount = 0;
+                let totalActiveLoanReleasePerson = 0;
+                let totalActiveLoanReleaseAmount = 0;
                 let totalCollectionTarget = 0;
                 let totalCollectionAdvancePayment = 0;
                 let totalCollectionActual = 0;
@@ -307,19 +364,32 @@ const LoanOfficerSummary = () => {
                     totalFullPaymentAmount += los.fullPaymentAmount !== '-' ? los.fullPaymentAmount : 0;
                 });
 
-                const activeClientsArr = losSlice.filter(los => los.activeClients !== '-');
-                totalActiveClients = activeClientsArr.length > 0 ? activeClientsArr[activeClientsArr.length - 1].activeClients : 0;
-                const activeBorrowersArr = losSlice.filter(los => los.activeBorrowers !== '-');
-                totalActiveBorrowers = activeBorrowersArr.length > 0 ? activeBorrowersArr[activeBorrowersArr.length - 1].activeBorrowers : 0;
-                const loanBalanceArr = losSlice.filter(los => los.loanBalance !== '-');
-                totalLoanBalance = loanBalanceArr.length > 0 ? loanBalanceArr[loanBalanceArr.length - 1].loanBalance : 0;
-
-                if (w.weekNumber === 0) { // need to test if it is still needed
-                    totalActiveClients += fBal.activeClients;
-                    totalPastDueAmount += fBal.pastDueAmount;
-                    totalActiveBorrowers += fBal.activeBorrowers;
-                    totalLoanBalance += fBal.loanBalance;
+                if (w.weekNumber === 0) {
+                    totalActiveClients = fBal.activeClients + totalTransfer + totalNewMember - totalOffsetperson;
+                    totalActiveLoanReleasePerson = fBal.activeLoanReleasePerson + totalLoanReleasePerson - totalFullPaymentPerson;
+                    totalActiveLoanReleaseAmount = fBal.activeLoanReleaseAmount + totalLoanReleaseAmount - totalFullPaymentAmount;
+                    totalActiveBorrowers = fBal.activeBorrowers + totalLoanReleasePerson - totalFullPaymentPerson;
+                    totalLoanBalance = fBal.loanBalance + totalLoanReleaseAmount - totalCollectionActual;
+                } else {
+                    totalActiveClients = prevWeek.activeClients + totalTransfer + totalNewMember - totalOffsetperson;
+                    totalActiveLoanReleasePerson = prevWeek.activeLoanReleasePerson + totalLoanReleasePerson - totalFullPaymentPerson;
+                    totalActiveLoanReleaseAmount = prevWeek.activeLoanReleaseAmount + totalLoanReleaseAmount - totalFullPaymentAmount;
+                    totalActiveBorrowers = prevWeek.activeBorrowers + totalLoanReleasePerson - totalFullPaymentPerson;
+                    totalLoanBalance = prevWeek.loanBalance + totalLoanReleaseAmount - totalCollectionActual;
                 }
+                // const activeBorrowersArr = losSlice.filter(los => los.activeBorrowers !== '-');
+                // totalActiveBorrowers = activeBorrowersArr.length > 0 ? activeBorrowersArr[activeBorrowersArr.length - 1].activeBorrowers : 0;
+                // const activeClientsArr = losSlice.filter(los => los.activeClients !== '-');
+                // totalActiveClients = activeClientsArr.length > 0 ? activeClientsArr[activeClientsArr.length - 1].activeClients : 0;
+                // const loanBalanceArr = losSlice.filter(los => los.loanBalance !== '-');
+                // totalLoanBalance = loanBalanceArr.length > 0 ? loanBalanceArr[loanBalanceArr.length - 1].loanBalance : 0;
+
+                // if (w.weekNumber === 0) { // need to test if it is still needed
+                //     totalActiveClients += fBal.activeClients;
+                //     totalPastDueAmount += fBal.pastDueAmount;
+                //     totalActiveBorrowers += fBal.activeBorrowers;
+                //     totalLoanBalance += fBal.loanBalance;
+                // } 
 
                 losList[index] = {
                     ...w,
@@ -330,6 +400,9 @@ const LoanOfficerSummary = () => {
                     loanReleasePerson: totalLoanReleasePerson,
                     loanReleaseAmount: totalLoanReleaseAmount,
                     loanReleaseAmountStr: formatPricePhp(totalLoanReleaseAmount),
+                    activeLoanReleasePerson: totalActiveLoanReleasePerson,
+                    activeLoanReleaseAmount: totalActiveLoanReleaseAmount,
+                    activeLoanReleaseAmountStr: formatPricePhp(totalActiveLoanReleaseAmount),
                     collectionTarget: totalCollectionTarget,
                     collectionTargetStr: formatPricePhp(totalCollectionTarget),
                     collectionAdvancePayment: totalCollectionAdvancePayment,
@@ -346,6 +419,8 @@ const LoanOfficerSummary = () => {
                     loanBalance: totalLoanBalance,
                     loanBalanceStr: formatPricePhp(totalLoanBalance)
                 }
+
+                prevWeek = losList[index];
             }
         });
     
@@ -362,6 +437,9 @@ const LoanOfficerSummary = () => {
             loanReleasePerson: '-',
             loanReleaseAmount: '-',
             loanReleaseAmountStr: '-',
+            activeLoanReleasePerson: '-',
+            activeLoanReleaseAmount: '-',
+            activeLoanReleaseAmountStr: '-',
             collectionTarget: '-',
             collectionTargetStr: '-',
             collectionAdvancePayment: '-',
@@ -386,6 +464,8 @@ const LoanOfficerSummary = () => {
         let totalActiveClients = 0; // last row
         let totalLoanReleasePerson = 0;
         let totalLoanReleaseAmount = 0;
+        let totalActiveLoanReleasePerson = 0;
+        let totalActiveLoanReleaseAmount = 0;
         let totalCollectionTarget = 0;
         let totalCollectionAdvancePayment = 0;
         let totalCollectionActual = 0;
@@ -411,15 +491,21 @@ const LoanOfficerSummary = () => {
             totalFullPaymentAmount += wt.fullPaymentAmount;
         });
 
-        const activeClientsArr = weeklyTotals.filter(los => los.activeClients !== 0);
-        totalActiveClients = activeClientsArr.length > 0 ? activeClientsArr[activeClientsArr.length - 1].activeClients : 0;
-        totalActiveClients += fBal.activeClients;
-        const activeBorrowersArr = weeklyTotals.filter(los => los.activeBorrowers !== 0);
-        totalActiveBorrowers = activeBorrowersArr.length > 0 ? activeBorrowersArr[activeBorrowersArr.length - 1].activeBorrowers : 0;
-        totalActiveBorrowers += fBal.activeBorrowers;
-        const loanBalanceArr = weeklyTotals.filter(los => los.loanBalance !== 0);
-        totalLoanBalance = loanBalanceArr.length > 0 ? loanBalanceArr[loanBalanceArr.length - 1].loanBalance : 0;
-        totalLoanBalance += fBal.loanBalance;
+        // const activeClientsArr = weeklyTotals.filter(los => los.activeClients !== 0);
+        // totalActiveClients = activeClientsArr.length > 0 ? activeClientsArr[activeClientsArr.length - 1].activeClients : 0;
+        // totalActiveClients += fBal.activeClients;
+        // const activeBorrowersArr = weeklyTotals.filter(los => los.activeBorrowers !== 0);
+        // totalActiveBorrowers = activeBorrowersArr.length > 0 ? activeBorrowersArr[activeBorrowersArr.length - 1].activeBorrowers : 0;
+        // totalActiveBorrowers += fBal.activeBorrowers;
+        // const loanBalanceArr = weeklyTotals.filter(los => los.loanBalance !== 0);
+        // totalLoanBalance = loanBalanceArr.length > 0 ? loanBalanceArr[loanBalanceArr.length - 1].loanBalance : 0;
+        // totalLoanBalance += fBal.loanBalance;
+
+        totalActiveClients = fBal.activeClients + totalTransfer + totalNewMember - totalOffsetperson;
+        totalActiveLoanReleasePerson = fBal.activeLoanReleasePerson + totalLoanReleasePerson - totalFullPaymentPerson;
+        totalActiveLoanReleaseAmount = fBal.activeLoanReleaseAmount + totalLoanReleaseAmount - totalFullPaymentAmount;
+        totalActiveBorrowers = fBal.activeBorrowers + totalLoanReleasePerson - totalFullPaymentPerson;
+        totalLoanBalance = fBal.loanBalance + totalLoanReleaseAmount - totalFullPaymentAmount;
 
         monthlyTotal.transfer = totalTransfer;
         monthlyTotal.newMember = totalNewMember;
@@ -428,6 +514,9 @@ const LoanOfficerSummary = () => {
         monthlyTotal.loanReleasePerson = totalLoanReleasePerson;
         monthlyTotal.loanReleaseAmount = totalLoanReleaseAmount;
         monthlyTotal.loanReleaseAmountStr = formatPricePhp(totalLoanReleaseAmount);
+        monthlyTotal.activeLoanReleasePerson = totalActiveLoanReleasePerson;
+        monthlyTotal.activeLoanReleaseAmount = totalActiveLoanReleaseAmount;
+        monthlyTotal.activeLoanReleaseAmountStr = formatPricePhp(totalActiveLoanReleaseAmount);
         monthlyTotal.collectionTarget = totalCollectionTarget;
         monthlyTotal.collectionTargetStr = formatPricePhp(totalCollectionTarget);
         monthlyTotal.collectionAdvancePayment = totalCollectionAdvancePayment;
@@ -449,13 +538,16 @@ const LoanOfficerSummary = () => {
     
     const calculateGrandTotals = (losList, filter, fromLast) => {
         let grandTotal = {
-            day: 'Grand Total',
+            day: 'Commulative',
             transfer: 0,
             newMember: 0,
             offsetPerson: 0,
             activeClients: 0,
             loanReleaseAmount: 0,
             loanReleaseAmountStr: 0,
+            activeLoanReleasePerson: 0,
+            activeLoanReleaseAmount: 0,
+            activeLoanReleaseAmountStr: 0,
             collectionAdvancePayment: 0,
             collectionAdvancePaymentStr: 0,
             collectionActual: 0,
@@ -476,7 +568,10 @@ const LoanOfficerSummary = () => {
         let totalNewMember = 0;
         let totalOffsetperson = 0;
         let totalActiveClients = 0;
+        let totalLoanReleasePerson = 0;
         let totalLoanReleaseAmount = 0;
+        let totalActiveLoanReleasePerson = 0;
+        let totalActiveLoanReleaseAmount = 0;
         let totalCollectionAdvancePayment = 0;
         let totalCollectionActual = 0;
         let totalPastDuePerson = 0;
@@ -493,24 +588,31 @@ const LoanOfficerSummary = () => {
             totalTransfer = fBal.transfer + monthly.transfer;
             totalNewMember = fBal.newMember + monthly.newMember;
             totalOffsetperson = fBal.offsetPerson + monthly.offsetPerson;
-            totalActiveClients = fBal.activeClients + monthly.activeClients;
-            totalLoanReleaseAmount = fBal.loanReleaseAmount + monthly.loanReleaseAmount + monthly.fullPaymentAmount;
+            totalActiveClients = monthly.activeClients ;
+            totalLoanReleasePerson = monthly.loanReleasePerson;
+            totalLoanReleaseAmount = monthly.loanReleaseAmount;
+            totalActiveLoanReleasePerson = monthly.activeLoanReleasePerson;
+            totalActiveLoanReleaseAmount = monthly.activeLoanReleaseAmount;
             totalCollectionAdvancePayment = fBal.collectionAdvancePayment + monthly.collectionTarget + monthly.collectionAdvancePayment - monthly.fullPaymentAmount;
-            totalCollectionActual = fBal.collectionActual + monthly.collectionActual + monthly.fullPaymentAmount;
+            totalCollectionActual = fBal.collectionActual + monthly.collectionActual - monthly.fullPaymentAmount;
             totalPastDuePerson = fBal.pastDuePerson + monthly.pastDuePerson;
             totalPastDueAmount = fBal.pastDueAmount + monthly.pastDueAmount;
             totalFullPaymentPerson = fBal.fullPaymentPerson + monthly.fullPaymentPerson;
             totalFullPaymentAmount = fBal.fullPaymentAmount + monthly.fullPaymentAmount;
-            totalActiveBorrowers = fBal.activeBorrowers + monthly.loanReleasePerson - monthly.fullPaymentPerson;
-            totalLoanBalance = fBal.loanBalance + monthly.loanReleaseAmount - monthly.collectionActual;
+            totalActiveBorrowers = monthly.activeBorrowers;
+            totalLoanBalance = totalActiveLoanReleaseAmount - totalCollectionActual;
         }
 
         grandTotal.transfer = totalTransfer;
         grandTotal.newMember = totalNewMember;
         grandTotal.offsetPerson = totalOffsetperson;
         grandTotal.activeClients = totalActiveClients;
+        grandTotal.loanReleasePerson = totalLoanReleasePerson;
         grandTotal.loanReleaseAmount = totalLoanReleaseAmount;
         grandTotal.loanReleaseAmountStr = formatPricePhp(totalLoanReleaseAmount);
+        grandTotal.activeLoanReleasePerson = totalActiveLoanReleasePerson;
+        grandTotal.activeLoanReleaseAmount = totalActiveLoanReleaseAmount;
+        grandTotal.activeLoanReleaseAmountStr = formatPricePhp(totalActiveLoanReleaseAmount);
         grandTotal.collectionAdvancePayment = totalCollectionAdvancePayment;
         grandTotal.collectionAdvancePaymentStr = formatPricePhp(totalCollectionAdvancePayment);
         grandTotal.collectionActual = totalCollectionActual;
@@ -572,8 +674,12 @@ const LoanOfficerSummary = () => {
             newMember: 0,
             offsetPerson: 0,
             activeClients: 0,
+            loanReleasePerson: 0,
             loanReleaseAmount: 0,
             loanReleaseAmountStr: 0,
+            activeLoanReleasePerson: 0,
+            activeLoanReleaseAmount: 0,
+            activeLoanReleaseAmountStr: 0,
             collectionAdvancePayment: 0,
             collectionAdvancePaymentStr: 0,
             collectionActual: 0,
@@ -607,6 +713,9 @@ const LoanOfficerSummary = () => {
                 loanReleasePerson: '-',
                 loanReleaseAmount: '-',
                 loanReleaseAmountStr: '-',
+                activeLoanReleasePerson: '-',
+                activeLoanReleaseAmount: '-',
+                activeLoanReleaseAmountStr: '-',
                 collectionTarget: '-',
                 collectionTargetStr: '-',
                 collectionAdvancePayment: '-',
@@ -634,6 +743,9 @@ const LoanOfficerSummary = () => {
                     loanReleasePerson: '-',
                     loanReleaseAmount: '-',
                     loanReleaseAmountStr: '-',
+                    activeLoanReleasePerson: '-',
+                    activeLoanReleaseAmount: '-',
+                    activeLoanReleaseAmountStr: '-',
                     collectionTarget: '-',
                     collectionTargetStr: '-',
                     collectionAdvancePayment: '-',
@@ -684,15 +796,19 @@ const LoanOfficerSummary = () => {
             if (response.success) {
                 let fBal = response.data.fBalance;
                 if (fBal.length > 0) {
-                    fBal = fBal[0];
+                    fBal = fBal[0].data;
                     losList[0] = {
                         day: 'F / Balance',
                         transfer: fBal.transfer,
                         newMember: fBal.newMember,
                         offsetPerson: fBal.offsetPerson,
                         activeClients: fBal.activeClients,
+                        loanReleasePerson: fBal.loanReleasePerson,
                         loanReleaseAmount: fBal.loanReleaseAmount,
                         loanReleaseAmountStr: formatPricePhp(fBal.loanReleaseAmount),
+                        activeLoanReleasePerson: fBal.activeLoanReleasePerson,
+                        activeLoanReleaseAmount: fBal.activeLoanReleaseAmount,
+                        activeLoanReleaseAmountStr: formatPricePhp(fBal.activeLoanReleaseAmount),
                         collectionAdvancePayment: fBal.collectionAdvancePayment,
                         collectionAdvancePaymentStr: formatPricePhp(fBal.collectionAdvancePayment),
                         collectionActual: fBal.collectionActual,
@@ -725,9 +841,12 @@ const LoanOfficerSummary = () => {
                             loanBalance: los.loanBalance + los.loanReleaseAmount,
                             loanBalanceStr: formatPricePhp(los.loanBalance + los.loanReleaseAmount)
                         };
+                    } else {
+
                     }
                 });
 
+                losList = calculatePersons(losList);
                 losList = calculateWeeklyTotals(losList);
                 losList.push(calculateMonthlyTotals(losList[0], losList.filter(los => los.weekTotal)));
                 losList.push(calculateGrandTotals(losList, false, true));
@@ -767,8 +886,10 @@ const LoanOfficerSummary = () => {
         if (days.length > 0) {
             const fMonth = (typeof selectedMonth === 'number' && selectedMonth < 10) ? '0' + selectedMonth : selectedMonth;
             mounted && getLastLos();
-            mounted && getListLos(`${selectedYear}-${fMonth}-01`);
-            mounted && setLoading(false);
+            setTimeout(() => {
+                mounted && getListLos(`${selectedYear}-${fMonth}-01`);
+                mounted && setLoading(false);
+            }, 800);
         }
 
         return (() => {
@@ -788,36 +909,38 @@ const LoanOfficerSummary = () => {
                             selectedMonth={selectedMonth} setSelectedMonth={setSelectedMonth} handleMonthFilter={handleMonthFilter}
                             selectedYear={selectedYear} setSelectedYear={setSelectedYear} handleYearFilter={handleYearFilter}/>
                     <div className="flex flex-col h-[55rem] max-h-[55rem] mt-40 pl-6 pr-2 overflow-y-auto">
-                        <div className="block rounded-xl overflow-auto h-[49rem] w-[130rem]">
-                            <table className="relative w-full table-auto border-collapse text-sm bg-white mb-8">
+                        <div className="block rounded-xl overflow-auto h-[49rem] w-[115rem]">
+                            <table className="relative w-full table-fixed border-collapse text-sm bg-white mb-8">
                                 <thead>
                                     <tr>
-                                        <th rowSpan={3} className="sticky top-0 bg-white border border-gray-300 border-l-0 border-t-0 px-4 py-2 text-gray-500 uppercase">Date</th>
-                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0  px-4 py-2 text-gray-500 uppercase">Trans.</th>
-                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0  px-4 py-2 text-gray-500 uppercase">New Member</th>
-                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0  px-4 py-2 text-gray-500 uppercase">Off-set Person</th>
-                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0  px-4 py-2 text-gray-500 uppercase">Active Clients</th>
-                                        <th colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0  px-4 py-4 text-gray-500 uppercase">Loan Release</th>
-                                        <th colSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0  px-4 text-gray-500 uppercase">COLLECTION (with service charges)</th>
-                                        <th colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0  px-4 text-gray-500 uppercase">Pastdue</th>
-                                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0  px-4 text-gray-500 uppercase">FULL PAYMENT (with service charge)</th>
-                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0  px-4 py-2 text-gray-500 uppercase">Active Borrowers</th>
-                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-r-0 border-t-0  px-4 py-2 text-gray-500 uppercase">Loan Balance</th>
+                                        <th rowSpan={3} className="sticky top-0 bg-white border border-gray-300 border-l-0 border-t-0 px-2 py-2 text-gray-500 uppercase">Date</th>
+                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-20 px-2 py-2 text-gray-500 uppercase">Trans.</th>
+                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-20 px-2 py-2 text-gray-500 uppercase">New Member</th>
+                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-20 px-2 py-2 text-gray-500 uppercase">Off-set Person</th>
+                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-20 px-2 py-2 text-gray-500 uppercase">Active Clients</th>
+                                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-52 px-2 py-4 text-gray-500 uppercase">Loan Release W/ Service Charge</th>
+                                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-52 px-2 py-4 text-gray-500 uppercase">ACTIVE LOAN RELEASE W/ Service Charge</th>
+                                        <th colSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-72 px-2 text-gray-500 uppercase">COLLECTION (with service charges)</th>
+                                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-52 px-2 text-gray-500 uppercase">Pastdue</th>
+                                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 w-52 border-t-0  px-2 text-gray-500 uppercase">FULL PAYMENT (with service charge)</th>
+                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-28 px-2 py-2 text-gray-500 uppercase">Active Borrowers</th>
+                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-r-0 border-t-0  px-2 py-2 text-gray-500 uppercase">Loan Balance</th>
                                     </tr>
                                     <tr>
-                                        <th colSpan={2} className="sticky top-[3.3rem] bg-white  border border-gray-300 px-4 text-gray-500 uppercase">(with service charges)</th>
-                                        <th colSpan={3} className="sticky top-[3.3rem] bg-white  border border-gray-300 px-4 text-gray-500 uppercase">REGULAR LOAN</th>
-                                        <th rowSpan={2} className="sticky top-[3.3rem] bg-white  border border-gray-300 px-4 text-gray-500 uppercase">Person</th>
-                                        <th rowSpan={2} className="sticky top-[3.3rem] bg-white  border border-gray-300 px-4 text-gray-500 uppercase">Amount</th>
+                                        <th colSpan={3} className="sticky top-[2.8rem] bg-white  border border-gray-300 px-2 text-gray-500 uppercase">REGULAR LOAN</th>
                                     </tr>
                                     <tr>
-                                        <th className="sticky top-[4.7rem] bg-white  border border-gray-300 px-4 text-gray-500 uppercase">Person</th>
-                                        <th className="sticky top-[4.7rem] bg-white  border border-gray-300 px-4 text-gray-500 uppercase">Amount</th>
-                                        <th className="sticky top-[4.7rem] bg-white  border border-gray-300 px-4 text-gray-500 uppercase">Target</th>
-                                        <th className="sticky top-[4.7rem] bg-white  border border-gray-300 px-4 text-gray-500 uppercase">Advance Payment</th>
-                                        <th className="sticky top-[4.7rem] bg-white  border border-gray-300 px-4 text-gray-500 uppercase">Actual</th>
-                                        <th className="sticky top-[4.7rem] bg-white  border border-gray-300 px-4 text-gray-500 uppercase">Person</th>
-                                        <th className="sticky top-[4.7rem] bg-white  border border-gray-300 px-4 text-gray-500 uppercase">Amount</th>
+                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 px-2 text-gray-500 uppercase">Person</th>
+                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 px-2 text-gray-500 uppercase">Amount</th>
+                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 px-2 text-gray-500 uppercase">Person</th>
+                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 px-2 text-gray-500 uppercase">Amount</th>
+                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 px-2 text-gray-500 uppercase">Target</th>
+                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 px-2 text-gray-500 uppercase">Advance Payment</th>
+                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 px-2 text-gray-500 uppercase">Actual</th>
+                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 px-2 text-gray-500 uppercase">Person</th>
+                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 px-2 text-gray-500 uppercase">Amount</th>
+                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 px-2 text-gray-500 uppercase">Person</th>
+                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 px-2 text-gray-500 uppercase">Amount</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y">
@@ -837,7 +960,10 @@ const LoanOfficerSummary = () => {
                                                         <td className="px-4 py-4 text-center border border-gray-300">{ item.newMember }</td>
                                                         <td className="px-4 py-4 text-center border border-gray-300">{ item.offsetPerson }</td>
                                                         <td className="px-4 py-4 text-center border border-gray-300">{ item.activeClients }</td>
-                                                        <td colSpan={2} className="px-4 py-4 text-center border border-gray-300">{ item.loanReleaseAmountStr }</td>
+                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.loanReleasePerson }</td>
+                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.loanReleaseAmountStr }</td>
+                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.activeLoanReleasePerson }</td>
+                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.activeLoanReleaseAmountStr }</td>
                                                         <td colSpan={2} className="px-4 py-4 text-center border border-gray-300">{ item.collectionAdvancePaymentStr }</td>
                                                         <td className="px-4 py-4 text-center border border-gray-300">{ item.collectionActualStr }</td>
                                                         <td className="px-4 py-4 text-center border border-gray-300">{ item.pastDuePerson }</td>
@@ -854,6 +980,8 @@ const LoanOfficerSummary = () => {
                                                         <td className="px-4 py-4 text-center border border-gray-300">{ item.newMember }</td>
                                                         <td className="px-4 py-4 text-center border border-gray-300">{ item.offsetPerson }</td>
                                                         <td className="px-4 py-4 text-center border border-gray-300">{ item.activeClients }</td>
+                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.loanReleasePerson }</td>
+                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.loanReleaseAmountStr }</td>
                                                         <td className="px-4 py-4 text-center border border-gray-300">{ item.loanReleasePerson }</td>
                                                         <td className="px-4 py-4 text-center border border-gray-300">{ item.loanReleaseAmountStr }</td>
                                                         <td className="px-4 py-4 text-center border border-gray-300">{ item.collectionTargetStr }</td>

@@ -771,13 +771,13 @@ const CashCollectionDetailsPage = () => {
                                 temp.excess =  0;
                                 temp.mispayment = true;
                                 temp.mispaymentStr = 'Yes';
-                                temp.noOfPayments = temp.noOfPayments + 1;
+                                // temp.noOfPayments = temp.noOfPayments + 1;
                                 temp.error = true;
                                 // temp.remarks = { label: 'Excused', value: 'excused'};
                             } else {
                                 temp.mispayment = false;
                                 temp.mispaymentStr = 'No';
-                                temp.noOfPayments = temp.noOfPayments + 1;
+                                // temp.noOfPayments = temp.noOfPayments + 1;
                             }
     
                             temp.noOfPaymentStr = temp.noOfPayments + ' / ' + maxDays;
