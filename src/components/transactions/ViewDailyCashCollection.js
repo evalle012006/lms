@@ -51,6 +51,7 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
             let totalNoPastDue = 0;
             let mispayment = 0;
 
+            let selectedBranch;
             response.data && response.data.map(cc => {
                 let collection = {
                     groupId: cc._id,
@@ -73,7 +74,7 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                     noOfFullPayment: '-',
                     status: '-'
                 };
-
+                selectedBranch = cc.branchId;
                 let noCurrentRelease = '0 / 0';
                 if (!filter) {
                     if (cc.loans.length > 0) {
@@ -250,9 +251,12 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                 currentReleaseAmountStr: currentReleaseAmount ? formatPricePhp(currentReleaseAmount) : 0,
                 activeClients: noOfClients,
                 activeBorrowers: noOfBorrowers,
+                totalLoanRelease: totalsLoanRelease,
                 totalReleasesStr: totalsLoanRelease ? formatPricePhp(totalsLoanRelease) : 0,
+                totalLoanBalance: totalsLoanBalance,
                 totalLoanBalanceStr: totalsLoanBalance ? formatPricePhp(totalsLoanBalance) : 0,
                 loanTargetStr: targetLoanCollection ? formatPricePhp(targetLoanCollection) : 0,
+                excess: excess,
                 excessStr: excess ? formatPricePhp(excess) : 0,
                 collectionStr: totalLoanCollection ? formatPricePhp(totalLoanCollection) : 0,
                 mispayment: mispayment + ' / ' + noOfClients,
@@ -265,13 +269,56 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
             }
 
             collectionData.push(totals);
-
+            const currentMonth = moment().month();
+            if (!filter && currentMonth === 0) {
+                saveYearEndLos(totals, selectedBranch);
+            }
+            
             dispatch(setCashCollectionList(collectionData));
             setLoading(false);
         } else {
             setLoading(false);
             toast.error('Error retrieving branches list.');
         }
+    }
+
+    const saveYearEndLos = async (totals, selectedBranch) => {
+        let grandTotal = {
+            day: 'Year End',
+            transfer: 0,
+            newMember: 0,
+            offsetPerson: 0,
+            activeClients: totals.activeClients,
+            loanReleasePerson: 0,
+            loanReleaseAmount: 0,
+            activeLoanReleasePerson: totals.activeBorrowers,
+            activeLoanReleaseAmount: totals.totalLoanRelease,
+            collectionAdvancePayment: totals.excess + totals.targetLoanCollection,
+            collectionActual: totals.totalLoanRelease - totals.totalLoanBalance,
+            pastDuePerson: 0,
+            pastDueAmount: 0,
+            fullPaymentPerson: 0,
+            fullPaymentAmount: 0,
+            activeBorrowers: totals.activeBorrowers,
+            loanBalance: totals.totalLoanBalance
+        };
+
+        let userId;
+        if (currentUser.role.rep === 4) {
+            userId = currentUser._id;
+            const losTotals = {
+                userId: currentUser._id,
+                branchId: selectedBranch,
+                month: 12,
+                year: moment().year() - 1,
+                data: grandTotal
+            }
+    
+            await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loan-officer-summary/save-update-totals', losTotals);
+        } 
+        // else {
+        //     userId = selectedLOSubject.value;
+        // }
     }
 
     const handleRowClick = (selected) => {
@@ -437,25 +484,6 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
             mounted = false;
         };
     }, [dateFilter]);
-
-    // useEffect(() => {
-    //     if (cashCollectionList) {
-    //         const saveTotals = async () => {
-    //             let totalData = cashCollectionList.find(c => c.group === "TOTALS");
-
-    //             if (totalData) {
-    //                 totalData = {
-    //                     ...totalData,
-    //                     loId: currentUser.role.rep === 4 ? currentUser._id : selectedLOSubject.value.length > 0 && selectedLOSubject.value
-    //                 }
-
-    //                 await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-totals', totalData);                
-    //             }
-    //         }
-
-    //         saveTotals();
-    //     }
-    // }, [cashCollectionList]);
 
     useEffect(() => {
         const initGroupCollectionSummary = async () => {

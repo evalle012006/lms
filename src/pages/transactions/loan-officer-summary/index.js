@@ -297,6 +297,7 @@ const LoanOfficerSummary = () => {
                     temp.activeClients = fBal.activeClients + transfer + newMember - offsetPerson;
                     temp.activeLoanReleasePerson = fBal.activeLoanReleasePerson + loanReleasePerson - fullPaymentPerson;
                     temp.activeLoanReleaseAmount = fBal.activeLoanReleaseAmount + loanReleaseAmount - fullPaymentAmount;
+                    temp.activeLoanReleaseAmountStr = formatPricePhp(temp.activeLoanReleaseAmount);
                     temp.activeBorrowers = fBal.activeBorrowers + loanReleasePerson - fullPaymentPerson;
                     temp.loanBalance = fBal.loanBalance + loanReleaseAmount - collectionActual;
                     temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
@@ -304,6 +305,7 @@ const LoanOfficerSummary = () => {
                     temp.activeClients = prevLos.activeClients + transfer + newMember - offsetPerson;
                     temp.activeLoanReleasePerson = prevLos.activeLoanReleasePerson + loanReleasePerson - fullPaymentPerson;
                     temp.activeLoanReleaseAmount = prevLos.activeLoanReleaseAmount + loanReleaseAmount - fullPaymentAmount;
+                    temp.activeLoanReleaseAmountStr = formatPricePhp(temp.activeLoanReleaseAmount);
                     temp.activeBorrowers = prevLos.activeBorrowers + loanReleasePerson - fullPaymentPerson;
                     temp.loanBalance = prevLos.loanBalance + loanReleaseAmount - collectionActual;
                     temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
@@ -523,7 +525,7 @@ const LoanOfficerSummary = () => {
         return monthlyTotal;
     }
     
-    const calculateGrandTotals = (losList, filter, fromLast) => {
+    const calculateGrandTotals = (losList, filter) => {
         let grandTotal = {
             day: 'Commulative',
             transfer: 0,
@@ -615,234 +617,26 @@ const LoanOfficerSummary = () => {
         grandTotal.loanBalanceStr = formatPricePhp(totalLoanBalance);
 
         if (!filter) {
-            saveLosTotals(grandTotal, fromLast);
+            saveLosTotals(grandTotal);
         }
 
         return grandTotal;
     }
 
-    const saveLosTotals = async (total, fromLast) => {
-        // let lastWeekdayOfLastMonth =  moment().subtract(1, 'months').endOf('month');
-
-        // if (lastWeekdayOfLastMonth.format("dddd") === 'Saturday') {
-        //     lastWeekdayOfLastMonth = lastWeekdayOfLastMonth.subtract(1, 'days');
-        // } else if (lastWeekdayOfLastMonth.format("dddd") === 'Sunday') {
-        //     lastWeekdayOfLastMonth = lastWeekdayOfLastMonth.subtract(2, 'days');
-        // }
-        // lastWeekdayOfLastMonth = lastWeekdayOfLastMonth.format('YYYY-MM-DD');
-
-        let userId;
-        if (currentUser.role.rep === 3 || currentUser.role.rep === 4) {
-            userId = currentUser._id;
+    const saveLosTotals = async (total) => {
+        if (currentUser.role.rep === 4) {
+            const losTotals = {
+                userId: currentUser._id,
+                branchId: selectedBranch && selectedBranch._id,
+                month: moment().month() + 1,
+                year: moment().year(),
+                data: total
+            }
+    
+            await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loan-officer-summary/save-update-totals', losTotals);
         } else {
             // for AM and Admin
             // get BM id for that branch
-        }
-
-        const losTotals = {
-            userId: userId,
-            branchId: selectedBranch && selectedBranch._id,
-            month: !fromLast ? moment().month() + 1 : 12,
-            year: !fromLast ? moment().year() : 2022,
-            data: total
-        }
-
-        const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loan-officer-summary/save-update-totals', losTotals);
-    }
-
-    const getLastLos = async () => {
-        const lastMonthDate = '2022-12-01';
-        const lastDays = getDaysOfMonth(2022, 12);
-
-        let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/loan-officer-summary';
-        let losList = [{
-            day: 'F / Balance',
-            transfer: 0,
-            newMember: 0,
-            offsetPerson: 0,
-            activeClients: 0,
-            loanReleasePerson: 0,
-            loanReleaseAmount: 0,
-            loanReleaseAmountStr: 0,
-            activeLoanReleasePerson: 0,
-            activeLoanReleaseAmount: 0,
-            activeLoanReleaseAmountStr: 0,
-            collectionAdvancePayment: 0,
-            collectionAdvancePaymentStr: 0,
-            collectionActual: 0,
-            collectionActualStr: 0,
-            pastDuePerson: 0,
-            pastDueAmount: 0,
-            pastDueAmountStr: 0,
-            fullPaymentPerson: 0,
-            fullPaymentAmount: 0,
-            fullPaymentAmountStr: 0,
-            activeBorrowers: 0,
-            loanBalance: 0,
-            loanBalanceStr: 0,
-            fBalance: true
-        }];
-        let weekNumber = 0;
-        lastDays.map((day, index) => {
-            const dayName = moment(day).format('dddd');
-
-            if (dayName === 'Saturday' || dayName === 'Sunday') {
-                return;
-            }
-
-            losList.push({
-                day: day,
-                dayName: dayName,
-                transfer: '-',
-                newMember: '-',
-                offsetPerson: '-',
-                activeClients: '-',
-                loanReleasePerson: '-',
-                loanReleaseAmount: '-',
-                loanReleaseAmountStr: '-',
-                activeLoanReleasePerson: '-',
-                activeLoanReleaseAmount: '-',
-                activeLoanReleaseAmountStr: '-',
-                collectionTarget: '-',
-                collectionTargetStr: '-',
-                collectionAdvancePayment: '-',
-                collectionAdvancePaymentStr: '-',
-                collectionActual: '-',
-                collectionActualStr: '-',
-                pastDuePerson: '-',
-                pastDueAmount: '-',
-                pastDueAmountStr: '-',
-                fullPaymentPerson: '-',
-                fullPaymentAmount: '-',
-                fullPaymentAmountStr: '-',
-                activeBorrowers: '-',
-                loanBalance: '-',
-                loanBalanceStr: '-'
-            });
-
-            if (dayName === 'Friday' || index === days.length - 1) {
-                losList.push({
-                    day: 'Weekly Total',
-                    transfer: '-',
-                    newMember: '-',
-                    offsetPerson: '-',
-                    activeClients: '-',
-                    loanReleasePerson: '-',
-                    loanReleaseAmount: '-',
-                    loanReleaseAmountStr: '-',
-                    activeLoanReleasePerson: '-',
-                    activeLoanReleaseAmount: '-',
-                    activeLoanReleaseAmountStr: '-',
-                    collectionTarget: '-',
-                    collectionTargetStr: '-',
-                    collectionAdvancePayment: '-',
-                    collectionAdvancePaymentStr: '-',
-                    collectionActual: '-',
-                    collectionActualStr: '-',
-                    pastDuePerson: '-',
-                    pastDueAmount: '-',
-                    pastDueAmountStr: '-',
-                    fullPaymentPerson: '-',
-                    fullPaymentAmount: '-',
-                    fullPaymentAmountStr: '-',
-                    activeBorrowers: '-',
-                    loanBalance: '-',
-                    loanBalanceStr: '-',
-                    weekNumber: weekNumber++,
-                    weekTotal: true
-                });
-            }
-        });
-
-        if (currentUser.role.rep === 3) {
-            url = url + '?' + new URLSearchParams({ branchCode: currentUser.designatedBranch, date: date ? date : currentDate });
-            const response = await fetchWrapper.get(url);
-            if (response.success) {
-                response.data.current.map(los => {
-                    losList.push({
-                        ...los,
-                        loanReleaseAmountStr: formatPricePhp(los.loanReleaseAmount),
-                        collectionTargetStr: formatPricePhp(los.collectionTarget),
-                        collectionAdvancePaymentStr: formatPricePhp(los.collectionAdvancePayment),
-                        collectionActualStr: formatPricePhp(los.collectionActual),
-                        pastDueAmountStr: formatPricePhp(los.pastDueAmount),
-                        fullPaymentAmountStr: formatPricePhp(los.fullPaymentAmount),
-                        loanBalanceStr: formatPricePhp(los.loanBalance)
-                    });
-                });
-
-                dispatch(setLosList(losList));
-                setLoading(false);
-            } else if (response.error) {
-                setLoading(false);
-                toast.error(response.message);
-            }
-        } else if (currentUser.role.rep === 4) {
-            url = url + '?' + new URLSearchParams({ userId: currentUser._id, date: lastMonthDate });
-            const response = await fetchWrapper.get(url);
-            if (response.success) {
-                let fBal = response.data.fBalance;
-                if (fBal.length > 0) {
-                    fBal = fBal[0].data;
-                    losList[0] = {
-                        day: 'F / Balance',
-                        transfer: fBal.transfer,
-                        newMember: fBal.newMember,
-                        offsetPerson: fBal.offsetPerson,
-                        activeClients: fBal.activeClients,
-                        loanReleasePerson: fBal.loanReleasePerson,
-                        loanReleaseAmount: fBal.loanReleaseAmount,
-                        loanReleaseAmountStr: formatPricePhp(fBal.loanReleaseAmount),
-                        activeLoanReleasePerson: fBal.activeLoanReleasePerson,
-                        activeLoanReleaseAmount: fBal.activeLoanReleaseAmount,
-                        activeLoanReleaseAmountStr: formatPricePhp(fBal.activeLoanReleaseAmount),
-                        collectionAdvancePayment: fBal.collectionAdvancePayment,
-                        collectionAdvancePaymentStr: formatPricePhp(fBal.collectionAdvancePayment),
-                        collectionActual: fBal.collectionActual,
-                        collectionActualStr: formatPricePhp(fBal.collectionActual),
-                        pastDuePerson: fBal.pastDuePerson,
-                        pastDueAmount: fBal.pastDueAmount,
-                        pastDueAmountStr: formatPricePhp(fBal.pastDueAmount),
-                        fullPaymentPerson: fBal.fullPaymentPerson,
-                        fullPaymentAmount: fBal.fullPaymentAmount,
-                        fullPaymentAmountStr: formatPricePhp(fBal.fullPaymentAmount),
-                        activeBorrowers: fBal.activeBorrowers,
-                        loanBalance: fBal.loanBalance,
-                        loanBalanceStr: formatPricePhp(fBal.loanBalance),
-                        fBalance: true
-                    };
-                }
-                
-                response.data.current.map(los => {
-                    const index = losList.findIndex(d => d.day === los._id);
-                    if (index > -1) {
-                        losList[index] = {
-                            ...los,
-                            day: los._id,
-                            loanReleaseAmountStr: formatPricePhp(los.loanReleaseAmount),
-                            collectionTargetStr: formatPricePhp(los.collectionTarget),
-                            collectionAdvancePaymentStr: formatPricePhp(los.collectionAdvancePayment),
-                            collectionActualStr: formatPricePhp(los.collectionActual),
-                            pastDueAmountStr: formatPricePhp(los.pastDueAmount),
-                            fullPaymentAmountStr: formatPricePhp(los.fullPaymentAmount),
-                            loanBalance: los.loanBalance + los.loanReleaseAmount,
-                            loanBalanceStr: formatPricePhp(los.loanBalance + los.loanReleaseAmount)
-                        };
-                    } else {
-
-                    }
-                });
-
-                losList = calculatePersons(losList);
-                losList = calculateWeeklyTotals(losList);
-                losList.push(calculateMonthlyTotals(losList[0], losList.filter(los => los.weekTotal)));
-                losList.push(calculateGrandTotals(losList, false, true));
-
-                setLoading(false);
-            } else if (response.error) {
-                setLoading(false);
-                toast.error(response.message);
-            }
         }
     }
 
@@ -872,11 +666,8 @@ const LoanOfficerSummary = () => {
 
         if (days.length > 0) {
             const fMonth = (typeof selectedMonth === 'number' && selectedMonth < 10) ? '0' + selectedMonth : selectedMonth;
-            mounted && getLastLos();
-            setTimeout(() => {
-                mounted && getListLos(`${selectedYear}-${fMonth}-01`);
-                mounted && setLoading(false);
-            }, 800);
+            mounted && getListLos(`${selectedYear}-${fMonth}-01`);
+            mounted && setLoading(false);
         }
 
         return (() => {
@@ -969,8 +760,8 @@ const LoanOfficerSummary = () => {
                                                         <td className="px-4 py-4 text-center border border-gray-300">{ item.activeClients }</td>
                                                         <td className="px-4 py-4 text-center border border-gray-300">{ item.loanReleasePerson }</td>
                                                         <td className="px-4 py-4 text-center border border-gray-300">{ item.loanReleaseAmountStr }</td>
-                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.loanReleasePerson }</td>
-                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.loanReleaseAmountStr }</td>
+                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.activeLoanReleasePerson }</td>
+                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.activeLoanReleaseAmountStr }</td>
                                                         <td className="px-4 py-4 text-center border border-gray-300">{ item.collectionTargetStr }</td>
                                                         <td className="px-4 py-4 text-center border border-gray-300">{ item.collectionAdvancePaymentStr }</td>
                                                         <td className="px-4 py-4 text-center border border-gray-300">{ item.collectionActualStr }</td>
