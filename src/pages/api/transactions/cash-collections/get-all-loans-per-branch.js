@@ -427,12 +427,18 @@ async function getAllLoansPerGroup(req, res) {
                                             loanTarget: { 
                                                 $sum: { 
                                                     $cond: {
-                                                        if: { $ne: ['$status', 'pending']}, 
+                                                        if: { $and: [{$ne: ['$status', 'pending']}, {$ne: ['$status', 'tomorrow']}]}, 
                                                         then: { 
                                                             $cond: {
                                                                 if: { $and: [{$eq: ['$activeLoan', 0]}, {$eq: ['$fullPaymentDate', date]}] },
                                                                 then: '$history.activeLoan',
-                                                                else: '$activeLoan'
+                                                                else: {
+                                                                    $cond: {
+                                                                        if: { $or: [{$eq: ['$remarks.value', 'delinquent']}, {$eq: ['$remarks.value', 'excused']}, {$eq: ['$remarks.value', 'past due']}] },
+                                                                        then: 0,
+                                                                        else: '$activeLoan'
+                                                                    }
+                                                                }
                                                             } 
                                                         }, 
                                                         else: 0
@@ -440,13 +446,6 @@ async function getAllLoansPerGroup(req, res) {
                                                 }
                                             },
                                             mispayment: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },
-                                            loanTarget: { $sum: {
-                                                $cond: {
-                                                    if: { $or: [{$eq: ['$remarks.value', 'delinquent']}, {$eq: ['$remarks.value', 'excused']}, {$eq: ['$remarks.value', 'past due']}] },
-                                                    then: '$activeLoan',
-                                                    else: 0
-                                                }
-                                            } },
                                             collection: { $sum: '$paymentCollection' },
                                             excess: { $sum: '$excess' },
                                             pastDue: { $sum: '$pastDue' },
@@ -580,12 +579,18 @@ async function getAllLoansPerGroup(req, res) {
                                         loanTarget: { 
                                             $sum: { 
                                                 $cond: {
-                                                    if: { $ne: ['$status', 'pending']}, 
+                                                    if: { $and: [{$ne: ['$status', 'pending']}, {$ne: ['$status', 'tomorrow']}]}, 
                                                     then: { 
                                                         $cond: {
                                                             if: { $and: [{$eq: ['$activeLoan', 0]}, {$eq: ['$fullPaymentDate', date]}] },
                                                             then: '$history.activeLoan',
-                                                            else: '$activeLoan'
+                                                            else: {
+                                                                $cond: {
+                                                                    if: { $or: [{$eq: ['$remarks.value', 'delinquent']}, {$eq: ['$remarks.value', 'excused']}, {$eq: ['$remarks.value', 'past due']}] },
+                                                                    then: 0,
+                                                                    else: '$activeLoan'
+                                                                }
+                                                            }
                                                         } 
                                                     }, 
                                                     else: 0
@@ -593,13 +598,6 @@ async function getAllLoansPerGroup(req, res) {
                                             }
                                         },
                                         mispayment: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },
-                                        loanTarget: { $sum: {
-                                            $cond: {
-                                                if: { $or: [{$eq: ['$remarks.value', 'delinquent']}, {$eq: ['$remarks.value', 'excused']}, {$eq: ['$remarks.value', 'past due']}] },
-                                                then: '$activeLoan',
-                                                else: 0
-                                            }
-                                        } },
                                         collection: { $sum: '$paymentCollection' },
                                         excess: { $sum: '$excess' },
                                         pastDue: { $sum: '$pastDue' },
