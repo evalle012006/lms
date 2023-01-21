@@ -464,6 +464,7 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
         //         mounted && getCashCollections();
         //     }
         // }
+        
 
         if (dateFilter) {
             const date = moment(dateFilter).format('YYYY-MM-DD');
