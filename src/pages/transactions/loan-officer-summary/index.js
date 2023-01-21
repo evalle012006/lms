@@ -677,38 +677,38 @@ const LoanOfficerSummary = () => {
                             selectedMonth={selectedMonth} setSelectedMonth={setSelectedMonth} handleMonthFilter={handleMonthFilter}
                             selectedYear={selectedYear} setSelectedYear={setSelectedYear} handleYearFilter={handleYearFilter}/>
                     <div className="flex flex-col h-[55rem] max-h-[55rem] mt-40 pl-6 pr-2 overflow-y-auto">
-                        <div className="block rounded-xl overflow-auto h-[49rem] w-[115rem]">
+                        <div className="block rounded-xl overflow-auto h-[49rem] w-[99rem]">
                             <table className="relative w-full table-fixed border-collapse text-sm bg-white mb-8">
                                 <thead>
                                     <tr>
                                         <th rowSpan={3} className="sticky top-0 bg-white border border-gray-300 border-l-0 border-t-0 px-2 py-2 text-gray-500 uppercase">Date</th>
-                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-20 px-2 py-2 text-gray-500 uppercase">Trans.</th>
-                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-20 px-2 py-2 text-gray-500 uppercase">New Member</th>
-                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-20 px-2 py-2 text-gray-500 uppercase">Off-set Person</th>
-                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-20 px-2 py-2 text-gray-500 uppercase">Active Clients</th>
-                                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-52 px-2 py-4 text-gray-500 uppercase">Loan Release W/ Service Charge</th>
-                                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-52 px-2 py-4 text-gray-500 uppercase">ACTIVE LOAN RELEASE W/ Service Charge</th>
-                                        <th colSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-72 px-2 text-gray-500 uppercase">COLLECTION (with service charges)</th>
-                                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-52 px-2 text-gray-500 uppercase">Pastdue</th>
-                                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 w-52 border-t-0  px-2 text-gray-500 uppercase">FULL PAYMENT (with service charge)</th>
-                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-28 px-2 py-2 text-gray-500 uppercase">Active Borrowers</th>
+                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-12 px-2 py-2 text-gray-500 uppercase">Tran</th>
+                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-12 px-2 py-2 text-gray-500 uppercase">NM</th>
+                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-12 px-2 py-2 text-gray-500 uppercase">Off-set Per.</th>
+                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-12 px-2 py-2 text-gray-500 uppercase">Act. Clnt</th>
+                                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-25 px-2 py-4 text-gray-500 uppercase">Loan Release W/ Serv. Charge</th>
+                                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-25 px-2 py-4 text-gray-500 uppercase">ACTIVE LOAN RELEASE W/ Serv. Charge</th>
+                                        <th colSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-30 px-2 text-gray-500 uppercase">COLLECTION (w/ serv. charges)</th>
+                                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-23 px-2 text-gray-500 uppercase">Pastdue</th>
+                                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-25 px-2 text-gray-500 uppercase">FULL PAYMENT (w/ serv. charge)</th>
+                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-12 px-2 py-2 text-gray-500 uppercase">Act. Bor.</th>
                                         <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-r-0 border-t-0  px-2 py-2 text-gray-500 uppercase">Loan Balance</th>
                                     </tr>
                                     <tr>
-                                        <th colSpan={3} className="sticky top-[2.8rem] bg-white  border border-gray-300 px-2 text-gray-500 uppercase">REGULAR LOAN</th>
+                                        <th colSpan={3} className="sticky top-[2.2rem] bg-white  border border-gray-300 px-2 text-gray-500 uppercase">REGULAR LOAN</th>
                                     </tr>
                                     <tr>
-                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 px-2 text-gray-500 uppercase">Person</th>
-                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 px-2 text-gray-500 uppercase">Amount</th>
-                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 px-2 text-gray-500 uppercase">Person</th>
-                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 px-2 text-gray-500 uppercase">Amount</th>
+                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 px-2 text-gray-500 uppercase">Pers.</th>
+                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 px-2 text-gray-500 uppercase">Amnt</th>
+                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 px-2 text-gray-500 uppercase">Pers.</th>
+                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 px-2 text-gray-500 uppercase">Amnt</th>
                                         <th className="sticky top-[4.5rem] bg-white  border border-gray-300 px-2 text-gray-500 uppercase">Target</th>
-                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 px-2 text-gray-500 uppercase">Advance Payment</th>
-                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 px-2 text-gray-500 uppercase">Actual</th>
-                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 px-2 text-gray-500 uppercase">Person</th>
-                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 px-2 text-gray-500 uppercase">Amount</th>
-                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 px-2 text-gray-500 uppercase">Person</th>
-                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 px-2 text-gray-500 uppercase">Amount</th>
+                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 px-2 text-gray-500 uppercase">Adv. Paym</th>
+                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 px-2 text-gray-500 uppercase">Actl</th>
+                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 px-2 text-gray-500 uppercase">Pers.</th>
+                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 px-2 text-gray-500 uppercase">Amnt</th>
+                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 px-2 text-gray-500 uppercase">Pers.</th>
+                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 px-2 text-gray-500 uppercase">Amnt</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y">
@@ -723,7 +723,7 @@ const LoanOfficerSummary = () => {
                                             <React.Fragment key={index}>
                                                 {(item.fBalance || item.grandTotal ) ? (
                                                     <tr className={`${rowBg} text-red-400 font-bold`}>
-                                                        <td className={`${item.fBalance && 'text-black'} px-4 py-4 text-center border border-gray-300`}>{ item.day }</td>
+                                                        <td className={`${item.fBalance && 'text-black'} px-4 py-4 text-center border border-gray-300 border-l-0`}>{ item.day }</td>
                                                         <td className="px-4 py-4 text-center border border-gray-300">{ item.transfer }</td>
                                                         <td className="px-4 py-4 text-center border border-gray-300">{ item.newMember }</td>
                                                         <td className="px-4 py-4 text-center border border-gray-300">{ item.offsetPerson }</td>
@@ -739,11 +739,11 @@ const LoanOfficerSummary = () => {
                                                         <td className="px-4 py-4 text-center border border-gray-300">{ item.fullPaymentPerson }</td>
                                                         <td className="px-4 py-4 text-center border border-gray-300">{ item.fullPaymentAmountStr }</td>
                                                         <td className="px-4 py-4 text-center border border-gray-300">{ item.activeBorrowers }</td>
-                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.loanBalanceStr }</td>
+                                                        <td className="px-4 py-4 text-center border border-gray-300 border-r-0">{ item.loanBalanceStr }</td>
                                                     </tr>
                                                 ) : (
                                                     <tr className={`${rowBg} ${(item.weekTotal || item.monthTotal) && 'text-red-400 font-bold'}`}>
-                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.day }</td>
+                                                        <td className="px-4 py-4 text-center border border-gray-300 border-l-0">{ item.day }</td>
                                                         <td className="px-4 py-4 text-center border border-gray-300">{ item.transfer }</td>
                                                         <td className="px-4 py-4 text-center border border-gray-300">{ item.newMember }</td>
                                                         <td className="px-4 py-4 text-center border border-gray-300">{ item.offsetPerson }</td>
@@ -760,7 +760,7 @@ const LoanOfficerSummary = () => {
                                                         <td className="px-4 py-4 text-center border border-gray-300">{ item.fullPaymentPerson }</td>
                                                         <td className="px-4 py-4 text-center border border-gray-300">{ item.fullPaymentAmountStr }</td>
                                                         <td className="px-4 py-4 text-center border border-gray-300">{ item.activeBorrowers }</td>
-                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.loanBalanceStr }</td>
+                                                        <td className="px-4 py-4 text-center border border-gray-300 border-r-0">{ item.loanBalanceStr }</td>
                                                     </tr>
                                                 )}
                                             </React.Fragment>

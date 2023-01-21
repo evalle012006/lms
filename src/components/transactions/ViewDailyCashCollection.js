@@ -255,6 +255,7 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                 totalReleasesStr: totalsLoanRelease ? formatPricePhp(totalsLoanRelease) : 0,
                 totalLoanBalance: totalsLoanBalance,
                 totalLoanBalanceStr: totalsLoanBalance ? formatPricePhp(totalsLoanBalance) : 0,
+                targetLoanCollection: targetLoanCollection,
                 loanTargetStr: targetLoanCollection ? formatPricePhp(targetLoanCollection) : 0,
                 excess: excess,
                 excessStr: excess ? formatPricePhp(excess) : 0,
@@ -262,6 +263,7 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                 mispayment: mispayment + ' / ' + noOfClients,
                 fullPaymentAmountStr: fullPaymentAmount ? formatPricePhp(fullPaymentAmount) : 0,
                 noOfFullPayment: noOfFullPayment,
+                pastDue: totalPastDue,
                 pastDueStr: formatPricePhp(totalPastDue),
                 noPastDue: totalNoPastDue,
                 totalData: true,
@@ -293,7 +295,7 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
             loanReleaseAmount: 0,
             activeLoanReleasePerson: totals.activeBorrowers,
             activeLoanReleaseAmount: totals.totalLoanRelease,
-            collectionAdvancePayment: totals.excess + totals.targetLoanCollection,
+            collectionAdvancePayment: totals.totalLoanRelease - totals.totalLoanBalance,//totals.excess + totals.targetLoanCollection + totals.pastDue - (totals.totalLoanRelease - totals.totalLoanBalance),
             collectionActual: totals.totalLoanRelease - totals.totalLoanBalance,
             pastDuePerson: 0,
             pastDueAmount: 0,
@@ -462,6 +464,7 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
         //         mounted && getCashCollections();
         //     }
         // }
+        
 
         if (dateFilter) {
             const date = moment(dateFilter).format('YYYY-MM-DD');

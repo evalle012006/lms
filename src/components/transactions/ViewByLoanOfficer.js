@@ -58,9 +58,11 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter }) => {
             let totalNoPastDue = 0;
 
             response.data && response.data.map(lo => {
+                const nameArr = lo.firstName.split(' ');
                 let collection = {
                     _id: lo._id,
                     name: `${lo.firstName} ${lo.lastName}`,
+                    order: nameArr[1],
                     noCurrentReleaseStr: '-',
                     currentReleaseAmountStr: '-',
                     activeClients: '-',
@@ -182,9 +184,11 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter }) => {
                         noOfFullPayment += lo.cashCollections[0].noOfFullPayment;
                     }
                 }
-
+                
                 collectionData.push(collection);
             });
+
+            collectionData.sort((a, b) => a.order - b.order);
 
             // totals
             const loTotals = {
