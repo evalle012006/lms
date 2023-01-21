@@ -480,16 +480,6 @@ const LoanOfficerSummary = () => {
             totalFullPaymentAmount += wt.fullPaymentAmount;
         });
 
-        // const activeClientsArr = weeklyTotals.filter(los => los.activeClients !== 0);
-        // totalActiveClients = activeClientsArr.length > 0 ? activeClientsArr[activeClientsArr.length - 1].activeClients : 0;
-        // totalActiveClients += fBal.activeClients;
-        // const activeBorrowersArr = weeklyTotals.filter(los => los.activeBorrowers !== 0);
-        // totalActiveBorrowers = activeBorrowersArr.length > 0 ? activeBorrowersArr[activeBorrowersArr.length - 1].activeBorrowers : 0;
-        // totalActiveBorrowers += fBal.activeBorrowers;
-        // const loanBalanceArr = weeklyTotals.filter(los => los.loanBalance !== 0);
-        // totalLoanBalance = loanBalanceArr.length > 0 ? loanBalanceArr[loanBalanceArr.length - 1].loanBalance : 0;
-        // totalLoanBalance += fBal.loanBalance;
-
         totalActiveClients = fBal.activeClients + totalTransfer + totalNewMember - totalOffsetperson;
         totalActiveLoanReleasePerson = fBal.activeLoanReleasePerson + totalLoanReleasePerson - totalFullPaymentPerson;
         totalActiveLoanReleaseAmount = fBal.activeLoanReleaseAmount + totalLoanReleaseAmount - totalFullPaymentAmount;
