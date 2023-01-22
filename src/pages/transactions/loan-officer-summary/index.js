@@ -627,6 +627,7 @@ const LoanOfficerSummary = () => {
         } else {
             // for AM and Admin
             // get BM id for that branch
+            
         }
     }
 
@@ -677,7 +678,7 @@ const LoanOfficerSummary = () => {
                             selectedMonth={selectedMonth} setSelectedMonth={setSelectedMonth} handleMonthFilter={handleMonthFilter}
                             selectedYear={selectedYear} setSelectedYear={setSelectedYear} handleYearFilter={handleYearFilter}/>
                     <div className="flex flex-col h-[55rem] max-h-[55rem] mt-40 pl-6 pr-2 overflow-y-auto">
-                        <div className="block rounded-xl overflow-auto h-[49rem] w-[200rem]">
+                        <div className="block rounded-xl overflow-auto h-[49rem]">
                             <table className="relative w-full table-auto border-collapse text-sm bg-white mb-8">
                                 <thead>
                                     <tr>
