@@ -57,7 +57,9 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter }) => {
             let totalPastDue = 0;
             let totalNoPastDue = 0;
 
+            let selectedBranch;
             response.data && response.data.map(lo => {
+                selectedBranch = lo.designatedBranchId;
                 const nameArr = lo.firstName.split(' ');
                 let collection = {
                     _id: lo._id,
@@ -197,20 +199,29 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter }) => {
                 currentReleaseAmountStr: formatPricePhp(currentReleaseAmount),
                 activeClients: noOfClients,
                 activeBorrowers: noOfBorrowers,
+                totalLoanRelease: totalsLoanRelease,
                 totalReleasesStr: formatPricePhp(totalsLoanRelease),
+                totalLoanBalance: totalsLoanBalance,
                 totalLoanBalanceStr: formatPricePhp(totalsLoanBalance),
+                targetLoanCollection: targetLoanCollection,
                 loanTargetStr: formatPricePhp(targetLoanCollection),
+                excess: excess,
                 excessStr: formatPricePhp(excess),
                 totalStr: formatPricePhp(totalLoanCollection),
                 mispaymentStr: mispayment + ' / ' + noOfClients,
                 fullPaymentAmountStr: formatPricePhp(fullPaymentAmount),
                 noOfFullPayment: noOfFullPayment,
+                pastDue: totalPastDue,
                 pastDueStr: formatPricePhp(totalPastDue),
                 noPastDue: totalNoPastDue,
                 totalData: true
             };
 
             collectionData.push(loTotals);
+            const currentMonth = moment().month();
+            if (!filter && currentMonth === 0) {
+                saveYearEndLos(loTotals, selectedBranch);
+            }
             
             setUserLOList(collectionData);
             setLoading(false);
@@ -220,6 +231,41 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter }) => {
         }
     }
 
+    const saveYearEndLos = async (totals, selectedBranch) => {
+        let grandTotal = {
+            day: 'Year End',
+            transfer: 0,
+            newMember: 0,
+            offsetPerson: 0,
+            activeClients: totals.activeClients,
+            loanReleasePerson: 0,
+            loanReleaseAmount: 0,
+            activeLoanReleasePerson: totals.activeBorrowers,
+            activeLoanReleaseAmount: totals.totalLoanRelease,
+            collectionAdvancePayment: totals.totalLoanRelease - totals.totalLoanBalance,//totals.excess + totals.targetLoanCollection + totals.pastDue - (totals.totalLoanRelease - totals.totalLoanBalance),
+            collectionActual: totals.totalLoanRelease - totals.totalLoanBalance,
+            pastDuePerson: 0,
+            pastDueAmount: 0,
+            fullPaymentPerson: 0,
+            fullPaymentAmount: 0,
+            activeBorrowers: totals.activeBorrowers,
+            loanBalance: totals.totalLoanBalance
+        };
+
+        let userId;
+        if (currentUser.role.rep === 3) {
+            userId = currentUser._id;
+            const losTotals = {
+                userId: currentUser._id,
+                branchId: selectedBranch,
+                month: 12,
+                year: moment().year() - 1,
+                data: grandTotal
+            }
+    
+            await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loan-officer-summary/save-update-totals', losTotals);
+        }
+    }
     
     const handleOpen = async (row) => {
         if (row.original.activeClients !== 0) {
