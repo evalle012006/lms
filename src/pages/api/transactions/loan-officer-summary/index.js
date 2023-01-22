@@ -32,7 +32,7 @@ async function getSummary(req, res) {
         } else if (user[0].role.rep === 4) {
             summary = await db.collection('cashCollections')
                 .aggregate([
-                    { $match: { loId: userId, dateAdded: { $gte: startOfMonth, $lte: endOfMonth } } }, //{$sort: {dateAdded: 1}}
+                    { $match: { loId: userId, dateAdded: { $gte: startOfMonth, $lte: endOfMonth }, forLos: true } }, //{$sort: {dateAdded: 1}}
                     // consider the group summary collection status it needs to be close 
                         // how to add the group summary collection? query it first per day? this is for BM only
                     {
