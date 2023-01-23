@@ -219,7 +219,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter }) => {
 
             collectionData.push(loTotals);
             const currentMonth = moment().month();
-            if (!filter && currentMonth === 0) {
+            if (!filter && currentMonth === 0 && currentUser.role.rep === 3) {
                 saveYearEndLos(loTotals, selectedBranch);
             }
             
