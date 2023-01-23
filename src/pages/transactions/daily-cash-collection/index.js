@@ -37,8 +37,8 @@ const DailyCashCollectionPage = () => {
 
     const handleSubmitForLos = async () => {
         setLoading(true);
-        console.log(cashCollectionList)
-        if (cashCollectionList.length > 0) {
+
+        if (cashCollectionList) {
             const filteredGroups = cashCollectionList.filter(cc => cc.status !== '-').map(cc => { return cc.groupId });
 
             const data = {
@@ -95,7 +95,6 @@ const DailyCashCollectionPage = () => {
     useEffect(() => {
         if (branchList) {
             localStorage.setItem('cashCollectionDateFilter', currentDate);
-
             if (currentUser.role.rep < 4) {
                 const initGroupCollectionSummary = async () => {
                     if (currentUser.role.rep === 3) {
