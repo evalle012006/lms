@@ -230,6 +230,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter }) => {
             toast.error('Error retrieving branches list.');
         }
     }
+    
 
     const saveYearEndLos = async (totals, selectedBranch) => {
         let grandTotal = {
