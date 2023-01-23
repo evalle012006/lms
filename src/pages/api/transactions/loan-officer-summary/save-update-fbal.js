@@ -42,7 +42,7 @@ async function processLOSTotals(req, res) {
         });
     }
 
-    response = { success: true};
+    response = { success: true };
 
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')
