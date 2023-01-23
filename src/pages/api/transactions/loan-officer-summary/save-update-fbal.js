@@ -22,15 +22,23 @@ async function processLOSTotals(req, res) {
             bm = bm[0];
             let userId = bm._id + '';
 
-            await db.collection('losTotals').insertOne(
-                { ...data, userId: userId, dateAdded: moment().format('YYYY-MM-DD') }
-            );
+            let losTotal = await db.collection('losTotals').find({ userId: userId, month: data.month, year: data.year }).toArray();
+
+            if (losTotal.length === 0) {
+                await db.collection('losTotals').insertOne(
+                    { ...data, userId: userId, dateAdded: moment().format('YYYY-MM-DD') }
+                );
+            }
         }
     } else {
         data.map(async collection => {
-            await db.collection('losTotals').insertOne(
-                { ...collection, dateAdded: moment().format('YYYY-MM-DD') }
-            );
+            let losTotal = await db.collection('losTotals').find({ userId: collection.userId, month: collection.month, year: collection.year }).toArray();
+
+            if (losTotal.length === 0) {
+                await db.collection('losTotals').insertOne(
+                    { ...collection, dateAdded: moment().format('YYYY-MM-DD') }
+                );
+            }
         });
     }
 
