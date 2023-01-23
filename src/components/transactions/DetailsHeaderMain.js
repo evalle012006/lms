@@ -10,8 +10,10 @@ import Breadcrumbs from "../Breadcrumbs";
 import moment from 'moment';
 import { useRouter } from 'next/router';
 import { ArrowLeftCircleIcon } from '@heroicons/react/24/solid';
+import ButtonSolid from "@/lib/ui/ButtonSolid";
 
-const DetailsHeader = ({ pageTitle, page, pageName, currentDate, mode = 'daily', selectedBranch, handleBranchFilter, selectedLO, handleLOFilter, dateFilter, handleDateFilter }) => {
+const DetailsHeader = ({ pageTitle, page, pageName, currentDate, mode = 'daily', selectedBranch, 
+                            handleBranchFilter, selectedLO, handleLOFilter, dateFilter, handleDateFilter, weekend, handleSubmit }) => {
     const router = useRouter();
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
@@ -62,8 +64,15 @@ const DetailsHeader = ({ pageTitle, page, pageName, currentDate, mode = 'daily',
         <div className="bg-white px-7 py-2 fixed w-screen z-10">
             {page === 1 && (
                 <div className="py-2 proxima-regular">
-                    <div className="page-title">
-                        {currentUser.role.rep === 4 ? pageTitle + ' - Group Summary' : pageTitle} 
+                    <div className="flex flex-row justify-between w-10/12">
+                        <div className="page-title">
+                            {currentUser.role.rep === 4 ? pageTitle + ' - Group Summary' : pageTitle}
+                        </div>
+                        {(currentUser.role.rep === 4 && !weekend) && (
+                            <div className="flex items-center w-32">
+                                <ButtonSolid label="Submit" onClick={handleSubmit} />
+                            </div>
+                        )}
                     </div>
                     <div className="flex justify-between w-11/12">
                         <div className="flex flex-row justify-items-start space-x-5 py-4" style={{ height: '40px' }}>

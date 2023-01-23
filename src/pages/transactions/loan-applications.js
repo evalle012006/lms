@@ -43,6 +43,7 @@ const LoanApplicationPage = () => {
 
     const [noOfPendingLoans, setNoOfPendingLoans] = useState(0);
     const [totalAmountRelease, setTotalAmountRelease] = useState(0);
+    const [weekend, setWeekend] = useState(false);
 
     const router = useRouter();
 
@@ -673,8 +674,18 @@ const LoanApplicationPage = () => {
         setTotalAmountRelease(getTotal(list, 'loanRelease'));
     }, [list]);
 
+    useEffect(() => {
+        const dayName = moment().format('dddd');
+
+        if (dayName === 'Saturday' || dayName === 'Sunday') {
+            setWeekend(true);
+        } else {
+            setWeekend(false);
+        }
+    }, []);
+
     return (
-        <Layout actionButtons={currentUser.role.rep > 2 && actionButtons}>
+        <Layout actionButtons={(currentUser.role.rep > 2 && !weekend) && actionButtons}>
             <div className="pb-4">
                 {loading ?
                     (
@@ -697,7 +708,7 @@ const LoanApplicationPage = () => {
                             </nav>
                             <div>
                                 <TabPanel hidden={selectedTab !== "application"}>
-                                    <TableComponent columns={columns} data={list} hasActionButtons={currentUser.role.rep > 2 ? true : false} rowActionButtons={rowActionButtons} showFilters={true} multiSelect={currentUser.role.rep === 3 ? true : false} multiSelectActionFn={handleMultiSelect} />
+                                    <TableComponent columns={columns} data={list} hasActionButtons={(currentUser.role.rep > 2 && !weekend) ? true : false} rowActionButtons={!weekend && rowActionButtons} showFilters={true} multiSelect={currentUser.role.rep === 3 ? true : false} multiSelectActionFn={handleMultiSelect} />
                                     <footer className="pl-64 text-md font-bold text-center fixed inset-x-0 bottom-0 text-red-400">
                                         <div className="flex flex-row justify-center bg-white px-4 py-2 shadow-inner border-t-4 border-zinc-200">
                                             <div className="flex flex-row">

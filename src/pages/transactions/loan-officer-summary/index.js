@@ -677,22 +677,22 @@ const LoanOfficerSummary = () => {
                             selectedMonth={selectedMonth} setSelectedMonth={setSelectedMonth} handleMonthFilter={handleMonthFilter}
                             selectedYear={selectedYear} setSelectedYear={setSelectedYear} handleYearFilter={handleYearFilter}/>
                     <div className="flex flex-col h-[55rem] max-h-[55rem] mt-40 pl-6 pr-2 overflow-y-auto">
-                        <div className="block rounded-xl overflow-auto h-[49rem] w-[99rem]">
+                        <div className="block rounded-xl overflow-auto h-[49rem] w-[95rem]">
                             <table className="relative w-full table-fixed border-collapse text-sm bg-white mb-8">
                                 <thead>
                                     <tr>
-                                        <th rowSpan={3} className="sticky top-0 bg-white border border-gray-300 border-l-0 border-t-0 px-2 py-2 text-gray-500 uppercase">Date</th>
+                                        <th rowSpan={3} className="sticky top-0 bg-white border border-gray-300 border-l-0 border-t-0 w-40 px-2 py-2 text-gray-500 uppercase">Date</th>
                                         <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-12 px-2 py-2 text-gray-500 uppercase">Tran</th>
                                         <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-12 px-2 py-2 text-gray-500 uppercase">NM</th>
                                         <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-12 px-2 py-2 text-gray-500 uppercase">Off-set Per.</th>
                                         <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-12 px-2 py-2 text-gray-500 uppercase">Act. Clnt</th>
-                                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-25 px-2 py-4 text-gray-500 uppercase">Loan Release W/ Serv. Charge</th>
-                                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-25 px-2 py-4 text-gray-500 uppercase">ACTIVE LOAN RELEASE W/ Serv. Charge</th>
-                                        <th colSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-30 px-2 text-gray-500 uppercase">COLLECTION (w/ serv. charges)</th>
+                                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-23 px-2 py-4 text-gray-500 uppercase">Loan Release W/ Serv. Charge</th>
+                                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-23 px-2 py-4 text-gray-500 uppercase">ACTIVE LOAN RELEASE W/ Serv. Charge</th>
+                                        <th colSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-25 px-2 text-gray-500 uppercase">COLLECTION (w/ serv. charges)</th>
                                         <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-23 px-2 text-gray-500 uppercase">Pastdue</th>
-                                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-25 px-2 text-gray-500 uppercase">FULL PAYMENT (w/ serv. charge)</th>
+                                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-23 px-2 text-gray-500 uppercase">FULL PAYMENT (w/ serv. charge)</th>
                                         <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 w-12 px-2 py-2 text-gray-500 uppercase">Act. Bor.</th>
-                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-r-0 border-t-0  px-2 py-2 text-gray-500 uppercase">Loan Balance</th>
+                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-r-0 border-t-0 w-25 px-2 py-2 text-gray-500 uppercase">Loan Balance</th>
                                     </tr>
                                     <tr>
                                         <th colSpan={3} className="sticky top-[2.2rem] bg-white  border border-gray-300 px-2 text-gray-500 uppercase">REGULAR LOAN</th>

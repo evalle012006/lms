@@ -65,6 +65,7 @@ const CashCollectionDetailsPage = () => {
     const [filter, setFilter] = useState(false);
     const maxDays = 60;
     const [groupFilter, setGroupFilter] = useState();
+    const [weekend, setWeekend] = useState(false);
 
     const handleGroupFilter = (selected) => {
         setGroupFilter(selected._id);
@@ -1219,9 +1220,6 @@ const CashCollectionDetailsPage = () => {
 
 
     useEffect(() => {
-        // issue in date filter wherein the data is not consistent
-        // in live: group pcx, dec 03 then dec 02 then dec 01 then back to dec 03
-        // bug is the data is not valid
         if (dateFilterSubject.value && currentGroup) {
             const date = moment(new Date(dateFilterSubject.value)).format('YYYY-MM-DD');
             if (date !== currentDate) {
@@ -1237,6 +1235,16 @@ const CashCollectionDetailsPage = () => {
         }
     }, [revertMode]);
 
+    useEffect(() => {
+        const dayName = moment().format('dddd');
+
+        if (dayName === 'Saturday' || dayName === 'Sunday') {
+            setWeekend(true);
+        } else {
+            setWeekend(false);
+        }
+    }, []);
+
     return (
         <Layout header={false} noPad={true}>
             {loading ? (
@@ -1245,7 +1253,7 @@ const CashCollectionDetailsPage = () => {
                 </div>
             ) : (
                 <div className="overflow-x-auto">
-                    {data && <DetailsHeader page={'transaction'} showSaveButton={currentUser.role.rep > 2 ? editMode : false}
+                    {data && <DetailsHeader page={'transaction'} showSaveButton={currentUser.role.rep > 2 ? weekend ? false : editMode : false}
                         handleSaveUpdate={handleSaveUpdate} data={allData} setData={setFilteredData} 
                         dateFilter={dateFilter} setDateFilter={setDateFilter} handleDateFilter={handleDateFilter} currentGroup={uuid} 
                         groupFilter={groupFilter} handleGroupFilter={handleGroupFilter} groupTransactionStatus={groupSummaryIsClose ? 'close' : 'open'} />}
@@ -1305,7 +1313,7 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.targetCollectionStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.excessStr }</td>
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
-                                                    { currentUser.role.rep > 2 && cc.status === 'active' && editMode && (!cc.hasOwnProperty('_id') || revertMode) ? (
+                                                    { (!weekend && currentUser.role.rep > 2 && cc.status === 'active' && editMode && (!cc.hasOwnProperty('_id') || revertMode)) ? (
                                                         <React.Fragment>
                                                             <input type="number" name={cc.clientId} onChange={(e) => handlePaymentCollectionChange(e, index, 'amount', cc.activeLoan)}
                                                                 onClick={(e) => e.stopPropagation()} defaultValue={cc.paymentCollection} tabIndex={index + 1}
@@ -1339,8 +1347,8 @@ const CashCollectionDetailsPage = () => {
                                                         <React.Fragment>{ cc.pastDueStr }</React.Fragment>
                                                     ) } */}
                                                 </td>
-                                                { (currentUser.role.rep > 2 && (cc.status === 'active' || cc.status === 'completed') && (editMode || !groupSummaryIsClose) 
-                                                    && (!cc.hasOwnProperty('_id') || revertMode) && !filter) || ((cc.remarks && cc.remarks.value === "pending") && !groupSummaryIsClose) ? (
+                                                { (!weekend && (currentUser.role.rep > 2 && (cc.status === 'active' || cc.status === 'completed') && (editMode || !groupSummaryIsClose) 
+                                                    && (!cc.hasOwnProperty('_id') || revertMode) && !filter) || ((cc.remarks && cc.remarks.value === "pending") && !groupSummaryIsClose)) ? (
                                                         <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">
                                                             { cc.remarks !== '-' ? (
                                                                 <Select 
@@ -1371,7 +1379,7 @@ const CashCollectionDetailsPage = () => {
                                                 }
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">
                                                     <React.Fragment>
-                                                        {(currentUser.role.rep > 2 &&  (cc.status === 'active' || cc.status === 'completed') && !groupSummaryIsClose) && (
+                                                        {(!weekend && currentUser.role.rep > 2 &&  (cc.status === 'active' || cc.status === 'completed') && !groupSummaryIsClose) && (
                                                             <div className='flex flex-row p-4'>
                                                                 {(cc.hasOwnProperty('_id') && !filter) && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleRevert(e, cc, index)} />}
                                                                 {(cc.status === 'completed' || (cc.hasOwnProperty('tomorrow') && !cc.tomorrow)) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
