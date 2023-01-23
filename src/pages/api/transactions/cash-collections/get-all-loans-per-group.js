@@ -81,12 +81,36 @@ async function getAllLoansPerGroup(req, res) {
                             localField: "loIdStr",
                             foreignField: "loId",
                             pipeline: [
-                                { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
-                                { $match: {$expr:  {$and: [{$ne: ['$status', 'closed']}, {$ne: ['$status', 'reject']}, {$lte: ['$startDateObj', '$currentDateObj']}]} } },
+                                // { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
+                                { $match: {$expr:  {$and: [{$ne: ['$status', 'closed']}, {$ne: ['$status', 'reject']}]} } },
                                 { $group: { 
                                         _id: '$loId',
-                                        activeClients: { $sum: 1 },
-                                        activeBorrowers: { $sum: { $cond:{if: { $gt: ['$loanBalance', 0] }, then: 1, else: 0} } }
+                                        activeClients: { $sum: {
+                                            $cond: {
+                                                if: { $ne: ['$status', 'pending'] },
+                                                then: 1,
+                                                else: {
+                                                    $cond: {
+                                                        if: { $and: [{$eq: ['$status', 'pending']}, {$gt: ['$loanCycle', 1]}] },
+                                                        then: 1,
+                                                        else: 0
+                                                    }
+                                                }
+                                            }
+                                        } },
+                                        activeBorrowers: { $sum: { 
+                                            $cond: {
+                                                if: { $ne: ['$status', 'pending'] },
+                                                then: {
+                                                    $cond: {
+                                                        if: {$gt: ['$loanBalance', 0]},
+                                                        then: 1,
+                                                        else: 0
+                                                    }
+                                                }, 
+                                                else: 0
+                                            } 
+                                        } }
                                     } 
                                 }
                             ],
@@ -249,12 +273,36 @@ async function getAllLoansPerGroup(req, res) {
                             localField: "groupIdStr",
                             foreignField: "groupId",
                             pipeline: [
-                                { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
-                                { $match: {$expr:  {$and: [{$ne: ['$status', 'closed']}, {$ne: ['$status', 'reject']}, {$lte: ['$startDateObj', '$currentDateObj']}]} } },
+                                // { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
+                                { $match: {$expr:  {$and: [{$ne: ['$status', 'closed']}, {$ne: ['$status', 'reject']}]} } },
                                 { $group: { 
                                         _id: '$$groupName',
-                                        activeClients: { $sum: 1 },
-                                        activeBorrowers: { $sum: { $cond:{if: { $gt: ['$loanBalance', 0] }, then: 1, else: 0} } }
+                                        activeClients: { $sum: {
+                                            $cond: {
+                                                if: { $ne: ['$status', 'pending'] },
+                                                then: 1,
+                                                else: {
+                                                    $cond: {
+                                                        if: { $and: [{$eq: ['$status', 'pending']}, {$gt: ['$loanCycle', 1]}] },
+                                                        then: 1,
+                                                        else: 0
+                                                    }
+                                                }
+                                            }
+                                        } },
+                                        activeBorrowers: { $sum: { 
+                                            $cond: {
+                                                if: { $ne: ['$status', 'pending'] },
+                                                then: {
+                                                    $cond: {
+                                                        if: {$gt: ['$loanBalance', 0]},
+                                                        then: 1,
+                                                        else: 0
+                                                    }
+                                                }, 
+                                                else: 0
+                                            } 
+                                        } }
                                     } 
                                 }
                             ],
@@ -385,17 +433,29 @@ async function getAllLoansPerGroup(req, res) {
                                         _id: '$loId',
                                         activeClients: { $sum: {
                                             $cond: {
-                                                if: { $ne: ['$status', 'closed'] },
+                                                if: { $and: [{$ne: ['$status', 'pending']}, {$ne: ['$status', 'closed']}] },
                                                 then: 1,
-                                                else: 0
+                                                else: {
+                                                    $cond: {
+                                                        if: { $and: [{$eq: ['$status', 'pending']}, {$gt: ['$loanCycle', 1]}] },
+                                                        then: 1,
+                                                        else: 0
+                                                    }
+                                                }
                                             }
                                         } },
-                                        activeBorrowers: { $sum: {
+                                        activeBorrowers: { $sum: { 
                                             $cond: {
-                                                if: { $and: [{$ne: ['$status', 'closed']}, {$gt: ['$loanBalance', 0]}] },
-                                                then: 1,
+                                                if: { $and: [{$ne: ['$status', 'pending']}, {$ne: ['$status', 'closed']}] },
+                                                then: {
+                                                    $cond: {
+                                                        if: {$gt: ['$loanBalance', 0]},
+                                                        then: 1,
+                                                        else: 0
+                                                    }
+                                                }, 
                                                 else: 0
-                                            }
+                                            } 
                                         } },
                                         totalRelease: { $sum: { $cond:{
                                             if: { $and: [{$ne: ['$status', 'pending']}, {$ne: ['$status', 'tomorrow']}] }, 
@@ -537,17 +597,29 @@ async function getAllLoansPerGroup(req, res) {
                                         _id: '$$groupName',
                                         activeClients: { $sum: {
                                             $cond: {
-                                                if: { $ne: ['$status', 'closed'] },
+                                                if: { $and: [{$ne: ['$status', 'pending']}, {$ne: ['$status', 'closed']}] },
                                                 then: 1,
-                                                else: 0
+                                                else: {
+                                                    $cond: {
+                                                        if: { $and: [{$eq: ['$status', 'pending']}, {$gt: ['$loanCycle', 1]}] },
+                                                        then: 1,
+                                                        else: 0
+                                                    }
+                                                }
                                             }
                                         } },
-                                        activeBorrowers: { $sum: {
+                                        activeBorrowers: { $sum: { 
                                             $cond: {
-                                                if: { $and: [{$ne: ['$status', 'closed']}, {$gt: ['$loanBalance', 0]}] },
-                                                then: 1,
+                                                if: { $and: [{$ne: ['$status', 'pending']}, {$ne: ['$status', 'closed']}] },
+                                                then: {
+                                                    $cond: {
+                                                        if: {$gt: ['$loanBalance', 0]},
+                                                        then: 1,
+                                                        else: 0
+                                                    }
+                                                }, 
                                                 else: 0
-                                            }
+                                            } 
                                         } },
                                         totalRelease: { $sum: { $cond:{
                                             if: { $and: [{$ne: ['$status', 'pending']}, {$ne: ['$status', 'tomorrow']}] }, 

@@ -313,7 +313,8 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                 branchId: selectedBranch,
                 month: 12,
                 year: moment().year() - 1,
-                data: grandTotal
+                data: grandTotal,
+                yearEnd: true
             }
     
             await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loan-officer-summary/save-update-totals', losTotals);

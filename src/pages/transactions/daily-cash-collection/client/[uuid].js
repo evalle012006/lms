@@ -520,7 +520,10 @@ const CashCollectionDetailsPage = () => {
 
         groupClients && groupClients.map(cc => {
             if (cc.status === 'active') {
-                if (parseFloat(cc.paymentCollection) === 0 && !cc.remarks) {
+
+                if (cc.error) {
+                    errorMsg.add('Error occured. Please double check the Actual Collection column.');
+                } else if (parseFloat(cc.paymentCollection) === 0 && !cc.remarks) {
                     errorMsg.add('Error occured. Please select a remarks for 0 or no payment Actual Collection.');
                 } else if ((parseFloat(cc.paymentCollection) === 0 || (parseFloat(cc.paymentCollection) > 0 && parseFloat(cc.paymentCollection) < parseFloat(cc.activeLoan))) 
                         && (!cc.remarks || (cc.remarks && (cc.remarks.value !== "delinquent" && cc.remarks.value !== "past due" && cc.remarks.value !== "excused"))) ) {
@@ -539,12 +542,12 @@ const CashCollectionDetailsPage = () => {
                     }
                 } else if (parseFloat(cc.paymentCollection) === (cc.activeLoan * 2) && (!cc.remarks || cc.remarks && cc.remarks.value !== "double payment")) {
                     errorMsg.add('Error occured. Actual collection is a double payment please set remarks as Double Payment.');
-                } else if ((parseFloat(cc.paymentCollection) === (cc.activeLoan * 2)) || (parseFloat(cc.paymentCollection) % parseFloat(cc.activeLoan) !== 0) && (!cc.remarks || cc.remarks && cc.remarks.value === "advance payment")) {
-                    errorMsg.add('Error occured. Actual collection is not a advance payment.');
+                } else if (parseFloat(cc.paymentCollection) > parseFloat(cc.activeLoan) && parseFloat(cc.paymentCollection) > parseFloat(cc.activeLoan * 2)) {
+                    if (parseFloat(cc.paymentCollection) % parseFloat(cc.activeLoan) === 0 && (!cc.remarks || cc.remarks && cc.remarks.value !== "advance payment")) {
+                        errorMsg.add('Error occured. Actual collection is a advance payment please set remarks as Advance Payment.');
+                    }
                 } else if (cc.status === "active" && cc.loanBalance === 0 && !cc.remarks ) {
                     errorMsg.add('Error occured. Please select PENDING, RELOANER or OFFSET remarks for full payment transaction.');
-                } else if (cc.error) {
-                    errorMsg.add('Error occured. Please double check the Actual Collection column.');
                 }
 
                 if (parseFloat(cc.loanBalance) && (cc.remarks && cc.remarks.value === 'offset')) {
@@ -651,40 +654,40 @@ const CashCollectionDetailsPage = () => {
                     return temp;   
                 }).filter(cc => cc.status !== "totals");
 
-                    if (save) {
-                        let cashCollection;
-                        if (editMode) {
-                            cashCollection = {
-                                ...headerData,
-                                dateModified: moment(new Date()).format('YYYY-MM-DD'),
-                                modifiedBy: currentUser._id,
-                                collection: JSON.stringify(dataArr)
-                            };
-                        } else {
-                            cashCollection = {
-                                ...headerData,
-                                modifiedBy: currentUser._id,
-                                collection: JSON.stringify(dataArr),
-                                mode: 'daily'
-                            };
-                        }
-                
-                        const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save', cashCollection);
-                        if (response.success) {
-                            setLoading(false);
-                            toast.success('Payment collection successfully submitted.');
-
-                            // setTimeout(() => {})
-                            // window.location.reload();
-                
-                            setTimeout(() => {
-                                getCashCollections();
-                            }, 500);
-                        }
+                if (save) {
+                    let cashCollection;
+                    if (editMode) {
+                        cashCollection = {
+                            ...headerData,
+                            dateModified: moment(new Date()).format('YYYY-MM-DD'),
+                            modifiedBy: currentUser._id,
+                            collection: JSON.stringify(dataArr)
+                        };
                     } else {
-                        toast.warning('No active data to be saved.');
-                        setLoading(false);
+                        cashCollection = {
+                            ...headerData,
+                            modifiedBy: currentUser._id,
+                            collection: JSON.stringify(dataArr),
+                            mode: 'daily'
+                        };
                     }
+            
+                    const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save', cashCollection);
+                    if (response.success) {
+                        setLoading(false);
+                        toast.success('Payment collection successfully submitted.');
+
+                        // setTimeout(() => {})
+                        // window.location.reload();
+            
+                        setTimeout(() => {
+                            getCashCollections();
+                        }, 500);
+                    }
+                } else {
+                    toast.warning('No active data to be saved.');
+                    setLoading(false);
+                }
             }
         }
     }
@@ -731,7 +734,7 @@ const CashCollectionDetailsPage = () => {
                                 total: temp.total
                             };
                         }
-                        
+
                         if (containsAnyLetters(value)) {
                             toast.error("Invalid amount in actual collection. Please input numeric only.");
                             temp.error = true;
@@ -778,7 +781,7 @@ const CashCollectionDetailsPage = () => {
                             } else {
                                 temp.mispayment = false;
                                 temp.mispaymentStr = 'No';
-                                // temp.noOfPayments = temp.noOfPayments + 1;
+                                temp.noOfPayments = temp.noOfPayments + 1;
                             }
     
                             temp.noOfPaymentStr = temp.noOfPayments + ' / ' + maxDays;
@@ -812,9 +815,9 @@ const CashCollectionDetailsPage = () => {
                         // } 
                         else if (parseFloat(payment) % parseFloat(temp.activeLoan) !== 0) {
                             // toast.error("Actual collection should be divisible by 100.");
+                            temp.paymentCollection = payment;
                             if (temp.remarks && (temp.remarks.value !== "past due" && temp.remarks.value !== "excused" && temp.remarks.value !== "delinquent") ) {
                                 temp.error = true;
-                                temp.paymentCollection = parseFloat(payment);
                             }
                         } 
                     } 
