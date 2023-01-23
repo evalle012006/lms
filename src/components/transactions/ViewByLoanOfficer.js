@@ -219,7 +219,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter }) => {
 
             collectionData.push(loTotals);
             const currentMonth = moment().month();
-            if (!filter && currentMonth === 0) {
+            if (!filter && currentMonth === 0 && currentUser.role.rep === 3) {
                 saveYearEndLos(loTotals, selectedBranch);
             }
             
@@ -230,6 +230,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter }) => {
             toast.error('Error retrieving branches list.');
         }
     }
+    
 
     const saveYearEndLos = async (totals, selectedBranch) => {
         let grandTotal = {
