@@ -627,6 +627,7 @@ const LoanOfficerSummary = () => {
         } else {
             // for AM and Admin
             // get BM id for that branch
+            
         }
     }
 
