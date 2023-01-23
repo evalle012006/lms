@@ -288,6 +288,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter }) => {
             };
 
             const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary', data);
+            
             if (response.success) {
                 toast.success(`${data.name} groups transactions are now open!`);
                 window.location.reload();
