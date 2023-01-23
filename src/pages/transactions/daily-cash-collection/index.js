@@ -37,8 +37,7 @@ const DailyCashCollectionPage = () => {
 
     const handleSubmitForLos = async () => {
         setLoading(true);
-
-        if (cashCollectionList) {
+        if (cashCollectionList.length > 0) {
             const filteredGroups = cashCollectionList.filter(cc => cc.status !== '-').map(cc => { return cc.groupId });
 
             const data = {
@@ -56,7 +55,6 @@ const DailyCashCollectionPage = () => {
                 toast.error(resp.message);
             }
         }
-        setShowSubmitDialog(false);
     }
 
     const getListBranch = async () => {
@@ -79,6 +77,7 @@ const DailyCashCollectionPage = () => {
         } else {
             toast.error('Error retrieving branches list.');
         }
+
         setLoading(false);
     }
 
@@ -93,7 +92,7 @@ const DailyCashCollectionPage = () => {
     }, [currentUser]);
 
     useEffect(() => {
-        if (branchList) {
+        if (branchList.length > 0) {
             localStorage.setItem('cashCollectionDateFilter', currentDate);
             if (currentUser.role.rep < 4) {
                 const initGroupCollectionSummary = async () => {
