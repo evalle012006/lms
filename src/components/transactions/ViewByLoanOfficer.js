@@ -235,7 +235,6 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter }) => {
         setLoading(true);
 
         let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/get-all-loans-per-group?' + new URLSearchParams({ date: date ? date : currentDate, mode: 'daily', branchCode: selectedBranch });
-        
         const response = await fetchWrapper.get(url);
         if (response.success) {
             let collectionData = [];
