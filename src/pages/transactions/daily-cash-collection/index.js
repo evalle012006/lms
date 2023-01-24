@@ -37,8 +37,8 @@ const DailyCashCollectionPage = () => {
 
     const handleSubmitForLos = async () => {
         setLoading(true);
-        console.log(cashCollectionList)
-        if (cashCollectionList.length > 0) {
+
+        if (cashCollectionList) {
             const filteredGroups = cashCollectionList.filter(cc => cc.status !== '-').map(cc => { return cc.groupId });
 
             const data = {
