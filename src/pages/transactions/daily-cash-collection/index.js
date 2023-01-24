@@ -79,7 +79,6 @@ const DailyCashCollectionPage = () => {
         } else {
             toast.error('Error retrieving branches list.');
         }
-
         setLoading(false);
     }
 
