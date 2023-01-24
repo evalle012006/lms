@@ -20,17 +20,23 @@ async function processLOSTotals(req, res) {
 
     let losTotal = await db.collection('losTotals').find({ userId: data.userId, month: data.month, year: data.year }).toArray();
 
-    if (losTotal.length > 0) {
-        losTotal = losTotal[0];
-        resp = await db.collection('losTotals').updateOne(
-            { _id: losTotal._id},
-            { $set: {
-                ...losTotal,
-                data: data.data,
-                dateModified: currentDate
-            } }
-        );
-    } else {
+    if (!data.yearEnd) {
+        if (losTotal.length > 0) {
+            losTotal = losTotal[0];
+            resp = await db.collection('losTotals').updateOne(
+                { _id: losTotal._id},
+                { $set: {
+                    ...losTotal,
+                    data: data.data,
+                    dateModified: currentDate
+                } }
+            );
+        } else {
+            resp = await db.collection('losTotals').insertOne(
+                { ...data, dateAdded: moment().format('YYYY-MM-DD') }
+            );
+        }
+    } else if (losTotal.length === 0) {
         resp = await db.collection('losTotals').insertOne(
             { ...data, dateAdded: moment().format('YYYY-MM-DD') }
         );

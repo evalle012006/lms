@@ -41,7 +41,7 @@ async function getSummary(req, res) {
                             transfer: { $sum: 0 }, // not yet implemented
                             newMember: { $sum: { // tomorrow only and loanCycle 1
                                 $cond: {
-                                    if: { $and: [{$eq: ['$status', 'tomorrow']}, {$eq: ['$loanCycle', 1]}, {$ne: ['$status', 'pending']}] },
+                                    if: { $and: [{$eq: ['$status', 'tomorrow']}, {$eq: ['$loanCycle', 1]}] },
                                     then: 1,
                                     else: 0
                                 }
@@ -78,7 +78,13 @@ async function getSummary(req, res) {
                                     $cond: {
                                         if: { $or: [{$eq: ['$remarks.value', 'delinquent']}, {$eq: ['$remarks.value', 'past due']}, {$eq: ['$remarks.value', 'excused']}] },
                                         then: 0,
-                                        else: '$activeLoan'
+                                        else: {
+                                            $cond: {
+                                                if: { $and: [{$ne: ['$status', 'pending']}, {$ne: ['$status', 'tomorrow']}] },
+                                                then: '$activeLoan',
+                                                else: 0
+                                            }
+                                        }
                                     }
                                 }
                             },

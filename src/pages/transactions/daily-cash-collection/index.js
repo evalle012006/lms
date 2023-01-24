@@ -55,6 +55,7 @@ const DailyCashCollectionPage = () => {
                 toast.error(resp.message);
             }
         }
+        setShowSubmitDialog(false);
     }
 
     const getListBranch = async () => {

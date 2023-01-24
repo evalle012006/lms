@@ -331,6 +331,11 @@ const LoanOfficerSummary = () => {
                     losSlice = losList.slice(1, index);
                 } else { // index = 15
                     losSlice = losList.slice(index - 5, index);
+                    const hasWeek = losSlice.find(los => los.weekTotal);
+                    if (hasWeek) {
+                        const hasWeekIdx = losList.findIndex(los => los.weekNumber === hasWeek.weekNumber);
+                        losSlice = losList.slice(hasWeekIdx + 1, index);
+                    }
                 }
 
                 let totalTransfer = 0;
@@ -688,7 +693,7 @@ const LoanOfficerSummary = () => {
                                         <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">OFST Pers.</th>
                                         <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">Act. Clie.</th>
                                         <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-4 text-gray-500 uppercase">Loan Release W/ Serv. Charge</th>
-                                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-4 text-gray-500 uppercase">ACTL LOAN RELEASE W/ Serv. Charge</th>
+                                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 py-4 text-gray-500 uppercase">ACTL LOAN RELEASE W/ Serv. Charge</th>
                                         <th colSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 text-gray-500 uppercase">COLLECTION (w/ serv. charge)</th>
                                         <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 text-gray-500 uppercase">Pastdue</th>
                                         <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 text-gray-500 uppercase">FULL PAYMENT (w/ serv. charge)</th>
@@ -696,7 +701,7 @@ const LoanOfficerSummary = () => {
                                         <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-r-0 border-t-0 px-2 py-2 text-gray-500 uppercase">Loan Balance</th>
                                     </tr>
                                     <tr>
-                                        <th colSpan={3} className="sticky top-[2.2rem] bg-white  border border-gray-300 px-2 text-gray-500 uppercase">REGULAR LOAN</th>
+                                        <th colSpan={3} className="sticky top-[2.2rem] bg-white  border border-gray-300 text-gray-500 uppercase">REGULAR LOAN</th>
                                     </tr>
                                     <tr>
                                         <th className="sticky top-[4.5rem] bg-white  border border-gray-300 text-gray-500 uppercase">Pers.</th>
@@ -725,43 +730,43 @@ const LoanOfficerSummary = () => {
                                                 {(item.fBalance || item.grandTotal ) ? (
                                                     <tr className={`${rowBg} text-red-400 font-bold`}>
                                                         <td className={`${item.fBalance && 'text-black'} px-4 py-4 text-center border border-gray-300 border-l-0`}>{ item.day }</td>
-                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.transfer }</td>
-                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.newMember }</td>
-                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.offsetPerson }</td>
-                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.activeClients }</td>
-                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.loanReleasePerson }</td>
-                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.loanReleaseAmountStr }</td>
-                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.activeLoanReleasePerson }</td>
-                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.activeLoanReleaseAmountStr }</td>
-                                                        <td colSpan={2} className="px-4 py-4 text-center border border-gray-300">{ item.collectionAdvancePaymentStr }</td>
-                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.collectionActualStr }</td>
-                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.pastDuePerson }</td>
-                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.pastDueAmountStr }</td>
-                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.fullPaymentPerson }</td>
-                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.fullPaymentAmountStr }</td>
-                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.activeBorrowers }</td>
-                                                        <td className="px-4 py-4 text-center border border-gray-300 border-r-0">{ item.loanBalanceStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.transfer }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.newMember }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.offsetPerson }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.activeClients }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.loanReleasePerson }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.loanReleaseAmountStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.activeLoanReleasePerson }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.activeLoanReleaseAmountStr }</td>
+                                                        <td colSpan={2} className="px-2 py-4 text-center border border-gray-300">{ item.collectionAdvancePaymentStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.collectionActualStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.pastDuePerson }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.pastDueAmountStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.fullPaymentPerson }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.fullPaymentAmountStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.activeBorrowers }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300 border-r-0">{ item.loanBalanceStr }</td>
                                                     </tr>
                                                 ) : (
                                                     <tr className={`${rowBg} ${(item.weekTotal || item.monthTotal) && 'text-red-400 font-bold'}`}>
-                                                        <td className="px-4 py-4 text-center border border-gray-300 border-l-0">{ item.day }</td>
-                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.transfer }</td>
-                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.newMember }</td>
-                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.offsetPerson }</td>
-                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.activeClients }</td>
-                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.loanReleasePerson }</td>
-                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.loanReleaseAmountStr }</td>
-                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.activeLoanReleasePerson }</td>
-                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.activeLoanReleaseAmountStr }</td>
-                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.collectionTargetStr }</td>
-                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.collectionAdvancePaymentStr }</td>
-                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.collectionActualStr }</td>
-                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.pastDuePerson }</td>
-                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.pastDueAmountStr }</td>
-                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.fullPaymentPerson }</td>
-                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.fullPaymentAmountStr }</td>
-                                                        <td className="px-4 py-4 text-center border border-gray-300">{ item.activeBorrowers }</td>
-                                                        <td className="px-4 py-4 text-center border border-gray-300 border-r-0">{ item.loanBalanceStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300 border-l-0">{ item.day }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.transfer }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.newMember }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.offsetPerson }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.activeClients }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.loanReleasePerson }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.loanReleaseAmountStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.activeLoanReleasePerson }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.activeLoanReleaseAmountStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.collectionTargetStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.collectionAdvancePaymentStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.collectionActualStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.pastDuePerson }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.pastDueAmountStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.fullPaymentPerson }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.fullPaymentAmountStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.activeBorrowers }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300 border-r-0">{ item.loanBalanceStr }</td>
                                                     </tr>
                                                 )}
                                             </React.Fragment>
