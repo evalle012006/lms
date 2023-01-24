@@ -637,7 +637,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter }) => {
                 } else {
                     mounted && getGroupCashCollections(currentBranch.code);
                 }
-                mounted && getGroupCashCollectionsForLos(currentBranch.code, '2022-12-27'); // 2022-12-27 in live
+                mounted && getGroupCashCollectionsForLos(currentBranch.code, '2022-12-27');// 2022-12-27 in live
             } else {
                 mounted && getGroupCashCollections(currentBranch.code);
             }
