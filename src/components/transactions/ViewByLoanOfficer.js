@@ -485,11 +485,12 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter }) => {
     }
 
     const saveYearEndLos = async (totals, selectedBranch, yearEnd) => {
-        if (currentUser.rep.role === 3) {
+        if (currentUser.role.rep === 3) {
             const losTotals = {...createLos(totals, selectedBranch, yearEnd), losType: 'year-end'};
             await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loan-officer-summary/save-update-totals', losTotals);
         }
     }
+    
     
     const handleOpen = async (row) => {
         if (row.original.activeClients !== 0) {
