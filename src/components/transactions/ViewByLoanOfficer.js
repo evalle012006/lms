@@ -247,6 +247,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter }) => {
         }
     }
     
+    
     // const getGroupCashCollectionsForLos = async (selectedBranch, date) => {
     //     setLoading(true);
 
