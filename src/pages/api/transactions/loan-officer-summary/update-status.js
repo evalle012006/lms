@@ -20,10 +20,18 @@ async function updateStatus(req, res) {
         let error = false;
         const promise = await new Promise(async (resolve) => {
             const response = await Promise.all(groupIds.map(async (id) => {
-                const cashCollection = await db.collection('cashCollections').find({ groupId: id, dateAdded: currentDate }).toArray();
+                // const cashCollection = await db.collection('cashCollections').find({ groupId: id, dateAdded: currentDate }).toArray();
                 
-                if (cashCollection.length === 0) {
-                    error = true;
+                // if (cashCollection.length === 0) {
+                //     error = true;
+                // }
+
+                const groupSummary = await db.collection('groupCashCollections').find({ groupId: id, dateAdded: currentDate }).toArray();
+
+                if (groupSummary.length > 0) {
+                    if (groupSummary[0].status === 'pending') {
+                        error = true;
+                    }
                 }
             }));
 
@@ -32,7 +40,7 @@ async function updateStatus(req, res) {
 
         if (promise) {
             if (error) {
-                response = { error: true, message: "One or more group/s don't have collection for the day."};
+                response = { error: true, message: "One or more group/s transaction is not yet closed."};
             } else {
                 await db.collection('cashCollections').updateMany(
                     { loId: loId, dateAdded: currentDate },

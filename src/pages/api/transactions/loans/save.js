@@ -15,6 +15,7 @@ async function save(req, res) {
 
     let mode;
     let oldLoanId;
+    let reloan = false;
     
     if (loanData.hasOwnProperty('mode')) {
         mode = loanData.mode;
@@ -52,6 +53,7 @@ async function save(req, res) {
             });
 
             if (mode === 'reloan') {
+                reloan = true;
                 await updateLoan(oldLoanId);
             } else {
                 await updateGroup(loanData);
@@ -60,7 +62,7 @@ async function save(req, res) {
             const groupSummary = await saveGroupSummary(loanData);
 
             if (groupSummary.success) {
-                await saveCashCollection(loanData);
+                await saveCashCollection(loanData, reloan);
             }
 
             response = {
@@ -158,7 +160,7 @@ async function saveGroupSummary(loan) {
     return { success: true };
 }
 
-async function saveCashCollection(loan) {
+async function saveCashCollection(loan, reloan) {
     const { db } = await connectToDatabase();
     const currentDate = moment(new Date()).format('YYYY-MM-DD');
 
@@ -184,9 +186,7 @@ async function saveCashCollection(loan) {
             ]).toArray();
         if (loanData.length > 0) {
             loanData = loanData[0];
-
             const cashCollection = await db.collection('cashCollections').find({ groupCollectionId: groupSummary._id + '', clientId: loanData.clientId, dateAdded: currentDate }).toArray();
-
             if (cashCollection.length === 0) {
                 const data = {
                     loanId: loanData._id + '',
@@ -201,7 +201,7 @@ async function saveCashCollection(loan) {
                     mispayment: false,
                     mispaymentStr: 'No',
                     collection: 0,
-                    excess: 0,
+                    excess: loanData.excess,
                     total: 0,
                     noOfPayments: 0,
                     activeLoan: loanData.activeLoan,
@@ -210,8 +210,8 @@ async function saveCashCollection(loan) {
                     loanBalance: loanData.loanBalance,
                     paymentCollection: 0,
                     occurence: groupSummary.mode,
-                    currentReleaseAmount: 0,
-                    fullPayment: 0,
+                    currentReleaseAmount: loanData.currentReleaseAmount,
+                    fullPayment: loanData.fullPayment,
                     remarks: '',
                     status: loanData.status,
                     dateAdded: moment(new Date()).format('YYYY-MM-DD'),
@@ -220,6 +220,8 @@ async function saveCashCollection(loan) {
                 };
     
                 await db.collection('cashCollections').insertOne({ ...data });
+            } else {
+                await db.collection('cashCollections').updateOne({ _id: cashCollection[0]._id }, { $set: { currentReleaseAmount: loanData.amountRelease } })
             }
         }
     }
