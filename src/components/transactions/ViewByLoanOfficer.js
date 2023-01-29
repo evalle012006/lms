@@ -491,6 +491,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter }) => {
         }
     }
     
+    
     const handleOpen = async (row) => {
         if (row.original.activeClients !== 0) {
             setLoading(true);
