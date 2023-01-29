@@ -11,6 +11,7 @@ import { BehaviorSubject } from 'rxjs';
 import { setBmSummary } from "@/redux/actions/cashCollectionActions";
 
 const ViewByLoanOfficerPage = ({ pageNo, dateFilter }) => {
+    const dispatch = useDispatch();
     const selectedBranchSubject = new BehaviorSubject(process.browser && localStorage.getItem('selectedBranch'));
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
@@ -245,6 +246,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter }) => {
             toast.error('Error retrieving branches list.');
         }
     }
+    
     
     // const getGroupCashCollectionsForLos = async (selectedBranch, date) => {
     //     setLoading(true);
