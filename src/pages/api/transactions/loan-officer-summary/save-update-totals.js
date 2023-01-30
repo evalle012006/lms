@@ -12,39 +12,100 @@ export default apiHandler({
 });
 
 async function processLOSTotals(req, res) {
-    const { db } = await connectToDatabase();
-
     const data = req.body;
 
-    let resp;
-
-    let losTotal = await db.collection('losTotals').find({ userId: data.userId, month: data.month, year: data.year }).toArray();
-
-    if (!data.yearEnd) {
-        if (losTotal.length > 0) {
-            losTotal = losTotal[0];
-            resp = await db.collection('losTotals').updateOne(
-                { _id: losTotal._id},
-                { $set: {
-                    ...losTotal,
-                    data: data.data,
-                    dateModified: currentDate
-                } }
-            );
-        } else {
-            resp = await db.collection('losTotals').insertOne(
-                { ...data, dateAdded: moment().format('YYYY-MM-DD') }
-            );
-        }
-    } else if (losTotal.length === 0) {
-        resp = await db.collection('losTotals').insertOne(
-            { ...data, dateAdded: moment().format('YYYY-MM-DD') }
-        );
+    switch (data.losType) {
+        case 'year-end':
+            await saveUpdateYearEnd(data);
+            break;
+        case 'daily':
+            await saveUpdateDaily(data);
+            break;
+        case 'commulative':
+            await saveUpdateCommulative(data);
+            break;
+        default:
+            break;
     }
-
-    response = { success: true, data: resp };
 
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')
         .end(JSON.stringify(response));
+}
+
+
+async function saveUpdateYearEnd(total) {
+    const { db } = await connectToDatabase();
+    let resp;
+
+    let losTotal = await db.collection('losTotals').find({ userId: total.userId, month: 12, year: total.year, losType: 'year-end' }).toArray();
+
+    if (losTotal.length > 0) {
+        losTotal = losTotal[0];
+        resp = await db.collection('losTotals').updateOne(
+            { _id: losTotal._id},
+            { $set: {
+                ...losTotal,
+                data: total.data,
+                dateModified: currentDate
+            } }
+        );
+    } else {
+        resp = await db.collection('losTotals').insertOne(
+            { ...total, dateAdded: moment().format('YYYY-MM-DD') }
+        );
+    }
+
+    response = { success: true, response: resp };
+}
+
+
+async function saveUpdateDaily(total) {
+    const { db } = await connectToDatabase();
+    let resp;
+
+    let losTotal = await db.collection('losTotals').find({ userId: total.userId, dateAdded: currentDate, losType: 'daily' }).toArray();
+
+    if (losTotal.length > 0) {
+        losTotal = losTotal[0];
+        await db.collection('losTotals').updateOne(
+            { _id: losTotal._id},
+            { $set: {
+                ...losTotal,
+                data: total.data,
+                dateModified: currentDate
+            } }
+        );
+    } else {
+        await db.collection('losTotals').insertOne(
+            { ...total, dateAdded: moment().format('YYYY-MM-DD') }
+        );
+    }
+
+    response = { success: true, response: resp };
+}
+
+async function saveUpdateCommulative(total) {
+    const { db } = await connectToDatabase();
+    let resp;
+
+    let losTotal = await db.collection('losTotals').find({ userId: total.userId, month: total.month, year: total.year, losType: 'commulative' }).toArray();
+
+    if (losTotal.length > 0) {
+        losTotal = losTotal[0];
+        await db.collection('losTotals').updateOne(
+            { _id: losTotal._id},
+            { $set: {
+                ...losTotal,
+                data: total.data,
+                dateModified: currentDate
+            } }
+        );
+    } else {
+        await db.collection('losTotals').insertOne(
+            { ...total, dateAdded: moment().format('YYYY-MM-DD') }
+        );
+    }
+
+    response = { success: true, response: resp };
 }

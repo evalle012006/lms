@@ -520,7 +520,6 @@ const CashCollectionDetailsPage = () => {
 
         groupClients && groupClients.map(cc => {
             if (cc.status === 'active') {
-
                 if (cc.error) {
                     errorMsg.add('Error occured. Please double check the Actual Collection column.');
                 } else if (parseFloat(cc.paymentCollection) === 0 && !cc.remarks) {
@@ -536,13 +535,13 @@ const CashCollectionDetailsPage = () => {
                     }
                 } else if (parseFloat(cc.paymentCollection) > 0 && parseFloat(cc.paymentCollection) < cc.activeLoan) {
                     errorMsg.add("Actual collection is below the target collection.");
-                } else if (parseFloat(cc.paymentCollection) % parseFloat(cc.activeLoan) !== 0) {
+                } else if (parseFloat(cc.paymentCollection) % parseFloat(cc.activeLoan) !== 0 && cc.loanBalance !== 0) {
                     if (cc.remarks && (cc.remarks.value !== "past due" && cc.remarks.value !== "excused" && cc.remarks.value !== "delinquent") ) {
                         errorMsg.add(`Actual collection should be divisible by ${cc.activeLoan}.`);
                     }
                 } else if (parseFloat(cc.paymentCollection) === (cc.activeLoan * 2) && (!cc.remarks || cc.remarks && cc.remarks.value !== "double payment")) {
                     errorMsg.add('Error occured. Actual collection is a double payment please set remarks as Double Payment.');
-                } else if (parseFloat(cc.paymentCollection) > parseFloat(cc.activeLoan) && parseFloat(cc.paymentCollection) > parseFloat(cc.activeLoan * 2)) {
+                } else if (parseFloat(cc.paymentCollection) > parseFloat(cc.activeLoan) && parseFloat(cc.paymentCollection) > parseFloat(cc.activeLoan * 2) && cc.loanBalance !== 0) {
                     if (parseFloat(cc.paymentCollection) % parseFloat(cc.activeLoan) === 0 && (!cc.remarks || cc.remarks && cc.remarks.value !== "advance payment")) {
                         errorMsg.add('Error occured. Actual collection is a advance payment please set remarks as Advance Payment.');
                     }
@@ -872,6 +871,14 @@ const CashCollectionDetailsPage = () => {
                 let temp = {...cc};
                 
                 if (idx === index) {
+                    temp.excused = false;
+                    temp.delinquent = false;
+
+                    // if (temp.paymentCollection > 0 && (remarks && (remarks.value !== "delinquent" && remarks.value !== "past due" && remarks.value === "excused")) &&
+                    //     (temp.remarks && (temp.remarks.value === "delinquent" || temp.remarks.value === "past due" || temp.remarks.value === "excused"))) {
+                    //     temp.noOfPayments = temp.noOfPayments > 0 ? temp.noOfPayments - 1 : 0;
+                    // }
+
                     temp.remarks = remarks;
 
                     if (temp.hasOwnProperty('history')) {

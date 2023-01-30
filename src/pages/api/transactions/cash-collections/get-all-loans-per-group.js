@@ -68,7 +68,14 @@ async function getAllLoansPerGroup(req, res) {
                                         excess: { $sum: '$excess' },
                                         pastDue: { $sum: '$pastDue' },
                                         noPastDue: { $sum: {$cond: { if: { $eq: ['$remarks.value', 'past due'] }, then: 1, else: 0 } }},
-                                        total: { $sum: '$total' }
+                                        total: { $sum: '$total' },
+                                        offsetPerson: { $sum: {
+                                            $cond: {
+                                                if: {$eq: ['remarks.value', 'offset']},
+                                                then: 1,
+                                                else: 0
+                                            }
+                                        } }
                                     } 
                                 }
                             ],
@@ -81,7 +88,7 @@ async function getAllLoansPerGroup(req, res) {
                             localField: "loIdStr",
                             foreignField: "loId",
                             pipeline: [
-                                // { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
+                                { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
                                 { $match: {$expr:  {$and: [{$ne: ['$status', 'closed']}, {$ne: ['$status', 'reject']}]} } },
                                 { $group: { 
                                         _id: '$loId',
@@ -103,7 +110,7 @@ async function getAllLoansPerGroup(req, res) {
                                                 if: { $ne: ['$status', 'pending'] },
                                                 then: {
                                                     $cond: {
-                                                        if: {$gt: ['$loanBalance', 0]},
+                                                        if: {$and: [{$gt: ['$loanBalance', 0]}, {$gte: ['$currentDateObj', '$startDateObj']}]},
                                                         then: 1,
                                                         else: 0
                                                     }
@@ -259,7 +266,14 @@ async function getAllLoansPerGroup(req, res) {
                                         excess: { $sum: '$excess' },
                                         pastDue: { $sum: '$pastDue' },
                                         noPastDue: { $sum: {$cond: { if: { $eq: ['$remarks.value', 'past due'] }, then: 1, else: 0 } }},
-                                        total: { $sum: '$total' }
+                                        total: { $sum: '$total' },
+                                        offsetPerson: { $sum: {
+                                            $cond: {
+                                                if: {$eq: ['remarks.value', 'offset']},
+                                                then: 1,
+                                                else: 0
+                                            }
+                                        } }
                                     } 
                                 }
                             ],
@@ -273,7 +287,7 @@ async function getAllLoansPerGroup(req, res) {
                             localField: "groupIdStr",
                             foreignField: "groupId",
                             pipeline: [
-                                // { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
+                                { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
                                 { $match: {$expr:  {$and: [{$ne: ['$status', 'closed']}, {$ne: ['$status', 'reject']}]} } },
                                 { $group: { 
                                         _id: '$$groupName',
@@ -295,7 +309,7 @@ async function getAllLoansPerGroup(req, res) {
                                                 if: { $ne: ['$status', 'pending'] },
                                                 then: {
                                                     $cond: {
-                                                        if: {$gt: ['$loanBalance', 0]},
+                                                        if: {$and: [{$gt: ['$loanBalance', 0]}, {$gte: ['$currentDateObj', '$startDateObj']}]},
                                                         then: 1,
                                                         else: 0
                                                     }
@@ -446,7 +460,7 @@ async function getAllLoansPerGroup(req, res) {
                                         } },
                                         activeBorrowers: { $sum: { 
                                             $cond: {
-                                                if: { $and: [{$ne: ['$status', 'pending']}, {$ne: ['$status', 'closed']}] },
+                                                if: { $eq: ['$status', 'active'] },
                                                 then: {
                                                     $cond: {
                                                         if: {$gt: ['$loanBalance', 0]},
@@ -610,7 +624,7 @@ async function getAllLoansPerGroup(req, res) {
                                         } },
                                         activeBorrowers: { $sum: { 
                                             $cond: {
-                                                if: { $and: [{$ne: ['$status', 'pending']}, {$ne: ['$status', 'closed']}] },
+                                                if: { $eq: ['$status', 'active'] },
                                                 then: {
                                                     $cond: {
                                                         if: {$gt: ['$loanBalance', 0]},

@@ -245,19 +245,19 @@ const LoanOfficerSummary = () => {
                 }
                 
                 response.data.current.map(los => {
-                    const index = losList.findIndex(d => d.day === los._id);
+                    const index = losList.findIndex(d => d.day === los.dateAdded);
                     if (index > -1) {
                         losList[index] = {
-                            ...los,
-                            day: los._id,
-                            loanReleaseAmountStr: formatPricePhp(los.loanReleaseAmount),
-                            collectionTargetStr: formatPricePhp(los.collectionTarget),
-                            collectionAdvancePaymentStr: formatPricePhp(los.collectionAdvancePayment),
-                            collectionActualStr: formatPricePhp(los.collectionActual),
-                            pastDueAmountStr: formatPricePhp(los.pastDueAmount),
-                            fullPaymentAmountStr: formatPricePhp(los.fullPaymentAmount),
-                            loanBalance: los.loanBalance + los.loanReleaseAmount,
-                            loanBalanceStr: formatPricePhp(los.loanBalance + los.loanReleaseAmount)
+                            ...los.data,
+                            day: los.dateAdded,
+                            loanReleaseAmountStr: formatPricePhp(los.data.loanReleaseAmount),
+                            collectionTargetStr: formatPricePhp(los.data.collectionTarget),
+                            collectionAdvancePaymentStr: formatPricePhp(los.data.collectionAdvancePayment),
+                            collectionActualStr: formatPricePhp(los.data.collectionActual),
+                            pastDueAmountStr: formatPricePhp(los.data.pastDueAmount),
+                            fullPaymentAmountStr: formatPricePhp(los.data.fullPaymentAmount),
+                            loanBalance: los.loanBalance + los.data.loanReleaseAmount,
+                            loanBalanceStr: formatPricePhp(los.data.loanBalance + los.data.loanReleaseAmount)
                         };
                     } else {
 
@@ -284,9 +284,9 @@ const LoanOfficerSummary = () => {
             let temp = {...los};
 
             if (index !== 0 && !los.weekTotal) {
-                const transfer = los.transfer !== '-' ? los.transfer : 0;
-                const newMember = los.newMember !== '-' ? los.newMember : 0;
-                const offsetPerson = los.offsetPerson !== '-' ? los.offsetPerson : 0;
+                const transfer = !los.transfer && los.transfer !== '-' ? los.transfer : 0;
+                const newMember = !los.newMember && los.newMember !== '-' ? los.newMember : 0;
+                const offsetPerson = !los.offsetPerson && los.offsetPerson !== '-' ? los.offsetPerson : 0;
                 const loanReleasePerson = los.loanReleasePerson !== '-' ? los.loanReleasePerson : 0;
                 const fullPaymentPerson = los.fullPaymentPerson !== '-' ? los.fullPaymentPerson : 0;
                 const fullPaymentAmount = los.fullPaymentAmount !== '-' ? los.fullPaymentAmount : 0;
@@ -489,7 +489,7 @@ const LoanOfficerSummary = () => {
         totalActiveLoanReleasePerson = fBal.activeLoanReleasePerson + totalLoanReleasePerson - totalFullPaymentPerson;
         totalActiveLoanReleaseAmount = fBal.activeLoanReleaseAmount + totalLoanReleaseAmount - totalFullPaymentAmount;
         totalActiveBorrowers = fBal.activeBorrowers + totalLoanReleasePerson - totalFullPaymentPerson;
-        totalLoanBalance = fBal.loanBalance + totalLoanReleaseAmount - totalFullPaymentAmount;
+        totalLoanBalance = fBal.loanBalance + totalLoanReleaseAmount - totalCollectionActual;
 
         monthlyTotal.transfer = totalTransfer;
         monthlyTotal.newMember = totalNewMember;
@@ -625,7 +625,8 @@ const LoanOfficerSummary = () => {
                 branchId: selectedBranch && selectedBranch._id,
                 month: moment().month() + 1,
                 year: moment().year(),
-                data: total
+                data: total,
+                losType: 'commulative'
             }
     
             await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loan-officer-summary/save-update-totals', losTotals);
@@ -701,7 +702,7 @@ const LoanOfficerSummary = () => {
                                         <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-r-0 border-t-0 px-2 py-2 text-gray-500 uppercase">Loan Balance</th>
                                     </tr>
                                     <tr>
-                                        <th colSpan={3} className="sticky top-[2.2rem] bg-white  border border-gray-300 text-gray-500 uppercase">REGULAR LOAN</th>
+                                        <th colSpan={3} className="sticky top-[2.9rem] bg-white  border border-gray-300 text-gray-500 uppercase">REGULAR LOAN</th>
                                     </tr>
                                     <tr>
                                         <th className="sticky top-[4.5rem] bg-white  border border-gray-300 text-gray-500 uppercase">Pers.</th>

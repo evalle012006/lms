@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 import { useRouter } from "node_modules/next/router";
 import { formatPricePhp } from "@/lib/utils";
 import moment from 'moment';
-import { setCashCollectionList } from "@/redux/actions/cashCollectionActions";
+import { setCashCollectionList, setGroupSummaryTotals, setLoSummary } from "@/redux/actions/cashCollectionActions";
 import TableComponent, { SelectColumnFilter, StatusPill } from "@/lib/table";
 import { BehaviorSubject } from 'rxjs';
 
@@ -50,6 +50,7 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
             let totalPastDue = 0;
             let totalNoPastDue = 0;
             let mispayment = 0;
+            let offsetPerson = 0;
 
             let selectedBranch;
             response.data && response.data.map(cc => {
@@ -72,6 +73,7 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                     pastDueStr: '-',
                     noPastDue: '-',
                     noOfFullPayment: '-',
+                    offSetPerson: '-',
                     status: '-'
                 };
                 selectedBranch = cc.branchId;
@@ -143,7 +145,8 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                             loanTargetStr: loanTarget > 0 ? formatPricePhp(loanTarget) : 0,
                             pastDue: cc.cashCollections[0].pastDue ? cc.cashCollections[0].pastDue : 0,
                             pastDueStr: cc.cashCollections[0].pastDue ? formatPricePhp(cc.cashCollections[0].pastDue) : 0,
-                            noPastDue: cc.cashCollections[0].noPastDue ? cc.cashCollections[0].noPastDue : 0
+                            noPastDue: cc.cashCollections[0].noPastDue ? cc.cashCollections[0].noPastDue : 0,
+                            offsetPerson: cc.cashCollections[0].offsetPerson ? cc.cashCollections[0].offsetPerson : 0
                             // total: cc.cashCollections[0].collection && cc.cashCollections[0].collection,
                             // totalStr: cc.cashCollections[0].collection ? formatPricePhp(cc.cashCollections[0].collection) : 0
                         };
@@ -153,6 +156,7 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                         targetLoanCollection = targetLoanCollection - cc.cashCollections[0].loanTarget;
                         totalPastDue += cc.cashCollections[0].pastDue ? cc.cashCollections[0].pastDue : 0;
                         totalNoPastDue += cc.cashCollections[0].noPastDue ? cc.cashCollections[0].noPastDue : 0;
+                        offsetPerson += cc.cashCollections[0].offsetPerson ? cc.cashCollections[0].offsetPerson : 0;
                     }
     
                     if (cc.currentRelease.length > 0) {
@@ -247,7 +251,11 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
             
             const totals = {
                 group: 'TOTALS',
+                transfer: 0,
+                noOfNewCurrentRelease: noOfNewCurrentRelease,
+                noCurrentRelease: noOfNewCurrentRelease + noOfReCurrentRelease,
                 noCurrentReleaseStr: noOfNewCurrentRelease + ' / ' + noOfReCurrentRelease,
+                currentReleaseAmount: currentReleaseAmount,
                 currentReleaseAmountStr: currentReleaseAmount ? formatPricePhp(currentReleaseAmount) : 0,
                 activeClients: noOfClients,
                 activeBorrowers: noOfBorrowers,
@@ -259,21 +267,28 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                 loanTargetStr: targetLoanCollection ? formatPricePhp(targetLoanCollection) : 0,
                 excess: excess,
                 excessStr: excess ? formatPricePhp(excess) : 0,
+                collection: totalLoanCollection,
                 collectionStr: totalLoanCollection ? formatPricePhp(totalLoanCollection) : 0,
+                mispayment: mispayment,
                 mispayment: mispayment + ' / ' + noOfClients,
+                fullPaymentAmount: fullPaymentAmount,
                 fullPaymentAmountStr: fullPaymentAmount ? formatPricePhp(fullPaymentAmount) : 0,
                 noOfFullPayment: noOfFullPayment,
                 pastDue: totalPastDue,
                 pastDueStr: formatPricePhp(totalPastDue),
                 noPastDue: totalNoPastDue,
+                offsetPerson: offsetPerson,
                 totalData: true,
                 status: '-'
             }
 
             collectionData.push(totals);
+            dispatch(setGroupSummaryTotals(totals));
+            const dailyLos = {...createLos(totals, selectedBranch, false), losType: 'daily'};
+            dispatch(setLoSummary(dailyLos));
             const currentMonth = moment().month();
-            if (!filter && currentMonth === 0) {
-                saveYearEndLos(totals, selectedBranch);
+            if (!filter && currentMonth === 12) {
+                saveYearEndLos(totals, selectedBranch, true);
             }
             
             dispatch(setCashCollectionList(collectionData));
@@ -284,38 +299,65 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
         }
     }
 
-    const saveYearEndLos = async (totals, selectedBranch) => {
-        let grandTotal = {
-            day: 'Year End',
-            transfer: 0,
-            newMember: 0,
-            offsetPerson: 0,
-            activeClients: totals.activeClients,
-            loanReleasePerson: 0,
-            loanReleaseAmount: 0,
-            activeLoanReleasePerson: totals.activeBorrowers,
-            activeLoanReleaseAmount: totals.totalLoanRelease,
-            collectionAdvancePayment: totals.totalLoanRelease - totals.totalLoanBalance,//totals.excess + totals.targetLoanCollection + totals.pastDue - (totals.totalLoanRelease - totals.totalLoanBalance),
-            collectionActual: totals.totalLoanRelease - totals.totalLoanBalance,
-            pastDuePerson: 0,
-            pastDueAmount: 0,
-            fullPaymentPerson: 0,
-            fullPaymentAmount: 0,
-            activeBorrowers: totals.activeBorrowers,
-            loanBalance: totals.totalLoanBalance
-        };
+    const createLos = (totals, selectedBranch, yearEnd) => {
+        let grandTotal;
 
-        let userId;
+        if (yearEnd) {
+            grandTotal = {
+                day: 'Year End',
+                transfer: 0,
+                newMember: 0,
+                offsetPerson: 0,
+                activeClients: totals.activeClients,
+                loanReleasePerson: 0,
+                loanReleaseAmount: 0,
+                activeLoanReleasePerson: totals.activeBorrowers,
+                activeLoanReleaseAmount: totals.totalLoanRelease,
+                collectionAdvancePayment: totals.totalLoanRelease - totals.totalLoanBalance,//totals.excess + totals.targetLoanCollection + totals.pastDue - (totals.totalLoanRelease - totals.totalLoanBalance),
+                collectionActual: totals.totalLoanRelease - totals.totalLoanBalance,
+                pastDuePerson: 0,
+                pastDueAmount: 0,
+                fullPaymentPerson: 0,
+                fullPaymentAmount: 0,
+                activeBorrowers: totals.activeBorrowers,
+                loanBalance: totals.totalLoanBalance
+            };
+        } else {
+            grandTotal = {
+                day: currentDate,
+                transfer: totals.transfer,
+                newMember: totals.noOfNewCurrentRelease,
+                offsetPerson: totals.offsetPerson,
+                activeClients: totals.activeClients,
+                loanReleasePerson: totals.noCurrentRelease,
+                loanReleaseAmount: totals.currentReleaseAmount,
+                activeLoanReleasePerson: totals.activeBorrowers,
+                activeLoanReleaseAmount: totals.totalLoanRelease,
+                collectionTarget: totals.targetLoanCollection,
+                collectionAdvancePayment: totals.totalLoanRelease - totals.totalLoanBalance,//totals.excess + totals.targetLoanCollection + totals.pastDue - (totals.totalLoanRelease - totals.totalLoanBalance),
+                collectionActual: totals.totalLoanRelease - totals.totalLoanBalance,
+                pastDuePerson: totals.noPastDue,
+                pastDueAmount: totals.pastDue,
+                fullPaymentPerson: totals.noOfFullPayment,
+                fullPaymentAmount: totals.fullPaymentAmount,
+                activeBorrowers: totals.activeBorrowers,
+                loanBalance: totals.totalLoanBalance
+            };
+        }
+
+        return {
+            userId: currentUser._id,
+            userType: 'lo',
+            branchId: selectedBranch,
+            month: yearEnd ? 12 : moment().month() + 1,
+            year: yearEnd ? moment().year() - 1 : moment().year(),
+            data: grandTotal
+        }
+    }
+
+    const saveYearEndLos = async (totals, selectedBranch, yearEnd) => {
         if (currentUser.role.rep === 4) {
-            userId = currentUser._id;
-            const losTotals = {
-                userId: currentUser._id,
-                branchId: selectedBranch,
-                month: 12,
-                year: moment().year() - 1,
-                data: grandTotal,
-                yearEnd: true
-            }
+            const losTotals = {...createLos(totals, selectedBranch, yearEnd), losType: 'year-end'};
     
             await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loan-officer-summary/save-update-totals', losTotals);
         } 
