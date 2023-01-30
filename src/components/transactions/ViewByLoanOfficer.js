@@ -5,7 +5,7 @@ import { useRouter } from "node_modules/next/router";
 import TableComponent, { SelectColumnFilter, StatusPill } from "@/lib/table";
 import moment from 'moment';
 import { fetchWrapper } from "@/lib/fetch-wrapper";
-import { formatPricePhp, getTotal } from "@/lib/utils";
+import { formatPricePhp } from "@/lib/utils";
 import { toast } from 'react-hot-toast';
 import { BehaviorSubject } from 'rxjs';
 import { setBmSummary } from "@/redux/actions/cashCollectionActions";
