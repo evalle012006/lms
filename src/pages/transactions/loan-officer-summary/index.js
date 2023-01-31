@@ -264,7 +264,7 @@ const LoanOfficerSummary = () => {
                     }
                 });
 
-                losList = calculatePersons(losList);
+                // losList = calculatePersons(losList);
                 losList = calculateWeeklyTotals(losList);
                 losList.push(calculateMonthlyTotals(losList[0], losList.filter(los => los.weekTotal)));
                 losList.push(calculateGrandTotals(losList, filter));
