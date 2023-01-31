@@ -413,7 +413,6 @@ const LoanOfficerSummary = () => {
                     loanBalance: totalLoanBalance,
                     loanBalanceStr: formatPricePhp(totalLoanBalance)
                 }
-
                 prevWeek = losList[index];
             }
         });
