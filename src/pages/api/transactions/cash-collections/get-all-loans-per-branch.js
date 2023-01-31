@@ -118,7 +118,13 @@ async function getAllLoansPerGroup(req, res) {
                                                         $cond: {
                                                             if: {$and: [{$gt: ['$loanBalance', 0]}, {$gte: ['$currentDateObj', '$startDateObj']}]},
                                                             then: 1,
-                                                            else: 0
+                                                            else: {
+                                                                $cond: {
+                                                                    if: {$eq: ['$status', 'active']},
+                                                                    then: 1,
+                                                                    else: 0
+                                                                }
+                                                            }
                                                         }
                                                     }, 
                                                     else: 0
@@ -323,7 +329,13 @@ async function getAllLoansPerGroup(req, res) {
                                                     $cond: {
                                                         if: {$and: [{$gt: ['$loanBalance', 0]}, {$gte: ['$currentDateObj', '$startDateObj']}]},
                                                         then: 1,
-                                                        else: 0
+                                                        else: {
+                                                            $cond: {
+                                                                if: {$eq: ['$status', 'active']},
+                                                                then: 1,
+                                                                else: 0
+                                                            }
+                                                        }
                                                     }
                                                 }, 
                                                 else: 0
@@ -482,7 +494,13 @@ async function getAllLoansPerGroup(req, res) {
                                                         $cond: {
                                                             if: {$gt: ['$loanBalance', 0]},
                                                             then: 1,
-                                                            else: 0
+                                                            else: {
+                                                                $cond: {
+                                                                    if: {$and: [{$eq: ['$status', 'tomorrow']}, {$eq: ['$loanBalance', 0]}]},
+                                                                    then: 1,
+                                                                    else: 0
+                                                                }
+                                                            }
                                                         }
                                                     }, 
                                                     else: 0
@@ -646,7 +664,13 @@ async function getAllLoansPerGroup(req, res) {
                                                     $cond: {
                                                         if: {$gt: ['$loanBalance', 0]},
                                                         then: 1,
-                                                        else: 0
+                                                        else: {
+                                                            $cond: {
+                                                                if: {$and: [{$eq: ['$status', 'tomorrow']}, {$eq: ['$loanBalance', 0]}]},
+                                                                then: 1,
+                                                                else: 0
+                                                            }
+                                                        }
                                                     }
                                                 }, 
                                                 else: 0
