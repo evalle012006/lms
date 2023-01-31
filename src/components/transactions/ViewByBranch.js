@@ -73,6 +73,15 @@ const ViewByBranchPage = (dateFilter) => {
                 };
 
                 if (!filter) {
+                    if (branch.groupCashCollections.length > 0) {
+                        const open = branch.groupCashCollections[0].statusArr.find(status => status === 'open');
+                        if (open) {
+                            collection.status = 'open';
+                        } else {
+                            collection.status = 'close';
+                        }
+                    }
+
                     if (branch.activeLoans.length > 0) {
                         collection.activeClients = branch.activeLoans[0].activeClients; 
                         collection.activeBorrowers = branch.activeLoans[0].activeBorrowers;

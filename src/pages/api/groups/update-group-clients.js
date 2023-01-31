@@ -5,7 +5,6 @@ export default apiHandler({
     post: updateGroup
 });
 
-
 async function updateGroup(req, res) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
@@ -17,18 +16,15 @@ async function updateGroup(req, res) {
     groups.map(async group => {
         let temp = {...group};
 
-        const clients = await db.collection('client').find({ groupId: group._id + '' }).toArray();
-
-        if (clients.length > 0) {
-            temp.noOfClients = clients.length;
-
-            delete temp._id;
-            await db.collection('groups').updateOne(
-                { _id: ObjectId(group._id) },
-                { $set: { ...temp } },
-                { upsert: false }
-            );
+        let availableSlots = [];
+        for (let i = 1; i <= 40; i++) {
+            availableSlots.push(i);
         }
+        temp.availableSlots = availableSlots;
+        temp.noOfClients = 0;
+        temp.status = "available";
+
+        await db.collection('groups').updateOne({ _id: group._id }, {$set: {...temp}});
     });
 
     response = { success: true };
@@ -37,3 +33,35 @@ async function updateGroup(req, res) {
         .setHeader('Content-Type', 'application/json')
         .end(JSON.stringify(response));
 }
+
+// async function updateGroup(req, res) {
+//     const { db } = await connectToDatabase();
+//     const ObjectId = require('mongodb').ObjectId;
+//     let response;
+//     let statusCode = 200;
+
+//     const groups = await db.collection('groups').find().toArray();
+
+//     groups.map(async group => {
+//         let temp = {...group};
+
+//         const clients = await db.collection('client').find({ groupId: group._id + '' }).toArray();
+
+//         if (clients.length > 0) {
+//             temp.noOfClients = clients.length;
+
+//             delete temp._id;
+//             await db.collection('groups').updateOne(
+//                 { _id: ObjectId(group._id) },
+//                 { $set: { ...temp } },
+//                 { upsert: false }
+//             );
+//         }
+//     });
+
+//     response = { success: true };
+
+//     res.status(statusCode)
+//         .setHeader('Content-Type', 'application/json')
+//         .end(JSON.stringify(response));
+// }

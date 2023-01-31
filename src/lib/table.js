@@ -603,8 +603,19 @@ const TableComponent = ({
                                 const totalData = row.original.hasOwnProperty('totalData') ? row.original.totalData : false;
                                 const selected = row.original.hasOwnProperty('selected') ? row.original.selected : false;
                                 const allowApproved = row.original.hasOwnProperty('allowApproved') ? row.original.allowApproved : false;
+                                const status = row.original.hasOwnProperty('status') && row.original.status;
+                                const pageName = row.original.hasOwnProperty('page') && row.original.page;
+
+                                let bg = 'even:bg-gray-100';
+
+                                if (delinquent === 'Yes') {
+                                  bg = 'bg-red-100';
+                                } else if (pageName === 'branch-summary' && status === 'close') {
+                                  bg = 'bg-blue-200';
+                                }
+
                                 return (
-                                <tr {...row.getRowProps()} className={`hover:bg-slate-200 ${delinquent === 'Yes' && 'bg-red-100'} even:bg-gray-100`}>
+                                <tr {...row.getRowProps()} className={`hover:bg-slate-200 ${bg}`}>
                                     {multiSelect && (
                                       <td className="py-4-custom whitespace-nowrap-custom" role="cell">
                                         <CheckBox name={`select-${i}`}

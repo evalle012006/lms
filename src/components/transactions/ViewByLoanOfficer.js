@@ -8,7 +8,7 @@ import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { formatPricePhp } from "@/lib/utils";
 import { toast } from 'react-hot-toast';
 import { BehaviorSubject } from 'rxjs';
-import { setBmSummary } from "@/redux/actions/cashCollectionActions";
+import { setBmSummary, setCashCollectionLo } from "@/redux/actions/cashCollectionActions";
 
 const ViewByLoanOfficerPage = ({ pageNo, dateFilter }) => {
     const dispatch = useDispatch();
@@ -240,6 +240,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter }) => {
             }
             
             setUserLOList(collectionData);
+            dispatch(setCashCollectionLo(collectionData));
             setLoading(false);
         } else {
             setLoading(false);
@@ -464,7 +465,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter }) => {
                 activeLoanReleaseAmount: totals.totalLoanRelease,
                 collectionTarget: totals.targetLoanCollection,
                 collectionAdvancePayment: totals.totalLoanRelease - totals.totalLoanBalance,//totals.excess + totals.targetLoanCollection + totals.pastDue - (totals.totalLoanRelease - totals.totalLoanBalance),
-                collectionActual: totals.totalLoanRelease - totals.totalLoanBalance,
+                collectionActual: totals.totalLoanCollection,
                 pastDuePerson: totals.noPastDue,
                 pastDueAmount: totals.pastDue,
                 fullPaymentPerson: totals.noOfFullPayment,

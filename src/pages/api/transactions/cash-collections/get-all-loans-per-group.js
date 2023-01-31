@@ -55,7 +55,6 @@ async function getAllLoansPerGroup(req, res) {
                                 { $match: { dateAdded: date} },
                                 { $group: { 
                                         _id: '$loId',
-                                        // noOfClients: { $sum: { $cond: {if: { $gt: ['$paymentCollection', 0] }, then: 1, else: 0} } },
                                         mispayment: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },
                                         loanTarget: { $sum: {
                                             $cond: {
@@ -71,7 +70,7 @@ async function getAllLoansPerGroup(req, res) {
                                         total: { $sum: '$total' },
                                         offsetPerson: { $sum: {
                                             $cond: {
-                                                if: {$eq: ['remarks.value', 'offset']},
+                                                if: {$eq: ['$remarks.value', 'offset']},
                                                 then: 1,
                                                 else: 0
                                             }
@@ -275,7 +274,7 @@ async function getAllLoansPerGroup(req, res) {
                                         total: { $sum: '$total' },
                                         offsetPerson: { $sum: {
                                             $cond: {
-                                                if: {$eq: ['remarks.value', 'offset']},
+                                                if: {$eq: ['$remarks.value', 'offset']},
                                                 then: 1,
                                                 else: 0
                                             }

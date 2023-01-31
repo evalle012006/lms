@@ -12,21 +12,45 @@ export default apiHandler({
 });
 
 async function processLOSTotals(req, res) {
+    // const { db } = await connectToDatabase();
+    // const { summary, ids } = req.body;
     const data = req.body;
 
-    switch (data.losType) {
-        case 'year-end':
-            await saveUpdateYearEnd(data);
-            break;
-        case 'daily':
-            await saveUpdateDaily(data);
-            break;
-        case 'commulative':
-            await saveUpdateCommulative(data);
-            break;
-        default:
-            break;
-    }
+    // let error = false;
+
+    // const promise = await new Promise(async (resolve) => {
+    //     const response = await Promise.all(ids.map(async (id) => {
+    //         const groupSummary = await db.collection('groupCashCollections').find({ groupId: id, dateAdded: currentDate }).toArray();
+
+    //         if (groupSummary.length > 0) {
+    //             if (groupSummary[0].status === 'pending') {
+    //                 error = true;
+    //             }
+    //         }
+    //     }));
+
+    //     resolve(response);
+    // });
+
+    // if (promise) {
+    //     if (error) {
+    //         response = { error: true, message: "One or more group/s transaction is not yet closed."};
+    //     } else {
+            switch (data.losType) {
+                case 'year-end':
+                    await saveUpdateYearEnd(data);
+                    break;
+                case 'daily':
+                    await saveUpdateDaily(data);
+                    break;
+                case 'commulative':
+                    await saveUpdateCommulative(data);
+                    break;
+                default:
+                    break;
+            }
+        // }
+    // }
 
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')
