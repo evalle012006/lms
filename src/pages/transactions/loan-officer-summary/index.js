@@ -284,14 +284,14 @@ const LoanOfficerSummary = () => {
             let temp = {...los};
 
             if (index !== 0 && !los.weekTotal) {
-                const transfer = !los.transfer && los.transfer !== '-' ? los.transfer : 0;
-                const newMember = !los.newMember && los.newMember !== '-' ? los.newMember : 0;
-                const offsetPerson = !los.offsetPerson && los.offsetPerson !== '-' ? los.offsetPerson : 0;
+                // const transfer = !los.transfer && los.transfer !== '-' ? los.transfer : 0;
+                // const newMember = !los.newMember && los.newMember !== '-' ? los.newMember : 0;
+                // const offsetPerson = !los.offsetPerson && los.offsetPerson !== '-' ? los.offsetPerson : 0;
                 const loanReleasePerson = los.loanReleasePerson !== '-' ? los.loanReleasePerson : 0;
                 const fullPaymentPerson = los.fullPaymentPerson !== '-' ? los.fullPaymentPerson : 0;
                 const fullPaymentAmount = los.fullPaymentAmount !== '-' ? los.fullPaymentAmount : 0;
                 const loanReleaseAmount = los.loanReleaseAmount !== '-' ? los.loanReleaseAmount : 0;
-                const collectionActual = los.collectionActual !== '-' ? los.collectionActual : 0;
+                // const collectionActual = los.collectionActual !== '-' ? los.collectionActual : 0;
 
                 if (index === 1) {
                     // temp.activeClients = fBal.activeClients + transfer + newMember - offsetPerson;
