@@ -327,6 +327,7 @@ const ViewByBranchPage = (dateFilter) => {
             mounted = false;
         };
     }, [dateFilter]);
+    
 
     return (
         <React.Fragment>
