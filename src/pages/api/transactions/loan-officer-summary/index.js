@@ -17,8 +17,8 @@ async function getSummary(req, res) {
     const user = await db.collection('users').find({ _id: ObjectId(userId) }).toArray();
 
     if (user.length > 0) {
-        const startOfMonth = moment(date).startOf('month').format('YYYY-MM-DD');
-        const endOfMonth = moment(date).endOf('month').format('YYYY-MM-DD');
+        // const startOfMonth = moment(date).startOf('month').format('YYYY-MM-DD');
+        // const endOfMonth = moment(date).endOf('month').format('YYYY-MM-DD');
 
         const currentMonth = moment(date).month() + 1;
         const currentYear = moment(date).year();
