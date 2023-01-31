@@ -27,9 +27,7 @@ async function getSummary(req, res) {
         const lastYear = lastMonth === 12 ? moment(date).subtract(1, 'years').year() : moment(date).year();
 
         const userId = user[0]._id + '';
-
         const fBalance = await db.collection('losTotals').find({ userId: userId, month: lastMonth, year: lastYear }).toArray();
-
         const summary = await db.collection('losTotals').find({ userId: userId, month: currentMonth, year: currentYear, losType: 'daily' }).toArray();
         
         data = {
