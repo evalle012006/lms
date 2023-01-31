@@ -572,8 +572,8 @@ const LoanOfficerSummary = () => {
             totalNewMember = fBal.newMember + monthly.newMember;
             totalOffsetperson = fBal.offsetPerson + monthly.offsetPerson;
             totalActiveClients = monthly.activeClients ;
-            totalLoanReleasePerson = monthly.loanReleasePerson;
-            totalLoanReleaseAmount = monthly.loanReleaseAmount;
+            // totalLoanReleasePerson = monthly.loanReleasePerson;
+            // totalLoanReleaseAmount = monthly.loanReleaseAmount;
             totalActiveLoanReleasePerson = monthly.activeLoanReleasePerson;
             totalActiveLoanReleaseAmount = monthly.activeLoanReleaseAmount;
             totalCollectionAdvancePayment = fBal.collectionAdvancePayment + monthly.collectionTarget + monthly.collectionAdvancePayment - monthly.fullPaymentAmount;
@@ -590,9 +590,9 @@ const LoanOfficerSummary = () => {
         grandTotal.newMember = totalNewMember;
         grandTotal.offsetPerson = totalOffsetperson;
         grandTotal.activeClients = totalActiveClients;
-        grandTotal.loanReleasePerson = totalLoanReleasePerson;
+        grandTotal.loanReleasePerson = "-";
         grandTotal.loanReleaseAmount = totalLoanReleaseAmount;
-        grandTotal.loanReleaseAmountStr = formatPricePhp(totalLoanReleaseAmount);
+        grandTotal.loanReleaseAmountStr = '-';
         grandTotal.activeLoanReleasePerson = totalActiveLoanReleasePerson;
         grandTotal.activeLoanReleaseAmount = totalActiveLoanReleaseAmount;
         grandTotal.activeLoanReleaseAmountStr = formatPricePhp(totalActiveLoanReleaseAmount);

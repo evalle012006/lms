@@ -464,7 +464,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter }) => {
                 activeLoanReleasePerson: totals.activeBorrowers,
                 activeLoanReleaseAmount: totals.totalLoanRelease,
                 collectionTarget: totals.targetLoanCollection,
-                collectionAdvancePayment: totals.totalLoanRelease - totals.totalLoanBalance,//totals.excess + totals.targetLoanCollection + totals.pastDue - (totals.totalLoanRelease - totals.totalLoanBalance),
+                collectionAdvancePayment: totals.excess,
                 collectionActual: totals.totalLoanCollection,
                 pastDuePerson: totals.noPastDue,
                 pastDueAmount: totals.pastDue,
