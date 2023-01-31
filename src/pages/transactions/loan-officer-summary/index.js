@@ -264,7 +264,7 @@ const LoanOfficerSummary = () => {
                     }
                 });
 
-                // losList = calculatePersons(losList);
+                losList = calculatePersons(losList);
                 losList = calculateWeeklyTotals(losList);
                 losList.push(calculateMonthlyTotals(losList[0], losList.filter(los => los.weekTotal)));
                 losList.push(calculateGrandTotals(losList, filter));
@@ -413,7 +413,6 @@ const LoanOfficerSummary = () => {
                     loanBalance: totalLoanBalance,
                     loanBalanceStr: formatPricePhp(totalLoanBalance)
                 }
-
                 prevWeek = losList[index];
             }
         });
@@ -630,10 +629,6 @@ const LoanOfficerSummary = () => {
             }
     
             await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loan-officer-summary/save-update-totals', losTotals);
-        } else {
-            // for AM and Admin
-            // get BM id for that branch
-            
         }
     }
 
@@ -694,7 +689,7 @@ const LoanOfficerSummary = () => {
                                         <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">OFST Pers.</th>
                                         <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">Act. Clie.</th>
                                         <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-4 text-gray-500 uppercase">Loan Release W/ Serv. Charge</th>
-                                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 py-4 text-gray-500 uppercase">ACTL LOAN RELEASE W/ Serv. Charge</th>
+                                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 py-4 text-gray-500 uppercase">ACT LOAN RELEASE W/ Serv. Charge</th>
                                         <th colSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 text-gray-500 uppercase">COLLECTION (w/ serv. charge)</th>
                                         <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 text-gray-500 uppercase">Pastdue</th>
                                         <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 text-gray-500 uppercase">FULL PAYMENT (w/ serv. charge)</th>
