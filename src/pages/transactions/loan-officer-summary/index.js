@@ -284,31 +284,31 @@ const LoanOfficerSummary = () => {
             let temp = {...los};
 
             if (index !== 0 && !los.weekTotal) {
-                const transfer = !los.transfer && los.transfer !== '-' ? los.transfer : 0;
-                const newMember = !los.newMember && los.newMember !== '-' ? los.newMember : 0;
-                const offsetPerson = !los.offsetPerson && los.offsetPerson !== '-' ? los.offsetPerson : 0;
+                // const transfer = !los.transfer && los.transfer !== '-' ? los.transfer : 0;
+                // const newMember = !los.newMember && los.newMember !== '-' ? los.newMember : 0;
+                // const offsetPerson = !los.offsetPerson && los.offsetPerson !== '-' ? los.offsetPerson : 0;
                 const loanReleasePerson = los.loanReleasePerson !== '-' ? los.loanReleasePerson : 0;
                 const fullPaymentPerson = los.fullPaymentPerson !== '-' ? los.fullPaymentPerson : 0;
                 const fullPaymentAmount = los.fullPaymentAmount !== '-' ? los.fullPaymentAmount : 0;
                 const loanReleaseAmount = los.loanReleaseAmount !== '-' ? los.loanReleaseAmount : 0;
-                const collectionActual = los.collectionActual !== '-' ? los.collectionActual : 0;
+                // const collectionActual = los.collectionActual !== '-' ? los.collectionActual : 0;
 
                 if (index === 1) {
-                    temp.activeClients = fBal.activeClients + transfer + newMember - offsetPerson;
+                    // temp.activeClients = fBal.activeClients + transfer + newMember - offsetPerson;
                     temp.activeLoanReleasePerson = fBal.activeLoanReleasePerson + loanReleasePerson - fullPaymentPerson;
                     temp.activeLoanReleaseAmount = fBal.activeLoanReleaseAmount + loanReleaseAmount - fullPaymentAmount;
                     temp.activeLoanReleaseAmountStr = formatPricePhp(temp.activeLoanReleaseAmount);
-                    temp.activeBorrowers = fBal.activeBorrowers + loanReleasePerson - fullPaymentPerson;
-                    temp.loanBalance = fBal.loanBalance + loanReleaseAmount - collectionActual;
-                    temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
+                    // temp.activeBorrowers = fBal.activeBorrowers + loanReleasePerson - fullPaymentPerson;
+                    // temp.loanBalance = fBal.loanBalance + loanReleaseAmount - collectionActual;
+                    // temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
                 } else {
-                    temp.activeClients = prevLos.activeClients + transfer + newMember - offsetPerson;
+                    // temp.activeClients = prevLos.activeClients + transfer + newMember - offsetPerson;
                     temp.activeLoanReleasePerson = prevLos.activeLoanReleasePerson + loanReleasePerson - fullPaymentPerson;
                     temp.activeLoanReleaseAmount = prevLos.activeLoanReleaseAmount + loanReleaseAmount - fullPaymentAmount;
                     temp.activeLoanReleaseAmountStr = formatPricePhp(temp.activeLoanReleaseAmount);
-                    temp.activeBorrowers = prevLos.activeBorrowers + loanReleasePerson - fullPaymentPerson;
-                    temp.loanBalance = prevLos.loanBalance + loanReleaseAmount - collectionActual;
-                    temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
+                    // temp.activeBorrowers = prevLos.activeBorrowers + loanReleasePerson - fullPaymentPerson;
+                    // temp.loanBalance = prevLos.loanBalance + loanReleaseAmount - collectionActual;
+                    // temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
                 }
 
                 prevLos = temp;
