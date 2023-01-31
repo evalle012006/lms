@@ -1228,7 +1228,6 @@ const CashCollectionDetailsPage = () => {
         setAllData(cashCollections);
     }, [groupClients, dateFilter]);
 
-
     useEffect(() => {
         if (dateFilterSubject.value && currentGroup) {
             const date = moment(new Date(dateFilterSubject.value)).format('YYYY-MM-DD');
@@ -1340,25 +1339,9 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.mispaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">
                                                     { cc.pastDueStr }
-                                                    {/* { (cc.remarks && cc.remarks.value === 'past due') ? (
-                                                        <React.Fragment>
-                                                            {editMode || revertMode ? (
-                                                                <React.Fragment>
-                                                                    <input type="number" name={cc.clientId} onChange={(e) => handlePaymentCollectionChange(e, index, 'pastDue', cc.activeLoan)}
-                                                                        onClick={(e) => e.stopPropagation()} defaultValue={cc.pastDue} tabIndex={index + 1}
-                                                                        className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg 
-                                                                                    focus:ring-main focus:border-main block p-2.5" style={{ width: '100px' }}/>
-                                                                </React.Fragment>
-                                                            ) : (
-                                                                <React.Fragment>{ cc.pastDueStr }</React.Fragment>        
-                                                            )}
-                                                        </React.Fragment>
-                                                    ) : (
-                                                        <React.Fragment>{ cc.pastDueStr }</React.Fragment>
-                                                    ) } */}
                                                 </td>
                                                 { (!weekend && (currentUser.role.rep > 2 && (cc.status === 'active' || cc.status === 'completed') && (editMode || !groupSummaryIsClose) 
-                                                    && (!cc.hasOwnProperty('_id') || revertMode) && !filter) || ((cc.remarks && cc.remarks.value === "pending") && !groupSummaryIsClose)) ? (
+                                                    && (!cc.hasOwnProperty('_id') || revertMode) && !filter) || ((cc.remarks && cc.remarks.value === "pending" && cc.status !== "tomorrow") && !groupSummaryIsClose)) ? (
                                                         <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">
                                                             { cc.remarks !== '-' ? (
                                                                 <Select 
