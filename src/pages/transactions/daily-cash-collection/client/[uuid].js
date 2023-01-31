@@ -1228,7 +1228,6 @@ const CashCollectionDetailsPage = () => {
         setAllData(cashCollections);
     }, [groupClients, dateFilter]);
 
-
     useEffect(() => {
         if (dateFilterSubject.value && currentGroup) {
             const date = moment(new Date(dateFilterSubject.value)).format('YYYY-MM-DD');
