@@ -614,6 +614,11 @@ const TableComponent = ({
                                   bg = 'bg-blue-200';
                                 }
 
+                                let fontColor = 'text-gray-500';
+                                if (totalData) {
+                                  fontColor = 'text-red-400';
+                                }
+
                                 return (
                                 <tr {...row.getRowProps()} className={`hover:bg-slate-200 ${bg}`}>
                                     {multiSelect && (
@@ -635,8 +640,8 @@ const TableComponent = ({
                                           onClick={() => rowClick && rowClick(row.original)}
                                         >
                                           {cell.column.Cell.name === "defaultRenderer" ? (
-                                              <div className={`text-sm ${totalData ? 'text-red-400' : 'text-gray-500'} `}>
-                                              {cell.render("Cell")}
+                                              <div className={`text-sm ${fontColor} `}>
+                                                {cell.render("Cell")}
                                               </div>
                                           ) : (
                                               cell.render("Cell")

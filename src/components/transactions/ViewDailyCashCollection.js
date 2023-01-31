@@ -334,7 +334,7 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                 activeLoanReleasePerson: totals.activeBorrowers,
                 activeLoanReleaseAmount: totals.totalLoanRelease,
                 collectionTarget: totals.targetLoanCollection,
-                collectionAdvancePayment: totals.totalLoanRelease - totals.totalLoanBalance,//totals.excess + totals.targetLoanCollection + totals.pastDue - (totals.totalLoanRelease - totals.totalLoanBalance),
+                collectionAdvancePayment: totals.excess,//totals.excess + totals.targetLoanCollection + totals.pastDue - (totals.totalLoanRelease - totals.totalLoanBalance),
                 collectionActual: totals.collection,
                 pastDuePerson: totals.noPastDue,
                 pastDueAmount: totals.pastDue,

@@ -30,8 +30,8 @@ async function getSummary(req, res) {
 
         const fBalance = await db.collection('losTotals').find({ userId: userId, month: lastMonth, year: lastYear }).toArray();
 
-        const summary = await db.collection('losTotals').find({ userId: userId, month: currentMonth, year: currentYear }).toArray();
-
+        const summary = await db.collection('losTotals').find({ userId: userId, month: currentMonth, year: currentYear, losType: 'daily' }).toArray();
+        
         data = {
             fBalance: fBalance.length > 0 ? fBalance : [],
             current: summary
