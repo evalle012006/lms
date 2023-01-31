@@ -71,7 +71,7 @@ async function getAllLoansPerGroup(req, res) {
                                         total: { $sum: '$total' },
                                         offsetPerson: { $sum: {
                                             $cond: {
-                                                if: {$eq: ['remarks.value', 'offset']},
+                                                if: {$eq: ['$remarks.value', 'offset']},
                                                 then: 1,
                                                 else: 0
                                             }
@@ -275,7 +275,7 @@ async function getAllLoansPerGroup(req, res) {
                                         total: { $sum: '$total' },
                                         offsetPerson: { $sum: {
                                             $cond: {
-                                                if: {$eq: ['remarks.value', 'offset']},
+                                                if: {$eq: ['$remarks.value', 'offset']},
                                                 then: 1,
                                                 else: 0
                                             }

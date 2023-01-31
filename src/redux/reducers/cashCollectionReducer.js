@@ -1,9 +1,10 @@
-import { SET_BM_SUMMARY, SET_CASH_COLLECTION, SET_CASH_COLLECTION_GROUP, SET_CASH_COLLECTION_LIST, SET_GROUP_SUMMARY_TOTALS, SET_LO_SUMMARY } from "../actions/cashCollectionActions";
+import { SET_BM_SUMMARY, SET_CASH_COLLECTION, SET_CASH_COLLECTION_GROUP, SET_CASH_COLLECTION_LIST, SET_CASH_COLLECTION_LO, SET_GROUP_SUMMARY_TOTALS, SET_LO_SUMMARY } from "../actions/cashCollectionActions";
 
 const initialState = {
     main: [],
     client: [],
     group: [],
+    lo: [],
     groupTotals: {},
     loSummary: {},
     bmSummary: {}
@@ -17,6 +18,8 @@ const cashCollectionReducer = (state = initialState, action) => {
             return { ...state, main: action.payload }
         case SET_CASH_COLLECTION_GROUP:
             return { ...state, group: action.payload }
+        case SET_CASH_COLLECTION_LO:
+            return { ...state, lo: action.payload }
         case SET_GROUP_SUMMARY_TOTALS: 
             return { ...state, groupTotals: action.payload }
         case SET_LO_SUMMARY: 

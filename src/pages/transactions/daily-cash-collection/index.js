@@ -22,6 +22,7 @@ const DailyCashCollectionPage = () => {
     const [loading, setLoading] = useState(true);
     const [dateFilter, setDateFilter] = useState(new Date());
     const cashCollectionList = useSelector(state => state.cashCollection.main);
+    const loCollectionList = useSelector(state => state.cashCollection.lo);
     const loSummary = useSelector(state => state.cashCollection.loSummary);
     const bmSummary = useSelector(state => state.cashCollection.bmSummary);
     const [weekend, setWeekend] = useState(false);
@@ -39,29 +40,43 @@ const DailyCashCollectionPage = () => {
 
     const handleSubmitForLos = async () => {
         setLoading(true);
-        
-        if (currentUser.role.rep === 3) {
-            if (bmSummary && Object.keys(bmSummary).length > 0) {
-                const resp = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loan-officer-summary/save-update-totals', bmSummary);
-    
-                if (resp.success) {
+
+        if (cashCollectionList.length > 0 || loCollectionList.length > 0) {
+            if (currentUser.role.rep === 3) {
+                const pending = loCollectionList.filter(lo => lo.status === 'open');
+                if (pending.length > 0) {
                     setLoading(false);
-                    toast.success('Today transactions are now available in LOS.');
-                } else if (resp.error) {
-                    setLoading(false);
-                    toast.error(resp.message);
+                    toast.error("One or more lo/s transaction is not yet closed.");
+                } else {
+                    if (bmSummary && Object.keys(bmSummary).length > 0) {
+                        const resp = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loan-officer-summary/save-update-totals', bmSummary);
+            
+                        if (resp.success) {
+                            setLoading(false);
+                            toast.success('Today transactions are now available in LOS.');
+                        } else if (resp.error) {
+                            setLoading(false);
+                            toast.error(resp.message);
+                        }
+                    }
                 }
-            }
-        } else if (currentUser.role.rep === 4) {
-            if (loSummary && Object.keys(loSummary).length > 0) {
-                const resp = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loan-officer-summary/save-update-totals', loSummary);
-    
-                if (resp.success) {
+            } else if (currentUser.role.rep === 4) {
+                const pending = cashCollectionList.filter(cc => cc.status === 'pending');
+                if (pending.length > 0) {
                     setLoading(false);
-                    toast.success('Today transactions are now available in LOS.');
-                } else if (resp.error) {
-                    setLoading(false);
-                    toast.error(resp.message);
+                    toast.error("One or more group/s transaction is not yet closed.");
+                } else {
+                    if (loSummary && Object.keys(loSummary).length > 0) {
+                        const resp = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loan-officer-summary/save-update-totals', loSummary);
+            
+                        if (resp.success) {
+                            setLoading(false);
+                            toast.success('Today transactions are now available in LOS.');
+                        } else if (resp.error) {
+                            setLoading(false);
+                            toast.error(resp.message);
+                        }
+                    }
                 }
             }
         }
