@@ -17,8 +17,8 @@ async function getSummary(req, res) {
     const user = await db.collection('users').find({ _id: ObjectId(userId) }).toArray();
 
     if (user.length > 0) {
-        const startOfMonth = moment(date).startOf('month').format('YYYY-MM-DD');
-        const endOfMonth = moment(date).endOf('month').format('YYYY-MM-DD');
+        // const startOfMonth = moment(date).startOf('month').format('YYYY-MM-DD');
+        // const endOfMonth = moment(date).endOf('month').format('YYYY-MM-DD');
 
         const currentMonth = moment(date).month() + 1;
         const currentYear = moment(date).year();
@@ -27,7 +27,7 @@ async function getSummary(req, res) {
         const lastYear = lastMonth === 12 ? moment(date).subtract(1, 'years').year() : moment(date).year();
 
         const userId = user[0]._id + '';
-        const fBalance = await db.collection('losTotals').find({ userId: userId, month: lastMonth, year: lastYear }).toArray();
+        const fBalance = await db.collection('losTotals').find({ userId: userId, month: lastMonth, year: lastYear, losType: 'commulative' }).toArray();
         const summary = await db.collection('losTotals').find({ userId: userId, month: currentMonth, year: currentYear, losType: 'daily' }).toArray();
         
         data = {

@@ -12,45 +12,29 @@ export default apiHandler({
 });
 
 async function processLOSTotals(req, res) {
-    // const { db } = await connectToDatabase();
+    const { db } = await connectToDatabase();
     // const { summary, ids } = req.body;
     const data = req.body;
 
-    // let error = false;
+    const cashCollections = await db.collection('cashCollections').find({ loId: data.userId, dateAdded: currentDate }).toArray();
 
-    // const promise = await new Promise(async (resolve) => {
-    //     const response = await Promise.all(ids.map(async (id) => {
-    //         const groupSummary = await db.collection('groupCashCollections').find({ groupId: id, dateAdded: currentDate }).toArray();
-
-    //         if (groupSummary.length > 0) {
-    //             if (groupSummary[0].status === 'pending') {
-    //                 error = true;
-    //             }
-    //         }
-    //     }));
-
-    //     resolve(response);
-    // });
-
-    // if (promise) {
-    //     if (error) {
-    //         response = { error: true, message: "One or more group/s transaction is not yet closed."};
-    //     } else {
-            switch (data.losType) {
-                case 'year-end':
-                    await saveUpdateYearEnd(data);
-                    break;
-                case 'daily':
-                    await saveUpdateDaily(data);
-                    break;
-                case 'commulative':
-                    await saveUpdateCommulative(data);
-                    break;
-                default:
-                    break;
-            }
-        // }
-    // }
+    if (cashCollections.length === 0) {
+        response = { error: true, message: "One or more group/s have no transaction for today."};
+    } else {
+        switch (data.losType) {
+            case 'year-end':
+                await saveUpdateYearEnd(data);
+                break;
+            case 'daily':
+                await saveUpdateDaily(data);
+                break;
+            case 'commulative':
+                await saveUpdateCommulative(data);
+                break;
+            default:
+                break;
+        }
+    }
 
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')
