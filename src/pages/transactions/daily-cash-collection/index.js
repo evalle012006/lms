@@ -27,10 +27,12 @@ const DailyCashCollectionPage = () => {
     const bmSummary = useSelector(state => state.cashCollection.bmSummary);
     const [weekend, setWeekend] = useState(false);
     const [showSubmitDialog, setShowSubmitDialog] = useState(false);
+    const [filter, setFilter] = useState(false);
 
     const handleDateFilter = (selected) => {
         const filteredDate = selected.target.value;
         setDateFilter(filteredDate);
+        setFilter(true);
         localStorage.setItem('cashCollectionDateFilter', filteredDate);
     }
 
@@ -177,7 +179,7 @@ const DailyCashCollectionPage = () => {
                     <div className="overflow-x-auto">
                         {branchList && <DetailsHeader pageTitle='Daily Cash Collections' pageName={currentUser.role.rep === 1 ? "branch-view" : ""}
                             page={1} mode={'daily'} currentDate={moment(currentDate).format('dddd, MMMM DD, YYYY')} weekend={weekend}
-                            dateFilter={dateFilter} handleDateFilter={handleDateFilter} handleSubmit={handleShowSubmitDialog}
+                            dateFilter={dateFilter} handleDateFilter={handleDateFilter} handleSubmit={handleShowSubmitDialog} filter={filter}
                         />}
                         <div className={`p-4 ${currentUser.role.rep < 4 ? 'mt-[8rem]' : 'mt-[6rem]'} `}>
                             {currentUser.role.rep < 3 && <ViewByBranchPage dateFilter={dateFilter} />}

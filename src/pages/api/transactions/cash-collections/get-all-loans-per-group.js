@@ -471,7 +471,7 @@ async function getAllLoansPerGroup(req, res) {
                                         } },
                                         activeBorrowers: { $sum: { 
                                             $cond: {
-                                                if: { $eq: ['$status', 'active'] },
+                                                if: { $ne: ['$status', 'pending'] },
                                                 then: {
                                                     $cond: {
                                                         if: {$gt: ['$loanBalance', 0]},
@@ -641,7 +641,7 @@ async function getAllLoansPerGroup(req, res) {
                                         } },
                                         activeBorrowers: { $sum: { 
                                             $cond: {
-                                                if: { $eq: ['$status', 'active'] },
+                                                if: { $ne: ['$status', 'pending'] },
                                                 then: {
                                                     $cond: {
                                                         if: {$gt: ['$loanBalance', 0]},

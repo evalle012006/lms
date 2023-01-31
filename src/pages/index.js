@@ -30,10 +30,15 @@ const Index = () => {
         //     await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}groups/update-group-clients`);
         // }
 
+        // const updateLOSData = async () => {
+        //     await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}transactions/loan-officer-summary/update-los-data`);
+        // }
+
         mounted && getSystemSettings();
         // mounted && updateGroupClients();
         // mounted && updateLoanData();
         // mounted && updateCCData();
+        // mounted && updateLOSData();
 
         return () => {
             mounted = false;
