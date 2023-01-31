@@ -630,10 +630,6 @@ const LoanOfficerSummary = () => {
             }
     
             await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loan-officer-summary/save-update-totals', losTotals);
-        } else {
-            // for AM and Admin
-            // get BM id for that branch
-            
         }
     }
 
