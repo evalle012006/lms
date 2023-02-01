@@ -56,6 +56,7 @@ const CashCollectionDetailsPage = () => {
         { label: 'For Close/Offset - Good Client', value: 'offset'},
         { label: 'For Close/Offset - Delinquent Client', value: 'offset'},
         { label: 'Past Due', value: 'past due'},
+        { label: 'Past Due Collection', value: 'past due collection'}, // selecting this if 
         { label: 'Delinquent', value: 'delinquent'},
         // { label: 'Excused', value: 'excused'},
         { label: 'Excused Due to Calamity', value: 'excused'},
@@ -153,7 +154,7 @@ const CashCollectionDetailsPage = () => {
                         history: cc.hasOwnProperty('history') ? cc.history : null,
                         prevData: cc.hasOwnProperty('prevData') ? cc.prevData : null
                     }
-                } else if (cc.status === "closed" && cc.fullPaymentDate === currentDate) {
+                } else if (cc.status === "closed") {
                     collection = {
                         ...cc,
                         group: cc.group,
@@ -474,7 +475,7 @@ const CashCollectionDetailsPage = () => {
                     totalReleaseAmount += collection.currentReleaseAmount ? collection.currentReleaseAmount !== '-' ? collection.currentReleaseAmount : 0 : 0;
                 }
 
-                if (!collection.remarks || (collection.remarks && collection.remarks.value !== "delinquent" && collection.remarks.value !== "past due" && collection.remarks.value !== "excused")) {
+                if (!collection.remarks || (collection.remarks && collection.remarks.value !== "delinquent" && collection.remarks.value !== "excused")) {
                     totalTargetLoanCollection += collection.targetCollection  ? collection.targetCollection !== '-' ? collection.targetCollection : 0 : 0;
                 }
 
@@ -907,11 +908,12 @@ const CashCollectionDetailsPage = () => {
                         temp.targetCollectionStr = formatPricePhp(temp.targetCollection);
                         temp.mispayment = true;
                         temp.mispaymentStr = 'Yes';
+                        // add no of mispayments / maximum of payments per cycle // change to #of mispay
                         temp.error = false;
                         temp.excused = true;
 
                         if (temp.remarks.value === "past due") {
-                            temp.pastDue = temp.loanBalance;
+                            temp.pastDue = temp.activeLoan;
                             temp.pastDueStr = formatPricePhp(temp.pastDue);
                         } else if (temp.remarks.value === "delinquent") {
                             temp.delinquent = true;
