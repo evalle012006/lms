@@ -11,7 +11,7 @@ import { setGroup, setGroupList } from '@/redux/actions/groupActions';
 import DetailsHeader from '@/components/groups/DetailsHeader';
 import moment from 'moment';
 import { containsAnyLetters, formatPricePhp, UppercaseFirstLetter } from '@/lib/utils';
-import { XCircleIcon, ArrowPathIcon, ArrowUturnLeftIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, ArrowUturnLeftIcon } from '@heroicons/react/24/outline';
 import Select from 'react-select';
 import { styles, DropdownIndicator, borderStyles } from "@/styles/select";
 import AddUpdateLoan from '@/components/transactions/AddUpdateLoanDrawer';
