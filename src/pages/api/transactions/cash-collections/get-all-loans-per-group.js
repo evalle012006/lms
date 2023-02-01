@@ -58,7 +58,7 @@ async function getAllLoansPerGroup(req, res) {
                                         mispayment: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },
                                         loanTarget: { $sum: {
                                             $cond: {
-                                                if: { $or: [{$eq: ['$remarks.value', 'delinquent']}, {$eq: ['$remarks.value', 'excused']}, {$eq: ['$remarks.value', 'past due']}] },
+                                                if: { $or: [{$eq: ['$remarks.value', 'delinquent']}, {$eq: ['$remarks.value', 'excused']}] },
                                                 then: '$activeLoan',
                                                 else: 0
                                             }
@@ -262,7 +262,7 @@ async function getAllLoansPerGroup(req, res) {
                                         mispayment: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },
                                         loanTarget: { $sum: {
                                             $cond: {
-                                                if: { $or: [{$eq: ['$remarks.value', 'delinquent']}, {$eq: ['$remarks.value', 'excused']}, {$eq: ['$remarks.value', 'past due']}] },
+                                                if: { $or: [{$eq: ['$remarks.value', 'delinquent']}, {$eq: ['$remarks.value', 'excused']}] },
                                                 then: '$activeLoan',
                                                 else: 0
                                             }
@@ -508,7 +508,7 @@ async function getAllLoansPerGroup(req, res) {
                                                             then: '$history.activeLoan',
                                                             else: {
                                                                 $cond: {
-                                                                    if: { $or: [{$eq: ['$remarks.value', 'delinquent']}, {$eq: ['$remarks.value', 'excused']}, {$eq: ['$remarks.value', 'past due']}] },
+                                                                    if: { $or: [{$eq: ['$remarks.value', 'delinquent']}, {$eq: ['$remarks.value', 'excused']}] },
                                                                     then: 0,
                                                                     else: '$activeLoan'
                                                                 }
@@ -678,7 +678,7 @@ async function getAllLoansPerGroup(req, res) {
                                                             then: '$history.activeLoan',
                                                             else: {
                                                                 $cond: {
-                                                                    if: { $or: [{$eq: ['$remarks.value', 'delinquent']}, {$eq: ['$remarks.value', 'excused']}, {$eq: ['$remarks.value', 'past due']}] },
+                                                                    if: { $or: [{$eq: ['$remarks.value', 'delinquent']}, {$eq: ['$remarks.value', 'excused']}] },
                                                                     then: 0,
                                                                     else: '$activeLoan'
                                                                 }
