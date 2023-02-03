@@ -291,24 +291,33 @@ const LoanOfficerSummary = () => {
                 const fullPaymentPerson = los.fullPaymentPerson !== '-' ? los.fullPaymentPerson : 0;
                 const fullPaymentAmount = los.fullPaymentAmount !== '-' ? los.fullPaymentAmount : 0;
                 const loanReleaseAmount = los.loanReleaseAmount !== '-' ? los.loanReleaseAmount : 0;
-                // const collectionActual = los.collectionActual !== '-' ? los.collectionActual : 0;
+                const collectionTarget = los.collectionTarget !== '-' ? los.collectionTarget : 0;
+                const collectionAdvancePayment = los.collectionAdvancePayment !== '-' ? los.collectionAdvancePayment : 0;
+                const collectionActual = los.collectionActual !== '-' ? los.collectionActual : 0;
+                const pastDuePerson = los.pastDuePerson !== '-' ? los.pastDuePerson : 0;
 
                 if (index === 1) {
-                    // temp.activeClients = fBal.activeClients + transfer + newMember - offsetPerson;
+                    temp.activeClients = temp.activeClients > 0 ? temp.activeClients : fBal.activeClients;
                     temp.activeLoanReleasePerson = fBal.activeLoanReleasePerson + loanReleasePerson - fullPaymentPerson;
                     temp.activeLoanReleaseAmount = fBal.activeLoanReleaseAmount + loanReleaseAmount - fullPaymentAmount;
                     temp.activeLoanReleaseAmountStr = formatPricePhp(temp.activeLoanReleaseAmount);
-                    // temp.activeBorrowers = fBal.activeBorrowers + loanReleasePerson - fullPaymentPerson;
-                    // temp.loanBalance = fBal.loanBalance + loanReleaseAmount - collectionActual;
-                    // temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
+                    temp.pastDueAmount = fBal.pastDueAmount + collectionTarget + collectionAdvancePayment - collectionActual;
+                    temp.pastDueAmountStr = formatPricePhp(temp.pastDueAmount);
+                    temp.pastDuePerson = fBal.pastDuePerson + pastDuePerson;
+                    temp.activeBorrowers = temp.activeBorrowers > 0 ? temp.activeBorrowers : fBal.activeBorrowers;
+                    temp.loanBalance = temp.loanBalance > 0 ? temp.loanBalance : fBal.loanBalance;
+                    temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
                 } else {
-                    // temp.activeClients = prevLos.activeClients + transfer + newMember - offsetPerson;
+                    temp.activeClients = temp.activeClients > 0 ? temp.activeClients : prevLos.activeClients;
                     temp.activeLoanReleasePerson = prevLos.activeLoanReleasePerson + loanReleasePerson - fullPaymentPerson;
                     temp.activeLoanReleaseAmount = prevLos.activeLoanReleaseAmount + loanReleaseAmount - fullPaymentAmount;
                     temp.activeLoanReleaseAmountStr = formatPricePhp(temp.activeLoanReleaseAmount);
-                    // temp.activeBorrowers = prevLos.activeBorrowers + loanReleasePerson - fullPaymentPerson;
-                    // temp.loanBalance = prevLos.loanBalance + loanReleaseAmount - collectionActual;
-                    // temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
+                    temp.pastDueAmount = prevLos.pastDueAmount + collectionTarget + collectionAdvancePayment - collectionActual;
+                    temp.pastDueAmountStr = formatPricePhp(temp.pastDueAmount);
+                    temp.pastDuePerson = prevLos.pastDuePerson + pastDuePerson;
+                    temp.activeBorrowers = temp.activeBorrowers > 0 ? temp.activeBorrowers : prevLos.activeBorrowers;
+                    temp.loanBalance = temp.loanBalance > 0 ? temp.loanBalance : prevLos.loanBalance;
+                    temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
                 }
 
                 prevLos = temp;
@@ -365,8 +374,8 @@ const LoanOfficerSummary = () => {
                     totalCollectionTarget += los.collectionTarget !== '-' ? los.collectionTarget : 0;
                     totalCollectionAdvancePayment += los.collectionAdvancePayment !== '-' ? los.collectionAdvancePayment : 0;
                     totalCollectionActual += los.collectionActual !== '-' ? los.collectionActual : 0;
-                    totalPastDuePerson += los.pastDuePerson !== '-' ? los.pastDuePerson : 0;
-                    totalPastDueAmount += los.pastDueAmount !== '-' ? los.pastDueAmount : 0;
+                    // totalPastDuePerson += los.pastDuePerson !== '-' ? los.pastDuePerson : 0;
+                    // totalPastDueAmount += los.pastDueAmount !== '-' ? los.pastDueAmount : 0;
                     totalFullPaymentPerson += los.fullPaymentPerson !== '-' ? los.fullPaymentPerson : 0;
                     totalFullPaymentAmount += los.fullPaymentAmount !== '-' ? los.fullPaymentAmount : 0;
                 });
@@ -375,14 +384,18 @@ const LoanOfficerSummary = () => {
                     totalActiveClients = fBal.activeClients + totalTransfer + totalNewMember - totalOffsetperson;
                     totalActiveLoanReleasePerson = fBal.activeLoanReleasePerson + totalLoanReleasePerson - totalFullPaymentPerson;
                     totalActiveLoanReleaseAmount = fBal.activeLoanReleaseAmount + totalLoanReleaseAmount - totalFullPaymentAmount;
-                    totalActiveBorrowers = fBal.activeBorrowers + totalLoanReleasePerson - totalFullPaymentPerson;
-                    totalLoanBalance = fBal.loanBalance + totalLoanReleaseAmount - totalCollectionActual;
+                    totalPastDueAmount = fBal.pastDueAmount + totalCollectionTarget + totalCollectionAdvancePayment - totalCollectionActual;
+                    totalPastDuePerson = fBal.pastDuePerson;
+                    totalActiveBorrowers = losSlice[losSlice.length - 1].activeBorrowers;
+                    totalLoanBalance = losSlice[losSlice.length - 1].loanBalance;
                 } else {
                     totalActiveClients = prevWeek.activeClients + totalTransfer + totalNewMember - totalOffsetperson;
                     totalActiveLoanReleasePerson = prevWeek.activeLoanReleasePerson + totalLoanReleasePerson - totalFullPaymentPerson;
                     totalActiveLoanReleaseAmount = prevWeek.activeLoanReleaseAmount + totalLoanReleaseAmount - totalFullPaymentAmount;
+                    totalPastDueAmount = prevWeek.pastDueAmount + totalCollectionTarget + totalCollectionAdvancePayment - totalCollectionActual;
+                    totalPastDuePerson = prevWeek.pastDuePerson;
                     totalActiveBorrowers = prevWeek.activeBorrowers + totalLoanReleasePerson - totalFullPaymentPerson;
-                    totalLoanBalance = prevWeek.loanBalance + totalLoanReleaseAmount - totalCollectionActual;
+                    totalLoanBalance = prevWeek.loanBalance;
                 }
 
                 losList[index] = {

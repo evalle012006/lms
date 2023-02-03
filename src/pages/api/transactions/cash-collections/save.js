@@ -88,7 +88,17 @@ async function updateLoan(collection) {
         loan.noOfPayments = collection.noOfPayments !== '-' ? collection.noOfPayments : 0;
         loan.fullPaymentDate = '';
         loan.status = collection.status;
+        loan.pastDue = collection.pastDue;
+        
+        if (collection.remarks && collection.remarks.value === "past due") {
+            loan.noPastDue = loan.noPastDue ? loan.noPastDue + 1 : 1;
+        } else {
+            loan.noPastDue = loan.noPastDue ? loan.noPastDue : 0;
+        }
         // loan.prevData = collection.prevData;
+
+        delete loan.groupCashCollections;
+        delete loan.loanOfficer;
         
         if (collection.mispayment) {
             loan.mispayment = loan.mispayment + 1;

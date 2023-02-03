@@ -12,7 +12,7 @@ import { useRouter } from 'next/router';
 import { ArrowLeftCircleIcon } from '@heroicons/react/24/solid';
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 
-const DetailsHeader = ({ pageTitle, page, pageName, currentDate, mode = 'daily', selectedBranch, 
+const DetailsHeader = ({ pageTitle, page, pageName, currentDate, mode = 'daily', selectedBranch, filter,
                             handleBranchFilter, selectedLO, handleLOFilter, dateFilter, handleDateFilter, weekend, handleSubmit }) => {
     const router = useRouter();
     const currentUser = useSelector(state => state.user.data);
@@ -68,7 +68,7 @@ const DetailsHeader = ({ pageTitle, page, pageName, currentDate, mode = 'daily',
                         <div className="page-title">
                             {currentUser.role.rep === 4 ? pageTitle + ' - Group Summary' : pageTitle}
                         </div>
-                        {((currentUser.role.rep === 4 || currentUser.role.rep === 3) && !weekend) && (
+                        {((currentUser.role.rep === 4 || currentUser.role.rep === 3) && !weekend && !filter) && (
                             <div className="flex items-center w-32">
                                 <ButtonSolid label="Submit" onClick={handleSubmit} />
                             </div>
@@ -186,9 +186,14 @@ const DetailsHeader = ({ pageTitle, page, pageName, currentDate, mode = 'daily',
                         <React.Fragment>
                             {selectedLO && (
                                 <div className="py-2 proxima-regular">
-                                    <div className="page-title flex-row">
-                                        <span><ArrowLeftCircleIcon className="w-5 h-5 mr-6 cursor-pointer" title="Back" onClick={handleBack} /></span>
-                                        <span>{`${selectedLO.lastName}, ${selectedLO.firstName} - Group Summary`}</span>
+                                    <div className="flex flex-row justify-between w-10/12">
+                                        <div className="page-title">
+                                            <span><ArrowLeftCircleIcon className="w-5 h-5 mr-6 cursor-pointer" title="Back" onClick={handleBack} /></span>
+                                            <span>{`${selectedLO.lastName}, ${selectedLO.firstName} - Group Summary`}</span>
+                                        </div>
+                                        <div className="flex items-center w-32">
+                                            <ButtonSolid label="Submit" onClick={handleSubmit} />
+                                        </div>
                                     </div>
                                     <div className="flex justify-between w-11/12">
                                         <div className="flex flex-row justify-items-start space-x-5 py-4" style={{ height: '40px' }}>
