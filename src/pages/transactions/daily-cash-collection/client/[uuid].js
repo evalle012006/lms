@@ -83,7 +83,6 @@ const CashCollectionDetailsPage = () => {
         } else {
             setLoading(true);
             setFilter(true);
-
             getCashCollections(filteredDate);
         }
     }
