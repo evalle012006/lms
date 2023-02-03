@@ -610,7 +610,7 @@ const TableComponent = ({
 
                                 if (delinquent === 'Yes') {
                                   bg = 'bg-red-100';
-                                } else if (pageName === 'branch-summary' && status === 'close') {
+                                } else if (pageName === 'branch-summary' && status === 'open') {
                                   bg = 'bg-blue-200';
                                 }
 

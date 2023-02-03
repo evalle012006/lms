@@ -83,24 +83,6 @@ const DailyCashCollectionPage = () => {
             }
         }
 
-        // if (cashCollectionList.length > 0) {
-        //     const filteredGroups = cashCollectionList.filter(cc => cc.status !== '-').map(cc => { return cc.groupId });
-
-        //     const data = {
-        //         loId: currentUser._id,
-        //         groupIds: filteredGroups
-        //     };
-
-        //     const resp = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loan-officer-summary/update-status', data);
-
-        //     if (resp.success) {
-        //         setLoading(false);
-        //         toast.success('Today transactions are now available in LOS.');
-        //     } else if (resp.error) {
-        //         setLoading(false);
-        //         toast.error(resp.message);
-        //     }
-        // }
         setShowSubmitDialog(false);
     }
 

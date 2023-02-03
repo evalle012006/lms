@@ -284,7 +284,7 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
 
             collectionData.push(totals);
             dispatch(setGroupSummaryTotals(totals));
-            const dailyLos = {...createLos(totals, selectedBranch, false), losType: 'daily'};
+            const dailyLos = {...createLos(totals, selectedBranch, selectedLO, dateFilter, false), losType: 'daily'};
             dispatch(setLoSummary(dailyLos));
             const currentMonth = moment().month();
             if (!filter && currentMonth === 12) {
@@ -299,7 +299,7 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
         }
     }
 
-    const createLos = (totals, selectedBranch, yearEnd) => {
+    const createLos = (totals, selectedBranch, selectedLO, dateFilter, yearEnd) => {
         let grandTotal;
 
         if (yearEnd) {
@@ -324,7 +324,7 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
             };
         } else {
             grandTotal = {
-                day: currentDate,
+                day: dateFilter ? dateFilter : currentDate,
                 transfer: totals.transfer,
                 newMember: totals.noOfNewCurrentRelease,
                 offsetPerson: totals.offsetPerson,
@@ -334,7 +334,7 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                 activeLoanReleasePerson: totals.activeBorrowers,
                 activeLoanReleaseAmount: totals.totalLoanRelease,
                 collectionTarget: totals.targetLoanCollection,
-                collectionAdvancePayment: totals.excess,//totals.excess + totals.targetLoanCollection + totals.pastDue - (totals.totalLoanRelease - totals.totalLoanBalance),
+                collectionAdvancePayment: totals.excess,
                 collectionActual: totals.collection,
                 pastDuePerson: totals.noPastDue,
                 pastDueAmount: totals.pastDue,
@@ -345,25 +345,29 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
             };
         }
 
+        let month = yearEnd ? 12 : moment().month() + 1;
+        let year = yearEnd ? moment().year() - 1 : moment().year();
+        if (dateFilter)  {
+            month = moment(dateFilter).month() + 1;
+            year = moment(dateFilter).year();
+        }
+
         return {
-            userId: currentUser._id,
+            userId: selectedLO ? selectedLO : currentUser._id,
             userType: 'lo',
             branchId: selectedBranch,
-            month: yearEnd ? 12 : moment().month() + 1,
-            year: yearEnd ? moment().year() - 1 : moment().year(),
+            month: month,
+            year: year,
             data: grandTotal
         }
     }
 
     const saveYearEndLos = async (totals, selectedBranch, yearEnd) => {
         if (currentUser.role.rep === 4) {
-            const losTotals = {...createLos(totals, selectedBranch, yearEnd), losType: 'year-end'};
+            const losTotals = {...createLos(totals, selectedBranch, null, null, yearEnd), losType: 'year-end'};
     
             await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loan-officer-summary/save-update-totals', losTotals);
-        } 
-        // else {
-        //     userId = selectedLOSubject.value;
-        // }
+        }
     }
 
     const handleRowClick = (selected) => {

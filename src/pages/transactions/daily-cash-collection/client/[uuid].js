@@ -107,6 +107,9 @@ const CashCollectionDetailsPage = () => {
                 setGroupSummaryIsClose(true);
             }
             
+
+            // bug reloaners double saved on cashcollection, should check if slotNo of that particular date is already saved to avoid saving twice
+
             response.data.collection.map(cc => {
                 let collection;
                 if (cc.status === "tomorrow" || cc.status === "pending") {
@@ -124,6 +127,7 @@ const CashCollectionDetailsPage = () => {
                         loanCycle: cc.loanCycle,
                         mispayment: '-',
                         mispaymentStr: '-',
+                        noMispayment: date ? cc.noMispayment + ' / ' + maxDays : cc.mispayment + ' / ' + maxDays,
                         collection: 0,
                         excess: cc.excess > 0 ? cc.excess : 0,
                         excessStr: cc.excess > 0 ? formatPricePhp(cc.excess) : '-',
@@ -169,6 +173,7 @@ const CashCollectionDetailsPage = () => {
                         loanCycle: cc.history.loanCycle,
                         mispayment: cc.mispayment === 0 ? false : true,
                         mispaymentStr: cc.mispayment === 0 ? 'No' : 'Yes',
+                        noMispayment: date ? cc.noMispayment + ' / ' + maxDays : cc.mispayment + ' / ' + maxDays,
                         collection: 0,
                         excess: cc.history.excess > 0 ? cc.history.excess : 0,
                         excessStr: cc.history.excess > 0 ? formatPricePhp(cc.history.excess) : '-',
@@ -213,6 +218,7 @@ const CashCollectionDetailsPage = () => {
                         loanCycle: cc.loanCycle,
                         mispayment: false,
                         mispaymentStr: (cc.status === "active" || (cc.status === "completed" && cc.fullPaymentDate === currentDate)) ? 'No' : '-',
+                        noMispayment: date ? cc.noMispayment + ' / ' + maxDays : cc.mispayment + ' / ' + maxDays,
                         collection: 0,
                         excess: cc.excess,
                         excessStr: cc.excess > 0 ? formatPricePhp(cc.excess) : '-',
@@ -287,6 +293,14 @@ const CashCollectionDetailsPage = () => {
                     return;
                 }
 
+                if (!date && cc.hasOwnProperty('pastDue')) {
+                    // if pastDue === loanBalance then make target collection 0
+                    if (collection.pastDue === collection.loanBalance) {
+                        collection.targetCollection = 0;
+                        collection.activeLoan = 0;
+                    }
+                }
+
                 cashCollection.push(collection);
             });
 
@@ -312,6 +326,7 @@ const CashCollectionDetailsPage = () => {
                             targetCollectionStr: formatPricePhp(currentLoan.history.activeLoan),
                             mispayment: currentLoan.mispayment,
                             mispaymentStr: currentLoan.mispayment ? 'Yes' : 'No',
+                            noMispayment: currentLoan.mispayment + ' / ' + maxDays,
                             currentReleaseAmount: loan.amountRelease,
                             currentReleaseAmountStr: loan.amountRelease ? formatPricePhp(loan.amountRelease) : 0,
                             noOfPayments: '-',
@@ -349,6 +364,7 @@ const CashCollectionDetailsPage = () => {
                             targetCollectionStr: '-',
                             mispayment: false,
                             mispaymentStr: '-',
+                            noMispayment: '-',
                             currentReleaseAmount: loan.amountRelease,
                             currentReleaseAmountStr: loan.amountRelease ? formatPricePhp(loan.amountRelease) : '-',
                             noOfPayments: '-',
@@ -365,40 +381,42 @@ const CashCollectionDetailsPage = () => {
                         }
                     }
                 } else {
-                    const slot = cashCollection.find(c => c.slotNo === loan.slotNo);
-                    if (slot) {
-                        const index = cashCollection.indexOf(slot);
-                        cashCollection[index] = {
-                            slotNo: loan.slotNo,
-                            loanId: loan._id,
-                            groupId: loan.groupId,
-                            branchId: loan.branchId,
-                            clientId: loan.clientId,
-                            loId: loan.loId,
-                            fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
-                            loanCycle: loan.loanCycle,
-                            amountReleaseStr: '-',
-                            loanBalanceStr: '-',
-                            targetCollectionStr: '-',
-                            mispayment: false,
-                            mispaymentStr: '-',
-                            currentReleaseAmount: loan.amountRelease,
-                            currentReleaseAmountStr: formatPricePhp(loan.amountRelease),
-                            noOfPayments: '-',
-                            noOfPaymentStr: '-',
-                            targetCollectionStr: '-',
-                            excessStr: '-',
-                            paymentCollectionStr: '-',
-                            remarks: '-',
-                            fullPaymentStr: '-',
-                            pastDueStr: '-',
-                            status: loan.status === 'active' ? 'tomorrow' : 'pending'
-                        };
+                    // const slot = cashCollection.find(c => c.slotNo === loan.slotNo);
+                    // if (slot) {
+                    //     console.log(slot)
+                    //     const index = cashCollection.indexOf(slot);
+                    //     cashCollection[index] = {
+                    //         slotNo: loan.slotNo,
+                    //         loanId: loan._id,
+                    //         groupId: loan.groupId,
+                    //         branchId: loan.branchId,
+                    //         clientId: loan.clientId,
+                    //         loId: loan.loId,
+                    //         fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
+                    //         loanCycle: loan.loanCycle,
+                    //         amountReleaseStr: '-',
+                    //         loanBalanceStr: '-',
+                    //         targetCollectionStr: '-',
+                    //         mispayment: false,
+                    //         mispaymentStr: '-',
+                    //         noMispayment: '-',
+                    //         currentReleaseAmount: loan.amountRelease,
+                    //         currentReleaseAmountStr: formatPricePhp(loan.amountRelease),
+                    //         noOfPayments: '-',
+                    //         noOfPaymentStr: '-',
+                    //         targetCollectionStr: '-',
+                    //         excessStr: '-',
+                    //         paymentCollectionStr: '-',
+                    //         remarks: '-',
+                    //         fullPaymentStr: '-',
+                    //         pastDueStr: '-',
+                    //         status: loan.status === 'active' ? 'tomorrow' : 'pending'
+                    //     };
 
-                        if (loan.current.length > 0) {
-                            cashCollection[index]._id = loan.current[0]._id;
-                        }
-                    } else { // tomorrow && pending
+                    //     if (loan.current.length > 0) {
+                    //         cashCollection[index]._id = loan.current[0]._id;
+                    //     }
+                    // } else { // tomorrow && pending
                         let pendingTomorrow = {
                             slotNo: loan.slotNo,
                             loanId: loan._id,
@@ -413,6 +431,7 @@ const CashCollectionDetailsPage = () => {
                             targetCollectionStr: '-',
                             mispayment: false,
                             mispaymentStr: '-',
+                            noMispayment: '-',
                             currentReleaseAmount: loan.amountRelease,
                             currentReleaseAmountStr: loan.amountRelease ? formatPricePhp(loan.amountRelease) : '-',
                             noOfPayments: '-',
@@ -431,7 +450,7 @@ const CashCollectionDetailsPage = () => {
                         }
 
                         cashCollection.push(pendingTomorrow);
-                    }
+                    // }
                 }
             });
 
@@ -483,9 +502,10 @@ const CashCollectionDetailsPage = () => {
                 totalLoanCollection += collection.paymentCollection ? collection.paymentCollection !== '-' ? collection.paymentCollection : 0 : 0;
                 totalFullPayment += collection.fullPayment ? collection.fullPayment !== '-' ? collection.fullPayment : 0 : 0;
                 totalMispayment += collection.mispaymentStr === 'Yes' ? 1 : 0;
-                totalPastDue += collection.pastDue !== '-' ? collection.pastDue : 0;
+                totalPastDue += (collection.pastDue && collection.pastDue !== '-') ? collection.pastDue : 0;
             }
         });
+
         const totals = {
             slotNo: 100,
             fullName: 'TOTALS',
@@ -509,6 +529,7 @@ const CashCollectionDetailsPage = () => {
             fullPaymentStr: totalFullPayment ? formatPricePhp(totalFullPayment) : 0,
             pastDue: totalPastDue,
             pastDueStr: formatPricePhp(totalPastDue),
+            noMispayment: '',
             clientStatus: '-',
             status: 'totals'
         };
@@ -528,7 +549,7 @@ const CashCollectionDetailsPage = () => {
                 } else if ((parseFloat(cc.paymentCollection) === 0 || (parseFloat(cc.paymentCollection) > 0 && parseFloat(cc.paymentCollection) < parseFloat(cc.activeLoan))) 
                         && (!cc.remarks || (cc.remarks && (cc.remarks.value !== "delinquent" && cc.remarks.value !== "past due" && cc.remarks.value !== "excused"))) ) {
                     errorMsg.add("Error occured. 0 payment should be mark either PAST DUE, DELINQUENT OR EXCUSED in remarks.");
-                } else if ((cc.remarks && cc.remarks.value === "past due") && parseFloat(cc.pastDue) < parseFloat(cc.activeLoan)) {
+                } else if ((cc.remarks && cc.remarks.value === "past due") && parseFloat(cc.pastDue) < parseFloat(cc.targetCollection)) {
                     errorMsg.add("Error occured. Past due is less than the target collection.");
                 } else if (cc.remarks && (cc.remarks.value === "past due" || cc.remarks.value === "excused" || cc.remarks.value === "delinquent") ) { 
                     if (cc.paymentCollection > 0 && cc.paymentCollection % 10 !== 0) {
@@ -540,10 +561,10 @@ const CashCollectionDetailsPage = () => {
                     if (cc.remarks && (cc.remarks.value !== "past due" && cc.remarks.value !== "excused" && cc.remarks.value !== "delinquent") ) {
                         errorMsg.add(`Actual collection should be divisible by ${cc.activeLoan}.`);
                     }
-                } else if (parseFloat(cc.paymentCollection) === (cc.activeLoan * 2) && (!cc.remarks || cc.remarks && cc.remarks.value !== "double payment")) {
+                } else if (parseFloat(cc.paymentCollection) === (cc.activeLoan * 2) && (!cc.remarks || cc.remarks && cc.remarks.value !== "double payment" && cc.remarks.value !== "past due collection")) {
                     errorMsg.add('Error occured. Actual collection is a double payment please set remarks as Double Payment.');
                 } else if (parseFloat(cc.paymentCollection) > parseFloat(cc.activeLoan) && parseFloat(cc.paymentCollection) > parseFloat(cc.activeLoan * 2) && cc.loanBalance !== 0) {
-                    if (parseFloat(cc.paymentCollection) % parseFloat(cc.activeLoan) === 0 && (!cc.remarks || cc.remarks && cc.remarks.value !== "advance payment")) {
+                    if (parseFloat(cc.paymentCollection) % parseFloat(cc.activeLoan) === 0 && (!cc.remarks || cc.remarks && cc.remarks.value !== "advance payment" && cc.remarks.value !== "past due collection")) {
                         errorMsg.add('Error occured. Actual collection is a advance payment please set remarks as Advance Payment.');
                     }
                 } else if (cc.status === "active" && cc.loanBalance === 0 && !cc.remarks ) {
@@ -594,6 +615,9 @@ const CashCollectionDetailsPage = () => {
                     delete temp.error;
                     delete temp.dirty;
                     delete temp.group;
+                    delete temp.pastDueStr;
+                    delete temp.groupCashCollections;
+                    delete temp.loanOfficer;
                     // delete temp.clientStatus;
 
                     if (cc.hasOwnProperty('_id')) {
@@ -719,8 +743,8 @@ const CashCollectionDetailsPage = () => {
                             temp.targetCollection = temp.activeLoan;
                             temp.targetCollectionStr = formatPricePhp(temp.activeLoan);
                             temp.remarks = '';
-                            temp.pastDue = 0;
-                            temp.pastDueStr = '-';
+                            temp.pastDue = temp.prevData.pastDue;
+                            temp.pastDueStr = formatPricePhp(temp.prevData.pastDue);
                             temp.status = 'active';
                             delete temp.delinquent;
                         } else {
@@ -731,7 +755,8 @@ const CashCollectionDetailsPage = () => {
                                 loanBalance: temp.loanBalance,
                                 activeLoan: temp.activeLoan,
                                 noOfPayments: temp.noOfPayments,
-                                total: temp.total
+                                total: temp.total,
+                                pastDue: temp.pastDue
                             };
                         }
 
@@ -872,6 +897,8 @@ const CashCollectionDetailsPage = () => {
                 let temp = {...cc};
                 
                 if (idx === index) {
+                    temp.targetCollection = temp.activeLoan;
+                    temp.targetCollectionStr = formatPricePhp(temp.targetCollection);
                     temp.excused = false;
                     temp.delinquent = false;
 
@@ -903,22 +930,43 @@ const CashCollectionDetailsPage = () => {
 
                         temp.mispayment = false;
                         temp.mispaymentStr = 'No';
-                    } else if (remarks.value === "delinquent" || remarks.value === "past due" || remarks.value === "excused") {
+                    } else if (temp.remarks.value === "past due") {
+                        temp.pastDue = temp.pastDue !== '-' ? temp.pastDue + temp.activeLoan : temp.activeLoan;
+                        temp.pastDueStr = formatPricePhp(temp.pastDue);
+                        temp.mispayment = true;
+                        temp.mispaymentStr = 'Yes';
+                        temp.error = false;
+                        temp.excused = true;
+                    } else if (remarks.value === "delinquent" || remarks.value === "excused") {
                         temp.targetCollection = 0;
                         temp.targetCollectionStr = formatPricePhp(temp.targetCollection);
                         temp.mispayment = true;
                         temp.mispaymentStr = 'Yes';
-                        // add no of mispayments / maximum of payments per cycle // change to #of mispay
                         temp.error = false;
                         temp.excused = true;
 
-                        if (temp.remarks.value === "past due") {
-                            temp.pastDue = temp.activeLoan;
-                            temp.pastDueStr = formatPricePhp(temp.pastDue);
-                        } else if (temp.remarks.value === "delinquent") {
+                        if (temp.remarks.value === "delinquent") {
                             temp.delinquent = true;
                         }
 
+                    } else if (remarks.value === "past due collection") {
+                        // if payment > targetCollection, then put subtract it on the past due amount not on excess
+                        if (temp.pastDue > 0 && temp.paymentCollection > temp.activeLoan) {
+                            const pastDueCol = temp.paymentCollection - temp.activeLoan;
+                            console.log(pastDueCol)
+                            if (pastDueCol > temp.pastDue) {
+                                const excessPD = pastDueCol - temp.pastDue;
+                                temp.excess = excessPD;
+                                temp.excessStr = formatPricePhp(temp.excess);
+                                temp.pastDue = 0; 
+                                temp.pastDueStr = formatPricePhp(temp.pastDue);
+                            } else {
+                                temp.pastDue = temp.pastDue > 0 ? temp.pastDue - pastDueCol : 0;
+                                temp.pastDueStr = formatPricePhp(temp.pastDue);
+                                temp.excess = 0;
+                                temp.excessStr = formatPricePhp(temp.excess);
+                            }
+                        }
                     } else {
                         temp.closeRemarks = '';
                         setCloseLoan();
@@ -1285,6 +1333,7 @@ const CashCollectionDetailsPage = () => {
                                         <th className="p-2 text-center">Actual Collection</th>
                                         <th className="p-2 text-center">Full Payment</th>
                                         <th className="p-2 text-center">Mispay</th>
+                                        <th className="p-2 text-center"># of Mispay</th>
                                         <th className="p-2 text-center">Past Due</th>
                                         <th className="p-2 text-center">Remarks</th>
                                         {/* <th className="p-2 text-center">Client Status</th> */}
@@ -1339,6 +1388,7 @@ const CashCollectionDetailsPage = () => {
                                                 </td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.fullPaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.mispaymentStr }</td>
+                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.noMispayment }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">
                                                     { cc.pastDueStr }
                                                 </td>

@@ -232,7 +232,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter }) => {
             };
 
             collectionData.push(loTotals);
-            const dailyLos = {...createLos(loTotals, selectedBranch, false), losType: 'daily'};
+            const dailyLos = {...createLos(loTotals, date, selectedBranch, false), losType: 'daily'};
             dispatch(setBmSummary(dailyLos));
             const currentMonth = moment().month();
             if (!filter && currentMonth === 0 && currentUser.role.rep === 3) {
@@ -429,7 +429,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter }) => {
     //     }
     // }
 
-    const createLos = (totals, selectedBranch, yearEnd) => {
+    const createLos = (totals, selectedBranch, date, yearEnd) => {
         let grandTotal;
 
         if (yearEnd) {
@@ -454,7 +454,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter }) => {
             };
         } else {
             grandTotal = {
-                day: currentDate,
+                day: date ? date : currentDate,
                 transfer: totals.transfer,
                 newMember: totals.noOfNewCurrentRelease,
                 offsetPerson: totals.offsetPerson,
@@ -487,7 +487,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter }) => {
 
     const saveYearEndLos = async (totals, selectedBranch, yearEnd) => {
         if (currentUser.role.rep === 3) {
-            const losTotals = {...createLos(totals, selectedBranch, yearEnd), losType: 'year-end'};
+            const losTotals = {...createLos(totals, selectedBranch, null, yearEnd), losType: 'year-end'};
             await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loan-officer-summary/save-update-totals', losTotals);
         }
     }
