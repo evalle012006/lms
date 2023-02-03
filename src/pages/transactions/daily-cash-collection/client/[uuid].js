@@ -942,6 +942,7 @@ const CashCollectionDetailsPage = () => {
                         temp.targetCollectionStr = formatPricePhp(temp.targetCollection);
                         temp.mispayment = true;
                         temp.mispaymentStr = 'Yes';
+                        // add no of mispayments / maximum of payments per cycle // change to #of mispay
                         temp.error = false;
                         temp.excused = true;
 
