@@ -106,7 +106,6 @@ const CashCollectionDetailsPage = () => {
                 setEditMode(false);
                 setGroupSummaryIsClose(true);
             }
-            
 
             // bug reloaners double saved on cashcollection, should check if slotNo of that particular date is already saved to avoid saving twice
 
