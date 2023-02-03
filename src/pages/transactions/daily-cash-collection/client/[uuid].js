@@ -106,7 +106,6 @@ const CashCollectionDetailsPage = () => {
                 setEditMode(false);
                 setGroupSummaryIsClose(true);
             }
-            
 
             // bug reloaners double saved on cashcollection, should check if slotNo of that particular date is already saved to avoid saving twice
 
@@ -127,7 +126,7 @@ const CashCollectionDetailsPage = () => {
                         loanCycle: cc.loanCycle,
                         mispayment: '-',
                         mispaymentStr: '-',
-                        noMispayment: date ? cc.noMispayment + ' / ' + maxDays : cc.mispayment + ' / ' + maxDays,
+                        noMispayment: date ? cc.noMispayment + ' / ' + maxDays : cc.mispayment + ' / ' + maxDays, // bug
                         collection: 0,
                         excess: cc.excess > 0 ? cc.excess : 0,
                         excessStr: cc.excess > 0 ? formatPricePhp(cc.excess) : '-',
@@ -136,8 +135,8 @@ const CashCollectionDetailsPage = () => {
                         noOfPayments: '-',
                         noOfPaymentStr: '-',
                         activeLoan: '-',
-                        targetCollection: 0,
-                        targetCollectionStr: '-',
+                        targetCollection: cc.activeLoan,
+                        targetCollectionStr: formatPricePhp(cc.activeLoan),
                         amountRelease: '-',
                         amountReleaseStr: '-',
                         loanBalance: '-',
@@ -147,8 +146,8 @@ const CashCollectionDetailsPage = () => {
                         occurence: cc.group.occurence,
                         currentReleaseAmount: cc.currentReleaseAmount,
                         currentReleaseAmountStr: formatPricePhp(cc.currentReleaseAmount),
-                        fullPayment: 0,
-                        fullPaymentStr: '-',
+                        fullPayment: cc.fullPayment.length > 0 ? cc.fullPayment[0].fullPaymentAmount : 0,
+                        fullPaymentStr: cc.fullPayment.length > 0 ? formatPricePhp(cc.fullPayment[0].fullPaymentAmount) : '-',
                         remarks: cc.remarks ? cc.remarks : '',
                         pastDue: cc.pastDue ? cc.pastDue : 0,
                         pastDueStr: cc.pastDue ? formatPricePhp(cc.pastDue) : '-',
