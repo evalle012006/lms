@@ -22,6 +22,8 @@ async function save(req, res) {
         oldLoanId = loanData.oldLoanId;
         delete loanData.mode;
         delete loanData.oldLoanId;
+        delete loanData.groupCashCollections;
+        delete loanData.loanOfficer;
     }
 
     const spotExist = await db.collection('loans').find({ $expr: { $and: [{$eq: ["$slotNo", loanData.slotNo]}, {$eq: ["$groupId", loanData.groupId]}, { $or: [{$eq: ["$status", "active"]}, {$eq: ["$status", "completed"]}] }] } }).toArray();

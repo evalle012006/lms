@@ -55,7 +55,7 @@ const CashCollectionDetailsPage = () => {
         if (cashCollectionList.length > 0 || loCollectionList.length > 0) {
             if (currentUser.role.rep === 1) {
                 const pending = cashCollectionList.filter(cc => cc.status === 'pending');
-                console.log(pending)
+
                 if (pending.length > 0) {
                     setLoading(false);
                     toast.error("One or more group/s transaction is not yet closed.");

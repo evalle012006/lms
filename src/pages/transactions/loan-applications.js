@@ -33,6 +33,8 @@ const LoanApplicationPage = () => {
     const [mode, setMode] = useState('add');
     const [loan, setLoan] = useState();
 
+    const [showApproveReject, setShowApproveReject] = useState(true);
+
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
     const [historyList, setHistoryList] = useState([]);
@@ -683,6 +685,14 @@ const LoanApplicationPage = () => {
             setWeekend(false);
         }
     }, []);
+
+    useEffect(() => {
+        if (weekend || currentUser.role.rep > 2) {
+            setShowApproveReject(false);
+        } else {
+            setShowApproveReject(true);
+        }
+    }, [weekend]);
 
     return (
         <Layout actionButtons={(currentUser.role.rep > 2 && !weekend) && actionButtons}>

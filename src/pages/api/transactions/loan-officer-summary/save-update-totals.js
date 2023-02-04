@@ -13,28 +13,28 @@ export default apiHandler({
 
 async function processLOSTotals(req, res) {
     const { db } = await connectToDatabase();
-    // const { summary, ids } = req.body;
+
     const data = req.body;
-    const filter = data.data.day === currentDate ? false : true;
 
-    const cashCollections = await db.collection('cashCollections').find({ loId: data.userId, dateAdded: data.data.day }).toArray();
+    switch (data.losType) {
+        case 'year-end':
+            await saveUpdateYearEnd(data);
+            break;
+        case 'daily':
+            const filter = data.data.day === currentDate ? false : true;
+            const cashCollections = await db.collection('cashCollections').find({ loId: data.userId, dateAdded: data.data.day }).toArray();
 
-    if (cashCollections.length === 0) {
-        response = { error: true, message: "One or more group/s have no transaction for today."};
-    } else {
-        switch (data.losType) {
-            case 'year-end':
-                await saveUpdateYearEnd(data);
-                break;
-            case 'daily':
+            if (cashCollections.length === 0) {
+                response = { error: true, message: "One or more group/s have no transaction for today."};
+            } else {
                 await saveUpdateDaily(data, filter);
-                break;
-            case 'commulative':
-                await saveUpdateCommulative(data);
-                break;
-            default:
-                break;
-        }
+            }
+            break;
+        case 'commulative':
+            await saveUpdateCommulative(data);
+            break;
+        default:
+            break;
     }
 
     res.status(statusCode)
@@ -73,8 +73,9 @@ async function saveUpdateDaily(total, filter) {
     const { db } = await connectToDatabase();
     let resp;
 
+    let losTotal = await db.collection('losTotals').find({ userId: total.userId, dateAdded: total.data.day, losType: 'daily' }).toArray();
+
     if (filter) {
-        let losTotal = await db.collection('losTotals').find({ userId: total.userId, dateAdded: total.data.day, losType: 'daily' }).toArray();
         if (losTotal.length > 0) {
             losTotal = losTotal[0];
             await db.collection('losTotals').updateOne(
@@ -97,8 +98,7 @@ async function saveUpdateDaily(total, filter) {
                 }
             );
         }
-    } else {
-        let losTotal = await db.collection('losTotals').find({ userId: total.userId, dateAdded: currentDate, losType: 'daily' }).toArray();   
+    } else {        
         if (losTotal.length > 0) {
             losTotal = losTotal[0];
             await db.collection('losTotals').updateOne(

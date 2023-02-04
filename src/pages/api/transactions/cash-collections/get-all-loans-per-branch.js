@@ -72,8 +72,20 @@ async function getAllLoansPerGroup(req, res) {
                                             } },
                                             collection: { $sum: '$paymentCollection' },
                                             excess: { $sum: '$excess' },
-                                            pastDue: { $sum: '$pastDue' },
-                                            noPastDue: { $sum: {$cond: { if: { $eq: ['$remarks.value', 'past due'] }, then: 1, else: 0 } }},
+                                            // pastDue: { $sum: '$pastDue' },
+                                            noPastDue: { $sum: {
+                                                $cond: { 
+                                                    if: { $eq: ['$remarks.value', 'past due'] }, 
+                                                    then: 1, 
+                                                    else: 0 } 
+                                            } },
+                                            noPaidPastDue: { $sum: {
+                                                $cond: {
+                                                    if: { $eq: ['$remarks.value', 'past due collection'] }, 
+                                                    then: 1,
+                                                    else: 0
+                                                }
+                                            } },
                                             total: { $sum: '$total' },
                                             offsetPerson: { $sum: {
                                                 $cond: {
@@ -182,6 +194,7 @@ async function getAllLoansPerGroup(req, res) {
                                                     } 
                                                 }
                                             },
+                                            pastDue: { $sum: '$pastDue' },
                                             collection: { $sum: 0 },
                                             excess: { $sum: 0 },
                                             total: { $sum: 0 }
@@ -283,8 +296,20 @@ async function getAllLoansPerGroup(req, res) {
                                         } },
                                         collection: { $sum: '$paymentCollection' },
                                         excess: { $sum: '$excess' },
-                                        pastDue: { $sum: '$pastDue' },
-                                        noPastDue: { $sum: {$cond: { if: { $eq: ['$remarks.value', 'past due'] }, then: 1, else: 0 } }},
+                                        // pastDue: { $sum: '$pastDue' },
+                                        noPastDue: { $sum: {
+                                            $cond: { 
+                                                if: { $eq: ['$remarks.value', 'past due'] }, 
+                                                then: 1, 
+                                                else: 0 } 
+                                        } },
+                                        noPaidPastDue: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$remarks.value', 'past due collection'] }, 
+                                                then: 1,
+                                                else: 0
+                                            }
+                                        } },
                                         total: { $sum: '$total' },
                                         offsetPerson: { $sum: {
                                             $cond: {
@@ -393,6 +418,7 @@ async function getAllLoansPerGroup(req, res) {
                                                 } 
                                             }
                                         },
+                                        pastDue: { $sum: '$pastDue' },
                                         collection: { $sum: 0 },
                                         excess: { $sum: 0 },
                                         total: { $sum: 0 }
@@ -541,7 +567,19 @@ async function getAllLoansPerGroup(req, res) {
                                             collection: { $sum: '$paymentCollection' },
                                             excess: { $sum: '$excess' },
                                             pastDue: { $sum: '$pastDue' },
-                                            noPastDue: { $sum: {$cond: { if: { $eq: ['$remarks.value', 'past due'] }, then: 1, else: 0 } }},
+                                            noPastDue: { $sum: {
+                                                $cond: { 
+                                                    if: { $eq: ['$remarks.value', 'past due'] }, 
+                                                    then: 1, 
+                                                    else: 0 } 
+                                            } },
+                                            noPaidPastDue: { $sum: {
+                                                $cond: {
+                                                    if: { $eq: ['$remarks.value', 'past due collection'] }, 
+                                                    then: 1,
+                                                    else: 0
+                                                }
+                                            } },
                                             total: { $sum: '$total' },
                                             currentReleaseAmount: {
                                                 $sum: {
@@ -711,7 +749,19 @@ async function getAllLoansPerGroup(req, res) {
                                         collection: { $sum: '$paymentCollection' },
                                         excess: { $sum: '$excess' },
                                         pastDue: { $sum: '$pastDue' },
-                                        noPastDue: { $sum: {$cond: { if: { $eq: ['$remarks.value', 'past due'] }, then: 1, else: 0 } }},
+                                        noPastDue: { $sum: {
+                                            $cond: { 
+                                                if: { $eq: ['$remarks.value', 'past due'] }, 
+                                                then: 1, 
+                                                else: 0 } 
+                                        } },
+                                        noPaidPastDue: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$remarks.value', 'past due collection'] }, 
+                                                then: 1,
+                                                else: 0
+                                            }
+                                        } },
                                         total: { $sum: '$total' },
                                         currentReleaseAmount: {
                                             $sum: {
