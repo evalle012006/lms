@@ -109,7 +109,8 @@ const MenuItems = [
             ),
         },
         active: true,
-        hasSub: false
+        hasSub: false,
+        hidden: false
     },
     {
         label: "Branches",
@@ -123,7 +124,8 @@ const MenuItems = [
             ),
         },
         active: false,
-        hasSub: false
+        hasSub: false,
+        hidden: false
     },
     {
         label: "Groups",
@@ -137,7 +139,8 @@ const MenuItems = [
             ),
         },
         active: false,
-        hasSub: false
+        hasSub: false,
+        hidden: false
     },
     {
         label: "Clients",
@@ -149,6 +152,7 @@ const MenuItems = [
         active: false,
         borderBottom: true,
         hasSub: true,
+        hidden: false,
         subMenuItems: [
             {
                 label: "Prospect Clients",
@@ -162,7 +166,8 @@ const MenuItems = [
                     ),
                 },
                 active: false,
-                hasSub: false
+                hasSub: false,
+                hidden: false
             },
             {
                 label: "Active Clients",
@@ -176,7 +181,8 @@ const MenuItems = [
                     ),
                 },
                 active: false,
-                hasSub: false
+                hasSub: false,
+                hidden: false
             },
             {
                 label: "Offset Accounts",
@@ -190,7 +196,8 @@ const MenuItems = [
                     ),
                 },
                 active: false,
-                hasSub: false
+                hasSub: false,
+                hidden: false
             }
         ]
     },
@@ -205,6 +212,7 @@ const MenuItems = [
         active: false,
         borderBottom: true,
         hasSub: true,
+        hidden: false,
         subMenuItems: [
             // {
             //     label: "Loans List",
@@ -232,7 +240,8 @@ const MenuItems = [
                     ),
                 },
                 active: false,
-                hasSub: false
+                hasSub: false,
+                hidden: false
             },
             {
                 label: "Loan Officer Register (Daily)",
@@ -246,7 +255,8 @@ const MenuItems = [
                     ),
                 },
                 active: false,
-                hasSub: false
+                hasSub: false,
+                hidden: false
             },
             // {
             //     label: "Loan Officer Register (Weekly)",
@@ -274,10 +284,28 @@ const MenuItems = [
                     ),
                 },
                 active: false,
-                hasSub: false
+                hasSub: false,
+                hidden: false
+            },
+            {
+                label: "Branch Manager Summary",
+                url: "/transactions/branch-manager-summary", 
+                icon: {
+                    active: (
+                        <ChartBarSquareIcon className="text-gray-800 w-5 h-5" />
+                    ),
+                    notActive: (
+                        <ChartBarSquareIcon className="text-white w-5 h-5" />
+                    ),
+                },
+                active: false,
+                hasSub: false,
+                hidden: false
             },
         ]
     },
+// -BMs weekly 
+// -Consolidated BMS
     {
         label: "Settings",
         url: "#settings",
@@ -288,6 +316,7 @@ const MenuItems = [
         },
         active: true,
         hasSub: true,
+        hidden: false,
         subMenuItems: [
             {
                 label: "Users",
@@ -411,8 +440,7 @@ const NavComponent = () => {
     }, [activePath]);
 
     useEffect(() => {
-        let updatedMenu = [];
-        menuItems.map((menu) => {
+        let updatedMenu = menuItems.map((menu) => {
             let temp = {...menu};
             if (rootUser || userState.role.rep === 1) {
                 // nothing to do here...
@@ -435,11 +463,23 @@ const NavComponent = () => {
             }
 
             if (temp.hasSub) {
-                temp.subMenuItems.map(sm => {
+                temp.subMenuItems = temp.subMenuItems.map(sItem => {
+                    let sm = {...sItem};
+
                     if (rootUser || userState.role.rep === 1) {
-                        // nothing to do here...
+                        if (sm.label === 'Loan Officer Summary') {
+                            sm.hidden = true;
+                        }
+                        if (sm.label === 'Branch Manager Summary') {
+                            sm.hidden = true;
+                        }
                     } else if (userState.role.rep === 2) {
-                        // nothing to do here...
+                        if (sm.label === 'Loan Officer Summary') {
+                            sm.hidden = true;
+                        }
+                        if (sm.label === 'Branch Manager Summary') {
+                            sm.hidden = true;
+                        }
                     } else if (userState.role.rep === 3) {
                         if (sm.label === 'System') {
                             sm.hidden = true;
@@ -447,13 +487,21 @@ const NavComponent = () => {
                         if (sm.label === 'Roles') {
                             sm.hidden = true;
                         }
+
+                        if (sm.label === 'Loan Officer Summary') {
+                            sm.hidden = true;
+                        }
                     }  else if (userState.role.rep === 4) {
-                       // nothing to do here..
+                        if (sm.label === 'Branch Manager Summary') {
+                            sm.hidden = true;
+                        }
                     }
+
+                    return sm;
                 });
             }
 
-            updatedMenu.push(temp);
+            return temp;
         });
 
         setMenuItems(updatedMenu);

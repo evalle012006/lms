@@ -111,6 +111,12 @@ const CashCollectionDetailsPage = () => {
             response.data.collection.map(cc => {
                 let collection;
                 if (cc.status === "tomorrow" || cc.status === "pending") {
+                    let numMispayment = 0;
+                    if (date) {
+                        numMispayment = cc.noMispayment && cc.noMispayment !== '-' ? cc.noMispayment : 0;
+                    } else {
+                        numMispayment = cc.mispayment ? cc.mispayment : 0;
+                    }
                     collection = {
                         ...cc,
                         group: cc.group,
@@ -125,7 +131,8 @@ const CashCollectionDetailsPage = () => {
                         loanCycle: cc.loanCycle,
                         mispayment: '-',
                         mispaymentStr: '-',
-                        noMispayment: date ? cc.noMispayment + ' / ' + maxDays : cc.mispayment + ' / ' + maxDays, // bug
+                        noMispayment: numMispayment,
+                        noMispaymentStr: numMispayment + ' / ' + maxDays,
                         collection: 0,
                         excess: cc.excess > 0 ? cc.excess : 0,
                         excessStr: cc.excess > 0 ? formatPricePhp(cc.excess) : '-',
@@ -169,9 +176,10 @@ const CashCollectionDetailsPage = () => {
                         slotNo: cc.slotNo,
                         fullName: cc.client.lastName + ', ' + cc.client.firstName,
                         loanCycle: cc.history.loanCycle,
-                        mispayment: cc.mispayment === 0 ? false : true,
-                        mispaymentStr: cc.mispayment === 0 ? 'No' : 'Yes',
-                        noMispayment: date ? cc.noMispayment + ' / ' + maxDays : cc.mispayment + ' / ' + maxDays,
+                        mispayment: cc.current.length > 0 ? cc.current[0].mispayment : false,
+                        mispaymentStr: cc.current.length > 0 ? cc.current[0].mispayment : 'No',
+                        noMispayment: date ? cc.noMispayment : cc.mispayment,
+                        noMispaymentStr: date ? cc.noMispayment + ' / ' + maxDays : cc.mispayment + ' / ' + maxDays,
                         collection: 0,
                         excess: cc.history.excess > 0 ? cc.history.excess : 0,
                         excessStr: cc.history.excess > 0 ? formatPricePhp(cc.history.excess) : '-',
@@ -216,7 +224,8 @@ const CashCollectionDetailsPage = () => {
                         loanCycle: cc.loanCycle,
                         mispayment: false,
                         mispaymentStr: (cc.status === "active" || (cc.status === "completed" && cc.fullPaymentDate === currentDate)) ? 'No' : '-',
-                        noMispayment: date ? cc.noMispayment + ' / ' + maxDays : cc.mispayment + ' / ' + maxDays,
+                        noMispayment: date ? cc.noMispayment : cc.mispayment,
+                        noMispaymentStr: date ? cc.noMispayment + ' / ' + maxDays : cc.mispayment + ' / ' + maxDays,
                         collection: 0,
                         excess: cc.excess,
                         excessStr: cc.excess > 0 ? formatPricePhp(cc.excess) : '-',
@@ -324,7 +333,8 @@ const CashCollectionDetailsPage = () => {
                             targetCollectionStr: formatPricePhp(currentLoan.history.activeLoan),
                             mispayment: currentLoan.mispayment,
                             mispaymentStr: currentLoan.mispayment ? 'Yes' : 'No',
-                            noMispayment: currentLoan.mispayment + ' / ' + maxDays,
+                            noMispayment: currentLoan.noMispayment,
+                            noMispaymentStr: currentLoan.noMispayment + ' / ' + maxDays,
                             currentReleaseAmount: loan.amountRelease,
                             currentReleaseAmountStr: loan.amountRelease ? formatPricePhp(loan.amountRelease) : 0,
                             noOfPayments: '-',
@@ -362,7 +372,7 @@ const CashCollectionDetailsPage = () => {
                             targetCollectionStr: '-',
                             mispayment: false,
                             mispaymentStr: '-',
-                            noMispayment: '-',
+                            noMispaymentStr: '-',
                             currentReleaseAmount: loan.amountRelease,
                             currentReleaseAmountStr: loan.amountRelease ? formatPricePhp(loan.amountRelease) : '-',
                             noOfPayments: '-',
@@ -429,7 +439,7 @@ const CashCollectionDetailsPage = () => {
                             targetCollectionStr: '-',
                             mispayment: false,
                             mispaymentStr: '-',
-                            noMispayment: '-',
+                            noMispaymentStr: '-',
                             currentReleaseAmount: loan.amountRelease,
                             currentReleaseAmountStr: loan.amountRelease ? formatPricePhp(loan.amountRelease) : '-',
                             noOfPayments: '-',
@@ -527,7 +537,7 @@ const CashCollectionDetailsPage = () => {
             fullPaymentStr: totalFullPayment ? formatPricePhp(totalFullPayment) : 0,
             pastDue: totalPastDue,
             pastDueStr: formatPricePhp(totalPastDue),
-            noMispayment: '',
+            noMispaymentStr: '',
             clientStatus: '-',
             status: 'totals'
         };
@@ -616,6 +626,7 @@ const CashCollectionDetailsPage = () => {
                     delete temp.pastDueStr;
                     delete temp.groupCashCollections;
                     delete temp.loanOfficer;
+                    delete temp.noMispaymentStr;
                     // delete temp.clientStatus;
 
                     if (cc.hasOwnProperty('_id')) {
@@ -952,7 +963,6 @@ const CashCollectionDetailsPage = () => {
                         // if payment > targetCollection, then put subtract it on the past due amount not on excess
                         if (temp.pastDue > 0 && temp.paymentCollection > temp.activeLoan) {
                             const pastDueCol = temp.paymentCollection - temp.activeLoan;
-                            console.log(pastDueCol)
                             if (pastDueCol > temp.pastDue) {
                                 const excessPD = pastDueCol - temp.pastDue;
                                 temp.excess = excessPD;
@@ -1387,7 +1397,7 @@ const CashCollectionDetailsPage = () => {
                                                 </td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.fullPaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.mispaymentStr }</td>
-                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.noMispayment }</td>
+                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.noMispaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">
                                                     { cc.pastDueStr }
                                                 </td>

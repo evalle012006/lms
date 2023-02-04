@@ -139,53 +139,7 @@ const LoanOfficerSummary = () => {
             }
         });
 
-        if (currentUser.role.rep === 1) {
-            url = url + '?' + new URLSearchParams({ date: date ? date : currentDate });
-            const response = await fetchWrapper.get(url);
-            if (response.success) {
-                response.data.map(los => {
-                    losList.push({
-                        ...los,
-                        loanReleaseAmountStr: formatPricePhp(los.loanReleaseAmount),
-                        collectionTargetStr: formatPricePhp(los.collectionTarget),
-                        collectionAdvancePaymentStr: formatPricePhp(los.collectionAdvancePayment),
-                        collectionActualStr: formatPricePhp(los.collectionActual),
-                        pastDueAmountStr: formatPricePhp(los.pastDueAmount),
-                        fullPaymentAmountStr: formatPricePhp(los.fullPaymentAmount),
-                        loanBalanceStr: formatPricePhp(los.loanBalance)
-                    });
-                });
-
-                dispatch(setLosList(losList));
-                setLoading(false);
-            } else if (response.error) {
-                setLoading(false);
-                toast.error(response.message);
-            }
-        } else if (currentUser.role.rep === 2) {
-            url = url + '?' + new URLSearchParams({ branchCodes: currentUser.designatedBranch, date: date ? date : currentDate });
-            const response = await fetchWrapper.get(url);
-            if (response.success) {
-                response.data.map(los => {
-                    losList.push({
-                        ...los,
-                        loanReleaseAmountStr: formatPricePhp(los.loanReleaseAmount),
-                        collectionTargetStr: formatPricePhp(los.collectionTarget),
-                        collectionAdvancePaymentStr: formatPricePhp(los.collectionAdvancePayment),
-                        collectionActualStr: formatPricePhp(los.collectionActual),
-                        pastDueAmountStr: formatPricePhp(los.pastDueAmount),
-                        fullPaymentAmountStr: formatPricePhp(los.fullPaymentAmount),
-                        loanBalanceStr: formatPricePhp(los.loanBalance)
-                    });
-                });
-
-                dispatch(setLosList(losList));
-                setLoading(false);
-            } else if (response.error) {
-                setLoading(false);
-                toast.error(response.message);
-            }
-        } else if (currentUser.role.rep === 3) {
+        if (currentUser.role.rep === 3) {
             url = url + '?' + new URLSearchParams({ branchCode: currentUser.designatedBranch, date: date ? date : currentDate });
             const response = await fetchWrapper.get(url);
             if (response.success) {
@@ -256,8 +210,8 @@ const LoanOfficerSummary = () => {
                             collectionActualStr: formatPricePhp(los.data.collectionActual),
                             pastDueAmountStr: formatPricePhp(los.data.pastDueAmount),
                             fullPaymentAmountStr: formatPricePhp(los.data.fullPaymentAmount),
-                            loanBalance: los.loanBalance + los.data.loanReleaseAmount,
-                            loanBalanceStr: formatPricePhp(los.data.loanBalance + los.data.loanReleaseAmount)
+                            loanBalance: los.data.loanBalance,
+                            loanBalanceStr: formatPricePhp(los.data.loanBalance)
                         };
                     } else {
 
@@ -267,7 +221,7 @@ const LoanOfficerSummary = () => {
                 losList = calculatePersons(losList);
                 losList = calculateWeeklyTotals(losList);
                 losList.push(calculateMonthlyTotals(losList[0], losList.filter(los => los.weekTotal)));
-                losList.push(calculateGrandTotals(losList, filter));
+                losList.push(calculateGrandTotals(losList, filter, date));
                 dispatch(setLosList(losList));
                 setLoading(false);
             } else if (response.error) {
@@ -301,9 +255,9 @@ const LoanOfficerSummary = () => {
                     temp.activeLoanReleasePerson = fBal.activeLoanReleasePerson + loanReleasePerson - fullPaymentPerson;
                     temp.activeLoanReleaseAmount = fBal.activeLoanReleaseAmount + loanReleaseAmount - fullPaymentAmount;
                     temp.activeLoanReleaseAmountStr = formatPricePhp(temp.activeLoanReleaseAmount);
-                    temp.pastDueAmount = fBal.pastDueAmount + collectionTarget + collectionAdvancePayment - collectionActual;
-                    temp.pastDueAmountStr = formatPricePhp(temp.pastDueAmount);
-                    temp.pastDuePerson = fBal.pastDuePerson + pastDuePerson;
+                    // temp.pastDueAmount = fBal.pastDueAmount + collectionTarget + collectionAdvancePayment - collectionActual;
+                    // temp.pastDueAmountStr = formatPricePhp(temp.pastDueAmount);
+                    // temp.pastDuePerson = fBal.pastDuePerson + pastDuePerson;
                     temp.activeBorrowers = temp.activeBorrowers > 0 ? temp.activeBorrowers : fBal.activeBorrowers;
                     temp.loanBalance = temp.loanBalance > 0 ? temp.loanBalance : fBal.loanBalance;
                     temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
@@ -312,9 +266,9 @@ const LoanOfficerSummary = () => {
                     temp.activeLoanReleasePerson = prevLos.activeLoanReleasePerson + loanReleasePerson - fullPaymentPerson;
                     temp.activeLoanReleaseAmount = prevLos.activeLoanReleaseAmount + loanReleaseAmount - fullPaymentAmount;
                     temp.activeLoanReleaseAmountStr = formatPricePhp(temp.activeLoanReleaseAmount);
-                    temp.pastDueAmount = prevLos.pastDueAmount + collectionTarget + collectionAdvancePayment - collectionActual;
-                    temp.pastDueAmountStr = formatPricePhp(temp.pastDueAmount);
-                    temp.pastDuePerson = prevLos.pastDuePerson + pastDuePerson;
+                    // temp.pastDueAmount = prevLos.pastDueAmount + collectionTarget + collectionAdvancePayment - collectionActual;
+                    // temp.pastDueAmountStr = formatPricePhp(temp.pastDueAmount);
+                    // temp.pastDuePerson = prevLos.pastDuePerson + pastDuePerson;
                     temp.activeBorrowers = temp.activeBorrowers > 0 ? temp.activeBorrowers : prevLos.activeBorrowers;
                     temp.loanBalance = temp.loanBalance > 0 ? temp.loanBalance : prevLos.loanBalance;
                     temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
@@ -364,6 +318,9 @@ const LoanOfficerSummary = () => {
                 let totalFullPaymentAmount = 0;
                 let totalActiveBorrowers = 0; // last row
                 let totalLoanBalance = 0; // last row
+
+                let lastPastDueAmount = 0;
+                let lastPastDuePerson = 0;
                 
                 losSlice.map(los => {
                     totalTransfer += los.transfer !== '-' ? los.transfer : 0;
@@ -376,6 +333,14 @@ const LoanOfficerSummary = () => {
                     totalCollectionActual += los.collectionActual !== '-' ? los.collectionActual : 0;
                     // totalPastDuePerson += los.pastDuePerson !== '-' ? los.pastDuePerson : 0;
                     // totalPastDueAmount += los.pastDueAmount !== '-' ? los.pastDueAmount : 0;
+                    if (los.pastDuePerson !== '-') {
+                        lastPastDuePerson = los.pastDuePerson;
+                    }
+
+                    if (los.pastDueAmount !== '-') {
+                        lastPastDueAmount = los.pastDueAmount;
+                    }
+
                     totalFullPaymentPerson += los.fullPaymentPerson !== '-' ? los.fullPaymentPerson : 0;
                     totalFullPaymentAmount += los.fullPaymentAmount !== '-' ? los.fullPaymentAmount : 0;
                 });
@@ -384,19 +349,24 @@ const LoanOfficerSummary = () => {
                     totalActiveClients = fBal.activeClients + totalTransfer + totalNewMember - totalOffsetperson;
                     totalActiveLoanReleasePerson = fBal.activeLoanReleasePerson + totalLoanReleasePerson - totalFullPaymentPerson;
                     totalActiveLoanReleaseAmount = fBal.activeLoanReleaseAmount + totalLoanReleaseAmount - totalFullPaymentAmount;
-                    totalPastDueAmount = fBal.pastDueAmount + totalCollectionTarget + totalCollectionAdvancePayment - totalCollectionActual;
-                    totalPastDuePerson = fBal.pastDuePerson;
-                    totalActiveBorrowers = losSlice[losSlice.length - 1].activeBorrowers;
-                    totalLoanBalance = losSlice[losSlice.length - 1].loanBalance;
+                    // totalPastDueAmount = losSlice[losSlice.length - 1].pastDueAmount; //fBal.pastDueAmount + totalCollectionTarget + totalCollectionAdvancePayment - totalCollectionActual;
+                    // totalPastDuePerson = losSlice[losSlice.length - 1].pastDuePerson;
+                    // totalActiveBorrowers = losSlice[losSlice.length - 1].activeBorrowers;
+                    // totalLoanBalance = losSlice[losSlice.length - 1].loanBalance;
                 } else {
                     totalActiveClients = prevWeek.activeClients + totalTransfer + totalNewMember - totalOffsetperson;
                     totalActiveLoanReleasePerson = prevWeek.activeLoanReleasePerson + totalLoanReleasePerson - totalFullPaymentPerson;
                     totalActiveLoanReleaseAmount = prevWeek.activeLoanReleaseAmount + totalLoanReleaseAmount - totalFullPaymentAmount;
-                    totalPastDueAmount = prevWeek.pastDueAmount + totalCollectionTarget + totalCollectionAdvancePayment - totalCollectionActual;
-                    totalPastDuePerson = prevWeek.pastDuePerson;
-                    totalActiveBorrowers = prevWeek.activeBorrowers + totalLoanReleasePerson - totalFullPaymentPerson;
-                    totalLoanBalance = prevWeek.loanBalance;
+                    // totalPastDueAmount = prevWeek.pastDueAmount + totalCollectionTarget + totalCollectionAdvancePayment - totalCollectionActual;
+                    // totalPastDuePerson = totalPastDuePerson;
+                    // totalActiveBorrowers = prevWeek.activeBorrowers + totalLoanReleasePerson - totalFullPaymentPerson;
+                    // totalLoanBalance = prevWeek.loanBalance;
                 }
+
+                totalPastDuePerson = lastPastDuePerson;
+                totalPastDueAmount = lastPastDueAmount;
+                totalActiveBorrowers = losSlice[losSlice.length - 1].activeBorrowers;
+                totalLoanBalance = losSlice[losSlice.length - 1].loanBalance;
 
                 losList[index] = {
                     ...w,
@@ -532,7 +502,7 @@ const LoanOfficerSummary = () => {
         return monthlyTotal;
     }
     
-    const calculateGrandTotals = (losList, filter) => {
+    const calculateGrandTotals = (losList, filter, date) => {
         let grandTotal = {
             day: 'Commulative',
             transfer: 0,
@@ -625,24 +595,24 @@ const LoanOfficerSummary = () => {
 
         if (!filter) {
             saveLosTotals(grandTotal);
+        } else {
+            saveLosTotals(grandTotal, true, date)
         }
 
         return grandTotal;
     }
 
-    const saveLosTotals = async (total) => {
-        if (currentUser.role.rep === 4) {
-            const losTotals = {
-                userId: currentUser._id,
-                branchId: selectedBranch && selectedBranch._id,
-                month: moment().month() + 1,
-                year: moment().year(),
-                data: total,
-                losType: 'commulative'
-            }
-    
-            await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loan-officer-summary/save-update-totals', losTotals);
+    const saveLosTotals = async (total, filter, date) => {
+        const losTotals = {
+            userId: currentUser._id,
+            branchId: selectedBranch && selectedBranch._id,
+            month: filter ? moment(date).month() + 1 : moment().month() + 1,
+            year: filter ? moment(date).year() : moment().year(),
+            data: total,
+            losType: 'commulative'
         }
+
+        await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loan-officer-summary/save-update-totals', losTotals);
     }
 
     useEffect(() => {

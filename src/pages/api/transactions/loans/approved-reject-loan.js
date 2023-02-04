@@ -233,7 +233,7 @@ async function saveCashCollection(loan) {
                 const ccId = cashCollection._id;
                 delete cashCollection._id;
 
-                cashCollection.currentReleaseAmount = cashCollection.amountRelease;
+                // cashCollection.currentReleaseAmount = loanData.amountRelease;
 
                 await db.collection('cashCollections')
                     .updateOne(

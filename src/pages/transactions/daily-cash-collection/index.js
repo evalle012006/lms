@@ -32,7 +32,12 @@ const DailyCashCollectionPage = () => {
     const handleDateFilter = (selected) => {
         const filteredDate = selected.target.value;
         setDateFilter(filteredDate);
-        setFilter(true);
+        if (filteredDate === currentDate) {
+            setFilter(false);
+        } else {
+            setFilter(true);    
+        }
+        
         localStorage.setItem('cashCollectionDateFilter', filteredDate);
     }
 

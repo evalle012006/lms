@@ -7,39 +7,6 @@ export default apiHandler({
     post: updateCCData
 });
 
-async function updateCCData(req, res) {
-    const { db } = await connectToDatabase();
-    const ObjectId = require('mongodb').ObjectId;
-
-    let statusCode = 200;
-    let response = {};
-
-    const cashCollections = await db.collection('cashCollections').find({ $expr: {$eq: ['$remarks.value', 'past due']} }).toArray();
-
-    if (cashCollections.length > 0) {
-        cashCollections.map(async cc => {
-            let temp = {...cc};
-            const loans = await db.collection('loans').find({clientId: cc.clientId}).toArray();
-
-            if (loans.length > 0) {
-                const active = loans.find(loan => loan.status === 'active' || loan.status === 'pending');
-                if (active) {
-                    temp.currentReleaseAmount = active.amountRelease;
-
-                    await db.collection('cashCollections').updateOne({ _id: cc._id }, { $set: {...temp} });
-                }
-            }
-        });
-    }
-
-    response = { success: true };
-
-    res.status(statusCode)
-        .setHeader('Content-Type', 'application/json')
-        .end(JSON.stringify(response));
-}
-
-// updating the current release amount
 // async function updateCCData(req, res) {
 //     const { db } = await connectToDatabase();
 //     const ObjectId = require('mongodb').ObjectId;
@@ -47,7 +14,7 @@ async function updateCCData(req, res) {
 //     let statusCode = 200;
 //     let response = {};
 
-//     const cashCollections = await db.collection('cashCollections').find({ status: 'tomorrow', currentReleaseAmount: 0 }).toArray();
+//     const cashCollections = await db.collection('cashCollections').find({ $expr: {$eq: ['$remarks.value', 'past due']} }).toArray();
 
 //     if (cashCollections.length > 0) {
 //         cashCollections.map(async cc => {
@@ -71,6 +38,39 @@ async function updateCCData(req, res) {
 //         .setHeader('Content-Type', 'application/json')
 //         .end(JSON.stringify(response));
 // }
+
+// updating the current release amount
+async function updateCCData(req, res) {
+    const { db } = await connectToDatabase();
+    const ObjectId = require('mongodb').ObjectId;
+
+    let statusCode = 200;
+    let response = {};
+
+    const cashCollections = await db.collection('cashCollections').find({ status: 'tomorrow', currentReleaseAmount: 0 }).toArray();
+
+    if (cashCollections.length > 0) {
+        cashCollections.map(async cc => {
+            let temp = {...cc};
+            const loans = await db.collection('loans').find({clientId: cc.clientId}).toArray();
+
+            if (loans.length > 0) {
+                const active = loans.find(loan => loan.status === 'active' || loan.status === 'pending');
+                if (active) {
+                    temp.currentReleaseAmount = active.amountRelease;
+
+                    await db.collection('cashCollections').updateOne({ _id: cc._id }, { $set: {...temp} });
+                }
+            }
+        });
+    }
+
+    response = { success: true };
+
+    res.status(statusCode)
+        .setHeader('Content-Type', 'application/json')
+        .end(JSON.stringify(response));
+}
 
 
 // adding new field
