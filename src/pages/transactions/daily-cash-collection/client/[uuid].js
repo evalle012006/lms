@@ -13,7 +13,7 @@ import moment from 'moment';
 import { containsAnyLetters, formatPricePhp, UppercaseFirstLetter } from '@/lib/utils';
 import { ArrowPathIcon, ArrowUturnLeftIcon } from '@heroicons/react/24/outline';
 import Select from 'react-select';
-import { styles, DropdownIndicator, borderStyles } from "@/styles/select";
+import { DropdownIndicator, borderStyles } from "@/styles/select";
 import AddUpdateLoan from '@/components/transactions/AddUpdateLoanDrawer';
 import Dialog from '@/lib/ui/Dialog';
 import ButtonSolid from '@/lib/ui/ButtonSolid';
