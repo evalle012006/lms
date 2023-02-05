@@ -7,7 +7,6 @@ export default apiHandler({
     post: updateCCData
 });
 
-
 // async function updateCCData(req, res) {
 //     const { db } = await connectToDatabase();
 //     const ObjectId = require('mongodb').ObjectId;
