@@ -166,7 +166,6 @@ async function saveCashCollection(loan, reloan) {
     const currentDate = moment(new Date()).format('YYYY-MM-DD');
 
     let groupSummary = await db.collection('groupCashCollections').find({ dateAdded: currentDate, groupId: loan.groupId }).toArray();
-
     // check if tomorrow and 0 payment collection
     // set the following to 0: activeLoan, loanBalance, targetCollection, amountRelease
     if (groupSummary.length > 0) {
