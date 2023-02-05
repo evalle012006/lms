@@ -492,7 +492,6 @@ const CashCollectionDetailsPage = () => {
         dataArr.map(collection => {
             if (collection.status !== 'open' && collection.status !== 'totals') {
                 if (collection.status === 'active') {
-                    // totalActiveBorrowers += 1;
                     totalLoanRelease += collection.amountRelease ? collection.amountRelease !== '-' ? collection.amountRelease : 0 : 0;
                     totalLoanBalance += collection.loanBalance ? collection.loanBalance !== '-' ? collection.loanBalance : 0 : 0;
                 }
