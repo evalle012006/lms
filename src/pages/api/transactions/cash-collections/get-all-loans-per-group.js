@@ -11,7 +11,6 @@ async function getAllLoansPerGroup(req, res) {
     const { db } = await connectToDatabase();
 
     const currentDate = moment(new Date()).format('YYYY-MM-DD');
-
     const { date, mode, branchCode, loId } = req.query;
     let statusCode = 200;
     let response = {};
@@ -553,7 +552,13 @@ async function getAllLoansPerGroup(req, res) {
                                                                     else: {
                                                                         $cond: {
                                                                             if: {$eq: ['$status', 'tomorrow']},
-                                                                            then: 0,
+                                                                            then: {
+                                                                                $cond: {
+                                                                                    if: { $gt: ['$activeLoan', 0] },
+                                                                                    then: '$history.activeLoan',
+                                                                                    else: 0
+                                                                                }
+                                                                            },
                                                                             else: '$activeLoan'
                                                                         }
                                                                     }
@@ -748,7 +753,13 @@ async function getAllLoansPerGroup(req, res) {
                                                                     else: {
                                                                         $cond: {
                                                                             if: {$eq: ['$status', 'tomorrow']},
-                                                                            then: 0,
+                                                                            then: {
+                                                                                $cond: {
+                                                                                    if: { $gt: ['$activeLoan', 0] },
+                                                                                    then: '$history.activeLoan',
+                                                                                    else: 0
+                                                                                }
+                                                                            },
                                                                             else: '$activeLoan'
                                                                         }
                                                                     }

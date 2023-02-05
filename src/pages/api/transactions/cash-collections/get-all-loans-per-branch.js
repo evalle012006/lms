@@ -571,7 +571,13 @@ async function getAllLoansPerGroup(req, res) {
                                                                         else: {
                                                                             $cond: {
                                                                                 if: {$eq: ['$status', 'tomorrow']},
-                                                                                then: 0,
+                                                                                then: {
+                                                                                    $cond: {
+                                                                                        if: { $gt: ['$activeLoan', 0] },
+                                                                                        then: '$history.activeLoan',
+                                                                                        else: 0
+                                                                                    }
+                                                                                },
                                                                                 else: '$activeLoan'
                                                                             }
                                                                         }
@@ -766,7 +772,13 @@ async function getAllLoansPerGroup(req, res) {
                                                                     else: {
                                                                         $cond: {
                                                                             if: {$eq: ['$status', 'tomorrow']},
-                                                                            then: 0,
+                                                                            then: {
+                                                                                $cond: {
+                                                                                    if: { $gt: ['$activeLoan', 0] },
+                                                                                    then: '$history.activeLoan',
+                                                                                    else: 0
+                                                                                }
+                                                                            },
                                                                             else: '$activeLoan'
                                                                         }
                                                                     }
@@ -889,7 +901,6 @@ async function getAllLoansPerGroup(req, res) {
         }
     }
      
-    
     response = { success: true, data: cashCollection };
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')
