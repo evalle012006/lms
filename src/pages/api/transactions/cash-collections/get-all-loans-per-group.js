@@ -527,7 +527,7 @@ async function getAllLoansPerGroup(req, res) {
                                         loanTarget: { 
                                             $sum: { 
                                                 $cond: {
-                                                    if: { $and: [{$ne: ['$status', 'pending']}, {$ne: ['$status', 'tomorrow']}]}, 
+                                                    if: { $ne: ['$status', 'pending'] }, 
                                                     then: { 
                                                         $cond: {
                                                             if: { $and: [{$eq: ['$activeLoan', 0]}, {$eq: ['$fullPaymentDate', date]}] },
@@ -709,7 +709,7 @@ async function getAllLoansPerGroup(req, res) {
                                         loanTarget: { 
                                             $sum: { 
                                                 $cond: {
-                                                    if: { $and: [{$ne: ['$status', 'pending']}, {$ne: ['$status', 'tomorrow']}]}, 
+                                                    if: { $ne: ['$status', 'pending'] }, 
                                                     then: { 
                                                         $cond: {
                                                             if: { $and: [{$eq: ['$activeLoan', 0]}, {$eq: ['$fullPaymentDate', date]}] },

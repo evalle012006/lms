@@ -259,7 +259,7 @@ const LoanOfficerSummary = () => {
                     // temp.pastDueAmountStr = formatPricePhp(temp.pastDueAmount);
                     // temp.pastDuePerson = fBal.pastDuePerson + pastDuePerson;
                     temp.activeBorrowers = temp.activeBorrowers > 0 ? temp.activeBorrowers : fBal.activeBorrowers;
-                    temp.loanBalance = temp.loanBalance > 0 ? temp.loanBalance : fBal.loanBalance;
+                    temp.loanBalance = fBal.loanBalance + loanReleaseAmount - collectionActual; //temp.loanBalance > 0 ? temp.loanBalance + loanReleaseAmount : fBal.loanBalance;
                     temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
                 } else {
                     temp.activeClients = temp.activeClients > 0 ? temp.activeClients : prevLos.activeClients;
@@ -270,7 +270,7 @@ const LoanOfficerSummary = () => {
                     // temp.pastDueAmountStr = formatPricePhp(temp.pastDueAmount);
                     // temp.pastDuePerson = prevLos.pastDuePerson + pastDuePerson;
                     temp.activeBorrowers = temp.activeBorrowers > 0 ? temp.activeBorrowers : prevLos.activeBorrowers;
-                    temp.loanBalance = temp.loanBalance > 0 ? temp.loanBalance : prevLos.loanBalance;
+                    temp.loanBalance = prevLos.loanBalance + loanReleaseAmount - collectionActual;
                     temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
                 }
 
@@ -321,6 +321,7 @@ const LoanOfficerSummary = () => {
 
                 let lastPastDueAmount = 0;
                 let lastPastDuePerson = 0;
+                let lastLoanBalance = 0;
                 
                 losSlice.map(los => {
                     totalTransfer += los.transfer !== '-' ? los.transfer : 0;
@@ -339,6 +340,10 @@ const LoanOfficerSummary = () => {
 
                     if (los.pastDueAmount !== '-') {
                         lastPastDueAmount = los.pastDueAmount;
+                    }
+
+                    if (los.loanBalance > 0) {
+                        lastLoanBalance = los.loanBalance;
                     }
 
                     totalFullPaymentPerson += los.fullPaymentPerson !== '-' ? los.fullPaymentPerson : 0;
@@ -366,7 +371,7 @@ const LoanOfficerSummary = () => {
                 totalPastDuePerson = lastPastDuePerson;
                 totalPastDueAmount = lastPastDueAmount;
                 totalActiveBorrowers = losSlice[losSlice.length - 1].activeBorrowers;
-                totalLoanBalance = losSlice[losSlice.length - 1].loanBalance;
+                totalLoanBalance =  lastLoanBalance; //losSlice[losSlice.length - 1].loanBalance;
 
                 losList[index] = {
                     ...w,
