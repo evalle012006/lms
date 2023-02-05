@@ -176,8 +176,8 @@ const CashCollectionDetailsPage = () => {
                         slotNo: cc.slotNo,
                         fullName: cc.client.lastName + ', ' + cc.client.firstName,
                         loanCycle: cc.history.loanCycle,
-                        mispayment: cc.current.length > 0 ? cc.current[0].mispayment : false,
-                        mispaymentStr: cc.current.length > 0 ? cc.current[0].mispayment : 'No',
+                        mispayment: cc.mispayment,
+                        mispaymentStr: cc.mispaymentStr,
                         noMispayment: date ? cc.noMispayment : cc.mispayment,
                         noMispaymentStr: date ? cc.noMispayment + ' / ' + maxDays : cc.mispayment + ' / ' + maxDays,
                         collection: 0,
@@ -259,7 +259,6 @@ const CashCollectionDetailsPage = () => {
 
                     delete cc._id;
                     if (cc.hasOwnProperty('current') && cc.current.length > 0) {
-                        // collection.activeLoan = cc.current[0].activeLoan;
                         collection.targetCollection = cc.current[0].targetCollection;
                         collection.targetCollectionStr = formatPricePhp(cc.current[0].targetCollection);
                         collection.excess = cc.current[0].excess;
@@ -493,7 +492,6 @@ const CashCollectionDetailsPage = () => {
         dataArr.map(collection => {
             if (collection.status !== 'open' && collection.status !== 'totals') {
                 if (collection.status === 'active') {
-                    // totalActiveBorrowers += 1;
                     totalLoanRelease += collection.amountRelease ? collection.amountRelease !== '-' ? collection.amountRelease : 0 : 0;
                     totalLoanBalance += collection.loanBalance ? collection.loanBalance !== '-' ? collection.loanBalance : 0 : 0;
                 }
