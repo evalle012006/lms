@@ -13,7 +13,7 @@ import moment from 'moment';
 import { containsAnyLetters, formatPricePhp, UppercaseFirstLetter } from '@/lib/utils';
 import { ArrowPathIcon, ArrowUturnLeftIcon } from '@heroicons/react/24/outline';
 import Select from 'react-select';
-import { styles, DropdownIndicator, borderStyles } from "@/styles/select";
+import { DropdownIndicator, borderStyles } from "@/styles/select";
 import AddUpdateLoan from '@/components/transactions/AddUpdateLoanDrawer';
 import Dialog from '@/lib/ui/Dialog';
 import ButtonSolid from '@/lib/ui/ButtonSolid';
@@ -56,9 +56,8 @@ const CashCollectionDetailsPage = () => {
         { label: 'For Close/Offset - Good Client', value: 'offset'},
         { label: 'For Close/Offset - Delinquent Client', value: 'offset'},
         { label: 'Past Due', value: 'past due'},
-        { label: 'Past Due Collection', value: 'past due collection'}, // selecting this if 
+        { label: 'Past Due Collection', value: 'past due collection'},
         { label: 'Delinquent', value: 'delinquent'},
-        // { label: 'Excused', value: 'excused'},
         { label: 'Excused Due to Calamity', value: 'excused'},
         { label: 'Excused - Hospitalization', value: 'excused'},
         { label: 'Excused - Death of Clients/Family Member', value: 'excused'}
@@ -224,8 +223,8 @@ const CashCollectionDetailsPage = () => {
                         loanCycle: cc.loanCycle,
                         mispayment: false,
                         mispaymentStr: (cc.status === "active" || (cc.status === "completed" && cc.fullPaymentDate === currentDate)) ? 'No' : '-',
-                        noMispayment: date ? cc.noMispayment : cc.mispayment,
-                        noMispaymentStr: date ? cc.noMispayment + ' / ' + maxDays : cc.mispayment + ' / ' + maxDays,
+                        noMispayment: date ? cc.noMispayment ? cc.noMispayment : 0 : cc.mispayment,
+                        noMispaymentStr: date ? cc.noMispayment ? cc.noMispayment + ' / ' + maxDays : 0 + ' / ' + maxDays : cc.mispayment + ' / ' + maxDays,
                         collection: 0,
                         excess: cc.excess,
                         excessStr: cc.excess > 0 ? formatPricePhp(cc.excess) : '-',
