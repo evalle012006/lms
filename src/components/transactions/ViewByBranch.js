@@ -94,10 +94,15 @@ const ViewByBranchPage = (dateFilter) => {
                         collection.totalLoanBalanceStr = formatPricePhp(branch.loans[0].totalLoanBalance);
                         collection.loanTarget = branch.loans[0].loanTarget;
                         collection.loanTargetStr = formatPricePhp(branch.loans[0].loanTarget);
+                        collection.pastDue = branch.loans[0].pastDue;
+                        collection.pastDueStr = formatPricePhp(collection.pastDue);
+                        collection.noPastDue = branch.loans[0].noPastDue;
     
                         totalsLoanRelease += branch.loans[0].totalRelease;
                         totalsLoanBalance += branch.loans[0].totalLoanBalance;
                         targetLoanCollection += branch.loans[0].loanTarget;
+                        totalPastDue += collection.pastDue;
+                        totalNoPastDue += collection.noPastDue;
                     }
                     
                     if (branch.cashCollections.length > 0) {
@@ -108,16 +113,16 @@ const ViewByBranchPage = (dateFilter) => {
                         collection.excessStr = formatPricePhp(branch.cashCollections[0].excess);
                         collection.totalStr = formatPricePhp(branch.cashCollections[0].collection);
                         collection.mispaymentStr = branch.cashCollections[0].mispayment;
-                        collection.pastDue = branch.cashCollections[0].pastDue ? branch.cashCollections[0].pastDue : 0;
-                        collection.pastDueStr = formatPricePhp(collection.pastDue);
-                        collection.noPastDue = branch.cashCollections[0].noPastDue ? branch.cashCollections[0].noPastDue : 0;
+                        // collection.pastDue = branch.cashCollections[0].pastDue ? branch.cashCollections[0].pastDue : 0;
+                        // collection.pastDueStr = formatPricePhp(collection.pastDue);
+                        // collection.noPastDue = branch.cashCollections[0].noPastDue ? branch.cashCollections[0].noPastDue : 0;
     
                         excess += branch.cashCollections[0].excess;
                         totalLoanCollection += branch.cashCollections[0].collection;
                         mispayment += branch.cashCollections[0].mispayment;
                         targetLoanCollection = targetLoanCollection - branch.cashCollections[0].loanTarget;
-                        totalPastDue += collection.pastDue;
-                        totalNoPastDue += collection.noPastDue;
+                        // totalPastDue += collection.pastDue;
+                        // totalNoPastDue += collection.noPastDue;
                     }
     
                     if (branch.currentRelease.length > 0) {

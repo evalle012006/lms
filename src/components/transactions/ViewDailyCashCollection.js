@@ -49,7 +49,7 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
             let fullPaymentAmount = 0;
             let totalPastDue = 0;
             let totalNoPastDue = 0;
-            let totalNoPaidPastDue = 0;
+            // let totalNoPaidPastDue = 0;
             let mispayment = 0;
             let offsetPerson = 0;
 
@@ -112,7 +112,7 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                             reFullPayment: 0,
                             pastDue: cc.loans[0].pastDue,
                             pastDueStr: cc.loans[0].pastDue > 0 ? formatPricePhp(cc.loans[0].pastDue) : '-',
-                            noPastDue: '-',
+                            noPastDue: cc.loans[0].noPastDue > 0 ? cc.loans[0].noPastDue : '-',
                             status: cc.groupCashCollections.length > 0 ? cc.groupCashCollections[0].status : 'No Saved Transaction',
                             page: 'collection'
                         };
@@ -121,6 +121,7 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                         totalsLoanBalance += cc.loans[0].totalLoanBalance ? cc.loans[0].totalLoanBalance : 0;
                         targetLoanCollection += cc.loans[0].loanTarget ? cc.loans[0].loanTarget : 0;
                         totalPastDue += cc.loans[0].pastDue;
+                        totalNoPastDue += cc.loans[0].noPastDue;
                     } 
     
                     if (cc.activeLoans.length > 0) {
@@ -147,8 +148,8 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                             loanTargetStr: loanTarget > 0 ? formatPricePhp(loanTarget) : 0,
                             // pastDue: cc.cashCollections[0].pastDue ? cc.cashCollections[0].pastDue : 0,
                             // pastDueStr: cc.cashCollections[0].pastDue ? formatPricePhp(cc.cashCollections[0].pastDue) : 0,
-                            noPastDue: cc.cashCollections[0].noPastDue ? cc.cashCollections[0].noPastDue : 0,
-                            noPaidPastDue: cc.cashCollections[0].noPaidPastDue ? cc.cashCollections[0].noPaidPastDue : 0,
+                            // noPastDue: cc.cashCollections[0].noPastDue ? cc.cashCollections[0].noPastDue : 0,
+                            // noPaidPastDue: cc.cashCollections[0].noPaidPastDue ? cc.cashCollections[0].noPaidPastDue : 0,
                             offsetPerson: cc.cashCollections[0].offsetPerson ? cc.cashCollections[0].offsetPerson : 0
                             // total: cc.cashCollections[0].collection && cc.cashCollections[0].collection,
                             // totalStr: cc.cashCollections[0].collection ? formatPricePhp(cc.cashCollections[0].collection) : 0
@@ -158,8 +159,8 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                         mispayment += cc.cashCollections[0].mispayment ? cc.cashCollections[0].mispayment : 0;
                         targetLoanCollection = targetLoanCollection - cc.cashCollections[0].loanTarget;
                         // totalPastDue += cc.cashCollections[0].pastDue ? cc.cashCollections[0].pastDue : 0;
-                        totalNoPastDue += cc.cashCollections[0].noPastDue ? cc.cashCollections[0].noPastDue : 0;
-                        totalNoPaidPastDue += cc.cashCollections[0].noPaidPastDue ? cc.cashCollections[0].noPaidPastDue : 0;
+                        // totalNoPastDue += cc.cashCollections[0].noPastDue ? cc.cashCollections[0].noPastDue : 0;
+                        // totalNoPaidPastDue += cc.cashCollections[0].noPaidPastDue ? cc.cashCollections[0].noPaidPastDue : 0;
                         offsetPerson += cc.cashCollections[0].offsetPerson ? cc.cashCollections[0].offsetPerson : 0;
                     }
     
@@ -219,7 +220,7 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                             pastDue: cc.cashCollections[0].pastDue,
                             pastDueStr: formatPricePhp(cc.cashCollections[0].pastDue),
                             noPastDue: cc.cashCollections[0].noPastDue,
-                            noPaidPastDue: cc.cashCollections[0].noPaidPastDue,
+                            // noPaidPastDue: cc.cashCollections[0].noPaidPastDue,
                             totalReleases: cc.cashCollections[0].totalRelease,
                             totalReleasesStr: formatPricePhp(cc.cashCollections[0].totalRelease),
                             totalLoanBalance: cc.cashCollections[0].totalLoanBalance,
@@ -243,7 +244,7 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                         mispayment += cc.cashCollections[0].mispayment;
                         totalPastDue += cc.cashCollections[0].pastDue;
                         totalNoPastDue += cc.cashCollections[0].noPastDue;
-                        totalNoPaidPastDue += cc.cashCollections[0].noPaidPastDue;
+                        // totalNoPaidPastDue += cc.cashCollections[0].noPaidPastDue;
                         totalsLoanRelease += cc.cashCollections[0].totalRelease;
                         totalsLoanBalance += cc.cashCollections[0].totalLoanBalance;
                         targetLoanCollection += cc.cashCollections[0].loanTarget;
@@ -283,7 +284,7 @@ const ViewDailyCashCollectionPage = ({ pageNo, dateFilter }) => {
                 pastDue: totalPastDue,
                 pastDueStr: formatPricePhp(totalPastDue),
                 noPastDue: totalNoPastDue,
-                noPaidPastDue: totalNoPaidPastDue,
+                // noPaidPastDue: totalNoPaidPastDue,
                 offsetPerson: offsetPerson,
                 totalData: true,
                 status: '-'
