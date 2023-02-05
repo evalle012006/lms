@@ -888,7 +888,6 @@ async function getAllLoansPerGroup(req, res) {
                 .toArray();
         }
     }
-    
         
     response = { success: true, data: cashCollection };
     res.status(statusCode)
