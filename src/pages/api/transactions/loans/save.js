@@ -169,7 +169,6 @@ async function saveCashCollection(loan, reloan) {
 
     // check if tomorrow and 0 payment collection
     // set the following to 0: activeLoan, loanBalance, targetCollection, amountRelease
-
     if (groupSummary.length > 0) {
         groupSummary = groupSummary[0];
 
