@@ -167,6 +167,9 @@ async function saveCashCollection(loan, reloan) {
 
     let groupSummary = await db.collection('groupCashCollections').find({ dateAdded: currentDate, groupId: loan.groupId }).toArray();
 
+    // check if tomorrow and 0 payment collection
+    // set the following to 0: activeLoan, loanBalance, targetCollection, amountRelease
+
     if (groupSummary.length > 0) {
         groupSummary = groupSummary[0];
 
@@ -205,10 +208,10 @@ async function saveCashCollection(loan, reloan) {
                     excess: loanData.excess,
                     total: 0,
                     noOfPayments: 0,
-                    activeLoan: loanData.activeLoan,
-                    targetCollection: loanData.activeLoan,
-                    amountRelease: loanData.amountRelease,
-                    loanBalance: loanData.loanBalance,
+                    activeLoan: 0,//loanData.activeLoan,
+                    targetCollection: 0, //loanData.activeLoan,
+                    amountRelease: 0, //loanData.amountRelease,
+                    loanBalance: 0, //loanData.loanBalance,
                     paymentCollection: 0,
                     occurence: groupSummary.mode,
                     currentReleaseAmount: loanData.currentReleaseAmount,
