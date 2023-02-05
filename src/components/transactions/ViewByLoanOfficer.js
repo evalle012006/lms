@@ -101,10 +101,15 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter }) => {
                         collection.totalLoanBalanceStr = formatPricePhp(lo.loans[0].totalLoanBalance);
                         collection.loanTarget = lo.loans[0].loanTarget;
                         collection.loanTargetStr = formatPricePhp(lo.loans[0].loanTarget);
+                        collection.pastDue = lo.loans[0].pastDue;
+                        collection.pastDueStr = formatPricePhp(collection.pastDue);
+                        collection.noPastDue = lo.loans[0].noPastDue;
     
                         totalsLoanRelease += lo.loans[0].totalRelease;
                         totalsLoanBalance += lo.loans[0].totalLoanBalance;
                         targetLoanCollection += lo.loans[0].loanTarget;
+                        totalPastDue += collection.pastDue;
+                        totalNoPastDue += collection.noPastDue;
                     }
     
                     if (lo.groupCashCollections.length > 0) {
@@ -119,17 +124,17 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter }) => {
                         collection.excessStr = formatPricePhp(lo.cashCollections[0].excess);
                         collection.totalStr = formatPricePhp(lo.cashCollections[0].collection);
                         collection.mispaymentStr = lo.cashCollections[0].mispayment;
-                        collection.pastDue = lo.cashCollections[0].pastDue ? lo.cashCollections[0].pastDue : 0;
-                        collection.pastDueStr = formatPricePhp(collection.pastDue);
-                        collection.noPastDue = lo.cashCollections[0].noPastDue ? lo.cashCollections[0].noPastDue : 0;
+                        // collection.pastDue = lo.cashCollections[0].pastDue ? lo.cashCollections[0].pastDue : 0;
+                        // collection.pastDueStr = formatPricePhp(collection.pastDue);
+                        // collection.noPastDue = lo.cashCollections[0].noPastDue ? lo.cashCollections[0].noPastDue : 0;
                         collection.offsetPerson = lo.cashCollections[0].offsetPerson ? lo.cashCollections[0].offsetPerson : 0;
     
                         excess += lo.cashCollections[0].excess;
                         totalLoanCollection += lo.cashCollections[0].collection;
                         mispayment += lo.cashCollections[0].mispayment;
                         targetLoanCollection = targetLoanCollection - lo.cashCollections[0].loanTarget;
-                        totalPastDue += collection.pastDue;
-                        totalNoPastDue += collection.noPastDue;
+                        // totalPastDue += collection.pastDue;
+                        // totalNoPastDue += collection.noPastDue;
                         offsetPerson += collection.offsetPerson;
                     }
     

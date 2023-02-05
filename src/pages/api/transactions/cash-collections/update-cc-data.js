@@ -14,6 +14,41 @@ export default apiHandler({
 //     let statusCode = 200;
 //     let response = {};
 
+//     const cashCollections = await db.collection('cashCollections').find({ status: "completed" }).toArray();
+
+//     if (cashCollections.length > 0) {
+//         cashCollections.map(async cc => {
+//             let temp = {...cc};
+
+//             const loans = await db.collection('loans').find({clientId: cc.clientId}).toArray();
+
+//             if (loans.length > 0) {
+//                 const active = loans.find(loan => loan.status === 'active' || loan.status === 'pending');
+
+//                 if (active) {
+
+//                     temp.status = active.status === "active" ? 'tomorrow' : 'pending';
+
+//                     await db.collection('cashCollections').updateOne({ _id: cc._id }, { $set: {...temp} });
+//                 }
+//             }
+//         });
+//     }
+
+//     response = { success: true };
+
+//     res.status(statusCode)
+//         .setHeader('Content-Type', 'application/json')
+//         .end(JSON.stringify(response));
+// }
+
+// async function updateCCData(req, res) {
+//     const { db } = await connectToDatabase();
+//     const ObjectId = require('mongodb').ObjectId;
+
+//     let statusCode = 200;
+//     let response = {};
+
 //     const cashCollections = await db.collection('cashCollections').find({ $expr: {$eq: ['$remarks.value', 'past due']} }).toArray();
 
 //     if (cashCollections.length > 0) {
