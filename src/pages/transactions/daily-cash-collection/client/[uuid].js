@@ -259,7 +259,6 @@ const CashCollectionDetailsPage = () => {
 
                     delete cc._id;
                     if (cc.hasOwnProperty('current') && cc.current.length > 0) {
-                        // collection.activeLoan = cc.current[0].activeLoan;
                         collection.targetCollection = cc.current[0].targetCollection;
                         collection.targetCollectionStr = formatPricePhp(cc.current[0].targetCollection);
                         collection.excess = cc.current[0].excess;
