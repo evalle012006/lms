@@ -157,7 +157,6 @@ async function saveGroupSummary(loan) {
             return { success: true, data: resp };
         }
     }
-
     return { success: true };
 }
 
