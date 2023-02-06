@@ -499,7 +499,7 @@ const CashCollectionDetailsPage = () => {
                     totalReleaseAmount += collection.currentReleaseAmount ? collection.currentReleaseAmount !== '-' ? collection.currentReleaseAmount : 0 : 0;
                 }
 
-                if (collection.fullPaymentDate === currentDate) {
+                if (collection.fullPaymentDate === currentDate && collection.status === "completed") {
                     totalTargetLoanCollection += collection.history ? collection.history.activeLoan : 0;
                 }
 
@@ -590,7 +590,6 @@ const CashCollectionDetailsPage = () => {
 
         return errorMsg;
     }
-
 
     const handleSaveUpdate = async () => {
         setLoading(true);
