@@ -173,7 +173,7 @@ async function saveCashCollection(loan, reloan) {
 
         let loanData = await db.collection("loans")
             .aggregate([
-                { $match: {clientId: loan.clientId, status: "pending"} },
+                { $match: { $expr: { $and: [{$eq: ['$clientId', loan.clientId]}, {$or: [{$eq: ['$status', "pending"]}, {$eq: ['$status', "commpleted"]}]}] } } },
                 {
                     $addFields: { clientIdObj: { $toObjectId: "$clientId" } }
                 },
