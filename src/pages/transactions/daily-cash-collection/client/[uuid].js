@@ -499,6 +499,10 @@ const CashCollectionDetailsPage = () => {
                     totalReleaseAmount += collection.currentReleaseAmount ? collection.currentReleaseAmount !== '-' ? collection.currentReleaseAmount : 0 : 0;
                 }
 
+                if (collection.fullPaymentDate === currentDate) {
+                    totalTargetLoanCollection += collection.history ? collection.history.activeLoan : 0;
+                }
+
                 if (!collection.remarks || (collection.remarks && collection.remarks.value !== "delinquent" && collection.remarks.value !== "excused")) {
                     totalTargetLoanCollection += collection.targetCollection  ? collection.targetCollection !== '-' ? collection.targetCollection : 0 : 0;
                 }
