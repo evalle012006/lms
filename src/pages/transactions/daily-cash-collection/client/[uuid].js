@@ -591,7 +591,6 @@ const CashCollectionDetailsPage = () => {
         return errorMsg;
     }
 
-
     const handleSaveUpdate = async () => {
         setLoading(true);
         
