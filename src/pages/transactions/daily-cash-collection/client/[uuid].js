@@ -686,7 +686,7 @@ const CashCollectionDetailsPage = () => {
                 
                     return temp;   
                 }).filter(cc => cc.status !== "totals");
-                console.log(dataArr)
+                // console.log(dataArr)
                 if (save) {
                     let cashCollection;
                     if (editMode) {
