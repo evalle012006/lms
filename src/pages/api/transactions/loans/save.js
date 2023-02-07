@@ -40,8 +40,6 @@ async function save(req, res) {
             .find({ clientId: loanData.clientId, status: 'active' })
             .toArray();
 
-        
-
         if (loans.length > 0) {
             response = {
                 error: true,

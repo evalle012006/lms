@@ -686,7 +686,7 @@ const CashCollectionDetailsPage = () => {
                 
                     return temp;   
                 }).filter(cc => cc.status !== "totals");
-
+                console.log(dataArr)
                 if (save) {
                     let cashCollection;
                     if (editMode) {
@@ -759,7 +759,7 @@ const CashCollectionDetailsPage = () => {
                         } else {
                             temp.prevData = {
                                 amountRelease: temp.amountRelease,
-                                paymentCollection: payment,
+                                paymentCollection: temp.paymentCollection,
                                 excess: temp.excess !== '-' ? temp.excess : 0,
                                 loanBalance: temp.loanBalance,
                                 activeLoan: temp.activeLoan,
@@ -799,6 +799,7 @@ const CashCollectionDetailsPage = () => {
                                 temp.mispayment = true;
                                 temp.mispaymentStr = 'Yes';
                             } else if (parseFloat(payment) > parseFloat(temp.activeLoan)) {
+                                console.log('here...')
                                 temp.excess = parseFloat(payment) - parseFloat(temp.activeLoan);
                                 temp.excessStr = formatPricePhp(temp.excess);
                                 temp.mispayment = false;
