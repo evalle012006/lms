@@ -19,14 +19,15 @@ async function save(req, res) {
         data.collection.map(async cc => {
             if (cc.status !== "totals") {
                 const collection = {...cc, groupCollectionId: groupHeaderId};
-                const respCollection = await saveCollection(collection);
-
-                if (respCollection.success && (cc.status === "active" || cc.status === "completed" || cc.status === "closed")) {
-                    const respLoan = await updateLoan(collection);
-                    if (respLoan.success) {
-                        await updateClient(collection);
+                saveCollection(collection).then(respCollection => {
+                    if (respCollection.success && (cc.status === "active" || cc.status === "completed" || cc.status === "closed")) {
+                        updateLoan(collection).then(respLoan => {
+                            if (respLoan.success) {
+                                updateClient(collection);
+                            }
+                        });
                     }
-                }
+                });
             }
         });
     }
@@ -41,7 +42,6 @@ async function save(req, res) {
 async function saveCollection(collection) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
-
     const cc = await db.collection('cashCollections')
         .find({ $expr: {
             $and: [
@@ -54,7 +54,7 @@ async function saveCollection(collection) {
             ] 
         } })
         .toArray();
-
+    
     if (cc.length > 0) {
         if (collection.remarks && collection.remarks.value === "delinquent") {
             collection.targetCollection = 0;
@@ -69,15 +69,15 @@ async function saveCollection(collection) {
                     $set: {...collection}
                 },
                 { upsert: false }
-            )
+            );
+        return { success: true };
     } else {
         await db.collection('cashCollections')
             .insertOne({
                 ...collection
             });
+        return { success: true };
     }
-
-    return { success: true }
 }
 
 async function updateLoan(collection) {
@@ -118,11 +118,6 @@ async function updateLoan(collection) {
             loan.activeLoan = 0;
             loan.amountRelease = 0;
         }
-
-        // check if client is closed and update it
-        // if (collection.clientStatus === 'offset') {
-        //     await updateClient(collection);
-        // }
 
         loan.lastUpdated = currentDate;
 
