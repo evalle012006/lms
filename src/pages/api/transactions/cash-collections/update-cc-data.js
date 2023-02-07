@@ -7,6 +7,49 @@ export default apiHandler({
     post: updateCCData
 });
 
+
+// corrupted:
+// taguig 1 lo2 1-31
+
+// updating corrupted data on a date
+async function updateCCData(req, res) {
+    const { db } = await connectToDatabase();
+    const ObjectId = require('mongodb').ObjectId;
+
+    let statusCode = 200;
+    let response = {};
+
+    const newDate = '2023-01-31';
+
+    const cashCollections = await db.collection('cashCollections').find({groupId: '639e860636491596e49ed893', dateAdded: '2023-02-01' }).toArray();
+
+    if (cashCollections.length > 0) {
+        const newCollections = [];
+        cashCollections.map(async cc => {
+            let temp = {...cc};
+
+            // const exist = await db.collection('cashCollections').find({ clientId: cc.clientId, dateAdded: newDate }).toArray();
+
+            // if (exist.length === 0) {
+                temp.dateAdded = newDate;
+                temp.automated = 'fixes';
+                delete temp._id;
+                newCollections.push(temp);
+            // }
+        });
+
+        if (newCollections.length > 0) {
+            await db.collection('cashCollections').insertMany(newCollections);
+        }
+    }
+
+    response = { success: true };
+
+    res.status(statusCode)
+        .setHeader('Content-Type', 'application/json')
+        .end(JSON.stringify(response));
+}
+
 // async function updateCCData(req, res) {
 //     const { db } = await connectToDatabase();
 //     const ObjectId = require('mongodb').ObjectId;
@@ -75,37 +118,37 @@ export default apiHandler({
 // }
 
 // updating the current release amount
-async function updateCCData(req, res) {
-    const { db } = await connectToDatabase();
-    const ObjectId = require('mongodb').ObjectId;
+// async function updateCCData(req, res) {
+//     const { db } = await connectToDatabase();
+//     const ObjectId = require('mongodb').ObjectId;
 
-    let statusCode = 200;
-    let response = {};
+//     let statusCode = 200;
+//     let response = {};
 
-    const cashCollections = await db.collection('cashCollections').find({ status: 'tomorrow', currentReleaseAmount: 0 }).toArray();
+//     const cashCollections = await db.collection('cashCollections').find({ status: 'tomorrow', currentReleaseAmount: 0 }).toArray();
 
-    if (cashCollections.length > 0) {
-        cashCollections.map(async cc => {
-            let temp = {...cc};
-            const loans = await db.collection('loans').find({clientId: cc.clientId}).toArray();
+//     if (cashCollections.length > 0) {
+//         cashCollections.map(async cc => {
+//             let temp = {...cc};
+//             const loans = await db.collection('loans').find({clientId: cc.clientId}).toArray();
 
-            if (loans.length > 0) {
-                const active = loans.find(loan => loan.status === 'active' || loan.status === 'pending');
-                if (active) {
-                    temp.currentReleaseAmount = active.amountRelease;
+//             if (loans.length > 0) {
+//                 const active = loans.find(loan => loan.status === 'active' || loan.status === 'pending');
+//                 if (active) {
+//                     temp.currentReleaseAmount = active.amountRelease;
 
-                    await db.collection('cashCollections').updateOne({ _id: cc._id }, { $set: {...temp} });
-                }
-            }
-        });
-    }
+//                     await db.collection('cashCollections').updateOne({ _id: cc._id }, { $set: {...temp} });
+//                 }
+//             }
+//         });
+//     }
 
-    response = { success: true };
+//     response = { success: true };
 
-    res.status(statusCode)
-        .setHeader('Content-Type', 'application/json')
-        .end(JSON.stringify(response));
-}
+//     res.status(statusCode)
+//         .setHeader('Content-Type', 'application/json')
+//         .end(JSON.stringify(response));
+// }
 
 
 // adding new field

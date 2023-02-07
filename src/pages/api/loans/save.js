@@ -11,21 +11,21 @@ async function save(req, res) {
 
     const { db } = await connectToDatabase();
 
-    const loans = await db
-        .collection('loans')
-        .find({ code: code })
-        .toArray();
-
     let response = {};
     let statusCode = 200;
 
-    // if (branches.length > 0) {
-    //     response = {
-    //         error: true,
-    //         fields: ['code'],
-    //         message: `Branch with the code "${code}" already exists`
-    //     };
-    // } else {
+    const loans = await db
+        .collection('loans')
+        .find({ $expr: { $and: [{$eq: ['$clientId', loanData.clientId, { $or: [{$eq: ['$status', 'active']}, {$eq: ['$status', 'completed']}] }]}] } })
+        .toArray();
+
+    if (loans.length > 0) {
+        response = {
+            error: true,
+            fields: ['cliendId'],
+            message: `Client has an active loan.`
+        };
+    } else {
         const loan = await db.collection('loans').insertOne({
             ...loanData,
             dateAdded: moment(new Date()).format('YYYY-MM-DD')
@@ -35,7 +35,7 @@ async function save(req, res) {
             success: true,
             loan: loan
         }
-    // }
+    }
 
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')

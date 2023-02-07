@@ -686,7 +686,7 @@ const CashCollectionDetailsPage = () => {
                 
                     return temp;   
                 }).filter(cc => cc.status !== "totals");
-
+                console.log(dataArr)
                 if (save) {
                     let cashCollection;
                     if (editMode) {
@@ -709,9 +709,6 @@ const CashCollectionDetailsPage = () => {
                     if (response.success) {
                         setLoading(false);
                         toast.success('Payment collection successfully submitted.');
-
-                        // setTimeout(() => {})
-                        // window.location.reload();
             
                         setTimeout(() => {
                             getCashCollections();
@@ -759,7 +756,7 @@ const CashCollectionDetailsPage = () => {
                         } else {
                             temp.prevData = {
                                 amountRelease: temp.amountRelease,
-                                paymentCollection: payment,
+                                paymentCollection: temp.paymentCollection,
                                 excess: temp.excess !== '-' ? temp.excess : 0,
                                 loanBalance: temp.loanBalance,
                                 activeLoan: temp.activeLoan,

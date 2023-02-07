@@ -25,15 +25,8 @@ async function save(req, res) {
                     const respLoan = await updateLoan(collection);
                     if (respLoan.success) {
                         await updateClient(collection);
-                        // if (typeof cc.remarks === 'object') {
-                        //     if (cc.remarks.value === 'offset' || cc.remarks.value === 'delinquent') {
-                                
-                        //     }
-                        // }
                     }
                 }
-            } else {
-                // await saveUpdateTotals(cc);
             }
         });
     }
@@ -48,8 +41,21 @@ async function save(req, res) {
 async function saveCollection(collection) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
-    
-    if (collection._id) {
+
+    const cc = await db.collection('cashCollections')
+        .find({ $expr: {
+            $and: [
+                { $eq: ['$clientId', collection.clientId] },
+                { $or: [
+                    { $eq: ['$status', 'active'] },
+                    { $eq: ['$status', 'completed'] }
+                ] },
+                { $eq: ['$dateAdded', currentDate] }
+            ] 
+        } })
+        .toArray();
+
+    if (cc.length > 0) {
         if (collection.remarks && collection.remarks.value === "delinquent") {
             collection.targetCollection = 0;
         }
@@ -125,8 +131,7 @@ async function updateLoan(collection) {
             { _id: ObjectId(collection.loanId) }, 
             {
                 $set: { ...loan }
-            }, 
-            { upsert: false }
+            }
         );
     }
 
