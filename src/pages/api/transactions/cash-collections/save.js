@@ -119,11 +119,6 @@ async function updateLoan(collection) {
             loan.amountRelease = 0;
         }
 
-        // check if client is closed and update it
-        // if (collection.clientStatus === 'offset') {
-        //     await updateClient(collection);
-        // }
-
         loan.lastUpdated = currentDate;
 
         delete loan._id;
