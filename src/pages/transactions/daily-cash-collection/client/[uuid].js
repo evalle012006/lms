@@ -709,9 +709,6 @@ const CashCollectionDetailsPage = () => {
                     if (response.success) {
                         setLoading(false);
                         toast.success('Payment collection successfully submitted.');
-
-                        // setTimeout(() => {})
-                        // window.location.reload();
             
                         setTimeout(() => {
                             getCashCollections();
