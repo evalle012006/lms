@@ -16,20 +16,47 @@ async function save(req, res) {
     data.collection = JSON.parse(data.collection);
     if (data.collection.length > 0) {
         const groupHeaderId = data._id;
-        data.collection.map(cc => {
+        let existCC = [];
+        let newCC = [];
+        data.collection.map(async cc => {
             if (cc.status !== "totals") {
-                const collection = {...cc, groupCollectionId: groupHeaderId};
-                saveCollection(collection).then(respCollection => {
-                    if (respCollection.success && (cc.status === "active" || cc.status === "completed" || cc.status === "closed")) {
-                        updateLoan(collection).then(respLoan => {
-                            if (respLoan.success) {
-                                updateClient(collection);
-                            }
-                        });
+                let collection = {...cc, groupCollectionId: groupHeaderId};
+                if (collection.hasOwnProperty('_id')) {
+                    if (collection.remarks && collection.remarks.value === "delinquent") {
+                        collection.targetCollection = 0;
                     }
-                });
+
+                    collection.collectionId = collection._id;
+                    delete collection._id;
+                    existCC.push(collection);
+                } else {
+                    newCC.push(collection);
+                }
+
+                if (collection.status !== "pending") {
+                    await updateLoan(collection)
+                    await updateClient(collection);
+                }
+
+                // saveCollection(collection).then(respCollection => {
+                //     if (respCollection.success && (cc.status === "active" || cc.status === "completed" || cc.status === "closed")) {
+                //         updateLoan(collection).then(respLoan => {
+                //             if (respLoan.success) {
+                //                 updateClient(collection);
+                //             }
+                //         });
+                //     }
+                // });
             }
         });
+
+        if (newCC.length > 0) {
+            await saveCollection(newCC);
+        }
+
+        if (existCC.length > 0) {
+            await updateCollection(existCC);
+        }
     }
 
     response = {success: true};
@@ -39,45 +66,27 @@ async function save(req, res) {
         .end(JSON.stringify(response));
 }
 
-async function saveCollection(collection) {
+async function saveCollection(collections) {
+    const { db } = await connectToDatabase();
+    
+    await db.collection('cashCollections')
+        .insertMany(collections);
+}
+
+async function updateCollection(collections) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
-    // const cc = await db.collection('cashCollections')
-    //     .find({ $expr: {
-    //         $and: [
-    //             { $eq: ['$clientId', collection.clientId] },
-    //             { $or: [
-    //                 { $eq: ['$status', 'active'] },
-    //                 { $eq: ['$status', 'completed'] }
-    //             ] },
-    //             { $eq: ['$dateAdded', currentDate] }
-    //         ] 
-    //     } })
-    //     .toArray();
-    
-    if (collection._id) {
-        if (collection.remarks && collection.remarks.value === "delinquent") {
-            collection.targetCollection = 0;
-        }
 
-        const collectionId = collection._id;
-        delete collection._id;
+    collections.map(async collection => {
         await db.collection('cashCollections')
             .updateOne(
-                { _id: ObjectId(collectionId)},
+                { _id: ObjectId(collection.collectionId)},
                 {
                     $set: {...collection}
                 },
                 { upsert: false }
             );
-        return { success: true };
-    } else {
-        await db.collection('cashCollections')
-            .insertOne({
-                ...collection
-            });
-        return { success: true };
-    }
+    });
 }
 
 async function updateLoan(collection) {
