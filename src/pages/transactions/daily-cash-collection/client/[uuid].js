@@ -711,8 +711,9 @@ const CashCollectionDetailsPage = () => {
                         toast.success('Payment collection successfully submitted.');
             
                         setTimeout(() => {
+                            setLoading(true);
                             getCashCollections();
-                        }, 500);
+                        }, 1000);
                     }
                 } else {
                     toast.warning('No active data to be saved.');

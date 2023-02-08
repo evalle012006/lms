@@ -16,7 +16,7 @@ async function save(req, res) {
     data.collection = JSON.parse(data.collection);
     if (data.collection.length > 0) {
         const groupHeaderId = data._id;
-        data.collection.map(async cc => {
+        data.collection.map(cc => {
             if (cc.status !== "totals") {
                 const collection = {...cc, groupCollectionId: groupHeaderId};
                 saveCollection(collection).then(respCollection => {
@@ -128,9 +128,9 @@ async function updateLoan(collection) {
                 $set: { ...loan }
             }
         );
-    }
 
-    return { success: true }
+        return { success: true }
+    }
 }
 
 async function updateClient(loan) {
@@ -148,7 +148,7 @@ async function updateClient(loan) {
             client.delinquent = true;
         }
 
-        const clientResp = await db
+        await db
             .collection('client')
             .updateOne(
                 { _id: ObjectId(loan.clientId) }, 
