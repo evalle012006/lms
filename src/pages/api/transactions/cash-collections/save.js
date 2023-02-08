@@ -42,20 +42,20 @@ async function save(req, res) {
 async function saveCollection(collection) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
-    const cc = await db.collection('cashCollections')
-        .find({ $expr: {
-            $and: [
-                { $eq: ['$clientId', collection.clientId] },
-                { $or: [
-                    { $eq: ['$status', 'active'] },
-                    { $eq: ['$status', 'completed'] }
-                ] },
-                { $eq: ['$dateAdded', currentDate] }
-            ] 
-        } })
-        .toArray();
+    // const cc = await db.collection('cashCollections')
+    //     .find({ $expr: {
+    //         $and: [
+    //             { $eq: ['$clientId', collection.clientId] },
+    //             { $or: [
+    //                 { $eq: ['$status', 'active'] },
+    //                 { $eq: ['$status', 'completed'] }
+    //             ] },
+    //             { $eq: ['$dateAdded', currentDate] }
+    //         ] 
+    //     } })
+    //     .toArray();
     
-    if (cc.length > 0) {
+    if (collection._id) {
         if (collection.remarks && collection.remarks.value === "delinquent") {
             collection.targetCollection = 0;
         }
