@@ -148,7 +148,7 @@ async function updateClient(loan) {
             client.delinquent = true;
         }
 
-        const clientResp = await db
+        await db
             .collection('client')
             .updateOne(
                 { _id: ObjectId(loan.clientId) }, 
