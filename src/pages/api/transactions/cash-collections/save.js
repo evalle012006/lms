@@ -101,7 +101,6 @@ async function updateLoan(collection) {
         } else {
             loan.noPastDue = loan.noPastDue ? loan.noPastDue : 0;
         }
-        // loan.prevData = collection.prevData;
 
         delete loan.groupCashCollections;
         delete loan.loanOfficer;
