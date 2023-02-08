@@ -223,25 +223,3 @@ async function updateGroup(loan) {
         );
     }
 }
-
-// async function saveUpdateTotals (total) {
-//     const { db } = await connectToDatabase();
-
-//     delete total.slotNo;
-//     delete total.fullName;
-//     delete total.loanCycle;
-//     delete total.remarks;
-//     delete total.clientStatus;
-//     delete total.status;
-//     delete total.noOfPayments;
-
-//     const currentTotal = await db.collection('cashCollectionTotals').find({ dateAdded: currentDate, loId: total.loId, groupId: total.groupId }).toArray();
-
-//     if (currentTotal.length > 0) {
-//         total.dateModified = currentDate;
-//         await db.collection('cashCollectionTotals').updateOne({ _id: currentTotal[0]._id }, { $set: { ...total } }, { upsert: false });
-//     } else {
-//         total.dateAdded = currentDate;
-//         await db.collection('cashCollectionTotals').insertOne({ ...total });
-//     }
-// }
