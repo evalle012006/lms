@@ -18,7 +18,7 @@ import { setGroupList } from "@/redux/actions/groupActions";
 import { setClientList } from "@/redux/actions/clientActions";
 import { UppercaseFirstLetter } from "@/lib/utils";
 
-const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, onClose }) => {
+const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, onClose, type }) => {
     const formikRef = useRef();
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
@@ -30,7 +30,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     const [selectedGroup, setSelectedGroup] = useState();
     const [slotNo, setSlotNo] = useState();
     const [slotNumber, setSlotNumber] = useState([]);
-    const [groupOccurence, setGroupOccurence] = useState('daily');
+    const [groupOccurence, setGroupOccurence] = useState(type);
     const [clientId, setClientId] = useState();
     const [clientType, setClientType] = useState('pending');
 
@@ -42,7 +42,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         clientId: loan.clientId,
         fullName: loan.fullName,
         admissionDate: loan.admissionDate,
-        mcbu: loan.mcbu,
+        mcbu: mode === 'edit' ? loan.mcbu : 50,
         dateGranted: mode !== 'reloan' ? loan.dateGranted : null,
         principalLoan: loan.principalLoan,
         activeLoan: loan.activeLoan,
@@ -139,113 +139,118 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
 
     const handleSaveUpdate = (values, action) => {
         if (values.principalLoan % 1000 === 0) {
-            setLoading(true);
-            let group;
-            values.clientId = clientId;
-            if (mode !== 'reloan') {
-                values.groupId = selectedGroup;
-                group = groupList.find(g => g._id === values.groupId);
-                values.groupName = group.name;
-                const branch = branchList.find(b => b._id === group.branchId);
-                values.branchId = branch._id;
-                values.brancName = branch.name;
-                values.loId = group.loanOfficerId;
+            if (type === 'weekly' && (!values.mcbu || parseFloat(values.mcbu) < 0 || parseFloat(values.mcbu) < 50)) {
+                toast.error('Invalid MCBU amount. Please enter at least 50.');
             } else {
-                group = loan.group;
-                values.loId = group.loanOfficerId;
-                values.groupId = loan.groupId;
-                values.groupName = loan.groupName;
-                values.mode = 'reloan';
-                values.oldLoanId = loan.loanId;
-                values.clientId = loan.clientId;
-                values.branchId = loan.branchId;
-            }
-
-            values.slotNo = mode !== 'reloan' ? slotNo : loan.slotNo;
-
-            if (values.status !== 'active') {
-                if (group.occurence === 'weekly') {
-                    values.mcbu = 50;
-                    values.activeLoan = (values.principalLoan * 1.20) / 24;
-                } else if (group.occurence === 'daily') {
-                    values.activeLoan = (values.principalLoan * 1.20) / 60;
+                setLoading(true);
+                let group;
+                values.clientId = clientId;
+                if (mode !== 'reloan') {
+                    values.groupId = selectedGroup;
+                    group = groupList.find(g => g._id === values.groupId);
+                    values.groupName = group.name;
+                    const branch = branchList.find(b => b._id === group.branchId);
+                    values.branchId = branch._id;
+                    values.brancName = branch.name;
+                    values.loId = group.loanOfficerId;
+                } else {
+                    group = loan.group;
+                    values.loId = group.loanOfficerId;
+                    values.groupId = loan.groupId;
+                    values.groupName = loan.groupName;
+                    values.mode = 'reloan';
+                    values.oldLoanId = loan.loanId;
+                    values.clientId = loan.clientId;
+                    values.branchId = loan.branchId;
                 }
-        
-                values.loanBalance = values.principalLoan * 1.20; // initial
-                values.amountRelease = values.loanBalance;
-            }
 
-            if (mode === 'add' || mode === 'reloan') {
-                // should check if the user has previous loan that is loanCycle 0, then set the loanCycle to 1
-                const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/save/';
+                values.slotNo = mode !== 'reloan' ? slotNo : loan.slotNo;
+                values.occurence = group.occurence;
 
-                values.lastUpdated = null;  // use only when updating the mispayments
-                values.admissionDate = moment(values.admissionDate).format('YYYY-MM-DD');
-                values.status = 'pending';
-                values.loanCycle = values.loanCycle ? values.loanCycle : 1;
-                values.noOfPayments = 0;
-                values.insertedBy = currentUser._id;
+                if (values.status !== 'active') {
+                    if (group.occurence === 'weekly') {
+                        // values.mcbu = 50;
+                        values.activeLoan = (values.principalLoan * 1.20) / 24;
+                    } else if (group.occurence === 'daily') {
+                        values.activeLoan = (values.principalLoan * 1.20) / 60;
+                    }
+            
+                    values.loanBalance = values.principalLoan * 1.20; // initial
+                    values.amountRelease = values.loanBalance;
+                }
 
-                fetchWrapper.post(apiUrl, values)
-                    .then(response => {
-                        setLoading(false);
-                        if (response.error) {
-                            toast.error(response.message);
-                        } else if (response.success) {
-                            setShowSidebar(false);
-                            toast.success('Loan successfully added.');
-                            action.setSubmitting = false;
-                            action.resetForm({values: ''});
-                            setSelectedGroup();
-                            setClientId();
-                            setSlotNo();
-                            setSlotNumber();
-                            onClose();
-                        }
-                    }).catch(error => {
-                        console.log(error)
-                    });
-            } else if (mode === 'edit') {
-                const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans';
-                values._id = loan._id;
-                values.modifiedBy = currentUser._id;
-                values.modifiedDate = moment(new Date()).format("YYYY-MM-DD");
-                fetchWrapper.post(apiUrl, values)
-                    .then(response => {
-                        if (response.success) {
-                            let error = false;
-                            if (values.status === 'active' && values.groupId !== loan.groupId) {
-                                let params = { groupId: values.groupId, oldGroupId: loan.groupId };
-                                
-                                fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'groups/update-group', params)
-                                    .then(response => {
-                                        if (response.error) {
-                                            setLoading(false);
-                                            error = true;
-                                            toast.error(response.message);
-                                        }
-                                });
-                            }
+                if (mode === 'add' || mode === 'reloan') {
+                    // should check if the user has previous loan that is loanCycle 0, then set the loanCycle to 1
+                    const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/save/';
 
-                            if (!error) {
-                                setLoading(false);
+                    values.lastUpdated = null;  // use only when updating the mispayments
+                    values.admissionDate = moment(values.admissionDate).format('YYYY-MM-DD');
+                    values.status = 'pending';
+                    values.loanCycle = values.loanCycle ? values.loanCycle : 1;
+                    values.noOfPayments = 0;
+                    values.insertedBy = currentUser._id;
+
+                    fetchWrapper.post(apiUrl, values)
+                        .then(response => {
+                            setLoading(false);
+                            if (response.error) {
+                                toast.error(response.message);
+                            } else if (response.success) {
                                 setShowSidebar(false);
-                                toast.success('Loan successfully updated.');
+                                toast.success('Loan successfully added.');
                                 action.setSubmitting = false;
-                                action.resetForm();
+                                action.resetForm({values: ''});
                                 setSelectedGroup();
                                 setClientId();
                                 setSlotNo();
                                 setSlotNumber();
                                 onClose();
                             }
-                        } else if (response.error) {
-                            setLoading(false);
-                            toast.error(response.message);
-                        }
-                    }).catch(error => {
-                        console.log(error);
-                    });
+                        }).catch(error => {
+                            console.log(error)
+                        });
+                } else if (mode === 'edit') {
+                    const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans';
+                    values._id = loan._id;
+                    values.modifiedBy = currentUser._id;
+                    values.modifiedDate = moment(new Date()).format("YYYY-MM-DD");
+                    fetchWrapper.post(apiUrl, values)
+                        .then(response => {
+                            if (response.success) {
+                                let error = false;
+                                if (values.status === 'active' && values.groupId !== loan.groupId) {
+                                    let params = { groupId: values.groupId, oldGroupId: loan.groupId };
+                                    
+                                    fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'groups/update-group', params)
+                                        .then(response => {
+                                            if (response.error) {
+                                                setLoading(false);
+                                                error = true;
+                                                toast.error(response.message);
+                                            }
+                                    });
+                                }
+
+                                if (!error) {
+                                    setLoading(false);
+                                    setShowSidebar(false);
+                                    toast.success('Loan successfully updated.');
+                                    action.setSubmitting = false;
+                                    action.resetForm();
+                                    setSelectedGroup();
+                                    setClientId();
+                                    setSlotNo();
+                                    setSlotNumber();
+                                    onClose();
+                                }
+                            } else if (response.error) {
+                                setLoading(false);
+                                toast.error(response.message);
+                            }
+                        }).catch(error => {
+                            console.log(error);
+                        });
+                }
             }
         } else {
             toast.error('Principal Loan must be divisible by 1000');
@@ -332,7 +337,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
 
     const handleClientTypeChange = (value) => {
         setClientType(value);
-        getListClient(value);
+        getListClient(value, selectedGroup);
     }
 
     const handleCancel = () => {
@@ -522,6 +527,16 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                                 errors={touched.loanCycle && errors.loanCycle ? errors.loanCycle : undefined} />
                                         )}
                                     </div>
+                                    {type === 'weekly' && <div className="mt-4">
+                                        <InputNumber
+                                            name="mcbu"
+                                            value={values.mcbu}
+                                            onChange={handleChange}
+                                            label="MCBU"
+                                            placeholder="Enter MCBU"
+                                            setFieldValue={setFieldValue}
+                                            errors={touched.mcbu && errors.mcbu ? errors.mcbu : undefined} />
+                                    </div>}
                                     <div className="mt-4">
                                         <InputNumber
                                             name="principalLoan"
