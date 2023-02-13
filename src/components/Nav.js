@@ -447,6 +447,7 @@ const NavComponent = () => {
 
         return currentPath;
     };
+    
 
     useEffect(() => {
         let mounted = true;
