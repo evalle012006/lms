@@ -32,6 +32,7 @@ const LoanApplicationPage = () => {
     const [showAddDrawer, setShowAddDrawer] = useState(false);
     const [mode, setMode] = useState('add');
     const [loan, setLoan] = useState();
+    const currentDate = moment(new Date()).format('YYYY-MM-DD');
 
     const [showApproveReject, setShowApproveReject] = useState(true);
 
@@ -48,6 +49,7 @@ const LoanApplicationPage = () => {
     const [weekend, setWeekend] = useState(false);
 
     const router = useRouter();
+    const { type } = router.query;
 
     const getListBranch = async () => {
         const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'branches/list');
@@ -78,7 +80,7 @@ const LoanApplicationPage = () => {
     const getListGroup = async () => {
         let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list-by-group-occurence'
         if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
-            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id, occurence: 'daily' });
+            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id, occurence: type });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let groups = [];
@@ -96,7 +98,7 @@ const LoanApplicationPage = () => {
                 toast.error(response.message);
             }
         } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
-            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, occurence: 'daily' });
+            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, occurence: type });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let groups = [];
@@ -114,7 +116,7 @@ const LoanApplicationPage = () => {
                 toast.error(response.message);
             }
         } else if (currentUser.role.rep === 2 && branchList.length > 0) {
-            url = url + '?' + new URLSearchParams({ areaManagerId: currentUser._id });
+            url = url + '?' + new URLSearchParams({ areaManagerId: currentUser._id, occurence: type });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let groupList = [];
@@ -132,6 +134,7 @@ const LoanApplicationPage = () => {
                 setLoading(false);
             }
         } else if (branchList.length > 0) {
+            url = url + '?' + new URLSearchParams({ occurence: type });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let groups = [];
@@ -154,7 +157,7 @@ const LoanApplicationPage = () => {
     const getListLoan = async () => {
         let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/list';
         if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
-            url = url + '?' + new URLSearchParams({ status: 'pending', branchId: branchList[0]._id, loId: currentUser._id });
+            url = url + '?' + new URLSearchParams({ status: 'pending', branchId: branchList[0]._id, loId: currentUser._id, mode: type, currentDate: currentDate });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let loanList = [];
@@ -182,7 +185,7 @@ const LoanApplicationPage = () => {
                 toast.error(response.message);
             }
         } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
-            url = url + '?' + new URLSearchParams({ status: 'pending', branchId: branchList[0]._id });
+            url = url + '?' + new URLSearchParams({ status: 'pending', branchId: branchList[0]._id, mode: type, currentDate: currentDate });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let loanList = [];
@@ -210,7 +213,7 @@ const LoanApplicationPage = () => {
                 toast.error(response.message);
             }
         } else if (currentUser.role.rep === 2 && branchList.length > 0) {
-            url = url + '?' + new URLSearchParams({ status: 'pending', areaManagerId: currentUser._id });
+            url = url + '?' + new URLSearchParams({ status: 'pending', areaManagerId: currentUser._id, mode: type, currentDate: currentDate });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let loanList = [];
@@ -239,7 +242,7 @@ const LoanApplicationPage = () => {
                 toast.error(response.message);
             }
         } else if (branchList.length > 0) {
-            url = url + '?' + new URLSearchParams({ status: 'pending'});
+            url = url + '?' + new URLSearchParams({ status: 'pending', mode: type, currentDate: currentDate });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let loanList = [];
@@ -273,7 +276,7 @@ const LoanApplicationPage = () => {
     const getHistoyListLoan = async () => {
         let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/list-history';
         if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
-            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id });
+            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id, mode: type });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let loanList = [];
@@ -297,7 +300,7 @@ const LoanApplicationPage = () => {
                 toast.error(response.message);
             }
         } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
-            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id });
+            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, mode: type });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let loanList = [];
@@ -364,7 +367,7 @@ const LoanApplicationPage = () => {
             loanData.dateGranted = moment(new Date()).format('YYYY-MM-DD');
             loanData.status = updatedValue;
             loanData.startDate = moment(new Date()).add(1, 'days').format('YYYY-MM-DD');
-            loanData.endDate = getEndDate(loanData.dateGranted, group.occurence === 'daily' ? 60 : 24 );
+            loanData.endDate = getEndDate(loanData.dateGranted, group.occurence === type ? 60 : 24 );
             loanData.mispayment = 0;
 
             delete loanData.selected;
@@ -456,7 +459,7 @@ const LoanApplicationPage = () => {
                 temp.dateGranted = moment(new Date()).format('YYYY-MM-DD');
                 temp.status = 'active';
                 temp.startDate = moment(new Date()).add(1, 'days').format('YYYY-MM-DD');
-                temp.endDate = getEndDate(temp.dateGranted, group.occurence === 'daily' ? 60 : 24 );
+                temp.endDate = getEndDate(temp.dateGranted, group.occurence === type ? 60 : 24 );
                 temp.mispayment = 0;
                 temp.insertedBy = currentUser._id;
 
@@ -535,12 +538,12 @@ const LoanApplicationPage = () => {
     useEffect(() => {
         let mounted = true;
 
-        mounted && getListBranch();
+        mounted && type && getListBranch();
 
         return () => {
             mounted = false;
         };
-    }, []);
+    }, [type]);
 
     useEffect(() => {
         if (branchList) {
@@ -551,10 +554,10 @@ const LoanApplicationPage = () => {
             const initGroupCollectionSummary = async () => {
                 if (currentUser.role.rep <= 4) {
                     const branchId = branchList[0]._id;
-                    const data = { currentUser: currentUser._id, mode: 'daily',  branchId: branchId}
+                    const data = { currentUser: currentUser._id, mode: type,  branchId: branchId}
                     await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary-by-branch', data);
                 } else {
-                    const data = { currentUser: currentUser._id, mode: 'daily'}
+                    const data = { currentUser: currentUser._id, mode: type}
                     await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary-by-branch', data);
                 }
             }
@@ -568,59 +571,116 @@ const LoanApplicationPage = () => {
     useEffect(() => {
         if (groupList) {
             let cols = [];
-            cols.push(
-                {
-                    Header: "Group",
-                    accessor: 'groupName',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Slot No.",
-                    accessor: 'slotNo'
-                },
-                {
-                    Header: "Client Name",
-                    accessor: 'fullName'
-                },
-                {
-                    Header: "Admission Date",
-                    accessor: 'admissionDate'
-                },
-                // {
-                //     Header: "MCBU",
-                //     accessor: 'mcbuStr',
-                //     Filter: SelectColumnFilter,
-                //     filter: 'includes'
-                // },
-                {
-                    Header: "Principal Loan",
-                    accessor: 'principalLoanStr'
-                },
-                {
-                    Header: "Active Loan",
-                    accessor: 'activeLoanStr'
-                },
-                {
-                    Header: "Loan Release",
-                    accessor: 'loanReleaseStr'
-                },
-                {
-                    Header: "Loan Blanace",
-                    accessor: 'loanBalanceStr'
-                },
-                {
-                    Header: "Status",
-                    accessor: 'status',
-                    Cell: StatusPill,
-                    // Cell: SelectCell,
-                    // Options: statuses,
-                    // valueIdAccessor: 'status',
-                    // selectOnChange: updateClientStatus,
-                    // Filter: SelectColumnFilter,
-                    // filter: 'includes',
-                }
-            );
+
+            if (type === type) {
+                cols.push(
+                    {
+                        Header: "Group",
+                        accessor: 'groupName',
+                        Filter: SelectColumnFilter,
+                        filter: 'includes'
+                    },
+                    {
+                        Header: "Slot No.",
+                        accessor: 'slotNo'
+                    },
+                    {
+                        Header: "Client Name",
+                        accessor: 'fullName'
+                    },
+                    {
+                        Header: "Admission Date",
+                        accessor: 'admissionDate'
+                    },
+                    {
+                        Header: "MCBU",
+                        accessor: 'mcbuStr',
+                        Filter: SelectColumnFilter,
+                        filter: 'includes'
+                    },
+                    {
+                        Header: "Principal Loan",
+                        accessor: 'principalLoanStr'
+                    },
+                    {
+                        Header: "Active Loan",
+                        accessor: 'activeLoanStr'
+                    },
+                    {
+                        Header: "Loan Release",
+                        accessor: 'loanReleaseStr'
+                    },
+                    {
+                        Header: "Loan Balance",
+                        accessor: 'loanBalanceStr'
+                    },
+                    {
+                        Header: "Status",
+                        accessor: 'status',
+                        Cell: StatusPill,
+                        // Cell: SelectCell,
+                        // Options: statuses,
+                        // valueIdAccessor: 'status',
+                        // selectOnChange: updateClientStatus,
+                        // Filter: SelectColumnFilter,
+                        // filter: 'includes',
+                    }
+                );
+            } else {
+                cols.push(
+                    {
+                        Header: "Group",
+                        accessor: 'groupName',
+                        Filter: SelectColumnFilter,
+                        filter: 'includes'
+                    },
+                    {
+                        Header: "Slot No.",
+                        accessor: 'slotNo'
+                    },
+                    {
+                        Header: "Client Name",
+                        accessor: 'fullName'
+                    },
+                    {
+                        Header: "Admission Date",
+                        accessor: 'admissionDate'
+                    },
+                    // {
+                    //     Header: "MCBU",
+                    //     accessor: 'mcbuStr',
+                    //     Filter: SelectColumnFilter,
+                    //     filter: 'includes'
+                    // },
+                    {
+                        Header: "Principal Loan",
+                        accessor: 'principalLoanStr'
+                    },
+                    {
+                        Header: "Active Loan",
+                        accessor: 'activeLoanStr'
+                    },
+                    {
+                        Header: "Loan Release",
+                        accessor: 'loanReleaseStr'
+                    },
+                    {
+                        Header: "Loan Balance",
+                        accessor: 'loanBalanceStr'
+                    },
+                    {
+                        Header: "Status",
+                        accessor: 'status',
+                        Cell: StatusPill,
+                        // Cell: SelectCell,
+                        // Options: statuses,
+                        // valueIdAccessor: 'status',
+                        // selectOnChange: updateClientStatus,
+                        // Filter: SelectColumnFilter,
+                        // filter: 'includes',
+                    }
+                );
+            }
 
             if (currentUser.role.rep === 3) {
                 cols.unshift(
@@ -686,13 +746,13 @@ const LoanApplicationPage = () => {
         }
     }, []);
 
-    useEffect(() => {
-        if (weekend || currentUser.role.rep > 2) {
-            setShowApproveReject(false);
-        } else {
-            setShowApproveReject(true);
-        }
-    }, [weekend]);
+    // useEffect(() => {
+    //     if (weekend || currentUser.role.rep > 2) {
+    //         setShowApproveReject(false);
+    //     } else {
+    //         setShowApproveReject(true);
+    //     }
+    // }, [weekend]);
 
     return (
         <Layout actionButtons={(currentUser.role.rep > 2 && !weekend) && actionButtons}>
@@ -740,7 +800,7 @@ const LoanApplicationPage = () => {
                     )
                 } 
             </div>
-            <AddUpdateLoan mode={mode} loan={loan} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
+            {type && <AddUpdateLoan mode={mode} loan={loan} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} type={type} />}
             <Dialog show={showDeleteDialog}>
                 <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                     <div className="sm:flex sm:items-start justify-center">

@@ -2,7 +2,7 @@ import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
 import moment from 'moment';
 
-const currentDate = moment(new Date()).format('YYYY-MM-DD');
+// const currentDate = moment(new Date()).format('YYYY-MM-DD');
 
 
 export default apiHandler({
@@ -16,14 +16,14 @@ async function list(req, res) {
     let response = {};
     let loans;
 
-    const { branchId, groupId, loId, status, areaManagerId } = req.query;
+    const { branchId, groupId, loId, status, areaManagerId, mode, currentDate } = req.query;
 
     if (status) {
         if (loId && branchId) {
             loans = await db
                 .collection('loans')
                 .aggregate([
-                    { $match: { branchId: branchId, status: status } },
+                    { $match: { branchId: branchId, status: status, occurence: mode } },
                     {
                         $addFields: {
                             "branchIdObj": { $toObjectId: "$branchId" },
@@ -103,7 +103,7 @@ async function list(req, res) {
             loans = await db
                 .collection('loans')
                 .aggregate([
-                    { $match: { branchId: branchId, status: status } },
+                    { $match: { branchId: branchId, status: status, occurence: mode } },
                     {
                         $addFields: {
                             "branchIdObj": { $toObjectId: "$branchId" },
@@ -174,7 +174,7 @@ async function list(req, res) {
             loans = await db
                 .collection('loans')
                 .aggregate([
-                    { $match: { groupId: groupId, status: status } },
+                    { $match: { groupId: groupId, status: status, occurence: mode } },
                     {
                         $addFields: {
                             "branchIdObj": { $toObjectId: "$branchId" },
@@ -251,7 +251,7 @@ async function list(req, res) {
                     loans = await db
                         .collection('loans')
                         .aggregate([
-                            { $match: { $expr: {$and: [{$eq: ['$status', 'pending']}, {$in: ['$branchId', branchIds]}]} } },
+                            { $match: { $expr: {$and: [{$eq: ['$status', 'pending']}, {$in: ['$branchId', branchIds]}, {$eq: ['$occurence', mode]}]} } },
                             {
                                 $addFields: {
                                     "branchIdObj": { $toObjectId: "$branchId" },
@@ -325,7 +325,7 @@ async function list(req, res) {
             loans = await db
                 .collection('loans')
                 .aggregate([
-                    { $match: { status: 'pending' } },
+                    { $match: { status: 'pending', occurence: mode } },
                     {
                         $addFields: {
                             "branchIdObj": { $toObjectId: "$branchId" },
@@ -399,7 +399,7 @@ async function list(req, res) {
             loans = await db
             .collection('loans')
             .aggregate([
-                { $match: { branchId: branchId } },
+                { $match: { branchId: branchId, occurence: mode } },
                 {
                     $addFields: {
                         "branchIdObj": { $toObjectId: "$branchId" },
@@ -480,7 +480,7 @@ async function list(req, res) {
             loans = await db
             .collection('loans')
             .aggregate([
-                { $match: { branchId: branchId } },
+                { $match: { branchId: branchId, occurence: mode } },
                 {
                     $addFields: {
                         "branchIdObj": { $toObjectId: "$branchId" },
@@ -552,7 +552,7 @@ async function list(req, res) {
             loans = await db
             .collection('loans')
             .aggregate([
-                { $match: { groupId: groupId } },
+                { $match: { groupId: groupId, occurence: mode } },
                 {
                     $addFields: {
                         "branchIdObj": { $toObjectId: "$branchId" },
@@ -624,7 +624,7 @@ async function list(req, res) {
             loans = await db
             .collection('loans')
             .aggregate([
-                { $match: { status: 'pending' } },
+                { $match: { status: 'pending', occurence: mode } },
                 {
                     $addFields: {
                         "branchIdObj": { $toObjectId: "$branchId" },

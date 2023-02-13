@@ -11,14 +11,14 @@ async function list(req, res) {
     let response = {};
     let loans;
 
-    const { branchId, groupId, loId } = req.query;
+    const { branchId, groupId, loId, mode } = req.query;
 
     if (loId && branchId) {
         loans = await db
         .collection('loans')
         .aggregate([
             { $match: {$expr: { $and: [
-                {$eq: ['$branchId', branchId]}, {$ne: ['$status', 'pending']}
+                {$eq: ['$branchId', branchId]}, {$ne: ['$status', 'pending']}, {$eq: ['$occurence', mode]}
             ]}} },
             {
                 $addFields: {
@@ -74,7 +74,7 @@ async function list(req, res) {
         .collection('loans')
         .aggregate([
             { $match: {$expr: { $and: [
-                {$eq: ['$branchId', branchId]}, {$ne: ['$status', 'pending']}
+                {$eq: ['$branchId', branchId]}, {$ne: ['$status', 'pending']}, {$eq: ['$occurence', mode]}
             ]}} },
             {
                 $addFields: {
@@ -121,7 +121,7 @@ async function list(req, res) {
         .collection('loans')
         .aggregate([
             { $match: {$expr: { $and: [
-                {$eq: ['$groupId', groupId]}, {$ne: ['$status', 'pending']}
+                {$eq: ['$groupId', groupId]}, {$ne: ['$status', 'pending']}, {$eq: ['$occurence', mode]}
             ]}} },
             {
                 $addFields: {
@@ -167,7 +167,7 @@ async function list(req, res) {
         loans = await db
             .collection('loans')
             .aggregate([
-                { $match: {$expr: { $ne: ['$status', 'pending'] }} },
+                { $match: {$expr: { $and: [{$ne: ['$status', 'pending']}, {$eq: ['$occurence', mode]}] }} },
                 {
                     $addFields: {
                         "branchIdObj": { $toObjectId: "$branchId" },
