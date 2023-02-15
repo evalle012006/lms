@@ -17,6 +17,8 @@ async function updateLoan(req, res) {
     let loan = req.body;
     const loanId = loan._id;
     delete loan._id;
+    delete loan.loanOfficer;
+    delete loan.groupCashCollections;
 
     const groupCashCollections = await db
         .collection('groupCashCollections')

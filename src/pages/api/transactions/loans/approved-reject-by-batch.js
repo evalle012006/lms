@@ -18,6 +18,8 @@ async function processData(req, res) {
     loanData.map(async loan => {
         const loanId = loan._id;
         delete loan._id;
+        delete loan.loanOfficer;
+        delete loan.groupCashCollections;
         
         let groupData = await checkGroupStatus(loan.groupId);
         if (groupData.length > 0) {
@@ -34,8 +36,7 @@ async function processData(req, res) {
             } else {
                 if (loan.status === 'active') {
                     await updateClient(loan.clientId);
-                    await updateExistingLoan(loan.clientId);
-                    // await saveUpdateTotals(loan, groupData);
+                    await updateExistingLoan(loan, loanId);
                 }  else if (loan.status === 'reject') {
                     if (!groupData.availableSlots.includes(loan.slotNo)) {
                         groupData.availableSlots.push(loan.slotNo);
@@ -46,7 +47,7 @@ async function processData(req, res) {
                     }
                 }
                 
-                await updateLoan(loanId, loan);
+                // await updateLoan(loanId, loan);
                 await saveCashCollection(loan);
             }
         }
@@ -81,14 +82,14 @@ async function updateLoan(loanId, loan) {
                 { upsert: false });
 }
 
-async function updateExistingLoan(clientId) {
+async function updateExistingLoan(loan, lId) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
     let response;
 
     let activeLoan  = await db
         .collection('loans')
-        .find({ clientId: clientId, status: 'active' })
+        .find({ clientId: loan.clientId, status: 'active' })
         .toArray();
 
     if (activeLoan.length > 0) {
@@ -96,7 +97,7 @@ async function updateExistingLoan(clientId) {
     } else {
         let existingLoan = await db
             .collection('loans')
-            .find({ clientId: clientId, status: 'completed' })
+            .find({ clientId: loan.clientId, status: 'completed' })
             .toArray();
         
         if (existingLoan.length > 0) {
@@ -104,20 +105,24 @@ async function updateExistingLoan(clientId) {
             const loanId = existingLoan._id;
             delete existingLoan._id;
             existingLoan.status = 'closed';
-            const loanResp = await db
+            await db
                 .collection('loans')
                 .updateOne(
                     { _id: ObjectId(loanId) },
                     {
                         $set: {...existingLoan}
-                    },
-                    { upsert: false }
+                    }
                 );
-            response = {success: true};
         }
-    }
 
-    return response;
+        await db.collection('loans')
+            .updateOne(
+                { _id: ObjectId(lId) },
+                {
+                    $set: {...loan}
+                }
+            );   
+    }
 }
 
 async function updateGroup(group) {
