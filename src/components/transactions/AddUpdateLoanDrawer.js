@@ -42,7 +42,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         clientId: loan.clientId,
         fullName: loan.fullName,
         admissionDate: loan.admissionDate,
-        mcbu: mode === 'edit' ? loan.mcbu : 50,
+        mcbu: type === 'weekly' ? mode === 'edit' ? loan.mcbu : 50 : 0,
         dateGranted: mode !== 'reloan' ? loan.dateGranted : null,
         principalLoan: loan.principalLoan,
         activeLoan: loan.activeLoan,
@@ -169,7 +169,6 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
 
                 if (values.status !== 'active') {
                     if (group.occurence === 'weekly') {
-                        // values.mcbu = 50;
                         values.activeLoan = (values.principalLoan * 1.20) / 24;
                     } else if (group.occurence === 'daily') {
                         values.activeLoan = (values.principalLoan * 1.20) / 60;
@@ -177,6 +176,10 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             
                     values.loanBalance = values.principalLoan * 1.20; // initial
                     values.amountRelease = values.loanBalance;
+                }
+
+                if (group.occurence === 'daily') {
+                    delete values.mcbu;
                 }
 
                 if (mode === 'add' || mode === 'reloan') {
@@ -189,6 +192,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                     values.loanCycle = values.loanCycle ? values.loanCycle : 1;
                     values.noOfPayments = 0;
                     values.insertedBy = currentUser._id;
+                    values.currentReleaseAmount = values.amountRelease;
 
                     fetchWrapper.post(apiUrl, values)
                         .then(response => {
@@ -527,7 +531,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                                 errors={touched.loanCycle && errors.loanCycle ? errors.loanCycle : undefined} />
                                         )}
                                     </div>
-                                    {type === 'weekly' && <div className="mt-4">
+                                    {groupOccurence === 'weekly' && <div className="mt-4">
                                         <InputNumber
                                             name="mcbu"
                                             value={values.mcbu}

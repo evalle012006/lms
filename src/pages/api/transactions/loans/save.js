@@ -116,6 +116,9 @@ async function updateLoan(loanId) {
 
         loan.status = 'closed';
 
+        delete loan.loanOfficer;
+        delete loan.groupCashCollections;
+
         await db
             .collection('loans')
             .updateOne(

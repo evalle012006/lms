@@ -572,7 +572,7 @@ const LoanApplicationPage = () => {
         if (groupList) {
             let cols = [];
 
-            if (type === type) {
+            if (type === 'weekly') {
                 cols.push(
                     {
                         Header: "Group",
