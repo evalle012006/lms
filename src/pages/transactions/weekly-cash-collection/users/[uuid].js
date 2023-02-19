@@ -11,7 +11,7 @@ import { BehaviorSubject } from 'rxjs';
 import { setBranch, setBranchList } from '@/redux/actions/branchActions';
 import ViewByLoanOfficerPage from '@/components/transactions/ViewByLoanOfficer';
 
-const CashCollectionDetailsPage = () => {
+const WeeklyCashCollectionDetailsPage = () => {
     const [loading, setLoading] = useState(true);
     const dateFilterSubject = new BehaviorSubject(process.browser && localStorage.getItem('cashCollectionDateFilter'));
     const dispatch = useDispatch();
@@ -26,7 +26,7 @@ const CashCollectionDetailsPage = () => {
     const handleBranchFilter = (selected) => {
         setCurrentBranch(selected);
         localStorage.setItem('selectedBranch', selected._id);
-        router.push('/transactions/daily-cash-collection/users/' + selected._id);
+        router.push('/transactions/weekly-cash-collection/users/' + selected._id);
     }
     
     const handleDateFilter = (selected) => {
@@ -110,16 +110,16 @@ const CashCollectionDetailsPage = () => {
     return (
         <Layout header={false} noPad={true}>
             <div className="overflow-x-auto">
-                {currentBranch && <DetailsHeader page={2} pageName="branch-view" mode={'daily'} currentDate={moment(currentDate).format('dddd, MMMM DD, YYYY')} 
+                {currentBranch && <DetailsHeader page={2} pageName="branch-view" mode={'weekly'} currentDate={moment(currentDate).format('dddd, MMMM DD, YYYY')} 
                     selectedBranch={currentBranch} handleBranchFilter={handleBranchFilter} 
                     dateFilter={dateFilter} handleDateFilter={handleDateFilter}
                 />}
                 <div className='p-4 mt-[8rem]'>
-                    <ViewByLoanOfficerPage pageNo={2} dateFilter={dateFilter} type={'daily'} />
+                    <ViewByLoanOfficerPage pageNo={2} dateFilter={dateFilter} type={'weekly'} />
                 </div>
             </div>
         </Layout>
     );
 }
 
-export default CashCollectionDetailsPage;
+export default WeeklyCashCollectionDetailsPage;

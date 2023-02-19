@@ -14,7 +14,7 @@ import Dialog from "@/lib/ui/Dialog";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 
-const DailyCashCollectionPage = () => {
+const WeeklyCashCollectionPage = () => {
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
@@ -28,7 +28,6 @@ const DailyCashCollectionPage = () => {
     const [weekend, setWeekend] = useState(false);
     const [showSubmitDialog, setShowSubmitDialog] = useState(false);
     const [filter, setFilter] = useState(false);
-    const mode = "daily";
 
     const handleDateFilter = (selected) => {
         const filteredDate = selected.target.value;
@@ -133,10 +132,10 @@ const DailyCashCollectionPage = () => {
                 const initGroupCollectionSummary = async () => {
                     if (currentUser.role.rep === 3) {
                         const branchId = branchList[0]._id;
-                        const data = { currentUser: currentUser._id, mode: 'daily',  branchId: branchId}
+                        const data = { currentUser: currentUser._id, mode: 'weekly',  branchId: branchId}
                         await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary-by-branch', data);
                     } else {
-                        const data = { currentUser: currentUser._id, mode: 'daily'}
+                        const data = { currentUser: currentUser._id, mode: 'weekly'}
                         await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary-by-branch', data);
                     }
                 }
@@ -165,16 +164,16 @@ const DailyCashCollectionPage = () => {
             ) : (
                 <React.Fragment>
                     <div className="overflow-x-auto">
-                        {branchList && <DetailsHeader pageTitle='Daily Cash Collections' pageName={currentUser.role.rep === 1 ? "branch-view" : ""}
-                            page={1} mode={mode} currentDate={moment(currentDate).format('dddd, MMMM DD, YYYY')} weekend={weekend}
+                        {branchList && <DetailsHeader pageTitle='Weekly Cash Collections' pageName={currentUser.role.rep === 1 ? "branch-view" : ""}
+                            page={1} mode={'weekly'} currentDate={moment(currentDate).format('dddd, MMMM DD, YYYY')} weekend={weekend}
                             dateFilter={dateFilter} handleDateFilter={handleDateFilter} handleSubmit={handleShowSubmitDialog} filter={filter}
                         />}
                         <div className={`p-4 ${currentUser.role.rep < 4 ? 'mt-[8rem]' : 'mt-[6rem]'} `}>
-                            {currentUser.role.rep < 3 && <ViewByBranchPage dateFilter={dateFilter} type={mode} />}
-                            {currentUser.role.rep === 3 && <ViewByLoanOfficerPage pageNo={1} dateFilter={dateFilter} type={mode} />}
+                            {currentUser.role.rep < 3 && <ViewByBranchPage dateFilter={dateFilter} type={'weekly'} />}
+                            {currentUser.role.rep === 3 && <ViewByLoanOfficerPage pageNo={1} dateFilter={dateFilter} type={'weekly'} />}
                             {currentUser.role.rep === 4 && (
                                 <div className='p-4 mt-[2rem]'>
-                                    <ViewCashCollectionPage pageNo={1} dateFilter={dateFilter} type={mode} />
+                                    <ViewCashCollectionPage pageNo={1} dateFilter={dateFilter} type={'weekly'} />
                                 </div>
                             )}
                         </div>
@@ -202,4 +201,4 @@ const DailyCashCollectionPage = () => {
     );
 }
 
-export default DailyCashCollectionPage;
+export default WeeklyCashCollectionPage;

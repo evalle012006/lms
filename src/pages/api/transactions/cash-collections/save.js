@@ -104,6 +104,12 @@ async function updateLoan(collection) {
         loan.fullPaymentDate = '';
         loan.status = collection.status;
         loan.pastDue = collection.pastDue;
+
+        if (collection.occurence === "weekly") {
+            loan.mcbu = collection.mcbu;
+            loan.mcbuCollection = loan.mcbuCollection ? loan.mcbuCollection + parseFloat(collection.mcbuCol) : parseFloat(collection.mcbuCol);
+            loan.mcbuWithdrawal = loan.mcbuWithdrawal ? loan.mcbuWithdrawal + parseFloat(collection.mcbuWithdrawal) : collection.mcbuWithdrawal ? parseFloat(collection.mcbuWithdrawal) : 0;
+        }
         
         if (collection.remarks && collection.remarks.value === "past due") {
             loan.noPastDue = loan.noPastDue ? loan.noPastDue + 1 : 1;
@@ -118,11 +124,11 @@ async function updateLoan(collection) {
             loan.mispayment = loan.mispayment + 1;
         }
 
+        loan.history = collection.history;
+
         if (collection.loanBalance <= 0) {
             loan.status = 'completed';
             loan.fullPaymentDate = collection.fullPaymentDate;
-            loan.history = {};
-            loan.history = collection.history;
             loan.activeLoan = 0;
             loan.amountRelease = 0;
         }

@@ -47,8 +47,11 @@ async function save(req, res) {
                 message: `Client ${loanData.fullName} already have an active loan`
             };
         } else {
+            const currentReleaseAmount = loanData.currentReleaseAmount;
+            let finalData = {...loanData};
+            delete finalData.currentReleaseAmount;
             const loan = await db.collection('loans').insertOne({
-                ...loanData,
+                ...finalData,
                 dateGranted: moment(new Date()).format('YYYY-MM-DD')
             });
 
@@ -62,7 +65,7 @@ async function save(req, res) {
             const groupSummary = await saveGroupSummary(loanData);
 
             if (groupSummary.success) {
-                await saveCashCollection(loanData, reloan);
+                await saveCashCollection(loanData, reloan, currentReleaseAmount);
             }
 
             response = {
@@ -161,7 +164,7 @@ async function saveGroupSummary(loan) {
     return { success: true };
 }
 
-async function saveCashCollection(loan, reloan) {
+async function saveCashCollection(loan, reloan, currentReleaseAmount) {
     const { db } = await connectToDatabase();
     const currentDate = moment(new Date()).format('YYYY-MM-DD');
 
@@ -190,7 +193,7 @@ async function saveCashCollection(loan, reloan) {
             loanData = loanData[0];
             const cashCollection = await db.collection('cashCollections').find({ groupCollectionId: groupSummary._id + '', clientId: loanData.clientId, dateAdded: currentDate }).toArray();
             if (cashCollection.length === 0) {
-                const data = {
+                let data = {
                     loanId: loanData._id + '',
                     branchId: loanData.branchId,
                     groupId: loanData.groupId,
@@ -212,7 +215,7 @@ async function saveCashCollection(loan, reloan) {
                     loanBalance: 0, //loanData.loanBalance,
                     paymentCollection: 0,
                     occurence: groupSummary.mode,
-                    currentReleaseAmount: loanData.currentReleaseAmount,
+                    currentReleaseAmount: currentReleaseAmount,
                     fullPayment: loanData.fullPayment,
                     remarks: '',
                     status: loanData.status,
@@ -220,6 +223,13 @@ async function saveCashCollection(loan, reloan) {
                     groupCollectionId: groupSummary._id + '',
                     origin: 'automation'
                 };
+
+                if (groupSummary.mode === 'weekly') {
+                    data.mcbu = loanData.mcbu;
+                    data.mcbuCol = 0;
+                    data.mcbuWithdrawal = 0;
+                    data.mcbuReturnAmt = 0;
+                }
     
                 await db.collection('cashCollections').insertOne({ ...data });
             } else {

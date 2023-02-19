@@ -276,81 +276,81 @@ const MenuItems = [
             },
         ]
     },
-    // {
-    //     label: "Weekly Transactions",
-    //     url: "#weekly-transactions",
-    //     subMenuIndex: 0,
-    //     icon: {
-    //         active: <ClipboardDocumentListIcon className="text-gray-800 w-6 h-6" />,
-    //         notActive: <ClipboardDocumentListIcon className="text-white w-6 h-6" />,
-    //     },
-    //     active: false,
-    //     borderBottom: true,
-    //     hasSub: true,
-    //     hidden: false,
-    //     subMenuItems: [
-    //         {
-    //             label: "Loan Approval",
-    //             url: "/transactions/loan-applications?type=weekly",
-    //             icon: {
-    //                 active: (
-    //                     <ClipboardDocumentCheckIcon className="text-gray-800 w-5 h-5" />
-    //                 ),
-    //                 notActive: (
-    //                     <ClipboardDocumentCheckIcon className="text-white w-5 h-5" />
-    //                 ),
-    //             },
-    //             active: false,
-    //             hasSub: false,
-    //             hidden: false
-    //         },
-    //         {
-    //             label: "Loan Officer Register (Weekly)",
-    //             url: "/transactions/weekly-cash-collection", 
-    //             icon: {
-    //                 active: (
-    //                     <TicketIcon className="text-gray-800 w-5 h-5" />
-    //                 ),
-    //                 notActive: (
-    //                     <TicketIcon className="text-white w-5 h-5" />
-    //                 ),
-    //             },
-    //             active: false,
-    //             hasSub: false,
-    //             hidden: false
-    //         },
-    //         {
-    //             label: "Loan Officer Summary",
-    //             url: "/transactions/loan-officer-summary", 
-    //             icon: {
-    //                 active: (
-    //                     <ChartBarSquareIcon className="text-gray-800 w-5 h-5" />
-    //                 ),
-    //                 notActive: (
-    //                     <ChartBarSquareIcon className="text-white w-5 h-5" />
-    //                 ),
-    //             },
-    //             active: false,
-    //             hasSub: false,
-    //             hidden: false
-    //         },
-    //         {
-    //             label: "Branch Manager Summary",
-    //             url: "/transactions/branch-manager-summary", 
-    //             icon: {
-    //                 active: (
-    //                     <ChartBarSquareIcon className="text-gray-800 w-5 h-5" />
-    //                 ),
-    //                 notActive: (
-    //                     <ChartBarSquareIcon className="text-white w-5 h-5" />
-    //                 ),
-    //             },
-    //             active: false,
-    //             hasSub: false,
-    //             hidden: false
-    //         },
-    //     ]
-    // },
+    {
+        label: "Weekly Transactions",
+        url: "#weekly-transactions",
+        subMenuIndex: 0,
+        icon: {
+            active: <ClipboardDocumentListIcon className="text-gray-800 w-6 h-6" />,
+            notActive: <ClipboardDocumentListIcon className="text-white w-6 h-6" />,
+        },
+        active: false,
+        borderBottom: true,
+        hasSub: true,
+        hidden: false,
+        subMenuItems: [
+            {
+                label: "Loan Approval",
+                url: "/transactions/loan-applications?type=weekly",
+                icon: {
+                    active: (
+                        <ClipboardDocumentCheckIcon className="text-gray-800 w-5 h-5" />
+                    ),
+                    notActive: (
+                        <ClipboardDocumentCheckIcon className="text-white w-5 h-5" />
+                    ),
+                },
+                active: false,
+                hasSub: false,
+                hidden: false
+            },
+            {
+                label: "Loan Officer Register (Weekly)",
+                url: "/transactions/weekly-cash-collection", 
+                icon: {
+                    active: (
+                        <TicketIcon className="text-gray-800 w-5 h-5" />
+                    ),
+                    notActive: (
+                        <TicketIcon className="text-white w-5 h-5" />
+                    ),
+                },
+                active: false,
+                hasSub: false,
+                hidden: false
+            },
+            {
+                label: "Loan Officer Summary",
+                url: "/transactions/loan-officer-summary", 
+                icon: {
+                    active: (
+                        <ChartBarSquareIcon className="text-gray-800 w-5 h-5" />
+                    ),
+                    notActive: (
+                        <ChartBarSquareIcon className="text-white w-5 h-5" />
+                    ),
+                },
+                active: false,
+                hasSub: false,
+                hidden: false
+            },
+            {
+                label: "Branch Manager Summary",
+                url: "/transactions/branch-manager-summary", 
+                icon: {
+                    active: (
+                        <ChartBarSquareIcon className="text-gray-800 w-5 h-5" />
+                    ),
+                    notActive: (
+                        <ChartBarSquareIcon className="text-white w-5 h-5" />
+                    ),
+                },
+                active: false,
+                hasSub: false,
+                hidden: false
+            },
+        ]
+    },
 // -BMs weekly 
 // -Consolidated BMS
     {
