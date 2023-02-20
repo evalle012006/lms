@@ -2,17 +2,21 @@ const { faker } = require('@faker-js/faker');
 
 module.exports = {
   async up(db, client) {
+    const ObjectId = require('mongodb').ObjectId;
     // TODO write your migration here.
     // See https://github.com/seppevs/migrate-mongo/#creating-a-new-migration-script
     // Example:
     // await db.collection('albums').updateOne({artist: 'The Beatles'}, {$set: {blacklisted: true}});
 
-    const branches = await db.collection('branches').find({ code: 'B001' }).toArray();
-    // const branches = await db.collection('branches').find().toArray();
-
-    if (branches) {
-      branches.map(async branch => {
-        const groups = await db.collection('groups').find({ branchId: branch[0]._id + '' }).toArray();
+    // const branches = await db.collection('branches').find({ code: 'B001' }).toArray();
+    // // const branches = await db.collection('branches').find().toArray();
+    // {groupId: '639e860636491596e49ed916', branchId: '639e80c8aeb5b756302b6d00', status: 'active', startDate: '2022-12-20'}
+    // clientId: 639ea401aa53b08ea845591e
+    // if (branches) {
+    //   branches.map(async branch => {
+      // 639e9c4d1ccc1d5fd9f319b4  
+        // const groups = await db.collection('groups').find({ _id: ObjectId('639eac7e17b307a654da971b') }).toArray();    // {email: "lo4mabalacat@ambercashph.com"}
+        const groups = await db.collection('groups').find({ loanOfficerId: "639e848392731e1d11fb7090" }).toArray();
         if (groups) {
           groups.map(group => {
             db.collection('client').insertMany([
@@ -21,11 +25,11 @@ module.exports = {
                 middleName: "",
                 lastName: faker.name.lastName(),
                 birthdate: faker.date.past(),
-                addressStreetNo: "PUROK 2",
-                addressBarangayDistrict: "SUNSET VIEW",
-                addressMunicipalityCity: "ZAMBOANGA CITY",
-                addressProvince: "ZAMBOANGA DEL SUR",
-                addressZipCode: "7000",
+                addressStreetNo: "",
+                addressBarangayDistrict: "",
+                addressMunicipalityCity: "",
+                addressProvince: "",
+                addressZipCode: "",
                 contactNumber: "0933457101",
                 groupId: group._id + '',
                 branchId: group.branchId,
@@ -42,11 +46,11 @@ module.exports = {
                 middleName: "",
                 lastName: faker.name.lastName(),
                 birthdate: faker.date.past(),
-                addressStreetNo: "PUROK 2",
-                addressBarangayDistrict: "SUNSET VIEW",
-                addressMunicipalityCity: "ZAMBOANGA CITY",
-                addressProvince: "ZAMBOANGA DEL SUR",
-                addressZipCode: "7000",
+                addressStreetNo: "",
+                addressBarangayDistrict: "",
+                addressMunicipalityCity: "",
+                addressProvince: "",
+                addressZipCode: "",
                 contactNumber: "0933457101",
                 groupId: group._id + '',
                 branchId: group.branchId,
@@ -63,11 +67,11 @@ module.exports = {
                 middleName: "",
                 lastName: faker.name.lastName(),
                 birthdate: faker.date.past(),
-                addressStreetNo: "PUROK 2",
-                addressBarangayDistrict: "SUNSET VIEW",
-                addressMunicipalityCity: "ZAMBOANGA CITY",
-                addressProvince: "ZAMBOANGA DEL SUR",
-                addressZipCode: "7000",
+                addressStreetNo: "",
+                addressBarangayDistrict: "",
+                addressMunicipalityCity: "",
+                addressProvince: "",
+                addressZipCode: "",
                 contactNumber: "0933457101",
                 groupId: group._id + '',
                 branchId: group.branchId,
@@ -84,11 +88,11 @@ module.exports = {
                 middleName: "",
                 lastName: faker.name.lastName(),
                 birthdate: faker.date.past(),
-                addressStreetNo: "PUROK 2",
-                addressBarangayDistrict: "SUNSET VIEW",
-                addressMunicipalityCity: "ZAMBOANGA CITY",
-                addressProvince: "ZAMBOANGA DEL SUR",
-                addressZipCode: "7000",
+                addressStreetNo: "",
+                addressBarangayDistrict: "",
+                addressMunicipalityCity: "",
+                addressProvince: "",
+                addressZipCode: "",
                 contactNumber: "0933457101",
                 groupId: group._id + '',
                 branchId: group.branchId,
@@ -105,11 +109,11 @@ module.exports = {
                 middleName: "",
                 lastName: faker.name.lastName(),
                 birthdate: faker.date.past(),
-                addressStreetNo: "PUROK 2",
-                addressBarangayDistrict: "SUNSET VIEW",
-                addressMunicipalityCity: "ZAMBOANGA CITY",
-                addressProvince: "ZAMBOANGA DEL SUR",
-                addressZipCode: "7000",
+                addressStreetNo: "",
+                addressBarangayDistrict: "",
+                addressMunicipalityCity: "",
+                addressProvince: "",
+                addressZipCode: "",
                 contactNumber: "0933457101",
                 groupId: group._id + '',
                 branchId: group.branchId,
@@ -126,11 +130,11 @@ module.exports = {
                 middleName: "",
                 lastName: faker.name.lastName(),
                 birthdate: faker.date.past(),
-                addressStreetNo: "PUROK 2",
-                addressBarangayDistrict: "SUNSET VIEW",
-                addressMunicipalityCity: "ZAMBOANGA CITY",
-                addressProvince: "ZAMBOANGA DEL SUR",
-                addressZipCode: "7000",
+                addressStreetNo: "",
+                addressBarangayDistrict: "",
+                addressMunicipalityCity: "",
+                addressProvince: "",
+                addressZipCode: "",
                 contactNumber: "0933457101",
                 groupId: group._id + '',
                 branchId: group.branchId,
@@ -147,11 +151,11 @@ module.exports = {
                 middleName: "",
                 lastName: faker.name.lastName(),
                 birthdate: faker.date.past(),
-                addressStreetNo: "PUROK 2",
-                addressBarangayDistrict: "SUNSET VIEW",
-                addressMunicipalityCity: "ZAMBOANGA CITY",
-                addressProvince: "ZAMBOANGA DEL SUR",
-                addressZipCode: "7000",
+                addressStreetNo: "",
+                addressBarangayDistrict: "",
+                addressMunicipalityCity: "",
+                addressProvince: "",
+                addressZipCode: "",
                 contactNumber: "0933457101",
                 groupId: group._id + '',
                 branchId: group.branchId,
@@ -168,11 +172,11 @@ module.exports = {
                 middleName: "",
                 lastName: faker.name.lastName(),
                 birthdate: faker.date.past(),
-                addressStreetNo: "PUROK 2",
-                addressBarangayDistrict: "SUNSET VIEW",
-                addressMunicipalityCity: "ZAMBOANGA CITY",
-                addressProvince: "ZAMBOANGA DEL SUR",
-                addressZipCode: "7000",
+                addressStreetNo: "",
+                addressBarangayDistrict: "",
+                addressMunicipalityCity: "",
+                addressProvince: "",
+                addressZipCode: "",
                 contactNumber: "0933457101",
                 groupId: group._id + '',
                 branchId: group.branchId,
@@ -189,11 +193,11 @@ module.exports = {
                 middleName: "",
                 lastName: faker.name.lastName(),
                 birthdate: faker.date.past(),
-                addressStreetNo: "PUROK 2",
-                addressBarangayDistrict: "SUNSET VIEW",
-                addressMunicipalityCity: "ZAMBOANGA CITY",
-                addressProvince: "ZAMBOANGA DEL SUR",
-                addressZipCode: "7000",
+                addressStreetNo: "",
+                addressBarangayDistrict: "",
+                addressMunicipalityCity: "",
+                addressProvince: "",
+                addressZipCode: "",
                 contactNumber: "0933457101",
                 groupId: group._id + '',
                 branchId: group.branchId,
@@ -210,11 +214,11 @@ module.exports = {
                 middleName: "",
                 lastName: faker.name.lastName(),
                 birthdate: faker.date.past(),
-                addressStreetNo: "PUROK 2",
-                addressBarangayDistrict: "SUNSET VIEW",
-                addressMunicipalityCity: "ZAMBOANGA CITY",
-                addressProvince: "ZAMBOANGA DEL SUR",
-                addressZipCode: "7000",
+                addressStreetNo: "",
+                addressBarangayDistrict: "",
+                addressMunicipalityCity: "",
+                addressProvince: "",
+                addressZipCode: "",
                 contactNumber: "0933457101",
                 groupId: group._id + '',
                 branchId: group.branchId,
@@ -229,8 +233,8 @@ module.exports = {
             ]);
           });
         }
-      });
-    }
+    //   });
+    // }
   },
 
   async down(db, client) {

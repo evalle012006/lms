@@ -104,6 +104,7 @@ async function updateLoan(collection) {
         loan.fullPaymentDate = '';
         loan.status = collection.status;
         loan.pastDue = collection.pastDue;
+        loan.advanceDays = collection?.advanceDays ? collection.advanceDays : 0;
 
         if (collection.occurence === "weekly") {
             loan.mcbu = collection.mcbu;

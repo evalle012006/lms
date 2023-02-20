@@ -7,11 +7,6 @@ export default apiHandler({
     post: updateCCData
 });
 
-
-// corrupted:
-// taguig 1 lo2 1-31
-
-// updating corrupted data on a date
 async function updateCCData(req, res) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
@@ -19,28 +14,18 @@ async function updateCCData(req, res) {
     let statusCode = 200;
     let response = {};
 
-    const newDate = '2023-01-31';
 
-    const cashCollections = await db.collection('cashCollections').find({groupId: '639e860636491596e49ed893', dateAdded: '2023-02-01' }).toArray();
+    const cashCollections = await db.collection('cashCollections').find({ $expr: { $and: [{$eq: ['$history.amountRelease', 0]}, {$eq: ['$fullPaymentDate', '2023-02-20']}] } }).toArray();
 
     if (cashCollections.length > 0) {
-        const newCollections = [];
         cashCollections.map(async cc => {
             let temp = {...cc};
 
-            // const exist = await db.collection('cashCollections').find({ clientId: cc.clientId, dateAdded: newDate }).toArray();
+            temp.history.amountRelease = temp.fullPayment;
+            temp.history.loanBalance = temp.paymentCollection;
 
-            // if (exist.length === 0) {
-                temp.dateAdded = newDate;
-                temp.automated = 'fixes';
-                delete temp._id;
-                newCollections.push(temp);
-            // }
+            await db.collection('cashCollections').updateOne({_id: cc._id}, {$set: {...temp}});
         });
-
-        if (newCollections.length > 0) {
-            await db.collection('cashCollections').insertMany(newCollections);
-        }
     }
 
     response = { success: true };
@@ -49,6 +34,48 @@ async function updateCCData(req, res) {
         .setHeader('Content-Type', 'application/json')
         .end(JSON.stringify(response));
 }
+
+// corrupted:
+// taguig 1 lo2 1-31
+
+// updating corrupted data on a date
+// async function updateCCData(req, res) {
+//     const { db } = await connectToDatabase();
+//     const ObjectId = require('mongodb').ObjectId;
+
+//     let statusCode = 200;
+//     let response = {};
+
+//     const newDate = '2023-01-31';
+
+//     const cashCollections = await db.collection('cashCollections').find({groupId: '639e860636491596e49ed893', dateAdded: '2023-02-01' }).toArray();
+
+//     if (cashCollections.length > 0) {
+//         const newCollections = [];
+//         cashCollections.map(async cc => {
+//             let temp = {...cc};
+
+//             // const exist = await db.collection('cashCollections').find({ clientId: cc.clientId, dateAdded: newDate }).toArray();
+
+//             // if (exist.length === 0) {
+//                 temp.dateAdded = newDate;
+//                 temp.automated = 'fixes';
+//                 delete temp._id;
+//                 newCollections.push(temp);
+//             // }
+//         });
+
+//         if (newCollections.length > 0) {
+//             await db.collection('cashCollections').insertMany(newCollections);
+//         }
+//     }
+
+//     response = { success: true };
+
+//     res.status(statusCode)
+//         .setHeader('Content-Type', 'application/json')
+//         .end(JSON.stringify(response));
+// }
 
 // async function updateCCData(req, res) {
 //     const { db } = await connectToDatabase();
