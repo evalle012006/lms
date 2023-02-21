@@ -120,6 +120,7 @@ async function updateLoan(collection) {
 
         delete loan.groupCashCollections;
         delete loan.loanOfficer;
+        delete loan.loanReleaseStr;
         
         if (collection.mispayment) {
             loan.mispayment = loan.mispayment + 1;
