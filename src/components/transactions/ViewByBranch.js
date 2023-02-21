@@ -43,8 +43,6 @@ const ViewByBranchPage = ({dateFilter, type}) => {
             let excess = 0;
             let totalLoanCollection = 0;
             let noOfFullPayment = 0;
-            // let noOfNewfullPayment = 0;
-            // let noOfRefullPayment = 0;
             let fullPaymentAmount = 0;
             let mispayment = 0;
             let totalPastDue = 0;
