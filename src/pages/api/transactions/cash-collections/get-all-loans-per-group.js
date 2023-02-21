@@ -33,7 +33,7 @@ async function getAllLoansPerGroup(req, res) {
                             localField: "loIdStr",
                             foreignField: "loId",
                             pipeline: [
-                                { $match: { dateAdded: date } },
+                                { $match: { dateAdded: date, mode: mode } },
                                 { 
                                     $group: {
                                         _id: '$loId',
@@ -51,38 +51,59 @@ async function getAllLoansPerGroup(req, res) {
                             localField: "loIdStr",
                             foreignField: "loId",
                             pipeline: [
-                                { $match: { dateAdded: date} },
+                                { $match: { dateAdded: date, occurence: mode } },
                                 { $group: { 
                                         _id: '$loId',
                                         mispayment: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },
                                         loanTarget: { $sum: {
                                             $cond: {
-                                                if: { $or: [{$eq: ['$remarks.value', 'delinquent']}, {$eq: ['$remarks.value', 'excused']}] },
+                                                if: { $or: [{$eq: ['$remarks.value', 'delinquent']}, {$eq: ['$remarks.value', 'excused']}, {$eq: ['$remarks.value', 'excused advance payment']}] },
                                                 then: '$activeLoan',
                                                 else: 0
                                             }
                                         } },
                                         collection: { $sum: '$paymentCollection' },
                                         excess: { $sum: '$excess' },
-                                        // pastDue: { $sum: '$pastDue' },
-                                        // noPastDue: { $sum: {
-                                        //     $cond: { 
-                                        //         if: { $eq: ['$remarks.value', 'past due'] }, 
-                                        //         then: 1, 
-                                        //         else: 0 } 
-                                        // } },
-                                        // noPaidPastDue: { $sum: {
-                                        //     $cond: {
-                                        //         if: { $eq: ['$remarks.value', 'past due collection'] }, 
-                                        //         then: 1,
-                                        //         else: 0
-                                        //     }
-                                        // } },
                                         total: { $sum: '$total' },
                                         offsetPerson: { $sum: {
                                             $cond: {
                                                 if: {$eq: ['$remarks.value', 'offset']},
                                                 then: 1,
+                                                else: 0
+                                            }
+                                        } },
+                                        mcbu: { $sum: {
+                                            $cond: {
+                                                if: {$eq: ['$occurence', 'weekly']},
+                                                then: '$mcbu',
+                                                else: 0
+                                            }
+                                        } },
+                                        mcbuCol: { $sum: {
+                                            $cond: {
+                                                if: {$eq: ['$occurence', 'weekly']},
+                                                then: '$mcbuCol',
+                                                else: 0
+                                            }
+                                        } },
+                                        mcbuWithdrawal: { $sum: {
+                                            $cond: {
+                                                if: {$eq: ['$occurence', 'weekly']},
+                                                then: '$mcbuWithdrawal',
+                                                else: 0
+                                            }
+                                        } },
+                                        mcbuReturnNo: { $sum: {
+                                            $cond: {
+                                                if: {$and: [{$eq: ['$occurence', 'weekly']}, {$gt: ['$mcbuReturnAmt', 0]}]},
+                                                then: 1,
+                                                else: 0
+                                            }
+                                        } },
+                                        mcbuReturnAmt: { $sum: {
+                                            $cond: {
+                                                if: {$eq: ['$occurence', 'weekly']},
+                                                then: '$mcbuReturnAmt',
                                                 else: 0
                                             }
                                         } }
@@ -99,7 +120,7 @@ async function getAllLoansPerGroup(req, res) {
                             foreignField: "loId",
                             pipeline: [
                                 { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
-                                { $match: {$expr:  {$and: [{$ne: ['$status', 'closed']}, {$ne: ['$status', 'reject']}]} } },
+                                { $match: {$expr:  {$and: [{$ne: ['$status', 'closed']}, {$ne: ['$status', 'reject']}, {$eq: ['$occurence', mode]}]} } },
                                 { $group: { 
                                         _id: '$loId',
                                         activeClients: { $sum: {
@@ -147,7 +168,7 @@ async function getAllLoansPerGroup(req, res) {
                             foreignField: "loId",
                             pipeline: [
                                 { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
-                                { $match: {$expr:  {$and: [{$ne: ['$status', 'reject']}, {$lte: ['$startDateObj', '$currentDateObj']}]} } },
+                                { $match: {$expr:  {$and: [{$ne: ['$status', 'reject']}, {$lte: ['$startDateObj', '$currentDateObj']}, {$eq: ['$occurence', mode]}]} } },
                                 { $group: { 
                                         _id: '$loId',
                                         mispayment: { $sum: { $cond:{
@@ -196,7 +217,28 @@ async function getAllLoansPerGroup(req, res) {
                                         } },
                                         collection: { $sum: 0 },
                                         excess: { $sum: 0 },
-                                        total: { $sum: 0 }
+                                        total: { $sum: 0 },
+                                        mcbu: { $sum: {
+                                            $cond: {
+                                                if: {$eq: ['$occurence', 'weekly']},
+                                                then: '$mcbu',
+                                                else: 0
+                                            }
+                                        } },
+                                        mcbuCol: { $sum: {
+                                            $cond: {
+                                                if: {$eq: ['$occurence', 'weekly']},
+                                                then: '$mcbuCol',
+                                                else: 0
+                                            }
+                                        } },
+                                        mcbuWithdrawal: { $sum: {
+                                            $cond: {
+                                                if: {$eq: ['$occurence', 'weekly']},
+                                                then: '$mcbu',
+                                                else: 0
+                                            }
+                                        } }
                                     } 
                                 }
                             ],
@@ -209,7 +251,7 @@ async function getAllLoansPerGroup(req, res) {
                             localField: "loIdStr",
                             foreignField: "loId",
                             pipeline: [
-                                { $match: { status: 'active', dateGranted: date } },
+                                { $match: { status: 'active', dateGranted: date, occurence: mode } },
                                 { $group: {
                                         _id: '$loId',
                                         currentReleaseAmount: { $sum: '$amountRelease' },
@@ -229,7 +271,7 @@ async function getAllLoansPerGroup(req, res) {
                             foreignField: "loId",
                             pipeline: [
                                 { $match: {$expr: { $and: [
-                                    {$or: [{$eq: ['$status', 'completed']}, {$eq: ['$status', 'closed']}]}, {$lte: ['$loanBalance', 0]}, {$eq: ['$fullPaymentDate', date]}
+                                    {$or: [{$eq: ['$status', 'completed']}, {$eq: ['$status', 'closed']}]}, {$lte: ['$loanBalance', 0]}, {$eq: ['$fullPaymentDate', date]}, {$eq: ['$occurence', mode]}
                                 ]}} },
                                 { $group: {
                                         _id: '$loId',
@@ -277,36 +319,56 @@ async function getAllLoansPerGroup(req, res) {
                                 { $match: { dateAdded: date} },
                                 { $group: { 
                                         _id: '$$groupName',
-                                        // noOfClients: { $sum: { $cond: {if: { $gt: ['$paymentCollection', 0] }, then: 1, else: 0} } },
                                         mispayment: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },
                                         loanTarget: { $sum: {
                                             $cond: {
-                                                if: { $or: [{$eq: ['$remarks.value', 'delinquent']}, {$eq: ['$remarks.value', 'excused']}] },
+                                                if: { $or: [{$eq: ['$remarks.value', 'delinquent']}, {$eq: ['$remarks.value', 'excused']}, {$eq: ['$remarks.value', 'excused advance payment']}] },
                                                 then: '$activeLoan',
                                                 else: 0
                                             }
                                         } },
                                         collection: { $sum: '$paymentCollection' },
                                         excess: { $sum: '$excess' },
-                                        // pastDue: { $sum: '$pastDue' },
-                                        // noPastDue: { $sum: {
-                                        //     $cond: { 
-                                        //         if: { $eq: ['$remarks.value', 'past due'] }, 
-                                        //         then: 1, 
-                                        //         else: 0 } 
-                                        // } },
-                                        // noPaidPastDue: { $sum: {
-                                        //     $cond: {
-                                        //         if: { $eq: ['$remarks.value', 'past due collection'] }, 
-                                        //         then: 1,
-                                        //         else: 0
-                                        //     }
-                                        // } },
                                         total: { $sum: '$total' },
                                         offsetPerson: { $sum: {
                                             $cond: {
                                                 if: {$eq: ['$remarks.value', 'offset']},
                                                 then: 1,
+                                                else: 0
+                                            }
+                                        } },
+                                        mcbu: { $sum: {
+                                            $cond: {
+                                                if: {$eq: ['$occurence', 'weekly']},
+                                                then: '$mcbu',
+                                                else: 0
+                                            }
+                                        } },
+                                        mcbuCol: { $sum: {
+                                            $cond: {
+                                                if: {$eq: ['$occurence', 'weekly']},
+                                                then: '$mcbuCol',
+                                                else: 0
+                                            }
+                                        } },
+                                        mcbuWithdrawal: { $sum: {
+                                            $cond: {
+                                                if: {$eq: ['$occurence', 'weekly']},
+                                                then: '$mcbuWithdrawal',
+                                                else: 0
+                                            }
+                                        } },
+                                        mcbuReturnNo: { $sum: {
+                                            $cond: {
+                                                if: {$and: [{$eq: ['$occurence', 'weekly']}, {$gt: ['$mcbuReturnAmt', 0]}]},
+                                                then: 1,
+                                                else: 0
+                                            }
+                                        } },
+                                        mcbuReturnAmt: { $sum: {
+                                            $cond: {
+                                                if: {$eq: ['$occurence', 'weekly']},
+                                                then: '$mcbuReturnAmt',
                                                 else: 0
                                             }
                                         } }
@@ -422,7 +484,14 @@ async function getAllLoansPerGroup(req, res) {
                                         } },
                                         collection: { $sum: 0 },
                                         excess: { $sum: 0 },
-                                        total: { $sum: 0 }
+                                        total: { $sum: 0 },
+                                        mcbu: { $sum: {
+                                            $cond: {
+                                                if: {$eq: ['$occurence', 'weekly']},
+                                                then: '$mcbu',
+                                                else: 0
+                                            }
+                                        } }
                                     } 
                                 }
                             ],
@@ -471,7 +540,8 @@ async function getAllLoansPerGroup(req, res) {
                             as: "fullPayment"
                         }
                     },
-                    { $project: { groupIdStr: 0, availableSlots: 0 } }
+                    { $project: { groupIdStr: 0, availableSlots: 0 } },
+                    { $sort: { groupNo: 1 } }
                 ])
                 .toArray();
         }
@@ -492,7 +562,7 @@ async function getAllLoansPerGroup(req, res) {
                             localField: "loIdStr",
                             foreignField: "loId",
                             pipeline: [
-                                { $match: { dateAdded: date} },
+                                { $match: { dateAdded: date, occurence: mode } },
                                 { $group: { 
                                         _id: '$loId',
                                         activeClients: { $sum: {
@@ -547,7 +617,7 @@ async function getAllLoansPerGroup(req, res) {
                                                             then: '$history.activeLoan',
                                                             else: {
                                                                 $cond: {
-                                                                    if: { $or: [{$eq: ['$remarks.value', 'delinquent']}, {$eq: ['$remarks.value', 'excused']}] },
+                                                                    if: { $or: [{$eq: ['$remarks.value', 'delinquent']}, {$eq: ['$remarks.value', 'excused']}, {$eq: ['$remarks.value', 'excused advance payment']}] },
                                                                     then: 0,
                                                                     else: {
                                                                         $cond: {
@@ -581,19 +651,6 @@ async function getAllLoansPerGroup(req, res) {
                                                 else: 0
                                             }
                                         } },
-                                        // noPastDue: { $sum: {
-                                        //     $cond: { 
-                                        //         if: { $eq: ['$remarks.value', 'past due'] }, 
-                                        //         then: 1, 
-                                        //         else: 0 } 
-                                        // } },
-                                        // noPaidPastDue: { $sum: {
-                                        //     $cond: {
-                                        //         if: { $eq: ['$remarks.value', 'past due collection'] }, 
-                                        //         then: 1,
-                                        //         else: 0
-                                        //     }
-                                        // } },
                                         total: { $sum: '$total' },
                                         currentReleaseAmount: {
                                             $sum: {
@@ -667,6 +724,41 @@ async function getAllLoansPerGroup(req, res) {
                                                 }
                                             }
                                         },
+                                        mcbu: { $sum: {
+                                            $cond: {
+                                                if: {$eq: ['$occurence', 'weekly']},
+                                                then: '$mcbu',
+                                                else: 0
+                                            }
+                                        } },
+                                        mcbuCol: { $sum: {
+                                            $cond: {
+                                                if: {$eq: ['$occurence', 'weekly']},
+                                                then: '$mcbuCol',
+                                                else: 0
+                                            }
+                                        } },
+                                        mcbuWithdrawal: { $sum: {
+                                            $cond: {
+                                                if: {$eq: ['$occurence', 'weekly']},
+                                                then: '$mcbuWithdrawal',
+                                                else: 0
+                                            }
+                                        } },
+                                        mcbuReturnNo: { $sum: {
+                                            $cond: {
+                                                if: {$and: [{$eq: ['$occurence', 'weekly']}, {$gt: ['$mcbuReturnAmt', 0]}]},
+                                                then: 1,
+                                                else: 0
+                                            }
+                                        } },
+                                        mcbuReturnAmt: { $sum: {
+                                            $cond: {
+                                                if: {$eq: ['$occurence', 'weekly']},
+                                                then: '$mcbuReturnAmt',
+                                                else: 0
+                                            }
+                                        } }
                                     } 
                                 }
                             ],
@@ -748,7 +840,7 @@ async function getAllLoansPerGroup(req, res) {
                                                             then: '$history.activeLoan',
                                                             else: {
                                                                 $cond: {
-                                                                    if: { $or: [{$eq: ['$remarks.value', 'delinquent']}, {$eq: ['$remarks.value', 'excused']}] },
+                                                                    if: { $or: [{$eq: ['$remarks.value', 'delinquent']}, {$eq: ['$remarks.value', 'excused']}, {$eq: ['$remarks.value', 'excused advance payment']}] },
                                                                     then: 0,
                                                                     else: {
                                                                         $cond: {
@@ -782,19 +874,6 @@ async function getAllLoansPerGroup(req, res) {
                                                 else: 0
                                             }
                                         } },
-                                        // noPastDue: { $sum: {
-                                        //     $cond: { 
-                                        //         if: { $eq: ['$remarks.value', 'past due'] }, 
-                                        //         then: 1, 
-                                        //         else: 0 } 
-                                        // } },
-                                        // noPaidPastDue: { $sum: {
-                                        //     $cond: {
-                                        //         if: { $eq: ['$remarks.value', 'past due collection'] }, 
-                                        //         then: 1,
-                                        //         else: 0
-                                        //     }
-                                        // } },
                                         total: { $sum: '$total' },
                                         currentReleaseAmount: {
                                             $sum: {
@@ -868,16 +947,56 @@ async function getAllLoansPerGroup(req, res) {
                                                 }
                                             }
                                         },
+                                        mcbu: { $sum: {
+                                            $cond: {
+                                                if: {$eq: ['$occurence', 'weekly']},
+                                                then: '$mcbu',
+                                                else: 0
+                                            }
+                                        } },
+                                        mcbuCol: { $sum: {
+                                            $cond: {
+                                                if: {$eq: ['$occurence', 'weekly']},
+                                                then: '$mcbuCol',
+                                                else: 0
+                                            }
+                                        } },
+                                        mcbuWithdrawal: { $sum: {
+                                            $cond: {
+                                                if: {$eq: ['$occurence', 'weekly']},
+                                                then: '$mcbuWithdrawal',
+                                                else: 0
+                                            }
+                                        } },
+                                        mcbuReturnNo: { $sum: {
+                                            $cond: {
+                                                if: {$and: [{$eq: ['$occurence', 'weekly']}, {$gt: ['$mcbuReturnAmt', 0]}]},
+                                                then: 1,
+                                                else: 0
+                                            }
+                                        } },
+                                        mcbuReturnAmt: { $sum: {
+                                            $cond: {
+                                                if: {$eq: ['$occurence', 'weekly']},
+                                                then: '$mcbuReturnAmt',
+                                                else: 0
+                                            }
+                                        } }
                                     } 
                                 }
                             ],
                             as: "cashCollections"
                         }
                     },
-                    { $project: { groupIdStr: 0, availableSlots: 0 } }
+                    { $project: { groupIdStr: 0, availableSlots: 0 } },
+                    { $sort: { groupNo: 1 } }
                 ])
                 .toArray();
         }
+    }
+
+    if (cashCollection.length > 0 && mode === 'weekly') {
+        cashCollection = cashCollection
     }
         
     response = { success: true, data: cashCollection };

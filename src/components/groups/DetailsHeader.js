@@ -10,7 +10,7 @@ import DatePicker from "@/lib/ui/DatePicker";
 import { useRouter } from 'next/router';
 import { ArrowLeftCircleIcon } from '@heroicons/react/24/solid';
 
-const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, dateFilter, setDateFilter, handleDateFilter, groupFilter, handleGroupFilter, groupTransactionStatus }) => {
+const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, dateFilter, setDateFilter, handleDateFilter, groupFilter, handleGroupFilter, groupTransactionStatus, allowMcbuWithdrawal }) => {
     const router = useRouter();
     const groupList = useSelector(state => state.group.list);
     const group = useSelector(state => state.group.data);
@@ -125,7 +125,7 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
                             </div>
                         </div>
                     </div>
-                    {showSaveButton && (
+                    {(showSaveButton || allowMcbuWithdrawal) && (
                         <div className="flex items-center w-40">
                             <ButtonSolid label="Submit Collection" onClick={handleSaveUpdate} />
                         </div>

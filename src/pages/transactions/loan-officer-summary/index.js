@@ -238,26 +238,17 @@ const LoanOfficerSummary = () => {
             let temp = {...los};
 
             if (index !== 0 && !los.weekTotal) {
-                // const transfer = !los.transfer && los.transfer !== '-' ? los.transfer : 0;
-                // const newMember = !los.newMember && los.newMember !== '-' ? los.newMember : 0;
-                // const offsetPerson = !los.offsetPerson && los.offsetPerson !== '-' ? los.offsetPerson : 0;
                 const loanReleasePerson = los.loanReleasePerson !== '-' ? los.loanReleasePerson : 0;
                 const fullPaymentPerson = los.fullPaymentPerson !== '-' ? los.fullPaymentPerson : 0;
                 const fullPaymentAmount = los.fullPaymentAmount !== '-' ? los.fullPaymentAmount : 0;
                 const loanReleaseAmount = los.loanReleaseAmount !== '-' ? los.loanReleaseAmount : 0;
-                const collectionTarget = los.collectionTarget !== '-' ? los.collectionTarget : 0;
-                const collectionAdvancePayment = los.collectionAdvancePayment !== '-' ? los.collectionAdvancePayment : 0;
                 const collectionActual = los.collectionActual !== '-' ? los.collectionActual : 0;
-                const pastDuePerson = los.pastDuePerson !== '-' ? los.pastDuePerson : 0;
 
                 if (index === 1) {
                     temp.activeClients = temp.activeClients > 0 ? temp.activeClients : fBal.activeClients;
                     temp.activeLoanReleasePerson = fBal.activeLoanReleasePerson + loanReleasePerson - fullPaymentPerson;
                     temp.activeLoanReleaseAmount = fBal.activeLoanReleaseAmount + loanReleaseAmount - fullPaymentAmount;
                     temp.activeLoanReleaseAmountStr = formatPricePhp(temp.activeLoanReleaseAmount);
-                    // temp.pastDueAmount = fBal.pastDueAmount + collectionTarget + collectionAdvancePayment - collectionActual;
-                    // temp.pastDueAmountStr = formatPricePhp(temp.pastDueAmount);
-                    // temp.pastDuePerson = fBal.pastDuePerson + pastDuePerson;
                     temp.activeBorrowers = temp.activeBorrowers > 0 ? temp.activeBorrowers : fBal.activeBorrowers;
                     temp.loanBalance = fBal.loanBalance + loanReleaseAmount - collectionActual; //temp.loanBalance > 0 ? temp.loanBalance + loanReleaseAmount : fBal.loanBalance;
                     temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
@@ -266,9 +257,6 @@ const LoanOfficerSummary = () => {
                     temp.activeLoanReleasePerson = prevLos.activeLoanReleasePerson + loanReleasePerson - fullPaymentPerson;
                     temp.activeLoanReleaseAmount = prevLos.activeLoanReleaseAmount + loanReleaseAmount - fullPaymentAmount;
                     temp.activeLoanReleaseAmountStr = formatPricePhp(temp.activeLoanReleaseAmount);
-                    // temp.pastDueAmount = prevLos.pastDueAmount + collectionTarget + collectionAdvancePayment - collectionActual;
-                    // temp.pastDueAmountStr = formatPricePhp(temp.pastDueAmount);
-                    // temp.pastDuePerson = prevLos.pastDuePerson + pastDuePerson;
                     temp.activeBorrowers = temp.activeBorrowers > 0 ? temp.activeBorrowers : prevLos.activeBorrowers;
                     temp.loanBalance = prevLos.loanBalance + loanReleaseAmount - collectionActual;
                     temp.loanBalanceStr = formatPricePhp(temp.loanBalance);

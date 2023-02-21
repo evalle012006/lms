@@ -16,7 +16,7 @@ import ButtonOutline from '@/lib/ui/ButtonOutline';
 import ButtonSolid from '@/lib/ui/ButtonSolid';
 import Spinner from '@/components/Spinner';
 
-const CashCollectionDetailsPage = () => {
+const WeeklyCashCollectionDetailsPage = () => {
     const [loading, setLoading] = useState(false);
     const selectedBranchSubject = new BehaviorSubject(process.browser && localStorage.getItem('selectedBranch'));
     const dateFilterSubject = new BehaviorSubject(process.browser && localStorage.getItem('cashCollectionDateFilter'));
@@ -37,7 +37,7 @@ const CashCollectionDetailsPage = () => {
     const handleLOFilter = (selected) => {
         setCurrentLO(selected);
         localStorage.setItem('selectedLO', selected._id);
-        router.push('/transactions/daily-cash-collection/group/' + selected._id);
+        router.push('/transactions/weekly-cash-collection/group/' + selected._id);
     }
     
     const handleDateFilter = (selected) => {
@@ -77,6 +77,13 @@ const CashCollectionDetailsPage = () => {
 
         setShowSubmitDialog(false);
     }
+
+    // const handleRowClick = (selected) => {
+    //     // console.log(selected);
+    //     if (selected.status === 'open') {
+    //         console.log('open')
+    //     }
+    // }
 
     const getListBranch = async () => {
         const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'branches/list');
@@ -163,12 +170,12 @@ const CashCollectionDetailsPage = () => {
                 </div>
             ) : (
                 <div className="overflow-x-auto">
-                    {currentLO && <DetailsHeader page={2} pageName="lo-view" mode={'daily'} currentDate={moment(currentDate).format('dddd, MMMM DD, YYYY')} 
+                    {currentLO && <DetailsHeader page={2} pageName="lo-view" mode={'weekly'} currentDate={moment(currentDate).format('dddd, MMMM DD, YYYY')} 
                         selectedLO={currentLO} handleLOFilter={handleLOFilter} handleSubmit={handleShowSubmitDialog}
                         dateFilter={dateFilter} handleDateFilter={handleDateFilter}
                     />}
                     <div className='p-4 mt-[8rem]'>
-                        <ViewCashCollectionPage pageNo={2} dateFilter={dateFilter} type={'daily'} />
+                        <ViewCashCollectionPage pageNo={2} dateFilter={dateFilter} type={'weekly'} />
                     </div>
                     <Dialog show={showSubmitDialog}>
                         <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
@@ -193,4 +200,4 @@ const CashCollectionDetailsPage = () => {
     );
 }
 
-export default CashCollectionDetailsPage;
+export default WeeklyCashCollectionDetailsPage;
