@@ -1087,19 +1087,6 @@ const CashCollectionDetailsPage = () => {
             allow = temp.fullPaymentDate === currentDate;
         }
 
-        // if (temp.paymentCollection === 0) {
-        //     temp.prevData = {
-        //         amountRelease: temp.amountRelease,
-        //         paymentCollection: 0,
-        //         excess: 0,
-        //         mispayment: false,
-        //         loanBalance: temp.loanBalance,
-        //         noOfPayments: temp.noOfPayments,
-        //         total: temp.total
-        //     };
-        //     // temp.error = true;
-        // }
-
         if (allow && temp.hasOwnProperty('prevData')) {
             temp.amountRelease = temp.prevData.amountRelease;
             temp.amountReleaseStr = formatPricePhp(temp.prevData.amountRelease);
