@@ -21,6 +21,7 @@ import { TabPanel, useTabs } from "react-headless-tabs";
 import { TabSelector } from "@/lib/ui/tabSelector";
 
 const LoanApplicationPage = () => {
+    const holidays = useSelector(state => state.holidays.list);
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
     const list = useSelector(state => state.loan.list);
@@ -47,6 +48,7 @@ const LoanApplicationPage = () => {
     const [noOfPendingLoans, setNoOfPendingLoans] = useState(0);
     const [totalAmountRelease, setTotalAmountRelease] = useState(0);
     const [weekend, setWeekend] = useState(false);
+    const [holiday, setHoliday] = useState(false);
 
     const router = useRouter();
     const { type } = router.query;
@@ -405,10 +407,11 @@ const LoanApplicationPage = () => {
 
     const handleCloseAddDrawer = () => {
         setLoading(true);
-        getListLoan();
-        getListGroup();
-        setMode('add');
-        setLoan({});
+        // getListLoan();
+        // getListGroup();
+        // setMode('add');
+        // setLoan({});
+        window.location.reload();
     }
 
     const handleMultiSelect = (mode, selectAll, row, rowIndex) => {
@@ -571,116 +574,59 @@ const LoanApplicationPage = () => {
     useEffect(() => {
         if (groupList) {
             let cols = [];
-
-            if (type === 'weekly') {
-                cols.push(
-                    {
-                        Header: "Group",
-                        accessor: 'groupName',
-                        Filter: SelectColumnFilter,
-                        filter: 'includes'
-                    },
-                    {
-                        Header: "Slot No.",
-                        accessor: 'slotNo'
-                    },
-                    {
-                        Header: "Client Name",
-                        accessor: 'fullName'
-                    },
-                    {
-                        Header: "Admission Date",
-                        accessor: 'admissionDate'
-                    },
-                    {
-                        Header: "MCBU",
-                        accessor: 'mcbuStr',
-                        Filter: SelectColumnFilter,
-                        filter: 'includes'
-                    },
-                    {
-                        Header: "Principal Loan",
-                        accessor: 'principalLoanStr'
-                    },
-                    {
-                        Header: "Active Loan",
-                        accessor: 'activeLoanStr'
-                    },
-                    {
-                        Header: "Loan Release",
-                        accessor: 'loanReleaseStr'
-                    },
-                    {
-                        Header: "Loan Balance",
-                        accessor: 'loanBalanceStr'
-                    },
-                    {
-                        Header: "Status",
-                        accessor: 'status',
-                        Cell: StatusPill,
-                        // Cell: SelectCell,
-                        // Options: statuses,
-                        // valueIdAccessor: 'status',
-                        // selectOnChange: updateClientStatus,
-                        // Filter: SelectColumnFilter,
-                        // filter: 'includes',
-                    }
-                );
-            } else {
-                cols.push(
-                    {
-                        Header: "Group",
-                        accessor: 'groupName',
-                        Filter: SelectColumnFilter,
-                        filter: 'includes'
-                    },
-                    {
-                        Header: "Slot No.",
-                        accessor: 'slotNo'
-                    },
-                    {
-                        Header: "Client Name",
-                        accessor: 'fullName'
-                    },
-                    {
-                        Header: "Admission Date",
-                        accessor: 'admissionDate'
-                    },
-                    // {
-                    //     Header: "MCBU",
-                    //     accessor: 'mcbuStr',
-                    //     Filter: SelectColumnFilter,
-                    //     filter: 'includes'
-                    // },
-                    {
-                        Header: "Principal Loan",
-                        accessor: 'principalLoanStr'
-                    },
-                    {
-                        Header: "Active Loan",
-                        accessor: 'activeLoanStr'
-                    },
-                    {
-                        Header: "Loan Release",
-                        accessor: 'loanReleaseStr'
-                    },
-                    {
-                        Header: "Loan Balance",
-                        accessor: 'loanBalanceStr'
-                    },
-                    {
-                        Header: "Status",
-                        accessor: 'status',
-                        Cell: StatusPill,
-                        // Cell: SelectCell,
-                        // Options: statuses,
-                        // valueIdAccessor: 'status',
-                        // selectOnChange: updateClientStatus,
-                        // Filter: SelectColumnFilter,
-                        // filter: 'includes',
-                    }
-                );
-            }
+            cols.push(
+                {
+                    Header: "Group",
+                    accessor: 'groupName',
+                    Filter: SelectColumnFilter,
+                    filter: 'includes'
+                },
+                {
+                    Header: "Slot No.",
+                    accessor: 'slotNo'
+                },
+                {
+                    Header: "Client Name",
+                    accessor: 'fullName'
+                },
+                {
+                    Header: "Admission Date",
+                    accessor: 'admissionDate'
+                },
+                {
+                    Header: "MCBU",
+                    accessor: 'mcbuStr',
+                    Filter: SelectColumnFilter,
+                    filter: 'includes'
+                },
+                {
+                    Header: "Principal Loan",
+                    accessor: 'principalLoanStr'
+                },
+                {
+                    Header: "Active Loan",
+                    accessor: 'activeLoanStr'
+                },
+                {
+                    Header: "Loan Release",
+                    accessor: 'loanReleaseStr'
+                },
+                {
+                    Header: "Loan Balance",
+                    accessor: 'loanBalanceStr'
+                },
+                {
+                    Header: "Status",
+                    accessor: 'status',
+                    Cell: StatusPill,
+                    // Cell: SelectCell,
+                    // Options: statuses,
+                    // valueIdAccessor: 'status',
+                    // selectOnChange: updateClientStatus,
+                    // Filter: SelectColumnFilter,
+                    // filter: 'includes',
+                }
+            );
 
             if (currentUser.role.rep === 3) {
                 cols.unshift(
@@ -746,6 +692,22 @@ const LoanApplicationPage = () => {
         }
     }, []);
 
+    useEffect(() => {
+        if (holidays) {
+            let holidayToday = false;
+            const currentYear = moment().year();
+            holidays.map(item => {
+                const holidayDate = currentYear + '-' + item.date;
+
+                if (holidayDate === currentDate) {
+                    holidayToday = true;
+                }
+            });
+
+            setHoliday(holidayToday);
+        }
+    }, [holidays]);
+
     // useEffect(() => {
     //     if (weekend || currentUser.role.rep > 2) {
     //         setShowApproveReject(false);
@@ -755,7 +717,7 @@ const LoanApplicationPage = () => {
     // }, [weekend]);
 
     return (
-        <Layout actionButtons={(currentUser.role.rep > 2 && !weekend) && actionButtons}>
+        <Layout actionButtons={(currentUser.role.rep > 2 && !weekend && !holiday) && actionButtons}>
             <div className="pb-4">
                 {loading ?
                     (
@@ -778,7 +740,7 @@ const LoanApplicationPage = () => {
                             </nav>
                             <div>
                                 <TabPanel hidden={selectedTab !== "application"}>
-                                    <TableComponent columns={columns} data={list} hasActionButtons={(currentUser.role.rep > 2 && !weekend) ? true : false} rowActionButtons={!weekend && rowActionButtons} showFilters={true} multiSelect={currentUser.role.rep === 3 ? true : false} multiSelectActionFn={handleMultiSelect} />
+                                    <TableComponent columns={columns} data={list} hasActionButtons={(currentUser.role.rep > 2 && !weekend) ? true : false} rowActionButtons={!weekend && !holiday && rowActionButtons} showFilters={true} multiSelect={currentUser.role.rep === 3 ? true : false} multiSelectActionFn={handleMultiSelect} />
                                     <footer className="pl-64 text-md font-bold text-center fixed inset-x-0 bottom-0 text-red-400">
                                         <div className="flex flex-row justify-center bg-white px-4 py-2 shadow-inner border-t-4 border-zinc-200">
                                             <div className="flex flex-row">

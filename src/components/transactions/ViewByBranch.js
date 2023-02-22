@@ -14,6 +14,7 @@ const ViewByBranchPage = ({dateFilter, type}) => {
     const [loading, setLoading] = useState(true);
     const [branchCollectionData, setBranchCollectionData] = useState([]);
     const [currentDate, setCurrentDate] = useState(moment(new Date()).format('YYYY-MM-DD'));
+    const dayName = moment().format('dddd').toLowerCase();
 
     const router = useRouter();
     // check group status if there is pending change row color to orange/yellow else white
@@ -120,6 +121,20 @@ const ViewByBranchPage = ({dateFilter, type}) => {
                         totalPastDue += collection.pastDue;
                         totalNoPastDue += collection.noPastDue;
                         totalMcbu += collection.mcbu;
+                    }
+
+                    if (type === "weekly" && branch.groups.length > 0) {
+                        targetLoanCollection = 0;
+                        let loLoanTarget = 0;
+                        branch.groups.map(g => {
+                            if (g.loanTarget.length > 0) {
+                                loLoanTarget += g.loanTarget[0].loanTarget;
+                            }
+                        });
+
+                        collection.loanTarget = loLoanTarget;
+                        collection.loanTargetStr = loLoanTarget > 0 ? formatPricePhp(loLoanTarget) : '-';
+                        targetLoanCollection += loLoanTarget;
                     }
                     
                     if (branch.cashCollections.length > 0) {

@@ -33,6 +33,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     const [groupOccurence, setGroupOccurence] = useState(type);
     const [clientId, setClientId] = useState();
     const [clientType, setClientType] = useState('pending');
+    const currentDate = moment(new Date()).format('YYYY-MM-DD');
 
     const initialValues = {
         branchId: loan.branchId,
@@ -42,7 +43,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         clientId: loan.clientId,
         fullName: loan.fullName,
         admissionDate: loan.admissionDate,
-        mcbu: type === 'weekly' ? mode === 'edit' ? loan.mcbu : 50 : 0,
+        mcbu: type === 'weekly' ? (mode === 'edit' || mode === 'reloan') ? loan.mcbu : 50 : (mode === 'edit' || mode === 'reloan') ? loan.mcbu : 10,
         dateGranted: mode !== 'reloan' ? loan.dateGranted : null,
         principalLoan: loan.principalLoan,
         activeLoan: loan.activeLoan,
@@ -139,11 +140,14 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
 
     const handleSaveUpdate = (values, action) => {
         if (values.principalLoan % 1000 === 0) {
-            if (type === 'weekly' && (!values.mcbu || parseFloat(values.mcbu) < 0 || parseFloat(values.mcbu) < 50)) {
+            if (type === 'weekly' && (!values.mcbu || parseFloat(values.mcbu) < 50)) {
                 toast.error('Invalid MCBU amount. Please enter at least 50.');
+            } else if (type === 'daily' && (!values.mcbu || parseFloat(values.mcbu) < 10)) {
+                toast.error('Invalid MCBU amount. Please enter at least 10.');
             } else {
                 setLoading(true);
                 let group;
+                values.currentDate = currentDate;
                 values.clientId = clientId;
                 if (mode !== 'reloan') {
                     values.groupId = selectedGroup;
@@ -178,9 +182,9 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                     values.amountRelease = values.loanBalance;
                 }
 
-                if (group.occurence === 'daily') {
-                    delete values.mcbu;
-                }
+                // if (group.occurence === 'daily') {
+                //     delete values.mcbu;
+                // }
 
                 if (mode === 'add' || mode === 'reloan') {
                     // should check if the user has previous loan that is loanCycle 0, then set the loanCycle to 1
@@ -531,7 +535,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                                 errors={touched.loanCycle && errors.loanCycle ? errors.loanCycle : undefined} />
                                         )}
                                     </div>
-                                    {groupOccurence === 'weekly' && <div className="mt-4">
+                                    <div className="mt-4">
                                         <InputNumber
                                             name="mcbu"
                                             value={values.mcbu}
@@ -540,7 +544,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                             placeholder="Enter MCBU"
                                             setFieldValue={setFieldValue}
                                             errors={touched.mcbu && errors.mcbu ? errors.mcbu : undefined} />
-                                    </div>}
+                                    </div>
                                     <div className="mt-4">
                                         <InputNumber
                                             name="principalLoan"

@@ -3,9 +3,14 @@ import { useSelector, useDispatch } from 'react-redux';
 import Layout from "@/components/Layout";
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { setSystemSettings } from '@/redux/actions/systemActions';
+import { setTransactionSettings } from '@/redux/actions/transactionsActions';
+import { setHolidayList } from '@/redux/actions/holidayActions';
+import moment from 'moment';
+import { useState } from 'react';
 
 const Index = () => {
     const dispatch = useDispatch();
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         let mounted = true;
@@ -15,6 +20,34 @@ const Index = () => {
             const response = await fetchWrapper.get(apiURL);
             if (response.success) {
                 dispatch(setSystemSettings(response.system));
+            }
+        }
+
+        const getTransactionSettings = async () => {
+            const apiURL = `${process.env.NEXT_PUBLIC_API_URL}settings/transactions`;
+            const response = await fetchWrapper.get(apiURL);
+            if (response.success) {
+                dispatch(setTransactionSettings(response.transactions));
+            }
+        }
+
+        const getListHoliday = async () => {
+            let url = process.env.NEXT_PUBLIC_API_URL + 'settings/holidays/list';
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                const holidays = response.holidays.map(h => {
+                    let temp = {...h};
+                    
+                    const tempDate = moment().year() + '-' + temp.date;
+                    temp.dateStr = moment(tempDate).format('MMMM DD');
+    
+                    return temp;
+                });
+                dispatch(setHolidayList(holidays));
+                setLoading(false);
+            } else if (response.error) {
+                setLoading(false);
+                toast.error(response.message);
             }
         }
 
@@ -35,6 +68,8 @@ const Index = () => {
         // }
 
         mounted && getSystemSettings();
+        mounted && getTransactionSettings();
+        mounted && getListHoliday();
         // mounted && updateGroupClients();
         // mounted && updateLoanData();
         // mounted && updateCCData();

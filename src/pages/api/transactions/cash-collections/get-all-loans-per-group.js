@@ -16,6 +16,8 @@ async function getAllLoansPerGroup(req, res) {
     let response = {};
     let cashCollection;
 
+    const currentDay = moment(date).format('dddd').toLowerCase();
+
     if (currentDate === date) {
         if (branchCode) {
             cashCollection = await db
@@ -47,6 +49,52 @@ async function getAllLoansPerGroup(req, res) {
                     },
                     {
                         $lookup: {
+                            from: "groups",
+                            localField: "loIdStr",
+                            foreignField: "loanOfficerId",
+                            pipeline: [
+                                { $match: { $expr: { $and: [{$eq: ['$occurence', mode]}, {$eq: ['$day', currentDay]}] } } },
+                                {
+                                    $addFields: {
+                                        "groupIdStr": { $toString: "$_id" }
+                                    }
+                                },
+                                {
+                                    $lookup: {
+                                        from: "loans",
+                                        localField: "groupIdStr",
+                                        foreignField: 'groupId',
+                                        pipeline: [
+                                            {
+                                                $group: {
+                                                    _id: '$groupId',
+                                                    loanTarget: { 
+                                                        $sum: { 
+                                                            $cond: {
+                                                                if: { $ne: ['$status', 'pending']}, 
+                                                                then: { 
+                                                                    $cond: {
+                                                                        if: { $and: [{$eq: ['$activeLoan', 0]}, {$eq: ['$fullPaymentDate', date]}] },
+                                                                        then: '$history.activeLoan',
+                                                                        else: '$activeLoan'
+                                                                    } 
+                                                                }, 
+                                                                else: 0
+                                                            } 
+                                                        }
+                                                    },
+                                                }
+                                            }
+                                        ],
+                                        as: "loanTarget"
+                                    }
+                                }
+                            ],
+                            as: 'groups'
+                        }
+                    },
+                    {
+                        $lookup: {
                             from: "cashCollections",
                             localField: "loIdStr",
                             foreignField: "loId",
@@ -72,41 +120,17 @@ async function getAllLoansPerGroup(req, res) {
                                                 else: 0
                                             }
                                         } },
-                                        mcbu: { $sum: {
-                                            $cond: {
-                                                if: {$eq: ['$occurence', 'weekly']},
-                                                then: '$mcbu',
-                                                else: 0
-                                            }
-                                        } },
-                                        mcbuCol: { $sum: {
-                                            $cond: {
-                                                if: {$eq: ['$occurence', 'weekly']},
-                                                then: '$mcbuCol',
-                                                else: 0
-                                            }
-                                        } },
-                                        mcbuWithdrawal: { $sum: {
-                                            $cond: {
-                                                if: {$eq: ['$occurence', 'weekly']},
-                                                then: '$mcbuWithdrawal',
-                                                else: 0
-                                            }
-                                        } },
+                                        mcbu: { $sum: '$mcbu' },
+                                        mcbuCol: { $sum: '$mcbuCol' },
+                                        mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
                                         mcbuReturnNo: { $sum: {
                                             $cond: {
-                                                if: {$and: [{$eq: ['$occurence', 'weekly']}, {$gt: ['$mcbuReturnAmt', 0]}]},
+                                                if: {$gt: ['$mcbuReturnAmt', 0]},
                                                 then: 1,
                                                 else: 0
                                             }
                                         } },
-                                        mcbuReturnAmt: { $sum: {
-                                            $cond: {
-                                                if: {$eq: ['$occurence', 'weekly']},
-                                                then: '$mcbuReturnAmt',
-                                                else: 0
-                                            }
-                                        } }
+                                        mcbuReturnAmt: { $sum: '$mcbuReturnAmt' }
                                     } 
                                 }
                             ],
@@ -218,27 +242,9 @@ async function getAllLoansPerGroup(req, res) {
                                         collection: { $sum: 0 },
                                         excess: { $sum: 0 },
                                         total: { $sum: 0 },
-                                        mcbu: { $sum: {
-                                            $cond: {
-                                                if: {$eq: ['$occurence', 'weekly']},
-                                                then: '$mcbu',
-                                                else: 0
-                                            }
-                                        } },
-                                        mcbuCol: { $sum: {
-                                            $cond: {
-                                                if: {$eq: ['$occurence', 'weekly']},
-                                                then: '$mcbuCol',
-                                                else: 0
-                                            }
-                                        } },
-                                        mcbuWithdrawal: { $sum: {
-                                            $cond: {
-                                                if: {$eq: ['$occurence', 'weekly']},
-                                                then: '$mcbu',
-                                                else: 0
-                                            }
-                                        } }
+                                        mcbu: { $sum: '$mcbu' },
+                                        mcbuTarget: { $sum: '$mcbuTarget' },
+                                        mcbuInterest: { $sum: '$mcbuInterest' }
                                     } 
                                 }
                             ],
@@ -337,41 +343,17 @@ async function getAllLoansPerGroup(req, res) {
                                                 else: 0
                                             }
                                         } },
-                                        mcbu: { $sum: {
-                                            $cond: {
-                                                if: {$eq: ['$occurence', 'weekly']},
-                                                then: '$mcbu',
-                                                else: 0
-                                            }
-                                        } },
-                                        mcbuCol: { $sum: {
-                                            $cond: {
-                                                if: {$eq: ['$occurence', 'weekly']},
-                                                then: '$mcbuCol',
-                                                else: 0
-                                            }
-                                        } },
-                                        mcbuWithdrawal: { $sum: {
-                                            $cond: {
-                                                if: {$eq: ['$occurence', 'weekly']},
-                                                then: '$mcbuWithdrawal',
-                                                else: 0
-                                            }
-                                        } },
+                                        mcbu: { $sum: '$mcbu' },
+                                        mcbuCol: { $sum: '$mcbuCol' },
+                                        mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
                                         mcbuReturnNo: { $sum: {
                                             $cond: {
-                                                if: {$and: [{$eq: ['$occurence', 'weekly']}, {$gt: ['$mcbuReturnAmt', 0]}]},
+                                                if: {$gt: ['$mcbuReturnAmt', 0]},
                                                 then: 1,
                                                 else: 0
                                             }
                                         } },
-                                        mcbuReturnAmt: { $sum: {
-                                            $cond: {
-                                                if: {$eq: ['$occurence', 'weekly']},
-                                                then: '$mcbuReturnAmt',
-                                                else: 0
-                                            }
-                                        } }
+                                        mcbuReturnAmt: { $sum: '$mcbuReturnAmt' }
                                     } 
                                 }
                             ],
@@ -485,13 +467,9 @@ async function getAllLoansPerGroup(req, res) {
                                         collection: { $sum: 0 },
                                         excess: { $sum: 0 },
                                         total: { $sum: 0 },
-                                        mcbu: { $sum: {
-                                            $cond: {
-                                                if: {$eq: ['$occurence', 'weekly']},
-                                                then: '$mcbu',
-                                                else: 0
-                                            }
-                                        } }
+                                        mcbu: { $sum: '$mcbu' },
+                                        mcbuTarget: { $sum: '$mcbuTarget' },
+                                        mcbuInterest: { $sum: '$mcbuInterest' }
                                     } 
                                 }
                             ],
@@ -731,34 +709,19 @@ async function getAllLoansPerGroup(req, res) {
                                                 else: 0
                                             }
                                         } },
-                                        mcbuCol: { $sum: {
-                                            $cond: {
-                                                if: {$eq: ['$occurence', 'weekly']},
-                                                then: '$mcbuCol',
-                                                else: 0
-                                            }
-                                        } },
-                                        mcbuWithdrawal: { $sum: {
-                                            $cond: {
-                                                if: {$eq: ['$occurence', 'weekly']},
-                                                then: '$mcbuWithdrawal',
-                                                else: 0
-                                            }
-                                        } },
+                                        mcbu: { $sum: '$mcbu' },
+                                        mcbuCol: { $sum: '$mcbuCol' },
+                                        mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
                                         mcbuReturnNo: { $sum: {
                                             $cond: {
-                                                if: {$and: [{$eq: ['$occurence', 'weekly']}, {$gt: ['$mcbuReturnAmt', 0]}]},
+                                                if: {$gt: ['$mcbuReturnAmt', 0]},
                                                 then: 1,
                                                 else: 0
                                             }
                                         } },
-                                        mcbuReturnAmt: { $sum: {
-                                            $cond: {
-                                                if: {$eq: ['$occurence', 'weekly']},
-                                                then: '$mcbuReturnAmt',
-                                                else: 0
-                                            }
-                                        } }
+                                        mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
+                                        mcbuTarget: { $sum: '$mcbuTarget' },
+                                        mcbuInterest: { $sum: '$mcbuInterest' }
                                     } 
                                 }
                             ],
@@ -947,41 +910,19 @@ async function getAllLoansPerGroup(req, res) {
                                                 }
                                             }
                                         },
-                                        mcbu: { $sum: {
-                                            $cond: {
-                                                if: {$eq: ['$occurence', 'weekly']},
-                                                then: '$mcbu',
-                                                else: 0
-                                            }
-                                        } },
-                                        mcbuCol: { $sum: {
-                                            $cond: {
-                                                if: {$eq: ['$occurence', 'weekly']},
-                                                then: '$mcbuCol',
-                                                else: 0
-                                            }
-                                        } },
-                                        mcbuWithdrawal: { $sum: {
-                                            $cond: {
-                                                if: {$eq: ['$occurence', 'weekly']},
-                                                then: '$mcbuWithdrawal',
-                                                else: 0
-                                            }
-                                        } },
+                                        mcbu: { $sum: '$mcbu' },
+                                        mcbuCol: { $sum: '$mcbuCol' },
+                                        mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
                                         mcbuReturnNo: { $sum: {
                                             $cond: {
-                                                if: {$and: [{$eq: ['$occurence', 'weekly']}, {$gt: ['$mcbuReturnAmt', 0]}]},
+                                                if: {$gt: ['$mcbuReturnAmt', 0]},
                                                 then: 1,
                                                 else: 0
                                             }
                                         } },
-                                        mcbuReturnAmt: { $sum: {
-                                            $cond: {
-                                                if: {$eq: ['$occurence', 'weekly']},
-                                                then: '$mcbuReturnAmt',
-                                                else: 0
-                                            }
-                                        } }
+                                        mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
+                                        mcbuTarget: { $sum: '$mcbuTarget' },
+                                        mcbuInterest: { $sum: '$mcbuInterest' }
                                     } 
                                 }
                             ],

@@ -19,6 +19,7 @@ import {
     UserCircleIcon,
     ArrowRightOnRectangleIcon
 } from '@heroicons/react/24/solid';
+import { ExclamationTriangleIcon, AdjustmentsHorizontalIcon } from '@heroicons/react/24/outline';
 import Link from "next/link";
 import { useRouter } from "node_modules/next/router";
 import { useDispatch, useSelector } from "react-redux";
@@ -246,7 +247,7 @@ const MenuItems = [
             },
             {
                 label: "Loan Officer Summary",
-                url: "/transactions/loan-officer-summary", 
+                url: "/transactions/loan-officer-summary?type=daily", 
                 icon: {
                     active: (
                         <ChartBarSquareIcon className="text-gray-800 w-5 h-5" />
@@ -258,22 +259,7 @@ const MenuItems = [
                 active: false,
                 hasSub: false,
                 hidden: false
-            },
-            {
-                label: "Branch Manager Summary",
-                url: "/transactions/branch-manager-summary", 
-                icon: {
-                    active: (
-                        <ChartBarSquareIcon className="text-gray-800 w-5 h-5" />
-                    ),
-                    notActive: (
-                        <ChartBarSquareIcon className="text-white w-5 h-5" />
-                    ),
-                },
-                active: false,
-                hasSub: false,
-                hidden: false
-            },
+            }
         ]
     },
     {
@@ -321,13 +307,58 @@ const MenuItems = [
             },
             {
                 label: "Loan Officer Summary",
-                url: "/transactions/loan-officer-summary", 
+                url: "/transactions/loan-officer-summary?type=weekly", 
                 icon: {
                     active: (
                         <ChartBarSquareIcon className="text-gray-800 w-5 h-5" />
                     ),
                     notActive: (
                         <ChartBarSquareIcon className="text-white w-5 h-5" />
+                    ),
+                },
+                active: false,
+                hasSub: false,
+                hidden: false
+            }
+        ]
+    },
+    {
+        label: "Branch Manager Transactions",
+        url: "#branch-manager-transactions",
+        subMenuIndex: 0,
+        icon: {
+            active: <ClipboardDocumentListIcon className="text-gray-800 w-6 h-6" />,
+            notActive: <ClipboardDocumentListIcon className="text-white w-6 h-6" />,
+        },
+        active: false,
+        borderBottom: true,
+        hasSub: true,
+        hidden: false,
+        subMenuItems: [
+            {
+                label: "Loan Approval",
+                url: "/transactions/loan-applications?type=branch",
+                icon: {
+                    active: (
+                        <ClipboardDocumentCheckIcon className="text-gray-800 w-5 h-5" />
+                    ),
+                    notActive: (
+                        <ClipboardDocumentCheckIcon className="text-white w-5 h-5" />
+                    ),
+                },
+                active: false,
+                hasSub: false,
+                hidden: false
+            },
+            {
+                label: "Loan Officer Register",
+                url: "/transactions/cash-collection", 
+                icon: {
+                    active: (
+                        <TicketIcon className="text-gray-800 w-5 h-5" />
+                    ),
+                    notActive: (
+                        <TicketIcon className="text-white w-5 h-5" />
                     ),
                 },
                 active: false,
@@ -351,7 +382,6 @@ const MenuItems = [
             },
         ]
     },
-// -BMs weekly 
 // -Consolidated BMS
     {
         label: "Settings",
@@ -402,6 +432,34 @@ const MenuItems = [
                     ),
                     notActive: (
                         <BuildingLibraryIcon className="text-white w-5 h-5" />
+                    ),
+                },
+                active: false,
+                hasSub: false
+            },
+            // {
+            //     label: "Automation",
+            //     url: "/settings/automation",
+            //     icon: {
+            //         active: (
+            //             <AdjustmentsHorizontalIcon className="text-gray-800 w-5 h-5" />
+            //         ),
+            //         notActive: (
+            //             <AdjustmentsHorizontalIcon className="text-white w-5 h-5" />
+            //         ),
+            //     },
+            //     active: false,
+            //     hasSub: false
+            // },
+            {
+                label: "Reset",
+                url: "/settings/reset",
+                icon: {
+                    active: (
+                        <ExclamationTriangleIcon className="text-gray-800 w-5 h-5" />
+                    ),
+                    notActive: (
+                        <ExclamationTriangleIcon className="text-white w-5 h-5" />
                     ),
                 },
                 active: false,
@@ -499,6 +557,14 @@ const NavComponent = () => {
                 if (menu.label === 'Settings') {
                     temp.hidden = true;
                 }
+
+                // if (menu.label === 'Daily Transactions') {
+                //     temp.hidden = true;
+                // }
+
+                // if (menu.label === 'Weekly Transactions') {
+                //     temp.hidden = true;
+                // }
             }  else if (userState.role.rep === 4) {
                 if (menu.label === 'Branches') {
                     temp.hidden = true;
@@ -506,6 +572,22 @@ const NavComponent = () => {
 
                 if (menu.label === 'Settings') {
                     temp.hidden = true;
+                }
+
+                if (menu.label === 'Branch Manager Transactions') {
+                    temp.hidden = true;
+                }
+
+                if (userState.hasOwnProperty('transactionType')) {
+                    if (userState.transactionType === 'daily') {
+                        if (menu.label === 'Weekly Transactions') {
+                            temp.hidden = true;
+                        }
+                    } else {
+                        if (menu.label === 'Daily Transactions') {
+                            temp.hidden = true;
+                        }
+                    }
                 }
             }
 
@@ -539,9 +621,7 @@ const NavComponent = () => {
                             sm.hidden = true;
                         }
                     }  else if (userState.role.rep === 4) {
-                        if (sm.label === 'Branch Manager Summary') {
-                            sm.hidden = true;
-                        }
+                        // to do
                     }
 
                     return sm;

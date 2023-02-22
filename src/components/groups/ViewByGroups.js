@@ -123,6 +123,7 @@ const ViewByGroupsPage = () => {
                             day: UppercaseFirstLetter(group.day)
                         });
                     });
+                    groups.sort((a, b) => { return a.groupNo - b.groupNo; });
                     dispatch(setGroupList(groups));
                     setLoading(false);
                 } else if (response.error) {
@@ -142,6 +143,7 @@ const ViewByGroupsPage = () => {
                             day: UppercaseFirstLetter(group.day)
                         });
                     });
+                    groups.sort((a, b) => { return a.groupNo - b.groupNo; });
                     dispatch(setGroupList(groups));
                     setLoading(false);
                 } else if (response.error) {
@@ -159,6 +161,7 @@ const ViewByGroupsPage = () => {
                             day: UppercaseFirstLetter(group.day)
                         });
                     });
+                    groups.sort((a, b) => { return a.groupNo - b.groupNo; });
                     dispatch(setGroupList(groups));
                     setLoading(false);
                 } else if (response.error) {
