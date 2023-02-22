@@ -43,16 +43,6 @@ async function save(req, res) {
                     await updateLoan(collection)
                     await updateClient(collection);
                 }
-
-                // saveCollection(collection).then(respCollection => {
-                //     if (respCollection.success && (cc.status === "active" || cc.status === "completed" || cc.status === "closed")) {
-                //         updateLoan(collection).then(respLoan => {
-                //             if (respLoan.success) {
-                //                 updateClient(collection);
-                //             }
-                //         });
-                //     }
-                // });
             }
         });
 
