@@ -1039,6 +1039,8 @@ const CashCollectionDetailsPage = () => {
                         temp.mispayment = false;
                         temp.mispaymentStr = 'No';
                     }
+
+                    temp = setHistory(temp);
                 }
 
                 return temp;
