@@ -14,20 +14,25 @@ async function updateLoanData(req, res) {
     let statusCode = 200;
     let response = {};
 
-    const loans = await db.collection('loans').find().toArray();
+    const loans = await db.collection('loans').find({ $expr: { $and: [{$eq: ['$history.amountRelease', 0]}, {$eq: ['$fullPaymentDate', '2023-02-20']}] } }).toArray();
 
     if (loans.length > 0) {
         loans.map(async loan => {
             let temp = {...loan};
-            let loanGroup = await db.collection('groups').find({_id: ObjectId(loan.groupId)}).toArray();
+            // let loanGroup = await db.collection('groups').find({_id: ObjectId(loan.groupId)}).toArray();
 
-            if (loanGroup.length > 0) {
-                loanGroup = loanGroup[0];
+            // if (loanGroup.length > 0) {
+            //     loanGroup = loanGroup[0];
 
-                temp.loId = loanGroup.loanOfficerId;
+            //     temp.loId = loanGroup.loanOfficerId;
 
-                await updateLoan(temp);
-            }
+            //     await updateLoan(temp);
+            // }
+
+            temp.history.amountRelease = temp.loanRelease;
+            temp.history.loanBalance = temp.history.collection;
+
+            await updateLoan(temp);
         });
     }
 

@@ -252,6 +252,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                 setFieldTouched
                             }) => (
                                 <form onSubmit={handleSubmit} autoComplete="off">
+                                    {/* add occurence selection */}
                                     {mode === 'edit' && (
                                         <div className="profile-photo rounded-lg p-3 proxima-regular border">
                                             <div className="proxima-bold">Profile Photo</div>
