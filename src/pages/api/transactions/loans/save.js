@@ -16,6 +16,9 @@ async function save(req, res) {
     let mode;
     let oldLoanId;
     let reloan = false;
+
+    const currentDate = loanData.currentDate;
+    delete loanData.currentDate;
     
     if (loanData.hasOwnProperty('mode')) {
         mode = loanData.mode;
@@ -52,12 +55,12 @@ async function save(req, res) {
             delete finalData.currentReleaseAmount;
             const loan = await db.collection('loans').insertOne({
                 ...finalData,
-                dateGranted: moment(new Date()).format('YYYY-MM-DD')
+                dateGranted: currentDate
             });
 
             if (mode === 'reloan') {
                 reloan = true;
-                await updateLoan(oldLoanId);
+                await updateLoan(oldLoanId, finalData);
             } else {
                 await updateGroup(loanData);
             }
@@ -65,8 +68,10 @@ async function save(req, res) {
             const groupSummary = await saveGroupSummary(loanData);
 
             if (groupSummary.success) {
-                await saveCashCollection(loanData, reloan, currentReleaseAmount);
+                await saveCashCollection(loanData, currentDate, currentReleaseAmount);
             }
+
+            await updateUser(loanData);
 
             response = {
                 success: true,
@@ -78,6 +83,30 @@ async function save(req, res) {
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')
         .end(JSON.stringify(response));
+}
+
+// this will reflect on next login
+async function updateUser(loan) {
+    const { db } = await connectToDatabase();
+    const ObjectId = require('mongodb').ObjectId;
+
+    let user = await db.collection('users').find({ _id: ObjectId(loan.loId) }).toArray();
+    if (user.length > 0) {
+        user = user[0];
+        
+        if (!user.hasOwnProperty('transactionType')) {
+            user.transactionType = loan.occurence;
+
+            delete user._id;
+            await db.collection('users').updateOne(
+                {  _id: ObjectId(loan.loId) },
+                {
+                    $set: { ...user }
+                }, 
+                { upsert: false }
+            );
+        }
+    }
 }
 
 
@@ -108,7 +137,7 @@ async function updateGroup(loan) {
     }
 }
 
-async function updateLoan(loanId) {
+async function updateLoan(loanId, loanData) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
 
@@ -117,6 +146,7 @@ async function updateLoan(loanId) {
     if (loan.length > 0) {
         loan = loan[0];
 
+        loan.mcbu = loan.mcbu - loanData.mcbu;
         loan.status = 'closed';
 
         delete loan.loanOfficer;
@@ -164,9 +194,8 @@ async function saveGroupSummary(loan) {
     return { success: true };
 }
 
-async function saveCashCollection(loan, reloan, currentReleaseAmount) {
+async function saveCashCollection(loan, currentDate, currentReleaseAmount) {
     const { db } = await connectToDatabase();
-    const currentDate = moment(new Date()).format('YYYY-MM-DD');
 
     let groupSummary = await db.collection('groupCashCollections').find({ dateAdded: currentDate, groupId: loan.groupId }).toArray();
     // check if tomorrow and 0 payment collection
@@ -217,19 +246,16 @@ async function saveCashCollection(loan, reloan, currentReleaseAmount) {
                     occurence: groupSummary.mode,
                     currentReleaseAmount: currentReleaseAmount,
                     fullPayment: loanData.fullPayment,
+                    mcbu: loanData.mcbu,
+                    mcbuCol: 0,
+                    mcbuWithdrawal: 0,
+                    mcbuReturnAmt: 0,
                     remarks: '',
                     status: loanData.status,
                     dateAdded: moment(new Date()).format('YYYY-MM-DD'),
                     groupCollectionId: groupSummary._id + '',
                     origin: 'automation'
                 };
-
-                if (groupSummary.mode === 'weekly') {
-                    data.mcbu = loanData.mcbu;
-                    data.mcbuCol = 0;
-                    data.mcbuWithdrawal = 0;
-                    data.mcbuReturnAmt = 0;
-                }
     
                 await db.collection('cashCollections').insertOne({ ...data });
             } else {

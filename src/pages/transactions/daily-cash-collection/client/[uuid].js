@@ -11,7 +11,7 @@ import { setGroup, setGroupList } from '@/redux/actions/groupActions';
 import DetailsHeader from '@/components/groups/DetailsHeader';
 import moment from 'moment';
 import { containsAnyLetters, formatPricePhp, UppercaseFirstLetter } from '@/lib/utils';
-import { ArrowPathIcon, ArrowUturnLeftIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, ArrowUturnLeftIcon, CurrencyDollarIcon, CalculatorIcon } from '@heroicons/react/24/outline';
 import Select from 'react-select';
 import { DropdownIndicator, borderStyles } from "@/styles/select";
 import AddUpdateLoan from '@/components/transactions/AddUpdateLoanDrawer';
@@ -25,6 +25,8 @@ import ClientDetailPage from '@/components/clients/ClientDetailPage';
 import { setClient } from '@/redux/actions/clientActions';
 
 const CashCollectionDetailsPage = () => {
+    const holidays = useSelector(state => state.holidays.list);
+    const transactionSettings = useSelector(state => state.transactionsSettings.data);
     const selectedBranchSubject = new BehaviorSubject(process.browser && localStorage.getItem('selectedBranch'));
     const selectedLOSubject = new BehaviorSubject(process.browser && localStorage.getItem('selectedLO'));
     const dateFilterSubject = new BehaviorSubject(process.browser && localStorage.getItem('cashCollectionDateFilter'));
@@ -44,6 +46,7 @@ const CashCollectionDetailsPage = () => {
     const { uuid } = router.query;
     const [loading, setLoading] = useState(true);
     const [currentDate, setCurrentDate] = useState(moment(new Date()).format('YYYY-MM-DD'));
+    const currentMonth = moment().month();
     const [dateFilter, setDateFilter] = useState(new Date());
     const [loan, setLoan] = useState();
     const [showAddDrawer, setShowAddDrawer] = useState(false);
@@ -69,9 +72,13 @@ const CashCollectionDetailsPage = () => {
     const [filter, setFilter] = useState(false);
     const maxDays = 60;
     const [groupFilter, setGroupFilter] = useState();
+    const [allowMcbuWithdrawal, setAllowMcbuWithdrawal] = useState(false);
     const [weekend, setWeekend] = useState(false);
+    const [holiday, setHoliday] = useState(false);
 
     const [showClientInfoModal, setShowClientInfoModal] = useState(false);
+
+    const [mcbuRate, setMcbuRate] = useState(transactionSettings.mcbu || 8);
 
     const handleShowClientInfoModal = (selected) => {
         if (selected.status !== 'totals') {
@@ -160,6 +167,16 @@ const CashCollectionDetailsPage = () => {
                         activeLoan: '-',
                         targetCollection: cc.hasOwnProperty('prevData') ? cc.prevData.activeLoan : 0,
                         targetCollectionStr: cc.hasOwnProperty('prevData') ? formatPricePhp(cc.prevData.activeLoan) : 0,
+                        mcbu: cc.mcbu,
+                        mcbuStr: cc.mcbu > 0 ? formatPricePhp(cc.mcbu) : '-',
+                        mcbuCol: cc.mcbuCol,
+                        mcbuColStr: cc.mcbuCol > 0 ? formatPricePhp(cc.mcbuCol) : '-',
+                        mcbuWithdrawal: cc.mcbuWithdrawal,
+                        mcbuWithdrawalStr: cc.mcbuWithdrawal > 0 ? formatPricePhp(cc.mcbuWithdrawal) : '-',
+                        mcbuReturnAmt: cc.mcbuReturnAmt,
+                        mcbuReturnAmtStr: cc.mcbuReturnAmt > 0 ? formatPricePhp(cc.mcbuReturnAmt) : '-',
+                        mcbuInterest: cc.mcbuInterest ? cc.mcbuInterest : 0,
+                        mcbuInterestStr: cc.mcbuInterest > 0 ? formatPricePhp(cc.mcbuInterest) : '-',
                         amountRelease: '-',
                         amountReleaseStr: '-',
                         loanBalance: '-',
@@ -211,6 +228,16 @@ const CashCollectionDetailsPage = () => {
                         activeLoan: cc.history.activeLoan,
                         targetCollection: cc.history.activeLoan,
                         targetCollectionStr: cc.history.activeLoan > 0 ? formatPricePhp(cc.history.activeLoan) : '-',
+                        mcbu: cc.mcbu,
+                        mcbuStr: cc.mcbu > 0 ? formatPricePhp(cc.mcbu) : '-',
+                        mcbuCol: cc.mcbuCol,
+                        mcbuColStr: cc.mcbuCol > 0 ? formatPricePhp(cc.mcbuCol) : '-',
+                        mcbuWithdrawal: cc.mcbuWithdrawal,
+                        mcbuWithdrawalStr: cc.mcbuWithdrawal > 0 ? formatPricePhp(cc.mcbuWithdrawal) : '-',
+                        mcbuReturnAmt: cc.mcbuReturnAmt,
+                        mcbuReturnAmtStr: cc.mcbuReturnAmt > 0 ? formatPricePhp(cc.mcbuReturnAmt) : '-',
+                        mcbuInterest: cc.mcbuInterest ? cc.mcbuInterest : 0,
+                        mcbuInterestStr: cc.mcbuInterest > 0 ? formatPricePhp(cc.mcbuInterest) : '-',
                         amountRelease: '-',
                         amountReleaseStr: '-',
                         loanBalance: '-',
@@ -269,6 +296,16 @@ const CashCollectionDetailsPage = () => {
                         totalStr: '-',
                         noOfPayments: (cc.status === "active" || (cc.status === "completed" && cc.fullPaymentDate === currentDate)) ? cc.noOfPayments : 0,
                         noOfPaymentStr: (cc.status === "active" || (cc.status === "completed" && cc.fullPaymentDate === currentDate)) ? cc.noOfPayments + ' / ' + maxDays : '-',
+                        mcbu: cc.mcbu,
+                        mcbuStr: cc.mcbu > 0 ? formatPricePhp(cc.mcbu) : '-',
+                        mcbuCol: 0,
+                        mcbuColStr: '-',
+                        mcbuWithdrawal: 0,
+                        mcbuWithdrawalStr: '-',
+                        mcbuReturnAmt: 0,
+                        mcbuReturnAmtStr: '-',
+                        mcbuInterest: cc.mcbuInterest ? cc.mcbuInterest : 0,
+                        mcbuInterestStr: cc.mcbuInterest > 0 ? formatPricePhp(cc.mcbuInterest) : '-',
                         activeLoan: cc.activeLoan,
                         targetCollection: cc.activeLoan,
                         targetCollectionStr: cc.activeLoan > 0 ? formatPricePhp(cc.activeLoan) : '-',
@@ -309,8 +346,16 @@ const CashCollectionDetailsPage = () => {
                         collection._id = cc.current[0]._id;
                         collection.prevData = cc.current[0].prevData;
                         collection.pastDue = cc.current[0].pastDue ? cc.current[0].pastDue : 0;
-                        collection.pastDueStr = cc.current[0].pastDue ? formatPricePhp(cc.current[0].pastDue) : '-',
-                        collection.advanceDays = cc.current[0].advanceDays,
+                        collection.pastDueStr = cc.current[0].pastDue ? formatPricePhp(cc.current[0].pastDue) : '-';
+                        collection.mcbuCol = cc.current[0].mcbuCol;
+                        collection.mcbuColStr = cc.current[0].mcbuCol > 0 ? formatPricePhp(cc.current[0].mcbuCol) : '-';
+                        collection.mcbuWithdrawal = cc.current[0].mcbuWithdrawal;
+                        collection.mcbuWithdrawalStr = cc.current[0].mcbuWithdrawal > 0 ? formatPricePhp(cc.current[0].mcbuWithdrawal) : '-';
+                        collection.mcbuReturnAmt = cc.current[0].mcbuReturnAmt;
+                        collection.mcbuReturnAmtStr = cc.current[0].mcbuReturnAmt > 0 ? formatPricePhp(cc.current[0].mcbuReturnAmt) : '-';
+                        collection.mcbuInterest = cc.current[0].mcbuInterest ? cc.mcbuInterest : 0,
+                        collection.mcbuInterestStr = cc.current[0].mcbuInterest > 0 ? formatPricePhp(cc.current[0].mcbuInterest) : '-',
+                        collection.advanceDays = cc.current[0].advanceDays;
                         setEditMode(false);
                     }
     
@@ -345,6 +390,8 @@ const CashCollectionDetailsPage = () => {
                     }
                 }
 
+                collection.mcbuWithdrawFlag = false;
+
                 cashCollection.push(collection);
             });
 
@@ -367,6 +414,16 @@ const CashCollectionDetailsPage = () => {
                             amountReleaseStr: 0, 
                             loanBalance: 0,
                             loanBalanceStr: 0,
+                            mcbu: loan.mcbu,
+                            mcbuStr: loan.mcbu > 0 ? formatPricePhp(loan.mcbu) : '-',
+                            mcbuCol: currentLoan.mcbuCol,
+                            mcbuColStr: currentLoan.mcbuCol > 0 ? formatPricePhp(currentLoan.mcbuCol) : '-',
+                            mcbuWithdrawal: currentLoan.mcbuWithdrawal,
+                            mcbuWithdrawalStr: currentLoan.mcbuWithdrawal > 0 ? formatPricePhp(currentLoan.mcbuWithdrawal) : '-',
+                            mcbuReturnAmt: currentLoan.mcbuReturnAmt,
+                            mcbuReturnAmtStr: currentLoan.mcbuReturnAmt > 0 ? formatPricePhp(currentLoan.mcbuReturnAmt) : '-',
+                            mcbuInterest: loan.mcbu,
+                            mcbuInterestStr: loan.mcbu > 0 ? formatPricePhp(loan.mcbu) : '-',
                             targetCollection: currentLoan.history.activeLoan,
                             targetCollectionStr: formatPricePhp(currentLoan.history.activeLoan),
                             mispayment: currentLoan.mispayment,
@@ -419,6 +476,16 @@ const CashCollectionDetailsPage = () => {
                             targetCollectionStr: '-',
                             excessStr: '-',
                             paymentCollectionStr: currentLoan.prevData ? formatPricePhp(currentLoan.prevData.paymentCollection) : '-',
+                            mcbu: loan.mcbu,
+                            mcbuStr: loan.mcbu > 0 ? formatPricePhp(loan.mcbu) : '-',
+                            mcbuCol: loan.mcbuCol,
+                            mcbuColStr: loan.mcbuCol > 0 ? formatPricePhp(loan.mcbuCol) : '-',
+                            mcbuWithdrawal: loan.mcbuWithdrawal,
+                            mcbuWithdrawalStr: loan.mcbuWithdrawal > 0 ? formatPricePhp(loan.mcbuWithdrawal) : '-',
+                            mcbuReturnAmt: loan.mcbuReturnAmt,
+                            mcbuReturnAmtStr: loan.mcbuReturnAmt > 0 ? formatPricePhp(loan.mcbuReturnAmt) : '-',
+                            mcbuInterest: loan.mcbu,
+                            mcbuInterestStr: loan.mcbu > 0 ? formatPricePhp(loan.mcbu) : '-',
                             remarks: '-',
                             fullPaymentStr: '-',
                             status: loan.status === 'active' ? 'tomorrow' : 'pending'
@@ -429,77 +496,47 @@ const CashCollectionDetailsPage = () => {
                         }
                     }
                 } else {
-                    // const slot = cashCollection.find(c => c.slotNo === loan.slotNo);
-                    // if (slot) {
-                    //     console.log(slot)
-                    //     const index = cashCollection.indexOf(slot);
-                    //     cashCollection[index] = {
-                    //         slotNo: loan.slotNo,
-                    //         loanId: loan._id,
-                    //         groupId: loan.groupId,
-                    //         branchId: loan.branchId,
-                    //         clientId: loan.clientId,
-                    //         loId: loan.loId,
-                    //         fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
-                    //         loanCycle: loan.loanCycle,
-                    //         amountReleaseStr: '-',
-                    //         loanBalanceStr: '-',
-                    //         targetCollectionStr: '-',
-                    //         mispayment: false,
-                    //         mispaymentStr: '-',
-                    //         noMispayment: '-',
-                    //         currentReleaseAmount: loan.amountRelease,
-                    //         currentReleaseAmountStr: formatPricePhp(loan.amountRelease),
-                    //         noOfPayments: '-',
-                    //         noOfPaymentStr: '-',
-                    //         targetCollectionStr: '-',
-                    //         excessStr: '-',
-                    //         paymentCollectionStr: '-',
-                    //         remarks: '-',
-                    //         fullPaymentStr: '-',
-                    //         pastDueStr: '-',
-                    //         status: loan.status === 'active' ? 'tomorrow' : 'pending'
-                    //     };
+                    let pendingTomorrow = {
+                        _id: loan._id,
+                        client: loan.client,
+                        slotNo: loan.slotNo,
+                        loanId: loan._id,
+                        groupId: loan.groupId,
+                        branchId: loan.branchId,
+                        clientId: loan.clientId,
+                        loId: loan.loId,
+                        fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
+                        loanCycle: loan.loanCycle,
+                        amountReleaseStr: '-',
+                        loanBalanceStr: '-',
+                        targetCollectionStr: '-',
+                        mispayment: false,
+                        mispaymentStr: '-',
+                        noMispaymentStr: '-',
+                        currentReleaseAmount: loan.amountRelease,
+                        currentReleaseAmountStr: loan.amountRelease ? formatPricePhp(loan.amountRelease) : '-',
+                        noOfPayments: '-',
+                        noOfPaymentStr: '-',
+                        targetCollectionStr: '-',
+                        excessStr: '-',
+                        paymentCollectionStr: '-',
+                        mcbu: loan.mcbu,
+                        mcbuStr: loan.mcbu > 0 ? formatPricePhp(loan.mcbu) : '-',
+                        mcbuCol: loan.mcbuCol,
+                        mcbuColStr: loan.mcbuCol > 0 ? formatPricePhp(loan.mcbuCol) : '-',
+                        mcbuWithdrawal: loan.mcbuWithdrawal,
+                        mcbuWithdrawalStr: loan.mcbuWithdrawal > 0 ? formatPricePhp(loan.mcbuWithdrawal) : '-',
+                        mcbuReturnAmt: loan.mcbuReturnAmt,
+                        mcbuReturnAmtStr: loan.mcbuReturnAmt > 0 ? formatPricePhp(loan.mcbuReturnAmt) : '-',
+                        mcbuInterest: loan.mcbu,
+                        mcbuInterestStr: loan.mcbu > 0 ? formatPricePhp(loan.mcbu) : '-',
+                        remarks: '-',
+                        pastDueStr: '-',
+                        fullPaymentStr: '-',
+                        status: loan.status === 'active' ? 'tomorrow' : 'pending'
+                    };
 
-                    //     if (loan.current.length > 0) {
-                    //         cashCollection[index]._id = loan.current[0]._id;
-                    //     }
-                    // } else { // tomorrow && pending
-                        let pendingTomorrow = {
-                            client: loan.client,
-                            slotNo: loan.slotNo,
-                            loanId: loan._id,
-                            groupId: loan.groupId,
-                            branchId: loan.branchId,
-                            clientId: loan.clientId,
-                            loId: loan.loId,
-                            fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
-                            loanCycle: loan.loanCycle,
-                            amountReleaseStr: '-',
-                            loanBalanceStr: '-',
-                            targetCollectionStr: '-',
-                            mispayment: false,
-                            mispaymentStr: '-',
-                            noMispaymentStr: '-',
-                            currentReleaseAmount: loan.amountRelease,
-                            currentReleaseAmountStr: loan.amountRelease ? formatPricePhp(loan.amountRelease) : '-',
-                            noOfPayments: '-',
-                            noOfPaymentStr: '-',
-                            targetCollectionStr: '-',
-                            excessStr: '-',
-                            paymentCollectionStr: '-',
-                            remarks: '-',
-                            pastDueStr: '-',
-                            fullPaymentStr: '-',
-                            status: loan.status === 'active' ? 'tomorrow' : 'pending'
-                        };
-
-                        if (loan.current.length > 0) {
-                            pendingTomorrow._id = loan.current[0]._id;
-                        }
-
-                        cashCollection.push(pendingTomorrow);
-                    // }
+                    cashCollection.push(pendingTomorrow);
                 }
             });
 
@@ -524,12 +561,12 @@ const CashCollectionDetailsPage = () => {
         let totalLoanCollection = 0;
         let totalFullPayment = 0;
         let totalMispayment = 0;
-        let totalActiveClients = 0;
-        let totalActiveBorrowers = 0;
-        let totalNoOfFullPayments = 0;
-        let totalNoNewCurrentRelease = 0;
-        let totalNoReCurrentRelease = 0;
         let totalPastDue = 0;
+        let totalMcbu = 0;
+        let totalMcbuCol = 0;
+        let totalMcbuWithdraw = 0;
+        let totalMcbuReturn = 0;
+        let totalMcbuInterest = 0;
 
         dataArr.map(collection => {
             if (collection.status !== 'open' && collection.status !== 'totals') {
@@ -555,6 +592,11 @@ const CashCollectionDetailsPage = () => {
                 totalFullPayment += collection.fullPayment ? collection.fullPayment !== '-' ? collection.fullPayment : 0 : 0;
                 totalMispayment += collection.mispaymentStr === 'Yes' ? 1 : 0;
                 totalPastDue += (collection.pastDue && collection.pastDue !== '-') ? collection.pastDue : 0;
+                totalMcbu += collection.mcbu;
+                totalMcbuCol += collection.mcbuCol;
+                totalMcbuWithdraw += collection.mcbuWithdrawal;
+                totalMcbuReturn += collection.mcbuReturnAmt;
+                totalMcbuInterest += collection.mcbuInterest;
             }
         });
 
@@ -576,6 +618,12 @@ const CashCollectionDetailsPage = () => {
             excessStr: totalExcess ? formatPricePhp(totalExcess) : 0,
             paymentCollection: totalLoanCollection,
             paymentCollectionStr: totalLoanCollection ? formatPricePhp(totalLoanCollection) : 0,
+            mcbuStr: totalMcbu > 0 ? formatPricePhp(totalMcbu) : '-',
+            mcbuColStr: totalMcbuCol > 0 ? formatPricePhp(totalMcbuCol) : '-',
+            mcbuWithdrawalStr: totalMcbuWithdraw > 0 ? formatPricePhp(totalMcbuWithdraw) : '-',
+            mcbuReturnAmtStr: totalMcbuReturn > 0 ? formatPricePhp(totalMcbuReturn) : '-',
+            mcbuInterest: totalMcbuInterest,
+            mcbuInterestStr: totalMcbuInterest > 0 ? formatPricePhp(totalMcbuInterest) : '-',
             remarks: '-',
             fullPayment: totalFullPayment,
             fullPaymentStr: totalFullPayment ? formatPricePhp(totalFullPayment) : 0,
@@ -626,12 +674,64 @@ const CashCollectionDetailsPage = () => {
                 if (parseFloat(cc.loanBalance) && (cc.remarks && cc.remarks.value === 'offset')) {
                     errorMsg.add('Error occured. Please input the full balance amount before closing the loan account.');
                 }
+
+                if (cc.mcbuError) {
+                    errorMsg.add('Error occured. Please double check the MCBU Collection/Withdrawal column.');
+                } 
+                
+                if (!cc.mcbuCol || parseFloat(cc.mcbuCol) < 10) {
+                    if ((cc.remarks && (cc.remarks.value !== 'past due' && cc.remarks.value !== 'excused' && cc.remarks.value !== 'delinquent'))) {
+                        errorMsg.add('Error occured. Invalid MCBU Collection.');
+                    }
+                }
+
+                if (cc.mcbuWithdrawFlag) {
+                    if (!cc.mcbuWithdrawal || parseFloat(cc.mcbuWithdrawal) > parseFloat(cc.mcbu)) {
+                        errorMsg.add('Error occured. Invalid MCBU Withdraw amount.');
+                    } else if (parseFloat(cc.mcbuWithdrawal) < 10) {
+                        errorMsg.add('Error occured. MCBU withdrawal amount is less than ₱10.');
+                    }
+                }
             } else if (cc.status === 'completed' && (cc.remarks && !(cc.remarks.value === 'pending' || cc.remarks.value === 'reloaner' || cc.remarks.value === 'offset'))) {
                 errorMsg.add("Invalid remarks. Please set it to PENDING, RELOANER OR OFFSET.");
             }
         });
 
         return errorMsg;
+    }
+
+    const handlePaymentValidation = (e, selected, index, col) => {
+        const value = e.target.value ? parseFloat(e.target.value) : 0;
+        let temp = {...selected};
+        switch (col) {
+            case 'mcbuCol':
+                if (!value || value < 10) {
+                    toast.error('Error occured. Minimum MCBU collection is 10.');
+                    temp.mcbuError = true;
+                } else {
+                    temp.mcbuError = false;
+                }
+                break;
+            case 'mcbuWithdrawal':
+                if (!value || value > parseFloat(temp.mcbu)) {
+                    toast.error('Error occured. Invalid MCBU withdrawal amount.');
+                    temp.mcbuError = true;
+                } else if (value > parseFloat(temp.mcbu)) {
+                    toast.error('Error occured. MCBU withdrawal amount is greater than the MCBU amount.');
+                    temp.mcbuError = true;
+                } else if (value < 10) {
+                    toast.error('Error occured. MCBU withdrawal amount is less than ₱10.');
+                    temp.mcbuError = true;
+                }
+                break;
+            default: break;
+        }
+
+        let tempList = [...data];
+        tempList[index] = temp;
+
+        tempList.sort((a, b) => { return a.slotNo - b.slotNo; });
+        dispatch(setCashCollectionGroup(tempList));
     }
 
     const handleSaveUpdate = async () => {
@@ -670,6 +770,11 @@ const CashCollectionDetailsPage = () => {
                     delete temp.groupCashCollections;
                     delete temp.loanOfficer;
                     delete temp.noMispaymentStr;
+                    delete temp.mcbuStr;
+                    delete temp.mcbuColStr;
+                    delete temp.mcbuWithdrawalStr;
+                    delete temp.mcbuReturnAmtStr;
+                    delete temp.mcbuError;
                     delete temp.client;
                     // delete temp.clientStatus;
 
@@ -679,21 +784,11 @@ const CashCollectionDetailsPage = () => {
                     } else {
                         temp.insertedBy = currentUser._id;
                         temp.dateAdded = moment(new Date()).format('YYYY-MM-DD');
-
-                        // if day is weekend add it to friday
-                        // question is are we going to used the groupsummary header on friday? what if it's closed already?
-                        // const dayName = moment(temp.dateAdded).format('dddd');
-                        // if (dayName === 'Saturday') {
-                        //     temp.dateAdded = moment(new Date()).subtract(1, 'days').format('YYYY-MM-DD');
-                        //     temp.insertedDate = moment(new Date()).format('YYYY-MM-DD');
-                        // } else if (dayName === 'Sunday') {
-                        //     temp.dateAdded = moment(new Date()).subtract(2, 'days').format('YYYY-MM-DD');
-                        //     temp.insertedDate = moment(new Date()).format('YYYY-MM-DD');
-                        // }
                     }
-    
+                    
+                    save = true;
+
                     if (cc.status === 'active') {
-                        save = true;
                         if (currentUser.role.rep === 4) {
                             temp.loId = currentUser._id;
                         } else {
@@ -724,9 +819,6 @@ const CashCollectionDetailsPage = () => {
                                 temp.status = 'closed';
                                 temp.clientStatus = 'offset';
                             } 
-                            // else if (temp.remarks.value === 'delinquent') {
-                            //     temp.clientStatus = "offset";
-                            // }
                         }
                     }
                 
@@ -762,7 +854,7 @@ const CashCollectionDetailsPage = () => {
                         }, 1000);
                     }
                 } else {
-                    toast.warning('No active data to be saved.');
+                    toast.error('No active data to be saved.');
                     setLoading(false);
                 }
             }
@@ -770,12 +862,12 @@ const CashCollectionDetailsPage = () => {
     }
 
     const handlePaymentCollectionChange = (e, index, type, targetCollection) => {
+        const totalObj = data.find(o => o.status === 'totals');
+        const totalIdx = data.indexOf(totalObj);    
+        
         if (type === 'amount') {
             const value = e.target.value;
             let payment = value ? value : 0;
-
-            const totalObj = data.find(o => o.status === 'totals');
-            const totalIdx = data.indexOf(totalObj);    
 
             let list = data.map((cc, idx) => {
                 let temp = {...cc};
@@ -811,6 +903,7 @@ const CashCollectionDetailsPage = () => {
                                 noOfPayments: temp.noOfPayments,
                                 total: temp.total,
                                 pastDue: temp.pastDue,
+                                mcbu: temp.mcbu,
                                 advanceDays: temp.advanceDays
                             };
                         }
@@ -898,6 +991,102 @@ const CashCollectionDetailsPage = () => {
 
             list.sort((a, b) => { return a.slotNo - b.slotNo; });
             dispatch(setCashCollectionGroup(list));
+        } else if (type === 'mcbuCol') {
+            const value = e.target.value ? parseFloat(e.target.value) : 0;
+            
+            if (value > 0) {
+                const mcbuCol = value;
+
+                let list = data.map((cc, idx) => {
+                    let temp = {...cc};
+
+                    if (idx === index) {
+                        if (temp.hasOwnProperty('prevData')) {
+                            temp.mcbu = temp.prevData.mcbu;
+                            temp.mcbuStr = formatPricePhp(temp.mcbu);
+                        } else {
+                            temp.prevData = {
+                                amountRelease: temp.amountRelease,
+                                paymentCollection: temp.paymentCollection,
+                                excess: temp.excess !== '-' ? temp.excess : 0,
+                                loanBalance: temp.loanBalance,
+                                activeLoan: temp.activeLoan,
+                                noOfPayments: temp.noOfPayments,
+                                total: temp.total,
+                                pastDue: temp.pastDue,
+                                mcbu: temp.mcbu
+                            };
+                        }
+
+                        if (mcbuCol < 10) {
+                            temp.mcbuError = true;
+                        } else {
+                            temp.mcbuError = false;
+                            temp.mcbuCol = mcbuCol;
+                            temp.mcbuColStr = formatPricePhp(mcbuCol);
+                            temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + mcbuCol : 0 + mcbuCol;
+                            temp.mcbuStr = formatPricePhp(temp.mcbu);
+                        }
+                    }
+
+                    return temp;
+                });
+
+                const totalsObj = calculateTotals(list);
+                list[totalIdx] = totalsObj;
+
+                list.sort((a, b) => { return a.slotNo - b.slotNo; });
+                dispatch(setCashCollectionGroup(list));
+            }
+        } else if (type === 'mcbuWithdrawal') {
+            const value = e.target.value ? parseFloat(e.target.value) : 0;
+            
+            if (value > 0) {
+                const mcbuWithdrawal = value;
+
+                let list = data.map((cc, idx) => {
+                    let temp = {...cc};
+
+                    if (idx === index) {
+                        if (temp.hasOwnProperty('prevData')) {
+                            temp.mcbu = temp.prevData.mcbu;
+                            temp.mcbuStr = formatPricePhp(temp.mcbu);
+                        } else {
+                            temp.prevData = {
+                                amountRelease: temp.amountRelease,
+                                paymentCollection: temp.paymentCollection,
+                                excess: temp.excess !== '-' ? temp.excess : 0,
+                                loanBalance: temp.loanBalance,
+                                activeLoan: temp.activeLoan,
+                                noOfPayments: temp.noOfPayments,
+                                total: temp.total,
+                                pastDue: temp.pastDue,
+                                mcbu: temp.mcbu
+                            };
+                        }
+
+                        if (mcbuWithdrawal < 10) {
+                            temp.mcbuError = true;
+                        } else if (mcbuWithdrawal > temp.mcbu) {
+                            temp.mcbuError = true;
+                        } else {
+                            temp.mcbuError = false;
+                            temp.mcbuWithdrawal = mcbuWithdrawal;
+                            temp.mcbuWithdrawalStr = formatPricePhp(mcbuWithdrawal);
+                            temp.mcbu = temp.mcbu > 0 ? parseFloat(temp.mcbu) - mcbuWithdrawal : 0;
+                            temp.mcbuStr = formatPricePhp(temp.mcbu);
+                        }
+                    }
+
+                    return temp;
+                });
+
+                const totalsObj = calculateTotals(list);
+                list[totalIdx] = totalsObj;
+
+                list.sort((a, b) => { return a.slotNo - b.slotNo; });
+                dispatch(setCashCollectionGroup(list));
+            }
         } else if (type === 'remarks') {
             const remarks = e;
 
@@ -946,6 +1135,10 @@ const CashCollectionDetailsPage = () => {
                             setCloseLoan(cc);
                             temp.error = false;
                             setEditMode(true);
+                            temp.mcbuWithdrawal = parseFloat(temp.mcbu);
+                            temp.mcbuWithdrawalStr = parseFloat(temp.mcbuWithdrawal);
+                            temp.mcbu = 0;
+                            temp.mcbuStr = formatPricePhp(temp.mcbu);
                         }
 
                         temp.mispayment = false;
@@ -957,6 +1150,7 @@ const CashCollectionDetailsPage = () => {
                         temp.mispaymentStr = 'Yes';
                         temp.error = false;
                         temp.excused = true;
+                        temp.mcbuError = false;
                     } else if (remarks.value === "delinquent" || remarks.value === "excused") {
                         temp.targetCollection = 0;
                         temp.targetCollectionStr = formatPricePhp(temp.targetCollection);
@@ -965,6 +1159,7 @@ const CashCollectionDetailsPage = () => {
                         // add no of mispayments / maximum of payments per cycle // change to #of mispay
                         temp.error = false;
                         temp.excused = true;
+                        temp.mcbuError = false;
 
                         if (temp.remarks.value === "delinquent") {
                             temp.delinquent = true;
@@ -1082,6 +1277,7 @@ const CashCollectionDetailsPage = () => {
         e.stopPropagation();
         let origList = [...data];
         let temp = {...selected};
+        temp.mcbuWithdrawFlag = false;
         let allow = true;
         if (temp.status === 'completed') {
             allow = temp.fullPaymentDate === currentDate;
@@ -1110,13 +1306,16 @@ const CashCollectionDetailsPage = () => {
             temp.pastDueStr = '-'
             temp.remarks = '';
             temp.advanceDays = temp.prevData.advanceDays;
+            temp.mcbu = temp.prevData.mcbu;
+            temp.mcbuStr = formatPricePhp(temp.mcbu);
+            temp.mcbuCol = 0;
+            temp.mcbuColStr = formatPricePhp(temp.mcbuCol);
+            temp.mcbuWithdrawal = 0;
+            temp.mcbuWithdrawalStr = formatPricePhp(temp.mcbuWithdrawal);
+            temp.mcbuWithdrawFlag = false;
             temp.clientStatus = "active";
             temp.delinquent = false;
-                temp.status = 'active';
-                temp.status = 'active';
-                temp.clientStatus = 'active';
             temp.status = 'active';
-                temp.clientStatus = 'active';
             delete temp.history;
             delete temp.fullPaymentDate;
 
@@ -1161,6 +1360,46 @@ const CashCollectionDetailsPage = () => {
         setShowRemarksModal(false);
     }
 
+    const handleMcbuWithdrawal = (e, selected, index) => {
+        e.stopPropagation();
+
+        if (parseFloat(selected.mcbu) > 0) {
+            let origList = [...data];
+            let temp = {...selected};
+
+            temp.mcbuWithdrawFlag = !temp.mcbuWithdrawFlag;
+            
+            if (temp.mcbuWithdrawFlag) {
+                setAllowMcbuWithdrawal(true);
+            } else {
+                setAllowMcbuWithdrawal(false);
+            }
+
+            origList[index] = temp;
+            dispatch(setCashCollectionGroup(origList));
+        } else {
+            toast.error('Client has no MCBU collected.');
+        }
+    }
+
+    const calculateInterest = (e, selected, index) => {
+        e.stopPropagation();
+
+        if (parseFloat(selected.mcbu) > 499) {
+            let origList = [...data];
+            let temp = {...selected};
+
+            const mcbuRateDecimal = mcbuRate / 100;
+
+            temp.mcbuInterest = selected.mcbu * mcbuRateDecimal;
+
+            origList[index] = temp;
+            dispatch(setCashCollectionGroup(origList));
+        } else {
+            toast.error('Client has not reached the minimum of 500 MCBU to accumulate interest.');
+        }
+    }
+
     const addBlankAndTotal = (isFiltering, dataArr) => {
         let cashCollection = [...dataArr];
         const groupCapacity = currentGroup && currentGroup.capacity;
@@ -1184,6 +1423,10 @@ const CashCollectionDetailsPage = () => {
                         targetCollectionStr: '-',
                         excessStr: '-',
                         paymentCollectionStr: '-',
+                        mcbuStr: '-',
+                        mcbuColStr: '-',
+                        mcbuWithdrawalStr: '-',
+                        mcbuReturnAmtStr: '-',
                         remarks: '-',
                         fullPaymentStr: '-',
                         clientStatus: '-',
@@ -1227,6 +1470,10 @@ const CashCollectionDetailsPage = () => {
                         targetCollectionStr: '-',
                         excessStr: '-',
                         paymentCollectionStr: '-',
+                        mcbuStr: '-',
+                        mcbuColStr: '-',
+                        mcbuWithdrawalStr: '-',
+                        mcbuReturnAmtStr: '-',
                         remarks: '-',
                         fullPaymentStr: '-',
                         clientStatus: '-',
@@ -1379,6 +1626,22 @@ const CashCollectionDetailsPage = () => {
         }
     }, []);
 
+    useEffect(() => {
+        if (holidays) {
+            let holidayToday = false;
+            const currentYear = moment().year();
+            holidays.map(item => {
+                const holidayDate = currentYear + '-' + item.date;
+
+                if (holidayDate === currentDate) {
+                    holidayToday = true;
+                }
+            });
+
+            setHoliday(holidayToday);
+        }
+    }, [holidays]);
+
     return (
         <Layout header={false} noPad={true}>
             {loading ? (
@@ -1387,8 +1650,8 @@ const CashCollectionDetailsPage = () => {
                 </div>
             ) : (
                 <div className="overflow-x-auto">
-                    {data && <DetailsHeader page={'transaction'} showSaveButton={currentUser.role.rep > 2 ? weekend ? false : editMode : false}
-                        handleSaveUpdate={handleSaveUpdate} data={allData} setData={setFilteredData} 
+                    {data && <DetailsHeader page={'transaction'} showSaveButton={currentUser.role.rep > 2 ? (weekend || holiday) ? false : editMode : false}
+                        handleSaveUpdate={handleSaveUpdate} data={allData} setData={setFilteredData} allowMcbuWithdrawal={allowMcbuWithdrawal}
                         dateFilter={dateFilter} setDateFilter={setDateFilter} handleDateFilter={handleDateFilter} currentGroup={uuid} 
                         groupFilter={groupFilter} handleGroupFilter={handleGroupFilter} groupTransactionStatus={groupSummaryIsClose ? 'close' : 'open'} />}
                     <div className="p-4 mt-[12rem] mb-[4rem]">
@@ -1399,19 +1662,23 @@ const CashCollectionDetailsPage = () => {
                                         <th className="p-2 text-center">Slot #</th>
                                         <th className="p-2 text-center">Client Name</th>
                                         <th className="p-2 text-center">Cycle #</th>
+                                        <th className="p-2 text-center">MCBU</th>
                                         <th className="p-2 text-center">Total Loan Release w/ SC</th>
                                         <th className="p-2 text-center">Total Loan Balance</th>
                                         <th className="p-2 text-center">Current Releases</th>
                                         <th className="p-2 text-center"># of Payments</th>
+                                        <th className="p-2 text-center">MCBU Collection</th>
                                         <th className="p-2 text-center">Target Collection</th>
                                         <th className="p-2 text-center">Excess</th>
                                         <th className="p-2 text-center">Actual Collection</th>
+                                        <th className="p-2 text-center">MCBU Withdrawals</th>
+                                        <th className="p-2 text-center">MCBU Return Amt</th>
+                                        <th className="p-2 text-center">MCBU Interest</th>
                                         <th className="p-2 text-center">Full Payment</th>
                                         <th className="p-2 text-center">Mispay</th>
                                         <th className="p-2 text-center"># of Mispay</th>
                                         <th className="p-2 text-center">Past Due</th>
                                         <th className="p-2 text-center">Remarks</th>
-                                        {/* <th className="p-2 text-center">Client Status</th> */}
                                         <th className="p-2 text-center">Actions</th>
                                     </tr>
                                 </thead>
@@ -1430,7 +1697,7 @@ const CashCollectionDetailsPage = () => {
                                             rowBg = 'bg-orange-100';
                                         }
 
-                                        if (cc.error) {
+                                        if (cc.error || cc.mcbuError) {
                                             rowBg = 'bg-red-100';
                                         }
 
@@ -1440,14 +1707,29 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.status !== 'totals' ? cc.slotNo : '' }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer" onClick={() => handleShowClientInfoModal(cc)}>{ cc.fullName }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.loanCycle }</td>
+                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.mcbuStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.amountReleaseStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.loanBalanceStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.currentReleaseAmountStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.noOfPaymentStr }</td>{/** after submitting please update the no of payments **/}
+                                                <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
+                                                    { (!weekend && !holiday && currentUser.role.rep > 2 && cc.status === 'active' && editMode && (!cc.hasOwnProperty('_id') || revertMode)) ? (
+                                                        <React.Fragment>
+                                                            <input type="number" name={`${cc.clientId}-mcbuCol`} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'mcbuCol')}
+                                                                onClick={(e) => e.stopPropagation()} onBlur={(e) => handlePaymentValidation(e, cc, index, 'mcbuCol')} defaultValue={cc.mcbuCol ? cc.mcbuCol : 0} tabIndex={index + 1}
+                                                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg 
+                                                                            focus:ring-main focus:border-main block p-2.5" style={{ width: '100px' }}/>
+                                                        </React.Fragment>
+                                                        ): 
+                                                            <React.Fragment>
+                                                                {(!editMode || filter || !revertMode || cc.status === 'completed' || cc.status === 'pending' || cc.status === 'totals' || cc.status === 'closed') ? cc.mcbuColStr : '-'}
+                                                            </React.Fragment>
+                                                    }
+                                                </td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.targetCollectionStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.excessStr }</td>
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
-                                                    { (!weekend && currentUser.role.rep > 2 && cc.status === 'active' && editMode && (!cc.hasOwnProperty('_id') || revertMode)) ? (
+                                                    { (!weekend && !holiday && currentUser.role.rep > 2 && cc.status === 'active' && editMode && (!cc.hasOwnProperty('_id') || revertMode)) ? (
                                                         <React.Fragment>
                                                             <input type="number" name={cc.clientId} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'amount', cc.activeLoan)}
                                                                 onClick={(e) => e.stopPropagation()} defaultValue={cc.paymentCollection} tabIndex={index + 1}
@@ -1460,13 +1742,29 @@ const CashCollectionDetailsPage = () => {
                                                             </React.Fragment>
                                                     }
                                                 </td>
+                                                <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
+                                                    { cc.mcbuWithdrawFlag ? (
+                                                        <React.Fragment>
+                                                            <input type="number" name={`${cc.clientId}-mcbuWithdrawal`} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'mcbuWithdrawal')}
+                                                                onClick={(e) => e.stopPropagation()} onBlur={(e) => handlePaymentValidation(e, cc, index, 'mcbuWithdrawal')} defaultValue={cc.mcbuWithdrawal ? cc.mcbuWithdrawal : 0} tabIndex={index + 3}
+                                                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg 
+                                                                            focus:ring-main focus:border-main block p-2.5" style={{ width: '100px' }}/>
+                                                        </React.Fragment>
+                                                        ): 
+                                                            <React.Fragment>
+                                                                {(!editMode || filter || !revertMode || cc.status === 'completed' || cc.status === 'pending' || cc.status === 'totals' || cc.status === 'closed') ? cc.mcbuWithdrawalStr : '-'}
+                                                            </React.Fragment>
+                                                    }
+                                                </td>
+                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.mcbuReturnAmtStr }</td>
+                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.mcbuInterestStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.fullPaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.mispaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.noMispaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">
                                                     { cc.pastDueStr }
                                                 </td>
-                                                { (!weekend && (currentUser.role.rep > 2 && (cc.status === 'active' || cc.status === 'completed') && (editMode && !groupSummaryIsClose) 
+                                                { (!weekend && !holiday && (currentUser.role.rep > 2 && (cc.status === 'active' || cc.status === 'completed') && (editMode && !groupSummaryIsClose) 
                                                     && (!cc.hasOwnProperty('_id') || revertMode) && !filter) || ((cc.remarks && cc.remarks.value === "pending" && cc.status !== "tomorrow") && !groupSummaryIsClose)) ? (
                                                         <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">
                                                             { cc.remarks !== '-' ? (
@@ -1498,10 +1796,12 @@ const CashCollectionDetailsPage = () => {
                                                 }
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">
                                                     <React.Fragment>
-                                                        {(!weekend && currentUser.role.rep > 2 &&  (cc.status === 'active' || cc.status === 'completed') && !groupSummaryIsClose) && (
+                                                        {(!weekend && !holiday && currentUser.role.rep > 2 &&  (cc.status === 'active' || cc.status === 'completed') && !groupSummaryIsClose) && (
                                                             <div className='flex flex-row p-4'>
                                                                 {(cc.hasOwnProperty('_id') && !filter) && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleRevert(e, cc, index)} />}
-                                                                {(cc.status === 'completed' || (cc.hasOwnProperty('tomorrow') && !cc.tomorrow)) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
+                                                                {(!editMode && (cc.status === 'completed' || (cc.hasOwnProperty('tomorrow') && !cc.tomorrow))) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
+                                                                {(!filter && cc.status === 'active') && <CurrencyDollarIcon className="w-5 h-5 mr-6" title="MCBU Withdrawal" onClick={(e) => handleMcbuWithdrawal(e, cc, index)} />}
+                                                                {(!filter && !editMode && cc.status !== 'closed' && currentMonth === 11) && <CalculatorIcon className="w-5 h-5 mr-6" title="Calculate MCBU Interest" onClick={(e) => calculateInterest(e, cc, index)} />}
                                                             </div>
                                                         )}
                                                     </React.Fragment>

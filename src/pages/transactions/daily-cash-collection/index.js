@@ -15,6 +15,7 @@ import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 
 const DailyCashCollectionPage = () => {
+    const holidays = useSelector(state => state.holidays.list);
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
@@ -26,6 +27,7 @@ const DailyCashCollectionPage = () => {
     const loSummary = useSelector(state => state.cashCollection.loSummary);
     const bmSummary = useSelector(state => state.cashCollection.bmSummary);
     const [weekend, setWeekend] = useState(false);
+    const [holiday, setHoliday] = useState(false);
     const [showSubmitDialog, setShowSubmitDialog] = useState(false);
     const [filter, setFilter] = useState(false);
     const mode = "daily";
@@ -156,6 +158,22 @@ const DailyCashCollectionPage = () => {
         }
     }, []);
 
+    useEffect(() => {
+        if (holidays) {
+            let holidayToday = false;
+            const currentYear = moment().year();
+            holidays.map(item => {
+                const holidayDate = currentYear + '-' + item.date;
+
+                if (holidayDate === currentDate) {
+                    holidayToday = true;
+                }
+            });
+
+            setHoliday(holidayToday);
+        }
+    }, [holidays]);
+
     return (
         <Layout header={false} noPad={true}>
             {loading ? (
@@ -166,7 +184,7 @@ const DailyCashCollectionPage = () => {
                 <React.Fragment>
                     <div className="overflow-x-auto">
                         {branchList && <DetailsHeader pageTitle='Daily Cash Collections' pageName={currentUser.role.rep === 1 ? "branch-view" : ""}
-                            page={1} mode={mode} currentDate={moment(currentDate).format('dddd, MMMM DD, YYYY')} weekend={weekend}
+                            page={1} mode={mode} currentDate={moment(currentDate).format('dddd, MMMM DD, YYYY')} weekend={weekend} holiday={holiday}
                             dateFilter={dateFilter} handleDateFilter={handleDateFilter} handleSubmit={handleShowSubmitDialog} filter={filter}
                         />}
                         <div className={`p-4 ${currentUser.role.rep < 4 ? 'mt-[8rem]' : 'mt-[6rem]'} `}>

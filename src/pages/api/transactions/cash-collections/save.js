@@ -21,6 +21,12 @@ async function save(req, res) {
         data.collection.map(async cc => {
             if (cc.status !== "totals") {
                 let collection = {...cc, groupCollectionId: groupHeaderId};
+                if (cc.occurence === 'weekly') {
+                    collection.mcbuTarget = collection.mcbuTarget ? collection.mcbuTarget + 50 : 50;
+                } else {
+                    collection.mcbuTarget = collection.mcbuTarget ? collection.mcbuTarget + 10 : 10;
+                }
+
                 if (collection.hasOwnProperty('_id')) {
                     if (collection.remarks && collection.remarks.value === "delinquent") {
                         collection.targetCollection = 0;
@@ -37,16 +43,6 @@ async function save(req, res) {
                     await updateLoan(collection)
                     await updateClient(collection);
                 }
-
-                // saveCollection(collection).then(respCollection => {
-                //     if (respCollection.success && (cc.status === "active" || cc.status === "completed" || cc.status === "closed")) {
-                //         updateLoan(collection).then(respLoan => {
-                //             if (respLoan.success) {
-                //                 updateClient(collection);
-                //             }
-                //         });
-                //     }
-                // });
             }
         });
 
@@ -106,10 +102,13 @@ async function updateLoan(collection) {
         loan.pastDue = collection.pastDue;
         loan.advanceDays = collection?.advanceDays ? collection.advanceDays : 0;
 
-        if (collection.occurence === "weekly") {
-            loan.mcbu = collection.mcbu;
-            loan.mcbuCollection = loan.mcbuCollection ? loan.mcbuCollection + parseFloat(collection.mcbuCol) : parseFloat(collection.mcbuCol);
-            loan.mcbuWithdrawal = loan.mcbuWithdrawal ? loan.mcbuWithdrawal + parseFloat(collection.mcbuWithdrawal) : collection.mcbuWithdrawal ? parseFloat(collection.mcbuWithdrawal) : 0;
+        loan.mcbuTarget = collection.mcbuTarget;
+        loan.mcbu = collection.mcbu;
+        loan.mcbuCollection = loan.mcbuCollection ? loan.mcbuCollection + parseFloat(collection.mcbuCol) : parseFloat(collection.mcbuCol);
+        loan.mcbuWithdrawal = loan.mcbuWithdrawal ? loan.mcbuWithdrawal + parseFloat(collection.mcbuWithdrawal) : collection.mcbuWithdrawal ? parseFloat(collection.mcbuWithdrawal) : 0;
+
+        if (collection.hasOwnProperty('mcbuInterest')) {
+            loan.mcbuInterest = loan.mcbuInterest ? loan.mcbuInterest + collection.mcbuInterest : collection.mcbuInterest !== '-' ? collection.mcbuInterest : 0;
         }
         
         if (collection.remarks && collection.remarks.value === "past due") {
@@ -159,6 +158,33 @@ async function updateClient(loan) {
         client = client[0];
 
         client.status = loan.clientStatus;
+
+        let mcbuHistory = [];
+        const currentMonth = moment().month() + 1;
+        const currentYear = moment().year();
+        if (client.hasOwnProperty('mcbuHistory')) {
+            mcbuHistory = [...client.mcbuHistory];
+            const yearIndex = mcbuHistory.findIndex(h => h.year === currentYear);
+            if (yearIndex > -1) {
+                let mcbuMonths = mcbuHistory[yearIndex].mcbuMonths;
+                const monthIndex = mcbuMonths.findIndex(m => m.month === currentMonth);
+                if (monthIndex > -1) {
+                    let mcbuMonth = {...mcbuMonths[monthIndex]};
+                    mcbuMonth.mcbu = loan.mcbu;
+                    mcbuMonths[monthIndex] = mcbuMonth;
+                } else {
+                    mcbuMonths.push({ month: currentMonth, mcbu: loan.mcbu });
+                }
+
+                mcbuHistory[yearIndex] = mcbuMonths;
+            } else {
+                mcbuHistory.push({ year: currentYear, mcbuMonths: [ {month: currentMonth, mcbu: loan.mcbu} ] });
+            }
+        } else {
+            mcbuHistory.push({ year: currentYear, mcbuMonths: [ {month: currentMonth, mcbu: loan.mcbu} ] });
+        }
+
+        client.mcbuHistory = mcbuHistory;
 
         if (loan.remarks.value === 'delinquent') {
             client.delinquent = true;

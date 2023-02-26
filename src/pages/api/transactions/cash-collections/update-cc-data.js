@@ -7,6 +7,7 @@ export default apiHandler({
     post: updateCCData
 });
 
+
 async function updateCCData(req, res) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
@@ -15,14 +16,21 @@ async function updateCCData(req, res) {
     let response = {};
 
 
-    const cashCollections = await db.collection('cashCollections').find({ $expr: { $and: [{$eq: ['$history.amountRelease', 0]}, {$eq: ['$fullPaymentDate', '2023-02-20']}] } }).toArray();
+    const cashCollections = await db.collection('cashCollections').find({ $expr: { 
+        $and: [
+            {$eq: ['$dateAdded', '2023-02-14']}, 
+            {$eq: ['$currentReleaseAmount', 6000]},
+            {$gt: ['$paymentCollection', 0]},
+            {$ne: ['$remarks.value', 'reloaner']}
+        ] 
+    } }).toArray();
 
     if (cashCollections.length > 0) {
         cashCollections.map(async cc => {
             let temp = {...cc};
 
-            temp.history.amountRelease = temp.fullPayment;
-            temp.history.loanBalance = temp.paymentCollection;
+            temp.currentReleaseAmount = 0;
+            temp.status = 'active';
 
             await db.collection('cashCollections').updateOne({_id: cc._id}, {$set: {...temp}});
         });
@@ -34,6 +42,36 @@ async function updateCCData(req, res) {
         .setHeader('Content-Type', 'application/json')
         .end(JSON.stringify(response));
 }
+
+
+// update amount release from history
+// async function updateCCData(req, res) {
+//     const { db } = await connectToDatabase();
+//     const ObjectId = require('mongodb').ObjectId;
+
+//     let statusCode = 200;
+//     let response = {};
+
+
+//     const cashCollections = await db.collection('cashCollections').find({ $expr: { $and: [{$eq: ['$history.amountRelease', 0]}, {$eq: ['$fullPaymentDate', '2023-02-20']}] } }).toArray();
+
+//     if (cashCollections.length > 0) {
+//         cashCollections.map(async cc => {
+//             let temp = {...cc};
+
+//             temp.history.amountRelease = temp.fullPayment;
+//             temp.history.loanBalance = temp.paymentCollection;
+
+//             await db.collection('cashCollections').updateOne({_id: cc._id}, {$set: {...temp}});
+//         });
+//     }
+
+//     response = { success: true };
+
+//     res.status(statusCode)
+//         .setHeader('Content-Type', 'application/json')
+//         .end(JSON.stringify(response));
+// }
 
 // corrupted:
 // taguig 1 lo2 1-31

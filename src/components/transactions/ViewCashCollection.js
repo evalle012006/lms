@@ -19,6 +19,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
     const [currentDate, setCurrentDate] = useState(moment(new Date()).format('YYYY-MM-DD'));
     const cashCollectionList = useSelector(state => state.cashCollection.main);
     const [loading, setLoading] = useState(true);
+    const dayName = moment().format('dddd').toLowerCase();
 
     const getCashCollections = async (selectedLO, dateFilter) => {
         setLoading(true);
@@ -57,12 +58,15 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
             let totalMcbuWithdrawal = 0;
             let totalMcbuReturnNo = 0;
             let totalMcbuReturnAmt = 0;
+            let totalMcbuTarget = 0;
+            let totalMcbuInterest = 0;
 
             let selectedBranch;
             response.data && response.data.map(cc => {
                 let collection = {
                     groupId: cc._id,
                     group: cc.name,
+                    groupNo: cc.groupNo,
                     noOfClients: cc.noOfClients,
                     noCurrentReleaseStr: '-',
                     currentReleaseAmountStr: '-',
@@ -75,6 +79,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                     mcbuColStr: '-',
                     mcbuWithdrawalStr: '-',
                     mcbuReturnAmtStr: '-',
+                    mcbuInterestStr: '-',
                     excessStr: '-',
                     totalStr: '-',
                     collectionStr: '-',
@@ -90,6 +95,11 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 let noCurrentRelease = '0 / 0';
                 if (!filter) {
                     if (cc.loans.length > 0) {
+                        let loanTarget = 0;
+                        if ((cc.occurence === 'weekly' && cc.day === dayName) || cc.occurence === 'daily') {
+                            loanTarget = cc.loans[0].loanTarget && cc.loans[0].loanTarget;
+                        }
+
                         collection = {
                             groupId: cc._id,
                             group: cc.name,
@@ -101,8 +111,8 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                             activeClients: 0,
                             activeBorrowers: 0,
                             mispayment: collection.mispayment,
-                            loanTarget: cc.loans[0].loanTarget && cc.loans[0].loanTarget,
-                            loanTargetStr: cc.loans[0].loanTarget ? formatPricePhp(cc.loans[0].loanTarget) : 0,
+                            loanTarget: loanTarget,
+                            loanTargetStr: loanTarget > 0 ? formatPricePhp(loanTarget) : '-',
                             collection: cc.loans[0].collection && cc.loans[0].collection,
                             collectionStr: cc.loans[0].collection ? formatPricePhp(cc.loans[0].collection) : 0,
                             excess: cc.loans[0].excess && cc.loans[0].excess,
@@ -130,16 +140,20 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                             noMcbuReturn: 0,
                             mcbuReturnAmt: 0,
                             mcbuReturnAmtStr: '-',
+                            mcbuInterest: cc.loans[0].mcbuInterest,
+                            mcbuInterestStr: cc.loans[0].mcbuInterest > 0 ? formatPricePhp(cc.loans[0].mcbuInterest) : '-',
                             status: cc.groupCashCollections.length > 0 ? cc.groupCashCollections[0].status : 'No Saved Transaction',
                             page: 'collection'
                         };
     
                         totalsLoanRelease += cc.loans[0].totalRelease ? cc.loans[0].totalRelease : 0;
                         totalsLoanBalance += cc.loans[0].totalLoanBalance ? cc.loans[0].totalLoanBalance : 0;
-                        targetLoanCollection += cc.loans[0].loanTarget ? cc.loans[0].loanTarget : 0;
+                        targetLoanCollection += loanTarget;
                         totalPastDue += cc.loans[0].pastDue;
                         totalNoPastDue += cc.loans[0].noPastDue;
                         totalMcbu += cc.loans[0].mcbu ? cc.loans[0].mcbu : 0;
+                        totalMcbuTarget += cc.loans[0].mcbuTarget ? cc.loans[0].mcbuTarget : 0;
+                        totalMcbuInterest += cc.loans[0].mcbuInterest;
                     } 
     
                     if (cc.activeLoans.length > 0) {
@@ -154,8 +168,12 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                     }
                     
                     if (cc.cashCollections.length > 0) {
-                        // subtract the delinquent loan target from here...
-                        const loanTarget = collection.loanTarget - cc.cashCollections[0].loanTarget;
+                        let loanTarget = 0;
+                        if ((cc.occurence === 'weekly' && cc.day === dayName) || cc.occurence === 'daily') {
+                            loanTarget = collection.loanTarget - cc.cashCollections[0].loanTarget;
+                            targetLoanCollection = targetLoanCollection - cc.cashCollections[0].loanTarget;
+                        }
+
                         collection = { ...collection,
                             mispayment: cc.cashCollections[0].mispayment ? cc.cashCollections[0].mispayment : 0,
                             collection: cc.cashCollections[0].collection && cc.cashCollections[0].collection,
@@ -165,8 +183,8 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                             loanTarget: loanTarget,
                             loanTargetStr: loanTarget > 0 ? formatPricePhp(loanTarget) : 0,
                             offsetPerson: cc.cashCollections[0].offsetPerson ? cc.cashCollections[0].offsetPerson : 0,
-                            mcbu: cc.cashCollections[0].mcbu ? cc.cashCollections[0].mcbu: 0,
-                            mcbuStr: cc.cashCollections[0].mcbu > 0 ? formatPricePhp(cc.cashCollections[0].mcbu): '-',
+                            // mcbu: cc.cashCollections[0].mcbu ? cc.cashCollections[0].mcbu: 0,
+                            // mcbuStr: cc.cashCollections[0].mcbu > 0 ? formatPricePhp(cc.cashCollections[0].mcbu): '-',
                             mcbuCol: cc.cashCollections[0].mcbuCol ? cc.cashCollections[0].mcbuCol: 0,
                             mcbuColStr: cc.cashCollections[0].mcbuCol > 0 ? formatPricePhp(cc.cashCollections[0].mcbuCol): '-',
                             mcbuWithdrawal: cc.cashCollections[0].mcbuWithdrawal ? cc.cashCollections[0].mcbuWithdrawal: 0,
@@ -178,9 +196,8 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         excess += cc.cashCollections[0].excess ? cc.cashCollections[0].excess : 0;
                         totalLoanCollection += cc.cashCollections[0].collection ? cc.cashCollections[0].collection : 0;
                         mispayment += cc.cashCollections[0].mispayment ? cc.cashCollections[0].mispayment : 0;
-                        targetLoanCollection = targetLoanCollection - cc.cashCollections[0].loanTarget;
                         offsetPerson += cc.cashCollections[0].offsetPerson ? cc.cashCollections[0].offsetPerson : 0;
-                        totalMcbu += cc.cashCollections[0].mcbu ? cc.cashCollections[0].mcbu: 0;
+                        // totalMcbu += cc.cashCollections[0].mcbu ? cc.cashCollections[0].mcbu: 0;
                         totalMcbuCol += cc.cashCollections[0].mcbuCol ? cc.cashCollections[0].mcbuCol: 0;
                         totalMcbuWithdrawal += cc.cashCollections[0].mcbuWithdrawal ? cc.cashCollections[0].mcbuWithdrawal: 0;
                         totalMcbuReturnNo += cc.cashCollections[0].mcbuReturnNo ? cc.cashCollections[0].mcbuReturnNo: 0;
@@ -224,6 +241,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         collection = {
                             groupId: cc._id,
                             group: cc.name,
+                            groupNo: cc.groupNo,
                             noCurrentReleaseStr: noCurrentRelease,
                             newCurrentRelease: cc.cashCollections[0].newCurrentRelease,
                             reCurrentRelease: cc.cashCollections[0].reCurrentRelease,
@@ -259,6 +277,8 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                             noMcbuReturn: cc.cashCollections[0].mcbuReturnNo ? cc.cashCollections[0].mcbuReturnNo: 0,
                             mcbuReturnAmt: cc.cashCollections[0].mcbuReturnAmt ? cc.cashCollections[0].mcbuReturnAmt: 0,
                             mcbuReturnAmtStr: cc.cashCollections[0].mcbuReturnAmt ? formatPricePhp(cc.cashCollections[0].mcbuReturnAmt): 0,
+                            mcbuInterest: cc.cashCollections[0].mcbuInterest,
+                            mcbuInterestStr: cc.cashCollections[0].mcbuInterest > 0 ? formatPricePhp(cc.cashCollections[0].mcbuInterest) : '-',
                             status: '',
                             page: 'collection'
                         };
@@ -279,11 +299,15 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         targetLoanCollection += cc.cashCollections[0].loanTarget;
                         fullPaymentAmount += cc.cashCollections[0].fullPaymentAmount;
                         noOfFullPayment += cc.cashCollections[0].noOfFullPayment;
+                        totalMcbuTarget += cc.cashCollections[0].mcbuTarget ? cc.cashCollections[0].mcbuTarget : 0;
+                        totalMcbuInterest += cc.cashCollections[0].mcbuInterest;
                     } 
                 }
 
                 collectionData.push(collection);
             });
+
+            collectionData.sort((a, b) => { return a.groupNo - b.groupNo; });
 
             if (collectionData.length > 0) {
                 const totals = {
@@ -318,27 +342,29 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                     mcbu: totalMcbu,
                     mcbuStr: formatPricePhp(totalMcbu),
                     mcbuCol: totalMcbuCol,
-                    mcbuCol: formatPricePhp(totalMcbuCol),
+                    mcbuColStr: formatPricePhp(totalMcbuCol),
                     mcbuWithdrawal: totalMcbuWithdrawal,
                     mcbuWithdrawalStr: formatPricePhp(totalMcbuWithdrawal),
                     noMcbuReturn: totalMcbuReturnNo,
                     mcbuReturnAmt: totalMcbuReturnAmt,
                     mcbuReturnAmtStr: formatPricePhp(totalMcbuReturnAmt),
+                    mcbuTarget: totalMcbuTarget,
+                    mcbuInterest: totalMcbuInterest,
                     totalData: true,
                     status: '-'
                 }
     
                 collectionData.push(totals);
                 dispatch(setGroupSummaryTotals(totals));
-                const dailyLos = {...createLos(totals, selectedBranch, selectedLO, dateFilter, false), losType: type};
+                const dailyLos = {...createLos(totals, selectedBranch, selectedLO, dateFilter, false), losType: 'daily'};
                 dispatch(setLoSummary(dailyLos));
                 const currentMonth = moment().month();
                 if (!filter && currentMonth === 12) {
                     saveYearEndLos(totals, selectedBranch, true);
                 }
-                
-                dispatch(setCashCollectionList(collectionData));
             }
+
+            dispatch(setCashCollectionList(collectionData));
             
             setLoading(false);
         } else {
@@ -356,12 +382,18 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 transfer: 0,
                 newMember: 0,
                 offsetPerson: 0,
+                mcbuTarget: totals.mcbuTarget,
+                mcbuActual: totals.mcbu,
+                mcbuWithdrawal: totals.mcbuWithdrawal,
+                mcbuInterest: totals.mcbuInterest,
+                noMcbuReturn: totals.noMcbuReturn,
+                mcbuReturnAmt: totals.mcbuReturnAmt,
                 activeClients: totals.activeClients,
                 loanReleasePerson: 0,
                 loanReleaseAmount: 0,
                 activeLoanReleasePerson: totals.activeBorrowers,
                 activeLoanReleaseAmount: totals.totalLoanRelease,
-                collectionAdvancePayment: totals.totalLoanRelease - totals.totalLoanBalance,//totals.excess + totals.targetLoanCollection + totals.pastDue - (totals.totalLoanRelease - totals.totalLoanBalance),
+                collectionAdvancePayment: totals.totalLoanRelease - totals.totalLoanBalance,
                 collectionActual: totals.totalLoanRelease - totals.totalLoanBalance,
                 pastDuePerson: 0,
                 pastDueAmount: 0,
@@ -382,6 +414,12 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 day: selectedDate,
                 transfer: totals.transfer,
                 newMember: totals.noOfNewCurrentRelease,
+                mcbuTarget: totals.mcbuTarget,
+                mcbuActual: totals.mcbu,
+                mcbuWithdrawal: totals.mcbuWithdrawal,
+                mcbuInterest: totals.mcbuInterest,
+                noMcbuReturn: totals.noMcbuReturn,
+                mcbuReturnAmt: totals.mcbuReturnAmt,
                 offsetPerson: totals.offsetPerson,
                 activeClients: totals.activeClients,
                 loanReleasePerson: totals.noCurrentRelease,
@@ -413,7 +451,8 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
             branchId: selectedBranch,
             month: month,
             year: year,
-            data: grandTotal
+            data: grandTotal,
+            occurence: type
         }
     }
 
@@ -444,245 +483,144 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
     const [columns, setColumns] = useState();
 
     useEffect(() => {
-        let cols = [];
-
-        if (type === 'daily') {
-            cols = [
-                {
-                    Header: "Group",
-                    accessor: 'group',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Active Clients", // total number of clients per group
-                    accessor: 'activeClients',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Total Loan Releases",
-                    accessor: 'totalReleasesStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Active Borrowers", // with balance
-                    accessor: 'activeBorrowers',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Total Loan Balance",
-                    accessor: 'totalLoanBalanceStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Current Release Person",
-                    accessor: 'noCurrentReleaseStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Current Release Amount",
-                    accessor: 'currentReleaseAmountStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Target Loan Collection",
-                    accessor: 'loanTargetStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Excess",
-                    accessor: 'excessStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Actual Loan Collection",
-                    accessor: 'collectionStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Full Payment Person",
-                    accessor: 'noOfFullPayment',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Full Payment Amount",
-                    accessor: 'fullPaymentAmountStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Mispay",
-                    accessor: 'mispayment',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "PD #",
-                    accessor: 'noPastDue'
-                },
-                {
-                    Header: "PD Amount",
-                    accessor: 'pastDueStr'
-                },
-                {
-                    Header: "Save Status",
-                    accessor: 'status',
-                    Cell: StatusPill,
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                // to be implemented
-                // {
-                //     Header: "Remakrs",
-                //     accessor: 'remarks',
-                //     Filter: SelectColumnFilter,
-                //     filter: 'includes'
-                // }
-            ];
-        } else {
-            cols = [
-                {
-                    Header: "Group",
-                    accessor: 'group',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Active Clients", // total number of clients per group
-                    accessor: 'activeClients',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "MCBU",
-                    accessor: 'mcbuStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Total Loan Releases",
-                    accessor: 'totalReleasesStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Active Borrowers", // with balance
-                    accessor: 'activeBorrowers',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Total Loan Balance",
-                    accessor: 'totalLoanBalanceStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Current Release Person",
-                    accessor: 'noCurrentReleaseStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Current Release Amount",
-                    accessor: 'currentReleaseAmountStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "MCBU Collection",
-                    accessor: 'mcbuColStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Target Loan Collection",
-                    accessor: 'loanTargetStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Excess",
-                    accessor: 'excessStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Actual Loan Collection",
-                    accessor: 'collectionStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "MCBU Withdrawal",
-                    accessor: 'mcbuWithdrawal',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "# MCBU Return",
-                    accessor: 'noMcbuReturn',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "MCBU Return",
-                    accessor: 'mcbuReturnAmtStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Full Payment Person",
-                    accessor: 'noOfFullPayment',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Full Payment Amount",
-                    accessor: 'fullPaymentAmountStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Mispay",
-                    accessor: 'mispayment',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "PD #",
-                    accessor: 'noPastDue'
-                },
-                {
-                    Header: "PD Amount",
-                    accessor: 'pastDueStr'
-                },
-                {
-                    Header: "Save Status",
-                    accessor: 'status',
-                    Cell: StatusPill,
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                // to be implemented
-                // {
-                //     Header: "Remakrs",
-                //     accessor: 'remarks',
-                //     Filter: SelectColumnFilter,
-                //     filter: 'includes'
-                // }
-            ];
-        }
+        let cols = [
+            {
+                Header: "Group",
+                accessor: 'group',
+                Filter: SelectColumnFilter,
+                filter: 'includes'
+            },
+            {
+                Header: "Active Clients", // total number of clients per group
+                accessor: 'activeClients',
+                Filter: SelectColumnFilter,
+                filter: 'includes'
+            },
+            {
+                Header: "MCBU",
+                accessor: 'mcbuStr',
+                Filter: SelectColumnFilter,
+                filter: 'includes'
+            },
+            {
+                Header: "Total Loan Releases",
+                accessor: 'totalReleasesStr',
+                Filter: SelectColumnFilter,
+                filter: 'includes'
+            },
+            {
+                Header: "Active Borrowers", // with balance
+                accessor: 'activeBorrowers',
+                Filter: SelectColumnFilter,
+                filter: 'includes'
+            },
+            {
+                Header: "Total Loan Balance",
+                accessor: 'totalLoanBalanceStr',
+                Filter: SelectColumnFilter,
+                filter: 'includes'
+            },
+            {
+                Header: "Current Release Person",
+                accessor: 'noCurrentReleaseStr',
+                Filter: SelectColumnFilter,
+                filter: 'includes'
+            },
+            {
+                Header: "Current Release Amount",
+                accessor: 'currentReleaseAmountStr',
+                Filter: SelectColumnFilter,
+                filter: 'includes'
+            },
+            {
+                Header: "MCBU Collection",
+                accessor: 'mcbuColStr',
+                Filter: SelectColumnFilter,
+                filter: 'includes'
+            },
+            {
+                Header: "Target Loan Collection",
+                accessor: 'loanTargetStr',
+                Filter: SelectColumnFilter,
+                filter: 'includes'
+            },
+            {
+                Header: "Excess",
+                accessor: 'excessStr',
+                Filter: SelectColumnFilter,
+                filter: 'includes'
+            },
+            {
+                Header: "Actual Loan Collection",
+                accessor: 'collectionStr',
+                Filter: SelectColumnFilter,
+                filter: 'includes'
+            },
+            {
+                Header: "MCBU Withdrawal",
+                accessor: 'mcbuWithdrawal',
+                Filter: SelectColumnFilter,
+                filter: 'includes'
+            },
+            {
+                Header: "MCBU Interest",
+                accessor: 'mcbuInterest',
+                Filter: SelectColumnFilter,
+                filter: 'includes'
+            },
+            {
+                Header: "MCBU Return Person",
+                accessor: 'noMcbuReturn',
+                Filter: SelectColumnFilter,
+                filter: 'includes'
+            },
+            {
+                Header: "MCBU Return Amount",
+                accessor: 'mcbuReturnAmtStr',
+                Filter: SelectColumnFilter,
+                filter: 'includes'
+            },
+            {
+                Header: "Full Payment Person",
+                accessor: 'noOfFullPayment',
+                Filter: SelectColumnFilter,
+                filter: 'includes'
+            },
+            {
+                Header: "Full Payment Amount",
+                accessor: 'fullPaymentAmountStr',
+                Filter: SelectColumnFilter,
+                filter: 'includes'
+            },
+            {
+                Header: "Mispay",
+                accessor: 'mispayment',
+                Filter: SelectColumnFilter,
+                filter: 'includes'
+            },
+            {
+                Header: "PD #",
+                accessor: 'noPastDue'
+            },
+            {
+                Header: "PD Amount",
+                accessor: 'pastDueStr'
+            },
+            {
+                Header: "Save Status",
+                accessor: 'status',
+                Cell: StatusPill,
+                Filter: SelectColumnFilter,
+                filter: 'includes'
+            },
+            // to be implemented
+            // {
+            //     Header: "Remakrs",
+            //     accessor: 'remarks',
+            //     Filter: SelectColumnFilter,
+            //     filter: 'includes'
+            // }
+        ];
 
         setColumns(cols);
     }, []);

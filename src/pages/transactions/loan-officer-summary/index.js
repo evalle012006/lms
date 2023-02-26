@@ -10,8 +10,10 @@ import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { toast } from 'react-hot-toast';
 import LOSHeader from "@/components/transactions/los/Header";
 import { formatPricePhp, getDaysOfMonth, getTotal } from "@/lib/utils";
+import { useRouter } from "node_modules/next/router";
 
 const LoanOfficerSummary = () => {
+    const router = useRouter();
     const dispatch = useDispatch();
     const [loading, setLoading] = useState(true);
     const currentUser = useSelector(state => state.user.data);
@@ -21,6 +23,7 @@ const LoanOfficerSummary = () => {
     const [days, setDays] = useState([]);
     const [selectedMonth, setSelectedMonth] = useState(moment().month() + 1);
     const [selectedYear, setSelectedYear] = useState(moment().year());
+    const { type } = router.query;
 
     const handleMonthFilter = (selected) => {
         setSelectedMonth(selected.value);
@@ -44,6 +47,19 @@ const LoanOfficerSummary = () => {
             day: 'F / Balance',
             transfer: 0,
             newMember: 0,
+            mcbuTarget: 0,
+            mcbuTargetStr: 0,
+            mcbuActual: 0,
+            mcbuActualStr: 0,
+            mcbuWithdrawal: 0,
+            mcbuWithdrawalStr: 0,
+            mcbuInterest: 0,
+            mcbuInterestStr: 0,
+            noMcbuReturn: 0,
+            mcbuReturnAmt: 0,
+            mcbuReturnAmtStr: 0,
+            mcbuBalance: 0,
+            mcbuBalanceStr: 0,
             offsetPerson: 0,
             activeClients: 0,
             loanReleasePerson: 0,
@@ -80,8 +96,21 @@ const LoanOfficerSummary = () => {
                 dayName: dayName,
                 transfer: '-',
                 newMember: '-',
+                mcbuTarget: '-',
+                mcbuTargetStr: '-',
+                mcbuActual: '-',
+                mcbuActualStr: '-',
+                mcbuWithdrawal: '-',
+                mcbuWithdrawalStr: '-',
+                mcbuInterest: '-',
+                mcbuInterestStr: '-',
+                noMcbuReturn: '-',
+                mcbuReturnAmt: '-',
+                mcbuReturnAmtStr: '-',
                 offsetPerson: '-',
                 activeClients: '-',
+                mcbuBalance: '-',
+                mcbuBalanceStr: '-',
                 loanReleasePerson: '-',
                 loanReleaseAmount: '-',
                 loanReleaseAmountStr: '-',
@@ -110,8 +139,15 @@ const LoanOfficerSummary = () => {
                     day: 'Weekly Total',
                     transfer: '-',
                     newMember: '-',
+                    mcbuTargetStr: '-',
+                    mcbuActualStr: '-',
+                    mcbuWithdrawalStr: '-',
+                    mcbuInterestStr: '-',
+                    noMcbuReturnStr: '-',
+                    mcbuReturnAmtStr: '-',
                     offsetPerson: '-',
                     activeClients: '-',
+                    mcbuBalanceStr: '-',
                     loanReleasePerson: '-',
                     loanReleaseAmount: '-',
                     loanReleaseAmountStr: '-',
@@ -163,7 +199,7 @@ const LoanOfficerSummary = () => {
                 toast.error(response.message);
             }
         } else if (currentUser.role.rep === 4) {
-            url = url + '?' + new URLSearchParams({ userId: currentUser._id, date: date ? date : currentDate });
+            url = url + '?' + new URLSearchParams({ userId: currentUser._id, date: date ? date : currentDate, occurence: type });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let fBal = response.data.fBalance;
@@ -173,6 +209,19 @@ const LoanOfficerSummary = () => {
                         day: 'F / Balance',
                         transfer: fBal.transfer,
                         newMember: fBal.newMember,
+                        mcbuTarget: fBal.mcbuTarget,
+                        mcbuTargetStr: formatPricePhp(fBal.mcbuTarget),
+                        mcbuActual: fBal.mcbuActual,
+                        mcbuActualStr: formatPricePhp(fBal.mcbuActual),
+                        mcbuWithdrawal: fBal.mcbuWithdrawal,
+                        mcbuWithdrawalStr: formatPricePhp(fBal.mcbuWithdrawal),
+                        mcbuInterest: fBal.mcbuInterest,
+                        mcbuInterestStr: formatPricePhp(fBal.mcbuInterest),
+                        noMcbuReturn: fBal.noMcbuReturn,
+                        mcbuReturnAmt: fBal.mcbuReturnAmt,
+                        mcbuReturnAmtStr: formatPricePhp(fBal.mcbuReturnAmt),
+                        mcbuBalance: fBal.mcbuBalance,
+                        mcbuBalanceStr: formatPricePhp(fBal.mcbuBalance),
                         offsetPerson: fBal.offsetPerson,
                         activeClients: fBal.activeClients,
                         loanReleasePerson: fBal.loanReleasePerson,
@@ -204,6 +253,11 @@ const LoanOfficerSummary = () => {
                         losList[index] = {
                             ...los.data,
                             day: los.dateAdded,
+                            mcbuTargetStr: formatPricePhp(los.data.mcbuTarget),
+                            mcbuActualStr: formatPricePhp(los.data.mcbuActual),
+                            mcbuWithdrawalStr: formatPricePhp(los.data.mcbuWithdrawal),
+                            mcbuInterestStr: formatPricePhp(los.data.mcbuInterest),
+                            mcbuReturnAmtStr: formatPricePhp(los.data.mcbuReturnAmt),
                             loanReleaseAmountStr: formatPricePhp(los.data.loanReleaseAmount),
                             collectionTargetStr: formatPricePhp(los.data.collectionTarget),
                             collectionAdvancePaymentStr: formatPricePhp(los.data.collectionAdvancePayment),
@@ -243,6 +297,11 @@ const LoanOfficerSummary = () => {
                 const fullPaymentAmount = los.fullPaymentAmount !== '-' ? los.fullPaymentAmount : 0;
                 const loanReleaseAmount = los.loanReleaseAmount !== '-' ? los.loanReleaseAmount : 0;
                 const collectionActual = los.collectionActual !== '-' ? los.collectionActual : 0;
+                const mcbuActual = los.mcbuActual !== '-' ? los.mcbuActual : 0;
+                const mcbuWithdrawal = los.mcbuWithdrawal !== '-' ? los.mcbuWithdrawal : 0;
+                const mcbuInterest = los.mcbuInterest !== '-' ? los.mcbuInterest : 0;
+                const mcbuReturnAmt = los.mcbuReturnAmt !== '-' ? los.mcbuReturnAmt : 0;
+                const fBalMcbuBalance = fBal.mcbuBalance !== '-' ? fBal.mcbuBalance : 0;
 
                 if (index === 1) {
                     temp.activeClients = temp.activeClients > 0 ? temp.activeClients : fBal.activeClients;
@@ -252,6 +311,8 @@ const LoanOfficerSummary = () => {
                     temp.activeBorrowers = temp.activeBorrowers > 0 ? temp.activeBorrowers : fBal.activeBorrowers;
                     temp.loanBalance = fBal.loanBalance + loanReleaseAmount - collectionActual; //temp.loanBalance > 0 ? temp.loanBalance + loanReleaseAmount : fBal.loanBalance;
                     temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
+                    temp.mcbuBalance = fBalMcbuBalance + mcbuActual + mcbuWithdrawal + mcbuInterest - mcbuReturnAmt;
+                    temp.mcbuBalanceStr = formatPricePhp(temp.mcbuBalance);
                 } else {
                     temp.activeClients = temp.activeClients > 0 ? temp.activeClients : prevLos.activeClients;
                     temp.activeLoanReleasePerson = prevLos.activeLoanReleasePerson + loanReleasePerson - fullPaymentPerson;
@@ -260,6 +321,8 @@ const LoanOfficerSummary = () => {
                     temp.activeBorrowers = temp.activeBorrowers > 0 ? temp.activeBorrowers : prevLos.activeBorrowers;
                     temp.loanBalance = prevLos.loanBalance + loanReleaseAmount - collectionActual;
                     temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
+                    temp.mcbuBalance = prevLos.mcbuBalance + mcbuActual + mcbuWithdrawal + mcbuInterest - mcbuReturnAmt;
+                    temp.mcbuBalanceStr = formatPricePhp(temp.mcbuBalance);
                 }
 
                 prevLos = temp;
@@ -310,6 +373,15 @@ const LoanOfficerSummary = () => {
                 let lastPastDueAmount = 0;
                 let lastPastDuePerson = 0;
                 let lastLoanBalance = 0;
+                let lastMcbuBalance = 0;
+
+                let totalMcbuTarget = 0;
+                let totalMcbuActual = 0;
+                let totalMcbuWithdrawal = 0;
+                let totalMcbuInterest = 0;
+                let totalNoMcbuReturn = 0;
+                let totalMcbuReturnAmt = 0;
+                let totalMcbuBalance = 0;
                 
                 losSlice.map(los => {
                     totalTransfer += los.transfer !== '-' ? los.transfer : 0;
@@ -334,37 +406,57 @@ const LoanOfficerSummary = () => {
                         lastLoanBalance = los.loanBalance;
                     }
 
+                    if (los.mcbuBalance > 0) {
+                        lastMcbuBalance = los.mcbuBalance;
+                    }
+
                     totalFullPaymentPerson += los.fullPaymentPerson !== '-' ? los.fullPaymentPerson : 0;
                     totalFullPaymentAmount += los.fullPaymentAmount !== '-' ? los.fullPaymentAmount : 0;
+
+                    totalMcbuTarget += (los.mcbuTarget !== '-' && los.mcbuTarget) ? los.mcbuTarget : 0;
+                    totalMcbuActual += (los.mcbuActual !== '-'  && los.mcbuActual)? los.mcbuActual : 0;
+                    totalMcbuWithdrawal += (los.mcbuWithdrawal !== '-' && los.mcbuWithdrawal) ? los.mcbuWithdrawal : 0;
+                    totalMcbuInterest += (los.mcbuInterest !== '-' && los.mcbuInterest) ? los.mcbuInterest : 0;
+                    totalNoMcbuReturn += (los.noMcbuReturn !== '-' && los.noMcbuReturn) ? los.noMcbuReturn : 0;
+                    totalMcbuReturnAmt += (los.mcbuReturnAmt !== '-' && los.mcbuReturnAmt) ? los.mcbuReturnAmt : 0;
+                    console.log(los.mcbuTarget)
                 });
 
                 if (w.weekNumber === 0) {
                     totalActiveClients = fBal.activeClients + totalTransfer + totalNewMember - totalOffsetperson;
                     totalActiveLoanReleasePerson = fBal.activeLoanReleasePerson + totalLoanReleasePerson - totalFullPaymentPerson;
                     totalActiveLoanReleaseAmount = fBal.activeLoanReleaseAmount + totalLoanReleaseAmount - totalFullPaymentAmount;
-                    // totalPastDueAmount = losSlice[losSlice.length - 1].pastDueAmount; //fBal.pastDueAmount + totalCollectionTarget + totalCollectionAdvancePayment - totalCollectionActual;
-                    // totalPastDuePerson = losSlice[losSlice.length - 1].pastDuePerson;
-                    // totalActiveBorrowers = losSlice[losSlice.length - 1].activeBorrowers;
-                    // totalLoanBalance = losSlice[losSlice.length - 1].loanBalance;
+                    // totalMcbuBalance = fBal.mcbuBalance + totalMcbuActual + totalMcbuWithdrawals + totalMcbuInterest - totalMcbuReturnAmt;
                 } else {
                     totalActiveClients = prevWeek.activeClients + totalTransfer + totalNewMember - totalOffsetperson;
                     totalActiveLoanReleasePerson = prevWeek.activeLoanReleasePerson + totalLoanReleasePerson - totalFullPaymentPerson;
                     totalActiveLoanReleaseAmount = prevWeek.activeLoanReleaseAmount + totalLoanReleaseAmount - totalFullPaymentAmount;
-                    // totalPastDueAmount = prevWeek.pastDueAmount + totalCollectionTarget + totalCollectionAdvancePayment - totalCollectionActual;
-                    // totalPastDuePerson = totalPastDuePerson;
-                    // totalActiveBorrowers = prevWeek.activeBorrowers + totalLoanReleasePerson - totalFullPaymentPerson;
-                    // totalLoanBalance = prevWeek.loanBalance;
+                    // totalMcbuBalance = prevWeek.mcbuBalance + totalMcbuActual + totalMcbuWithdrawals + totalMcbuInterest - totalMcbuReturnAmt;
                 }
 
+                totalMcbuBalance = lastMcbuBalance;
                 totalPastDuePerson = lastPastDuePerson;
                 totalPastDueAmount = lastPastDueAmount;
                 totalActiveBorrowers = losSlice[losSlice.length - 1].activeBorrowers;
-                totalLoanBalance =  lastLoanBalance; //losSlice[losSlice.length - 1].loanBalance;
+                totalLoanBalance =  lastLoanBalance;
 
                 losList[index] = {
                     ...w,
                     transfer: totalTransfer,
                     newMember: totalNewMember,
+                    mcbuTarget: totalMcbuTarget,
+                    mcbuTargetStr: formatPricePhp(totalMcbuTarget),
+                    mcbuActual: totalMcbuActual,
+                    mcbuActualStr: formatPricePhp(totalMcbuActual),
+                    mcbuWithdrawal: totalMcbuWithdrawal,
+                    mcbuWithdrawalStr: formatPricePhp(totalMcbuWithdrawal),
+                    mcbuInterest: totalMcbuInterest,
+                    mcbuInterestStr: formatPricePhp(totalMcbuInterest),
+                    noMcbuReturn: totalNoMcbuReturn,
+                    mcbuReturnAmt: totalMcbuReturnAmt,
+                    mcbuReturnAmtStr: formatPricePhp(totalMcbuReturnAmt),
+                    mcbuBalance: totalMcbuBalance,
+                    mcbuBalanceStr: formatPricePhp(totalMcbuBalance),
                     offsetPerson: totalOffsetperson,
                     activeClients: totalActiveClients,
                     loanReleasePerson: totalLoanReleasePerson,
@@ -401,6 +493,19 @@ const LoanOfficerSummary = () => {
             day: 'Montly Total',
             transfer: '-',
             newMember: '-',
+            mcbuTarget: '-',
+            mcbuTargetStr: '-',
+            mcbuActual: '-',
+            mcbuActualStr: '-',
+            mcbuWithdrawal: '-',
+            mcbuWithdrawalStr: '-',
+            mcbuInterest: '-',
+            mcbuInterestStr: '-',
+            noMcbuReturn: '-',
+            mcbuReturnAmt: '-',
+            mcbuReturnAmtStr: '-',
+            mcbuBalance: '-',
+            mcbuBalanceStr: '-',
             offsetPerson: '-',
             activeClients: '-',
             loanReleasePerson: '-',
@@ -429,6 +534,13 @@ const LoanOfficerSummary = () => {
 
         let totalTransfer = 0;
         let totalNewMember = 0;
+        let totalMcbuTarget = 0;
+        let totalMcbuActual = 0;
+        let totalMcbuWithdrawal = 0;
+        let totalMcbuInterest = 0;
+        let totalNoMcbuReturn = 0;
+        let totalMcbuReturnAmt = 0;
+        let totalMcbuBalance = 0;
         let totalOffsetperson = 0;
         let totalActiveClients = 0; // last row
         let totalLoanReleasePerson = 0;
@@ -448,6 +560,12 @@ const LoanOfficerSummary = () => {
         weeklyTotals.map(wt => {
             totalTransfer += wt.transfer;
             totalNewMember += wt.newMember;
+            totalMcbuTarget += wt.mcbuTarget;
+            totalMcbuActual += wt.mcbuActual;
+            totalMcbuWithdrawal += wt.mcbuWithdrawal;
+            totalMcbuInterest += wt.mcbuInterest;
+            totalNoMcbuReturn += wt.noMcbuReturn;
+            totalMcbuReturnAmt += wt.mcbuReturnAmt;
             totalOffsetperson += wt.offsetPerson;
             totalLoanReleasePerson += wt.loanReleasePerson;
             totalLoanReleaseAmount += wt.loanReleaseAmount;
@@ -460,6 +578,7 @@ const LoanOfficerSummary = () => {
             totalFullPaymentAmount += wt.fullPaymentAmount;
         });
 
+        totalMcbuBalance = fBal.mcbuBalance + totalMcbuActual + totalMcbuWithdrawal + totalMcbuInterest - totalMcbuReturnAmt;
         totalActiveClients = fBal.activeClients + totalTransfer + totalNewMember - totalOffsetperson;
         totalActiveLoanReleasePerson = fBal.activeLoanReleasePerson + totalLoanReleasePerson - totalFullPaymentPerson;
         totalActiveLoanReleaseAmount = fBal.activeLoanReleaseAmount + totalLoanReleaseAmount - totalFullPaymentAmount;
@@ -468,6 +587,19 @@ const LoanOfficerSummary = () => {
 
         monthlyTotal.transfer = totalTransfer;
         monthlyTotal.newMember = totalNewMember;
+        monthlyTotal.mcbuTarget = totalMcbuTarget;
+        monthlyTotal.mcbuTargetStr = formatPricePhp(totalMcbuTarget);
+        monthlyTotal.mcbuActual = totalMcbuActual;
+        monthlyTotal.mcbuActualStr = formatPricePhp(totalMcbuActual);
+        monthlyTotal.mcbuWithdrawal = totalMcbuWithdrawal;
+        monthlyTotal.mcbuWithdrawalStr = formatPricePhp(totalMcbuWithdrawal);
+        monthlyTotal.mcbuInterest = totalMcbuInterest;
+        monthlyTotal.mcbuInterestStr = formatPricePhp(totalMcbuInterest);
+        monthlyTotal.noMcbuReturn = totalNoMcbuReturn;
+        monthlyTotal.mcbuReturnAmt = totalMcbuReturnAmt;
+        monthlyTotal.mcbuReturnAmtStr = formatPricePhp(totalMcbuReturnAmt);
+        monthlyTotal.mcbuBalance = totalMcbuBalance;
+        monthlyTotal.mcbuBalanceStr = formatPricePhp(totalMcbuBalance);
         monthlyTotal.offsetPerson = totalOffsetperson;
         monthlyTotal.activeClients = totalActiveClients;
         monthlyTotal.loanReleasePerson = totalLoanReleasePerson;
@@ -500,6 +632,19 @@ const LoanOfficerSummary = () => {
             day: 'Commulative',
             transfer: 0,
             newMember: 0,
+            mcbuTarget: 0,
+            mcbuTargetStr: 0,
+            mcbuActual: 0,
+            mcbuActualStr: 0,
+            mcbuWithdrawal: 0,
+            mcbuWithdrawalStr: 0,
+            mcbuInterest: 0,
+            mcbuInterestStr: 0,
+            noMcbuReturn: 0,
+            mcbuReturnAmt: 0,
+            mcbuReturnAmtStr: 0,
+            mcbuBalance: 0,
+            mcbuBalanceStr: 0,
             offsetPerson: 0,
             activeClients: 0,
             loanReleaseAmount: 0,
@@ -525,6 +670,13 @@ const LoanOfficerSummary = () => {
 
         let totalTransfer = 0;
         let totalNewMember = 0;
+        let totalMcbuTarget = 0;
+        let totalMcbuActual = 0;
+        let totalMcbuWithdrawal = 0;
+        let totalMcbuInterest = 0;
+        let totalNoMcbuReturn = 0;
+        let totalMcbuReturnAmt = 0;
+        let totalMcbuBalance = 0;
         let totalOffsetperson = 0;
         let totalActiveClients = 0;
         let totalLoanReleasePerson = 0;
@@ -546,6 +698,13 @@ const LoanOfficerSummary = () => {
         if (fBal && monthly) {
             totalTransfer = fBal.transfer + monthly.transfer;
             totalNewMember = fBal.newMember + monthly.newMember;
+            totalMcbuTarget = fBal.mcbuTarget + monthly.mcbuTarget;
+            totalMcbuActual = fBal.mcbuActual + monthly.mcbuActual;
+            totalMcbuWithdrawal = fBal.mcbuWithdrawal + monthly.mcbuWithdrawal;
+            totalMcbuInterest = fBal.mcbuInterest + monthly.mcbuInterest;
+            totalNoMcbuReturn = fBal.noMcbuReturn + monthly.noMcbuReturn;
+            totalMcbuReturnAmt = fBal.mcbuReturnAmt + monthly.mcbuReturnAmt;
+            totalMcbuBalance = fBal.mcbuBalance + monthly.mcbuBalance;
             totalOffsetperson = fBal.offsetPerson + monthly.offsetPerson;
             totalActiveClients = monthly.activeClients ;
             // totalLoanReleasePerson = monthly.loanReleasePerson;
@@ -564,6 +723,19 @@ const LoanOfficerSummary = () => {
 
         grandTotal.transfer = totalTransfer;
         grandTotal.newMember = totalNewMember;
+        grandTotal.mcbuTarget = totalMcbuTarget;
+        grandTotal.mcbuTargetStr = formatPricePhp(totalMcbuTarget);
+        grandTotal.mcbuActual = totalMcbuActual;
+        grandTotal.mcbuActualStr = formatPricePhp(totalMcbuActual);
+        grandTotal.mcbuWithdrawal = totalMcbuWithdrawal;
+        grandTotal.mcbuWithdrawalStr = formatPricePhp(totalMcbuWithdrawal);
+        grandTotal.mcbuInterest = totalMcbuInterest;
+        grandTotal.mcbuInterestStr = formatPricePhp(totalMcbuInterest);
+        grandTotal.noMcbuReturn = totalNoMcbuReturn;
+        grandTotal.mcbuReturnAmt = totalMcbuReturnAmt;
+        grandTotal.mcbuReturnAmtStr = formatPricePhp(totalMcbuReturnAmt);
+        grandTotal.mcbuBalance = totalMcbuBalance;
+        grandTotal.mcbuBalanceStr = formatPricePhp(totalMcbuBalance);
         grandTotal.offsetPerson = totalOffsetperson;
         grandTotal.activeClients = totalActiveClients;
         grandTotal.loanReleasePerson = "-";
@@ -596,13 +768,21 @@ const LoanOfficerSummary = () => {
     }
 
     const saveLosTotals = async (total, filter, date) => {
-        const losTotals = {
+        let losTotals = {
             userId: currentUser._id,
             branchId: selectedBranch && selectedBranch._id,
             month: filter ? moment(date).month() + 1 : moment().month() + 1,
             year: filter ? moment(date).year() : moment().year(),
             data: total,
             losType: 'commulative'
+        }
+
+        if (currentUser.role.rep === 4) {
+            if (currentUser.transactionType === 'daily') {
+                losTotals = {...losTotals, occurence: 'daily'};
+            } else {
+                losTotals = {...losTotals, occurence: 'weekly'};
+            }
         }
 
         await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loan-officer-summary/save-update-totals', losTotals);
@@ -662,8 +842,10 @@ const LoanOfficerSummary = () => {
                                         <th rowSpan={3} className="sticky top-0 bg-white border border-gray-300 border-l-0 border-t-0  px-2 py-2 text-gray-500 uppercase">Date</th>
                                         <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">TFR</th>
                                         <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">NM</th>
+                                        <th colSpan={6} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 text-gray-500 uppercase">MCBU</th>
                                         <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">OFST Pers.</th>
                                         <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">Act. Clie.</th>
+                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">MCBU Bal.</th>
                                         <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-4 text-gray-500 uppercase">Curr. Loan Rel. with Serv. Charge</th>
                                         <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 py-4 text-gray-500 uppercase">ACT LOAN RELEASE W/ Serv. Charge</th>
                                         <th colSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 text-gray-500 uppercase">COLLECTION (w/ serv. charge)</th>
@@ -673,9 +855,16 @@ const LoanOfficerSummary = () => {
                                         <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-r-0 border-t-0 px-2 py-2 text-gray-500 uppercase">Loan Balance</th>
                                     </tr>
                                     <tr>
-                                        <th colSpan={3} className="sticky top-[2.9rem] bg-white  border border-gray-300 text-gray-500 uppercase">REGULAR LOAN</th>
+                                        <th rowSpan={2} className="sticky top-[2.2rem] bg-white  border border-gray-300 text-gray-500 uppercase">Target Deposit</th>
+                                        <th rowSpan={2} className="sticky top-[2.2rem] bg-white  border border-gray-300 text-gray-500 uppercase">Actual Deposit</th>
+                                        <th rowSpan={2} className="sticky top-[2.2rem] bg-white  border border-gray-300 text-gray-500 uppercase">Withdrawals</th>
+                                        <th rowSpan={2} className="sticky top-[2.2rem] bg-white  border border-gray-300 text-gray-500 uppercase">Interest</th>
+                                        <th colSpan={2} className="sticky top-[2.2rem] bg-white  border border-gray-300 text-gray-500 uppercase">MCBU Return</th>
+                                        <th colSpan={3} className="sticky top-[2.2rem] bg-white  border border-gray-300 text-gray-500 uppercase">REGULAR LOAN</th>
                                     </tr>
                                     <tr>
+                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 text-gray-500 uppercase">Pers.</th>
+                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 text-gray-500 uppercase">Amt</th>
                                         <th className="sticky top-[4.5rem] bg-white  border border-gray-300 text-gray-500 uppercase">Pers.</th>
                                         <th className="sticky top-[4.5rem] bg-white  border border-gray-300 text-gray-500 uppercase">Amt</th>
                                         <th className="sticky top-[4.5rem] bg-white  border border-gray-300 text-gray-500 uppercase">Pers.</th>
@@ -704,8 +893,15 @@ const LoanOfficerSummary = () => {
                                                         <td className={`${item.fBalance && 'text-black'} px-4 py-4 text-center border border-gray-300 border-l-0`}>{ item.day }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.transfer }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.newMember }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.mcbuTargetStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.mcbuActualStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.mcbuWithdrawalStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.mcbuInterestStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.noMcbuReturn }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.mcbuReturnAmtStr }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.offsetPerson }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.activeClients }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.mcbuBalanceStr }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.loanReleasePerson }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.loanReleaseAmountStr }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.activeLoanReleasePerson }</td>
@@ -724,8 +920,15 @@ const LoanOfficerSummary = () => {
                                                         <td className="px-2 py-4 text-center border border-gray-300 border-l-0">{ item.day }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.transfer }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.newMember }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.mcbuTargetStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.mcbuActualStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.mcbuWithdrawalStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.mcbuInterestStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.noMcbuReturn }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.mcbuReturnAmtStr }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.offsetPerson }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.activeClients }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.mcbuBalanceStr }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.loanReleasePerson }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.loanReleaseAmountStr }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.activeLoanReleasePerson }</td>

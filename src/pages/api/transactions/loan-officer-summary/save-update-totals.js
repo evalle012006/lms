@@ -22,7 +22,7 @@ async function processLOSTotals(req, res) {
             break;
         case 'daily':
             const filter = data.data.day === currentDate ? false : true;
-            const cashCollections = await db.collection('cashCollections').find({ loId: data.userId, dateAdded: data.data.day }).toArray();
+            const cashCollections = await db.collection('cashCollections').find({ loId: data.userId, dateAdded: data.data.day, occurence: data.occurence }).toArray();
 
             if (cashCollections.length === 0) {
                 response = { error: true, message: "One or more group/s have no transaction for today."};
@@ -47,7 +47,7 @@ async function saveUpdateYearEnd(total) {
     const { db } = await connectToDatabase();
     let resp;
 
-    let losTotal = await db.collection('losTotals').find({ userId: total.userId, month: 12, year: total.year, losType: 'year-end' }).toArray();
+    let losTotal = await db.collection('losTotals').find({ userId: total.userId, month: 12, year: total.year, losType: 'year-end', occurence: total.occurence }).toArray();
 
     if (losTotal.length > 0) {
         losTotal = losTotal[0];
@@ -73,7 +73,7 @@ async function saveUpdateDaily(total, filter) {
     const { db } = await connectToDatabase();
     let resp;
 
-    let losTotal = await db.collection('losTotals').find({ userId: total.userId, dateAdded: total.data.day, losType: 'daily' }).toArray();
+    let losTotal = await db.collection('losTotals').find({ userId: total.userId, dateAdded: total.data.day, losType: 'daily', occurence: total.occurence }).toArray();
 
     if (filter) {
         if (losTotal.length > 0) {
@@ -123,7 +123,7 @@ async function saveUpdateCommulative(total) {
     const { db } = await connectToDatabase();
     let resp;
 
-    let losTotal = await db.collection('losTotals').find({ userId: total.userId, month: total.month, year: total.year, losType: 'commulative' }).toArray();
+    let losTotal = await db.collection('losTotals').find({ userId: total.userId, month: total.month, year: total.year, losType: 'commulative', occurence: total.occurence }).toArray();
 
     if (losTotal.length > 0) {
         losTotal = losTotal[0];
