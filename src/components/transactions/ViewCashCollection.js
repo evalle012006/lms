@@ -238,6 +238,12 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 } else {
                     if (cc.cashCollections.length > 0) {
                         noCurrentRelease = cc.cashCollections[0].newCurrentRelease + ' / ' + cc.cashCollections[0].reCurrentRelease;
+                        const dayNameFilter = moment(dateFilter).format('dddd').toLowerCase();
+                        let loanTarget = 0;
+                        if ((cc.occurence === 'weekly' && cc.day === dayNameFilter) || cc.occurence === 'daily') {
+                            loanTarget = cc.cashCollections[0].loanTarget && cc.cashCollections[0].loanTarget;
+                        }
+
                         collection = {
                             groupId: cc._id,
                             group: cc.name,
@@ -254,8 +260,8 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                             collectionStr: formatPricePhp(cc.cashCollections[0].collection),
                             excess: cc.cashCollections[0].excess,
                             excessStr: formatPricePhp(cc.cashCollections[0].excess),
-                            loanTarget: cc.cashCollections[0].loanTarget,
-                            loanTargetStr: formatPricePhp(cc.cashCollections[0].loanTarget),
+                            loanTarget: loanTarget,
+                            loanTargetStr: formatPricePhp(loanTarget),
                             pastDue: cc.cashCollections[0].pastDue,
                             pastDueStr: formatPricePhp(cc.cashCollections[0].pastDue),
                             noPastDue: cc.cashCollections[0].noPastDue,
@@ -296,7 +302,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         // totalNoPaidPastDue += cc.cashCollections[0].noPaidPastDue;
                         totalsLoanRelease += cc.cashCollections[0].totalRelease;
                         totalsLoanBalance += cc.cashCollections[0].totalLoanBalance;
-                        targetLoanCollection += cc.cashCollections[0].loanTarget;
+                        targetLoanCollection += loanTarget;
                         fullPaymentAmount += cc.cashCollections[0].fullPaymentAmount;
                         noOfFullPayment += cc.cashCollections[0].noOfFullPayment;
                         totalMcbuTarget += cc.cashCollections[0].mcbuTarget ? cc.cashCollections[0].mcbuTarget : 0;
@@ -666,6 +672,24 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
 
         initGroupCollectionSummary();
     }, []);
+
+    useEffect(() => {
+        if (type === 'weekly') {
+            const preSaveCollections = async () => {
+                const data = {
+                    loId: currentUser.role.rep === 4 ? currentUser._id : selectedLOSubject.value.length > 0 && selectedLOSubject.value,
+                    currentDate: currentDate,
+                    currentUser: currentUser._id
+                };
+    
+                await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/pre-save-collections', data);
+            }
+
+            setTimeout(() => {
+                preSaveCollections();
+            }, 3000);
+        }
+    }, [type]);
 
     return (
         <React.Fragment>

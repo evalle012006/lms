@@ -323,7 +323,7 @@ const MenuItems = [
         ]
     },
     {
-        label: "Branch Manager Transactions",
+        label: "Branch Manager Trans",
         url: "#branch-manager-transactions",
         subMenuIndex: 0,
         icon: {
@@ -574,7 +574,7 @@ const NavComponent = () => {
                     temp.hidden = true;
                 }
 
-                if (menu.label === 'Branch Manager Transactions') {
+                if (menu.label === 'Branch Manager Trans') {
                     temp.hidden = true;
                 }
 

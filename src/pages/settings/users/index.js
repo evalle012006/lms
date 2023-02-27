@@ -68,7 +68,8 @@ const TeamPage = () => {
                 firstName: user.firstName,
                 lastName: user.lastName,
                 label: user.firstName + ' ' + user.lastName,
-                value: user._id
+                value: user._id,
+                transactionType: user.transactionType
             });
         });
 
@@ -95,7 +96,8 @@ const TeamPage = () => {
                         position: tempUser.position,
                         role: tempUser.role,
                         designatedBranch: tempUser.designatedBranch,
-                        loNo: tempUser.loNo
+                        loNo: tempUser.loNo,
+                        transactionType: tempUser.transactionType
                     }));
                 }
                 // update list
@@ -194,6 +196,12 @@ const TeamPage = () => {
             selectOnChange: updateUser,
             Filter: SelectColumnFilter,
             filter: 'includes',
+        },
+        {
+            Header: "Transaction Type",
+            accessor: 'transactionType',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
         },
         {
             Header: "Designated Branch",
