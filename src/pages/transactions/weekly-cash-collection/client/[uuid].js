@@ -1657,8 +1657,8 @@ const CashCollectionDetailsPage = () => {
                                         <th className="p-2 text-center">Excess</th>
                                         <th className="p-2 text-center">Actual Collection</th>
                                         <th className="p-2 text-center">MCBU Withdrawals</th>
-                                        <th className="p-2 text-center">MCBU Return Amt</th>
                                         <th className="p-2 text-center">MCBU Interest</th>
+                                        <th className="p-2 text-center">MCBU Return Amt</th>
                                         <th className="p-2 text-center">Full Payment</th>
                                         <th className="p-2 text-center">Mispay</th>
                                         <th className="p-2 text-center"># of Mispay</th>
@@ -1741,8 +1741,8 @@ const CashCollectionDetailsPage = () => {
                                                             </React.Fragment>
                                                     }
                                                 </td>
-                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.mcbuReturnAmtStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.mcbuInterestStr }</td>
+                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.mcbuReturnAmtStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.fullPaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.mispaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.noMispaymentStr }</td>
