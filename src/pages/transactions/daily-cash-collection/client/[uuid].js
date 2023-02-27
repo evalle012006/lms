@@ -228,14 +228,14 @@ const CashCollectionDetailsPage = () => {
                         activeLoan: cc.history.activeLoan,
                         targetCollection: cc.history.activeLoan,
                         targetCollectionStr: cc.history.activeLoan > 0 ? formatPricePhp(cc.history.activeLoan) : '-',
-                        mcbu: cc.mcbu,
-                        mcbuStr: cc.mcbu > 0 ? formatPricePhp(cc.mcbu) : '-',
-                        mcbuCol: cc.mcbuCol,
-                        mcbuColStr: cc.mcbuCol > 0 ? formatPricePhp(cc.mcbuCol) : '-',
-                        mcbuWithdrawal: cc.mcbuWithdrawal,
-                        mcbuWithdrawalStr: cc.mcbuWithdrawal > 0 ? formatPricePhp(cc.mcbuWithdrawal) : '-',
-                        mcbuReturnAmt: cc.mcbuReturnAmt,
-                        mcbuReturnAmtStr: cc.mcbuReturnAmt > 0 ? formatPricePhp(cc.mcbuReturnAmt) : '-',
+                        mcbu: (cc.current.length > 0 && cc.current[0].mcbu > 0) ? cc.current[0].mcbu : 0,
+                        mcbuStr: (cc.current.length > 0 && cc.current[0].mcbu > 0) ? formatPricePhp(cc.current[0].mcbu) : '-',
+                        mcbuCol: (cc.current.length > 0 && cc.current[0].mcbuCol > 0) ? cc.current[0].mcbuCol : 0,
+                        mcbuColStr: (cc.current.length > 0 && cc.current[0].mcbuCol > 0) ? formatPricePhp(cc.current[0].mcbuCol) : '-',
+                        mcbuWithdrawal: (cc.current.length > 0 && cc.current[0].mcbuWithdrawal > 0) ? cc.current[0].mcbuWithdrawal : 0,
+                        mcbuWithdrawalStr: (cc.current.length > 0 && cc.current[0].mcbuWithdrawal > 0) ? formatPricePhp(cc.current[0].mcbuWithdrawal) : '-',
+                        mcbuReturnAmt: (cc.current.length > 0 && cc.current[0].mcbuReturnAmt > 0) ? cc.current[0].mcbuReturnAmt : 0,
+                        mcbuReturnAmtStr: (cc.current.length > 0 && cc.current[0].mcbuReturnAmt > 0) ? formatPricePhp(cc.current[0].mcbuReturnAmt) : '-',
                         mcbuInterest: cc.mcbuInterest ? cc.mcbuInterest : 0,
                         mcbuInterestStr: cc.mcbuInterest > 0 ? formatPricePhp(cc.mcbuInterest) : '-',
                         amountRelease: '-',
@@ -683,6 +683,18 @@ const CashCollectionDetailsPage = () => {
                     if ((cc.remarks && (cc.remarks.value !== 'past due' && cc.remarks.value !== 'excused' && cc.remarks.value !== 'delinquent'))) {
                         errorMsg.add('Error occured. Invalid MCBU Collection.');
                     }
+                } else if (!cc.mcbuCol || parseFloat(cc.mcbuCol) > 10) {
+                    if (cc.remarks && cc.remarks.value === 'advance payment') {
+                        const excessMcbu = cc.excess / cc.activeLoan;
+                        const finalMcbu = (excessMcbu * 10) + 10;
+                        if (parseFloat(cc.mcbuCol) > finalMcbu) {
+                            console.log(cc)
+                            errorMsg.add('Error occured. MCBU collection is more than the required collection which is ' + finalMcbu + '.');
+                        }
+                    } else if (cc.remarks && cc.remarks.value !== 'advance payment') {
+                        console.log(cc)
+                        errorMsg.add('Error occured. MCBU collection is more than 10.');
+                    }
                 }
 
                 if (cc.mcbuWithdrawFlag) {
@@ -706,8 +718,20 @@ const CashCollectionDetailsPage = () => {
         switch (col) {
             case 'mcbuCol':
                 if (!value || value < 10) {
-                    toast.error('Error occured. Minimum MCBU collection is 10.');
+                    toast.error('Error occured. MCBU collection is less than 10.');
                     temp.mcbuError = true;
+                } else if (!value || value > 10) {
+                    if (temp.remarks && temp.remarks.value !== 'advance payment') {
+                        toast.error('Error occured. MCBU collection is more than 10.');
+                        temp.mcbuError = true; 
+                    } else if (temp.remarks && temp.remarks.value === 'advance payment') {
+                        const excessMcbu = temp.excess / temp.activeLoan;
+                        const finalMcbu = (excessMcbu * 10) + 10;
+                        if (finalMcbu !== value) {
+                            toast.error('Error occured. MCBU collection is more than the required collection which is ' + finalMcbu + '.');
+                            temp.mcbuError = true; 
+                        }
+                    }
                 } else {
                     temp.mcbuError = false;
                 }
@@ -774,6 +798,7 @@ const CashCollectionDetailsPage = () => {
                     delete temp.mcbuColStr;
                     delete temp.mcbuWithdrawalStr;
                     delete temp.mcbuReturnAmtStr;
+                    delete temp.mcbuInterestStr;
                     delete temp.mcbuError;
                     delete temp.client;
                     // delete temp.clientStatus;
@@ -1135,8 +1160,8 @@ const CashCollectionDetailsPage = () => {
                             setCloseLoan(cc);
                             temp.error = false;
                             setEditMode(true);
-                            temp.mcbuWithdrawal = parseFloat(temp.mcbu);
-                            temp.mcbuWithdrawalStr = parseFloat(temp.mcbuWithdrawal);
+                            temp.mcbuReturnAmt = parseFloat(temp.mcbu);
+                            temp.mcbuReturnAmtStr = parseFloat(temp.mcbuReturnAmt);
                             temp.mcbu = 0;
                             temp.mcbuStr = formatPricePhp(temp.mcbu);
                         }
@@ -1672,8 +1697,8 @@ const CashCollectionDetailsPage = () => {
                                         <th className="p-2 text-center">Excess</th>
                                         <th className="p-2 text-center">Actual Collection</th>
                                         <th className="p-2 text-center">MCBU Withdrawals</th>
-                                        <th className="p-2 text-center">MCBU Return Amt</th>
                                         <th className="p-2 text-center">MCBU Interest</th>
+                                        <th className="p-2 text-center">MCBU Return Amt</th>
                                         <th className="p-2 text-center">Full Payment</th>
                                         <th className="p-2 text-center">Mispay</th>
                                         <th className="p-2 text-center"># of Mispay</th>
@@ -1756,8 +1781,8 @@ const CashCollectionDetailsPage = () => {
                                                             </React.Fragment>
                                                     }
                                                 </td>
-                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.mcbuReturnAmtStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.mcbuInterestStr }</td>
+                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.mcbuReturnAmtStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.fullPaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.mispaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.noMispaymentStr }</td>

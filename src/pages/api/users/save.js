@@ -7,7 +7,7 @@ export default apiHandler({
 });
 
 async function save(req, res) {
-    const { email, firstName, lastName, number, position, designatedBranch, role, loNo } = req.body;
+    const { email, firstName, lastName, number, position, designatedBranch, role, loNo, transactionType } = req.body;
 
     const { db } = await connectToDatabase();
 
@@ -40,7 +40,8 @@ async function save(req, res) {
             dateAdded: moment(new Date).format('YYYY-MM-DD'),
             role: JSON.parse(role),
             loNo: loNo,
-            designatedBranch: designatedBranch
+            designatedBranch: designatedBranch,
+            transactionType: transactionType
         });
 
         response = {

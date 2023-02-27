@@ -54,7 +54,8 @@ async function updateUser(req, res) {
                             profile: profile,
                             role: JSON.parse(fields.role),
                             designatedBranch: fields.designatedBranch,
-                            loNo: fields.loNo
+                            loNo: fields.loNo,
+                            transactionType: fields.transactionType
                         },
                         $currentDate: { dateModified: true }
                     }

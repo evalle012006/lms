@@ -202,13 +202,18 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                         // noOfRefullPayment += lo.fullPayment[0].reFullPayment;
                     }
                 } else {
+                    const dayNameFilter = moment(date).format('dddd').toLowerCase();
+                    let loanTarget = 0;
+                    if ((type === 'weekly' && cc.day === dayNameFilter) || type === 'daily') {
+                        loanTarget = lo.cashCollections[0].loanTarget && lo.cashCollections[0].loanTarget;
+                    }
                     if (lo.cashCollections.length > 0) {
                         collection.activeClients = lo.cashCollections[0].activeClients; 
                         collection.activeBorrowers = lo.cashCollections[0].activeBorrowers;
                         collection.totalReleasesStr = formatPricePhp(lo.cashCollections[0].totalRelease);
                         collection.totalLoanBalanceStr = formatPricePhp(lo.cashCollections[0].totalLoanBalance);
-                        collection.loanTarget = lo.cashCollections[0].loanTarget;
-                        collection.loanTargetStr = formatPricePhp(lo.cashCollections[0].loanTarget);
+                        collection.loanTarget = loanTarget;
+                        collection.loanTargetStr = formatPricePhp(loanTarget);
                         collection.excessStr = formatPricePhp(lo.cashCollections[0].excess);
                         collection.totalStr = formatPricePhp(lo.cashCollections[0].collection);
                         collection.mispaymentStr = lo.cashCollections[0].mispayment;
@@ -237,7 +242,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                         noOfBorrowers += lo.cashCollections[0].activeBorrowers;
                         totalsLoanRelease += lo.cashCollections[0].totalRelease;
                         totalsLoanBalance += lo.cashCollections[0].totalLoanBalance;
-                        targetLoanCollection += lo.cashCollections[0].loanTarget;
+                        targetLoanCollection += loanTarget;
                         excess += lo.cashCollections[0].excess;
                         totalLoanCollection += lo.cashCollections[0].collection;
                         mispayment += lo.cashCollections[0].mispayment;

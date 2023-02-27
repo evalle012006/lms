@@ -43,7 +43,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         clientId: loan.clientId,
         fullName: loan.fullName,
         admissionDate: loan.admissionDate,
-        mcbu: type === 'weekly' ? (mode === 'edit' || mode === 'reloan') ? loan.mcbu : 50 : (mode === 'edit' || mode === 'reloan') ? loan.mcbu : 10,
+        mcbu: type === 'weekly' ? (mode === 'edit' || mode === 'reloan') ? loan.mcbu : 50 : (mode === 'edit' || mode === 'reloan') ? loan.mcbu : 0,
         dateGranted: mode !== 'reloan' ? loan.dateGranted : null,
         principalLoan: loan.principalLoan,
         activeLoan: loan.activeLoan,

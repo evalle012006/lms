@@ -16,6 +16,7 @@ import Spinner from "@/components/Spinner";
 import { multiStyles, DropdownIndicator } from "@/styles/select";
 import Select from 'react-select';
 import { setUser } from "@/redux/actions/userActions";
+import RadioButton from "@/lib/ui/radio-button";
 
 const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], showSidebar, setShowSidebar, onClose }) => {    
     const hiddenInput = useRef(null);
@@ -27,6 +28,8 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
     const [photoH, setPhotoH] = useState(200);
     const [image, setImage] = useState('');
     const [selectedBranches, setSelectedBranches] = useState([]);
+    const [occurence, setOccurence] = useState('daily');
+
     const initialValues = {
         firstName: user.firstName,
         lastName: user.lastName,
@@ -34,8 +37,9 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
         number: user.number,
         position: user.position,
         designatedBranch: user.designatedBranch ? user.designatedBranch : 0,
-        role: user.role ? user.role.value : '',
-        loNo: user.loNo
+        role: user.role ? user.roleId : '',
+        loNo: user.loNo,
+        transactionType: user.transactionType
     }
 
     const validationSchema = yup.object().shape({
@@ -82,6 +86,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
         }
 
         values.designatedBranch = designatedBranch;
+        values.transactionType = occurence;
 
         if (mode === 'add') {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'users/save/';
@@ -165,7 +170,11 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
 
         if (user.imgUrl) {
             // setPhoto(`${imgpath}/${user.imgUrl}`);
-            setPhoto(`${user.imgUrl}`);
+            mounted && setPhoto(`${user.imgUrl}`);
+        }
+
+        if (user.hasOwnProperty('transactionType') && user.transactionType) {
+            mounted && setOccurence(user.transactionType);
         }
 
         if (user.role && user.role.rep === 2) {
@@ -179,7 +188,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
                 })
             });
 
-            setSelectedBranches(selectedBranchesList);
+            mounted && setSelectedBranches(selectedBranchesList);
         }
 
         setLoading(false);
@@ -342,31 +351,41 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
                                             />
                                         </div>
                                     )}
+                                    
                                     {values.role === 4 && (
-                                        <div className="mt-4">
-                                            <SelectDropdown
-                                                name="loNo"
-                                                field="loNo"
-                                                value={values.loNo}
-                                                label="LO Number"
-                                                options={[
-                                                    {label: '1', value: '1'},
-                                                    {label: '2', value: '2'},
-                                                    {label: '3', value: '3'},
-                                                    {label: '4', value: '4'},
-                                                    {label: '5', value: '5'},
-                                                    {label: '6', value: '6'},
-                                                    {label: '7', value: '7'},
-                                                    {label: '8', value: '8'},
-                                                    {label: '9', value: '9'},
-                                                    {label: '10', value: '10'}
-                                                ]}
-                                                onChange={setFieldValue}
-                                                onBlur={setFieldTouched}
-                                                placeholder="Select LO Number"
-                                                errors={touched.loNo && errors.loNo ? errors.loNo : undefined}
-                                            />
-                                        </div>
+                                        <React.Fragment>
+                                            <div className="mt-4">
+                                                <SelectDropdown
+                                                    name="loNo"
+                                                    field="loNo"
+                                                    value={values.loNo}
+                                                    label="LO Number"
+                                                    options={[
+                                                        {label: '1', value: '1'},
+                                                        {label: '2', value: '2'},
+                                                        {label: '3', value: '3'},
+                                                        {label: '4', value: '4'},
+                                                        {label: '5', value: '5'},
+                                                        {label: '6', value: '6'},
+                                                        {label: '7', value: '7'},
+                                                        {label: '8', value: '8'},
+                                                        {label: '9', value: '9'},
+                                                        {label: '10', value: '10'}
+                                                    ]}
+                                                    onChange={setFieldValue}
+                                                    onBlur={setFieldTouched}
+                                                    placeholder="Select LO Number"
+                                                    errors={touched.loNo && errors.loNo ? errors.loNo : undefined}
+                                                />
+                                            </div>
+                                            <div className="flex flex-col mt-4 text-gray-500">
+                                                <div>Transaction Type</div>
+                                                <div className="flex flex-row ml-4">
+                                                    <RadioButton id={"radio_daily"} name="radio-occurence" label={"Daily"} checked={occurence === 'daily'} value="daily" onChange={() => setOccurence('daily')} />
+                                                    <RadioButton id={"radio_weekly"} name="radio-occurence" label={"Weekly"} checked={occurence === 'weekly'} value="weekly" onChange={() => setOccurence('weekly')} />
+                                                </div>
+                                            </div>
+                                        </React.Fragment>
                                     )}
                                     <div className="flex flex-row mt-5">
                                         <ButtonOutline label="Cancel" onClick={handleCancel} className="mr-3" />

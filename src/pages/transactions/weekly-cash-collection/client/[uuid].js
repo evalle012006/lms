@@ -229,14 +229,14 @@ const CashCollectionDetailsPage = () => {
                         totalStr: '-',
                         noOfPayments: cc.noOfPayments,
                         noOfPaymentStr: cc.noOfPayments + ' / ' + maxDays,
-                        mcbu: cc.mcbu,
-                        mcbuStr: cc.mcbu > 0 ? formatPricePhp(cc.mcbu) : '-',
-                        mcbuCol: cc.mcbuCol,
-                        mcbuColStr: cc.mcbuCol > 0 ? formatPricePhp(cc.mcbuCol) : '-',
-                        mcbuWithdrawal: cc.mcbuWithdrawal,
-                        mcbuWithdrawalStr: cc.mcbuWithdrawal > 0 ? formatPricePhp(cc.mcbuWithdrawal) : '-',
-                        mcbuReturnAmt: cc.mcbuReturnAmt,
-                        mcbuReturnAmtStr: cc.mcbuReturnAmt > 0 ? formatPricePhp(cc.mcbuReturnAmt) : '-',
+                        mcbu: (cc.current.length > 0 && cc.current[0].mcbu > 0) ? cc.current[0].mcbu : 0,
+                        mcbuStr: (cc.current.length > 0 && cc.current[0].mcbu > 0) ? formatPricePhp(cc.current[0].mcbu) : '-',
+                        mcbuCol: (cc.current.length > 0 && cc.current[0].mcbuCol > 0) ? cc.current[0].mcbuCol : 0,
+                        mcbuColStr: (cc.current.length > 0 && cc.current[0].mcbuCol > 0) ? formatPricePhp(cc.current[0].mcbuCol) : '-',
+                        mcbuWithdrawal: (cc.current.length > 0 && cc.current[0].mcbuWithdrawal > 0) ? cc.current[0].mcbuWithdrawal : 0,
+                        mcbuWithdrawalStr: (cc.current.length > 0 && cc.current[0].mcbuWithdrawal > 0) ? formatPricePhp(cc.current[0].mcbuWithdrawal) : '-',
+                        mcbuReturnAmt: (cc.current.length > 0 && cc.current[0].mcbuReturnAmt > 0) ? cc.current[0].mcbuReturnAmt : 0,
+                        mcbuReturnAmtStr: (cc.current.length > 0 && cc.current[0].mcbuReturnAmt > 0) ? formatPricePhp(cc.current[0].mcbuReturnAmt) : '-',
                         mcbuInterest: cc.mcbuInterest ? cc.mcbuInterest : 0,
                         mcbuInterestStr: cc.mcbuInterest > 0 ? formatPricePhp(cc.mcbuInterest) : '-',
                         activeLoan: cc.history.activeLoan,
@@ -772,6 +772,7 @@ const CashCollectionDetailsPage = () => {
                     delete temp.mcbuReturnAmtStr;
                     delete temp.mcbuError;
                     delete temp.client;
+                    delete temp.mcbuInterestStr;
 
                     if (cc.hasOwnProperty('_id')) {
                         temp.modifiedBy = currentUser._id;
@@ -1121,8 +1122,8 @@ const CashCollectionDetailsPage = () => {
                             setCloseLoan(cc);
                             temp.error = false;
                             setEditMode(true);
-                            temp.mcbuWithdrawal = parseFloat(temp.mcbu);
-                            temp.mcbuWithdrawalStr = parseFloat(temp.mcbuWithdrawal);
+                            temp.mcbuReturnAmt = parseFloat(temp.mcbu);
+                            temp.mcbuReturnAmtStr = parseFloat(temp.mcbuReturnAmt);
                             temp.mcbu = 0;
                             temp.mcbuStr = formatPricePhp(temp.mcbu);
                         }
@@ -1656,8 +1657,8 @@ const CashCollectionDetailsPage = () => {
                                         <th className="p-2 text-center">Excess</th>
                                         <th className="p-2 text-center">Actual Collection</th>
                                         <th className="p-2 text-center">MCBU Withdrawals</th>
-                                        <th className="p-2 text-center">MCBU Return Amt</th>
                                         <th className="p-2 text-center">MCBU Interest</th>
+                                        <th className="p-2 text-center">MCBU Return Amt</th>
                                         <th className="p-2 text-center">Full Payment</th>
                                         <th className="p-2 text-center">Mispay</th>
                                         <th className="p-2 text-center"># of Mispay</th>
@@ -1740,8 +1741,8 @@ const CashCollectionDetailsPage = () => {
                                                             </React.Fragment>
                                                     }
                                                 </td>
-                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.mcbuReturnAmtStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.mcbuInterestStr }</td>
+                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.mcbuReturnAmtStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.fullPaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.mispaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.noMispaymentStr }</td>

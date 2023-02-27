@@ -1,0 +1,77 @@
+import { apiHandler } from '@/services/api-handler';
+import { connectToDatabase } from '@/lib/mongodb';
+import moment from 'moment';
+
+export default apiHandler({
+    post: save
+});
+
+async function save(req, res) {
+    const { db } = await connectToDatabase();
+    let response = {};
+    let statusCode = 200;
+    const { loId, currentUser, currentDate } = req.body;
+
+    const loans = await db.collection('loans').find(
+            {$expr: {
+                $and: [
+                    {$eq: ['$loId', loId]},
+                    {$or: [
+                        {$eq: ['$status', 'active']},
+                        {$eq: ['$status', 'completed']}
+                    ]}
+                ]
+            }}
+        ).toArray();
+
+    loans.map(async loan => {
+        const existCC = await db.collection('cashCollections').find({ loanId: loan._id + '', dateAdded: currentDate }).toArray();
+
+        if (existCC.length === 0) {
+            const groupSummary = await db.collection('groupCashCollections').find({ groupId: loan.groupId, dateAdded: currentDate }).toArray();
+            if (groupSummary.length > 0) {
+                let data = {
+                    loanId: loan._id + '',
+                    branchId: loan.branchId,
+                    groupId: loan.groupId,
+                    groupname: loan.groupName,
+                    loId: loan.loId,
+                    clientId: loan.clientId,
+                    slotNo: loan.slotNo,
+                    loanCycle: loan.loanCycle,
+                    mispayment: false,
+                    mispaymentStr: 'No',
+                    collection: 0,
+                    excess: 0,
+                    total: 0,
+                    noOfPayments: 0,
+                    activeLoan: loan.activeLoan,
+                    targetCollection: loan.activeLoan, 
+                    amountRelease: loan.amountRelease,
+                    loanBalance: loan.loanBalance,
+                    paymentCollection: 0,
+                    occurence: loan.occurence,
+                    currentReleaseAmount: 0,
+                    fullPayment: 0,
+                    mcbu: loan.mcbu,
+                    mcbuCol: 0,
+                    mcbuWithdrawal: 0,
+                    mcbuReturnAmt: 0,
+                    remarks: '',
+                    status: loan.status,
+                    dateAdded: currentDate,
+                    groupCollectionId: groupSummary[0]._id + '',
+                    origin: 'automation'
+                };
+    
+                await db.collection('cashCollections').insertOne({ ...data });
+            }
+        }
+    });
+
+    response = {success: true};
+
+    res.status(statusCode)
+        .setHeader('Content-Type', 'application/json')
+        .end(JSON.stringify(response));
+}
