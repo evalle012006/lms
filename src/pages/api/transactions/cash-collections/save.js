@@ -21,10 +21,13 @@ async function save(req, res) {
         data.collection.map(async cc => {
             if (cc.status !== "totals") {
                 let collection = {...cc, groupCollectionId: groupHeaderId};
-                if (cc.occurence === 'weekly') {
-                    collection.mcbuTarget = collection.mcbuTarget ? collection.mcbuTarget + 50 : 50;
-                } else {
-                    collection.mcbuTarget = collection.mcbuTarget ? collection.mcbuTarget + 10 : 10;
+
+                if (cc.status !== 'offset' || ((cc.remarks && (cc.remarks.value === 'reloaner' || cc.remarks.value === 'pending')) && cc.fullPaymentDate === currentDate)) {
+                    if (cc.occurence === 'weekly') {
+                        collection.mcbuTarget = collection.mcbuTarget ? collection.mcbuTarget + 50 : 50;
+                    } else {
+                        collection.mcbuTarget = collection.mcbuTarget ? collection.mcbuTarget + 10 : 10;
+                    }
                 }
 
                 if (collection.hasOwnProperty('_id')) {
@@ -74,14 +77,28 @@ async function updateCollection(collections) {
     const ObjectId = require('mongodb').ObjectId;
 
     collections.map(async collection => {
-        await db.collection('cashCollections')
-            .updateOne(
-                { _id: ObjectId(collection.collectionId)},
-                {
-                    $set: {...collection}
-                },
-                { upsert: false }
-            );
+
+        if (collection?.origin === 'pre-save') {
+            delete collection.origin;
+            await db.collection('cashCollections')
+                .updateOne(
+                    { _id: ObjectId(collection.collectionId)},
+                    {
+                        $unset: { origin: 1 },
+                        $set: {...collection}
+                    },
+                    { upsert: false }
+                );
+        } else {
+            await db.collection('cashCollections')
+                .updateOne(
+                    { _id: ObjectId(collection.collectionId)},
+                    {
+                        $set: {...collection}
+                    },
+                    { upsert: false }
+                );
+        }
     });
 }
 

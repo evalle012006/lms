@@ -1,6 +1,5 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
-import moment from 'moment';
 
 export default apiHandler({
     post: save
@@ -61,7 +60,7 @@ async function save(req, res) {
                     status: loan.status,
                     dateAdded: currentDate,
                     groupCollectionId: groupSummary[0]._id + '',
-                    origin: 'automation'
+                    origin: 'pre-save'
                 };
     
                 await db.collection('cashCollections').insertOne({ ...data });

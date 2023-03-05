@@ -19,7 +19,7 @@ async function reset(req, res) {
 
     // reset tables
     await db.collection('client').updateMany({}, {
-        $set: { status: 'pending', delinquent: false }
+        $set: { status: 'pending', delinquent: false, mcbuHistory: [] }
     });
 
     await db.collection('groups').updateMany({}, {
@@ -33,11 +33,11 @@ async function reset(req, res) {
         }
     });
 
-    await db.collection('users').updateMany({}, {
-        $unset: {
-            transactionType: 1
-        }
-    });
+    // await db.collection('users').updateMany({}, {
+    //     $unset: {
+    //         transactionType: 1
+    //     }
+    // });
 
     response = {success: true};
 
