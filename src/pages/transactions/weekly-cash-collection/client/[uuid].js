@@ -60,7 +60,6 @@ const CashCollectionDetailsPage = () => {
         { label: 'Pending', value: 'pending'},
         { label: 'Reloaner', value: 'reloaner'},
         // { label: 'Reloaner Cont/MCBU', value: 'reloaner'},
-        { label: 'Reloaner WD/MCBU', value: 'reloaner'},
         { label: 'For Close/Offset - Good Client', value: 'offset'},
         { label: 'For Close/Offset - Delinquent Client', value: 'offset'},
         { label: 'Past Due', value: 'past due'},
@@ -688,6 +687,16 @@ const CashCollectionDetailsPage = () => {
                         && (cc.remarks.value !== 'past due' && cc.remarks.value !== 'excused' 
                         && cc.remarks.value !== 'delinquent' && cc.remarks.value !== 'offset' && cc.remarks.value !== 'past due collection'))) {
                         errorMsg.add('Error occured. Invalid MCBU Collection.');
+                    }
+                } else if (!cc.mcbuCol || parseFloat(cc.mcbuCol) > 50) {
+                    if (cc.remarks && (cc.remarks.value === 'advance payment' || cc.remarks.value === 'reloaner')) {
+                        const excessMcbu = cc.excess / cc.activeLoan;
+                        const finalMcbu = (excessMcbu * 50) + 50;
+                        if (parseFloat(cc.mcbuCol) > finalMcbu) {
+                            errorMsg.add('Error occured. MCBU collection is more than the required collection which is ' + finalMcbu + '.');
+                        }
+                    } else if (cc.remarks && cc.remarks.value !== 'advance payment' && cc.remarks.value !== 'reloaner') {
+                        errorMsg.add('Error occured. MCBU collection is more than 50.');
                     }
                 }
 
