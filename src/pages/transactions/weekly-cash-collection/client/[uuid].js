@@ -1242,8 +1242,6 @@ const CashCollectionDetailsPage = () => {
 
                         temp.mcbuWithdrawalStr = temp.mcbu > 0 ? formatPricePhp(temp.mcbuWithdrawal) : '-';
                         temp.mcbuStr = '-';
-                    } else if (remarks.label === 'Reloaner Cont/MCBU') {
-
                     } else {
                         temp.closeRemarks = '';
                         setCloseLoan();
