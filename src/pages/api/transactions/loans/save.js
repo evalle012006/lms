@@ -52,6 +52,9 @@ async function save(req, res) {
         } else {
             const currentReleaseAmount = loanData.currentReleaseAmount;
             let finalData = {...loanData};
+            if (finalData.occurence === 'weekly') {
+                finalData.mcbuTarget = 50;
+            }
             delete finalData.currentReleaseAmount;
             const loan = await db.collection('loans').insertOne({
                 ...finalData,
@@ -256,6 +259,10 @@ async function saveCashCollection(loan, currentDate, currentReleaseAmount) {
                     groupCollectionId: groupSummary._id + '',
                     origin: 'automation'
                 };
+
+                if (data.occurence === 'weekly') {
+                    data.mcbuTarget = 50;
+                }
     
                 await db.collection('cashCollections').insertOne({ ...data });
             } else {

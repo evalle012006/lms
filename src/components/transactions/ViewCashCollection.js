@@ -305,6 +305,10 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         targetLoanCollection += loanTarget;
                         fullPaymentAmount += cc.cashCollections[0].fullPaymentAmount;
                         noOfFullPayment += cc.cashCollections[0].noOfFullPayment;
+                        totalMcbu += cc.cashCollections[0].mcbu;
+                        totalMcbuCol += cc.cashCollections[0].mcbuCol;
+                        totalMcbuWithdrawal += cc.cashCollections[0].mcbuWithdrawal;
+                        totalMcbuReturnAmt += cc.cashCollections[0].mcbuReturnAmt;
                         totalMcbuTarget += cc.cashCollections[0].mcbuTarget ? cc.cashCollections[0].mcbuTarget : 0;
                         totalMcbuInterest += cc.cashCollections[0].mcbuInterest;
                     } 
@@ -389,7 +393,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 newMember: 0,
                 offsetPerson: 0,
                 mcbuTarget: totals.mcbuTarget,
-                mcbuActual: totals.mcbu,
+                mcbuActual: totals.mcbuCol,
                 mcbuWithdrawal: totals.mcbuWithdrawal,
                 mcbuInterest: totals.mcbuInterest,
                 noMcbuReturn: totals.noMcbuReturn,
@@ -421,7 +425,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 transfer: totals.transfer,
                 newMember: totals.noOfNewCurrentRelease,
                 mcbuTarget: totals.mcbuTarget,
-                mcbuActual: totals.mcbu,
+                mcbuActual: totals.mcbuCol,
                 mcbuWithdrawal: totals.mcbuWithdrawal,
                 mcbuInterest: totals.mcbuInterest,
                 noMcbuReturn: totals.noMcbuReturn,

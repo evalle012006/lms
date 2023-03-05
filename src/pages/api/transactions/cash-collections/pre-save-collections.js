@@ -61,7 +61,7 @@ async function save(req, res) {
                     status: loan.status,
                     dateAdded: currentDate,
                     groupCollectionId: groupSummary[0]._id + '',
-                    origin: 'automation'
+                    origin: 'pre-save'
                 };
     
                 await db.collection('cashCollections').insertOne({ ...data });

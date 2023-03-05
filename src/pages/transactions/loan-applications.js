@@ -407,11 +407,11 @@ const LoanApplicationPage = () => {
 
     const handleCloseAddDrawer = () => {
         setLoading(true);
-        // getListLoan();
-        // getListGroup();
-        // setMode('add');
-        // setLoan({});
-        window.location.reload();
+        getListLoan();
+        getListGroup();
+        setMode('add');
+        setLoan({});
+        // window.location.reload();
     }
 
     const handleMultiSelect = (mode, selectAll, row, rowIndex) => {
