@@ -81,10 +81,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             .required('Please enter a loan cycle number'),
         pnNumber: yup
             .string()
-            .required('Please enter a promisory note number.'),
-        // coMaker: yup
-        //     .string()
-        //     .required('Please enter co-maker')
+            .required('Please enter a promisory note number.')
     });
 
     const handleGroupIdChange = (field, value) => {
@@ -142,8 +139,6 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         if (values.principalLoan % 1000 === 0) {
             if (type === 'weekly' && (!values.mcbu || parseFloat(values.mcbu) < 50)) {
                 toast.error('Invalid MCBU amount. Please enter at least 50.');
-            } else if (type === 'daily' && !values.mcbu || (parseFloat(values.mcbu) % 10 !== 0 || parseFloat(values.mcbu) !== 0)) {
-                toast.error('Invalid MCBU amount. MCBU should be divisible by 10.');
             } else {
                 setLoading(true);
                 let group;
