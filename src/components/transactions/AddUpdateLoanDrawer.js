@@ -81,10 +81,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             .required('Please enter a loan cycle number'),
         pnNumber: yup
             .string()
-            .required('Please enter a promisory note number.'),
-        // coMaker: yup
-        //     .string()
-        //     .required('Please enter co-maker')
+            .required('Please enter a promisory note number.')
     });
 
     const handleGroupIdChange = (field, value) => {
