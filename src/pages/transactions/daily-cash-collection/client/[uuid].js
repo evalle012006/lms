@@ -66,6 +66,7 @@ const CashCollectionDetailsPage = () => {
         { label: 'Past Due', value: 'past due'},
         { label: 'Past Due Collection', value: 'past due collection'},
         { label: 'Delinquent', value: 'delinquent'},
+        { label: 'Delinquent Client for Offset', value: 'delinquent'},
         { label: 'Good Excused due to Advance Payment', value: 'excused advance payment'},
         { label: 'Excused Due to Calamity', value: 'excused'},
         { label: 'Excused - Hospitalization', value: 'excused'},
@@ -383,7 +384,6 @@ const CashCollectionDetailsPage = () => {
                 }
 
                 if (!date && cc.hasOwnProperty('pastDue')) {
-                    // if pastDue === loanBalance then make target collection 0
                     if (collection.pastDue === collection.loanBalance) {
                         collection.targetCollection = 0;
                         collection.activeLoan = 0;
@@ -679,23 +679,23 @@ const CashCollectionDetailsPage = () => {
                     errorMsg.add('Error occured. Please double check the MCBU Collection/Withdrawal column.');
                 } 
                 
-                if (!cc.mcbuCol || parseFloat(cc.mcbuCol) < 10) {
-                    if (!cc.remarks || (cc.remarks 
-                            && (cc.remarks.value !== 'past due' && cc.remarks.value !== 'excused' 
-                            && cc.remarks.value !== 'delinquent' && cc.remarks.value !== 'offset' && cc.remarks.value !== 'past due collection'))) {
-                        errorMsg.add('Error occured. Invalid MCBU Collection.');
-                    }
-                } else if (!cc.mcbuCol || parseFloat(cc.mcbuCol) > 10) {
-                    if (cc.remarks && (cc.remarks.value === 'advance payment' || cc.remarks.label === 'Reloaner Cont/MCBU')) {
-                        const excessMcbu = cc.excess / cc.activeLoan;
-                        const finalMcbu = (excessMcbu * 10) + 10;
-                        if (parseFloat(cc.mcbuCol) > finalMcbu) {
-                            errorMsg.add('Error occured. MCBU collection is more than the required collection which is ' + finalMcbu + '.');
-                        }
-                    } else if (cc.remarks && cc.remarks.value !== 'advance payment' && cc.remarks.label !== 'Reloaner Cont/MCBU') {
-                        errorMsg.add('Error occured. MCBU collection is more than 10.');
-                    }
-                }
+                // if (!cc.mcbuCol || parseFloat(cc.mcbuCol) < 10) {
+                //     if (!cc.remarks || (cc.remarks 
+                //             && (cc.remarks.value !== 'past due' && cc.remarks.value !== 'excused' 
+                //             && cc.remarks.value !== 'delinquent' && cc.remarks.value !== 'offset' && cc.remarks.value !== 'past due collection'))) {
+                //         errorMsg.add('Error occured. Invalid MCBU Collection.');
+                //     }
+                // } else if (!cc.mcbuCol || parseFloat(cc.mcbuCol) > 10) {
+                //     if (cc.remarks && (cc.remarks.value === 'advance payment' || cc.remarks.label === 'Reloaner Cont/MCBU')) {
+                //         const excessMcbu = cc.excess / cc.activeLoan;
+                //         const finalMcbu = (excessMcbu * 10) + 10;
+                //         if (parseFloat(cc.mcbuCol) > finalMcbu) {
+                //             errorMsg.add('Error occured. MCBU collection is more than the required collection which is ' + finalMcbu + '.');
+                //         }
+                //     } else if (cc.remarks && cc.remarks.value !== 'advance payment' && cc.remarks.label !== 'Reloaner Cont/MCBU') {
+                //         errorMsg.add('Error occured. MCBU collection is more than 10.');
+                //     }
+                // }
 
                 if (cc.mcbuWithdrawFlag) {
                     if (!cc.mcbuWithdrawal || parseFloat(cc.mcbuWithdrawal) > parseFloat(cc.mcbu)) {
@@ -716,26 +716,26 @@ const CashCollectionDetailsPage = () => {
         const value = e.target.value ? parseFloat(e.target.value) : 0;
         let temp = {...selected};
         switch (col) {
-            case 'mcbuCol':
-                if (!value || value < 10) {
-                    toast.error('Error occured. MCBU collection is less than 10.');
-                    temp.mcbuError = true;
-                } else if (!value || value > 10) {
-                    if (temp.remarks && temp.remarks.value !== 'advance payment') {
-                        toast.error('Error occured. MCBU collection is more than 10.');
-                        temp.mcbuError = true; 
-                    } else if (temp.remarks && temp.remarks.value === 'advance payment') {
-                        const excessMcbu = temp.excess / temp.activeLoan;
-                        const finalMcbu = (excessMcbu * 10) + 10;
-                        if (finalMcbu !== value) {
-                            toast.error('Error occured. MCBU collection is more than the required collection which is ' + finalMcbu + '.');
-                            temp.mcbuError = true; 
-                        }
-                    }
-                } else {
-                    temp.mcbuError = false;
-                }
-                break;
+            // case 'mcbuCol':
+            //     if (!value || value < 10) {
+            //         toast.error('Error occured. MCBU collection is less than 10.');
+            //         temp.mcbuError = true;
+            //     } else if (!value || value > 10) {
+            //         if (temp.remarks && temp.remarks.value !== 'advance payment') {
+            //             toast.error('Error occured. MCBU collection is more than 10.');
+            //             temp.mcbuError = true; 
+            //         } else if (temp.remarks && temp.remarks.value === 'advance payment') {
+            //             const excessMcbu = temp.excess / temp.activeLoan;
+            //             const finalMcbu = (excessMcbu * 10) + 10;
+            //             if (finalMcbu !== value) {
+            //                 toast.error('Error occured. MCBU collection is more than the required collection which is ' + finalMcbu + '.');
+            //                 temp.mcbuError = true; 
+            //             }
+            //         }
+            //     } else {
+            //         temp.mcbuError = false;
+            //     }
+            //     break;
             case 'mcbuWithdrawal':
                 if (!value || value > parseFloat(temp.mcbu)) {
                     toast.error('Error occured. Invalid MCBU withdrawal amount.');
@@ -917,6 +917,10 @@ const CashCollectionDetailsPage = () => {
                             temp.pastDueStr = temp.pastDue > 0 ? formatPricePhp(temp.pastDue) : '-';
                             temp.status = 'active';
                             temp.advanceDays = temp.prevData.advanceDays;
+                            temp.mcbu = temp.prevData.mcbu;
+                            temp.mcbuStr = temp.mcbu > 0 ? formatPricePhp(temp.mcbu) : '-';
+                            temp.mcbuCol = 0;
+                            temp.mcbuColStr = '-';
                             delete temp.delinquent;
                         } else {
                             temp.prevData = {
@@ -962,24 +966,39 @@ const CashCollectionDetailsPage = () => {
                                 temp.noOfPayments = temp.noOfPayments <= 0 ? 0 : temp.noOfPayments - 1;
                                 temp.mispayment = true;
                                 temp.mispaymentStr = 'Yes';
+                                temp.mcbuCol = 0;
+                                temp.mcbuColStr = temp.mcbuCol > 0 ? formatPricePhp(temp.mcbuCol) : '-';
                             } else if (parseFloat(payment) > parseFloat(temp.activeLoan)) {
                                 temp.excess = parseFloat(payment) - parseFloat(temp.activeLoan);
                                 temp.excessStr = formatPricePhp(temp.excess);
                                 temp.mispayment = false;
                                 temp.mispaymentStr = "No";
                                 temp.noOfPayments = temp.noOfPayments + 1;
-                                // temp.remarks = { label: 'Advance Payment', value: 'advance payment'};
+
+                                // compute excess mcbu collection here...
+                                const excessMcbu = temp.excess / temp.activeLoan;
+                                const finalMcbu = (excessMcbu * 10) + 10;
+                                temp.mcbuCol = finalMcbu;
+                                temp.mcbuColStr = formatPricePhp(temp.mcbuCol);
+                                temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + temp.mcbuCol : 0 + temp.mcbuCol;
+                                temp.mcbuStr = formatPricePhp(temp.mcbu);
                             } else if (parseFloat(payment) < parseFloat(temp.activeLoan)) {
                                 temp.excess =  0;
                                 temp.mispayment = true;
                                 temp.mispaymentStr = 'Yes';
                                 // temp.noOfPayments = temp.noOfPayments + 1;
                                 temp.error = true;
+                                temp.mcbuCol = 0;
+                                temp.mcbuColStr = temp.mcbuCol > 0 ? formatPricePhp(temp.mcbuCol) : '-';
                                 // temp.remarks = { label: 'Excused', value: 'excused'};
                             } else {
                                 temp.mispayment = false;
                                 temp.mispaymentStr = 'No';
                                 temp.noOfPayments = temp.noOfPayments + 1;
+                                temp.mcbuCol = 10;
+                                temp.mcbuColStr = formatPricePhp(temp.mcbuCol);
+                                temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + temp.mcbuCol : 0 + temp.mcbuCol;
+                                temp.mcbuStr = formatPricePhp(temp.mcbu);
                             }
     
                             temp.noOfPaymentStr = temp.noOfPayments + ' / ' + maxDays;
@@ -1016,53 +1035,53 @@ const CashCollectionDetailsPage = () => {
 
             list.sort((a, b) => { return a.slotNo - b.slotNo; });
             dispatch(setCashCollectionGroup(list));
-        } else if (type === 'mcbuCol') {
-            const value = e.target.value ? parseFloat(e.target.value) : 0;
+        // } else if (type === 'mcbuCol') {
+        //     const value = e.target.value ? parseFloat(e.target.value) : 0;
             
-            if (value > 0) {
-                const mcbuCol = value;
+        //     if (value > 0) {
+        //         const mcbuCol = value;
 
-                let list = data.map((cc, idx) => {
-                    let temp = {...cc};
+        //         let list = data.map((cc, idx) => {
+        //             let temp = {...cc};
 
-                    if (idx === index) {
-                        if (temp.hasOwnProperty('prevData')) {
-                            temp.mcbu = temp.prevData.mcbu;
-                            temp.mcbuStr = formatPricePhp(temp.mcbu);
-                        } else {
-                            temp.prevData = {
-                                amountRelease: temp.amountRelease,
-                                paymentCollection: temp.paymentCollection,
-                                excess: temp.excess !== '-' ? temp.excess : 0,
-                                loanBalance: temp.loanBalance,
-                                activeLoan: temp.activeLoan,
-                                noOfPayments: temp.noOfPayments,
-                                total: temp.total,
-                                pastDue: temp.pastDue,
-                                mcbu: temp.mcbu
-                            };
-                        }
+        //             if (idx === index) {
+        //                 if (temp.hasOwnProperty('prevData')) {
+        //                     temp.mcbu = temp.prevData.mcbu;
+        //                     temp.mcbuStr = formatPricePhp(temp.mcbu);
+        //                 } else {
+        //                     temp.prevData = {
+        //                         amountRelease: temp.amountRelease,
+        //                         paymentCollection: temp.paymentCollection,
+        //                         excess: temp.excess !== '-' ? temp.excess : 0,
+        //                         loanBalance: temp.loanBalance,
+        //                         activeLoan: temp.activeLoan,
+        //                         noOfPayments: temp.noOfPayments,
+        //                         total: temp.total,
+        //                         pastDue: temp.pastDue,
+        //                         mcbu: temp.mcbu
+        //                     };
+        //                 }
 
-                        if (mcbuCol < 10) {
-                            temp.mcbuError = true;
-                        } else {
-                            temp.mcbuError = false;
-                            temp.mcbuCol = mcbuCol;
-                            temp.mcbuColStr = formatPricePhp(mcbuCol);
-                            temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + mcbuCol : 0 + mcbuCol;
-                            temp.mcbuStr = formatPricePhp(temp.mcbu);
-                        }
-                    }
+        //                 if (mcbuCol < 10) {
+        //                     temp.mcbuError = true;
+        //                 } else {
+        //                     temp.mcbuError = false;
+        //                     temp.mcbuCol = mcbuCol;
+        //                     temp.mcbuColStr = formatPricePhp(mcbuCol);
+                            // temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + mcbuCol : 0 + mcbuCol;
+                            // temp.mcbuStr = formatPricePhp(temp.mcbu);
+        //                 }
+        //             }
 
-                    return temp;
-                });
+        //             return temp;
+        //         });
 
-                const totalsObj = calculateTotals(list);
-                list[totalIdx] = totalsObj;
+        //         const totalsObj = calculateTotals(list);
+        //         list[totalIdx] = totalsObj;
 
-                list.sort((a, b) => { return a.slotNo - b.slotNo; });
-                dispatch(setCashCollectionGroup(list));
-            }
+        //         list.sort((a, b) => { return a.slotNo - b.slotNo; });
+        //         dispatch(setCashCollectionGroup(list));
+        //     }
         } else if (type === 'mcbuWithdrawal') {
             const value = e.target.value ? parseFloat(e.target.value) : 0;
             
@@ -1189,6 +1208,11 @@ const CashCollectionDetailsPage = () => {
 
                         if (temp.remarks.value === "delinquent") {
                             temp.delinquent = true;
+                        }
+
+                        if (temp.remarks.label === 'Delinquent Client for Offset') {
+                            temp.mcbuCol = 0;
+                            temp.mcbuColStr = '-';
                         }
 
                     } else if (remarks.value === "past due collection") {
@@ -1739,7 +1763,8 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.currentReleaseAmountStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.noOfPaymentStr }</td>{/** after submitting please update the no of payments **/}
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
-                                                    { (!weekend && !holiday && currentUser.role.rep > 2 && cc.status === 'active' && editMode && (!cc.hasOwnProperty('_id') || revertMode)) ? (
+                                                    { cc.mcbuColStr }
+                                                    {/* { (!weekend && !holiday && currentUser.role.rep > 2 && cc.status === 'active' && editMode && (!cc.hasOwnProperty('_id') || revertMode)) ? (
                                                         <React.Fragment>
                                                             <input type="number" name={`${cc.clientId}-mcbuCol`} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'mcbuCol')}
                                                                 onClick={(e) => e.stopPropagation()} onBlur={(e) => handlePaymentValidation(e, cc, index, 'mcbuCol')} defaultValue={cc.mcbuCol ? cc.mcbuCol : 0} tabIndex={index + 1}
@@ -1750,7 +1775,7 @@ const CashCollectionDetailsPage = () => {
                                                             <React.Fragment>
                                                                 {(!editMode || filter || !revertMode || cc.status === 'completed' || cc.status === 'pending' || cc.status === 'totals' || cc.status === 'closed') ? cc.mcbuColStr : '-'}
                                                             </React.Fragment>
-                                                    }
+                                                    } */}
                                                 </td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.targetCollectionStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.excessStr }</td>

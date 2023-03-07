@@ -65,6 +65,7 @@ const CashCollectionDetailsPage = () => {
         { label: 'Past Due', value: 'past due'},
         { label: 'Past Due Collection', value: 'past due collection'},
         { label: 'Delinquent', value: 'delinquent'},
+        { label: 'Delinquent Client for Offset', value: 'delinquent'},
         { label: 'Good Excused due to Advance Payment', value: 'excused advance payment'},
         { label: 'Excused Due to Calamity', value: 'excused'},
         { label: 'Excused - Hospitalization', value: 'excused'},
@@ -915,6 +916,10 @@ const CashCollectionDetailsPage = () => {
                             temp.pastDueStr = temp.pastDue > 0 ? formatPricePhp(temp.pastDue) : '-';
                             temp.status = 'active';
                             temp.advanceDays = temp.prevData.advanceDays;
+                            temp.mcbu = temp.prevData.mcbu;
+                            temp.mcbuStr = temp.mcbu > 0 ? formatPricePhp(temp.mcbu) : '-';
+                            temp.mcbuCol = 0;
+                            temp.mcbuColStr = '-';
                             delete temp.delinquent;
                         } else {
                             temp.prevData = {
@@ -1170,6 +1175,11 @@ const CashCollectionDetailsPage = () => {
 
                         if (temp.remarks.value === "delinquent") {
                             temp.delinquent = true;
+                        }
+
+                        if (temp.remarks.label === 'Delinquent Client for Offset') {
+                            temp.mcbuCol = 0;
+                            temp.mcbuColStr = '-';
                         }
 
                     } else if (remarks.value === "past due collection") {
