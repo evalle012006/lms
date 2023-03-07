@@ -15,9 +15,8 @@ module.exports = {
     // if (branches) {
     //   branches.map(async branch => {
       // 639e9c4d1ccc1d5fd9f319b4  
-        // const groups = await db.collection('groups').find({ _id: ObjectId('639d9b469c9d2085e9aaac7d') }).toArray();
-        const groups = await db.collection('groups').find({ branchId: "639d2d55e4d49471b7cb9305" }).toArray();
-
+        // const groups = await db.collection('groups').find({ _id: ObjectId('639eac7e17b307a654da971b') }).toArray();    // {email: "lo4mabalacat@ambercashph.com"}
+        const groups = await db.collection('groups').find({ loanOfficerId: "63edcd6cd5a2468dd0def130" }).toArray();
         if (groups) {
           groups.map(group => {
             db.collection('client').insertMany([

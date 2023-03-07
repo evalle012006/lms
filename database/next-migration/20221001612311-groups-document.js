@@ -4,11 +4,14 @@ module.exports = {
     // See https://github.com/seppevs/migrate-mongo/#creating-a-new-migration-script
     // Example:
     // await db.collection('albums').updateOne({artist: 'The Beatles'}, {$set: {blacklisted: true}});
-    const branches = await db.collection('branches').find().toArray();
+    // const branches = await db.collection('branches').find().toArray();
     const users = await db.collection('users').find().toArray();
+    //63ec7e305f28f2393ec01262
+    //63ec7e645f28f2393ec01263
+    //63ec80275f28f2393ec01264
 
-    if (branches && users) {
-      branches.map(branch => {
+    // if (branches && users) {
+    //   branches.map(branch => {
         const branchUserLO = users.filter(u => u.designatedBranch === branch.code);
         if (branchUserLO) {
             branchUserLO.filter(u => u.role.rep === 4).map(user => {
@@ -313,7 +316,7 @@ module.exports = {
                     day: "all",
                     dayNo: 6,
                     time: "7:30AM-7:45AM",
-                    groupNo: 1,
+                    groupNo: 6,
                     occurence: "daily",
                     loanOfficerId: user._id + '',
                     loanOfficerName: user.lastName + ', ' + user.firstName,
@@ -520,7 +523,7 @@ module.exports = {
                     day: "all",
                     dayNo: 6,
                     time: "7:30AM-7:45AM",
-                    groupNo: 1,
+                    groupNo: 6,
                     occurence: "daily",
                     loanOfficerId: user._id + '',
                     loanOfficerName: user.lastName + ', ' + user.firstName,
@@ -727,7 +730,7 @@ module.exports = {
                     day: "all",
                     dayNo: 6,
                     time: "7:30AM-7:45AM",
-                    groupNo: 1,
+                    groupNo: 6,
                     occurence: "daily",
                     loanOfficerId: user._id + '',
                     loanOfficerName: user.lastName + ', ' + user.firstName,
@@ -934,7 +937,7 @@ module.exports = {
                     day: "all",
                     dayNo: 6,
                     time: "7:30AM-7:45AM",
-                    groupNo: 1,
+                    groupNo: 6,
                     occurence: "daily",
                     loanOfficerId: user._id + '',
                     loanOfficerName: user.lastName + ', ' + user.firstName,
@@ -1141,7 +1144,7 @@ module.exports = {
                     day: "all",
                     dayNo: 6,
                     time: "7:30AM-7:45AM",
-                    groupNo: 1,
+                    groupNo: 6,
                     occurence: "daily",
                     loanOfficerId: user._id + '',
                     loanOfficerName: user.lastName + ', ' + user.firstName,
@@ -1348,7 +1351,7 @@ module.exports = {
                     day: "all",
                     dayNo: 6,
                     time: "7:30AM-7:45AM",
-                    groupNo: 1,
+                    groupNo: 6,
                     occurence: "daily",
                     loanOfficerId: user._id + '',
                     loanOfficerName: user.lastName + ', ' + user.firstName,
@@ -1555,7 +1558,8 @@ module.exports = {
                     day: "all",
                     dayNo: 6,
                     time: "7:30AM-7:45AM",
-                    groupNo: 1,
+                    groupNo: 6
+                    ,
                     occurence: "daily",
                     loanOfficerId: user._id + '',
                     loanOfficerName: user.lastName + ', ' + user.firstName,
@@ -1762,7 +1766,7 @@ module.exports = {
                     day: "all",
                     dayNo: 6,
                     time: "7:30AM-7:45AM",
-                    groupNo: 1,
+                    groupNo: 6,
                     occurence: "daily",
                     loanOfficerId: user._id + '',
                     loanOfficerName: user.lastName + ', ' + user.firstName,
@@ -1969,7 +1973,7 @@ module.exports = {
                     day: "all",
                     dayNo: 6,
                     time: "7:30AM-7:45AM",
-                    groupNo: 1,
+                    groupNo: 6,
                     occurence: "daily",
                     loanOfficerId: user._id + '',
                     loanOfficerName: user.lastName + ', ' + user.firstName,
@@ -2084,8 +2088,8 @@ module.exports = {
                 ]);
               }
             });
-        } 
-      });
+        // } 
+      // });
     }
   },
 
