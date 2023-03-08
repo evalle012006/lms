@@ -308,7 +308,7 @@ const LoanOfficerSummary = () => {
                     temp.activeLoanReleaseAmount = fBal.activeLoanReleaseAmount + loanReleaseAmount - fullPaymentAmount;
                     temp.activeLoanReleaseAmountStr = formatPricePhp(temp.activeLoanReleaseAmount);
                     temp.activeBorrowers = temp.activeBorrowers > 0 ? temp.activeBorrowers : fBal.activeBorrowers;
-                    temp.loanBalance = fBal.loanBalance + loanReleaseAmount - collectionActual; //temp.loanBalance > 0 ? temp.loanBalance + loanReleaseAmount : fBal.loanBalance;
+                    temp.loanBalance = fBal.loanBalance + loanReleaseAmount - collectionActual;
                     temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
                     temp.mcbuBalance = fBalMcbuBalance + mcbuActual + mcbuWithdrawal + mcbuInterest - mcbuReturnAmt;
                     temp.mcbuBalanceStr = formatPricePhp(temp.mcbuBalance);
