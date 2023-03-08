@@ -253,7 +253,8 @@ const LoanOfficerSummary = () => {
                         losList[index] = {
                             ...los.data,
                             day: los.dateAdded,
-                            mcbuTargetStr: formatPricePhp(los.data.mcbuTarget),
+                            mcbuTarget: type === 'daily' ? 0 : los.data.mcbuTarget,
+                            mcbuTargetStr: type === 'daily' ? '-' : formatPricePhp(los.data.mcbuTarget),
                             mcbuActualStr: formatPricePhp(los.data.mcbuActual),
                             mcbuWithdrawalStr: formatPricePhp(los.data.mcbuWithdrawal),
                             mcbuInterestStr: formatPricePhp(los.data.mcbuInterest),
@@ -267,8 +268,6 @@ const LoanOfficerSummary = () => {
                             loanBalance: los.data.loanBalance,
                             loanBalanceStr: formatPricePhp(los.data.loanBalance)
                         };
-                    } else {
-
                     }
                 });
 
@@ -842,10 +841,7 @@ const LoanOfficerSummary = () => {
                                         <th rowSpan={3} className="sticky top-0 bg-white border border-gray-300 border-l-0 border-t-0  px-2 py-2 text-gray-500 uppercase">Date</th>
                                         <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">TFR</th>
                                         <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">NM</th>
-                                        {type === 'weekly' ? 
-                                            <th colSpan={6} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 text-gray-500 uppercase">MCBU</th> :
-                                            <th colSpan={5} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 text-gray-500 uppercase">MCBU</th>
-                                        }
+                                        <th colSpan={6} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 text-gray-500 uppercase">MCBU</th> 
                                         <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">OFST Pers.</th>
                                         <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">Act. Clie.</th>
                                         <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">MCBU Bal.</th>

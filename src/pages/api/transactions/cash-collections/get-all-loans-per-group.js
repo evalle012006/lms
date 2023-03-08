@@ -11,7 +11,7 @@ async function getAllLoansPerGroup(req, res) {
     const { db } = await connectToDatabase();
 
     const currentDate = moment(new Date()).format('YYYY-MM-DD');
-    const { date, mode, branchCode, loId } = req.query;
+    const { date, mode, branchCode, loId, dayName } = req.query;
     let statusCode = 200;
     let response = {};
     let cashCollection;
@@ -83,6 +83,7 @@ async function getAllLoansPerGroup(req, res) {
                                                             } 
                                                         }
                                                     },
+                                                    mcbu: { $sum: '$mcbu' }
                                                 }
                                             }
                                         ],
@@ -588,7 +589,7 @@ async function getAllLoansPerGroup(req, res) {
                                         loanTarget: { 
                                             $sum: { 
                                                 $cond: {
-                                                    if: { $ne: ['$status', 'pending'] }, 
+                                                    if: { $and: [{ $ne: ['$status', 'pending'] }, { $eq: ['$groupDay', dayName] }] }, 
                                                     then: { 
                                                         $cond: {
                                                             if: { $and: [{$eq: ['$activeLoan', 0]}, {$eq: ['$fullPaymentDate', date]}] },

@@ -126,15 +126,20 @@ const ViewByBranchPage = ({dateFilter, type}) => {
                     if (type === "weekly" && branch.groups.length > 0) {
                         targetLoanCollection = 0;
                         let loLoanTarget = 0;
+                        let loMcbu = 0;
                         branch.groups.map(g => {
                             if (g.loanTarget.length > 0) {
                                 loLoanTarget += g.loanTarget[0].loanTarget;
+                                loMcbu += g.loanTarget[0].mcbu;
                             }
                         });
 
                         collection.loanTarget = loLoanTarget;
                         collection.loanTargetStr = loLoanTarget > 0 ? formatPricePhp(loLoanTarget) : '-';
                         targetLoanCollection += loLoanTarget;
+                        collection.mcbu = loMcbu;
+                        collection.mcbuStr = loMcbu > 0 ? formatPricePhp(loMcbu) : '-';
+                        totalMcbu += collection.mcbu;
                     }
                     
                     if (branch.cashCollections.length > 0) {
@@ -188,18 +193,18 @@ const ViewByBranchPage = ({dateFilter, type}) => {
                     }
                 } else {
                     const dayNameFilter = moment(date).format('dddd').toLowerCase();
-                    let loanTarget = 0;
-                    if ((cc.occurence === 'weekly' && cc.day === dayNameFilter) || cc.occurence === 'daily') {
-                        loanTarget = branch.cashCollections[0].loanTarget && branch.cashCollections[0].loanTarget;
-                    }
+                    // let loanTarget = 0;
+                    // if ((cc.occurence === 'weekly' && cc.day === dayNameFilter) || cc.occurence === 'daily') {
+                    //     loanTarget = branch.cashCollections[0].loanTarget && branch.cashCollections[0].loanTarget;
+                    // }
                     if (branch.cashCollections.length > 0) {
                         collection.activeClients = branch.cashCollections[0].activeClients; 
                         collection.activeBorrowers = branch.cashCollections[0].activeBorrowers;
 
                         collection.totalReleasesStr = formatPricePhp(branch.cashCollections[0].totalRelease);
                         collection.totalLoanBalanceStr = formatPricePhp(branch.cashCollections[0].totalLoanBalance);
-                        collection.loanTarget = loanTarget;
-                        collection.loanTargetStr = formatPricePhp(loanTarget);
+                        collection.loanTarget = branch.cashCollections[0].loanTarget;
+                        collection.loanTargetStr = formatPricePhp(branch.cashCollections[0].loanTarget);
                         
                         collection.excessStr = formatPricePhp(branch.cashCollections[0].excess);
                         collection.totalStr = formatPricePhp(branch.cashCollections[0].collection);
@@ -230,7 +235,7 @@ const ViewByBranchPage = ({dateFilter, type}) => {
                         noOfBorrowers += branch.cashCollections[0].activeBorrowers;
                         totalsLoanRelease += branch.cashCollections[0].totalRelease;
                         totalsLoanBalance += branch.cashCollections[0].totalLoanBalance;
-                        targetLoanCollection += loanTarget;
+                        targetLoanCollection += branch.cashCollections[0].loanTarget;
                         excess += branch.cashCollections[0].excess;
                         totalLoanCollection += branch.cashCollections[0].collection;
                         mispayment += branch.cashCollections[0].mispayment;
