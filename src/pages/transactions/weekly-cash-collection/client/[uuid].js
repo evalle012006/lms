@@ -769,6 +769,7 @@ const CashCollectionDetailsPage = () => {
             } else {
                 let dataArr = data.filter(cc => cc.status !== 'open').map(cc => {
                     let temp = {...cc};
+                    temp.groupDay = temp.group.day;
     
                     delete temp.targetCollectionStr;
                     delete temp.amountReleaseStr;
@@ -920,6 +921,11 @@ const CashCollectionDetailsPage = () => {
                             temp.mcbuStr = temp.mcbu > 0 ? formatPricePhp(temp.mcbu) : '-';
                             temp.mcbuCol = 0;
                             temp.mcbuColStr = '-';
+                            temp.mcbuWithdrawal = 0;
+                            temp.mcbuWithdrawalStr = '-';
+                            temp.mcbuReturnAmt = 0;
+                            temp.mcbuReturnAmtStr = '-';
+                            delete temp.excused;
                             delete temp.delinquent;
                         } else {
                             temp.prevData = {
@@ -1146,6 +1152,9 @@ const CashCollectionDetailsPage = () => {
                             setCloseLoan(cc);
                             temp.error = false;
                             setEditMode(true);
+                            temp.mcbu = temp.mcbu - temp.mcbuCol;
+                            temp.mcbuCol = 0;
+                            temp.mcbuColStr = '-';
                             temp.mcbuReturnAmt = parseFloat(temp.mcbu);
                             temp.mcbuReturnAmtStr = formatPricePhp(temp.mcbuReturnAmt);
                             temp.mcbu = 0;
@@ -1164,10 +1173,6 @@ const CashCollectionDetailsPage = () => {
                         temp.excused = true;
                         temp.mcbuError = false;
                     } else if (remarks.value === "delinquent" || remarks.value === "excused") {
-                        temp.targetCollection = 0;
-                        temp.targetCollectionStr = formatPricePhp(temp.targetCollection);
-                        temp.mispayment = true;
-                        temp.mispaymentStr = 'Yes';
                         // add no of mispayments / maximum of payments per cycle // change to #of mispay
                         temp.error = false;
                         temp.excused = true;
@@ -1178,8 +1183,17 @@ const CashCollectionDetailsPage = () => {
                         }
 
                         if (temp.remarks.label === 'Delinquent Client for Offset') {
+                            temp.mcbu = temp.mcbu - temp.mcbuCol;
+                            temp.mcbuStr = temp.mcbu > 0 ? formatPricePhp(temp.mcbu) : '-';
                             temp.mcbuCol = 0;
                             temp.mcbuColStr = '-';
+                            temp.mispayment = false;
+                            temp.mispaymentStr = 'No';
+                        } else {
+                            temp.targetCollection = 0;
+                            temp.targetCollectionStr = formatPricePhp(temp.targetCollection);
+                            temp.mispayment = true;
+                            temp.mispaymentStr = 'Yes';
                         }
 
                     } else if (remarks.value === "past due collection") {
@@ -1247,6 +1261,9 @@ const CashCollectionDetailsPage = () => {
                             toast.error('Error occured. Yesterday transaction is not an Advanced payment');
                         }
                     } else if (remarks.label === 'Reloaner WD/MCBU') {
+                        temp.mcbu = temp.mcbu - temp.mcbuCol;
+                        temp.mcbuCol = 0;
+                        temp.mcbuColStr = '-';
                         temp.mcbuWithdrawal = temp.mcbu;
                         temp.mcbu = 0;
 

@@ -90,6 +90,7 @@ async function getAllLoansPerGroup(req, res) {
                                                                 } 
                                                             }
                                                         },
+                                                        mcbu: { $sum: '$mcbu' }
                                                     }
                                                 }
                                             ],
@@ -366,6 +367,7 @@ async function getAllLoansPerGroup(req, res) {
                                                             } 
                                                         }
                                                     },
+                                                    mcbu: { $sum: '$mcbu' }
                                                 }
                                             }
                                         ],
