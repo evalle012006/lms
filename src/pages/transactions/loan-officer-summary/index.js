@@ -854,8 +854,16 @@ const LoanOfficerSummary = () => {
                                         <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-r-0 border-t-0 px-2 py-2 text-gray-500 uppercase">Loan Balance</th>
                                     </tr>
                                     <tr>
-                                        <th rowSpan={2} className="sticky top-[2.2rem] bg-white  border border-gray-300 text-gray-500 uppercase">Target Deposit</th>
-                                        <th rowSpan={2} className="sticky top-[2.2rem] bg-white  border border-gray-300 text-gray-500 uppercase">Actual Deposit</th>
+                                        {type === 'weekly' ? (
+                                            <React.Fragment>
+                                                <th rowSpan={2} className="sticky top-[2.2rem] bg-white  border border-gray-300 text-gray-500 uppercase">Target Deposit</th>
+                                                <th rowSpan={2} className="sticky top-[2.2rem] bg-white  border border-gray-300 text-gray-500 uppercase">Actual Deposit</th>
+                                            </React.Fragment>
+                                        ) : (
+                                            <React.Fragment>
+                                                <th rowSpan={2} className="sticky top-[2.2rem] bg-white  border border-gray-300 text-gray-500 uppercase">Actual Deposit</th>
+                                            </React.Fragment>
+                                        )}
                                         <th rowSpan={2} className="sticky top-[2.2rem] bg-white  border border-gray-300 text-gray-500 uppercase">Withdrawals</th>
                                         <th rowSpan={2} className="sticky top-[2.2rem] bg-white  border border-gray-300 text-gray-500 uppercase">Interest</th>
                                         <th colSpan={2} className="sticky top-[2.2rem] bg-white  border border-gray-300 text-gray-500 uppercase">MCBU Return</th>
@@ -892,7 +900,7 @@ const LoanOfficerSummary = () => {
                                                         <td className={`${item.fBalance && 'text-black'} px-4 py-4 text-center border border-gray-300 border-l-0`}>{ item.day }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.transfer }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.newMember }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.mcbuTargetStr }</td>
+                                                        {type === 'daily' && <td className="px-2 py-4 text-center border border-gray-300">{ item.mcbuTargetStr }</td> }
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.mcbuActualStr }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.mcbuWithdrawalStr }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.mcbuInterestStr }</td>
