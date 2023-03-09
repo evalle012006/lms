@@ -55,7 +55,6 @@ const CashCollectionDetailsPage = () => {
     const [closeLoan, setCloseLoan] = useState();
     const remarksArr = [
         { label: 'Remarks', value: ''},
-        // { label: 'Double Payment', value: 'double payment'},
         { label: 'Advance Payment', value: 'advance payment'},
         // { label: 'Pending', value: 'pending'},
         // { label: 'Reloaner', value: 'reloaner'},
