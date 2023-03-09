@@ -71,7 +71,7 @@ async function save(req, res) {
             const groupSummary = await saveGroupSummary(loanData);
 
             if (groupSummary.success) {
-                await saveCashCollection(loanData, currentDate, currentReleaseAmount);
+                await saveCashCollection(loanData, currentDate, currentReleaseAmount, reloan);
             }
 
             await updateUser(loanData);
@@ -197,7 +197,7 @@ async function saveGroupSummary(loan) {
     return { success: true };
 }
 
-async function saveCashCollection(loan, currentDate, currentReleaseAmount) {
+async function saveCashCollection(loan, currentDate, currentReleaseAmount, reloan) {
     const { db } = await connectToDatabase();
 
     let groupSummary = await db.collection('groupCashCollections').find({ dateAdded: currentDate, groupId: loan.groupId }).toArray();
@@ -271,6 +271,10 @@ async function saveCashCollection(loan, currentDate, currentReleaseAmount) {
                 if (data.occurence === 'weekly') {
                     data.mcbuTarget = 50;
                     data.groupDay = loanData.groups[0].day;
+
+                    if (!reloan) {
+                        data.mcbuCol = loanData.mcbu;
+                    }
                 }
     
                 await db.collection('cashCollections').insertOne({ ...data });
