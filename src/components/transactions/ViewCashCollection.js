@@ -177,7 +177,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                             loanTarget = collection.loanTarget - cc.cashCollections[0].loanTarget;
                             targetLoanCollection = targetLoanCollection - cc.cashCollections[0].loanTarget;
                             mcbu = cc.cashCollections[0].mcbu;
-                            totalMcbu += mcbu;
+                            // totalMcbu += mcbu;
                         }
 
                         collection = { ...collection,

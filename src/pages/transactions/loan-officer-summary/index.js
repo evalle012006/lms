@@ -310,7 +310,7 @@ const LoanOfficerSummary = () => {
                     temp.activeBorrowers = temp.activeBorrowers > 0 ? temp.activeBorrowers : fBal.activeBorrowers;
                     temp.loanBalance = fBal.loanBalance + loanReleaseAmount - collectionActual;
                     temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
-                    temp.mcbuBalance = fBalMcbuBalance + mcbuActual + mcbuWithdrawal + mcbuInterest - mcbuReturnAmt;
+                    temp.mcbuBalance = fBalMcbuBalance + mcbuActual - mcbuWithdrawal + mcbuInterest - mcbuReturnAmt;
                     temp.mcbuBalanceStr = formatPricePhp(temp.mcbuBalance);
                 } else {
                     temp.activeClients = temp.activeClients > 0 ? temp.activeClients : prevLos.activeClients;
@@ -320,8 +320,13 @@ const LoanOfficerSummary = () => {
                     temp.activeBorrowers = temp.activeBorrowers > 0 ? temp.activeBorrowers : prevLos.activeBorrowers;
                     temp.loanBalance = prevLos.loanBalance + loanReleaseAmount - collectionActual;
                     temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
-                    temp.mcbuBalance = prevLos.mcbuBalance + mcbuActual + mcbuWithdrawal + mcbuInterest - mcbuReturnAmt;
+                    temp.mcbuBalance = prevLos.mcbuBalance + mcbuActual - mcbuWithdrawal + mcbuInterest - mcbuReturnAmt;
                     temp.mcbuBalanceStr = formatPricePhp(temp.mcbuBalance);
+                }
+
+                if (type === 'weekly') {
+                    temp.mcbuTarget = temp.activeClients * 50;
+                    temp.mcbuTargetStr = temp.mcbuTarget > 0 ? formatPricePhp(temp.mcbuTarget) : '-';
                 }
 
                 prevLos = temp;
@@ -813,14 +818,14 @@ const LoanOfficerSummary = () => {
 
         if (days.length > 0) {
             const fMonth = (typeof selectedMonth === 'number' && selectedMonth < 10) ? '0' + selectedMonth : selectedMonth;
-            mounted && getListLos(`${selectedYear}-${fMonth}-01`);
+            mounted && type && getListLos(`${selectedYear}-${fMonth}-01`);
             mounted && setLoading(false);
         }
 
         return (() => {
             mounted = false;
         })
-    }, [days]);
+    }, [type, days]);
 
     return (
         <Layout header={false} noPad={false} hScroll={false}>

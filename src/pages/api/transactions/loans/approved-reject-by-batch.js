@@ -216,7 +216,8 @@ async function saveCashCollection(loan) {
                         { upsert: false }
                     );
             } else {
-                const data = {
+                // this entry is only when the approve or reject is not the same day when it applies
+                let data = {
                     loanId: loanData._id + '',
                     branchId: loanData.branchId,
                     groupId: loanData.groupId,
@@ -250,6 +251,10 @@ async function saveCashCollection(loan) {
                     groupCollectionId: groupSummary._id + '',
                     origin: 'automation'
                 };
+
+                if (data.loanCycle === 1 && data.occurence === 'weekly') {
+                    data.mcbuCol = loanData.mcbu;
+                }
     
                 await db.collection('cashCollections').insertOne({ ...data });
             }

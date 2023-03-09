@@ -31,9 +31,9 @@ async function save(req, res) {
                 }
 
                 if (collection.hasOwnProperty('_id')) {
-                    if (collection.remarks && collection.remarks.value === "delinquent") {
-                        collection.targetCollection = 0;
-                    }
+                    // if (collection.remarks && collection.remarks.value === "delinquent") {
+                    //     collection.targetCollection = 0;
+                    // }
 
                     collection.collectionId = collection._id;
                     delete collection._id;
