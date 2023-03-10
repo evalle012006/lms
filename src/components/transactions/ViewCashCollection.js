@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import Spinner from "@/components/Spinner";
 import toast from 'react-hot-toast';
 import { useRouter } from "node_modules/next/router";
-import { formatPricePhp } from "@/lib/utils";
+import { formatPricePhp, getTotal } from "@/lib/utils";
 import moment from 'moment';
 import { setCashCollectionList, setGroupSummaryTotals, setLoSummary } from "@/redux/actions/cashCollectionActions";
 import TableComponent, { SelectColumnFilter, StatusPill } from "@/lib/table";
@@ -101,7 +101,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         if ((cc.occurence === 'weekly' && cc.day === dayName) || cc.occurence === 'daily') {
                             loanTarget = cc.loans[0].loanTarget && cc.loans[0].loanTarget;
                             mcbu = cc.loans[0].mcbu;
-                            totalMcbu += mcbu;
+                            // totalMcbu += mcbu;
                         }
 
                         collection = {
@@ -172,11 +172,11 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                     
                     if (cc.cashCollections.length > 0) {
                         let loanTarget = 0;
-                        // let mcbu = 0;
+                        let mcbu = 0;
                         if ((cc.occurence === 'weekly' && cc.day === dayName) || cc.occurence === 'daily') {
                             loanTarget = collection.loanTarget - cc.cashCollections[0].loanTarget;
                             targetLoanCollection = targetLoanCollection - cc.cashCollections[0].loanTarget;
-                            // mcbu = cc.cashCollections[0].mcbu;
+                            mcbu = cc.cashCollections[0].mcbu;
                         }
 
                         collection = { ...collection,
@@ -188,8 +188,8 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                             loanTarget: loanTarget,
                             loanTargetStr: loanTarget > 0 ? formatPricePhp(loanTarget) : 0,
                             offsetPerson: cc.cashCollections[0].offsetPerson ? cc.cashCollections[0].offsetPerson : 0,
-                            mcbu: cc.cashCollections[0].mcbu,
-                            mcbuStr: cc.cashCollections[0].mcbu > 0 ? formatPricePhp(cc.cashCollections[0].mcbu): '-',
+                            mcbu: mcbu,
+                            mcbuStr: mcbu > 0 ? formatPricePhp(mcbu): '-',
                             mcbuCol: cc.cashCollections[0].mcbuCol ? cc.cashCollections[0].mcbuCol: 0,
                             mcbuColStr: cc.cashCollections[0].mcbuCol > 0 ? formatPricePhp(cc.cashCollections[0].mcbuCol): '-',
                             mcbuWithdrawal: cc.cashCollections[0].mcbuWithdrawal ? cc.cashCollections[0].mcbuWithdrawal: 0,
@@ -322,6 +322,9 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
             });
 
             collectionData.sort((a, b) => { return a.groupNo - b.groupNo; });
+            collectionData.map(c => {
+                totalMcbu += c.mcbu ? c.mcbu : 0
+            });
 
             if (collectionData.length > 0) {
                 const totals = {
