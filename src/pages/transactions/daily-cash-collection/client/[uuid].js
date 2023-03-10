@@ -554,7 +554,6 @@ const CashCollectionDetailsPage = () => {
         let totalLoanRelease = 0;
         let totalLoanBalance = 0;
         let totalReleaseAmount = 0;
-        // let totalPayments = 0;
         let totalTargetLoanCollection = 0;
         let totalExcess = 0;
         let totalLoanCollection = 0;
