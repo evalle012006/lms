@@ -554,7 +554,6 @@ const CashCollectionDetailsPage = () => {
         let totalLoanRelease = 0;
         let totalLoanBalance = 0;
         let totalReleaseAmount = 0;
-        // let totalPayments = 0;
         let totalTargetLoanCollection = 0;
         let totalExcess = 0;
         let totalLoanCollection = 0;
@@ -582,7 +581,7 @@ const CashCollectionDetailsPage = () => {
                     totalTargetLoanCollection += collection.history ? collection.history.activeLoan : 0;
                 }
 
-                if (!collection.remarks || (collection.remarks && collection.remarks.value !== "delinquent" && collection.remarks.value !== "excused")) {
+                if (!collection.remarks || (collection.remarks && collection.remarks.label !== "Delinquent" && collection.remarks.value !== "excused")) {
                     totalTargetLoanCollection += collection.targetCollection  ? collection.targetCollection !== '-' ? collection.targetCollection : 0 : 0;
                 }
 

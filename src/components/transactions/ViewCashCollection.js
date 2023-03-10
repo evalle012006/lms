@@ -172,12 +172,11 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                     
                     if (cc.cashCollections.length > 0) {
                         let loanTarget = 0;
-                        let mcbu = 0;
+                        // let mcbu = 0;
                         if ((cc.occurence === 'weekly' && cc.day === dayName) || cc.occurence === 'daily') {
                             loanTarget = collection.loanTarget - cc.cashCollections[0].loanTarget;
                             targetLoanCollection = targetLoanCollection - cc.cashCollections[0].loanTarget;
                             mcbu = cc.cashCollections[0].mcbu;
-                            // totalMcbu += mcbu;
                         }
 
                         collection = { ...collection,
@@ -189,8 +188,8 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                             loanTarget: loanTarget,
                             loanTargetStr: loanTarget > 0 ? formatPricePhp(loanTarget) : 0,
                             offsetPerson: cc.cashCollections[0].offsetPerson ? cc.cashCollections[0].offsetPerson : 0,
-                            mcbu: mcbu,
-                            mcbuStr: mcbu > 0 ? formatPricePhp(mcbu): '-',
+                            mcbu: cc.cashCollections[0].mcbu,
+                            mcbuStr: cc.cashCollections[0].mcbu > 0 ? formatPricePhp(cc.cashCollections[0].mcbu): '-',
                             mcbuCol: cc.cashCollections[0].mcbuCol ? cc.cashCollections[0].mcbuCol: 0,
                             mcbuColStr: cc.cashCollections[0].mcbuCol > 0 ? formatPricePhp(cc.cashCollections[0].mcbuCol): '-',
                             mcbuWithdrawal: cc.cashCollections[0].mcbuWithdrawal ? cc.cashCollections[0].mcbuWithdrawal: 0,
