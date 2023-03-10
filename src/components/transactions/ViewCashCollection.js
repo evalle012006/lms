@@ -176,7 +176,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         if ((cc.occurence === 'weekly' && cc.day === dayName) || cc.occurence === 'daily') {
                             loanTarget = collection.loanTarget - cc.cashCollections[0].loanTarget;
                             targetLoanCollection = targetLoanCollection - cc.cashCollections[0].loanTarget;
-                            mcbu = cc.cashCollections[0].mcbu;
+                            // mcbu = cc.cashCollections[0].mcbu;
                         }
 
                         collection = { ...collection,
@@ -202,7 +202,6 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         totalLoanCollection += cc.cashCollections[0].collection ? cc.cashCollections[0].collection : 0;
                         mispayment += cc.cashCollections[0].mispayment ? cc.cashCollections[0].mispayment : 0;
                         offsetPerson += cc.cashCollections[0].offsetPerson ? cc.cashCollections[0].offsetPerson : 0;
-                        // totalMcbu += cc.cashCollections[0].mcbu ? cc.cashCollections[0].mcbu: 0;
                         totalMcbuCol += cc.cashCollections[0].mcbuCol ? cc.cashCollections[0].mcbuCol: 0;
                         totalMcbuWithdrawal += cc.cashCollections[0].mcbuWithdrawal ? cc.cashCollections[0].mcbuWithdrawal: 0;
                         totalMcbuReturnNo += cc.cashCollections[0].mcbuReturnNo ? cc.cashCollections[0].mcbuReturnNo: 0;
