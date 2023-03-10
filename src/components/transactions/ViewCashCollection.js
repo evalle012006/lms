@@ -303,7 +303,6 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         mispayment += cc.cashCollections[0].mispayment;
                         totalPastDue += cc.cashCollections[0].pastDue;
                         totalNoPastDue += cc.cashCollections[0].noPastDue;
-                        // totalNoPaidPastDue += cc.cashCollections[0].noPaidPastDue;
                         totalsLoanRelease += cc.cashCollections[0].totalRelease;
                         totalsLoanBalance += cc.cashCollections[0].totalLoanBalance;
                         targetLoanCollection += loanTarget;
