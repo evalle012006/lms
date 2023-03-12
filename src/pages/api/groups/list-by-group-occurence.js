@@ -10,7 +10,7 @@ async function list(req, res) {
     let statusCode = 200;
     let response = {};
 
-    const { branchId, loId, occurence } = req.query;
+    const { areaManagerId, branchId, loId, occurence } = req.query;
     let groups;
 
     if (branchId && loId) {
@@ -21,12 +21,14 @@ async function list(req, res) {
     } else if (branchId) {
         groups = await db
             .collection('groups')
-            .find({ branchId: branchId, status: 'available', occurence: occurence })
+            .find({ branchId: branchId, status: 'available' })
             .toArray();
+    } else if (areaManagerId) {
+        // process for area manager
     } else {
         groups = await db
             .collection('groups')
-            .find({ status: 'available', occurence: occurence })
+            .find({ status: 'available' })
             .toArray();
     }
     

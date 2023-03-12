@@ -15,7 +15,7 @@ async function processLOSummary(req, res) {
     const { mode, currentUser, branchId } = req.body;
     
     if (branchId) {
-        const groups = await db.collection('groups').find({ $expr: { $and: [{$eq: ['$branchId', branchId] }, {$gt: ['$noOfClients', 0]}, {$eq: ['$occurence', mode]}] } }).toArray();
+        const groups = await db.collection('groups').find({ $expr: { $and: [{$eq: ['$branchId', branchId] }, {$gt: ['$noOfClients', 0]}] } }).toArray();
 
         if (groups.length > 0) {
             groups.map(async group => {
@@ -28,7 +28,7 @@ async function processLOSummary(req, res) {
                         loId: group.loanOfficerId,
                         dateAdded: moment(new Date()).format('YYYY-MM-DD'),
                         insertBy: currentUser,
-                        mode: mode,
+                        mode: group.occurence,
                         status: 'pending'
                     };
         
@@ -43,7 +43,7 @@ async function processLOSummary(req, res) {
         
         if (branches) {
             branches.map(async branch => {
-                const groups = await db.collection('groups').find({ $expr: { $and: [{$eq: ['$branchId', branch._id + ''] }, {$gt: ['$noOfClients', 0]}, {$eq: ['$occurence', mode]}] } }).toArray();
+                const groups = await db.collection('groups').find({ $expr: { $and: [{$eq: ['$branchId', branch._id + ''] }, {$gt: ['$noOfClients', 0]}] } }).toArray();
 
                 if (groups.length > 0) {
                     groups.map(async group => {
@@ -56,7 +56,7 @@ async function processLOSummary(req, res) {
                                 loId: group.loanOfficerId,
                                 dateAdded: moment(new Date()).format('YYYY-MM-DD'),
                                 insertBy: currentUser,
-                                mode: mode,
+                                mode: group.occurence,
                                 status: 'pending'
                             };
                 

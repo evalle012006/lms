@@ -21,7 +21,8 @@ import { TabPanel, useTabs } from "react-headless-tabs";
 import { TabSelector } from "@/lib/ui/tabSelector";
 
 const LoanApplicationPage = () => {
-    const holidays = useSelector(state => state.holidays.list);
+    const isHoliday = useSelector(state => state.systemSettings.holiday);
+    const isWeekend = useSelector(state => state.systemSettings.weekend);
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
     const list = useSelector(state => state.loan.list);
@@ -47,8 +48,6 @@ const LoanApplicationPage = () => {
 
     const [noOfPendingLoans, setNoOfPendingLoans] = useState(0);
     const [totalAmountRelease, setTotalAmountRelease] = useState(0);
-    const [weekend, setWeekend] = useState(false);
-    const [holiday, setHoliday] = useState(false);
 
     const router = useRouter();
     const { type } = router.query;
@@ -100,7 +99,7 @@ const LoanApplicationPage = () => {
                 toast.error(response.message);
             }
         } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
-            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, occurence: type });
+            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let groups = [];
@@ -118,7 +117,7 @@ const LoanApplicationPage = () => {
                 toast.error(response.message);
             }
         } else if (currentUser.role.rep === 2 && branchList.length > 0) {
-            url = url + '?' + new URLSearchParams({ areaManagerId: currentUser._id, occurence: type });
+            url = url + '?' + new URLSearchParams({ areaManagerId: currentUser._id });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let groupList = [];
@@ -136,7 +135,6 @@ const LoanApplicationPage = () => {
                 setLoading(false);
             }
         } else if (branchList.length > 0) {
-            url = url + '?' + new URLSearchParams({ occurence: type });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let groups = [];
@@ -187,7 +185,7 @@ const LoanApplicationPage = () => {
                 toast.error(response.message);
             }
         } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
-            url = url + '?' + new URLSearchParams({ status: 'pending', branchId: branchList[0]._id, mode: type, currentDate: currentDate });
+            url = url + '?' + new URLSearchParams({ status: 'pending', branchId: branchList[0]._id, currentDate: currentDate });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let loanList = [];
@@ -215,7 +213,7 @@ const LoanApplicationPage = () => {
                 toast.error(response.message);
             }
         } else if (currentUser.role.rep === 2 && branchList.length > 0) {
-            url = url + '?' + new URLSearchParams({ status: 'pending', areaManagerId: currentUser._id, mode: type, currentDate: currentDate });
+            url = url + '?' + new URLSearchParams({ status: 'pending', areaManagerId: currentUser._id, currentDate: currentDate });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let loanList = [];
@@ -244,7 +242,7 @@ const LoanApplicationPage = () => {
                 toast.error(response.message);
             }
         } else if (branchList.length > 0) {
-            url = url + '?' + new URLSearchParams({ status: 'pending', mode: type, currentDate: currentDate });
+            url = url + '?' + new URLSearchParams({ status: 'pending', currentDate: currentDate });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let loanList = [];
@@ -540,7 +538,6 @@ const LoanApplicationPage = () => {
 
     useEffect(() => {
         let mounted = true;
-
         mounted && type && getListBranch();
 
         return () => {
@@ -565,11 +562,11 @@ const LoanApplicationPage = () => {
                 }
             }
     
-            if (branchList.length > 0) {
+            if (branchList.length > 0 && !isWeekend && !isHoliday) {
                 initGroupCollectionSummary();
             }
         }
-    }, [branchList]);
+    }, [branchList, isWeekend, isHoliday]);
 
     useEffect(() => {
         if (groupList) {
@@ -596,7 +593,6 @@ const LoanApplicationPage = () => {
                 {
                     Header: "MCBU",
                     accessor: 'mcbuStr',
-                    Filter: SelectColumnFilter,
                     filter: 'includes'
                 },
                 {
@@ -682,42 +678,34 @@ const LoanApplicationPage = () => {
         setTotalAmountRelease(getTotal(list, 'loanRelease'));
     }, [list]);
 
-    useEffect(() => {
-        const dayName = moment().format('dddd');
+    // useEffect(() => {
+    //     const dayName = moment().format('dddd');
 
-        if (dayName === 'Saturday' || dayName === 'Sunday') {
-            setWeekend(true);
-        } else {
-            setWeekend(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        if (holidays) {
-            let holidayToday = false;
-            const currentYear = moment().year();
-            holidays.map(item => {
-                const holidayDate = currentYear + '-' + item.date;
-
-                if (holidayDate === currentDate) {
-                    holidayToday = true;
-                }
-            });
-
-            setHoliday(holidayToday);
-        }
-    }, [holidays]);
+    //     if (dayName === 'Saturday' || dayName === 'Sunday') {
+    //         setWeekend(true);
+    //     } else {
+    //         setWeekend(false);
+    //     }
+    // }, []);
 
     // useEffect(() => {
-    //     if (weekend || currentUser.role.rep > 2) {
-    //         setShowApproveReject(false);
-    //     } else {
-    //         setShowApproveReject(true);
+    //     if (holidays) {
+    //         let holidayToday = false;
+    //         const currentYear = moment().year();
+    //         holidays.map(item => {
+    //             const holidayDate = currentYear + '-' + item.date;
+
+    //             if (holidayDate === currentDate) {
+    //                 holidayToday = true;
+    //             }
+    //         });
+
+    //         setHoliday(holidayToday);
     //     }
-    // }, [weekend]);
+    // }, [holidays]);
 
     return (
-        <Layout actionButtons={(currentUser.role.rep > 2 && !weekend && !holiday) && actionButtons}>
+        <Layout actionButtons={(currentUser.role.rep > 2 && !isWeekend && !isHoliday) && actionButtons}>
             <div className="pb-4">
                 {loading ?
                     (
@@ -740,7 +728,7 @@ const LoanApplicationPage = () => {
                             </nav>
                             <div>
                                 <TabPanel hidden={selectedTab !== "application"}>
-                                    <TableComponent columns={columns} data={list} hasActionButtons={(currentUser.role.rep > 2 && !weekend) ? true : false} rowActionButtons={!weekend && !holiday && rowActionButtons} showFilters={true} multiSelect={currentUser.role.rep === 3 ? true : false} multiSelectActionFn={handleMultiSelect} />
+                                    <TableComponent columns={columns} data={list} hasActionButtons={(currentUser.role.rep > 2 && !isWeekend) ? true : false} rowActionButtons={!isWeekend && !isHoliday && rowActionButtons} showFilters={true} multiSelect={currentUser.role.rep === 3 ? true : false} multiSelectActionFn={handleMultiSelect} />
                                     <footer className="pl-64 text-md font-bold text-center fixed inset-x-0 bottom-0 text-red-400">
                                         <div className="flex flex-row justify-center bg-white px-4 py-2 shadow-inner border-t-4 border-zinc-200">
                                             <div className="flex flex-row">

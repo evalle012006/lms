@@ -15,6 +15,8 @@ import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 
 const WeeklyCashCollectionPage = () => {
+    const isHoliday = useSelector(state => state.systemSettings.holiday);
+    const isWeekend = useSelector(state => state.systemSettings.weekend);
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
@@ -25,7 +27,7 @@ const WeeklyCashCollectionPage = () => {
     const loCollectionList = useSelector(state => state.cashCollection.lo);
     const loSummary = useSelector(state => state.cashCollection.loSummary);
     const bmSummary = useSelector(state => state.cashCollection.bmSummary);
-    const [weekend, setWeekend] = useState(false);
+    // const [weekend, setWeekend] = useState(false);
     const [showSubmitDialog, setShowSubmitDialog] = useState(false);
     const [filter, setFilter] = useState(false);
 
@@ -56,7 +58,7 @@ const WeeklyCashCollectionPage = () => {
                     toast.error("One or more lo/s transaction is not yet closed.");
                 } else {
                     if (bmSummary && Object.keys(bmSummary).length > 0) {
-                        const resp = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loan-officer-summary/save-update-totals', bmSummary);
+                        const resp = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collection-summary/save-update-totals', bmSummary);
             
                         if (resp.success) {
                             setLoading(false);
@@ -74,7 +76,7 @@ const WeeklyCashCollectionPage = () => {
                     toast.error("One or more group/s transaction is not yet closed.");
                 } else {
                     if (loSummary && Object.keys(loSummary).length > 0) {
-                        const resp = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loan-officer-summary/save-update-totals', loSummary);
+                        const resp = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collection-summary/save-update-totals', loSummary);
             
                         if (resp.success) {
                             setLoading(false);
@@ -125,35 +127,35 @@ const WeeklyCashCollectionPage = () => {
         };
     }, [currentUser]);
 
-    useEffect(() => {
-        if (branchList.length > 0) {
-            localStorage.setItem('cashCollectionDateFilter', currentDate);
-            if (currentUser.role.rep < 4) {
-                const initGroupCollectionSummary = async () => {
-                    if (currentUser.role.rep === 3) {
-                        const branchId = branchList[0]._id;
-                        const data = { currentUser: currentUser._id, mode: 'weekly',  branchId: branchId}
-                        await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary-by-branch', data);
-                    } else {
-                        const data = { currentUser: currentUser._id, mode: 'weekly'}
-                        await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary-by-branch', data);
-                    }
-                }
+    // useEffect(() => {
+    //     if (branchList.length > 0) {
+    //         localStorage.setItem('cashCollectionDateFilter', currentDate);
+    //         if (currentUser.role.rep < 4) {
+    //             const initGroupCollectionSummary = async () => {
+    //                 if (currentUser.role.rep === 3) {
+    //                     const branchId = branchList[0]._id;
+    //                     const data = { currentUser: currentUser._id, mode: 'weekly',  branchId: branchId}
+    //                     await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary-by-branch', data);
+    //                 } else {
+    //                     const data = { currentUser: currentUser._id, mode: 'weekly'}
+    //                     await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary-by-branch', data);
+    //                 }
+    //             }
         
-                initGroupCollectionSummary();
-            }
-        }
-    }, [branchList]);
+    //             initGroupCollectionSummary();
+    //         }
+    //     }
+    // }, [branchList]);
 
-    useEffect(() => {
-        const dayName = moment().format('dddd');
+    // useEffect(() => {
+    //     const dayName = moment().format('dddd');
 
-        if (dayName === 'Saturday' || dayName === 'Sunday') {
-            setWeekend(true);
-        } else {
-            setWeekend(false);
-        }
-    }, []);
+    //     if (dayName === 'Saturday' || dayName === 'Sunday') {
+    //         setWeekend(true);
+    //     } else {
+    //         setWeekend(false);
+    //     }
+    // }, []);
 
     return (
         <Layout header={false} noPad={true}>
@@ -165,7 +167,7 @@ const WeeklyCashCollectionPage = () => {
                 <React.Fragment>
                     <div className="overflow-x-auto">
                         {branchList && <DetailsHeader pageTitle='Weekly Cash Collections' pageName={currentUser.role.rep === 1 ? "branch-view" : ""}
-                            page={1} mode={'weekly'} currentDate={moment(currentDate).format('dddd, MMMM DD, YYYY')} weekend={weekend}
+                            page={1} mode={'weekly'} currentDate={moment(currentDate).format('dddd, MMMM DD, YYYY')} weekend={isWeekend} holiday={isHoliday}
                             dateFilter={dateFilter} handleDateFilter={handleDateFilter} handleSubmit={handleShowSubmitDialog} filter={filter}
                         />}
                         <div className={`p-4 ${currentUser.role.rep < 4 ? 'mt-[8rem]' : 'mt-[6rem]'} `}>

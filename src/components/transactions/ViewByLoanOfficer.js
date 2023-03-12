@@ -25,19 +25,14 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
     const handleRowClick = (selected) => {
         if (selected && selected.hasOwnProperty('_id')) {
             localStorage.setItem('selectedLO', selected._id);
-
-            if (pageNo === 1) {
-                router.push(`./${type}-cash-collection/group/${selected._id}`);
-            } else if (pageNo === 2) {
-                router.push(`/transactions/${type}-cash-collection/group/${selected._id}`);
-            }
+            router.push(`/transactions/${selected.transactionType}-cash-collection/group/${selected._id}`);
         }
     };
 
     const getGroupCashCollections = async (selectedBranch, date) => {
         setLoading(true);
         const filter = date ? true : false;
-        let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/get-all-loans-per-group?' + new URLSearchParams({ date: date ? date : currentDate, mode: type, branchCode: selectedBranch });
+        let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/get-all-loans-per-group?' + new URLSearchParams({ date: date ? date : currentDate, branchCode: selectedBranch });
         
         const response = await fetchWrapper.get(url);
         if (response.success) {
@@ -53,8 +48,6 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
             let excess = 0;
             let totalLoanCollection = 0;
             let noOfFullPayment = 0;
-            // let noOfNewfullPayment = 0;
-            // let noOfRefullPayment = 0;
             let fullPaymentAmount = 0;
             let mispayment = 0;
             let totalPastDue = 0;
@@ -65,6 +58,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
             let totalMcbuWithdrawal = 0;
             let totalMcbuReturnNo = 0;
             let totalMcbuReturnAmt = 0;
+            let totalMcbuInterest = 0;
 
             let selectedBranch;
             response.data && response.data.map(lo => {
@@ -73,6 +67,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                 let collection = {
                     _id: lo._id,
                     name: `${lo.firstName} ${lo.lastName}`,
+                    transactionType: lo.transactionType,
                     order: nameArr[1],
                     noCurrentReleaseStr: '-',
                     currentReleaseAmountStr: '-',
@@ -84,7 +79,9 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                     mcbuStr: '-',
                     mcbuColStr: '-',
                     mcbuWithdrawalStr: '-',
+                    noMcbuReturn: '-',
                     mcbuReturnAmtStr: '-',
+                    mcbuInterestStr: '-',
                     excessStr: '-',
                     totalStr: '-',
                     mispaymentStr: '-',
@@ -107,15 +104,17 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                     }
     
                     if (lo.loans.length > 0) {
-                        collection.totalReleasesStr = formatPricePhp(lo.loans[0].totalRelease);
-                        collection.totalLoanBalanceStr = formatPricePhp(lo.loans[0].totalLoanBalance);
+                        collection.totalReleases = lo.loans[0].totalRelease;
+                        collection.totalReleasesStr = lo.loans[0].totalRelease > 0 ? formatPricePhp(lo.loans[0].totalRelease) : '-';
+                        collection.totalLoanBalance = lo.loans[0].totalLoanBalance;
+                        collection.totalLoanBalanceStr = lo.loans[0].totalLoanBalance > 0 ? formatPricePhp(lo.loans[0].totalLoanBalance) : '-';
                         collection.loanTarget = lo.loans[0].loanTarget;
-                        collection.loanTargetStr = formatPricePhp(lo.loans[0].loanTarget);
+                        collection.loanTargetStr = lo.loans[0].loanTarget > 0 ? formatPricePhp(lo.loans[0].loanTarget) : '-';
                         collection.pastDue = lo.loans[0].pastDue;
-                        collection.pastDueStr = formatPricePhp(collection.pastDue);
+                        collection.pastDueStr = collection.pastDue > 0 ? formatPricePhp(collection.pastDue) : '-';
                         collection.noPastDue = lo.loans[0].noPastDue;
-                        // collection.mcbu = lo.loans[0].mcbu;
-                        // collection.mcbuStr = lo.loans[0].mcbu > 0 ? formatPricePhp(lo.loans[0].mcbu) : '-';
+                        collection.mcbu = lo.loans[0].mcbu;
+                        collection.mcbuStr = lo.loans[0].mcbu > 0 ? formatPricePhp(lo.loans[0].mcbu) : '-';
                         collection.mcbuCol = 0;
                         collection.mcbuColStr = '-';
                         collection.mcbuWithdrawal = 0;
@@ -123,6 +122,8 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                         collection.noMcbuReturn = 0;
                         collection.mcbuReturnAmt = 0;
                         collection.mcbuReturnAmtStr = '-';
+                        collection.mcbuInterest = lo.loans[0].mcbuInterest;
+                        collection.mcbuInterestStr = lo.loans[0].mcbuInterest > 0 ? lo.loans[0].mcbuInterest : '-';
     
                         totalsLoanRelease += lo.loans[0].totalRelease;
                         totalsLoanBalance += lo.loans[0].totalLoanBalance;
@@ -137,32 +138,39 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                         collection.status = lo.groupCashCollections[0].statusArr.find(s => s === 'pending') === 'pending' ? 'open' : 'close';
                     }
 
-                    if (type === "weekly" && lo.groups.length > 0) {
-                        targetLoanCollection = 0;
+                    if (lo.transactionType === "weekly") {
                         let loLoanTarget = 0;
                         let loMcbu = 0;
-                        lo.groups.map(g => {
-                            if (g.loanTarget.length > 0) {
-                                loLoanTarget += g.loanTarget[0].loanTarget;
-                                loMcbu += g.loanTarget[0].mcbu;
-                            }
-                        });
+
+                        if (lo.groups.length > 0) {
+                            lo.groups.map(g => {
+                                if (g.loanTarget.length > 0) {
+                                    loLoanTarget += g.loanTarget[0].loanTarget;
+                                    loMcbu += g.loanTarget[0].mcbu;
+                                }
+                            });
+                        }
+
+                        targetLoanCollection = 0;
 
                         collection.loanTarget = loLoanTarget;
                         collection.loanTargetStr = loLoanTarget > 0 ? formatPricePhp(loLoanTarget) : '-';
                         targetLoanCollection += loLoanTarget;
                         collection.mcbu = loMcbu;
                         collection.mcbuStr = loMcbu > 0 ? formatPricePhp(loMcbu) : '-';
-                        totalMcbu += collection.mcbu;
                     }
+                    totalMcbu += collection.mcbu ? collection.mcbu : 0;
                     
                     if (lo.cashCollections.length > 0) {
                         const loanTarget = collection.loanTarget - lo.cashCollections[0].loanTarget;
                         collection.loanTarget = loanTarget;
-                        collection.loanTargetStr = loanTarget > 0 ? formatPricePhp(loanTarget) : 0;
-                        collection.excessStr = formatPricePhp(lo.cashCollections[0].excess);
-                        collection.totalStr = formatPricePhp(lo.cashCollections[0].collection);
-                        collection.mispaymentStr = lo.cashCollections[0].mispayment;
+                        collection.loanTargetStr = loanTarget > 0 ? formatPricePhp(loanTarget) : '-';
+                        collection.excess = lo.cashCollections[0].excess;
+                        collection.excessStr = lo.cashCollections[0].excess > 0 ? formatPricePhp(lo.cashCollections[0].excess) : '-';
+                        collection.total = lo.cashCollections[0].collection;
+                        collection.totalStr = lo.cashCollections[0].collection > 0 ? formatPricePhp(lo.cashCollections[0].collection) : '-';
+                        collection.mispayment = lo.cashCollections[0].mispayment;
+                        collection.mispaymentStr = lo.cashCollections[0].mispayment > 0 ? lo.cashCollections[0].mispayment : '-';
                         collection.offsetPerson = lo.cashCollections[0].offsetPerson ? lo.cashCollections[0].offsetPerson : 0;
                         // collection.mcbu = lo.cashCollections[0].mcbu;
                         // collection.mcbuStr = collection.mcbu > 0 ? formatPricePhp(collection.mcbu) : '-';
@@ -173,6 +181,8 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                         collection.noMcbuReturn = lo.cashCollections[0].noMcbuReturn;
                         collection.mcbuReturnAmt = lo.cashCollections[0].mcbuReturnAmt;
                         collection.mcbuReturnAmtStr = collection.mcbuReturnAmt ? formatPricePhp(collection.mcbuReturnAmt) : '-';
+                        collection.mcbuInterest = lo.cashCollections[0].mcbuInterest;
+                        collection.mcbuInterestStr = lo.cashCollections[0].mcbuInterest > 0 ? lo.cashCollections[0].mcbuInterest : '-';
     
                         excess += lo.cashCollections[0].excess;
                         totalLoanCollection += lo.cashCollections[0].collection;
@@ -180,15 +190,19 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                         targetLoanCollection = targetLoanCollection - lo.cashCollections[0].loanTarget;
                         offsetPerson += collection.offsetPerson;
                         // totalMcbu += collection.mcbu;
-                        totalMcbuCol += collection.mcbuCol;
-                        totalMcbuWithdrawal += collection.mcbuWithdrawal;
-                        totalMcbuReturnNo += collection.noMcbuReturn;
-                        totalMcbuReturnAmt += collection.mcbuReturnAmt;
+                        totalMcbuCol += collection.mcbuCol ? collection.mcbuCol : 0;
+                        totalMcbuWithdrawal += collection.mcbuWithdrawal ? collection.mcbuWithdrawal : 0;
+                        totalMcbuReturnNo += collection.noMcbuReturn ? collection.noMcbuReturn : 0;
+                        totalMcbuReturnAmt += collection.mcbuReturnAmt ? collection.mcbuReturnAmt : 0;
                     }
+
+                    totalMcbuInterest += collection.mcbuInterest ? collection.mcbuInterest : 0;
     
                     if (lo.currentRelease.length > 0) {
                         const newReleasePerson = lo.currentRelease[0].newCurrentRelease ? lo.currentRelease[0].newCurrentRelease : 0;
                         const reReleasePerson = lo.currentRelease[0].reCurrentRelease ? lo.currentRelease[0].reCurrentRelease : 0;
+                        collection.newReleasePerson = newReleasePerson;
+                        collection.reReleasePerson = reReleasePerson;
                         collection.noCurrentReleaseStr = newReleasePerson + ' / ' + reReleasePerson;
                         collection.currentReleaseAmountStr = formatPricePhp(lo.currentRelease[0].currentReleaseAmount);
     
@@ -199,7 +213,8 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
     
                     if (lo.fullPayment.length > 0) {
                         collection.noOfFullPayment = lo.fullPayment[0].noOfFullPayment;
-                        collection.fullPaymentAmountStr = formatPricePhp(lo.fullPayment[0].fullPaymentAmount);
+                        collection.fullPaymentAmount = lo.fullPayment[0].fullPaymentAmount;
+                        collection.fullPaymentAmountStr = lo.fullPayment[0].fullPaymentAmount > 0 ? formatPricePhp(lo.fullPayment[0].fullPaymentAmount) : '-';
     
                         fullPaymentAmount += lo.fullPayment[0].fullPaymentAmount;
                         noOfFullPayment += lo.fullPayment[0].noOfFullPayment;
@@ -207,7 +222,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                         // noOfRefullPayment += lo.fullPayment[0].reFullPayment;
                     }
                 } else {
-                    const dayNameFilter = moment(date).format('dddd').toLowerCase();
+                    // const dayNameFilter = moment(date).format('dddd').toLowerCase();
                     // let loanTarget = 0;
                     // if ((type === 'weekly' && cc.day === dayNameFilter) || type === 'daily') {
                     //     loanTarget = lo.cashCollections[0].loanTarget && lo.cashCollections[0].loanTarget;
@@ -215,33 +230,45 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                     if (lo.cashCollections.length > 0) {
                         collection.activeClients = lo.cashCollections[0].activeClients; 
                         collection.activeBorrowers = lo.cashCollections[0].activeBorrowers;
-                        collection.totalReleasesStr = formatPricePhp(lo.cashCollections[0].totalRelease);
-                        collection.totalLoanBalanceStr = formatPricePhp(lo.cashCollections[0].totalLoanBalance);
+                        collection.totalLoanRelease = lo.cashCollections[0].totalRelease;
+                        collection.totalReleasesStr = lo.cashCollections[0].totalRelease > 0 ? formatPricePhp(lo.cashCollections[0].totalRelease) : '-';
+                        collection.totalLoanBalance = lo.cashCollections[0].totalLoanBalance;
+                        collection.totalLoanBalanceStr = lo.cashCollections[0].totalLoanBalance > 0 ? formatPricePhp(lo.cashCollections[0].totalLoanBalance) : '-';
                         collection.loanTarget = lo.cashCollections[0].loanTarget;
-                        collection.loanTargetStr = formatPricePhp(lo.cashCollections[0].loanTarget);
-                        collection.excessStr = formatPricePhp(lo.cashCollections[0].excess);
-                        collection.totalStr = formatPricePhp(lo.cashCollections[0].collection);
-                        collection.mispaymentStr = lo.cashCollections[0].mispayment;
+                        collection.loanTargetStr = lo.cashCollections[0].loanTarget > 0 ? formatPricePhp(lo.cashCollections[0].loanTarget) : '-';
+                        collection.excess = lo.cashCollections[0].excess;
+                        collection.excessStr = lo.cashCollections[0].excess > 0 ? formatPricePhp(lo.cashCollections[0].excess) : '-';
+                        collection.total = lo.cashCollections[0].collection;
+                        collection.totalStr = lo.cashCollections[0].collection > 0 ? formatPricePhp(lo.cashCollections[0].collection) : '-';
+                        collection.mispayment = lo.cashCollections[0].mispayment;
+                        collection.mispaymentStr = lo.cashCollections[0].mispayment > 0 ? lo.cashCollections[0].mispayment : '-';
                         collection.pastDue = lo.cashCollections[0].pastDue;
-                        collection.pastDueStr = formatPricePhp(collection.pastDue);
+                        collection.pastDueStr = lo.cashCollections[0].pastDue > 0 ? formatPricePhp(collection.pastDue) : '-';
                         collection.noPastDue = lo.cashCollections[0].noPastDue;
+                        collection.offsetPerson = lo.cashCollections[0].offsetPerson;
 
                         collection.mcbu = lo.cashCollections[0].mcbu ? lo.cashCollections[0].mcbu: 0;
-                        collection.mcbuStr = collection.mcbu ? formatPricePhp(collection.mcbu): 0;
+                        collection.mcbuStr = collection.mcbu ? formatPricePhp(collection.mcbu): '-';
                         collection.mcbuCol = lo.cashCollections[0].mcbuCol ? lo.cashCollections[0].mcbuCol: 0;
-                        collection.mcbuColStr = collection.mcbuCol ? formatPricePhp(collection.mcbuCol): 0;
+                        collection.mcbuColStr = collection.mcbuCol > 0 ? formatPricePhp(collection.mcbuCol): '-';
                         collection.mcbuWithdrawal = lo.cashCollections[0].mcbuWithdrawal ? lo.cashCollections[0].mcbuWithdrawal: 0;
-                        collection.mcbuWithdrawalStr = collection.mcbuWithdrawal ? formatPricePhp(collection.mcbuWithdrawal): 0;
+                        collection.mcbuWithdrawalStr = collection.mcbuWithdrawal > 0 ? formatPricePhp(collection.mcbuWithdrawal): '-';
                         collection.noMcbuReturn = lo.cashCollections[0].mcbuReturnNo ? lo.cashCollections[0].mcbuReturnNo: 0;
                         collection.mcbuReturnAmt = lo.cashCollections[0].mcbuReturnAmt ? lo.cashCollections[0].mcbuReturnAmt: 0;
-                        collection.mcbuReturnAmtStr = collection.mcbuReturnAmt ? formatPricePhp(collection.mcbuReturnAmt): 0;
+                        collection.mcbuReturnAmtStr = collection.mcbuReturnAmt > 0 ? formatPricePhp(collection.mcbuReturnAmt): '-';
+                        collection.mcbuInterest = lo.cashCollections[0].mcbuInterest;
+                        collection.mcbuInterestStr = lo.cashCollections[0].mcbuInterest > 0 ? lo.cashCollections[0].mcbuInterest : '-';
 
                         const newReleasePerson = lo.cashCollections[0].newCurrentRelease;
                         const reReleasePerson = lo.cashCollections[0].reCurrentRelease;
+                        collection.newReleasePerson = newReleasePerson;
+                        collection.reReleasePerson = reReleasePerson;
                         collection.noCurrentReleaseStr = newReleasePerson + ' / ' + reReleasePerson;
-                        collection.currentReleaseAmountStr = formatPricePhp(lo.cashCollections[0].currentReleaseAmount);
+                        collection.currentReleaseAmount = lo.cashCollections[0].currentReleaseAmount;
+                        collection.currentReleaseAmountStr = lo.cashCollections[0].currentReleaseAmount > 0 ? formatPricePhp(lo.cashCollections[0].currentReleaseAmount) : '-';
                         collection.noOfFullPayment = lo.cashCollections[0].noOfFullPayment;
-                        collection.fullPaymentAmountStr = formatPricePhp(lo.cashCollections[0].fullPaymentAmount);
+                        collection.fullPaymentAmount = lo.cashCollections[0].fullPaymentAmount;
+                        collection.fullPaymentAmountStr = lo.cashCollections[0].fullPaymentAmount > 0 ? formatPricePhp(lo.cashCollections[0].fullPaymentAmount) : '-';
     
                         noOfClients += lo.cashCollections[0].activeClients;
                         noOfBorrowers += lo.cashCollections[0].activeBorrowers;
@@ -258,11 +285,13 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                         currentReleaseAmount += lo.cashCollections[0].currentReleaseAmount;
                         fullPaymentAmount += lo.cashCollections[0].fullPaymentAmount;
                         noOfFullPayment += lo.cashCollections[0].noOfFullPayment;
-                        totalMcbu += collection.mcbu;
-                        totalMcbuCol += collection.mcbuCol;
-                        totalMcbuWithdrawal += collection.mcbuWithdrawal;
-                        totalMcbuReturnNo += collection.noMcbuReturn;
-                        totalMcbuReturnAmt += collection.mcbuReturnAmt;
+                        offsetPerson += collection.offsetPerson ? collection.offsetPerson : 0;
+                        totalMcbu += collection.mcbu ? collection.mcbu : 0;
+                        totalMcbuCol += collection.mcbuCol ? collection.mcbuCol : 0;
+                        totalMcbuWithdrawal += collection.mcbuWithdrawal ? collection.mcbuWithdrawal: 0;
+                        totalMcbuReturnNo += collection.noMcbuReturn ? collection.noMcbuReturn : 0;
+                        totalMcbuReturnAmt += collection.mcbuReturnAmt ? collection.mcbuReturnAmt : 0;
+                        totalMcbuInterest += collection.mcbuInterest ? collection.mcbuInterest : 0;
                     }
                 }
                 
@@ -271,9 +300,12 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
 
             collectionData.sort((a, b) => a.order - b.order);
 
+            collectionData.push(getDailyTotals(collectionData));
+            collectionData.push(getWeeklyTotals(collectionData));
+
             // totals
             const loTotals = {
-                name: 'TOTALS',
+                name: 'GRAND TOTALS',
                 transfer: 0,
                 noOfNewCurrentRelease: noOfNewCurrentRelease,
                 noCurrentRelease: noOfNewCurrentRelease + noOfReCurrentRelease,
@@ -304,17 +336,19 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                 mcbu: totalMcbu,
                 mcbuStr: formatPricePhp(totalMcbu),
                 mcbuCol: totalMcbuCol,
-                mcbuCol: formatPricePhp(totalMcbuCol),
+                mcbuColStr: formatPricePhp(totalMcbuCol),
                 mcbuWithdrawal: totalMcbuWithdrawal,
                 mcbuWithdrawalStr: formatPricePhp(totalMcbuWithdrawal),
                 noMcbuReturn: totalMcbuReturnNo,
                 mcbuReturnAmt: totalMcbuReturnAmt,
                 mcbuReturnAmtStr: formatPricePhp(totalMcbuReturnAmt),
+                mcbuInterest: totalMcbuInterest,
+                mcbuInterestStr: formatPricePhp(totalMcbuInterest),
                 totalData: true
             };
 
             collectionData.push(loTotals);
-            const dailyLos = {...createLos(loTotals, date, selectedBranch, false), losType: type};
+            const dailyLos = {...createLos(loTotals, date, selectedBranch, false), losType: "daily"};
             dispatch(setBmSummary(dailyLos));
             const currentMonth = moment().month();
             if (!filter && currentMonth === 0 && currentUser.role.rep === 3) {
@@ -328,6 +362,192 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
             setLoading(false);
             toast.error('Error retrieving branches list.');
         }
+    }
+
+    const getDailyTotals = (collectionData) => {
+        let noOfClients = 0;
+        let noOfBorrowers = 0;
+        let totalsLoanRelease = 0;
+        let totalsLoanBalance = 0;
+        let noOfNewCurrentRelease = 0;
+        let noOfReCurrentRelease = 0;
+        let currentReleaseAmount = 0;
+        let targetLoanCollection = 0;
+        let excess = 0;
+        let totalLoanCollection = 0;
+        let noOfFullPayment = 0;
+        let fullPaymentAmount = 0;
+        let mispayment = 0;
+        let totalPastDue = 0;
+        let totalNoPastDue = 0;
+        let offsetPerson = 0;
+        let totalMcbu = 0;
+        let totalMcbuCol = 0;
+        let totalMcbuWithdrawal = 0;
+        let totalMcbuReturnNo = 0;
+        let totalMcbuReturnAmt = 0;
+        let totalMcbuInterest = 0;
+
+        collectionData.filter(u => u.transactionType === 'daily').map(collection => {
+            noOfClients += (collection.activeClients && collection.activeClients !== '-') ? collection.activeClients : 0;
+            noOfBorrowers += (collection.activeBorrowers && collection.activeBorrowers !== '-') ? collection.activeBorrowers : 0;
+            totalsLoanRelease += collection.totalLoanRelease ? collection.totalLoanRelease : 0;
+            totalsLoanBalance += collection.totalLoanBalance ? collection.totalLoanBalance : 0;
+            noOfNewCurrentRelease += collection.newReleasePerson ? collection.newReleasePerson : 0;
+            noOfReCurrentRelease += collection.reReleasePerson ? collection.reReleasePerson : 0;
+            currentReleaseAmount += collection.currentReleaseAmount ? collection.currentReleaseAmount : 0;
+            targetLoanCollection += collection.loanTarget ? collection.loanTarget : 0;
+            excess += collection.excess ? collection.excess : 0;
+            totalLoanCollection += collection.total ? collection.total : 0;
+            noOfFullPayment += (collection.noOfFullPayment && collection.noOfFullPayment !== '-') ? collection.noOfFullPayment : 0;
+            fullPaymentAmount += collection.fullPaymentAmount ? collection.fullPaymentAmount : 0;
+            mispayment += (collection.mispayment && collection.mispayment !== '-') ? collection.mispayment : 0;
+            totalPastDue += collection.pastDue ? collection.pastDue : 0;
+            totalNoPastDue += (collection.noPastDue && collection.noPastDue !== '-') ? collection.noPastDue : 0;
+            offsetPerson += collection.offsetPerson ? collection.offsetPerson : 0;
+            totalMcbu += collection.mcbu ? collection.mcbu : 0;
+            totalMcbuCol += collection.mcbuCol ? collection.mcbuCol : 0;
+            totalMcbuWithdrawal += collection.mcbuWithdrawal ? collection.mcbuWithdrawal : 0;
+            totalMcbuReturnNo += collection.mcbuReturnNo ? collection.mcbuReturnNo : 0;
+            totalMcbuReturnAmt += collection.mcbuReturnAmt ? collection.mcbuReturnAmt : 0;
+            totalMcbuInterest += collection.mcbuInterest ? collection.mcbuInterest : 0;
+        });
+
+        return {
+            name: 'Daily Totals',
+            transfer: 0,
+            noOfNewCurrentRelease: noOfNewCurrentRelease,
+            noCurrentRelease: noOfNewCurrentRelease + noOfReCurrentRelease,
+            noCurrentReleaseStr: noOfNewCurrentRelease + ' / ' + noOfReCurrentRelease,
+            currentReleaseAmount: currentReleaseAmount,
+            currentReleaseAmountStr: formatPricePhp(currentReleaseAmount),
+            activeClients: noOfClients,
+            activeBorrowers: noOfBorrowers,
+            totalLoanRelease: totalsLoanRelease,
+            totalReleasesStr: formatPricePhp(totalsLoanRelease),
+            totalLoanBalance: totalsLoanBalance,
+            totalLoanBalanceStr: formatPricePhp(totalsLoanBalance),
+            targetLoanCollection: targetLoanCollection,
+            loanTargetStr: formatPricePhp(targetLoanCollection),
+            excess: excess,
+            excessStr: formatPricePhp(excess),
+            totalLoanCollection: totalLoanCollection,
+            totalStr: formatPricePhp(totalLoanCollection),
+            mispayment: mispayment,
+            mispaymentStr: mispayment + ' / ' + noOfClients,
+            fullPaymentAmount: fullPaymentAmount,
+            fullPaymentAmountStr: formatPricePhp(fullPaymentAmount),
+            noOfFullPayment: noOfFullPayment,
+            pastDue: totalPastDue,
+            pastDueStr: formatPricePhp(totalPastDue),
+            noPastDue: totalNoPastDue,
+            offsetPerson: offsetPerson,
+            mcbu: totalMcbu,
+            mcbuStr: formatPricePhp(totalMcbu),
+            mcbuCol: totalMcbuCol,
+            mcbuColStr: formatPricePhp(totalMcbuCol),
+            mcbuWithdrawal: totalMcbuWithdrawal,
+            mcbuWithdrawalStr: formatPricePhp(totalMcbuWithdrawal),
+            noMcbuReturn: totalMcbuReturnNo,
+            mcbuReturnAmt: totalMcbuReturnAmt,
+            mcbuReturnAmtStr: formatPricePhp(totalMcbuReturnAmt),
+            mcbuInterest: totalMcbuInterest,
+            mcbuInterestStr: formatPricePhp(totalMcbuInterest),
+            totalData: true
+        };
+    }
+
+    const getWeeklyTotals = (collectionData) => {
+        let noOfClients = 0;
+        let noOfBorrowers = 0;
+        let totalsLoanRelease = 0;
+        let totalsLoanBalance = 0;
+        let noOfNewCurrentRelease = 0;
+        let noOfReCurrentRelease = 0;
+        let currentReleaseAmount = 0;
+        let targetLoanCollection = 0;
+        let excess = 0;
+        let totalLoanCollection = 0;
+        let noOfFullPayment = 0;
+        let fullPaymentAmount = 0;
+        let mispayment = 0;
+        let totalPastDue = 0;
+        let totalNoPastDue = 0;
+        let offsetPerson = 0;
+        let totalMcbu = 0;
+        let totalMcbuCol = 0;
+        let totalMcbuWithdrawal = 0;
+        let totalMcbuReturnNo = 0;
+        let totalMcbuReturnAmt = 0;
+        let totalMcbuInterest = 0;
+
+        collectionData.filter(u => u.transactionType === 'weekly').map(collection => {
+            noOfClients += (collection.activeClients && collection.activeClients !== '-') ? collection.activeClients : 0;
+            noOfBorrowers += (collection.activeBorrowers && collection.activeBorrowers !== '-') ? collection.activeBorrowers : 0;
+            totalsLoanRelease += collection.totalLoanRelease ? collection.totalLoanRelease : 0;
+            totalsLoanBalance += collection.totalLoanBalance ? collection.totalLoanBalance : 0;
+            noOfNewCurrentRelease += collection.newReleasePerson ? collection.newReleasePerson : 0;
+            noOfReCurrentRelease += collection.reReleasePerson ? collection.reReleasePerson : 0;
+            currentReleaseAmount += collection.currentReleaseAmount ? collection.currentReleaseAmount : 0;
+            targetLoanCollection += collection.loanTarget ? collection.loanTarget : 0;
+            excess += collection.excess ? collection.excess : 0;
+            totalLoanCollection += collection.total ? collection.total : 0;
+            noOfFullPayment += (collection.noOfFullPayment && collection.noOfFullPayment !== '-') ? collection.noOfFullPayment : 0;
+            fullPaymentAmount += collection.fullPaymentAmount ? collection.fullPaymentAmount : 0;
+            mispayment += (collection.mispayment && collection.mispayment !== '-') ? collection.mispayment : 0;
+            totalPastDue += collection.pastDue ? collection.pastDue : 0;
+            totalNoPastDue += (collection.noPastDue && collection.noPastDue !== '-') ? collection.noPastDue : 0;
+            offsetPerson += collection.offsetPerson ? collection.offsetPerson : 0;
+            totalMcbu += collection.mcbu ? collection.mcbu : 0;
+            totalMcbuCol += collection.mcbuCol ? collection.mcbuCol : 0;
+            totalMcbuWithdrawal += collection.mcbuWithdrawal ? collection.mcbuWithdrawal : 0;
+            totalMcbuReturnNo += collection.mcbuReturnNo ? collection.mcbuReturnNo : 0;
+            totalMcbuReturnAmt += collection.mcbuReturnAmt ? collection.mcbuReturnAmt : 0;
+            totalMcbuInterest += collection.mcbuInterest ? collection.mcbuInterest : 0;
+        });
+
+        return {
+            name: 'Weekly Totals',
+            transfer: 0,
+            noOfNewCurrentRelease: noOfNewCurrentRelease,
+            noCurrentRelease: noOfNewCurrentRelease + noOfReCurrentRelease,
+            noCurrentReleaseStr: noOfNewCurrentRelease + ' / ' + noOfReCurrentRelease,
+            currentReleaseAmount: currentReleaseAmount,
+            currentReleaseAmountStr: formatPricePhp(currentReleaseAmount),
+            activeClients: noOfClients,
+            activeBorrowers: noOfBorrowers,
+            totalLoanRelease: totalsLoanRelease,
+            totalReleasesStr: formatPricePhp(totalsLoanRelease),
+            totalLoanBalance: totalsLoanBalance,
+            totalLoanBalanceStr: formatPricePhp(totalsLoanBalance),
+            targetLoanCollection: targetLoanCollection,
+            loanTargetStr: formatPricePhp(targetLoanCollection),
+            excess: excess,
+            excessStr: formatPricePhp(excess),
+            totalLoanCollection: totalLoanCollection,
+            totalStr: formatPricePhp(totalLoanCollection),
+            mispayment: mispayment,
+            mispaymentStr: mispayment + ' / ' + noOfClients,
+            fullPaymentAmount: fullPaymentAmount,
+            fullPaymentAmountStr: formatPricePhp(fullPaymentAmount),
+            noOfFullPayment: noOfFullPayment,
+            pastDue: totalPastDue,
+            pastDueStr: formatPricePhp(totalPastDue),
+            noPastDue: totalNoPastDue,
+            offsetPerson: offsetPerson,
+            mcbu: totalMcbu,
+            mcbuStr: formatPricePhp(totalMcbu),
+            mcbuCol: totalMcbuCol,
+            mcbuColStr: formatPricePhp(totalMcbuCol),
+            mcbuWithdrawal: totalMcbuWithdrawal,
+            mcbuWithdrawalStr: formatPricePhp(totalMcbuWithdrawal),
+            noMcbuReturn: totalMcbuReturnNo,
+            mcbuReturnAmt: totalMcbuReturnAmt,
+            mcbuReturnAmtStr: formatPricePhp(totalMcbuReturnAmt),
+            mcbuInterest: totalMcbuInterest,
+            mcbuInterestStr: formatPricePhp(totalMcbuInterest),
+            totalData: true
+        };
     }
     
     
@@ -476,7 +696,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
     // }
 
     // const saveLOYearEndLos = async (collections) => {
-    //     await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loan-officer-summary/save-update-fbal', collections);
+    //     await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collection-summary/save-update-fbal', collections);
     // }
 
     // const processLOYearEndLos = (collection, selectedBranch) => {
@@ -511,7 +731,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
     //     }
     // }
 
-    const createLos = (totals, selectedBranch, date, yearEnd) => {
+    const createLos = (totals, selectedBranch, dateFilter, yearEnd) => {
         let grandTotal;
 
         if (yearEnd) {
@@ -520,12 +740,18 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                 transfer: 0,
                 newMember: 0,
                 offsetPerson: 0,
+                mcbuTarget: totals.mcbuTarget,
+                mcbuActual: totals.mcbuCol,
+                mcbuWithdrawal: totals.mcbuWithdrawal,
+                mcbuInterest: totals.mcbuInterest,
+                noMcbuReturn: totals.noMcbuReturn,
+                mcbuReturnAmt: totals.mcbuReturnAmt,
                 activeClients: totals.activeClients,
                 loanReleasePerson: 0,
                 loanReleaseAmount: 0,
                 activeLoanReleasePerson: totals.activeBorrowers,
                 activeLoanReleaseAmount: totals.totalLoanRelease,
-                collectionAdvancePayment: totals.totalLoanRelease - totals.totalLoanBalance,//totals.excess + totals.targetLoanCollection + totals.pastDue - (totals.totalLoanRelease - totals.totalLoanBalance),
+                collectionAdvancePayment: totals.totalLoanRelease - totals.totalLoanBalance,
                 collectionActual: totals.totalLoanRelease - totals.totalLoanBalance,
                 pastDuePerson: 0,
                 pastDueAmount: 0,
@@ -535,10 +761,23 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                 loanBalance: totals.totalLoanBalance
             };
         } else {
+            let selectedDate = currentDate;
+            if (dateFilter) {
+                if (dateFilter !== currentDate) {
+                    selectedDate = dateFilter;
+                }
+            }
+
             grandTotal = {
-                day: date ? date : currentDate,
+                day: selectedDate,
                 transfer: totals.transfer,
                 newMember: totals.noOfNewCurrentRelease,
+                mcbuTarget: totals.mcbuTarget,
+                mcbuActual: totals.mcbuCol,
+                mcbuWithdrawal: totals.mcbuWithdrawal,
+                mcbuInterest: totals.mcbuInterest,
+                noMcbuReturn: totals.noMcbuReturn,
+                mcbuReturnAmt: totals.mcbuReturnAmt,
                 offsetPerson: totals.offsetPerson,
                 activeClients: totals.activeClients,
                 loanReleasePerson: totals.noCurrentRelease,
@@ -547,7 +786,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                 activeLoanReleaseAmount: totals.totalLoanRelease,
                 collectionTarget: totals.targetLoanCollection,
                 collectionAdvancePayment: totals.excess,
-                collectionActual: totals.totalLoanCollection,
+                collectionActual: totals.collection,
                 pastDuePerson: totals.noPastDue,
                 pastDueAmount: totals.pastDue,
                 fullPaymentPerson: totals.noOfFullPayment,
@@ -557,12 +796,19 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
             };
         }
 
+        let month = yearEnd ? 12 : moment().month() + 1;
+        let year = yearEnd ? moment().year() - 1 : moment().year();
+        if (dateFilter)  {
+            month = moment(dateFilter).month() + 1;
+            year = moment(dateFilter).year();
+        }
+
         return {
             userId: currentUser._id,
             userType: 'bm',
             branchId: selectedBranch,
-            month: yearEnd ? 12 : moment().month() + 1,
-            year: yearEnd ? moment().year() - 1 : moment().year(),
+            month: month,
+            year: year,
             data: grandTotal
         }
     }
@@ -570,7 +816,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
     const saveYearEndLos = async (totals, selectedBranch, yearEnd) => {
         if (currentUser.role.rep === 3) {
             const losTotals = {...createLos(totals, selectedBranch, null, yearEnd), losType: 'year-end'};
-            await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loan-officer-summary/save-update-totals', losTotals);
+            await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collection-summary/save-update-totals', losTotals);
         }
     }
     
@@ -769,7 +1015,13 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
             },
             {
                 Header: "MCBU Withdrawal",
-                accessor: 'mcbuWithdrawal',
+                accessor: 'mcbuWithdrawalStr',
+                Filter: SelectColumnFilter,
+                filter: 'includes'
+            },
+            {
+                Header: "MCBU Interest",
+                accessor: 'mcbuInterestStr',
                 Filter: SelectColumnFilter,
                 filter: 'includes'
             },

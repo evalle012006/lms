@@ -323,7 +323,7 @@ const MenuItems = [
         ]
     },
     {
-        label: "Branch Manager Trans",
+        label: "BM Transactions",
         url: "#branch-manager-transactions",
         subMenuIndex: 0,
         icon: {
@@ -352,7 +352,7 @@ const MenuItems = [
             },
             {
                 label: "Loan Officer Register",
-                url: "/transactions/cash-collection", 
+                url: "/transactions/branch-manager/cash-collection", 
                 icon: {
                     active: (
                         <TicketIcon className="text-gray-800 w-5 h-5" />
@@ -367,7 +367,7 @@ const MenuItems = [
             },
             {
                 label: "Branch Manager Summary",
-                url: "/transactions/branch-manager-summary", 
+                url: "/transactions/branch-manager/summary", 
                 icon: {
                     active: (
                         <ChartBarSquareIcon className="text-gray-800 w-5 h-5" />
@@ -548,23 +548,38 @@ const NavComponent = () => {
         let updatedMenu = menuItems.map((menu) => {
             let temp = {...menu};
             if (rootUser || userState.role.rep === 1) {
-                // nothing to do here...
+                if (menu.label === 'Daily Transactions') {
+                    temp.hidden = true;
+                }
+
+                if (menu.label === 'Weekly Transactions') {
+                    temp.hidden = true;
+                }
             } else if (userState.role.rep === 2) {
                 if (menu.label === 'Settings') {
                     temp.hidden = true;
                 }
+                
+                if (menu.label === 'Daily Transactions') {
+                    temp.hidden = true;
+                }
+
+                if (menu.label === 'Weekly Transactions') {
+                    temp.hidden = true;
+                }
+
             } else if (userState.role.rep === 3) {
                 if (menu.label === 'Settings') {
                     temp.hidden = true;
                 }
 
-                // if (menu.label === 'Daily Transactions') {
-                //     temp.hidden = true;
-                // }
+                if (menu.label === 'Daily Transactions') {
+                    temp.hidden = true;
+                }
 
-                // if (menu.label === 'Weekly Transactions') {
-                //     temp.hidden = true;
-                // }
+                if (menu.label === 'Weekly Transactions') {
+                    temp.hidden = true;
+                }
             }  else if (userState.role.rep === 4) {
                 if (menu.label === 'Branches') {
                     temp.hidden = true;
@@ -574,7 +589,7 @@ const NavComponent = () => {
                     temp.hidden = true;
                 }
 
-                if (menu.label === 'Branch Manager Trans') {
+                if (menu.label === 'BM Transactions') {
                     temp.hidden = true;
                 }
 

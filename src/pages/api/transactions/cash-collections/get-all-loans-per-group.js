@@ -35,7 +35,7 @@ async function getAllLoansPerGroup(req, res) {
                             localField: "loIdStr",
                             foreignField: "loId",
                             pipeline: [
-                                { $match: { dateAdded: date, mode: mode } },
+                                { $match: { dateAdded: date } },
                                 { 
                                     $group: {
                                         _id: '$loId',
@@ -53,7 +53,7 @@ async function getAllLoansPerGroup(req, res) {
                             localField: "loIdStr",
                             foreignField: "loanOfficerId",
                             pipeline: [
-                                { $match: { $expr: { $and: [{$eq: ['$occurence', mode]}, {$eq: ['$day', currentDay]}] } } },
+                                { $match: { day: currentDay } },
                                 {
                                     $addFields: {
                                         "groupIdStr": { $toString: "$_id" }
@@ -100,7 +100,7 @@ async function getAllLoansPerGroup(req, res) {
                             localField: "loIdStr",
                             foreignField: "loId",
                             pipeline: [
-                                { $match: { dateAdded: date, occurence: mode } },
+                                { $match: { dateAdded: date } },
                                 { $group: { 
                                         _id: '$loId',
                                         mispayment: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },
@@ -131,7 +131,8 @@ async function getAllLoansPerGroup(req, res) {
                                                 else: 0
                                             }
                                         } },
-                                        mcbuReturnAmt: { $sum: '$mcbuReturnAmt' }
+                                        mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
+                                        mcbuInterest: { $sum: '$mcbuInterest' }
                                     } 
                                 }
                             ],
@@ -145,7 +146,7 @@ async function getAllLoansPerGroup(req, res) {
                             foreignField: "loId",
                             pipeline: [
                                 { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
-                                { $match: {$expr:  {$and: [{$ne: ['$status', 'closed']}, {$ne: ['$status', 'reject']}, {$eq: ['$occurence', mode]}]} } },
+                                { $match: {$expr:  {$and: [{$ne: ['$status', 'closed']}, {$ne: ['$status', 'reject']}]} } },
                                 { $group: { 
                                         _id: '$loId',
                                         activeClients: { $sum: {
@@ -193,7 +194,7 @@ async function getAllLoansPerGroup(req, res) {
                             foreignField: "loId",
                             pipeline: [
                                 { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
-                                { $match: {$expr:  {$and: [{$ne: ['$status', 'reject']}, {$lte: ['$startDateObj', '$currentDateObj']}, {$eq: ['$occurence', mode]}]} } },
+                                { $match: {$expr:  {$and: [{$ne: ['$status', 'reject']}, {$lte: ['$startDateObj', '$currentDateObj']}]} } },
                                 { $group: { 
                                         _id: '$loId',
                                         mispayment: { $sum: { $cond:{
@@ -258,7 +259,7 @@ async function getAllLoansPerGroup(req, res) {
                             localField: "loIdStr",
                             foreignField: "loId",
                             pipeline: [
-                                { $match: { status: 'active', dateGranted: date, occurence: mode } },
+                                { $match: { status: 'active', dateGranted: date } },
                                 { $group: {
                                         _id: '$loId',
                                         currentReleaseAmount: { $sum: '$amountRelease' },
@@ -278,7 +279,7 @@ async function getAllLoansPerGroup(req, res) {
                             foreignField: "loId",
                             pipeline: [
                                 { $match: {$expr: { $and: [
-                                    {$or: [{$eq: ['$status', 'completed']}, {$eq: ['$status', 'closed']}]}, {$lte: ['$loanBalance', 0]}, {$eq: ['$fullPaymentDate', date]}, {$eq: ['$occurence', mode]}
+                                    {$or: [{$eq: ['$status', 'completed']}, {$eq: ['$status', 'closed']}]}, {$lte: ['$loanBalance', 0]}, {$eq: ['$fullPaymentDate', date]}
                                 ]}} },
                                 { $group: {
                                         _id: '$loId',
@@ -354,7 +355,8 @@ async function getAllLoansPerGroup(req, res) {
                                                 else: 0
                                             }
                                         } },
-                                        mcbuReturnAmt: { $sum: '$mcbuReturnAmt' }
+                                        mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
+                                        mcbuInterest: { $sum: '$mcbuInterest' }
                                     } 
                                 }
                             ],
@@ -541,7 +543,7 @@ async function getAllLoansPerGroup(req, res) {
                             localField: "loIdStr",
                             foreignField: "loId",
                             pipeline: [
-                                { $match: { dateAdded: date, occurence: mode } },
+                                { $match: { dateAdded: date } },
                                 { $group: { 
                                         _id: '$loId',
                                         activeClients: { $sum: {
