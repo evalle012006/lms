@@ -137,6 +137,8 @@ const CashCollectionDetailsPage = () => {
                 }
             }
         });
+
+        
     }
 
     const getCashCollections = async (date) => {
