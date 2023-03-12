@@ -25,7 +25,8 @@ import ClientDetailPage from '@/components/clients/ClientDetailPage';
 import { setClient } from '@/redux/actions/clientActions';
 
 const CashCollectionDetailsPage = () => {
-    const holidays = useSelector(state => state.holidays.list);
+    const isHoliday = useSelector(state => state.systemSettings.holiday);
+    const isWeekend = useSelector(state => state.systemSettings.weekend);
     const transactionSettings = useSelector(state => state.transactionsSettings.data);
     const selectedBranchSubject = new BehaviorSubject(process.browser && localStorage.getItem('selectedBranch'));
     const selectedLOSubject = new BehaviorSubject(process.browser && localStorage.getItem('selectedLO'));
@@ -74,12 +75,12 @@ const CashCollectionDetailsPage = () => {
     const [filter, setFilter] = useState(false);
     const maxDays = 24;
     const [groupFilter, setGroupFilter] = useState();
-    const [weekend, setWeekend] = useState(false);
+    // const [weekend, setWeekend] = useState(false);
     const [showClientInfoModal, setShowClientInfoModal] = useState(false);
     const [allowMcbuWithdrawal, setAllowMcbuWithdrawal] = useState(false);
     const dayName = moment().format('dddd').toLowerCase();
     const [mcbuRate, setMcbuRate] = useState(transactionSettings.mcbu || 8);
-    const [holiday, setHoliday] = useState(false);
+    // const [holiday, setHoliday] = useState(false);
 
     const handleShowClientInfoModal = (selected) => {
         if (selected.status !== 'totals') {
@@ -1678,29 +1679,29 @@ const CashCollectionDetailsPage = () => {
         }
     }, [revertMode]);
 
-    useEffect(() => {
-        if (dayName === 'Saturday' || dayName === 'Sunday') {
-            setWeekend(true);
-        } else {
-            setWeekend(false);
-        }
-    }, []);
+    // useEffect(() => {
+    //     if (dayName === 'Saturday' || dayName === 'Sunday') {
+    //         setWeekend(true);
+    //     } else {
+    //         setWeekend(false);
+    //     }
+    // }, []);
 
-    useEffect(() => {
-        if (holidays) {
-            let holidayToday = false;
-            const currentYear = moment().year();
-            holidays.map(item => {
-                const holidayDate = currentYear + '-' + item.date;
+    // useEffect(() => {
+    //     if (holidays) {
+    //         let holidayToday = false;
+    //         const currentYear = moment().year();
+    //         holidays.map(item => {
+    //             const holidayDate = currentYear + '-' + item.date;
 
-                if (holidayDate === currentDate) {
-                    holidayToday = true;
-                }
-            });
+    //             if (holidayDate === currentDate) {
+    //                 holidayToday = true;
+    //             }
+    //         });
 
-            setHoliday(holidayToday);
-        }
-    }, [holidays]);
+    //         setHoliday(holidayToday);
+    //     }
+    // }, [holidays]);
 
     return (
         <Layout header={false} noPad={true}>
@@ -1710,7 +1711,7 @@ const CashCollectionDetailsPage = () => {
                 </div>
             ) : (
                 <div className="overflow-x-auto">
-                    {data && <DetailsHeader page={'transaction'} showSaveButton={currentUser.role.rep > 2 ? (weekend || holiday) ? false : editMode : false}
+                    {data && <DetailsHeader page={'transaction'} showSaveButton={currentUser.role.rep > 2 ? (isWeekend || isHoliday) ? false : editMode : false}
                         handleSaveUpdate={handleSaveUpdate} data={allData} setData={setFilteredData} allowMcbuWithdrawal={allowMcbuWithdrawal}
                         dateFilter={dateFilter} setDateFilter={setDateFilter} handleDateFilter={handleDateFilter} currentGroup={uuid} 
                         groupFilter={groupFilter} handleGroupFilter={handleGroupFilter} groupTransactionStatus={groupSummaryIsClose ? 'close' : 'open'} />}
@@ -1773,7 +1774,7 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.currentReleaseAmountStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.noOfPaymentStr }</td>
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
-                                                    { (!weekend && !holiday && currentUser.role.rep > 2 && cc.status === 'active' && editMode && ((cc?.origin && cc?.origin === 'pre-save') || revertMode)) ? (
+                                                    { (!isWeekend && !isHoliday && currentUser.role.rep > 2 && cc.status === 'active' && editMode && ((cc?.origin && cc?.origin === 'pre-save') || revertMode)) ? (
                                                         <React.Fragment>
                                                             <input type="number" name={`${cc.clientId}-mcbuCol`} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'mcbuCol')}
                                                                 onClick={(e) => e.stopPropagation()} onBlur={(e) => handlePaymentValidation(e, cc, index, 'mcbuCol')} defaultValue={cc.mcbuCol ? cc.mcbuCol : 0} tabIndex={index + 1}
@@ -1789,7 +1790,7 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.targetCollectionStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.excessStr }</td>
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
-                                                    { (!weekend && !holiday && currentUser.role.rep > 2 && cc.status === 'active' && editMode && ((cc?.origin && cc?.origin === 'pre-save') || revertMode)) ? (
+                                                    { (!isWeekend && !isHoliday && currentUser.role.rep > 2 && cc.status === 'active' && editMode && ((cc?.origin && cc?.origin === 'pre-save') || revertMode)) ? (
                                                         <React.Fragment>
                                                             <input type="number" name={cc.clientId} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'amount', cc.activeLoan)}
                                                                 onClick={(e) => e.stopPropagation()} defaultValue={cc.paymentCollection} tabIndex={index + 2}
@@ -1822,7 +1823,7 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.mispaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.noMispaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.pastDueStr }</td>
-                                                { (!weekend && !holiday && (currentUser.role.rep > 2 && (cc.status === 'active' || cc.status === 'completed') && (editMode && !groupSummaryIsClose) 
+                                                { (!isWeekend && !isHoliday && (currentUser.role.rep > 2 && (cc.status === 'active' || cc.status === 'completed') && (editMode && !groupSummaryIsClose) 
                                                     && ((cc?.origin && cc?.origin === 'pre-save') || revertMode) && !filter) || ((cc.remarks && cc.remarks.value === "reloaner" && cc.status !== "tomorrow") && !groupSummaryIsClose)) ? (
                                                         <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">
                                                             { cc.remarks !== '-' ? (
@@ -1854,7 +1855,7 @@ const CashCollectionDetailsPage = () => {
                                                 }
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">
                                                     <React.Fragment>
-                                                        {(!weekend && !holiday && currentUser.role.rep > 2 &&  (cc.status === 'active' || cc.status === 'completed') && !groupSummaryIsClose) && (
+                                                        {(!isWeekend && !isHoliday && currentUser.role.rep > 2 &&  (cc.status === 'active' || cc.status === 'completed') && !groupSummaryIsClose) && (
                                                             <div className='flex flex-row p-4'>
                                                                 {(cc.hasOwnProperty('_id') && !filter) && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleRevert(e, cc, index)} />}
                                                                 {(!editMode && (cc.status === 'completed' || (cc.hasOwnProperty('tomorrow') && !cc.tomorrow))) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}

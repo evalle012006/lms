@@ -166,6 +166,10 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                 values.slotNo = mode !== 'reloan' ? slotNo : loan.slotNo;
                 values.occurence = group.occurence;
 
+                if (values.occurence === 'weekly') {
+                    values.groupDay = group.day;
+                }
+
                 if (values.status !== 'active') {
                     if (group.occurence === 'weekly') {
                         values.activeLoan = (values.principalLoan * 1.20) / 24;

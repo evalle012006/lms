@@ -14,7 +14,7 @@ import Dialog from "@/lib/ui/Dialog";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 
-const DailyCashCollectionPage = () => {
+const BranchCashCollectionPage = () => {
     const isHoliday = useSelector(state => state.systemSettings.holiday);
     const isWeekend = useSelector(state => state.systemSettings.weekend);
     const dispatch = useDispatch();
@@ -25,11 +25,11 @@ const DailyCashCollectionPage = () => {
     const [dateFilter, setDateFilter] = useState(new Date());
     const cashCollectionList = useSelector(state => state.cashCollection.main);
     const loCollectionList = useSelector(state => state.cashCollection.lo);
-    const loSummary = useSelector(state => state.cashCollection.loSummary);
     const bmSummary = useSelector(state => state.cashCollection.bmSummary);
+    // const [weekend, setWeekend] = useState(false);
+    // const [holiday, setHoliday] = useState(false);
     const [showSubmitDialog, setShowSubmitDialog] = useState(false);
     const [filter, setFilter] = useState(false);
-    const mode = "daily";
 
     const handleDateFilter = (selected) => {
         const filteredDate = selected.target.value;
@@ -69,24 +69,6 @@ const DailyCashCollectionPage = () => {
                         }
                     }
                 }
-            } else if (currentUser.role.rep === 4) {
-                const pending = cashCollectionList.filter(cc => cc.status === 'pending');
-                if (pending.length > 0) {
-                    setLoading(false);
-                    toast.error("One or more group/s transaction is not yet closed.");
-                } else {
-                    if (loSummary && Object.keys(loSummary).length > 0) {
-                        const resp = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collection-summary/save-update-totals', loSummary);
-            
-                        if (resp.success) {
-                            setLoading(false);
-                            toast.success('Today transactions are now available in LOS.');
-                        } else if (resp.error) {
-                            setLoading(false);
-                            toast.error(resp.message);
-                        }
-                    }
-                }
             }
         }
 
@@ -105,7 +87,7 @@ const DailyCashCollectionPage = () => {
                 );
             });
 
-            if (currentUser.root !== true && (currentUser.role.rep === 3 || currentUser.role.rep === 4)) {
+            if (currentUser.root !== true && (currentUser.role.rep === 3)) {
                 branches = [branches.find(b => b.code === currentUser.designatedBranch)];
             } 
             
@@ -127,25 +109,25 @@ const DailyCashCollectionPage = () => {
         };
     }, [currentUser]);
 
-    // useEffect(() => {
-    //     if (branchList.length > 0) {
-    //         localStorage.setItem('cashCollectionDateFilter', currentDate);
-    //         if (currentUser.role.rep < 4) {
-    //             const initGroupCollectionSummary = async () => {
-    //                 if (currentUser.role.rep === 3) {
-    //                     const branchId = branchList[0]._id;
-    //                     const data = { currentUser: currentUser._id,  branchId: branchId}
-    //                     await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary-by-branch', data);
-    //                 } else {
-    //                     const data = { currentUser: currentUser._id}
-    //                     await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary-by-branch', data);
-    //                 }
-    //             }
+    useEffect(() => {
+        if (branchList.length > 0) {
+            localStorage.setItem('cashCollectionDateFilter', currentDate);
+            if (currentUser.role.rep < 4 && !isWeekend && !isHoliday) {
+                const initGroupCollectionSummary = async () => {
+                    if (currentUser.role.rep === 3) {
+                        const branchId = branchList[0]._id;
+                        const data = { currentUser: currentUser._id, branchId: branchId}
+                        await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary-by-branch', data);
+                    } else {
+                        const data = { currentUser: currentUser._id }
+                        await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary-by-branch', data);
+                    }
+                }
         
-    //             initGroupCollectionSummary();
-    //         }
-    //     }
-    // }, [branchList]);
+                initGroupCollectionSummary();
+            }
+        }
+    }, [branchList, isWeekend, isHoliday]);
 
     // useEffect(() => {
     //     const dayName = moment().format('dddd');
@@ -182,18 +164,13 @@ const DailyCashCollectionPage = () => {
             ) : (
                 <React.Fragment>
                     <div className="overflow-x-auto">
-                        {branchList && <DetailsHeader pageTitle='Daily Cash Collections' pageName={currentUser.role.rep === 1 ? "branch-view" : ""}
-                            page={1} mode={mode} currentDate={moment(currentDate).format('dddd, MMMM DD, YYYY')} weekend={isWeekend} holiday={isHoliday}
+                        {branchList && <DetailsHeader pageTitle='Branch Cash Collections' pageName={currentUser.role.rep === 1 ? "branch-view" : ""}
+                            page={1} currentDate={moment(currentDate).format('dddd, MMMM DD, YYYY')} weekend={isWeekend} holiday={isHoliday}
                             dateFilter={dateFilter} handleDateFilter={handleDateFilter} handleSubmit={handleShowSubmitDialog} filter={filter}
                         />}
                         <div className={`p-4 ${currentUser.role.rep < 4 ? 'mt-[8rem]' : 'mt-[6rem]'} `}>
-                            {currentUser.role.rep < 3 && <ViewByBranchPage dateFilter={dateFilter} type={mode} />}
-                            {currentUser.role.rep === 3 && <ViewByLoanOfficerPage pageNo={1} dateFilter={dateFilter} type={mode} />}
-                            {currentUser.role.rep === 4 && (
-                                <div className='p-4 mt-[2rem]'>
-                                    <ViewCashCollectionPage pageNo={1} dateFilter={dateFilter} type={mode} />
-                                </div>
-                            )}
+                            {currentUser.role.rep < 3 && <ViewByBranchPage dateFilter={dateFilter} />}
+                            {currentUser.role.rep === 3 && <ViewByLoanOfficerPage pageNo={1} dateFilter={dateFilter} />}
                         </div>
                     </div>
                     <Dialog show={showSubmitDialog}>
@@ -219,4 +196,4 @@ const DailyCashCollectionPage = () => {
     );
 }
 
-export default DailyCashCollectionPage;
+export default BranchCashCollectionPage;

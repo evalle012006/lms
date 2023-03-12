@@ -176,7 +176,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         if ((cc.occurence === 'weekly' && cc.day === dayName) || cc.occurence === 'daily') {
                             loanTarget = collection.loanTarget - cc.cashCollections[0].loanTarget;
                             targetLoanCollection = targetLoanCollection - cc.cashCollections[0].loanTarget;
-                            // mcbu = cc.cashCollections[0].mcbu;
+                            mcbu = cc.cashCollections[0].mcbu;
                         }
 
                         collection = { ...collection,
@@ -366,6 +366,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                     mcbuReturnAmtStr: formatPricePhp(totalMcbuReturnAmt),
                     mcbuTarget: totalMcbuTarget,
                     mcbuInterest: totalMcbuInterest,
+                    mcbuInterestStr: formatPricePhp(totalMcbuInterest),
                     totalData: true,
                     status: '-'
                 }
@@ -476,7 +477,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
         if (currentUser.role.rep === 4) {
             const losTotals = {...createLos(totals, selectedBranch, null, null, yearEnd), losType: 'year-end'};
     
-            await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loan-officer-summary/save-update-totals', losTotals);
+            await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collection-summary/save-update-totals', losTotals);
         }
     }
 
@@ -580,7 +581,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
             },
             {
                 Header: "MCBU Interest",
-                accessor: 'mcbuInterest',
+                accessor: 'mcbuInterestStr',
                 Filter: SelectColumnFilter,
                 filter: 'includes'
             },

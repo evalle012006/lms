@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import Layout from "@/components/Layout";
 import { fetchWrapper } from '@/lib/fetch-wrapper';
-import { setSystemSettings } from '@/redux/actions/systemActions';
+import { setHoliday, setSystemSettings, setWeekend } from '@/redux/actions/systemActions';
 import { setTransactionSettings } from '@/redux/actions/transactionsActions';
 import { setHolidayList } from '@/redux/actions/holidayActions';
 import moment from 'moment';
@@ -11,6 +11,7 @@ import { useState } from 'react';
 const Index = () => {
     const dispatch = useDispatch();
     const [loading, setLoading] = useState(false);
+    const currentDate = moment().format('YYYY-MM-DD');
 
     useEffect(() => {
         let mounted = true;
@@ -44,11 +45,32 @@ const Index = () => {
                     return temp;
                 });
                 dispatch(setHolidayList(holidays));
+
+                let holidayToday = false;
+                const currentYear = moment().year();
+                holidays.map(item => {
+                    const holidayDate = currentYear + '-' + item.date;
+
+                    if (holidayDate === currentDate) {
+                        holidayToday = true;
+                    }
+                });
+
+                dispatch(setHoliday(holidayToday));
+
                 setLoading(false);
             } else if (response.error) {
                 setLoading(false);
                 toast.error(response.message);
             }
+        }
+
+        const dayName = moment().format('dddd');
+
+        if (dayName === 'Saturday' || dayName === 'Sunday') {
+            dispatch(setWeekend(true));
+        } else {
+            dispatch(setWeekend(false));
         }
 
         // const updateCCData = async () => {
@@ -64,7 +86,7 @@ const Index = () => {
         // }
 
         // const updateLOSData = async () => {
-        //     await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}transactions/loan-officer-summary/update-los-data`);
+        //     await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}transactions/cash-collection-summary/update-los-data`);
         // }
 
         mounted && getSystemSettings();
