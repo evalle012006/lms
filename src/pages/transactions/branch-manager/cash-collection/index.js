@@ -20,10 +20,10 @@ const BranchCashCollectionPage = () => {
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
+    const branch = useSelector(state => state.branch.data);
     const [currentDate, setCurrentDate] = useState(moment(new Date()).format('YYYY-MM-DD'));
     const [loading, setLoading] = useState(true);
     const [dateFilter, setDateFilter] = useState(new Date());
-    const cashCollectionList = useSelector(state => state.cashCollection.main);
     const loCollectionList = useSelector(state => state.cashCollection.lo);
     const bmSummary = useSelector(state => state.cashCollection.bmSummary);
     // const [weekend, setWeekend] = useState(false);
@@ -50,23 +50,32 @@ const BranchCashCollectionPage = () => {
     const handleSubmitForLos = async () => {
         setLoading(true);
 
-        if (cashCollectionList.length > 0 || loCollectionList.length > 0) {
+        if (loCollectionList.length > 0) {
             if (currentUser.role.rep === 3) {
-                const pending = loCollectionList.filter(lo => lo.status === 'open');
+                const pending = loCollectionList.filter(cc => cc.status === 'open');
+
                 if (pending.length > 0) {
                     setLoading(false);
-                    toast.error("One or more lo/s transaction is not yet closed.");
+                    toast.error("One or more group/s transaction is not yet closed.");
                 } else {
-                    if (bmSummary && Object.keys(bmSummary).length > 0) {
-                        const resp = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collection-summary/save-update-totals', bmSummary);
-            
-                        if (resp.success) {
-                            setLoading(false);
-                            toast.success('Today transactions are now available in LOS.');
-                        } else if (resp.error) {
-                            setLoading(false);
-                            toast.error(resp.message);
-                        }
+                    let date = currentDate;
+                    if (dateFilter) {
+                        date = moment(dateFilter).format('YYYY-MM-DD');
+                    }
+                    
+                    const data = {
+                        branchId: branch._id,
+                        currentDate: date
+                    }
+
+                    const resp = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collection-summary/save-update-bms', data);
+        
+                    if (resp.success) {
+                        setLoading(false);
+                        toast.success('Today transactions are now available in BMS.');
+                    } else if (resp.error) {
+                        setLoading(false);
+                        toast.error(resp.message);
                     }
                 }
             }
