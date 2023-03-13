@@ -175,7 +175,7 @@ const BranchManagerSummary = () => {
         });
 
         if (currentUser.role.rep === 3) {
-            url = url + '?' + new URLSearchParams({ userId: currentUser._id, branchCode: currentUser.designatedBranch, date: date ? date : currentDate });
+            url = url + '?' + new URLSearchParams({ userId: currentUser._id, branchId: currentUser.designatedBranchId, date: date ? date : currentDate });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let fBal = response.data.fBalance;
