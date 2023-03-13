@@ -9,7 +9,7 @@ import moment from 'moment';
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { toast } from 'react-hot-toast';
 import LOSHeader from "@/components/transactions/los/Header";
-import { formatPricePhp, getDaysOfMonth, getTotal } from "@/lib/utils";
+import { formatPricePhp, getDaysOfMonth } from "@/lib/utils";
 import { useRouter } from "node_modules/next/router";
 
 const BranchManagerSummary = () => {
@@ -175,7 +175,7 @@ const BranchManagerSummary = () => {
         });
 
         if (currentUser.role.rep === 3) {
-            url = url + '?' + new URLSearchParams({ userId: currentUser._id, branchCode: currentUser.designatedBranch, date: date ? date : currentDate });
+            url = url + '?' + new URLSearchParams({ userId: currentUser._id, branchId: currentUser.designatedBranchId, date: date ? date : currentDate });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let fBal = response.data.fBalance;

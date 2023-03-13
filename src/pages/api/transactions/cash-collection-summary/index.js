@@ -9,16 +9,14 @@ export default apiHandler({
 async function getSummary(req, res) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
-    const { date, userId, branchCode, occurence } = req.query;
+    const { date, userId, branchId, occurence } = req.query;
     let statusCode = 200;
     let response = {};
     let data;
 
     const user = await db.collection('users').find({ _id: ObjectId(userId) }).toArray();
-    const branch = await db.collection('branches').find({ code: branchCode }).toArray();
 
-    if (user.length > 0 && branch.length > 0) {
-        const branchId = branch[0]._id + '';
+    if (user.length > 0) {
         const currentMonth = moment(date).month() + 1;
         const currentYear = moment(date).year();
 
