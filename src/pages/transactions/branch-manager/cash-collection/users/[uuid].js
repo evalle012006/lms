@@ -69,7 +69,7 @@ const CashCollectionDetailsPage = () => {
     
                 if (resp.success) {
                     setLoading(false);
-                    toast.success('Today transactions are now available in LOS.');
+                    toast.success('Today transactions are now available in BMS.');
                 } else if (resp.error) {
                     setLoading(false);
                     toast.error(resp.message);
