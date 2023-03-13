@@ -1954,4 +1954,5 @@ const CashCollectionDetailsPage = () => {
     );
 }
 
+
 export default CashCollectionDetailsPage;
