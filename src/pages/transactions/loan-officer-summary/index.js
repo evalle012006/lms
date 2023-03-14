@@ -349,7 +349,7 @@ const LoanOfficerSummary = () => {
             const index = losList.findIndex(los => los.weekNumber === w.weekNumber);
             if (index > -1) {
                 let losSlice;
-                if (w.weekNumber === 0) { // index = 3
+                if (w.weekNumber === 0) {
                     losSlice = losList.slice(1, index);
                 } else { // index = 15
                     losSlice = losList.slice(index - 5, index);
