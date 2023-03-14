@@ -921,8 +921,8 @@ const CashCollectionDetailsPage = () => {
                             temp.pastDueStr = temp.pastDue > 0 ? formatPricePhp(temp.pastDue) : '-';
                             temp.status = 'active';
                             temp.advanceDays = temp.prevData.advanceDays;
-                            temp.mcbu = temp.prevData.mcbu;
-                            temp.mcbuStr = temp.mcbu > 0 ? formatPricePhp(temp.mcbu) : '-';
+                            // temp.mcbu = temp.prevData.mcbu;
+                            // temp.mcbuStr = temp.mcbu > 0 ? formatPricePhp(temp.mcbu) : '-';
                             // temp.mcbuCol = 0;
                             // temp.mcbuColStr = '-';
                             // temp.mcbuWithdrawal = 0;
@@ -1181,6 +1181,8 @@ const CashCollectionDetailsPage = () => {
                             temp.mcbu = 0;
                             temp.mcbuStr = formatPricePhp(temp.mcbu);
                             temp.mcbuError = false;
+                            temp.pastDue = 0;
+                            temp.pastDueStr = '-';
                         }
 
                         temp.mispayment = false;

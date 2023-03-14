@@ -1234,6 +1234,8 @@ const CashCollectionDetailsPage = () => {
                             temp.mcbu = 0;
                             temp.mcbuStr = formatPricePhp(temp.mcbu);
                             temp.mcbuError = false;
+                            temp.pastDue = 0;
+                            temp.pastDueStr = '-';
                         }
 
                         temp.mispayment = false;

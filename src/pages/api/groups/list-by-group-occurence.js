@@ -17,11 +17,13 @@ async function list(req, res) {
         groups = await db
             .collection('groups')
             .find({ branchId: branchId, status: 'available', loanOfficerId: loId,occurence: occurence })
+            .sort({ groupNo: 1 })
             .toArray();
     } else if (branchId) {
         groups = await db
             .collection('groups')
             .find({ branchId: branchId, status: 'available' })
+            .sort({ groupNo: 1 })
             .toArray();
     } else if (areaManagerId) {
         // process for area manager
@@ -29,6 +31,7 @@ async function list(req, res) {
         groups = await db
             .collection('groups')
             .find({ status: 'available' })
+            .sort({ groupNo: 1 })
             .toArray();
     }
     

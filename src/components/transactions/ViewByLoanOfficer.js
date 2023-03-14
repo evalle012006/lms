@@ -948,6 +948,12 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                 filter: 'includes'
             },
             {
+                Header: "Type",
+                accessor: 'transactionType',
+                Filter: SelectColumnFilter,
+                filter: 'includes'
+            },
+            {
                 Header: "Active Clients", // total number of clients per group
                 accessor: 'activeClients',
                 Filter: SelectColumnFilter,
