@@ -18,11 +18,13 @@ async function list(req, res) {
         groups = await db
             .collection('groups')
             .find({ branchId: branchId, status: 'available', loanOfficerId: loId })
+            .sort({ groupNo: 1 })
             .toArray();
     } else if (branchId) {
         groups = await db
             .collection('groups')
             .find({ branchId: branchId, status: 'available' })
+            .sort({ groupNo: 1 })
             .toArray();
     } else if (areaManagerId) {
         const areaManager = await db.collection("users").find({ _id: ObjectId(areaManagerId) }).toArray();
@@ -34,6 +36,7 @@ async function list(req, res) {
                 groups = await db
                     .collection('groups')
                     .find({ $expr: {$and: [{$eq: ['$status', 'available']}, {$in: ['$branchId', branchIds]}]} })
+                    .sort({ groupNo: 1 })
                     .toArray();
             }
         }
@@ -41,6 +44,7 @@ async function list(req, res) {
         groups = await db
             .collection('groups')
             .find({ status: 'available' })
+            .sort({ groupNo: 1 })
             .toArray();
     }
     

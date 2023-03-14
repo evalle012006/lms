@@ -328,6 +328,7 @@ const LoanOfficerSummary = () => {
                 }
 
                 if (type === 'weekly') {
+                    console.log(temp.activeClients)
                     temp.mcbuTarget = temp.activeClients * 50;
                     temp.mcbuTargetStr = temp.mcbuTarget > 0 ? formatPricePhp(temp.mcbuTarget) : '-';
                 }
@@ -376,6 +377,9 @@ const LoanOfficerSummary = () => {
                 let totalFullPaymentAmount = 0;
                 let totalActiveBorrowers = 0; // last row
                 let totalLoanBalance = 0; // last row
+
+                let lastOffsetperson = 0;
+                let lastActiveClient = 0;
 
                 let lastPastDueAmount = 0;
                 let lastPastDuePerson = 0;
@@ -426,7 +430,6 @@ const LoanOfficerSummary = () => {
                     totalMcbuInterest += (los.mcbuInterest !== '-' && los.mcbuInterest) ? los.mcbuInterest : 0;
                     totalNoMcbuReturn += (los.noMcbuReturn !== '-' && los.noMcbuReturn) ? los.noMcbuReturn : 0;
                     totalMcbuReturnAmt += (los.mcbuReturnAmt !== '-' && los.mcbuReturnAmt) ? los.mcbuReturnAmt : 0;
-                    console.log(los.mcbuTarget)
                 });
 
                 if (w.weekNumber === 0) {
