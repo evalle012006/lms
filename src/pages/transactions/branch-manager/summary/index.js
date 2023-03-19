@@ -13,7 +13,6 @@ import { formatPricePhp, getDaysOfMonth } from "@/lib/utils";
 import { useRouter } from "node_modules/next/router";
 
 const BranchManagerSummary = () => {
-    const router = useRouter();
     const dispatch = useDispatch();
     const [loading, setLoading] = useState(true);
     const currentUser = useSelector(state => state.user.data);
