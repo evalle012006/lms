@@ -75,6 +75,7 @@ const LoanOfficerSummary = () => {
             pastDuePerson: 0,
             pastDueAmount: 0,
             pastDueAmountStr: 0,
+            mispaymentPerson: 0,
             fullPaymentPerson: 0,
             fullPaymentAmount: 0,
             fullPaymentAmountStr: 0,
@@ -126,6 +127,7 @@ const LoanOfficerSummary = () => {
                 pastDuePerson: '-',
                 pastDueAmount: '-',
                 pastDueAmountStr: '-',
+                mispaymentPerson: '-',
                 fullPaymentPerson: '-',
                 fullPaymentAmount: '-',
                 fullPaymentAmountStr: '-',
@@ -163,6 +165,7 @@ const LoanOfficerSummary = () => {
                     pastDuePerson: '-',
                     pastDueAmount: '-',
                     pastDueAmountStr: '-',
+                    mispaymentPerson: '-',
                     fullPaymentPerson: '-',
                     fullPaymentAmount: '-',
                     fullPaymentAmountStr: '-',
@@ -214,6 +217,7 @@ const LoanOfficerSummary = () => {
                         pastDuePerson: fBal.pastDuePerson,
                         pastDueAmount: fBal.pastDueAmount,
                         pastDueAmountStr: formatPricePhp(fBal.pastDueAmount),
+                        mispaymentPerson: fBal.mispaymentPerson,
                         fullPaymentPerson: fBal.fullPaymentPerson,
                         fullPaymentAmount: fBal.fullPaymentAmount,
                         fullPaymentAmountStr: formatPricePhp(fBal.fullPaymentAmount),
@@ -348,6 +352,7 @@ const LoanOfficerSummary = () => {
                 let totalCollectionAdvancePayment = 0;
                 let totalCollectionActual = 0;
                 let totalPastDuePerson = 0;
+                let totalMispaymentPerson = 0;
                 let totalPastDueAmount = 0;
                 let totalFullPaymentPerson = 0;
                 let totalFullPaymentAmount = 0;
@@ -381,6 +386,7 @@ const LoanOfficerSummary = () => {
                     totalCollectionActual += los.collectionActual !== '-' ? los.collectionActual : 0;
                     // totalPastDuePerson += los.pastDuePerson !== '-' ? los.pastDuePerson : 0;
                     // totalPastDueAmount += los.pastDueAmount !== '-' ? los.pastDueAmount : 0;
+                    totalMispaymentPerson += los.mispaymentPerson !== '-' ? los.mispaymentPerson : 0;
                     if (los.pastDuePerson !== '-') {
                         lastPastDuePerson = los.pastDuePerson;
                     }
@@ -460,6 +466,7 @@ const LoanOfficerSummary = () => {
                     pastDuePerson: totalPastDuePerson,
                     pastDueAmount: totalPastDueAmount,
                     pastDueAmountStr: formatPricePhp(totalPastDueAmount),
+                    mispaymentPerson: totalMispaymentPerson,
                     fullPaymentPerson: totalFullPaymentPerson,
                     fullPaymentAmount: totalFullPaymentAmount,
                     fullPaymentAmountStr: formatPricePhp(totalFullPaymentAmount),
@@ -509,6 +516,7 @@ const LoanOfficerSummary = () => {
             pastDuePerson: '-',
             pastDueAmount: '-',
             pastDueAmountStr: '-',
+            mispaymentPerson: '-',
             fullPaymentPerson: '-',
             fullPaymentAmount: '-',
             fullPaymentAmountStr: '-',
@@ -538,6 +546,7 @@ const LoanOfficerSummary = () => {
         let totalCollectionActual = 0;
         let totalPastDuePerson = 0;
         let totalPastDueAmount = 0;
+        let totalMispaymentPerson = 0;
         let totalFullPaymentPerson = 0;
         let totalFullPaymentAmount = 0;
         let totalActiveBorrowers = 0; // last row
@@ -560,6 +569,7 @@ const LoanOfficerSummary = () => {
             totalCollectionActual += wt.collectionActual;
             totalPastDuePerson += wt.pastDuePerson;
             totalPastDueAmount += wt.pastDueAmount;
+            totalMispaymentPerson += wt.mispaymentPerson;
             totalFullPaymentPerson += wt.fullPaymentPerson;
             totalFullPaymentAmount += wt.fullPaymentAmount;
         });
@@ -603,6 +613,7 @@ const LoanOfficerSummary = () => {
         monthlyTotal.pastDuePerson = totalPastDuePerson;
         monthlyTotal.pastDueAmount = totalPastDueAmount;
         monthlyTotal.pastDueAmountStr = formatPricePhp(totalPastDueAmount);
+        monthlyTotal.mispaymentPerson = totalMispaymentPerson;
         monthlyTotal.fullPaymentPerson = totalFullPaymentPerson;
         monthlyTotal.fullPaymentAmount = totalFullPaymentAmount;
         monthlyTotal.fullPaymentAmountStr = formatPricePhp(totalFullPaymentAmount);
@@ -645,6 +656,7 @@ const LoanOfficerSummary = () => {
             pastDuePerson: 0,
             pastDueAmount: 0,
             pastDueAmountStr: 0,
+            mispaymentPerson: 0,
             fullPaymentPerson: 0,
             fullPaymentAmount: 0,
             fullPaymentAmountStr: 0,
@@ -673,6 +685,7 @@ const LoanOfficerSummary = () => {
         let totalCollectionActual = 0;
         let totalPastDuePerson = 0;
         let totalPastDueAmount = 0;
+        let totalMispaymentPerson = 0;
         let totalFullPaymentPerson = 0;
         let totalFullPaymentAmount = 0;
         let totalActiveBorrowers = 0;
@@ -701,6 +714,7 @@ const LoanOfficerSummary = () => {
             totalCollectionActual = fBal.collectionActual + monthly.collectionActual - monthly.fullPaymentAmount;
             totalPastDuePerson = fBal.pastDuePerson + monthly.pastDuePerson;
             totalPastDueAmount = fBal.pastDueAmount + monthly.pastDueAmount;
+            totalMispaymentPerson = fBal.mispaymentPerson + monthly.mispaymentPerson;
             totalFullPaymentPerson = fBal.fullPaymentPerson + monthly.fullPaymentPerson;
             totalFullPaymentAmount = fBal.fullPaymentAmount + monthly.fullPaymentAmount;
             totalActiveBorrowers = monthly.activeBorrowers;
@@ -737,6 +751,7 @@ const LoanOfficerSummary = () => {
         grandTotal.pastDuePerson = totalPastDuePerson;
         grandTotal.pastDueAmount = totalPastDueAmount;
         grandTotal.pastDueAmountStr = formatPricePhp(totalPastDueAmount);
+        grandTotal = totalMispaymentPerson;
         grandTotal.fullPaymentPerson = totalFullPaymentPerson;
         grandTotal.fullPaymentAmount = totalFullPaymentAmount;
         grandTotal.fullPaymentAmountStr = formatPricePhp(totalFullPaymentAmount);
@@ -836,6 +851,7 @@ const LoanOfficerSummary = () => {
                                         <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 py-4 text-gray-500 uppercase">ACT LOAN RELEASE W/ Serv. Charge</th>
                                         <th colSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 text-gray-500 uppercase">COLLECTION (w/ serv. charge)</th>
                                         <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 text-gray-500 uppercase">Pastdue</th>
+                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">Mispay Pers.</th>
                                         <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 text-gray-500 uppercase">FULL PAYMENT (w/ serv. charge)</th>
                                         <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">Act. Bwr.</th>
                                         <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-r-0 border-t-0 px-2 py-2 text-gray-500 uppercase">Loan Balance</th>
@@ -843,8 +859,8 @@ const LoanOfficerSummary = () => {
                                     <tr>
                                         <th rowSpan={2} className="sticky top-[2.2rem] bg-white  border border-gray-300 text-gray-500 uppercase">Target Deposit</th>
                                         <th rowSpan={2} className="sticky top-[2.2rem] bg-white  border border-gray-300 text-gray-500 uppercase">Actual Deposit</th>
-                                        <th rowSpan={2} className="sticky top-[2.2rem] bg-white  border border-gray-300 text-gray-500 uppercase">Withdrawals</th>
-                                        <th rowSpan={2} className="sticky top-[2.2rem] bg-white  border border-gray-300 text-gray-500 uppercase">Interest</th>
+                                        <th rowSpan={2} className="sticky top-[2.2rem] bg-white  border border-gray-300 text-gray-500 uppercase">WD</th>
+                                        <th rowSpan={2} className="sticky top-[2.2rem] bg-white  border border-gray-300 text-gray-500 uppercase">Int.</th>
                                         <th colSpan={2} className="sticky top-[2.2rem] bg-white  border border-gray-300 text-gray-500 uppercase">MCBU Return</th>
                                         <th colSpan={3} className="sticky top-[2.2rem] bg-white  border border-gray-300 text-gray-500 uppercase">REGULAR LOAN</th>
                                     </tr>
@@ -896,6 +912,7 @@ const LoanOfficerSummary = () => {
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.collectionActualStr }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.pastDuePerson }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.pastDueAmountStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.mispaymentPerson }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.fullPaymentPerson }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.fullPaymentAmountStr }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.activeBorrowers }</td>
@@ -924,6 +941,7 @@ const LoanOfficerSummary = () => {
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.collectionActualStr }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.pastDuePerson }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.pastDueAmountStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.mispaymentPerson }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.fullPaymentPerson }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.fullPaymentAmountStr }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.activeBorrowers }</td>
