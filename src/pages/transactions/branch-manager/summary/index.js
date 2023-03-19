@@ -13,7 +13,6 @@ import { formatPricePhp, getDaysOfMonth } from "@/lib/utils";
 import { useRouter } from "node_modules/next/router";
 
 const BranchManagerSummary = () => {
-    const router = useRouter();
     const dispatch = useDispatch();
     const [loading, setLoading] = useState(true);
     const currentUser = useSelector(state => state.user.data);
@@ -448,7 +447,7 @@ const BranchManagerSummary = () => {
                 let lastPastDuePerson = 0;
                 let lastLoanBalance = 0;
                 let lastMcbuBalance = 0;
-                let lastMispaymentPerson = 0;
+                // let lastMispaymentPerson = 0;
 
                 let totalMcbuTarget = 0;
                 let totalMcbuActual = 0;
@@ -475,7 +474,7 @@ const BranchManagerSummary = () => {
                     totalCollectionAdvancePaymentWeekly += los.collectionAdvancePaymentWeekly !== '-' ? los.collectionAdvancePaymentWeekly : 0;
                     totalCollectionActualWeekly += los.collectionActualWeekly !== '-' ? los.collectionActualWeekly : 0;
                     totalConsolidatedCollection += los.consolidatedCollection !== '-' ? los.consolidatedCollection : 0;
-                    
+                    totalMispaymentPerson += los.mispaymentPerson !== '-' ? los.mispaymentPerson : 0;
                     // totalPastDuePerson += los.pastDuePerson !== '-' ? los.pastDuePerson : 0;
                     // totalPastDueAmount += los.pastDueAmount !== '-' ? los.pastDueAmount : 0;
                     if (los.pastDuePerson !== '-') {
@@ -494,9 +493,9 @@ const BranchManagerSummary = () => {
                         lastMcbuBalance = los.mcbuBalance;
                     }
 
-                    if (los.mispaymentPerson > 0) {
-                        lastMispaymentPerson = los.mispaymentPerson;
-                    }
+                    // if (los.mispaymentPerson > 0) {
+                    //     lastMispaymentPerson = los.mispaymentPerson;
+                    // }
 
                     totalFullPaymentDailyPerson += los.fullPaymentDailyPerson !== '-' ? los.fullPaymentDailyPerson : 0;
                     totalFullPaymentDailyAmount += los.fullPaymentDailyAmount !== '-' ? los.fullPaymentDailyAmount : 0;
@@ -528,7 +527,7 @@ const BranchManagerSummary = () => {
                 totalMcbuBalance = lastMcbuBalance;
                 totalPastDuePerson = lastPastDuePerson;
                 totalPastDueAmount = lastPastDueAmount;
-                totalMispaymentPerson = lastMispaymentPerson;
+                // totalMispaymentPerson = lastMispaymentPerson;
                 totalActiveBorrowers = losSlice[losSlice.length - 1].activeBorrowers;
                 totalLoanBalance =  lastLoanBalance;
 
@@ -1097,10 +1096,10 @@ const BranchManagerSummary = () => {
                                     <tr>
                                         <th rowSpan={2} className="sticky top-[1.4rem] bg-white  border border-gray-300 text-gray-500 uppercase">Target Deposit</th>
                                         <th rowSpan={2} className="sticky top-[1.4rem] bg-white  border border-gray-300 text-gray-500 uppercase">Actual Deposit</th>
-                                        <th rowSpan={2} className="sticky top-[1.4rem] bg-white  border border-gray-300 text-gray-500 uppercase">Withdrawals</th>
-                                        <th rowSpan={2} className="sticky top-[1.4rem] bg-white  border border-gray-300 text-gray-500 uppercase">Interest</th>
+                                        <th rowSpan={2} className="sticky top-[1.4rem] bg-white  border border-gray-300 text-gray-500 uppercase">WD</th>
+                                        <th rowSpan={2} className="sticky top-[1.4rem] bg-white  border border-gray-300 text-gray-500 uppercase">Int.</th>
                                         <th colSpan={2} className="sticky top-[1.4rem] bg-white  border border-gray-300 text-gray-500 uppercase">MCBU Return</th>
-                                        <th colSpan={3} className="sticky top-[1.4rem] bg-white  border border-gray-300 text-gray-500 uppercase">REGULAR LOAN (Daily)</th>
+                                        <th colSpan={3} className="sticky top-[1.4rem] bg-white  border border-gray-300 text-gray-500 uppercase">REG. LOAN (Daily)</th>
                                         <th colSpan={3} className="sticky top-[1.4rem] bg-white  border border-gray-300 text-gray-500 uppercase">OTHER LOAN (Weekly)</th>
                                     </tr>
                                     <tr>
