@@ -308,7 +308,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         targetLoanCollection += loanTarget;
                         fullPaymentAmount += cc.cashCollections[0].fullPaymentAmount;
                         noOfFullPayment += cc.cashCollections[0].noOfFullPayment;
-                        totalMcbu += cc.cashCollections[0].mcbu;
+                        // totalMcbu += cc.cashCollections[0].mcbu;
                         totalMcbuCol += cc.cashCollections[0].mcbuCol;
                         totalMcbuWithdrawal += cc.cashCollections[0].mcbuWithdrawal;
                         totalMcbuReturnAmt += cc.cashCollections[0].mcbuReturnAmt;

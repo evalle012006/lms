@@ -424,7 +424,11 @@ const CashCollectionDetailsPage = () => {
             });
 
             response.data.tomorrowPending.map(loan => {
-                const currentLoan = cashCollection.find(l => l.slotNo === loan.slotNo);
+                // to do:
+                // if same slot and same client merged
+                // if same slot but diff client it should be different row
+                // if diff slot but same client it should be different row
+                const currentLoan = cashCollection.find(l => l.slotNo === loan.slotNo); // should show different client with the same slot no
                 if (currentLoan && currentLoan.status !== 'pending') {
                     const index = cashCollection.indexOf(currentLoan);
                     if ((currentLoan.fullPaymentDate === currentDate)) { // fullpayment with pending/tomorrow
@@ -1251,7 +1255,6 @@ const CashCollectionDetailsPage = () => {
                     } else if (remarks.value === "delinquent" || remarks.value === "excused") {
                         // add no of mispayments / maximum of payments per cycle // change to #of mispay
                         temp.error = false;
-                        temp.excused = true;
                         temp.mcbuError = false;
                         temp.mcbu = temp.mcbu - temp.mcbuCol;
                         temp.mcbuStr = temp.mcbu > 0 ? formatPricePhp(temp.mcbu) : '-';
@@ -1262,14 +1265,23 @@ const CashCollectionDetailsPage = () => {
                             temp.delinquent = true;
                         }
 
+                        if (remarks.value === "excused") {
+                            temp.excused = true;
+                        }
+
                         if (temp.remarks.label === 'Delinquent Client for Offset') {
                             temp.mispayment = false;
                             temp.mispaymentStr = 'No';
                         } else {
-                            temp.targetCollection = 0;
-                            temp.targetCollectionStr = formatPricePhp(temp.targetCollection);
-                            temp.mispayment = true;
-                            temp.mispaymentStr = 'Yes';
+                            if (temp.paymentCollection > temp.activeLoan) {
+                                temp.error = true;
+                                toast.error("Error occured. Remarks is not valid due to the amount in Actual Collection.");
+                            } else {
+                                temp.targetCollection = 0;
+                                temp.targetCollectionStr = formatPricePhp(temp.targetCollection);
+                                temp.mispayment = true;
+                                temp.mispaymentStr = 'Yes';
+                            }
                         }
 
                     } else if (remarks.value === "past due collection") {
@@ -1299,6 +1311,11 @@ const CashCollectionDetailsPage = () => {
                         } else {
                             temp.error = true;
                             toast.error('Invalid remarks');
+                        }
+
+                        if (temp.loanBalance <= 0) {
+                            temp.error = true;
+                            toast.error('Invalid remarks. Please mark it as Reloaner or Offset');
                         }
                     } else if (remarks.value === "excused advance payment") {
                         if (temp.hasOwnProperty('prevData')) {
@@ -1911,7 +1928,7 @@ const CashCollectionDetailsPage = () => {
                                                         {(!isWeekend && !isHoliday && currentUser.role.rep > 2 &&  (cc.status === 'active' || cc.status === 'completed') && !groupSummaryIsClose) && (
                                                             <div className='flex flex-row p-4'>
                                                                 {(cc.hasOwnProperty('_id') && !filter) && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleRevert(e, cc, index)} />}
-                                                                {(!editMode || (cc.status === 'completed' && cc.remarks.value === 'reloaner')) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
+                                                                {(!editMode && (cc.status === 'completed' && cc.remarks.value === 'reloaner')) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
                                                                 {/* {(!filter && cc.status === 'active') && <CurrencyDollarIcon className="w-5 h-5 mr-6" title="MCBU Withdrawal" onClick={(e) => handleMcbuWithdrawal(e, cc, index)} />} */}
                                                                 {(!filter && !editMode && cc.status !== 'closed' && currentMonth === 11) && <CalculatorIcon className="w-5 h-5 mr-6" title="Calculate MCBU Interest" onClick={(e) => calculateInterest(e, cc, index)} />}
                                                             </div>

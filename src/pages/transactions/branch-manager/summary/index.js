@@ -61,22 +61,41 @@ const BranchManagerSummary = () => {
             mcbuBalanceStr: 0,
             offsetPerson: 0,
             activeClients: 0,
-            loanReleasePerson: 0,
-            loanReleaseAmount: 0,
-            loanReleaseAmountStr: 0,
+            loanReleaseDailyPerson: 0,
+            loanReleaseDailyAmount: 0,
+            loanReleaseDailyAmountStr: 0,
+            loanReleaseWeeklyPerson: 0,
+            loanReleaseWeeklyAmount: 0,
+            loanReleaseWeeklyAmountStr: 0,
+            consolidatedLoanReleasePerson: 0,
+            consolidatedLoanReleaseAmount: 0,
+            consolidatedLoanReleaseAmountStr: 0,
             activeLoanReleasePerson: 0,
             activeLoanReleaseAmount: 0,
             activeLoanReleaseAmountStr: 0,
-            collectionAdvancePayment: 0,
-            collectionAdvancePaymentStr: 0,
-            collectionActual: 0,
-            collectionActualStr: 0,
+            collectionAdvancePaymentDaily: 0,
+            collectionAdvancePaymentDailyStr: 0,
+            collectionActualDaily: 0,
+            collectionActualDailyStr: 0,
+            collectionAdvancePaymentWeekly: 0,
+            collectionAdvancePaymentWeeklyStr: 0,
+            collectionActualWeekly: 0,
+            collectionActualWeeklyStr: 0,
+            consolidatedCollection: 0,
+            consolidatedCollectionStr: 0,
             pastDuePerson: 0,
             pastDueAmount: 0,
             pastDueAmountStr: 0,
-            fullPaymentPerson: 0,
-            fullPaymentAmount: 0,
-            fullPaymentAmountStr: 0,
+            mispaymentPerson: 0,
+            fullPaymentDailyPerson: 0,
+            fullPaymentDailyAmount: 0,
+            fullPaymentDailyAmountStr: 0,
+            fullPaymentWeeklyPerson: 0,
+            fullPaymentWeeklyAmount: 0,
+            fullPaymentWeeklyAmountStr: 0,
+            consolidatedFullPaymentPerson: 0,
+            consolidatedFullPaymentAmount: 0,
+            consolidatedFullPaymentAmountStr: 0,
             activeBorrowers: 0,
             loanBalance: 0,
             loanBalanceStr: 0,
@@ -110,24 +129,45 @@ const BranchManagerSummary = () => {
                 activeClients: '-',
                 mcbuBalance: '-',
                 mcbuBalanceStr: '-',
-                loanReleasePerson: '-',
-                loanReleaseAmount: '-',
-                loanReleaseAmountStr: '-',
+                loanReleaseDailyPerson: '-',
+                loanReleaseDailyAmount: '-',
+                loanReleaseDailyAmountStr: '-',
+                loanReleaseWeeklyPerson: '-',
+                loanReleaseWeeklyAmount: '-',
+                loanReleaseWeeklyAmountStr: '-',
+                consolidatedLoanReleasePerson: '-',
+                consolidatedLoanReleaseAmount: '-',
+                consolidatedLoanReleaseAmountStr: '-',
                 activeLoanReleasePerson: '-',
                 activeLoanReleaseAmount: '-',
                 activeLoanReleaseAmountStr: '-',
-                collectionTarget: '-',
-                collectionTargetStr: '-',
-                collectionAdvancePayment: '-',
-                collectionAdvancePaymentStr: '-',
-                collectionActual: '-',
-                collectionActualStr: '-',
+                collectionTargetDaily: '-',
+                collectionTargetDailyStr: '-',
+                collectionAdvancePaymentDaily: '-',
+                collectionAdvancePaymentDailyStr: '-',
+                collectionActualDaily: '-',
+                collectionActualDailyStr: '-',
+                collectionTargetWeekly: '-',
+                collectionTargetWeeklyStr: '-',
+                collectionAdvancePaymentWeekly: '-',
+                collectionAdvancePaymentWeeklyStr: '-',
+                collectionActualWeekly: '-',
+                collectionActualWeeklyStr: '-',
+                consolidatedCollection: '-',
+                consolidatedCollectionStr: '-',
                 pastDuePerson: '-',
                 pastDueAmount: '-',
                 pastDueAmountStr: '-',
-                fullPaymentPerson: '-',
-                fullPaymentAmount: '-',
-                fullPaymentAmountStr: '-',
+                mispaymentPerson: '-',
+                fullPaymentDailyPerson: '-',
+                fullPaymentDailyAmount: '-',
+                fullPaymentDailyAmountStr: '-',
+                fullPaymentWeeklyPerson: '-',
+                fullPaymentWeeklyAmount: '-',
+                fullPaymentWeeklyAmountStr: '-',
+                consolidatedFullPaymentPerson: '-',
+                consolidatedFullPaymentAmount: '-',
+                consolidatedFullPaymentAmountStr: '-',
                 activeBorrowers: '-',
                 loanBalance: '-',
                 loanBalanceStr: '-'
@@ -147,24 +187,45 @@ const BranchManagerSummary = () => {
                     offsetPerson: '-',
                     activeClients: '-',
                     mcbuBalanceStr: '-',
-                    loanReleasePerson: '-',
-                    loanReleaseAmount: '-',
-                    loanReleaseAmountStr: '-',
+                    loanReleaseDailyPerson: '-',
+                    loanReleaseDailyAmount: '-',
+                    loanReleaseDailyAmountStr: '-',
+                    loanReleaseWeeklyPerson: '-',
+                    loanReleaseWeeklyAmount: '-',
+                    loanReleaseWeeklyAmountStr: '-',
+                    consolidatedLoanReleasePerson: '-',
+                    consolidatedLoanReleaseAmount: '-',
+                    consolidatedLoanReleaseAmountStr: '-',
                     activeLoanReleasePerson: '-',
                     activeLoanReleaseAmount: '-',
                     activeLoanReleaseAmountStr: '-',
-                    collectionTarget: '-',
-                    collectionTargetStr: '-',
-                    collectionAdvancePayment: '-',
-                    collectionAdvancePaymentStr: '-',
-                    collectionActual: '-',
-                    collectionActualStr: '-',
+                    collectionTargetDaily: '-',
+                    collectionTargetDailyStr: '-',
+                    collectionAdvancePaymentDaily: '-',
+                    collectionAdvancePaymentDailyStr: '-',
+                    collectionActualDaily: '-',
+                    collectionActualDailyStr: '-',
+                    collectionTargetWeekly: '-',
+                    collectionTargetWeeklyStr: '-',
+                    collectionAdvancePaymentWeekly: '-',
+                    collectionAdvancePaymentWeeklyStr: '-',
+                    collectionActualWeekly: '-',
+                    collectionActualWeeklyStr: '-',
+                    consolidatedCollection: '-',
+                    consolidatedCollectionStr: '-',
                     pastDuePerson: '-',
                     pastDueAmount: '-',
                     pastDueAmountStr: '-',
-                    fullPaymentPerson: '-',
-                    fullPaymentAmount: '-',
-                    fullPaymentAmountStr: '-',
+                    mispaymentPerson: '-',
+                    fullPaymentDailyPerson: '-',
+                    fullPaymentDailyAmount: '-',
+                    fullPaymentDailyAmountStr: '-',
+                    fullPaymentWeeklyPerson: '-',
+                    fullPaymentWeeklyAmount: '-',
+                    fullPaymentWeeklyAmountStr: '-',
+                    consolidatedFullPaymentPerson: '-',
+                    consolidatedFullPaymentAmount: '-',
+                    consolidatedFullPaymentAmountStr: '-',
                     activeBorrowers: '-',
                     loanBalance: '-',
                     loanBalanceStr: '-',
@@ -200,22 +261,41 @@ const BranchManagerSummary = () => {
                         mcbuBalanceStr: formatPricePhp(fBal.mcbuBalance),
                         offsetPerson: fBal.offsetPerson,
                         activeClients: fBal.activeClients,
-                        loanReleasePerson: fBal.loanReleasePerson,
-                        loanReleaseAmount: fBal.loanReleaseAmount,
-                        loanReleaseAmountStr: formatPricePhp(fBal.loanReleaseAmount),
+                        loanReleaseDailyPerson: fBal.loanReleaseDailyPerson,
+                        loanReleaseDailyAmount: fBal.loanReleaseDailyAmount,
+                        loanReleaseDailyAmountStr: formatPricePhp(fBal.loanReleaseDailyAmount),
+                        loanReleaseWeeklyPerson: fBal.loanReleaseWeeklyPerson,
+                        loanReleaseWeeklyAmount: fBal.loanReleaseWeeklyAmount,
+                        loanReleaseWeeklyAmountStr: formatPricePhp(fBal.loanReleaseWeeklyAmount),
+                        consolidatedLoanReleasePerson: fBal.consolidatedLoanReleasePerson,
+                        consolidatedLoanReleaseAmount: fBal.consolidatedLoanReleaseAmount,
+                        consolidatedLoanReleaseAmountStr: formatPricePhp(fBal.consolidatedLoanReleaseAmount),
                         activeLoanReleasePerson: fBal.activeLoanReleasePerson,
                         activeLoanReleaseAmount: fBal.activeLoanReleaseAmount,
                         activeLoanReleaseAmountStr: formatPricePhp(fBal.activeLoanReleaseAmount),
-                        collectionAdvancePayment: fBal.collectionAdvancePayment,
-                        collectionAdvancePaymentStr: formatPricePhp(fBal.collectionAdvancePayment),
-                        collectionActual: fBal.collectionActual,
-                        collectionActualStr: formatPricePhp(fBal.collectionActual),
+                        collectionAdvancePaymentDaily: fBal.collectionAdvancePaymentDaily,
+                        collectionAdvancePaymentDailyStr: formatPricePhp(fBal.collectionAdvancePaymentDaily),
+                        collectionActualDaily: fBal.collectionActualDaily,
+                        collectionActualDailyStr: formatPricePhp(fBal.collectionActualDaily),
+                        collectionAdvancePaymentWeekly: fBal.collectionAdvancePaymentWeekly,
+                        collectionAdvancePaymentWeeklyStr: formatPricePhp(fBal.collectionAdvancePaymentWeekly),
+                        collectionActualWeekly: fBal.collectionActualWeekly,
+                        collectionActualWeeklyStr: formatPricePhp(fBal.collectionActualWeekly),
+                        consolidatedCollection: fBal.consolidatedCollection,
+                        consolidatedCollectionStr: formatPricePhp(fBal.consolidatedCollection),
                         pastDuePerson: fBal.pastDuePerson,
                         pastDueAmount: fBal.pastDueAmount,
                         pastDueAmountStr: formatPricePhp(fBal.pastDueAmount),
-                        fullPaymentPerson: fBal.fullPaymentPerson,
-                        fullPaymentAmount: fBal.fullPaymentAmount,
-                        fullPaymentAmountStr: formatPricePhp(fBal.fullPaymentAmount),
+                        mispaymentPerson: fBal.mispaymentPerson,
+                        fullPaymentDailyPerson: fBal.fullPaymentDailyPerson,
+                        fullPaymentDailyAmount: fBal.fullPaymentDailyAmount,
+                        fullPaymentDailyAmountStr: formatPricePhp(fBal.fullPaymentDailyAmount),
+                        fullPaymentWeeklyPerson: fBal.fullPaymentWeeklyPerson,
+                        fullPaymentWeeklyAmount: fBal.fullPaymentWeeklyAmount,
+                        fullPaymentWeeklyAmountStr: formatPricePhp(fBal.fullPaymentWeeklyAmount),
+                        consolidatedFullPaymentPerson: fBal.consolidatedFullPaymentPerson,
+                        consolidatedFullPaymentAmount: fBal.consolidatedFullPaymentAmount,
+                        consolidatedFullPaymentAmountStr: formatPricePhp(fBal.consolidatedFullPaymentAmount),
                         activeBorrowers: fBal.activeBorrowers,
                         loanBalance: fBal.loanBalance,
                         loanBalanceStr: formatPricePhp(fBal.loanBalance),
@@ -229,20 +309,26 @@ const BranchManagerSummary = () => {
                         losList[index] = {
                             ...los,
                             day: los._id.dateAdded,
-                            mcbuTarget: los.mcbuTarget,
-                            mcbuTargetStr: formatPricePhp(los.mcbuTarget),
-                            mcbuActualStr: formatPricePhp(los.mcbuActual),
-                            mcbuWithdrawalStr: formatPricePhp(los.mcbuWithdrawal),
-                            mcbuInterestStr: formatPricePhp(los.mcbuInterest),
-                            mcbuReturnAmtStr: formatPricePhp(los.mcbuReturnAmt),
-                            loanReleaseAmountStr: formatPricePhp(los.loanReleaseAmount),
-                            collectionTargetStr: formatPricePhp(los.collectionTarget),
-                            collectionAdvancePaymentStr: formatPricePhp(los.collectionAdvancePayment),
-                            collectionActualStr: formatPricePhp(los.collectionActual),
-                            pastDueAmountStr: formatPricePhp(los.pastDueAmount),
-                            fullPaymentAmountStr: formatPricePhp(los.fullPaymentAmount),
-                            loanBalance: los.loanBalance,
-                            loanBalanceStr: formatPricePhp(los.loanBalance)
+                            mcbuTargetStr: los.mcbuTarget > 0 ? formatPricePhp(los.mcbuTarget) : '-',
+                            mcbuActualStr: los.mcbuActual > 0 ? formatPricePhp(los.mcbuActual) : '-',
+                            mcbuWithdrawalStr: los.mcbuWithdrawal > 0 ? formatPricePhp(los.mcbuWithdrawal) : '-',
+                            mcbuInterestStr: los.mcbuInterest > 0 ? formatPricePhp(los.mcbuInterest) : '-',
+                            mcbuReturnAmtStr: los.mcbuReturnAmt > 0 ? formatPricePhp(los.mcbuReturnAmt) : '-',
+                            loanReleaseDailyAmountStr: los.loanReleaseDailyAmount ? formatPricePhp(los.loanReleaseDailyAmount) : '-',
+                            loanReleaseWeeklyAmountStr: los.loanReleaseWeeklyAmount > 0 ? formatPricePhp(los.loanReleaseWeeklyAmount) : '-',
+                            consolidatedLoanReleaseAmountStr: los.consolidatedLoanReleaseAmount > 0 ? formatPricePhp(los.consolidatedLoanReleaseAmount) : '-',
+                            collectionTargetDailyStr: los.collectionTargetDaily > 0 ? formatPricePhp(los.collectionTargetDaily) : '-',
+                            collectionAdvancePaymentDailyStr: los.collectionAdvancePaymentDaily > 0 ? formatPricePhp(los.collectionAdvancePaymentDaily) : '-',
+                            collectionActualDailyStr: los.collectionActualDaily > 0 ? formatPricePhp(los.collectionActualDaily) : '-',
+                            collectionTargeWeeklytStr: los.collectionTargetWeekly > 0 ? formatPricePhp(los.collectionTargetWeekly) : '-',
+                            collectionAdvancePaymentWeeklyStr: los.collectionAdvancePaymentWeekly > 0 ? formatPricePhp(los.collectionAdvancePaymentWeekly) : '-',
+                            collectionActualWeeklyStr: los.collectionActualWeekly > 0 ? formatPricePhp(los.collectionActualWeekly) : '-',
+                            consolidatedCollectionStr: los.consolidatedCollection > 0 ? formatPricePhp(los.consolidatedCollection) : '-',
+                            pastDueAmountStr: los.pastDueAmount > 0 ? formatPricePhp(los.pastDueAmount) : '-',
+                            fullPaymentDailyAmountStr: los.fullPaymentDailyAmount > 0 ? formatPricePhp(los.fullPaymentDailyAmount) : '-',
+                            fullPaymentWeeklyAmountStr: los.fullPaymentWeeklyAmount > 0 ? formatPricePhp(los.fullPaymentWeeklyAmount) : '-',
+                            consolidatedFullPaymentAmountStr: los.consolidatedFullPaymentAmount > 0 ? formatPricePhp(los.consolidatedFullPaymentAmount) : '-',
+                            loanBalanceStr: los.loanBalance > 0 ? formatPricePhp(los.loanBalance) : '-'
                         };
                     }
                 });
@@ -267,11 +353,11 @@ const BranchManagerSummary = () => {
             let temp = {...los};
 
             if (index !== 0 && !los.weekTotal) {
-                const loanReleasePerson = los.loanReleasePerson !== '-' ? los.loanReleasePerson : 0;
-                const fullPaymentPerson = los.fullPaymentPerson !== '-' ? los.fullPaymentPerson : 0;
-                const fullPaymentAmount = los.fullPaymentAmount !== '-' ? los.fullPaymentAmount : 0;
-                const loanReleaseAmount = los.loanReleaseAmount !== '-' ? los.loanReleaseAmount : 0;
-                const collectionActual = los.collectionActual !== '-' ? los.collectionActual : 0;
+                const loanReleasePerson = los.consolidatedLoanReleasePerson !== '-' ? los.consolidatedLoanReleasePerson : 0;
+                const loanReleaseAmount = los.consolidatedLoanReleaseAmount !== '-' ? los.consolidatedLoanReleaseAmount : 0;
+                const fullPaymentPerson = los.consolidatedFullPaymentPerson !== '-' ? los.consolidatedFullPaymentPerson : 0;
+                const fullPaymentAmount = los.consolidatedFullPaymentAmount !== '-' ? los.consolidatedFullPaymentAmount : 0;
+                const collectionActual = los.consolidatedCollection !== '-' ? los.consolidatedCollection : 0;
                 const mcbuActual = los.mcbuActual !== '-' ? los.mcbuActual : 0;
                 const mcbuWithdrawal = los.mcbuWithdrawal !== '-' ? los.mcbuWithdrawal : 0;
                 const mcbuInterest = los.mcbuInterest !== '-' ? los.mcbuInterest : 0;
@@ -331,17 +417,30 @@ const BranchManagerSummary = () => {
                 let totalNewMember = 0;
                 let totalOffsetperson = 0;
                 let totalActiveClients = 0; // last row
-                let totalLoanReleasePerson = 0;
-                let totalLoanReleaseAmount = 0;
+                let totalLoanReleaseDailyPerson = 0;
+                let totalLoanReleaseDailyAmount = 0;
+                let totalLoanReleaseWeeklyPerson = 0;
+                let totalLoanReleaseWeeklyAmount = 0;
+                let totalConsolidatedLoanReleasePerson = 0;
+                let totalConsolidatedLoanReleaseAmount = 0;
                 let totalActiveLoanReleasePerson = 0;
                 let totalActiveLoanReleaseAmount = 0;
-                let totalCollectionTarget = 0;
-                let totalCollectionAdvancePayment = 0;
-                let totalCollectionActual = 0;
+                let totalCollectionTargetDaily = 0;
+                let totalCollectionAdvancePaymentDaily = 0;
+                let totalCollectionActualDaily = 0;
+                let totalCollectionTargetWeekly = 0;
+                let totalCollectionAdvancePaymentWeekly = 0;
+                let totalCollectionActualWeekly = 0;
+                let totalConsolidatedCollection = 0;
                 let totalPastDuePerson = 0;
                 let totalPastDueAmount = 0;
-                let totalFullPaymentPerson = 0;
-                let totalFullPaymentAmount = 0;
+                let totalMispaymentPerson = 0;
+                let totalFullPaymentDailyPerson = 0;
+                let totalFullPaymentDailyAmount = 0;
+                let totalFullPaymentWeeklyPerson = 0;
+                let totalFullPaymentWeeklyAmount = 0;
+                let totalConsolidatedFullPaymentPerson = 0;
+                let totalConsolidatedFullPaymentAmount = 0;
                 let totalActiveBorrowers = 0; // last row
                 let totalLoanBalance = 0; // last row
 
@@ -349,6 +448,7 @@ const BranchManagerSummary = () => {
                 let lastPastDuePerson = 0;
                 let lastLoanBalance = 0;
                 let lastMcbuBalance = 0;
+                let lastMispaymentPerson = 0;
 
                 let totalMcbuTarget = 0;
                 let totalMcbuActual = 0;
@@ -362,11 +462,20 @@ const BranchManagerSummary = () => {
                     totalTransfer += los.transfer !== '-' ? los.transfer : 0;
                     totalNewMember += los.newMember !== '-' ? los.newMember : 0;
                     totalOffsetperson += los.offsetPerson !== '-' ? los.offsetPerson : 0;
-                    totalLoanReleasePerson += los.loanReleasePerson !== '-' ? los.loanReleasePerson : 0;
-                    totalLoanReleaseAmount += los.loanReleaseAmount !== '-' ? los.loanReleaseAmount : 0;
-                    totalCollectionTarget += los.collectionTarget !== '-' ? los.collectionTarget : 0;
-                    totalCollectionAdvancePayment += los.collectionAdvancePayment !== '-' ? los.collectionAdvancePayment : 0;
-                    totalCollectionActual += los.collectionActual !== '-' ? los.collectionActual : 0;
+                    totalLoanReleaseDailyPerson += los.loanReleaseDailyPerson !== '-' ? los.loanReleaseDailyPerson : 0;
+                    totalLoanReleaseDailyAmount += los.loanReleaseDailyAmount !== '-' ? los.loanReleaseDailyAmount : 0;
+                    totalLoanReleaseWeeklyPerson += los.loanReleaseWeeklyPerson !== '-' ? los.loanReleaseWeeklyPerson : 0;
+                    totalLoanReleaseWeeklyAmount += los.loanReleaseWeeklyAmount !== '-' ? los.loanReleaseWeeklyAmount : 0;
+                    totalConsolidatedLoanReleasePerson += los.consolidatedLoanReleasePerson !== '-' ? los.consolidatedLoanReleasePerson : 0;
+                    totalConsolidatedLoanReleaseAmount += los.consolidatedLoanReleaseAmount !== '-' ? los.consolidatedLoanReleaseAmount : 0;
+                    totalCollectionTargetDaily += los.collectionTargetDaily !== '-' ? los.collectionTargetDaily : 0;
+                    totalCollectionAdvancePaymentDaily += los.collectionAdvancePaymentDaily !== '-' ? los.collectionAdvancePaymentDaily : 0;
+                    totalCollectionActualDaily += los.collectionActualDaily !== '-' ? los.collectionActualDaily : 0;
+                    totalCollectionTargetWeekly += los.collectionTargetWeekly !== '-' ? los.collectionTargetWeekly : 0;
+                    totalCollectionAdvancePaymentWeekly += los.collectionAdvancePaymentWeekly !== '-' ? los.collectionAdvancePaymentWeekly : 0;
+                    totalCollectionActualWeekly += los.collectionActualWeekly !== '-' ? los.collectionActualWeekly : 0;
+                    totalConsolidatedCollection += los.consolidatedCollection !== '-' ? los.consolidatedCollection : 0;
+                    
                     // totalPastDuePerson += los.pastDuePerson !== '-' ? los.pastDuePerson : 0;
                     // totalPastDueAmount += los.pastDueAmount !== '-' ? los.pastDueAmount : 0;
                     if (los.pastDuePerson !== '-') {
@@ -385,8 +494,16 @@ const BranchManagerSummary = () => {
                         lastMcbuBalance = los.mcbuBalance;
                     }
 
-                    totalFullPaymentPerson += los.fullPaymentPerson !== '-' ? los.fullPaymentPerson : 0;
-                    totalFullPaymentAmount += los.fullPaymentAmount !== '-' ? los.fullPaymentAmount : 0;
+                    if (los.mispaymentPerson > 0) {
+                        lastMispaymentPerson = los.mispaymentPerson;
+                    }
+
+                    totalFullPaymentDailyPerson += los.fullPaymentDailyPerson !== '-' ? los.fullPaymentDailyPerson : 0;
+                    totalFullPaymentDailyAmount += los.fullPaymentDailyAmount !== '-' ? los.fullPaymentDailyAmount : 0;
+                    totalFullPaymentWeeklyPerson += los.fullPaymentWeeklyPerson !== '-' ? los.fullPaymentWeeklyPerson : 0;
+                    totalFullPaymentWeeklyAmount += los.fullPaymentWeeklyAmount !== '-' ? los.fullPaymentWeeklyAmount : 0;
+                    totalConsolidatedFullPaymentPerson += los.consolidatedFullPaymentPerson !== '-' ? los.consolidatedFullPaymentPerson : 0;
+                    totalConsolidatedFullPaymentAmount += los.consolidatedFullPaymentAmount !== '-' ? los.consolidatedFullPaymentAmount : 0;
 
                     totalMcbuTarget += (los.mcbuTarget !== '-' && los.mcbuTarget) ? los.mcbuTarget : 0;
                     totalMcbuActual += (los.mcbuActual !== '-'  && los.mcbuActual)? los.mcbuActual : 0;
@@ -398,19 +515,20 @@ const BranchManagerSummary = () => {
 
                 if (w.weekNumber === 0) {
                     totalActiveClients = fBal.activeClients + totalTransfer + totalNewMember - totalOffsetperson;
-                    totalActiveLoanReleasePerson = fBal.activeLoanReleasePerson + totalLoanReleasePerson - totalFullPaymentPerson;
-                    totalActiveLoanReleaseAmount = fBal.activeLoanReleaseAmount + totalLoanReleaseAmount - totalFullPaymentAmount;
+                    totalActiveLoanReleasePerson = fBal.activeLoanReleasePerson + totalConsolidatedLoanReleasePerson - totalConsolidatedFullPaymentPerson;
+                    totalActiveLoanReleaseAmount = fBal.activeLoanReleaseAmount + totalConsolidatedLoanReleaseAmount - totalConsolidatedFullPaymentAmount;
                     // totalMcbuBalance = fBal.mcbuBalance + totalMcbuActual + totalMcbuWithdrawals + totalMcbuInterest - totalMcbuReturnAmt;
                 } else {
                     totalActiveClients = prevWeek.activeClients + totalTransfer + totalNewMember - totalOffsetperson;
-                    totalActiveLoanReleasePerson = prevWeek.activeLoanReleasePerson + totalLoanReleasePerson - totalFullPaymentPerson;
-                    totalActiveLoanReleaseAmount = prevWeek.activeLoanReleaseAmount + totalLoanReleaseAmount - totalFullPaymentAmount;
+                    totalActiveLoanReleasePerson = prevWeek.activeLoanReleasePerson + totalConsolidatedLoanReleasePerson - totalConsolidatedFullPaymentPerson;
+                    totalActiveLoanReleaseAmount = prevWeek.activeLoanReleaseAmount + totalConsolidatedLoanReleaseAmount - totalConsolidatedFullPaymentAmount;
                     // totalMcbuBalance = prevWeek.mcbuBalance + totalMcbuActual + totalMcbuWithdrawals + totalMcbuInterest - totalMcbuReturnAmt;
                 }
 
                 totalMcbuBalance = lastMcbuBalance;
                 totalPastDuePerson = lastPastDuePerson;
                 totalPastDueAmount = lastPastDueAmount;
+                totalMispaymentPerson = lastMispaymentPerson;
                 totalActiveBorrowers = losSlice[losSlice.length - 1].activeBorrowers;
                 totalLoanBalance =  lastLoanBalance;
 
@@ -433,24 +551,45 @@ const BranchManagerSummary = () => {
                     mcbuBalanceStr: formatPricePhp(totalMcbuBalance),
                     offsetPerson: totalOffsetperson,
                     activeClients: totalActiveClients,
-                    loanReleasePerson: totalLoanReleasePerson,
-                    loanReleaseAmount: totalLoanReleaseAmount,
-                    loanReleaseAmountStr: formatPricePhp(totalLoanReleaseAmount),
+                    loanReleaseDailyPerson: totalLoanReleaseDailyPerson,
+                    loanReleaseDailyAmount: totalLoanReleaseDailyAmount,
+                    loanReleaseDailyAmountStr: formatPricePhp(totalLoanReleaseDailyAmount),
+                    loanReleaseWeeklyPerson: totalLoanReleaseWeeklyPerson,
+                    loanReleaseWeeklyAmount: totalLoanReleaseWeeklyAmount,
+                    loanReleaseWeeklyAmountStr: formatPricePhp(totalLoanReleaseWeeklyAmount),
+                    consolidatedLoanReleasePerson: totalConsolidatedLoanReleasePerson,
+                    consolidatedLoanReleaseAmount: totalConsolidatedLoanReleaseAmount,
+                    consolidatedLoanReleaseAmountStr: formatPricePhp(totalConsolidatedLoanReleaseAmount),
                     activeLoanReleasePerson: totalActiveLoanReleasePerson,
                     activeLoanReleaseAmount: totalActiveLoanReleaseAmount,
                     activeLoanReleaseAmountStr: formatPricePhp(totalActiveLoanReleaseAmount),
-                    collectionTarget: totalCollectionTarget,
-                    collectionTargetStr: formatPricePhp(totalCollectionTarget),
-                    collectionAdvancePayment: totalCollectionAdvancePayment,
-                    collectionAdvancePaymentStr: formatPricePhp(totalCollectionAdvancePayment),
-                    collectionActual: totalCollectionActual,
-                    collectionActualStr: formatPricePhp(totalCollectionActual),
+                    collectionTargetDaily: totalCollectionTargetDaily,
+                    collectionTargetDailyStr: formatPricePhp(totalCollectionTargetDaily),
+                    collectionAdvancePaymentDaily: totalCollectionAdvancePaymentDaily,
+                    collectionAdvancePaymentDailyStr: formatPricePhp(totalCollectionAdvancePaymentDaily),
+                    collectionActualDaily: totalCollectionActualDaily,
+                    collectionActualDailyStr: formatPricePhp(totalCollectionActualDaily),
+                    collectionTargetWeekly: totalCollectionTargetWeekly,
+                    collectionTargetWeeklyStr: formatPricePhp(totalCollectionTargetWeekly),
+                    collectionAdvancePaymentWeekly: totalCollectionAdvancePaymentWeekly,
+                    collectionAdvancePaymentWeeklyStr: formatPricePhp(totalCollectionAdvancePaymentWeekly),
+                    collectionActualWeekly: totalCollectionActualWeekly,
+                    collectionActualWeeklyStr: formatPricePhp(totalCollectionActualWeekly),
+                    consolidatedCollection: totalConsolidatedCollection,
+                    consolidatedCollectionStr: formatPricePhp(totalConsolidatedCollection),
                     pastDuePerson: totalPastDuePerson,
                     pastDueAmount: totalPastDueAmount,
                     pastDueAmountStr: formatPricePhp(totalPastDueAmount),
-                    fullPaymentPerson: totalFullPaymentPerson,
-                    fullPaymentAmount: totalFullPaymentAmount,
-                    fullPaymentAmountStr: formatPricePhp(totalFullPaymentAmount),
+                    mispaymentPerson: totalMispaymentPerson,
+                    fullPaymentDailyPerson: totalFullPaymentDailyPerson,
+                    fullPaymentDailyAmount: totalFullPaymentDailyAmount,
+                    fullPaymentDailyAmountStr: formatPricePhp(totalFullPaymentDailyAmount),
+                    fullPaymentWeeklyPerson: totalFullPaymentWeeklyPerson,
+                    fullPaymentWeeklyAmount: totalFullPaymentWeeklyAmount,
+                    fullPaymentWeeklyAmountStr: formatPricePhp(totalFullPaymentWeeklyAmount),
+                    consolidatedFullPaymentPerson: totalConsolidatedFullPaymentPerson,
+                    consolidatedFullPaymentAmount: totalConsolidatedFullPaymentAmount,
+                    consolidatedFullPaymentAmountStr: formatPricePhp(totalConsolidatedFullPaymentAmount),
                     activeBorrowers: totalActiveBorrowers,
                     loanBalance: totalLoanBalance,
                     loanBalanceStr: formatPricePhp(totalLoanBalance)
@@ -482,24 +621,45 @@ const BranchManagerSummary = () => {
             mcbuBalanceStr: '-',
             offsetPerson: '-',
             activeClients: '-',
-            loanReleasePerson: '-',
-            loanReleaseAmount: '-',
-            loanReleaseAmountStr: '-',
+            loanReleaseDailyPerson: '-',
+            loanReleaseDailyAmount: '-',
+            loanReleaseDailyAmountStr: '-',
+            loanReleaseWeeklyPerson: '-',
+            loanReleaseWeeklyAmount: '-',
+            loanReleaseWeeklyAmountStr: '-',
+            consolidatedLoanReleasePerson: '-',
+            consolidatedLoanReleaseAmount: '-',
+            consolidatedLoanReleaseAmountStr: '-',
             activeLoanReleasePerson: '-',
             activeLoanReleaseAmount: '-',
             activeLoanReleaseAmountStr: '-',
-            collectionTarget: '-',
-            collectionTargetStr: '-',
-            collectionAdvancePayment: '-',
-            collectionAdvancePaymentStr: '-',
-            collectionActual: '-',
-            collectionActualStr: '-',
+            collectionTargetDaily: '-',
+            collectionTargetDailyStr: '-',
+            collectionAdvancePaymentDaily: '-',
+            collectionAdvancePaymentDailyStr: '-',
+            collectionActualDaily: '-',
+            collectionActualDailyStr: '-',
+            collectionTargetWeekly: '-',
+            collectionTargetWeeklyStr: '-',
+            collectionAdvancePaymentWeekly: '-',
+            collectionAdvancePaymentWeeklyStr: '-',
+            collectionActualWeekly: '-',
+            collectionActualWeeklyStr: '-',
+            consolidatedCollection: '-',
+            consolidatedCollectionStr: '-',
             pastDuePerson: '-',
             pastDueAmount: '-',
             pastDueAmountStr: '-',
-            fullPaymentPerson: '-',
-            fullPaymentAmount: '-',
-            fullPaymentAmountStr: '-',
+            mispaymentPerson: '-',
+            fullPaymentDailyPerson: '-',
+            fullPaymentDailyAmount: '-',
+            fullPaymentDailyAmountStr: '-',
+            fullPaymentWeeklyPerson: '-',
+            fullPaymentWeeklyAmount: '-',
+            fullPaymentWeeklyAmountStr: '-',
+            consolidatedFullPaymentPerson: '-',
+            consolidatedFullPaymentAmount: '-',
+            consolidatedFullPaymentAmountStr: '-',
             activeBorrowers: '-',
             loanBalance: '-',
             loanBalanceStr: '-',
@@ -517,17 +677,30 @@ const BranchManagerSummary = () => {
         let totalMcbuBalance = 0;
         let totalOffsetperson = 0;
         let totalActiveClients = 0; // last row
-        let totalLoanReleasePerson = 0;
-        let totalLoanReleaseAmount = 0;
+        let totalLoanReleaseDailyPerson = 0;
+        let totalLoanReleaseDailyAmount = 0;
+        let totalLoanReleaseWeeklyPerson = 0;
+        let totalLoanReleaseWeeklyAmount = 0;
+        let totalConsolidatedLoanReleasePerson = 0;
+        let totalConsolidatedLoanReleaseAmount = 0;
         let totalActiveLoanReleasePerson = 0;
         let totalActiveLoanReleaseAmount = 0;
-        let totalCollectionTarget = 0;
-        let totalCollectionAdvancePayment = 0;
-        let totalCollectionActual = 0;
+        let totalCollectionTargetDaily = 0;
+        let totalCollectionAdvancePaymentDaily = 0;
+        let totalCollectionActualDaily = 0;
+        let totalCollectionTargetWeekly = 0;
+        let totalCollectionAdvancePaymentWeekly = 0;
+        let totalCollectionActualWeekly = 0;
+        let totalConsolidatedCollection = 0;
         let totalPastDuePerson = 0;
         let totalPastDueAmount = 0;
-        let totalFullPaymentPerson = 0;
-        let totalFullPaymentAmount = 0;
+        let totalMispaymentPerson = 0;
+        let totalFullPaymentDailyPerson = 0;
+        let totalFullPaymentDailyAmount = 0;
+        let totalFullPaymentWeeklyPerson = 0;
+        let totalFullPaymentWeeklyAmount = 0;
+        let totalConsolidatedFullPaymentPerson = 0;
+        let totalConsolidatedFullPaymentAmount = 0;
         let totalActiveBorrowers = 0; // last row
         let totalLoanBalance = 0; // last row
 
@@ -541,23 +714,36 @@ const BranchManagerSummary = () => {
             totalNoMcbuReturn += wt.noMcbuReturn;
             totalMcbuReturnAmt += wt.mcbuReturnAmt;
             totalOffsetperson += wt.offsetPerson;
-            totalLoanReleasePerson += wt.loanReleasePerson;
-            totalLoanReleaseAmount += wt.loanReleaseAmount;
-            totalCollectionTarget += wt.collectionTarget;
-            totalCollectionAdvancePayment += wt.collectionAdvancePayment;
-            totalCollectionActual += wt.collectionActual;
+            totalLoanReleaseDailyPerson += wt.loanReleaseDailyPerson;
+            totalLoanReleaseDailyAmount += wt.loanReleaseDailyAmount;
+            totalLoanReleaseWeeklyPerson += wt.loanReleaseWeeklyPerson;
+            totalLoanReleaseWeeklyAmount += wt.loanReleaseWeeklyAmount;
+            totalConsolidatedLoanReleasePerson += wt.consolidatedLoanReleasePerson;
+            totalConsolidatedLoanReleaseAmount += wt.consolidatedLoanReleaseAmount;
+            totalCollectionTargetDaily += wt.collectionTargetDaily;
+            totalCollectionAdvancePaymentDaily += wt.collectionAdvancePaymentDaily;
+            totalCollectionActualDaily += wt.collectionActualDaily;
+            totalCollectionTargetWeekly += wt.collectionTargetWeekly;
+            totalCollectionAdvancePaymentWeekly += wt.collectionAdvancePaymentWeekly;
+            totalCollectionActualWeekly += wt.collectionActualWeekly;
+            totalConsolidatedCollection += wt.consolidatedCollection;
             totalPastDuePerson += wt.pastDuePerson;
             totalPastDueAmount += wt.pastDueAmount;
-            totalFullPaymentPerson += wt.fullPaymentPerson;
-            totalFullPaymentAmount += wt.fullPaymentAmount;
+            totalMispaymentPerson += wt.mispaymentPerson;
+            totalFullPaymentDailyPerson += wt.fullPaymentDailyPerson;
+            totalFullPaymentDailyAmount += wt.fullPaymentDailyAmount;
+            totalFullPaymentWeeklyPerson += wt.fullPaymentWeeklyPerson;
+            totalFullPaymentWeeklyAmount += wt.fullPaymentWeeklyAmount;
+            totalConsolidatedFullPaymentPerson += wt.consolidatedFullPaymentPerson;
+            totalConsolidatedFullPaymentAmount += wt.consolidatedFullPaymentAmount;
         });
 
         totalMcbuBalance = fBal.mcbuBalance + totalMcbuActual + totalMcbuWithdrawal + totalMcbuInterest - totalMcbuReturnAmt;
         totalActiveClients = fBal.activeClients + totalTransfer + totalNewMember - totalOffsetperson;
-        totalActiveLoanReleasePerson = fBal.activeLoanReleasePerson + totalLoanReleasePerson - totalFullPaymentPerson;
-        totalActiveLoanReleaseAmount = fBal.activeLoanReleaseAmount + totalLoanReleaseAmount - totalFullPaymentAmount;
-        totalActiveBorrowers = fBal.activeBorrowers + totalLoanReleasePerson - totalFullPaymentPerson;
-        totalLoanBalance = fBal.loanBalance + totalLoanReleaseAmount - totalCollectionActual;
+        totalActiveLoanReleasePerson = fBal.activeLoanReleasePerson + totalConsolidatedLoanReleasePerson - totalConsolidatedFullPaymentPerson;
+        totalActiveLoanReleaseAmount = fBal.activeLoanReleaseAmount + totalConsolidatedLoanReleaseAmount - totalConsolidatedFullPaymentAmount;
+        totalActiveBorrowers = fBal.activeBorrowers + totalConsolidatedLoanReleasePerson - totalConsolidatedFullPaymentPerson;
+        totalLoanBalance = fBal.loanBalance + totalConsolidatedLoanReleaseAmount - totalConsolidatedCollection;
 
         monthlyTotal.transfer = totalTransfer;
         monthlyTotal.newMember = totalNewMember;
@@ -576,24 +762,45 @@ const BranchManagerSummary = () => {
         monthlyTotal.mcbuBalanceStr = formatPricePhp(totalMcbuBalance);
         monthlyTotal.offsetPerson = totalOffsetperson;
         monthlyTotal.activeClients = totalActiveClients;
-        monthlyTotal.loanReleasePerson = totalLoanReleasePerson;
-        monthlyTotal.loanReleaseAmount = totalLoanReleaseAmount;
-        monthlyTotal.loanReleaseAmountStr = formatPricePhp(totalLoanReleaseAmount);
+        monthlyTotal.loanReleaseDailyPerson = totalLoanReleaseDailyPerson;
+        monthlyTotal.loanReleaseDailyAmount = totalLoanReleaseDailyAmount;
+        monthlyTotal.loanReleaseDailyAmountStr = formatPricePhp(totalLoanReleaseDailyAmount);
+        monthlyTotal.loanReleaseWeeklyPerson = totalLoanReleaseWeeklyPerson;
+        monthlyTotal.loanReleaseWeeklyAmount = totalLoanReleaseWeeklyAmount;
+        monthlyTotal.loanReleaseWeeklyAmountStr = formatPricePhp(totalLoanReleaseWeeklyAmount);
+        monthlyTotal.consolidatedLoanReleasePerson = totalConsolidatedLoanReleasePerson;
+        monthlyTotal.consolidatedLoanReleaseAmount = totalConsolidatedLoanReleaseAmount;
+        monthlyTotal.consolidatedLoanReleaseAmountStr = formatPricePhp(totalConsolidatedLoanReleaseAmount);
         monthlyTotal.activeLoanReleasePerson = totalActiveLoanReleasePerson;
         monthlyTotal.activeLoanReleaseAmount = totalActiveLoanReleaseAmount;
         monthlyTotal.activeLoanReleaseAmountStr = formatPricePhp(totalActiveLoanReleaseAmount);
-        monthlyTotal.collectionTarget = totalCollectionTarget;
-        monthlyTotal.collectionTargetStr = formatPricePhp(totalCollectionTarget);
-        monthlyTotal.collectionAdvancePayment = totalCollectionAdvancePayment;
-        monthlyTotal.collectionAdvancePaymentStr = formatPricePhp(totalCollectionAdvancePayment);
-        monthlyTotal.collectionActual = totalCollectionActual;
-        monthlyTotal.collectionActualStr = formatPricePhp(totalCollectionActual);
+        monthlyTotal.collectionTargetDaily = totalCollectionTargetDaily;
+        monthlyTotal.collectionTargetDailyStr = formatPricePhp(totalCollectionTargetDaily);
+        monthlyTotal.collectionAdvancePaymentDaily = totalCollectionAdvancePaymentDaily;
+        monthlyTotal.collectionAdvancePaymentDailyStr = formatPricePhp(totalCollectionAdvancePaymentDaily);
+        monthlyTotal.collectionActualDaily = totalCollectionActualDaily;
+        monthlyTotal.collectionActualDailyStr = formatPricePhp(totalCollectionActualDaily);
+        monthlyTotal.collectionTargetWeekly = totalCollectionTargetWeekly;
+        monthlyTotal.collectionTargetWeeklyStr = formatPricePhp(totalCollectionTargetWeekly);
+        monthlyTotal.collectionAdvancePaymentWeekly = totalCollectionAdvancePaymentWeekly;
+        monthlyTotal.collectionAdvancePaymentWeeklyStr = formatPricePhp(totalCollectionAdvancePaymentWeekly);
+        monthlyTotal.collectionActualWeekly = totalCollectionActualWeekly;
+        monthlyTotal.collectionActualWeeklyStr = formatPricePhp(totalCollectionActualWeekly);
+        monthlyTotal.consolidatedCollection = totalConsolidatedCollection;
+        monthlyTotal.consolidatedCollectionStr = formatPricePhp(totalConsolidatedCollection);
         monthlyTotal.pastDuePerson = totalPastDuePerson;
         monthlyTotal.pastDueAmount = totalPastDueAmount;
         monthlyTotal.pastDueAmountStr = formatPricePhp(totalPastDueAmount);
-        monthlyTotal.fullPaymentPerson = totalFullPaymentPerson;
-        monthlyTotal.fullPaymentAmount = totalFullPaymentAmount;
-        monthlyTotal.fullPaymentAmountStr = formatPricePhp(totalFullPaymentAmount);
+        monthlyTotal.mispaymentPerson = totalMispaymentPerson;
+        monthlyTotal.fullPaymentDailyPerson = totalFullPaymentDailyPerson;
+        monthlyTotal.fullPaymentDailyAmount = totalFullPaymentDailyAmount;
+        monthlyTotal.fullPaymentDailyAmountStr = formatPricePhp(totalFullPaymentDailyAmount);
+        monthlyTotal.fullPaymentWeeklyPerson = totalFullPaymentWeeklyPerson;
+        monthlyTotal.fullPaymentWeeklyAmount = totalFullPaymentWeeklyAmount;
+        monthlyTotal.fullPaymentWeeklyAmountStr = formatPricePhp(totalFullPaymentWeeklyAmount);
+        monthlyTotal.consolidatedFullPaymentPerson = totalConsolidatedFullPaymentPerson;
+        monthlyTotal.consolidatedFullPaymentAmount = totalConsolidatedFullPaymentAmount;
+        monthlyTotal.consolidatedFullPaymentAmountStr = formatPricePhp(totalConsolidatedFullPaymentAmount);
         monthlyTotal.activeBorrowers = totalActiveBorrowers;
         monthlyTotal.loanBalance = totalLoanBalance;
         monthlyTotal.loanBalanceStr = formatPricePhp(totalLoanBalance);
@@ -621,21 +828,41 @@ const BranchManagerSummary = () => {
             mcbuBalanceStr: 0,
             offsetPerson: 0,
             activeClients: 0,
-            loanReleaseAmount: 0,
-            loanReleaseAmountStr: 0,
+            loanReleaseDailyPerson: 0,
+            loanReleaseDailyAmount: 0,
+            loanReleaseDailyAmountStr: 0,
+            loanReleaseWeeklyPerson: 0,
+            loanReleaseWeeklyAmount: 0,
+            loanReleaseWeeklyAmountStr: 0,
+            consolidatedLoanReleasePerson: 0,
+            consolidatedLoanReleaseAmount: 0,
+            consolidatedLoanReleaseAmountStr: 0,
             activeLoanReleasePerson: 0,
             activeLoanReleaseAmount: 0,
             activeLoanReleaseAmountStr: 0,
-            collectionAdvancePayment: 0,
-            collectionAdvancePaymentStr: 0,
-            collectionActual: 0,
-            collectionActualStr: 0,
+            collectionAdvancePaymentDaily: 0,
+            collectionAdvancePaymentDailyStr: 0,
+            collectionActualDaily: 0,
+            collectionActualDailyStr: 0,
+            collectionAdvancePaymentWeekly: 0,
+            collectionAdvancePaymentWeeklyStr: 0,
+            collectionActualWeekly: 0,
+            collectionActualWeeklyStr: 0,
+            consolidatedCollection: 0,
+            consolidatedCollectionStr: 0,
             pastDuePerson: 0,
             pastDueAmount: 0,
             pastDueAmountStr: 0,
-            fullPaymentPerson: 0,
-            fullPaymentAmount: 0,
-            fullPaymentAmountStr: 0,
+            mispaymentPerson: 0,
+            fullPaymentDailyPerson: 0,
+            fullPaymentDailyAmount: 0,
+            fullPaymentDailyAmountStr: 0,
+            fullPaymentWeeklyPerson: 0,
+            fullPaymentWeeklyAmount: 0,
+            fullPaymentWeeklyAmountStr: 0,
+            consolidatedFullPaymentPerson: 0,
+            consolidatedFullPaymentAmount: 0,
+            consolidatedFullPaymentAmountStr: 0,
             activeBorrowers: 0,
             loanBalance: 0,
             loanBalanceStr: 0,
@@ -653,16 +880,22 @@ const BranchManagerSummary = () => {
         let totalMcbuBalance = 0;
         let totalOffsetperson = 0;
         let totalActiveClients = 0;
-        let totalLoanReleasePerson = 0;
-        let totalLoanReleaseAmount = 0;
         let totalActiveLoanReleasePerson = 0;
         let totalActiveLoanReleaseAmount = 0;
-        let totalCollectionAdvancePayment = 0;
-        let totalCollectionActual = 0;
+        let totalCollectionAdvancePaymentDaily = 0;
+        let totalCollectionActualDaily = 0;
+        let totalCollectionAdvancePaymentWeekly = 0;
+        let totalCollectionActualWeekly = 0;
+        let totalConsolidatedCollection = 0;
         let totalPastDuePerson = 0;
         let totalPastDueAmount = 0;
-        let totalFullPaymentPerson = 0;
-        let totalFullPaymentAmount = 0;
+        let totalMispaymentPerson = 0;
+        let totalFullPaymentDailyPerson = 0;
+        let totalFullPaymentDailyAmount = 0;
+        let totalFullPaymentWeeklyPerson = 0;
+        let totalFullPaymentWeeklyAmount = 0;
+        let totalConsolidatedFullPaymentPerson = 0;
+        let totalConsolidatedFullPaymentAmount = 0;
         let totalActiveBorrowers = 0;
         let totalLoanBalance = 0;
 
@@ -681,18 +914,24 @@ const BranchManagerSummary = () => {
             totalMcbuBalance = fBal.mcbuBalance + monthly.mcbuBalance;
             totalOffsetperson = fBal.offsetPerson + monthly.offsetPerson;
             totalActiveClients = monthly.activeClients ;
-            // totalLoanReleasePerson = monthly.loanReleasePerson;
-            // totalLoanReleaseAmount = monthly.loanReleaseAmount;
             totalActiveLoanReleasePerson = monthly.activeLoanReleasePerson;
             totalActiveLoanReleaseAmount = monthly.activeLoanReleaseAmount;
-            totalCollectionAdvancePayment = fBal.collectionAdvancePayment + monthly.collectionTarget + monthly.collectionAdvancePayment - monthly.fullPaymentAmount;
-            totalCollectionActual = fBal.collectionActual + monthly.collectionActual - monthly.fullPaymentAmount;
+            totalCollectionAdvancePaymentDaily = fBal.collectionAdvancePaymentDaily + monthly.collectionTargetDaily + monthly.collectionAdvancePaymentDaily - monthly.fullPaymentDailyAmount;
+            totalCollectionActualDaily = fBal.collectionActualDaily + monthly.collectionActualDaily - monthly.fullPaymentDailyAmount;
+            totalCollectionAdvancePaymentWeekly = fBal.collectionAdvancePaymentWeekly + monthly.collectionTargetWeekly + monthly.collectionAdvancePaymentWeekly - monthly.fullPaymentWeeklyAmount;
+            totalCollectionActualWeekly = fBal.collectionActualWeekly + monthly.collectionActualWeekly - monthly.fullPaymentWeeklyAmount;
+            totalConsolidatedCollection = fBal.consolidatedCollection + monthly.consolidatedCollection - monthly.consolidatedFullPaymentAmount;
             totalPastDuePerson = fBal.pastDuePerson + monthly.pastDuePerson;
             totalPastDueAmount = fBal.pastDueAmount + monthly.pastDueAmount;
-            totalFullPaymentPerson = fBal.fullPaymentPerson + monthly.fullPaymentPerson;
-            totalFullPaymentAmount = fBal.fullPaymentAmount + monthly.fullPaymentAmount;
+            totalMispaymentPerson = fBal.mispaymentPerson + monthly.mispaymentPerson;
+            totalFullPaymentDailyPerson = fBal.fullPaymentDailyPerson + monthly.fullPaymentDailyPerson;
+            totalFullPaymentDailyAmount = fBal.fullPaymentDailyAmount + monthly.fullPaymentDailyAmount;
+            totalFullPaymentWeeklyPerson = fBal.fullPaymentWeeklyPerson + monthly.fullPaymentWeeklyPerson;
+            totalFullPaymentWeeklyAmount = fBal.fullPaymentWeeklyAmount + monthly.fullPaymentWeeklyAmount;
+            totalConsolidatedFullPaymentPerson = fBal.consolidatedFullPaymentPerson + monthly.consolidatedFullPaymentPerson;
+            totalConsolidatedFullPaymentAmount = fBal.consolidatedFullPaymentAmount + monthly.consolidatedFullPaymentAmount;
             totalActiveBorrowers = monthly.activeBorrowers;
-            totalLoanBalance = totalActiveLoanReleaseAmount - totalCollectionActual;
+            totalLoanBalance = totalActiveLoanReleaseAmount - totalConsolidatedCollection;
         }
 
         grandTotal.transfer = totalTransfer;
@@ -712,22 +951,41 @@ const BranchManagerSummary = () => {
         grandTotal.mcbuBalanceStr = formatPricePhp(totalMcbuBalance);
         grandTotal.offsetPerson = totalOffsetperson;
         grandTotal.activeClients = totalActiveClients;
-        grandTotal.loanReleasePerson = "-";
-        grandTotal.loanReleaseAmount = totalLoanReleaseAmount;
-        grandTotal.loanReleaseAmountStr = '-';
+        grandTotal.loanReleaseDailyPerson = 0;
+        grandTotal.loanReleaseDailyAmount = 0;
+        grandTotal.loanReleaseDailyAmountStr = '-';
+        grandTotal.loanReleaseWeeklyPerson = 0;
+        grandTotal.loanReleaseWeeklyAmount = 0;
+        grandTotal.loanReleaseWeeklyAmountStr = '-';
+        grandTotal.consolidatedLoanReleasePerson = 0;
+        grandTotal.consolidatedLoanReleaseAmount = 0;
+        grandTotal.consolidatedLoanReleaseAmountStr = '-';
         grandTotal.activeLoanReleasePerson = totalActiveLoanReleasePerson;
         grandTotal.activeLoanReleaseAmount = totalActiveLoanReleaseAmount;
         grandTotal.activeLoanReleaseAmountStr = formatPricePhp(totalActiveLoanReleaseAmount);
-        grandTotal.collectionAdvancePayment = totalCollectionAdvancePayment;
-        grandTotal.collectionAdvancePaymentStr = formatPricePhp(totalCollectionAdvancePayment);
-        grandTotal.collectionActual = totalCollectionActual;
-        grandTotal.collectionActualStr = formatPricePhp(totalCollectionActual);
+        grandTotal.collectionAdvancePaymentDaily = totalCollectionAdvancePaymentDaily;
+        grandTotal.collectionAdvancePaymentDailyStr = formatPricePhp(totalCollectionAdvancePaymentDaily);
+        grandTotal.collectionActualDaily = totalCollectionActualDaily;
+        grandTotal.collectionActualDailyStr = formatPricePhp(totalCollectionActualDaily);
+        grandTotal.collectionAdvancePaymentWeekly = totalCollectionAdvancePaymentWeekly;
+        grandTotal.collectionAdvancePaymentWeeklyStr = formatPricePhp(totalCollectionAdvancePaymentWeekly);
+        grandTotal.collectionActualWeekly = totalCollectionActualWeekly;
+        grandTotal.collectionActualWeeklyStr = formatPricePhp(totalCollectionActualWeekly);
+        grandTotal.consolidatedCollection = totalConsolidatedCollection;
+        grandTotal.consolidatedCollectionStr = formatPricePhp(totalConsolidatedCollection);
         grandTotal.pastDuePerson = totalPastDuePerson;
         grandTotal.pastDueAmount = totalPastDueAmount;
         grandTotal.pastDueAmountStr = formatPricePhp(totalPastDueAmount);
-        grandTotal.fullPaymentPerson = totalFullPaymentPerson;
-        grandTotal.fullPaymentAmount = totalFullPaymentAmount;
-        grandTotal.fullPaymentAmountStr = formatPricePhp(totalFullPaymentAmount);
+        grandTotal.mispaymentPerson = totalMispaymentPerson;
+        grandTotal.fullPaymentDailyPerson = totalFullPaymentDailyPerson;
+        grandTotal.fullPaymentDailyAmount = totalFullPaymentDailyAmount;
+        grandTotal.fullPaymentDailyAmountStr = formatPricePhp(totalFullPaymentDailyAmount);
+        grandTotal.fullPaymentWeeklyPerson = totalFullPaymentWeeklyPerson;
+        grandTotal.fullPaymentWeeklyAmount = totalFullPaymentWeeklyAmount;
+        grandTotal.fullPaymentWeeklyAmountStr = formatPricePhp(totalFullPaymentWeeklyAmount);
+        grandTotal.consolidatedFullPaymentPerson = totalConsolidatedFullPaymentPerson;
+        grandTotal.consolidatedFullPaymentAmount = totalConsolidatedFullPaymentAmount;
+        grandTotal.consolidatedFullPaymentAmountStr = formatPricePhp(totalConsolidatedFullPaymentAmount);
         grandTotal.activeBorrowers = totalActiveBorrowers;
         grandTotal.loanBalance = totalLoanBalance;
         grandTotal.loanBalanceStr = formatPricePhp(totalLoanBalance);
@@ -817,39 +1075,67 @@ const BranchManagerSummary = () => {
                                         <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">TFR</th>
                                         <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">NM</th>
                                         <th colSpan={6} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 text-gray-500 uppercase">MCBU</th> 
-                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">OFST Pers.</th>
+                                        {/* <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">OFST Pers.</th> */}
                                         <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">Act. Clie.</th>
                                         <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">MCBU Bal.</th>
-                                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-4 text-gray-500 uppercase">Curr. Loan Rel. with Serv. Charge</th>
+                                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-4 text-gray-500 uppercase">Curr. Loan Rel. w/SC (Regular Loan Daily)</th>
+                                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-4 text-gray-500 uppercase">Curr. Loan Rel. w/SC (Other Loan Weekly)</th>
+                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">Pers.</th>
+                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">Consol. Total Loan Release w/SC</th>
                                         <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 py-4 text-gray-500 uppercase">ACT LOAN RELEASE W/ Serv. Charge</th>
-                                        <th colSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 text-gray-500 uppercase">COLLECTION (w/ serv. charge)</th>
+                                        <th colSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 text-gray-500 uppercase">COLLECTION (w/SC)</th>
+                                        <th colSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 text-gray-500 uppercase">COLLECTION (w/SC)</th>
+                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">Consol. Total Act. Collection</th>
                                         <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 text-gray-500 uppercase">Pastdue</th>
-                                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 text-gray-500 uppercase">FULL PAYMENT (w/ serv. charge)</th>
+                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">Mispay Pers.</th>
+                                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 text-gray-500 uppercase">FULL PAYMENT (w/SC Daily)</th>
+                                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 text-gray-500 uppercase">FULL PAYMENT (w/SC Weekly)</th>
+                                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 text-gray-500 uppercase">Consol. FULL PAYMENT</th>
                                         <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">Act. Bwr.</th>
                                         <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-r-0 border-t-0 px-2 py-2 text-gray-500 uppercase">Loan Balance</th>
                                     </tr>
                                     <tr>
-                                        <th rowSpan={2} className="sticky top-[2.2rem] bg-white  border border-gray-300 text-gray-500 uppercase">Target Deposit</th>
-                                        <th rowSpan={2} className="sticky top-[2.2rem] bg-white  border border-gray-300 text-gray-500 uppercase">Actual Deposit</th>
-                                        <th rowSpan={2} className="sticky top-[2.2rem] bg-white  border border-gray-300 text-gray-500 uppercase">Withdrawals</th>
-                                        <th rowSpan={2} className="sticky top-[2.2rem] bg-white  border border-gray-300 text-gray-500 uppercase">Interest</th>
-                                        <th colSpan={2} className="sticky top-[2.2rem] bg-white  border border-gray-300 text-gray-500 uppercase">MCBU Return</th>
-                                        <th colSpan={3} className="sticky top-[2.2rem] bg-white  border border-gray-300 text-gray-500 uppercase">REGULAR LOAN</th>
+                                        <th rowSpan={2} className="sticky top-[1.4rem] bg-white  border border-gray-300 text-gray-500 uppercase">Target Deposit</th>
+                                        <th rowSpan={2} className="sticky top-[1.4rem] bg-white  border border-gray-300 text-gray-500 uppercase">Actual Deposit</th>
+                                        <th rowSpan={2} className="sticky top-[1.4rem] bg-white  border border-gray-300 text-gray-500 uppercase">Withdrawals</th>
+                                        <th rowSpan={2} className="sticky top-[1.4rem] bg-white  border border-gray-300 text-gray-500 uppercase">Interest</th>
+                                        <th colSpan={2} className="sticky top-[1.4rem] bg-white  border border-gray-300 text-gray-500 uppercase">MCBU Return</th>
+                                        <th colSpan={3} className="sticky top-[1.4rem] bg-white  border border-gray-300 text-gray-500 uppercase">REGULAR LOAN (Daily)</th>
+                                        <th colSpan={3} className="sticky top-[1.4rem] bg-white  border border-gray-300 text-gray-500 uppercase">OTHER LOAN (Weekly)</th>
                                     </tr>
                                     <tr>
-                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 text-gray-500 uppercase">Pers.</th>
-                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 text-gray-500 uppercase">Amt</th>
-                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 text-gray-500 uppercase">Pers.</th>
-                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 text-gray-500 uppercase">Amt</th>
-                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 text-gray-500 uppercase">Pers.</th>
-                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 text-gray-500 uppercase">Amt</th>
-                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 text-gray-500 uppercase">Target</th>
-                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 text-gray-500 uppercase">Adv. Pmt</th>
-                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 text-gray-500 uppercase">Actl</th>
-                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 text-gray-500 uppercase">Pers.</th>
-                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 text-gray-500 uppercase">Amt</th>
-                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 text-gray-500 uppercase">Pers.</th>
-                                        <th className="sticky top-[4.5rem] bg-white  border border-gray-300 text-gray-500 uppercase">Amt</th>
+                                        {/* MCBU Return */}
+                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Pers.</th>
+                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Amt</th>
+                                        {/* Loan Release Daily */}
+                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Pers.</th>
+                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Amt</th>
+                                        {/* Loan Release Weekly */}
+                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Pers.</th>
+                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Amt</th>
+                                        {/* ACTIVE LOAN RELEASE W/ Service Charge */}
+                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Pers.</th>
+                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Amt</th>
+                                        {/* REGULAR LOAN (Daily) */}
+                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Target</th>
+                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Adv. Pmt</th>
+                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Actl</th>
+                                        {/* OTHER LOAN (Weekly) */}
+                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Target</th>
+                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Adv. Pmt</th>
+                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Actl</th>
+                                        {/* PAST DUE */}
+                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Pers.</th>
+                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Amt</th>
+                                        {/* FULL PAYMENT (w/SC Daily) */}
+                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Pers.</th>
+                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Amt</th>
+                                        {/* FULL PAYMENT (w/SC Weekly) */}
+                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Pers.</th>
+                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Amt</th>
+                                        {/* Consolidated FULL PAYMENT (w/SC) */}
+                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Pers.</th>
+                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Amt</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y">
@@ -873,19 +1159,31 @@ const BranchManagerSummary = () => {
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.mcbuInterestStr }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.noMcbuReturn }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.mcbuReturnAmtStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.offsetPerson }</td>
+                                                        {/* <td className="px-2 py-4 text-center border border-gray-300">{ item.offsetPerson }</td> */}
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.activeClients }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.mcbuBalanceStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.loanReleasePerson }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.loanReleaseAmountStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.loanReleaseDailyPerson }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.loanReleaseDailyAmountStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.loanReleaseWeeklyPerson }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.loanReleaseWeeklyAmountStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.consolidatedLoanReleasePerson }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.consolidatedLoanReleaseAmountStr }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.activeLoanReleasePerson }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.activeLoanReleaseAmountStr }</td>
-                                                        <td colSpan={2} className="px-2 py-4 text-center border border-gray-300">{ item.collectionAdvancePaymentStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.collectionActualStr }</td>
+                                                        <td colSpan={2} className="px-2 py-4 text-center border border-gray-300">{ item.collectionAdvancePaymentDailyStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.collectionActualDailyStr }</td>
+                                                        <td colSpan={2} className="px-2 py-4 text-center border border-gray-300">{ item.collectionAdvancePaymentWeeklyStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.collectionActualWeeklyStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.consolidatedCollectionStr }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.pastDuePerson }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.pastDueAmountStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.fullPaymentPerson }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.fullPaymentAmountStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.mispaymentPerson }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.fullPaymentDailyPerson }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.fullPaymentDailyAmountStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.fullPaymentWeeklyPerson }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.fullPaymentWeeklyAmountStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.consolidatedFullPaymentPerson }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.consolidatedFullPaymentAmountStr }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.activeBorrowers }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300 border-r-0">{ item.loanBalanceStr }</td>
                                                     </tr>
@@ -900,20 +1198,33 @@ const BranchManagerSummary = () => {
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.mcbuInterestStr }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.noMcbuReturn }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.mcbuReturnAmtStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.offsetPerson }</td>
+                                                        {/* <td className="px-2 py-4 text-center border border-gray-300">{ item.offsetPerson }</td> */}
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.activeClients }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.mcbuBalanceStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.loanReleasePerson }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.loanReleaseAmountStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.loanReleaseDailyPerson }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.loanReleaseDailyAmountStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.loanReleaseWeeklyPerson }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.loanReleaseWeeklyAmountStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.consolidatedLoanReleasePerson }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.consolidatedLoanReleaseAmountStr }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.activeLoanReleasePerson }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.activeLoanReleaseAmountStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.collectionTargetStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.collectionAdvancePaymentStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.collectionActualStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.collectionTargetDailyStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.collectionAdvancePaymentDailyStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.collectionActualDailyStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.collectionTargetWeeklyStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.collectionAdvancePaymentWeeklyStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.collectionActualWeeklyStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.consolidatedCollectionStr }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.pastDuePerson }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.pastDueAmountStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.fullPaymentPerson }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.fullPaymentAmountStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.mispaymentPerson }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.fullPaymentDailyPerson }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.fullPaymentDailyAmountStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.fullPaymentWeeklyPerson }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.fullPaymentWeeklyAmountStr }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.consolidatedFullPaymentPerson }</td>
+                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.consolidatedFullPaymentAmountStr }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.activeBorrowers }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300 border-r-0">{ item.loanBalanceStr }</td>
                                                     </tr>

@@ -81,7 +81,7 @@ const ViewByBranchPage = ({dateFilter, type}) => {
                 };
 
                 if (!filter) {
-                    if (branch.groupCashCollections.length > 0) {
+                    if (branch?.groupCashCollections.length > 0) {
                         const open = branch.groupCashCollections[0].statusArr.find(status => status === 'open');
                         if (open) {
                             collection.status = 'open';
