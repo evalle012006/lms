@@ -72,17 +72,25 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
     const handleSaveUpdate = (values, action) => {
         setLoading(true);
         let selectedBranchesCode = [];
+        let selectedBranchesId = [];
         selectedBranches && selectedBranches.map(branch => {
+            selectedBranchesId.push(branch._id);
             selectedBranchesCode.push(branch.code);
         });
 
         const selectedRole = roles.find(role => role.rep == values.role);
         values.role = JSON.stringify(selectedRole);
         let designatedBranch = '';
+        let designatedBranchId = '';
         if (selectedRole.rep === 2) {
             designatedBranch = selectedBranchesCode;
+            designatedBranchId = selectedBranchesId;
         } else if (selectedRole.rep > 2) {
             designatedBranch = values.designatedBranch;
+            const selectedBranch = branches.find(b => b.code === designatedBranch);
+            if (selectedBranch) {
+                values.designatedBranchId = selectedBranch._id;
+            }
         }
 
         values.designatedBranch = designatedBranch;

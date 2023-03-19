@@ -1198,25 +1198,33 @@ const CashCollectionDetailsPage = () => {
                     } else if (remarks.value === "delinquent" || remarks.value === "excused") {
                         // add no of mispayments / maximum of payments per cycle // change to #of mispay
                         temp.error = false;
-                        temp.excused = true;
                         temp.mcbuError = false;
+                        temp.mcbu = temp.mcbu - temp.mcbuCol;
+                        temp.mcbuStr = temp.mcbu > 0 ? formatPricePhp(temp.mcbu) : '-';
+                        temp.mcbuCol = 0;
+                        temp.mcbuColStr = '-';
 
                         if (temp.remarks.value === "delinquent") {
                             temp.delinquent = true;
                         }
 
+                        if (remarks.value === "excused") {
+                            temp.excused = true;
+                        }
+
                         if (temp.remarks.label === 'Delinquent Client for Offset') {
-                            temp.mcbu = temp.mcbu - temp.mcbuCol;
-                            temp.mcbuStr = temp.mcbu > 0 ? formatPricePhp(temp.mcbu) : '-';
-                            temp.mcbuCol = 0;
-                            temp.mcbuColStr = '-';
                             temp.mispayment = false;
                             temp.mispaymentStr = 'No';
                         } else {
-                            temp.targetCollection = 0;
-                            temp.targetCollectionStr = formatPricePhp(temp.targetCollection);
-                            temp.mispayment = true;
-                            temp.mispaymentStr = 'Yes';
+                            if (temp.paymentCollection > temp.activeLoan) {
+                                temp.error = true;
+                                toast.error("Error occured. Remarks is not valid due to the amount in Actual Collection.");
+                            } else {
+                                temp.targetCollection = 0;
+                                temp.targetCollectionStr = formatPricePhp(temp.targetCollection);
+                                temp.mispayment = true;
+                                temp.mispaymentStr = 'Yes';
+                            }
                         }
 
                     } else if (remarks.value === "past due collection") {
@@ -1246,6 +1254,11 @@ const CashCollectionDetailsPage = () => {
                         } else {
                             temp.error = true;
                             toast.error('Invalid remarks');
+                        }
+
+                        if (temp.loanBalance <= 0) {
+                            temp.error = true;
+                            toast.error('Invalid remarks. Please mark it as Reloaner or Offset');
                         }
                     } else if (remarks.value === "excused advance payment") {
                         if (temp.hasOwnProperty('prevData')) {
@@ -1862,7 +1875,7 @@ const CashCollectionDetailsPage = () => {
                                                                 {console.log(editMode)}
                                                                 {console.log(cc)}
                                                                 {(cc.hasOwnProperty('_id') && !filter) && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleRevert(e, cc, index)} />}
-                                                                {(!editMode || (cc.status === 'completed' && cc.remarks.value === 'reloaner')) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
+                                                                {(!editMode && (cc.status === 'completed' && cc.remarks.value === 'reloaner')) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
                                                                 {(!filter && cc.status === 'active') && <CurrencyDollarIcon className="w-5 h-5 mr-6" title="MCBU Withdrawal" onClick={(e) => handleMcbuWithdrawal(e, cc, index)} />}
                                                                 {(!filter && !editMode && cc.status !== 'closed' && currentMonth === 11) && <CalculatorIcon className="w-5 h-5 mr-6" title="Calculate MCBU Interest" onClick={(e) => calculateInterest(e, cc, index)} />}
                                                             </div>

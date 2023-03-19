@@ -51,17 +51,114 @@ async function getSummary(req, res) {
                         mcbuBalance: { $sum: '$data.mcbuBalance' },
                         offsetPerson: { $sum: '$data.offsetPerson' },
                         activeClients: { $sum: '$data.activeClients' },
-                        loanReleasePerson: { $sum: '$data.loanReleasePerson' },
-                        loanReleaseAmount: { $sum: '$data.loanReleaseAmount' },
+                        loanReleaseDailyPerson: { $sum: {
+                            $cond: {
+                                if: { $eq: ['$occurence', 'daily'] },
+                                then: '$data.loanReleasePerson',
+                                else: 0
+                            }
+                        } },
+                        loanReleaseDailyAmount: { $sum: {
+                            $cond: {
+                                if: { $eq: ['$occurence', 'daily'] },
+                                then: '$data.loanReleaseAmount',
+                                else: 0
+                            }
+                        } },
+                        loanReleaseWeeklyPerson: { $sum: {
+                            $cond: {
+                                if: { $eq: ['$occurence', 'weekly'] },
+                                then: '$data.loanReleasePerson',
+                                else: 0
+                            }
+                        } },
+                        loanReleaseWeeklyAmount: { $sum: {
+                            $cond: {
+                                if: { $eq: ['$occurence', 'weekly'] },
+                                then: '$data.loanReleaseAmount',
+                                else: 0
+                            }
+                        } },
+                        consolidatedLoanReleasePerson: { $sum: '$data.loanReleasePerson' },
+                        consolidatedLoanReleaseAmount: { $sum: '$data.loanReleaseAmount' },
                         activeLoanReleasePerson: { $sum: '$data.activeLoanReleasePerson' },
                         activeLoanReleaseAmount: { $sum: '$data.activeLoanReleaseAmount' },
-                        collectionTarget: { $sum: '$data.collectionTarget' },
-                        collectionAdvancePayment: { $sum: '$data.collectionAdvancePayment' },
-                        collectionActual: { $sum: '$data.collectionActual' },
+                        collectionTargetDaily: { $sum: {
+                            $cond: {
+                                if: { $eq: ['$occurence', 'daily'] },
+                                then: '$data.collectionTarget',
+                                else: 0
+                            }
+                        } },
+                        collectionAdvancePaymentDaily: { $sum: {
+                            $cond: {
+                                if: { $eq: ['$occurence', 'daily'] },
+                                then: '$data.collectionAdvancePayment',
+                                else: 0
+                            }
+                        } },
+                        collectionActualDaily: { $sum: {
+                            $cond: {
+                                if: { $eq: ['$occurence', 'daily'] },
+                                then: '$data.collectionActual',
+                                else: 0
+                            }
+                        } },
+                        collectionTargetWeekly: { $sum: {
+                            $cond: {
+                                if: { $eq: ['$occurence', 'weekly'] },
+                                then: '$data.collectionTarget',
+                                else: 0
+                            }
+                        } },
+                        collectionAdvancePaymentWeekly: { $sum: {
+                            $cond: {
+                                if: { $eq: ['$occurence', 'weekly'] },
+                                then: '$data.collectionAdvancePayment',
+                                else: 0
+                            }
+                        } },
+                        collectionActualWeekly: { $sum: {
+                            $cond: {
+                                if: { $eq: ['$occurence', 'weekly'] },
+                                then: '$data.collectionActual',
+                                else: 0
+                            }
+                        } },
+                        consolidatedCollection: { $sum: '$data.collectionActual' },
                         pastDuePerson: { $sum: '$data.pastDuePerson' },
                         pastDueAmount: { $sum: '$data.pastDueAmount' },
-                        fullPaymentPerson: { $sum: '$data.fullPaymentPerson' },
-                        fullPaymentAmount: { $sum: '$data.fullPaymentAmount' },
+                        mispaymentPerson: { $sum: '$data.mispaymentPerson' }, // need to add this from LOR
+                        fullPaymentDailyPerson: { $sum: {
+                            $cond: {
+                                if: { $eq: ['$occurence', 'daily'] },
+                                then: '$data.fullPaymentPerson',
+                                else: 0
+                            }
+                        } },
+                        fullPaymentDailyAmount: { $sum: {
+                            $cond: {
+                                if: { $eq: ['$occurence', 'daily'] },
+                                then: '$data.fullPaymentAmount',
+                                else: 0
+                            }
+                        } },
+                        fullPaymentWeeklyPerson: { $sum: {
+                            $cond: {
+                                if: { $eq: ['$occurence', 'weekly'] },
+                                then: '$data.fullPaymentPerson',
+                                else: 0
+                            }
+                        } },
+                        fullPaymentWeeklyAmount: { $sum: {
+                            $cond: {
+                                if: { $eq: ['$occurence', 'weekly'] },
+                                then: '$data.fullPaymentAmount',
+                                else: 0
+                            }
+                        } },
+                        consolidatedFullPaymentPerson: { $sum: '$data.fullPaymentPerson' },
+                        consolidatedFullPaymentAmount: { $sum: '$data.fullPaymentAmount' },
                         activeBorrowers: { $sum: '$data.activeBorrowers' },
                         loanBalance: { $sum: '$data.loanBalance' }
                     }

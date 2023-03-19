@@ -60,7 +60,7 @@ const LoanOfficerSummary = () => {
             mcbuReturnAmtStr: 0,
             mcbuBalance: 0,
             mcbuBalanceStr: 0,
-            offsetPerson: 0,
+            // offsetPerson: 0,
             activeClients: 0,
             loanReleasePerson: 0,
             loanReleaseAmount: 0,
@@ -175,30 +175,7 @@ const LoanOfficerSummary = () => {
             }
         });
 
-        if (currentUser.role.rep === 3) {
-            url = url + '?' + new URLSearchParams({ branchCode: currentUser.designatedBranch, date: date ? date : currentDate });
-            const response = await fetchWrapper.get(url);
-            if (response.success) {
-                response.data.current.map(los => {
-                    losList.push({
-                        ...los,
-                        loanReleaseAmountStr: formatPricePhp(los.loanReleaseAmount),
-                        collectionTargetStr: formatPricePhp(los.collectionTarget),
-                        collectionAdvancePaymentStr: formatPricePhp(los.collectionAdvancePayment),
-                        collectionActualStr: formatPricePhp(los.collectionActual),
-                        pastDueAmountStr: formatPricePhp(los.pastDueAmount),
-                        fullPaymentAmountStr: formatPricePhp(los.fullPaymentAmount),
-                        loanBalanceStr: formatPricePhp(los.loanBalance)
-                    });
-                });
-
-                dispatch(setLosList(losList));
-                setLoading(false);
-            } else if (response.error) {
-                setLoading(false);
-                toast.error(response.message);
-            }
-        } else if (currentUser.role.rep === 4) {
+        if (currentUser.role.rep === 4) {
             url = url + '?' + new URLSearchParams({ userId: currentUser._id, date: date ? date : currentDate, occurence: type });
             const response = await fetchWrapper.get(url);
             if (response.success) {
@@ -302,9 +279,6 @@ const LoanOfficerSummary = () => {
                 const mcbuReturnAmt = los.mcbuReturnAmt !== '-' ? los.mcbuReturnAmt : 0;
                 const fBalMcbuBalance = fBal.mcbuBalance !== '-' ? fBal.mcbuBalance : 0;
 
-                // bring down only to weekly
-                // offset and activeclient
-
                 if (index === 1) {
                     temp.activeClients = temp.activeClients > 0 ? temp.activeClients : fBal.activeClients;
                     temp.activeLoanReleasePerson = fBal.activeLoanReleasePerson + loanReleasePerson - fullPaymentPerson;
@@ -324,6 +298,7 @@ const LoanOfficerSummary = () => {
                     temp.loanBalance = prevLos.loanBalance + loanReleaseAmount - collectionActual;
                     temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
                     temp.mcbuBalance = prevLos.mcbuBalance + mcbuActual - mcbuWithdrawal + mcbuInterest - mcbuReturnAmt;
+                    console.log(prevLos.mcbuBalance)
                     temp.mcbuBalanceStr = formatPricePhp(temp.mcbuBalance);
                 }
 
@@ -359,7 +334,8 @@ const LoanOfficerSummary = () => {
                         losSlice = losList.slice(hasWeekIdx + 1, index);
                     }
                 }
-
+                // bring down only to weekly
+                // offset and activeclient
                 let totalTransfer = 0;
                 let totalNewMember = 0;
                 let totalOffsetperson = 0;
@@ -853,7 +829,7 @@ const LoanOfficerSummary = () => {
                                         <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">TFR</th>
                                         <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">NM</th>
                                         <th colSpan={6} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 text-gray-500 uppercase">MCBU</th> 
-                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">OFST Pers.</th>
+                                        {/* <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">OFST Pers.</th> */}
                                         <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">Act. Clie.</th>
                                         <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">MCBU Bal.</th>
                                         <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-4 text-gray-500 uppercase">Curr. Loan Rel. with Serv. Charge</th>
@@ -909,7 +885,7 @@ const LoanOfficerSummary = () => {
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.mcbuInterestStr }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.noMcbuReturn }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.mcbuReturnAmtStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.offsetPerson }</td>
+                                                        {/* <td className="px-2 py-4 text-center border border-gray-300">{ item.offsetPerson }</td> */}
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.activeClients }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.mcbuBalanceStr }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.loanReleasePerson }</td>
@@ -936,7 +912,7 @@ const LoanOfficerSummary = () => {
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.mcbuInterestStr }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.noMcbuReturn }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.mcbuReturnAmtStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.offsetPerson }</td>
+                                                        {/* <td className="px-2 py-4 text-center border border-gray-300">{ item.offsetPerson }</td> */}
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.activeClients }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.mcbuBalanceStr }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.loanReleasePerson }</td>

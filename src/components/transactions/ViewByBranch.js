@@ -9,7 +9,6 @@ import moment from 'moment';
 import { formatPricePhp, getTotal } from "@/lib/utils";
 
 const ViewByBranchPage = ({dateFilter, type}) => {
-    const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
     const [loading, setLoading] = useState(true);
     const [branchCollectionData, setBranchCollectionData] = useState([]);
@@ -81,7 +80,7 @@ const ViewByBranchPage = ({dateFilter, type}) => {
                 };
 
                 if (!filter) {
-                    if (branch.groupCashCollections.length > 0) {
+                    if (branch?.groupCashCollections.length > 0) {
                         const open = branch.groupCashCollections[0].statusArr.find(status => status === 'open');
                         if (open) {
                             collection.status = 'open';
