@@ -223,11 +223,6 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                         // noOfRefullPayment += lo.fullPayment[0].reFullPayment;
                     }
                 } else {
-                    // const dayNameFilter = moment(date).format('dddd').toLowerCase();
-                    // let loanTarget = 0;
-                    // if ((type === 'weekly' && cc.day === dayNameFilter) || type === 'daily') {
-                    //     loanTarget = lo.cashCollections[0].loanTarget && lo.cashCollections[0].loanTarget;
-                    // }
                     if (lo.cashCollections.length > 0) {
                         collection.activeClients = lo.cashCollections[0].activeClients; 
                         collection.activeBorrowers = lo.cashCollections[0].activeBorrowers;
