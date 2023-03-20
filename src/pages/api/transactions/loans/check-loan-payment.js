@@ -1,6 +1,6 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
-import { getWeekDaysCount } from '@/lib/utils';
+import { getWeekDaysCount, getCurrentDate } from '@/lib/utils';
 import moment from 'moment';
 
 export default apiHandler({
@@ -14,7 +14,7 @@ async function processActiveLoan(req, res) {
     let response = {};
 
     const loans = await db.collection('loans').find( {$expr: {$or: [{$eq: ['$status', 'active']}, {$eq: ['$status', 'completed']}]}} ).toArray();
-    const currentDate = moment().format('YYYY-MM-DD');
+    const currentDate = moment(getCurrentDate()).format('YYYY-MM-DD');
 
     if (loans.length > 0) {
         loans.map(loan => {

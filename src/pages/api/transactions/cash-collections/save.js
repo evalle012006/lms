@@ -1,8 +1,9 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
+import { getCurrentDate } from '@/lib/utils';
 import moment from 'moment';
 
-const currentDate = moment(new Date()).format('YYYY-MM-DD');
+const currentDate = moment(getCurrentDate()).format('YYYY-MM-DD');
 
 export default apiHandler({
     post: save

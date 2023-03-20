@@ -145,3 +145,7 @@ export const getDaysOfMonth = (year, month) => {
     }
     return arrDays;
 };
+
+export const getCurrentDate = (timezone = 'Asia/Manila') => {
+    return new Date().toLocaleDateString({}, { timeZone: timezone });
+};

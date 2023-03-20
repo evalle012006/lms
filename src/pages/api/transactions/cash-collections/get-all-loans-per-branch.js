@@ -1,5 +1,6 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
+import { getCurrentDate } from '@/lib/utils';
 import moment from 'moment';
 
 export default apiHandler({
@@ -12,7 +13,7 @@ async function getAllLoansPerGroup(req, res) {
 
     const { date, mode, areaManagerId, dayName } = req.query;
 
-    const currentDate = moment(new Date()).format('YYYY-MM-DD');
+    const currentDate = moment(getCurrentDate()).format('YYYY-MM-DD');
     const currentDay = moment(date).format('dddd').toLowerCase();
 
     let statusCode = 200;

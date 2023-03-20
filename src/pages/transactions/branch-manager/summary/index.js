@@ -17,7 +17,7 @@ const BranchManagerSummary = () => {
     const [loading, setLoading] = useState(true);
     const currentUser = useSelector(state => state.user.data);
     const list = useSelector(state => state.los.list);
-    const [currentDate, setCurrentDate] = useState(moment(new Date()).format('YYYY-MM-DD'));
+    const currentDate = useSelector(state => state.systemSettings.currentDate);
     const [selectedBranch, setSelectedBranch] = useState();
     const [days, setDays] = useState([]);
     const [selectedMonth, setSelectedMonth] = useState(moment().month() + 1);

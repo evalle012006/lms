@@ -1,6 +1,7 @@
 export const SET_SYSTEM_SETTINGS = 'SET_SYSTEM_SETTINGS';
 export const SET_HOLIDAY = 'SET_HOLIDAY';
 export const SET_WEEKEND = 'SET_WEEKEND';
+export const SET_CURRENT_DATE = 'SET_CURRENT_DATE';
 
 export const setSystemSettings = (settings) => ({
     type: SET_SYSTEM_SETTINGS,
@@ -15,4 +16,9 @@ export const setHoliday = (holiday) => ({
 export const setWeekend = (weekend) => ({
     type: SET_WEEKEND,
     payload: weekend
+});
+
+export const setCurrentDate = (currentDate) => ({
+    type: SET_CURRENT_DATE,
+    payload: currentDate
 });

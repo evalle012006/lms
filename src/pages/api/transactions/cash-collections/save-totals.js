@@ -1,5 +1,6 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
+import { getCurrentDate } from '@/lib/utils';
 import moment from 'moment';
 
 let response = {};
@@ -124,7 +125,7 @@ async function saveCashCollections(group) {
                 }).toArray();
 
             if (loans.length > 0) {
-                const currentDate = new Date();
+                const currentDate = getCurrentDate();
                 loans.map(async loan => {
                     let status;
                     if (loan.status === 'active') {
