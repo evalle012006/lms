@@ -1086,7 +1086,7 @@ const BranchManagerSummary = () => {
                                         <th colSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 text-gray-500 uppercase">COLLECTION (w/SC)</th>
                                         <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">Consol. Total Act. Collection</th>
                                         <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 text-gray-500 uppercase">Pastdue</th>
-                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">Mispay Pers.</th>
+                                        {/* <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">Mispay Pers.</th> */}
                                         <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 text-gray-500 uppercase">FULL PAYMENT (w/SC Daily)</th>
                                         <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 text-gray-500 uppercase">FULL PAYMENT (w/SC Weekly)</th>
                                         <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 text-gray-500 uppercase">Consol. FULL PAYMENT</th>
@@ -1176,7 +1176,7 @@ const BranchManagerSummary = () => {
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.consolidatedCollectionStr }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.pastDuePerson }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.pastDueAmountStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.mispaymentPerson }</td>
+                                                        {/* <td className="px-2 py-4 text-center border border-gray-300">{ item.mispaymentPerson }</td> */}
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.fullPaymentDailyPerson }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.fullPaymentDailyAmountStr }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.fullPaymentWeeklyPerson }</td>
@@ -1217,7 +1217,7 @@ const BranchManagerSummary = () => {
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.consolidatedCollectionStr }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.pastDuePerson }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.pastDueAmountStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.mispaymentPerson }</td>
+                                                        {/* <td className="px-2 py-4 text-center border border-gray-300">{ item.mispaymentPerson }</td> */}
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.fullPaymentDailyPerson }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.fullPaymentDailyAmountStr }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.fullPaymentWeeklyPerson }</td>

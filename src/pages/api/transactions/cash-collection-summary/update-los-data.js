@@ -14,11 +14,11 @@ export default apiHandler({
 async function updateStatus(req, res) {
     const { db } = await connectToDatabase();
 
-    const losDaily = await db.collection('losTotals').find({ losType: 'daily', dateAdded: '2023-01-30' }).toArray();
+    const losDaily = await db.collection('losTotals').find({ losType: 'daily'}).toArray();
 
     losDaily.map(async los => {
         let temp = {...los};
-        temp.data.activeBorrowers = temp.data.activeClients;
+        temp.data.mispaymentPerson = 0;
 
         await db.collection('losTotals').updateOne({ _id: temp._id }, { $set: {...temp} });
     });
