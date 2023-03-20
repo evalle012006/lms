@@ -9,7 +9,7 @@ import moment from 'moment';
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { toast } from 'react-hot-toast';
 import LOSHeader from "@/components/transactions/los/Header";
-import { formatPricePhp, getDaysOfMonth, getTotal } from "@/lib/utils";
+import { formatPricePhp, getDaysOfMonth } from "@/lib/utils";
 import { useRouter } from "node_modules/next/router";
 
 const LoanOfficerSummary = () => {
