@@ -116,14 +116,15 @@ const ViewByBranchPage = ({dateFilter, type}) => {
     
                         totalsLoanRelease += branch.loans[0].totalRelease;
                         totalsLoanBalance += branch.loans[0].totalLoanBalance;
-                        targetLoanCollection += branch.loans[0].loanTarget;
+                        if (branch.groups.length === 0) {
+                            targetLoanCollection += branch.loans[0].loanTarget;
+                        }
                         totalPastDue += collection.pastDue;
                         totalNoPastDue += collection.noPastDue;
                         // totalMcbu += collection.mcbu;
                     }
 
                     if (branch.groups.length > 0) {
-                        targetLoanCollection = 0;
                         let loLoanTarget = 0;
                         let loMcbu = 0;
                         branch.groups.map(g => {
@@ -138,7 +139,6 @@ const ViewByBranchPage = ({dateFilter, type}) => {
                         targetLoanCollection += loLoanTarget;
                         collection.mcbu = loMcbu;
                         collection.mcbuStr = loMcbu > 0 ? formatPricePhp(loMcbu) : '-';
-                        totalMcbu += collection.mcbu;
                     }
 
                     totalMcbu += collection.mcbu ? collection.mcbu : 0;

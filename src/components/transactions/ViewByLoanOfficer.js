@@ -127,7 +127,9 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
     
                         totalsLoanRelease += lo.loans[0].totalRelease;
                         totalsLoanBalance += lo.loans[0].totalLoanBalance;
-                        targetLoanCollection += lo.loans[0].loanTarget;
+                        if (lo.transactionType === 'daily') {
+                            targetLoanCollection += lo.loans[0].loanTarget;
+                        }
                         totalPastDue += collection.pastDue;
                         totalNoPastDue += collection.noPastDue;
                         // totalMcbu += collection.mcbu;
@@ -150,8 +152,6 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                                 }
                             });
                         }
-
-                        targetLoanCollection = 0;
 
                         collection.loanTarget = loLoanTarget;
                         collection.loanTargetStr = loLoanTarget > 0 ? formatPricePhp(loLoanTarget) : '-';
@@ -204,6 +204,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                         collection.newReleasePerson = newReleasePerson;
                         collection.reReleasePerson = reReleasePerson;
                         collection.noCurrentReleaseStr = newReleasePerson + ' / ' + reReleasePerson;
+                        collection.currentReleaseAmount = lo.currentRelease[0].currentReleaseAmount;
                         collection.currentReleaseAmountStr = formatPricePhp(lo.currentRelease[0].currentReleaseAmount);
     
                         noOfNewCurrentRelease += lo.currentRelease[0].newCurrentRelease;
@@ -389,6 +390,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
         let totalMcbuInterest = 0;
 
         collectionData.filter(u => u.transactionType === 'daily').map(collection => {
+            console.log(collection)
             noOfClients += (collection.activeClients && collection.activeClients !== '-') ? collection.activeClients : 0;
             noOfBorrowers += (collection.activeBorrowers && collection.activeBorrowers !== '-') ? collection.activeBorrowers : 0;
             totalsLoanRelease += collection.totalLoanRelease ? collection.totalLoanRelease : 0;

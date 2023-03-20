@@ -72,13 +72,14 @@ async function getAllLoansPerGroup(req, res) {
                                             localField: "groupIdStr",
                                             foreignField: 'groupId',
                                             pipeline: [
+                                                { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
                                                 {
                                                     $group: {
                                                         _id: '$groupId',
                                                         loanTarget: { 
                                                             $sum: { 
                                                                 $cond: {
-                                                                    if: { $ne: ['$status', 'pending']}, 
+                                                                    if: {$and: [{ $ne: ['$status', 'pending']}, {$lte: ['$startDateObj', '$currentDateObj']} ]}, 
                                                                     then: { 
                                                                         $cond: {
                                                                             if: { $and: [{$eq: ['$activeLoan', 0]}, {$eq: ['$fullPaymentDate', date]}] },
@@ -362,13 +363,14 @@ async function getAllLoansPerGroup(req, res) {
                                         localField: "groupIdStr",
                                         foreignField: 'groupId',
                                         pipeline: [
+                                            { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
                                             {
                                                 $group: {
                                                     _id: '$groupId',
                                                     loanTarget: { 
                                                         $sum: { 
                                                             $cond: {
-                                                                if: { $ne: ['$status', 'pending']}, 
+                                                                if: {$and: [{ $ne: ['$status', 'pending']}, {$lte: ['$startDateObj', '$currentDateObj']} ]}, 
                                                                 then: { 
                                                                     $cond: {
                                                                         if: { $and: [{$eq: ['$activeLoan', 0]}, {$eq: ['$fullPaymentDate', date]}] },
