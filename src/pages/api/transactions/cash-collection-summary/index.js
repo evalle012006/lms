@@ -41,7 +41,7 @@ async function getSummary(req, res) {
                         mcbuTarget: { $sum: { $cond: {
                             if: { $eq: ['$occurence', 'weekly'] },
                             then: { $multiply: ['$data.activeClients', 50] },
-                            else: { $multiply: ['$data.activeClients', 10] }
+                            else: 0
                         } } },
                         mcbuActual: { $sum: '$data.mcbuActual' },
                         mcbuWithdrawal: { $sum: '$data.mcbuWithdrawal' },

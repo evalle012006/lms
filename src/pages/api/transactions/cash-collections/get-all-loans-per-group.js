@@ -65,6 +65,8 @@ async function getAllLoansPerGroup(req, res) {
                                         localField: "groupIdStr",
                                         foreignField: 'groupId',
                                         pipeline: [
+                                            { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
+                                            { $match: {$expr:  {$lte: ['$startDateObj', '$currentDateObj']} } },
                                             {
                                                 $group: {
                                                     _id: '$groupId',
