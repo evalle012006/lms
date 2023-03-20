@@ -9,7 +9,7 @@ import moment from 'moment';
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { toast } from 'react-hot-toast';
 import LOSHeader from "@/components/transactions/los/Header";
-import { formatPricePhp, getDaysOfMonth, getTotal } from "@/lib/utils";
+import { formatPricePhp, getDaysOfMonth } from "@/lib/utils";
 import { useRouter } from "node_modules/next/router";
 
 const LoanOfficerSummary = () => {
@@ -274,6 +274,7 @@ const LoanOfficerSummary = () => {
             if (index !== 0 && !los.weekTotal) {
                 const loanReleasePerson = los.loanReleasePerson !== '-' ? los.loanReleasePerson : 0;
                 const fullPaymentPerson = los.fullPaymentPerson !== '-' ? los.fullPaymentPerson : 0;
+                console.log(fullPaymentPerson)
                 const fullPaymentAmount = los.fullPaymentAmount !== '-' ? los.fullPaymentAmount : 0;
                 const loanReleaseAmount = los.loanReleaseAmount !== '-' ? los.loanReleaseAmount : 0;
                 const collectionActual = los.collectionActual !== '-' ? los.collectionActual : 0;
@@ -751,7 +752,7 @@ const LoanOfficerSummary = () => {
         grandTotal.pastDuePerson = totalPastDuePerson;
         grandTotal.pastDueAmount = totalPastDueAmount;
         grandTotal.pastDueAmountStr = formatPricePhp(totalPastDueAmount);
-        grandTotal = totalMispaymentPerson;
+        grandTotal.mispaymentPerson = totalMispaymentPerson;
         grandTotal.fullPaymentPerson = totalFullPaymentPerson;
         grandTotal.fullPaymentAmount = totalFullPaymentAmount;
         grandTotal.fullPaymentAmountStr = formatPricePhp(totalFullPaymentAmount);
@@ -851,7 +852,7 @@ const LoanOfficerSummary = () => {
                                         <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 py-4 text-gray-500 uppercase">ACT LOAN RELEASE W/ Serv. Charge</th>
                                         <th colSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 text-gray-500 uppercase">COLLECTION (w/ serv. charge)</th>
                                         <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 text-gray-500 uppercase">Pastdue</th>
-                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">Mispay Pers.</th>
+                                        {/* <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">Mispay Pers.</th> */}
                                         <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 text-gray-500 uppercase">FULL PAYMENT (w/ serv. charge)</th>
                                         <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">Act. Bwr.</th>
                                         <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-r-0 border-t-0 px-2 py-2 text-gray-500 uppercase">Loan Balance</th>
@@ -912,7 +913,7 @@ const LoanOfficerSummary = () => {
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.collectionActualStr }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.pastDuePerson }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.pastDueAmountStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.mispaymentPerson }</td>
+                                                        {/* <td className="px-2 py-4 text-center border border-gray-300">{ item.mispaymentPerson }</td> */}
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.fullPaymentPerson }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.fullPaymentAmountStr }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.activeBorrowers }</td>
@@ -941,7 +942,7 @@ const LoanOfficerSummary = () => {
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.collectionActualStr }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.pastDuePerson }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.pastDueAmountStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.mispaymentPerson }</td>
+                                                        {/* <td className="px-2 py-4 text-center border border-gray-300">{ item.mispaymentPerson }</td> */}
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.fullPaymentPerson }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.fullPaymentAmountStr }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.activeBorrowers }</td>
