@@ -141,7 +141,7 @@ const ViewByBranchPage = ({dateFilter, type}) => {
                         // collection.mcbuStr = loMcbu > 0 ? formatPricePhp(loMcbu) : '-';
                     }
 
-                    totalMcbu += collection.mcbu ? collection.mcbu : 0;
+                    // totalMcbu += collection.mcbu ? collection.mcbu : 0;
                     
                     if (branch.cashCollections.length > 0) {
                         const loanTarget = collection.loanTarget - branch.cashCollections[0].loanTarget;
@@ -261,7 +261,7 @@ const ViewByBranchPage = ({dateFilter, type}) => {
             collectionData.map(c => {
                 totalMcbu += c.mcbu ? c.mcbu : 0
             });
-            console.log(targetLoanCollection)
+
             const branchTotals = {
                 name: 'TOTALS',
                 noCurrentReleaseStr: noOfNewCurrentRelease + ' / ' + noOfReCurrentRelease,

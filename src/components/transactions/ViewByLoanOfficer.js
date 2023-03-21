@@ -384,6 +384,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
         let totalMcbuInterest = 0;
 
         collectionData.filter(u => u.transactionType === 'daily').map(collection => {
+            console.log(collection)
             noOfClients += (collection.activeClients && collection.activeClients !== '-') ? collection.activeClients : 0;
             noOfBorrowers += (collection.activeBorrowers && collection.activeBorrowers !== '-') ? collection.activeBorrowers : 0;
             totalsLoanRelease += collection.totalReleases ? collection.totalReleases : 0;
