@@ -130,15 +130,15 @@ const ViewByBranchPage = ({dateFilter, type}) => {
                         branch.groups.map(g => {
                             if (g.loanTarget.length > 0) {
                                 loLoanTarget += g.loanTarget[0].loanTarget;
-                                loMcbu += g.loanTarget[0].mcbu;
+                                // loMcbu += g.loanTarget[0].mcbu;
                             }
                         });
 
                         collection.loanTarget = loLoanTarget;
                         collection.loanTargetStr = loLoanTarget > 0 ? formatPricePhp(loLoanTarget) : '-';
                         targetLoanCollection += loLoanTarget;
-                        collection.mcbu = loMcbu;
-                        collection.mcbuStr = loMcbu > 0 ? formatPricePhp(loMcbu) : '-';
+                        // collection.mcbu = loMcbu;
+                        // collection.mcbuStr = loMcbu > 0 ? formatPricePhp(loMcbu) : '-';
                     }
 
                     totalMcbu += collection.mcbu ? collection.mcbu : 0;
@@ -151,8 +151,8 @@ const ViewByBranchPage = ({dateFilter, type}) => {
                         collection.excessStr = branch.cashCollections[0].excess > 0 ? formatPricePhp(branch.cashCollections[0].excess) : '-';
                         collection.totalStr = branch.cashCollections[0].collection > 0 ? formatPricePhp(branch.cashCollections[0].collection) : '-';
                         collection.mispaymentStr = branch.cashCollections[0].mispayment > 0 ? branch.cashCollections[0].mispayment : '-';
-                        // collection.mcbu = branch.cashCollections[0].mcbu;
-                        // collection.mcbuStr = collection.mcbu > 0 ? formatPricePhp(collection.mcbu) : '-';
+                        collection.mcbu = branch.cashCollections[0].mcbu;
+                        collection.mcbuStr = collection.mcbu > 0 ? formatPricePhp(collection.mcbu) : '-';
                         collection.mcbuCol = branch.cashCollections[0].mcbuCol;
                         collection.mcbuColStr = collection.mcbuCol > 0 ? formatPricePhp(collection.mcbuCol) : '-';
                         collection.mcbuWithdrawal = branch.cashCollections[0].mcbuWithdrawal;
@@ -247,7 +247,7 @@ const ViewByBranchPage = ({dateFilter, type}) => {
                         currentReleaseAmount += branch.cashCollections[0].currentReleaseAmount;
                         fullPaymentAmount += branch.cashCollections[0].fullPaymentAmount;
                         noOfFullPayment += branch.cashCollections[0].noOfFullPayment;
-                        totalMcbu += collection.mcbu ? collection.mcbu : 0;
+                        // totalMcbu += collection.mcbu ? collection.mcbu : 0;
                         totalMcbuCol += collection.mcbuCol ? collection.mcbuCol : 0;
                         totalMcbuWithdrawal += collection.mcbuWithdrawal ? collection.mcbuWithdrawal : 0;
                         totalMcbuReturnNo += collection.noMcbuReturn ? collection.noMcbuReturn : 0;
@@ -258,6 +258,10 @@ const ViewByBranchPage = ({dateFilter, type}) => {
                 collectionData.push(collection);
             });
 
+            collectionData.map(c => {
+                totalMcbu += c.mcbu ? c.mcbu : 0
+            });
+            console.log(targetLoanCollection)
             const branchTotals = {
                 name: 'TOTALS',
                 noCurrentReleaseStr: noOfNewCurrentRelease + ' / ' + noOfReCurrentRelease,
@@ -266,7 +270,7 @@ const ViewByBranchPage = ({dateFilter, type}) => {
                 activeBorrowers: noOfBorrowers,
                 totalReleasesStr: formatPricePhp(totalsLoanRelease),
                 totalLoanBalanceStr: formatPricePhp(totalsLoanBalance),
-                loanTargetStr: formatPricePhp(targetLoanCollection),
+                loanTargetStr: targetLoanCollection > 0 ? formatPricePhp(targetLoanCollection) : 0,
                 excessStr: formatPricePhp(excess),
                 totalStr: formatPricePhp(totalLoanCollection),
                 mispaymentStr: mispayment + ' / ' + noOfClients,
