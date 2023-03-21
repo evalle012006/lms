@@ -66,14 +66,13 @@ async function getAllLoansPerGroup(req, res) {
                                         foreignField: 'groupId',
                                         pipeline: [
                                             { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
-                                            { $match: {$expr:  {$lte: ['$startDateObj', '$currentDateObj']} } },
                                             {
                                                 $group: {
                                                     _id: '$groupId',
                                                     loanTarget: { 
                                                         $sum: { 
                                                             $cond: {
-                                                                if: { $ne: ['$status', 'pending']}, 
+                                                                if: {$and: [{ $ne: ['$status', 'pending']}, {$lte: ['$startDateObj', '$currentDateObj']} ]}, 
                                                                 then: { 
                                                                     $cond: {
                                                                         if: { $and: [{$eq: ['$activeLoan', 0]}, {$eq: ['$fullPaymentDate', date]}] },

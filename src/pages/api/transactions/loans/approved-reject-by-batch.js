@@ -176,12 +176,12 @@ async function saveCashCollection(loan) {
 
     if (groupSummary.length > 0) {
         groupSummary = groupSummary[0];
-
+        
         let loanData = await db.collection("loans")
             .aggregate([
-                { $match: {clientId: loan.clientId, status: "active"} },
+                { $match: { $expr: { $and: [{$eq: ['$clientId', loan.clientId]}, {$eq: ['$status', "active"]}] } } },
                 {
-                    $addFields: { clientIdObj: { $toObjectId: "$clientId" } }
+                    $addFields: { clientIdObj: { $toObjectId: "$clientId" }, groupIdObj: { $toObjectId: "$groupId" } }
                 },
                 {
                     $lookup: {
@@ -189,6 +189,14 @@ async function saveCashCollection(loan) {
                         localField: "clientIdObj",
                         foreignField: "_id",
                         as: "client"
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "groups",
+                        localField: "groupIdObj",
+                        foreignField: "_id",
+                        as: "groups"
                     }
                 }
             ]).toArray();
@@ -254,6 +262,11 @@ async function saveCashCollection(loan) {
 
                 if (data.loanCycle === 1 && data.occurence === 'weekly') {
                     data.mcbuCol = loanData.mcbu;
+                }
+
+                if (data.occurence === 'weekly') {
+                    data.mcbuTarget = 50;
+                    data.groupDay = loanData.groups[0].day;
                 }
     
                 await db.collection('cashCollections').insertOne({ ...data });

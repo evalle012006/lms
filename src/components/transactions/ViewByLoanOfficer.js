@@ -156,10 +156,9 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                         collection.loanTarget = loLoanTarget;
                         collection.loanTargetStr = loLoanTarget > 0 ? formatPricePhp(loLoanTarget) : '-';
                         targetLoanCollection += loLoanTarget;
-                        collection.mcbu = loMcbu;
-                        collection.mcbuStr = loMcbu > 0 ? formatPricePhp(loMcbu) : '-';
+                        // collection.mcbu = loMcbu;
+                        // collection.mcbuStr = loMcbu > 0 ? formatPricePhp(loMcbu) : '-';
                     }
-                    totalMcbu += collection.mcbu ? collection.mcbu : 0;
                     
                     if (lo.cashCollections.length > 0) {
                         const loanTarget = collection.loanTarget - lo.cashCollections[0].loanTarget;
@@ -172,8 +171,8 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                         collection.mispayment = lo.cashCollections[0].mispayment;
                         collection.mispaymentStr = lo.cashCollections[0].mispayment > 0 ? lo.cashCollections[0].mispayment : '-';
                         collection.offsetPerson = lo.cashCollections[0].offsetPerson ? lo.cashCollections[0].offsetPerson : 0;
-                        // collection.mcbu = lo.cashCollections[0].mcbu;
-                        // collection.mcbuStr = collection.mcbu > 0 ? formatPricePhp(collection.mcbu) : '-';
+                        collection.mcbu = lo.cashCollections[0].mcbu;
+                        collection.mcbuStr = collection.mcbu > 0 ? formatPricePhp(collection.mcbu) : '-';
                         collection.mcbuCol = lo.cashCollections[0].mcbuCol;
                         collection.mcbuColStr = collection.mcbuCol > 0 ? formatPricePhp(collection.mcbuCol) : '-';
                         collection.mcbuWithdrawal = lo.cashCollections[0].mcbuWithdrawal;
@@ -195,7 +194,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                         totalMcbuReturnNo += collection.noMcbuReturn ? collection.noMcbuReturn : 0;
                         totalMcbuReturnAmt += collection.mcbuReturnAmt ? collection.mcbuReturnAmt : 0;
                     }
-
+                    totalMcbu += collection.mcbu ? collection.mcbu : 0;
                     totalMcbuInterest += collection.mcbuInterest ? collection.mcbuInterest : 0;
     
                     if (lo.currentRelease.length > 0) {
@@ -388,7 +387,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
             console.log(collection)
             noOfClients += (collection.activeClients && collection.activeClients !== '-') ? collection.activeClients : 0;
             noOfBorrowers += (collection.activeBorrowers && collection.activeBorrowers !== '-') ? collection.activeBorrowers : 0;
-            totalsLoanRelease += collection.totalLoanRelease ? collection.totalLoanRelease : 0;
+            totalsLoanRelease += collection.totalReleases ? collection.totalReleases : 0;
             totalsLoanBalance += collection.totalLoanBalance ? collection.totalLoanBalance : 0;
             noOfNewCurrentRelease += collection.newReleasePerson ? collection.newReleasePerson : 0;
             noOfReCurrentRelease += collection.reReleasePerson ? collection.reReleasePerson : 0;
@@ -481,7 +480,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
         collectionData.filter(u => u.transactionType === 'weekly').map(collection => {
             noOfClients += (collection.activeClients && collection.activeClients !== '-') ? collection.activeClients : 0;
             noOfBorrowers += (collection.activeBorrowers && collection.activeBorrowers !== '-') ? collection.activeBorrowers : 0;
-            totalsLoanRelease += collection.totalLoanRelease ? collection.totalLoanRelease : 0;
+            totalsLoanRelease += collection.totalReleases ? collection.totalReleases : 0;
             totalsLoanBalance += collection.totalLoanBalance ? collection.totalLoanBalance : 0;
             noOfNewCurrentRelease += collection.newReleasePerson ? collection.newReleasePerson : 0;
             noOfReCurrentRelease += collection.reReleasePerson ? collection.reReleasePerson : 0;

@@ -308,7 +308,6 @@ const LoanOfficerSummary = () => {
                 }
 
                 if (type === 'weekly') {
-                    console.log(temp.activeClients)
                     temp.mcbuTarget = temp.activeClients * 50;
                     temp.mcbuTargetStr = temp.mcbuTarget > 0 ? formatPricePhp(temp.mcbuTarget) : '-';
                 }
