@@ -16,7 +16,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
     const selectedLOSubject = new BehaviorSubject(process.browser && localStorage.getItem('selectedLO'));
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
-    const [currentDate, setCurrentDate] = useState(moment(new Date()).format('YYYY-MM-DD'));
+    const currentDate = useSelector(state => state.systemSettings.currentDate);
     const cashCollectionList = useSelector(state => state.cashCollection.main);
     const [loading, setLoading] = useState(true);
     const dayName = moment().format('dddd').toLowerCase();

@@ -34,7 +34,7 @@ const LoanApplicationPage = () => {
     const [showAddDrawer, setShowAddDrawer] = useState(false);
     const [mode, setMode] = useState('add');
     const [loan, setLoan] = useState();
-    const currentDate = moment(new Date()).format('YYYY-MM-DD');
+    const currentDate = useSelector(state => state.systemSettings.currentDate);
 
     const [showApproveReject, setShowApproveReject] = useState(true);
 

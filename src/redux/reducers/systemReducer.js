@@ -1,9 +1,10 @@
-import { SET_HOLIDAY, SET_SYSTEM_SETTINGS, SET_WEEKEND } from "../actions/systemActions";
+import { SET_HOLIDAY, SET_SYSTEM_SETTINGS, SET_WEEKEND, SET_CURRENT_DATE } from "../actions/systemActions";
 
 const initialSystemSettingsState = {
     data: {},
     holiday: false,
-    weekend: false
+    weekend: false,
+    currentDate: null
 };
 
 const systemSettingsReducer = (state = initialSystemSettingsState, action) => {
@@ -14,6 +15,8 @@ const systemSettingsReducer = (state = initialSystemSettingsState, action) => {
             return { ...state, holiday: action.payload }
         case SET_WEEKEND:
             return { ...state, weekend: action.payload }
+        case SET_CURRENT_DATE:
+            return { ...state, currentDate: action.payload }
         default:
             return { ...state }
     }

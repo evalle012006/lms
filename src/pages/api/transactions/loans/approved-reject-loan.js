@@ -1,12 +1,13 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
+import { getCurrentDate } from '@/lib/utils';
 import moment from 'moment';
 
 export default apiHandler({
     post: updateLoan
 });
 
-const currentDate = moment(new Date()).format('YYYY-MM-DD');
+const currentDate = moment(getCurrentDate()).format('YYYY-MM-DD');
 
 async function updateLoan(req, res) {
     const { db } = await connectToDatabase();
