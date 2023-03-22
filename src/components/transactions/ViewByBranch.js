@@ -134,9 +134,9 @@ const ViewByBranchPage = ({dateFilter, type}) => {
                             }
                         });
 
-                        collection.loanTarget = loLoanTarget;
-                        collection.loanTargetStr = loLoanTarget > 0 ? formatPricePhp(loLoanTarget) : '-';
-                        targetLoanCollection += loLoanTarget;
+                        collection.loanTarget += loLoanTarget;
+                        collection.loanTargetStr = collection.loanTarget > 0 ? formatPricePhp(collection.loanTarget) : '-';
+                        // targetLoanCollection += collection.loanTarget;
                         // collection.mcbu = loMcbu;
                         // collection.mcbuStr = loMcbu > 0 ? formatPricePhp(loMcbu) : '-';
                     }
@@ -164,7 +164,7 @@ const ViewByBranchPage = ({dateFilter, type}) => {
                         excess += branch.cashCollections[0].excess;
                         totalLoanCollection += branch.cashCollections[0].collection;
                         mispayment += branch.cashCollections[0].mispayment;
-                        targetLoanCollection = targetLoanCollection - branch.cashCollections[0].loanTarget;
+                        // targetLoanCollection = targetLoanCollection - branch.cashCollections[0].loanTarget;
                         // totalMcbu += collection.mcbu;
                         totalMcbuCol += collection.mcbuCol ? collection.mcbuCol : 0;
                         totalMcbuWithdrawal += collection.mcbuWithdrawal ? collection.mcbuWithdrawal : 0;
@@ -236,7 +236,7 @@ const ViewByBranchPage = ({dateFilter, type}) => {
                         noOfBorrowers += branch.cashCollections[0].activeBorrowers;
                         totalsLoanRelease += branch.cashCollections[0].totalRelease;
                         totalsLoanBalance += branch.cashCollections[0].totalLoanBalance;
-                        targetLoanCollection += branch.cashCollections[0].loanTarget;
+                        // targetLoanCollection += branch.cashCollections[0].loanTarget;
                         excess += branch.cashCollections[0].excess;
                         totalLoanCollection += branch.cashCollections[0].collection;
                         mispayment += branch.cashCollections[0].mispayment;
@@ -259,7 +259,8 @@ const ViewByBranchPage = ({dateFilter, type}) => {
             });
 
             collectionData.map(c => {
-                totalMcbu += c.mcbu ? c.mcbu : 0
+                totalMcbu += c.mcbu ? c.mcbu : 0;
+                targetLoanCollection += c.loanTarget;
             });
 
             const branchTotals = {
