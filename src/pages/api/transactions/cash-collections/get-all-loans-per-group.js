@@ -523,6 +523,23 @@ async function getAllLoansPerGroup(req, res) {
                             as: "fullPayment"
                         }
                     },
+                    {
+                        $lookup: {
+                            from: "cashCollections",
+                            let: { groupName: '$name' },
+                            localField: "groupIdStr",
+                            foreignField: "groupId",
+                            pipeline: [
+                                { $match: { dateAdded: date, occurence: 'weekly', groupDay: dayName } },
+                                { $group: {
+                                        _id: '$$groupName',
+                                        total: { $sum: 50 }
+                                    }
+                                }
+                            ],
+                            as: "mcbuTarget"
+                        }
+                    },
                     { $project: { groupIdStr: 0, availableSlots: 0 } },
                     { $sort: { groupNo: 1 } }
                 ])
@@ -926,7 +943,13 @@ async function getAllLoansPerGroup(req, res) {
                                             }
                                         } },
                                         mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
-                                        mcbuTarget: { $sum: '$mcbuTarget' },
+                                        mcbuTarget: { $sum: {
+                                            $cond: {
+                                                if: { $and: [{$eq: ['$occurence', 'weekly']}, {$eq: ['$groupDay', dayName]}] },
+                                                then: 50,
+                                                else: 0
+                                            }
+                                        } },
                                         mcbuInterest: { $sum: '$mcbuInterest' }
                                     } 
                                 }
