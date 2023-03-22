@@ -7,6 +7,7 @@ export default apiHandler({
 
 async function save(req, res) {
     const { db } = await connectToDatabase();
+    const ObjectId = require('mongodb').ObjectId;
     let response = {};
     let statusCode = 200;
     const { loId, currentUser, currentDate } = req.body;
@@ -28,6 +29,7 @@ async function save(req, res) {
 
         if (existCC.length === 0) {
             const groupSummary = await db.collection('groupCashCollections').find({ groupId: loan.groupId, dateAdded: currentDate }).toArray();
+            const group = await db.collection('groups').find({ _id: ObjectId(loan.groupId) }).toArray();
             if (groupSummary.length > 0) {
                 let data = {
                     loanId: loan._id + '',
@@ -62,6 +64,11 @@ async function save(req, res) {
                     groupCollectionId: groupSummary[0]._id + '',
                     origin: 'pre-save'
                 };
+
+                if (data.occurence === 'weekly') {
+                    data.mcbuTarget = 50;
+                    data.groupDay = group[0].day;
+                }
     
                 await db.collection('cashCollections').insertOne({ ...data });
             }
