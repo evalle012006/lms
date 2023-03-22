@@ -30,7 +30,7 @@ const WeeklyCashCollectionDetailsPage = () => {
     const bmSummary = useSelector(state => state.cashCollection.bmSummary);
     const [currentLO, setCurrentLO] = useState();
     const { uuid } = router.query;
-    const [currentDate, setCurrentDate] = useState(moment(new Date()).format('YYYY-MM-DD'));
+    const currentDate = useSelector(state => state.systemSettings.currentDate);
     const [dateFilter, setDateFilter] = useState(dateFilterSubject.value ? dateFilterSubject.value : new Date());
     const [showSubmitDialog, setShowSubmitDialog] = useState(false);
 

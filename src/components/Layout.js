@@ -1,10 +1,25 @@
 import { useEffect } from "react";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from 'react-redux';
+import { fetchWrapper } from '@/lib/fetch-wrapper';
+import { setCurrentDate } from '@/redux/actions/systemActions';
 import NavComponent from "./Nav";
 
 const Layout = ({ children, bgwhite = false, header = true, noPad = false, actionButtons = [], hScroll = true }) => {
     const state = useSelector(state => state.global);
     const pageTitle = state.title;
+    const dispatch = useDispatch();
+
+    const getCurrentDate = async () => {
+        const apiURL = `${process.env.NEXT_PUBLIC_API_URL}settings/current-date`;
+        const response = await fetchWrapper.get(apiURL);
+        if (response.success) {
+            dispatch(setCurrentDate(response.currentDate));
+        }
+    }
+
+    useEffect(() => {
+        getCurrentDate();
+    }, []);
 
     return (
         <div className="flex bg-white">

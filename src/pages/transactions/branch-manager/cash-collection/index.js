@@ -21,7 +21,7 @@ const BranchCashCollectionPage = () => {
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
     const branch = useSelector(state => state.branch.data);
-    const [currentDate, setCurrentDate] = useState(moment(new Date()).format('YYYY-MM-DD'));
+    const currentDate = useSelector(state => state.systemSettings.currentDate);
     const [loading, setLoading] = useState(true);
     const [dateFilter, setDateFilter] = useState(new Date());
     const loCollectionList = useSelector(state => state.cashCollection.lo);

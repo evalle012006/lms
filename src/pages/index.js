@@ -11,7 +11,7 @@ import { useState } from 'react';
 const Index = () => {
     const dispatch = useDispatch();
     const [loading, setLoading] = useState(false);
-    const currentDate = moment().format('YYYY-MM-DD');
+    const currentDate = useSelector(state => state.systemSettings.currentDate);
 
     useEffect(() => {
         let mounted = true;

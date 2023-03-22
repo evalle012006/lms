@@ -20,7 +20,7 @@ const WeeklyCashCollectionDetailsPage = () => {
     const branch = useSelector(state => state.branch.data);
     const [currentBranch, setCurrentBranch] = useState();
     const { uuid } = router.query;
-    const [currentDate, setCurrentDate] = useState(moment(new Date()).format('YYYY-MM-DD'));
+    const currentDate = useSelector(state => state.systemSettings.currentDate);
     const [dateFilter, setDateFilter] = useState(dateFilterSubject.value ? dateFilterSubject.value : new Date());
 
     const handleBranchFilter = (selected) => {

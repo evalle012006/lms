@@ -46,7 +46,7 @@ const CashCollectionDetailsPage = () => {
     const [currentGroup, setCurrentGroup] = useState();
     const { uuid } = router.query;
     const [loading, setLoading] = useState(true);
-    const [currentDate, setCurrentDate] = useState(moment(new Date()).format('YYYY-MM-DD'));
+    const currentDate = useSelector(state => state.systemSettings.currentDate);
     const currentMonth = moment().month();
     const [dateFilter, setDateFilter] = useState(new Date());
     const [loan, setLoan] = useState();

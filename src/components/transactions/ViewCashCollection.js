@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import Spinner from "@/components/Spinner";
 import toast from 'react-hot-toast';
 import { useRouter } from "node_modules/next/router";
-import { formatPricePhp, getTotal } from "@/lib/utils";
+import { formatPricePhp } from "@/lib/utils";
 import moment from 'moment';
 import { setCashCollectionList, setGroupSummaryTotals, setLoSummary } from "@/redux/actions/cashCollectionActions";
 import TableComponent, { SelectColumnFilter, StatusPill } from "@/lib/table";
@@ -16,7 +16,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
     const selectedLOSubject = new BehaviorSubject(process.browser && localStorage.getItem('selectedLO'));
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
-    const [currentDate, setCurrentDate] = useState(moment(new Date()).format('YYYY-MM-DD'));
+    const currentDate = useSelector(state => state.systemSettings.currentDate);
     const cashCollectionList = useSelector(state => state.cashCollection.main);
     const [loading, setLoading] = useState(true);
     const dayName = moment().format('dddd').toLowerCase();
@@ -153,7 +153,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         targetLoanCollection += loanTarget;
                         totalPastDue += cc.loans[0].pastDue;
                         totalNoPastDue += cc.loans[0].noPastDue;
-                        totalMcbuTarget += cc.loans[0].mcbuTarget ? cc.loans[0].mcbuTarget : 0;
+                        // totalMcbuTarget += cc.loans[0].mcbuTarget ? cc.loans[0].mcbuTarget : 0;
                         totalMcbuInterest += cc.loans[0].mcbuInterest;
                     } 
     
@@ -197,10 +197,10 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                             mcbuReturnAmtStr: cc.cashCollections[0].mcbuReturnAmt > 0 ? formatPricePhp(cc.cashCollections[0].mcbuReturnAmt): '-'
                         };
                         
-                        if (collection.mcbu === 0 || !collection.mcbu) {
-                            collection.mcbu = cc.cashCollections[0].mcbu;
-                            collection.mcbuStr = collection.mcbu > 0 ? formatPricePhp(collection.mcbu): '-';
-                        }
+                        // if (collection.mcbu === 0 || !collection.mcbu) {
+                        collection.mcbu = cc.cashCollections[0].mcbu;
+                        collection.mcbuStr = collection.mcbu > 0 ? formatPricePhp(collection.mcbu): '-';
+                        // }
 
                         excess += cc.cashCollections[0].excess ? cc.cashCollections[0].excess : 0;
                         totalLoanCollection += cc.cashCollections[0].collection ? cc.cashCollections[0].collection : 0;
@@ -242,6 +242,10 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
     
                         fullPaymentAmount += cc.fullPayment[0].fullPaymentAmount ? cc.fullPayment[0].fullPaymentAmount : 0;
                         noOfFullPayment += cc.fullPayment[0].noOfFullPayment ? cc.fullPayment[0].noOfFullPayment : 0;
+                    }
+
+                    if (cc.mcbuTarget.length > 0) {
+                        totalMcbuTarget += cc.mcbuTarget[0].total;
                     }
                 } else {
                     if (cc.cashCollections.length > 0) {
@@ -316,9 +320,13 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         totalMcbuCol += cc.cashCollections[0].mcbuCol;
                         totalMcbuWithdrawal += cc.cashCollections[0].mcbuWithdrawal;
                         totalMcbuReturnAmt += cc.cashCollections[0].mcbuReturnAmt;
-                        totalMcbuTarget += cc.cashCollections[0].mcbuTarget ? cc.cashCollections[0].mcbuTarget : 0;
+                        //totalMcbuTarget += cc.cashCollections[0].mcbuTarget ? cc.cashCollections[0].mcbuTarget : 0;
                         totalMcbuInterest += cc.cashCollections[0].mcbuInterest;
-                    } 
+                    }
+
+                    if (cc.mcbuTarget.length > 0) {
+                        totalMcbuTarget += cc.mcbuTarget[0].total;
+                    }
                 }
 
                 collectionData.push(collection);

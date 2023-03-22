@@ -1,5 +1,6 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
+import { getCurrentDate } from '@/lib/utils';
 import moment from 'moment';
 
 export default apiHandler({
@@ -12,7 +13,7 @@ async function getAllLoansPerGroup(req, res) {
 
     const { date, mode, areaManagerId, dayName } = req.query;
 
-    const currentDate = moment(new Date()).format('YYYY-MM-DD');
+    const currentDate = moment(getCurrentDate()).format('YYYY-MM-DD');
     const currentDay = moment(date).format('dddd').toLowerCase();
 
     let statusCode = 200;
@@ -226,19 +227,37 @@ async function getAllLoansPerGroup(req, res) {
                                                 then: '$loanBalance', 
                                                 else: 0
                                             } } },
-                                            loanTarget: { 
-                                                $sum: { 
+                                            loanTarget: {
+                                                $sum: {
                                                     $cond: {
-                                                        if: { $ne: ['$status', 'pending']}, 
-                                                        then: { 
+                                                        if: { $ne: ['$status', 'pending']},
+                                                        then: {
                                                             $cond: {
-                                                                if: { $and: [{$eq: ['$activeLoan', 0]}, {$eq: ['$fullPaymentDate', date]}] },
-                                                                then: '$history.activeLoan',
-                                                                else: '$activeLoan'
-                                                            } 
-                                                        }, 
+                                                                if: { $and: [{$eq: ['$occurence', 'weekly']}, {$eq: ['$groupDay', dayName]}] },
+                                                                then: {
+                                                                    $cond: {
+                                                                        if: { $and: [{$eq: ['$activeLoan', 0]}, {$eq: ['$fullPaymentDate', date]}] },
+                                                                        then: '$history.activeLoan',
+                                                                        else: '$activeLoan'
+                                                                    }
+                                                                },
+                                                                else: {
+                                                                    $cond: {
+                                                                        if: { $and: [{$eq: ['$activeLoan', 0]}, {$eq: ['$fullPaymentDate', date]}, {$eq: ['$occurence', 'daily']}] },
+                                                                        then: '$history.activeLoan',
+                                                                        else:  {
+                                                                            $cond: {
+                                                                                if: {$eq: ['$occurence', 'daily']},
+                                                                                then: '$activeLoan',
+                                                                                else: 0
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        },
                                                         else: 0
-                                                    } 
+                                                    }
                                                 }
                                             },
                                             pastDue: { $sum: '$pastDue' },
@@ -517,15 +536,33 @@ async function getAllLoansPerGroup(req, res) {
                                             then: '$loanBalance', 
                                             else: 0
                                         } } },
-                                        loanTarget: { 
-                                            $sum: { 
+                                        loanTarget: {
+                                            $sum: {
                                                 $cond: {
-                                                    if: { $ne: ['$status', 'pending']}, 
-                                                    then: { 
+                                                    if: { $ne: ['$status', 'pending']},
+                                                    then: {
                                                         $cond: {
-                                                            if: { $and: [{$eq: ['$activeLoan', 0]}, {$eq: ['$fullPaymentDate', date]}] },
-                                                            then: '$history.activeLoan',
-                                                            else: '$activeLoan'
+                                                            if: { $and: [{$eq: ['$occurence', 'weekly']}, {$eq: ['$groupDay', dayName]}] },
+                                                            then: {
+                                                                $cond: {
+                                                                    if: { $and: [{$eq: ['$activeLoan', 0]}, {$eq: ['$fullPaymentDate', date]}] },
+                                                                    then: '$history.activeLoan',
+                                                                    else: '$activeLoan'
+                                                                }
+                                                            },
+                                                            else: {
+                                                                $cond: {
+                                                                    if: { $and: [{$eq: ['$activeLoan', 0]}, {$eq: ['$fullPaymentDate', date]}, {$eq: ['$occurence', 'daily']}] },
+                                                                    then: '$history.activeLoan',
+                                                                    else:  {
+                                                                        $cond: {
+                                                                            if: {$eq: ['$occurence', 'daily']},
+                                                                            then: '$activeLoan',
+                                                                            else: 0
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
                                                         } 
                                                     }, 
                                                     else: 0

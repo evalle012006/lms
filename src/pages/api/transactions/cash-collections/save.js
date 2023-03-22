@@ -1,8 +1,9 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
+import { getCurrentDate } from '@/lib/utils';
 import moment from 'moment';
 
-const currentDate = moment(new Date()).format('YYYY-MM-DD');
+const currentDate = moment(getCurrentDate()).format('YYYY-MM-DD');
 
 export default apiHandler({
     post: save
@@ -260,14 +261,15 @@ async function updateGroup(loan) {
             group.status = 'available';
         }
 
-        if (!group.availableSlots.includes(loan.slotNo)) {
-            group.availableSlots.push(loan.slotNo);
+        const slotNo = parseInt(loan.slotNo)
+        if (!group.availableSlots.includes(slotNo)) {
+            group.availableSlots.push(slotNo);
             group.availableSlots.sort((a, b) => { return a - b; });
             group.noOfClients = group.noOfClients - 1;
         } else {
-            const index = group.availableSlots.indexOf(loan.slotNo);
+            const index = group.availableSlots.indexOf(slotNo);
             if (index > -1) {
-                group.availableSlots.splice(index, loan.slotNo);
+                group.availableSlots.splice(index, slotNo);
                 group.availableSlots.sort((a, b) => { return a - b; });
                 group.noOfClients = group.noOfClients + 1;
             }
