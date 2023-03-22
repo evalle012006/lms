@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import Spinner from "@/components/Spinner";
 import toast from 'react-hot-toast';
 import { useRouter } from "node_modules/next/router";
-import { formatPricePhp, getTotal } from "@/lib/utils";
+import { formatPricePhp } from "@/lib/utils";
 import moment from 'moment';
 import { setCashCollectionList, setGroupSummaryTotals, setLoSummary } from "@/redux/actions/cashCollectionActions";
 import TableComponent, { SelectColumnFilter, StatusPill } from "@/lib/table";
