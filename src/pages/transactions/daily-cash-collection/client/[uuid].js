@@ -327,8 +327,8 @@ const CashCollectionDetailsPage = () => {
                         noOfPaymentStr: (cc.status === "active" || (cc.status === "completed" && cc.fullPaymentDate === currentDate)) ? cc.noOfPayments + ' / ' + maxDays : '-',
                         mcbu: cc.mcbu,
                         mcbuStr: cc.mcbu > 0 ? formatPricePhp(cc.mcbu) : '-',
-                        mcbuCol: 0,
-                        mcbuColStr: '-',
+                        mcbuCol: cc.mcbuCol,
+                        mcbuColStr: cc.mcbuCol > 0 ? formatPricePhp(cc.mcbuCol) : '-',
                         mcbuWithdrawal: 0,
                         mcbuWithdrawalStr: '-',
                         mcbuReturnAmt: 0,
@@ -1169,7 +1169,7 @@ const CashCollectionDetailsPage = () => {
             }
         } else if (type === 'remarks') {
             const remarks = e;
-
+            // TODO: Reset temp data every change
             let list = data.map((cc, idx) => {
                 let temp = {...cc};
                 
@@ -1199,6 +1199,8 @@ const CashCollectionDetailsPage = () => {
                         }
                     }
 
+                    temp.pastDue = 0;
+                    temp.pastDueStr = '-';
                     temp.targetCollection = temp.activeLoan;
                     temp.targetCollectionStr = formatPricePhp(temp.targetCollection);
                     temp.excused = false;
@@ -1418,7 +1420,7 @@ const CashCollectionDetailsPage = () => {
             allow = temp.fullPaymentDate === currentDate;
         }
 
-        if (allow && temp.hasOwnProperty('prevData')) {
+        if (allow && temp.hasOwnProperty('prevData') && temp.prevData) {
             temp.amountRelease = temp.prevData.amountRelease;
             temp.amountReleaseStr = formatPricePhp(temp.prevData.amountRelease);
             temp.paymentCollection = parseFloat(temp.prevData.paymentCollection);
@@ -1676,13 +1678,14 @@ const CashCollectionDetailsPage = () => {
             }
         }
 
-        mounted && uuid && getCurrentGroup() && getCashCollections();
+        mounted && uuid && getCurrentGroup();
+        mounted && currentDate && getCashCollections();
         mounted && getListBranch();
 
         return () => {
             mounted = false;
         };
-    }, [uuid]);
+    }, [uuid, currentDate]);
 
     useEffect(() => {
         const getListGroup = async (selectedLO) => {
