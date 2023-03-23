@@ -129,7 +129,7 @@ async function getSummary(req, res) {
                         consolidatedCollection: { $sum: '$data.collectionActual' },
                         pastDuePerson: { $sum: '$data.pastDuePerson' },
                         pastDueAmount: { $sum: '$data.pastDueAmount' },
-                        mispaymentPerson: { $sum: '$data.mispaymentPerson' }, // need to add this from LOR
+                        mispaymentPerson: { $sum: '$data.mispaymentPerson' },
                         fullPaymentDailyPerson: { $sum: {
                             $cond: {
                                 if: { $eq: ['$occurence', 'daily'] },
