@@ -320,12 +320,8 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         totalMcbuCol += cc.cashCollections[0].mcbuCol;
                         totalMcbuWithdrawal += cc.cashCollections[0].mcbuWithdrawal;
                         totalMcbuReturnAmt += cc.cashCollections[0].mcbuReturnAmt;
-                        //totalMcbuTarget += cc.cashCollections[0].mcbuTarget ? cc.cashCollections[0].mcbuTarget : 0;
+                        totalMcbuTarget += cc.cashCollections[0].mcbuTarget ? cc.cashCollections[0].mcbuTarget : 0;
                         totalMcbuInterest += cc.cashCollections[0].mcbuInterest;
-                    }
-
-                    if (cc.mcbuTarget.length > 0) {
-                        totalMcbuTarget += cc.mcbuTarget[0].total;
                     }
                 }
 
