@@ -1,5 +1,6 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
+import { getCurrentDate } from '@/lib/utils';
 import moment from 'moment';
 
 let response = {};
@@ -13,20 +14,21 @@ export default apiHandler({
 async function processLOSummary(req, res) {
     const { db } = await connectToDatabase();
     const { mode, currentUser, branchId } = req.body;
+    const currentDate = getCurrentDate();
     
     if (branchId) {
         const groups = await db.collection('groups').find({ $expr: { $and: [{$eq: ['$branchId', branchId] }, {$gt: ['$noOfClients', 0]}] } }).toArray();
 
         if (groups.length > 0) {
             groups.map(async group => {
-                const exist = await db.collection('groupCashCollections').find({ dateAdded: moment(new Date()).format('YYYY-MM-DD'), groupId: group._id + '' }).toArray();
+                const exist = await db.collection('groupCashCollections').find({ dateAdded: moment(currentDate).format('YYYY-MM-DD'), groupId: group._id + '' }).toArray();
                 if (exist.length === 0 && (group.noOfClients && group.noOfClients > 0)) {
                     const data = {
                         branchId: group.branchId,
                         groupId: group._id + '',
                         groupName: group.name,
                         loId: group.loanOfficerId,
-                        dateAdded: moment(new Date()).format('YYYY-MM-DD'),
+                        dateAdded: moment(currentDate).format('YYYY-MM-DD'),
                         insertBy: currentUser,
                         mode: group.occurence,
                         status: 'pending'
@@ -47,14 +49,14 @@ async function processLOSummary(req, res) {
 
                 if (groups.length > 0) {
                     groups.map(async group => {
-                        const exist = await db.collection('groupCashCollections').find({ dateAdded: moment(new Date()).format('YYYY-MM-DD'), groupId: group._id + '' }).toArray();
+                        const exist = await db.collection('groupCashCollections').find({ dateAdded: moment(currentDate).format('YYYY-MM-DD'), groupId: group._id + '' }).toArray();
                         if (exist.length === 0 && (group.noOfClients && group.noOfClients > 0)) {
                             const data = {
                                 branchId: group.branchId,
                                 groupId: group._id + '',
                                 groupName: group.name,
                                 loId: group.loanOfficerId,
-                                dateAdded: moment(new Date()).format('YYYY-MM-DD'),
+                                dateAdded: moment(currentDate).format('YYYY-MM-DD'),
                                 insertBy: currentUser,
                                 mode: group.occurence,
                                 status: 'pending'
