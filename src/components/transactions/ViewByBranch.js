@@ -189,15 +189,8 @@ const ViewByBranchPage = ({dateFilter, type}) => {
     
                         fullPaymentAmount += branch.fullPayment[0].fullPaymentAmount;
                         noOfFullPayment += branch.fullPayment[0].noOfFullPayment;
-                        // noOfNewfullPayment += branch.fullPayment[0].newFullPayment;
-                        // noOfRefullPayment += branch.fullPayment[0].reFullPayment;
                     }
                 } else {
-                    // const dayNameFilter = moment(date).format('dddd').toLowerCase();
-                    // let loanTarget = 0;
-                    // if ((cc.occurence === 'weekly' && cc.day === dayNameFilter) || cc.occurence === 'daily') {
-                    //     loanTarget = branch.cashCollections[0].loanTarget && branch.cashCollections[0].loanTarget;
-                    // }
                     if (branch.cashCollections.length > 0) {
                         collection.activeClients = branch.cashCollections[0].activeClients; 
                         collection.activeBorrowers = branch.cashCollections[0].activeBorrowers;
