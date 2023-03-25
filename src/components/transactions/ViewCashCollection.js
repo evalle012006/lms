@@ -19,12 +19,12 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
     const currentDate = useSelector(state => state.systemSettings.currentDate);
     const cashCollectionList = useSelector(state => state.cashCollection.main);
     const [loading, setLoading] = useState(true);
-    const dayName = moment().format('dddd').toLowerCase();
+    const dayName = moment(dateFilter ? dateFilter : currentDate).format('dddd').toLowerCase();
 
     const getCashCollections = async (selectedLO, dateFilter) => {
         setLoading(true);
         const filter = dateFilter ? true : false;
-
+        console.log(dayName)
         let url = process.env.NEXT_PUBLIC_API_URL + 
             'transactions/cash-collections/get-all-loans-per-group?' 
             + new URLSearchParams({ 

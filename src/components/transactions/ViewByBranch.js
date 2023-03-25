@@ -12,8 +12,8 @@ const ViewByBranchPage = ({dateFilter, type}) => {
     const currentUser = useSelector(state => state.user.data);
     const [loading, setLoading] = useState(true);
     const [branchCollectionData, setBranchCollectionData] = useState([]);
-    const [currentDate, setCurrentDate] = useState(moment(new Date()).format('YYYY-MM-DD'));
-    const dayName = moment().format('dddd').toLowerCase();
+    const currentDate = useSelector(state => state.systemSettings.currentDate);
+    const dayName = moment(dateFilter ? dateFilter : currentDate).format('dddd').toLowerCase();
 
     const router = useRouter();
     // check group status if there is pending change row color to orange/yellow else white
@@ -189,15 +189,8 @@ const ViewByBranchPage = ({dateFilter, type}) => {
     
                         fullPaymentAmount += branch.fullPayment[0].fullPaymentAmount;
                         noOfFullPayment += branch.fullPayment[0].noOfFullPayment;
-                        // noOfNewfullPayment += branch.fullPayment[0].newFullPayment;
-                        // noOfRefullPayment += branch.fullPayment[0].reFullPayment;
                     }
                 } else {
-                    // const dayNameFilter = moment(date).format('dddd').toLowerCase();
-                    // let loanTarget = 0;
-                    // if ((cc.occurence === 'weekly' && cc.day === dayNameFilter) || cc.occurence === 'daily') {
-                    //     loanTarget = branch.cashCollections[0].loanTarget && branch.cashCollections[0].loanTarget;
-                    // }
                     if (branch.cashCollections.length > 0) {
                         collection.activeClients = branch.cashCollections[0].activeClients; 
                         collection.activeBorrowers = branch.cashCollections[0].activeBorrowers;

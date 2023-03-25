@@ -274,7 +274,6 @@ const LoanOfficerSummary = () => {
             if (index !== 0 && !los.weekTotal) {
                 const loanReleasePerson = los.loanReleasePerson !== '-' ? los.loanReleasePerson : 0;
                 const fullPaymentPerson = los.fullPaymentPerson !== '-' ? los.fullPaymentPerson : 0;
-                console.log(fullPaymentPerson)
                 const fullPaymentAmount = los.fullPaymentAmount !== '-' ? los.fullPaymentAmount : 0;
                 const loanReleaseAmount = los.loanReleaseAmount !== '-' ? los.loanReleaseAmount : 0;
                 const collectionActual = los.collectionActual !== '-' ? los.collectionActual : 0;
@@ -303,7 +302,6 @@ const LoanOfficerSummary = () => {
                     temp.loanBalance = prevLos.loanBalance + loanReleaseAmount - collectionActual;
                     temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
                     temp.mcbuBalance = prevLos.mcbuBalance + mcbuActual - mcbuWithdrawal + mcbuInterest - mcbuReturnAmt;
-                    console.log(prevLos.mcbuBalance)
                     temp.mcbuBalanceStr = formatPricePhp(temp.mcbuBalance);
                 }
 

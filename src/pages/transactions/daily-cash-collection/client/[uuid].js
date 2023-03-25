@@ -231,6 +231,16 @@ const CashCollectionDetailsPage = () => {
                     if (date) {
                         numMispayment = cc.noMispayment > 0 ? cc.noMispayment + ' / ' + maxDays : '-';
                     }
+                    let mcbuCol = 0;
+                    let mcbu = cc.mcbu;
+                    let mcbuWithdrawal = cc.mcbuWithdrawal;
+                    let mcbuReturnAmt = cc.mcbuReturnAmt;
+                    if (cc.hasOwnProperty('current') && cc.current.length > 0) {
+                        mcbu = cc.current[0].mcbu;
+                        mcbuCol = cc.current[0].mcbuCol;
+                        mcbuWithdrawal = cc.current[0].mcbuWithdrawal;
+                        mcbuReturnAmt = cc.current[0].mcbuReturnAmt;
+                    }
                     collection = {
                         ...cc,
                         group: cc.group,
@@ -257,14 +267,14 @@ const CashCollectionDetailsPage = () => {
                         activeLoan: cc.history.activeLoan,
                         targetCollection: cc.history.activeLoan,
                         targetCollectionStr: cc.history.activeLoan > 0 ? formatPricePhp(cc.history.activeLoan) : '-',
-                        mcbu: cc.mcbu,
-                        mcbuStr: cc.mcbu > 0 ? formatPricePhp(cc.mcbu) : '-',
-                        mcbuCol: cc.mcbuCol,
-                        mcbuColStr: cc.mcbuCol > 0 ? formatPricePhp(cc.mcbuCol) : '-',
-                        mcbuWithdrawal: cc.mcbuWithdrawal,
-                        mcbuWithdrawalStr: cc.mcbuWithdrawal > 0 ? formatPricePhp(cc.mcbuWithdrawal) : '-',
-                        mcbuReturnAmt: cc.mcbuReturnAmt > 0,
-                        mcbuReturnAmtStr: cc.mcbuReturnAmt > 0 ? formatPricePhp(cc.mcbuReturnAmt) : '-',
+                        mcbu: mcbu,
+                        mcbuStr: mcbu > 0 ? formatPricePhp(mcbu) : '-',
+                        mcbuCol: mcbuCol ,
+                        mcbuColStr: mcbuCol > 0 ? formatPricePhp(mcbuCol) : '-',
+                        mcbuWithdrawal: mcbuWithdrawal,
+                        mcbuWithdrawalStr: mcbuWithdrawal > 0 ? formatPricePhp(mcbuWithdrawal) : '-',
+                        mcbuReturnAmt: mcbuReturnAmt > 0,
+                        mcbuReturnAmtStr: mcbuReturnAmt > 0 ? formatPricePhp(mcbuReturnAmt) : '-',
                         mcbuInterest: cc.mcbuInterest ? cc.mcbuInterest : 0,
                         mcbuInterestStr: cc.mcbuInterest > 0 ? formatPricePhp(cc.mcbuInterest) : '-',
                         amountRelease: '-',

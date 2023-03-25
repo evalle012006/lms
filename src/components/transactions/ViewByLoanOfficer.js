@@ -17,8 +17,8 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
     const branchList = useSelector(state => state.branch.list);
     const [userLOList, setUserLOList] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [currentDate, setCurrentDate] = useState(moment(new Date()).format('YYYY-MM-DD'));
-    const dayName = moment().format('dddd').toLowerCase();
+    const currentDate = useSelector(state => state.systemSettings.currentDate);
+    const dayName = moment(dateFilter ? dateFilter : currentDate).format('dddd').toLowerCase();
    
     const router = useRouter();
 
