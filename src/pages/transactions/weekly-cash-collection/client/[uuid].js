@@ -209,6 +209,16 @@ const CashCollectionDetailsPage = () => {
                     if (date) {
                         numMispayment = cc.noMispayment > 0 ? cc.noMispayment + ' / ' + maxDays : '-';
                     }
+                    let mcbuCol = 0;
+                    let mcbu = cc.mcbu;
+                    let mcbuWithdrawal = cc.mcbuWithdrawal;
+                    let mcbuReturnAmt = cc.mcbuReturnAmt;
+                    if (cc.hasOwnProperty('current') && cc.current.length > 0) {
+                        mcbu = cc.current[0].mcbu;
+                        mcbuCol = cc.current[0].mcbuCol;
+                        mcbuWithdrawal = cc.current[0].mcbuWithdrawal;
+                        mcbuReturnAmt = cc.current[0].mcbuReturnAmt;
+                    }
                     collection = {
                         ...cc,
                         group: cc.group,
@@ -232,14 +242,14 @@ const CashCollectionDetailsPage = () => {
                         totalStr: '-',
                         noOfPayments: cc.noOfPayments,
                         noOfPaymentStr: cc.noOfPayments + ' / ' + maxDays,
-                        mcbu: (cc.current.length > 0 && cc.current[0].mcbu > 0) ? cc.current[0].mcbu : 0,
-                        mcbuStr: (cc.current.length > 0 && cc.current[0].mcbu > 0) ? formatPricePhp(cc.current[0].mcbu) : '-',
-                        mcbuCol: (cc.current.length > 0 && cc.current[0].mcbuCol > 0) ? cc.current[0].mcbuCol : 0,
-                        mcbuColStr: (cc.current.length > 0 && cc.current[0].mcbuCol > 0) ? formatPricePhp(cc.current[0].mcbuCol) : '-',
-                        mcbuWithdrawal: (cc.current.length > 0 && cc.current[0].mcbuWithdrawal > 0) ? cc.current[0].mcbuWithdrawal : 0,
-                        mcbuWithdrawalStr: (cc.current.length > 0 && cc.current[0].mcbuWithdrawal > 0) ? formatPricePhp(cc.current[0].mcbuWithdrawal) : '-',
-                        mcbuReturnAmt: (cc.current.length > 0 && cc.current[0].mcbuReturnAmt > 0) ? cc.current[0].mcbuReturnAmt : 0,
-                        mcbuReturnAmtStr: (cc.current.length > 0 && cc.current[0].mcbuReturnAmt > 0) ? formatPricePhp(cc.current[0].mcbuReturnAmt) : '-',
+                        mcbu: mcbu,
+                        mcbuStr: mcbu > 0 ? formatPricePhp(mcbu) : '-',
+                        mcbuCol: mcbuCol ,
+                        mcbuColStr: mcbuCol > 0 ? formatPricePhp(mcbuCol) : '-',
+                        mcbuWithdrawal: mcbuWithdrawal,
+                        mcbuWithdrawalStr: mcbuWithdrawal > 0 ? formatPricePhp(mcbuWithdrawal) : '-',
+                        mcbuReturnAmt: mcbuReturnAmt > 0,
+                        mcbuReturnAmtStr: mcbuReturnAmt > 0 ? formatPricePhp(mcbuReturnAmt) : '-',
                         mcbuInterest: cc.mcbuInterest ? cc.mcbuInterest : 0,
                         mcbuInterestStr: cc.mcbuInterest > 0 ? formatPricePhp(cc.mcbuInterest) : '-',
                         activeLoan: cc.history.activeLoan,
