@@ -78,7 +78,7 @@ const CashCollectionDetailsPage = () => {
     // const [weekend, setWeekend] = useState(false);
     const [showClientInfoModal, setShowClientInfoModal] = useState(false);
     const [allowMcbuWithdrawal, setAllowMcbuWithdrawal] = useState(false);
-    const dayName = moment().format('dddd').toLowerCase();
+    const dayName = moment(dateFilter ? dateFilter : currentDate).format('dddd').toLowerCase();
     const [mcbuRate, setMcbuRate] = useState(transactionSettings.mcbu || 8);
     // const [holiday, setHoliday] = useState(false);
 

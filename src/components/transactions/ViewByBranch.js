@@ -12,8 +12,8 @@ const ViewByBranchPage = ({dateFilter, type}) => {
     const currentUser = useSelector(state => state.user.data);
     const [loading, setLoading] = useState(true);
     const [branchCollectionData, setBranchCollectionData] = useState([]);
-    const [currentDate, setCurrentDate] = useState(moment(new Date()).format('YYYY-MM-DD'));
-    const dayName = moment().format('dddd').toLowerCase();
+    const currentDate = useSelector(state => state.systemSettings.currentDate);
+    const dayName = moment(dateFilter ? dateFilter : currentDate).format('dddd').toLowerCase();
 
     const router = useRouter();
     // check group status if there is pending change row color to orange/yellow else white
