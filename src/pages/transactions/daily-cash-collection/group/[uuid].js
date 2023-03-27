@@ -143,6 +143,7 @@ const CashCollectionDetailsPage = () => {
                             }
                         );
                     });
+                    userList.sort((a, b) => { return a.loNo - b.loNo; });
                     dispatch(setUserList(userList));
                 } else {
                     toast.error('Error retrieving user list.');
