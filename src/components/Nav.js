@@ -17,7 +17,8 @@ import {
     BuildingLibraryIcon,
     ChevronDownIcon,
     UserCircleIcon,
-    ArrowRightOnRectangleIcon
+    ArrowRightOnRectangleIcon,
+    ArrowsRightLeftIcon
 } from '@heroicons/react/24/solid';
 import { ExclamationTriangleIcon, AdjustmentsHorizontalIcon } from '@heroicons/react/24/outline';
 import Link from "next/link";
@@ -380,6 +381,21 @@ const MenuItems = [
                 hasSub: false,
                 hidden: false
             },
+            {
+                label: "Transfer Client",
+                url: "/transactions/area-manager/transfer-client", 
+                icon: {
+                    active: (
+                        <ArrowsRightLeftIcon className="text-gray-800 w-5 h-5" />
+                    ),
+                    notActive: (
+                        <ArrowsRightLeftIcon className="text-white w-5 h-5" />
+                    ),
+                },
+                active: false,
+                hasSub: false,
+                hidden: false
+            },
         ]
     },
 // -Consolidated BMS
@@ -547,6 +563,12 @@ const NavComponent = () => {
     useEffect(() => {
         let updatedMenu = menuItems.map((menu) => {
             let temp = {...menu};
+            if (userState.role.rep < 3) {
+                if (menu.label === 'BM Transactions') {
+                    temp.label = "Transactions";
+                }
+            }
+
             if (rootUser || userState.role.rep === 1) {
                 if (menu.label === 'Daily Transactions') {
                     temp.hidden = true;
@@ -573,6 +595,10 @@ const NavComponent = () => {
                     temp.hidden = true;
                 }
 
+                if (menu.label === 'Transfer') {
+                    temp.hidden = true;
+                }
+
                 if (menu.label === 'Daily Transactions') {
                     temp.hidden = true;
                 }
@@ -582,6 +608,10 @@ const NavComponent = () => {
                 }
             }  else if (userState.role.rep === 4) {
                 if (menu.label === 'Branches') {
+                    temp.hidden = true;
+                }
+
+                if (menu.label === 'Transfer') {
                     temp.hidden = true;
                 }
 

@@ -695,7 +695,8 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
     }, []);
 
     useEffect(() => {
-        if (type === 'weekly') {
+        const filter = dateFilter ? true : false;
+        if (type === 'weekly' && !filter) {
             const preSaveCollections = async () => {
                 const data = {
                     loId: currentUser.role.rep === 4 ? currentUser._id : selectedLOSubject.value.length > 0 && selectedLOSubject.value,
@@ -710,7 +711,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 preSaveCollections();
             }, 3000);
         }
-    }, [type]);
+    }, [type, dateFilter]);
 
     return (
         <React.Fragment>

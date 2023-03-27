@@ -306,7 +306,7 @@ const ViewByGroupsPage = () => {
                             <div className="absolute top-1/2 left-1/2">
                                 <Spinner />
                             </div>
-                        ) : <TableComponent columns={columns} data={list} hasActionButtons={false} showFilters={false} rowClick={handleRowClick} />}
+                        ) : <TableComponent columns={columns} data={list} pageSize={50} hasActionButtons={false} showFilters={false} rowClick={handleRowClick} />}
                 </div>
             ) : (
                 <Layout actionButtons={currentUser.role.rep > 2 && actionButtons}>
@@ -318,7 +318,7 @@ const ViewByGroupsPage = () => {
                                 </div>
                             ) : (
                                 <div>
-                                    <TableComponent columns={columns} data={list} hasActionButtons={currentUser.role.rep > 2 ? true : false} rowActionButtons={currentUser.role.rep > 2 && rowActionButtons} showFilters={false} rowClick={handleRowClick} />
+                                    <TableComponent columns={columns} data={list} pageSize={50} hasActionButtons={currentUser.role.rep > 2 ? true : false} rowActionButtons={currentUser.role.rep > 2 && rowActionButtons} showFilters={false} rowClick={handleRowClick} />
                                 </div>
                             )}
                     </div>
