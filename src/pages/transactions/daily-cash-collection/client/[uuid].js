@@ -1941,7 +1941,7 @@ const CashCollectionDetailsPage = () => {
                                                         {(!isWeekend && !isHoliday && currentUser.role.rep > 2 &&  (cc.status === 'active' || cc.status === 'completed') && !groupSummaryIsClose) && (
                                                             <div className='flex flex-row p-4'>
                                                                 {(cc.hasOwnProperty('_id') && !filter) && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleRevert(e, cc, index)} />}
-                                                                {(!editMode && (cc.status === 'completed' && cc.remarks.value === 'reloaner')) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
+                                                                {(cc.status === 'completed' && cc.remarks.value === 'reloaner') && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
                                                                 {/* {(!filter && cc.status === 'active') && <CurrencyDollarIcon className="w-5 h-5 mr-6" title="MCBU Withdrawal" onClick={(e) => handleMcbuWithdrawal(e, cc, index)} />} */}
                                                                 {(!filter && !editMode && cc.status !== 'closed' && currentMonth === 11) && <CalculatorIcon className="w-5 h-5 mr-6" title="Calculate MCBU Interest" onClick={(e) => calculateInterest(e, cc, index)} />}
                                                             </div>

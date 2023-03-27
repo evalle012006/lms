@@ -357,6 +357,11 @@ async function list(req, res) {
                     .toArray();
             }
         }
+    } else if (mode === 'view_all_by_group' && groupId) {
+        clients = await db
+            .collection('client')
+            .find( { groupId: groupId } )
+            .toArray();
     } else {
         clients = await db
             .collection('client')
