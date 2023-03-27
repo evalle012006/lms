@@ -20,11 +20,12 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
     const cashCollectionList = useSelector(state => state.cashCollection.main);
     const [loading, setLoading] = useState(true);
     const dayName = moment(dateFilter ? dateFilter : currentDate).format('dddd').toLowerCase();
+    const isHoliday = useSelector(state => state.systemSettings.holiday);
+    const isWeekend = useSelector(state => state.systemSettings.weekend);
 
     const getCashCollections = async (selectedLO, dateFilter) => {
         setLoading(true);
         const filter = dateFilter ? true : false;
-        console.log(dayName)
         let url = process.env.NEXT_PUBLIC_API_URL + 
             'transactions/cash-collections/get-all-loans-per-group?' 
             + new URLSearchParams({ 
@@ -695,8 +696,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
     }, []);
 
     useEffect(() => {
-        const filter = dateFilter ? true : false;
-        if (type === 'weekly' && !filter) {
+        if (type === 'weekly' && !isWeekend && !isHoliday) {
             const preSaveCollections = async () => {
                 const data = {
                     loId: currentUser.role.rep === 4 ? currentUser._id : selectedLOSubject.value.length > 0 && selectedLOSubject.value,
@@ -711,7 +711,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 preSaveCollections();
             }, 3000);
         }
-    }, [type, dateFilter]);
+    }, [type, isWeekend, isHoliday]);
 
     return (
         <React.Fragment>
