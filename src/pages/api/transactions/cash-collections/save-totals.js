@@ -14,6 +14,7 @@ export default apiHandler({
 async function processLOSummary(req, res) {
     const { db } = await connectToDatabase();
     const { _id, groupSummaryIds, status, mode, currentUser, branchId } = req.body;
+    const currentDate = getCurrentDate();
 
     let groups;
     if (branchId) {
@@ -34,14 +35,14 @@ async function processLOSummary(req, res) {
 
     if (groups.length > 0) {
         groups.map(async group => {
-            const exist = await db.collection('groupCashCollections').find({ dateAdded: moment(new Date()).format('YYYY-MM-DD'), groupId: group._id + '' }).toArray();
+            const exist = await db.collection('groupCashCollections').find({ dateAdded: moment(currentDate).format('YYYY-MM-DD'), groupId: group._id + '' }).toArray();
             if (exist.length === 0 && (group.noOfClients && group.noOfClients > 0)) {
                 const data = {
                     branchId: group.branchId,
                     groupId: group._id + '',
                     groupName: group.name,
                     loId: _id,
-                    dateAdded: moment(new Date()).format('YYYY-MM-DD'),
+                    dateAdded: moment(currentDate).format('YYYY-MM-DD'),
                     insertBy: currentUser,
                     mode: mode,
                     status: status
@@ -82,7 +83,7 @@ async function update(data) {
             ...groupCC[0], 
             status: data.status, 
             modifiedBy: data.modifiedBy, 
-            dateModified: moment(new Date()).format('YYYY-MM-DD')};
+            dateModified: moment(getCurrentDate()).format('YYYY-MM-DD')};
         
         delete groupCC._id;
 
@@ -103,13 +104,14 @@ async function saveCashCollections(group) {
     const { db } = await connectToDatabase();
     const groupId = group._id + '';
     const cashCollections = await db.collection('cashCollections').find({ groupId: groupId }).toArray();
+    const currentDate = getCurrentDate();
 
     if (cashCollections.length === 0) {
-        let groupHeader = await db.collection('groupCashCollections').find({ groupId: groupId, dateAdded: moment(new Date()).format('YYYY-MM-DD') }).toArray();
+        let groupHeader = await db.collection('groupCashCollections').find({ groupId: groupId, dateAdded: moment(currentDate).format('YYYY-MM-DD') }).toArray();
 
         if (groupHeader.length > 0) {
             groupHeader = groupHeader[0];
-            const tomorrowDate = moment(new Date()).add(1, 'days').format('YYYY-MM-DD');
+            const tomorrowDate = moment(currentDate).add(1, 'days').format('YYYY-MM-DD');
             const loans = await db.collection('loans')
                 .find({ 
                         $expr: {
@@ -125,7 +127,6 @@ async function saveCashCollections(group) {
                 }).toArray();
 
             if (loans.length > 0) {
-                const currentDate = getCurrentDate();
                 loans.map(async loan => {
                     let status;
                     if (loan.status === 'active') {
@@ -161,7 +162,7 @@ async function saveCashCollections(group) {
                         fullPayment: 0,
                         remarks: '',
                         status: status,
-                        dateAdded: moment(new Date()).format('YYYY-MM-DD'),
+                        dateAdded: moment(currentDate).format('YYYY-MM-DD'),
                         groupCollectionId: groupHeader && groupHeader._id + '',
                         origin: 'automation'
                     };

@@ -1,5 +1,7 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
+import { getCurrentDate } from '@/lib/utils';
+
 import moment from 'moment';
 
 export default apiHandler({
@@ -54,7 +56,7 @@ async function updateLoan(loanData) {
         loan.loanCycle = 0;
         loan.remarks = loanData.remarks;
         loan.status = 'closed';
-        loan.dateModified = moment(new Date()).format('YYYY-MM-DD');
+        loan.dateModified = moment(getCurrentDate()).format('YYYY-MM-DD');
         delete loan._id;
         await db
             .collection('loans')

@@ -1,5 +1,6 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
+import { getCurrentDate } from '@/lib/utils';
 import moment from 'moment';
 
 export default apiHandler({
@@ -12,7 +13,7 @@ async function list(req, res) {
     let response = {};
 
     const { branchId, groupId, loId } = req.query;
-    const date = moment(new Date()).format('YYYY-MM-DD');
+    const date = moment(getCurrentDate()).format('YYYY-MM-DD');
 
     const loans = await db
         .collection('loans')

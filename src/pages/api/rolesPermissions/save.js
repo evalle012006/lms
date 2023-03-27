@@ -1,5 +1,6 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
+import { getCurrentDate } from '@/lib/utils';
 import moment from 'moment'
 
 export default apiHandler({
@@ -29,7 +30,7 @@ async function save(req, res) {
         const rolePermission = await db.collection('rolesPermissions').insertOne({
             role: role,
             permissions: permissions,
-            dateAdded: moment(new Date()).format('YYYY-MM-DD')
+            dateAdded: moment(getCurrentDate()).format('YYYY-MM-DD')
         });
 
         response = {

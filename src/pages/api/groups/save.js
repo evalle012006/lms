@@ -1,5 +1,6 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
+import { getCurrentDate } from '@/lib/utils';
 import moment from 'moment'
 
 export default apiHandler({
@@ -35,7 +36,7 @@ async function save(req, res) {
     } else {
         const group = await db.collection('groups').insertOne({
             ...groupData,
-            dateAdded: moment(new Date()).format('YYYY-MM-DD')
+            dateAdded: moment(getCurrentDate()).format('YYYY-MM-DD')
         });
 
         response = {

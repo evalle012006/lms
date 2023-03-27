@@ -39,7 +39,7 @@ const Index = () => {
                 const holidays = response.holidays.map(h => {
                     let temp = {...h};
                     
-                    const tempDate = moment().year() + '-' + temp.date;
+                    const tempDate = moment(currentDate).year() + '-' + temp.date;
                     temp.dateStr = moment(tempDate).format('MMMM DD');
     
                     return temp;
@@ -47,7 +47,7 @@ const Index = () => {
                 dispatch(setHolidayList(holidays));
 
                 let holidayToday = false;
-                const currentYear = moment().year();
+                const currentYear = moment(currentDate).year();
                 holidays.map(item => {
                     const holidayDate = currentYear + '-' + item.date;
 
@@ -65,7 +65,7 @@ const Index = () => {
             }
         }
 
-        const dayName = moment().format('dddd');
+        const dayName = moment(currentDate).format('dddd');
 
         if (dayName === 'Saturday' || dayName === 'Sunday') {
             dispatch(setWeekend(true));

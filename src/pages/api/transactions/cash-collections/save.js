@@ -3,14 +3,13 @@ import { connectToDatabase } from '@/lib/mongodb';
 import { getCurrentDate } from '@/lib/utils';
 import moment from 'moment';
 
-const currentDate = moment(getCurrentDate()).format('YYYY-MM-DD');
-
 export default apiHandler({
     post: save
 });
 
 async function save(req, res) {
     const { db } = await connectToDatabase();
+    const currentDateStr = moment(getCurrentDate()).format('YYYY-MM-DD');
     let response = {};
     let statusCode = 200;
     let data = req.body;
@@ -23,7 +22,7 @@ async function save(req, res) {
             if (cc.status !== "totals") {
                 let collection = {...cc, groupCollectionId: groupHeaderId};
 
-                if (cc.status !== 'offset' || ((cc.remarks && (cc.remarks.value === 'reloaner' || cc.remarks.value === 'pending')) && cc.fullPaymentDate === currentDate)) {
+                if (cc.status !== 'offset' || ((cc.remarks && (cc.remarks.value === 'reloaner' || cc.remarks.value === 'pending')) && cc.fullPaymentDate === currentDateStr)) {
                     if (cc.occurence === 'weekly') {
                         collection.mcbuTarget = collection.mcbuTarget ? collection.mcbuTarget + 50 : 50;
                     } else {
@@ -106,6 +105,7 @@ async function updateCollection(collections) {
 async function updateLoan(collection) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
+    const currentDateStr = moment(getCurrentDate()).format('YYYY-MM-DD');
 
     let loan = await db.collection('loans').find({ _id: ObjectId(collection.loanId) }).toArray();
     if (loan.length > 0) {
@@ -152,7 +152,7 @@ async function updateLoan(collection) {
             loan.amountRelease = 0;
         }
 
-        loan.lastUpdated = currentDate;
+        loan.lastUpdated = currentDateStr;
 
         delete loan._id;
         await db.collection('loans').updateOne(
@@ -169,6 +169,7 @@ async function updateLoan(collection) {
 async function updateClient(loan) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
+    const currentDate = getCurrentDate();
 
     let client = await db.collection('client').find({ _id: ObjectId(loan.clientId) }).toArray();
 
@@ -178,8 +179,8 @@ async function updateClient(loan) {
         client.status = loan.clientStatus;
 
         let mcbuHistory = [];
-        const currentMonth = moment().month() + 1;
-        const currentYear = moment().year();
+        const currentMonth = moment(currentDate).month() + 1;
+        const currentYear = moment(currentDate).year();
         if (client.hasOwnProperty('mcbuHistory')) {
             mcbuHistory = [...client.mcbuHistory];
             const yearIndex = mcbuHistory.findIndex(h => h.year === currentYear);
@@ -227,6 +228,7 @@ async function updateClient(loan) {
 async function updateLoanClose(loanData) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
+    const currentDateStr = moment(getCurrentDate()).format('YYYY-MM-DD');
     
     let loan = await db.collection('loans').find({ _id: ObjectId(loanData.loanId) }).toArray();
 
@@ -236,7 +238,7 @@ async function updateLoanClose(loanData) {
         loan.loanCycle = 0;
         loan.remarks = loanData.closeRemarks;
         loan.status = 'closed';
-        loan.dateModified = currentDate;
+        loan.dateModified = currentDateStr;
         delete loan._id;
         await db
             .collection('loans')
