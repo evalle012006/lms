@@ -3,7 +3,6 @@ import { connectToDatabase } from '@/lib/mongodb';
 import { getCurrentDate } from '@/lib/utils';
 import moment from 'moment';
 
-
 export default apiHandler({
     get: getAllLoansPerGroup
 });
