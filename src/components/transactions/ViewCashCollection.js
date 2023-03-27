@@ -24,7 +24,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
     const getCashCollections = async (selectedLO, dateFilter) => {
         setLoading(true);
         const filter = dateFilter ? true : false;
-
+        console.log(dayName)
         let url = process.env.NEXT_PUBLIC_API_URL + 
             'transactions/cash-collections/get-all-loans-per-group?' 
             + new URLSearchParams({ 
