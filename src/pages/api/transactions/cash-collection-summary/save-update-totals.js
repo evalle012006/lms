@@ -6,14 +6,13 @@ import moment from 'moment';
 let response = {};
 let statusCode = 200;
 
-const currentDate = moment(getCurrentDate()).format('YYYY-MM-DD');
-
 export default apiHandler({
     post: processLOSTotals
 });
 
 async function processLOSTotals(req, res) {
     const { db } = await connectToDatabase();
+    const currentDateStr = moment(getCurrentDate()).format('YYYY-MM-DD');
 
     const data = req.body;
 
@@ -22,7 +21,7 @@ async function processLOSTotals(req, res) {
             await saveUpdateYearEnd(data);
             break;
         case 'daily':
-            const filter = data.data.day === currentDate ? false : true;
+            const filter = data.data.day === currentDateStr ? false : true;
             const cashCollections = await db.collection('cashCollections').find({ loId: data.userId, dateAdded: data.data.day, occurence: data.occurence }).toArray();
 
             if (cashCollections.length === 0) {
@@ -46,6 +45,7 @@ async function processLOSTotals(req, res) {
 
 async function saveUpdateYearEnd(total) {
     const { db } = await connectToDatabase();
+    const currentDateStr = moment(getCurrentDate()).format('YYYY-MM-DD');
     let resp;
 
     let losTotal = await db.collection('losTotals').find({ userId: total.userId, month: 12, year: total.year, losType: 'year-end', occurence: total.occurence }).toArray();
@@ -57,12 +57,12 @@ async function saveUpdateYearEnd(total) {
             { $set: {
                 ...losTotal,
                 data: total.data,
-                dateModified: currentDate
+                dateModified: currentDateStr
             } }
         );
     } else {
         resp = await db.collection('losTotals').insertOne(
-            { ...total, dateAdded: moment().format('YYYY-MM-DD') }
+            { ...total, dateAdded: currentDateStr }
         );
     }
 
@@ -72,6 +72,7 @@ async function saveUpdateYearEnd(total) {
 
 async function saveUpdateDaily(total, filter) {
     const { db } = await connectToDatabase();
+    const currentDateStr = moment(getCurrentDate()).format('YYYY-MM-DD');
     let resp;
 
     let losTotal = await db.collection('losTotals').find({ userId: total.userId, dateAdded: total.data.day, losType: 'daily', occurence: total.occurence }).toArray();
@@ -86,7 +87,7 @@ async function saveUpdateDaily(total, filter) {
                     data: total.data,
                     dateModified: total.data.day,
                     modifiedBy: 'admin',
-                    modifiedDate: currentDate
+                    modifiedDate: currentDateStr
                 } }
             );
         } else {
@@ -95,7 +96,7 @@ async function saveUpdateDaily(total, filter) {
                     ...total, 
                     dateAdded: total.data.day, 
                     insertedBy: 'admin',
-                    insertedDate: currentDate
+                    insertedDate: currentDateStr
                 }
             );
         }
@@ -107,12 +108,12 @@ async function saveUpdateDaily(total, filter) {
                 { $set: {
                     ...losTotal,
                     data: total.data,
-                    dateModified: currentDate
+                    dateModified: currentDateStr
                 } }
             );
         } else {
             await db.collection('losTotals').insertOne(
-                { ...total, dateAdded: currentDate }
+                { ...total, dateAdded: currentDateStr }
             );
         }
     }
@@ -122,6 +123,7 @@ async function saveUpdateDaily(total, filter) {
 
 async function saveUpdateCommulative(total) {
     const { db } = await connectToDatabase();
+    const currentDateStr = moment(getCurrentDate()).format('YYYY-MM-DD');
     let resp;
 
     let losTotal = await db.collection('losTotals').find({ userId: total.userId, month: total.month, year: total.year, losType: 'commulative', occurence: total.occurence }).toArray();
@@ -133,12 +135,12 @@ async function saveUpdateCommulative(total) {
             { $set: {
                 ...losTotal,
                 data: total.data,
-                dateModified: currentDate
+                dateModified: currentDateStr
             } }
         );
     } else {
         await db.collection('losTotals').insertOne(
-            { ...total, dateAdded: moment().format('YYYY-MM-DD') }
+            { ...total, dateAdded: currentDateStr }
         );
     }
 

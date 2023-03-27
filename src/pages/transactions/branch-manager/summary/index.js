@@ -20,8 +20,8 @@ const BranchManagerSummary = () => {
     const currentDate = useSelector(state => state.systemSettings.currentDate);
     const [selectedBranch, setSelectedBranch] = useState();
     const [days, setDays] = useState([]);
-    const [selectedMonth, setSelectedMonth] = useState(moment().month() + 1);
-    const [selectedYear, setSelectedYear] = useState(moment().year());
+    const [selectedMonth, setSelectedMonth] = useState(moment(currentDate).month() + 1);
+    const [selectedYear, setSelectedYear] = useState(moment(currentDate).year());
 
     const handleMonthFilter = (selected) => {
         setSelectedMonth(selected.value);
@@ -36,7 +36,7 @@ const BranchManagerSummary = () => {
 
         let filter = false;
 
-        if (moment().format('YYYY-MM') !== moment(date).format('YYYY-MM')) {
+        if (moment(currentDate).format('YYYY-MM') !== moment(date).format('YYYY-MM')) {
             filter = true;
         }
 
@@ -1002,8 +1002,8 @@ const BranchManagerSummary = () => {
         let losTotals = {
             userId: currentUser._id,
             branchId: selectedBranch && selectedBranch._id,
-            month: filter ? moment(date).month() + 1 : moment().month() + 1,
-            year: filter ? moment(date).year() : moment().year(),
+            month: filter ? moment(date).month() + 1 : moment(currentDate).month() + 1,
+            year: filter ? moment(date).year() : moment(currentDate).year(),
             data: total,
             losType: 'commulative'
         }

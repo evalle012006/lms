@@ -364,9 +364,9 @@ const LoanApplicationPage = () => {
 
         loanData.insertedBy = currentUser._id;
         if (loanData.status === 'pending' && updatedValue === 'active') {
-            loanData.dateGranted = moment(new Date()).format('YYYY-MM-DD');
+            loanData.dateGranted = moment(currentDate).format('YYYY-MM-DD');
             loanData.status = updatedValue;
-            loanData.startDate = moment(new Date()).add(1, 'days').format('YYYY-MM-DD');
+            loanData.startDate = moment(currentDate).add(1, 'days').format('YYYY-MM-DD');
             loanData.endDate = getEndDate(loanData.dateGranted, group.occurence === type ? 60 : 24 );
             loanData.mispayment = 0;
 
@@ -457,9 +457,9 @@ const LoanApplicationPage = () => {
                 delete temp.mcbuStr;
                 delete temp.selected;
 
-                temp.dateGranted = moment(new Date()).format('YYYY-MM-DD');
+                temp.dateGranted = moment(currentDate).format('YYYY-MM-DD');
                 temp.status = 'active';
-                temp.startDate = moment(new Date()).add(1, 'days').format('YYYY-MM-DD');
+                temp.startDate = moment(currentDate).add(1, 'days').format('YYYY-MM-DD');
                 temp.endDate = getEndDate(temp.dateGranted, group.occurence === type ? 60 : 24 );
                 temp.mispayment = 0;
                 temp.insertedBy = currentUser._id;
@@ -518,7 +518,7 @@ const LoanApplicationPage = () => {
     const handleDelete = () => {
         if (loan) {
             setLoading(true);
-            const loanData = {...loan, deleted: true, deletedBy: currentUser._id, dateDeleted: moment(new Date()).format('YYYY-MM-DD')};
+            const loanData = {...loan, deleted: true, deletedBy: currentUser._id, dateDeleted: moment(currentDate).format('YYYY-MM-DD')};
             fetchWrapper.postCors(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/delete', loanData)
                 .then(response => {
                     if (response.success) {

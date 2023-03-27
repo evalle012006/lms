@@ -17,6 +17,7 @@ const HolidaysSettingsPage = (props) => {
     const list = useSelector(state => state.holidays.list);
     const dispatch = useDispatch();
     const [loading, setLoading] = useState(false);
+    const currentDate = useSelector(state => state.systemSettings.currentDate);
 
     const [showAddDrawer, setShowAddDrawer] = useState(false);
     const [mode, setMode] = useState('add');
@@ -105,7 +106,7 @@ const HolidaysSettingsPage = (props) => {
             const holidays = response.holidays.map(h => {
                 let temp = {...h};
                 
-                const tempDate = moment().year() + '-' + temp.date;
+                const tempDate = moment(currentDate).year() + '-' + temp.date;
                 temp.dateStr = moment(tempDate).format('MMMM DD');
 
                 return temp;

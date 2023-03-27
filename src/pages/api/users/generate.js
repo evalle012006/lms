@@ -1,5 +1,6 @@
 import { connectToDatabase } from "@/lib/mongodb";
 import { faker } from '@faker-js/faker';
+import { getCurrentDate } from '@/lib/utils';
 
 export default async function handler(req, res) {
     const { db } = await connectToDatabase();
@@ -23,7 +24,7 @@ export default async function handler(req, res) {
             position: faker.name.jobType(),
             logged: false,
             lastLogin: null, 
-            dateAdded: new Date(),
+            dateAdded: getCurrentDate(),
             role: role
         };
     });

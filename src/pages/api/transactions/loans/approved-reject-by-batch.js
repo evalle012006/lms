@@ -256,7 +256,7 @@ async function saveCashCollection(loan) {
                     mcbuWithdrawal: 0,
                     mcbuReturnAmt: 0,
                     status: status,
-                    dateAdded: moment(new Date()).format('YYYY-MM-DD'),
+                    dateAdded: moment(getCurrentDate()).format('YYYY-MM-DD'),
                     groupCollectionId: groupSummary._id + '',
                     origin: 'automation'
                 };

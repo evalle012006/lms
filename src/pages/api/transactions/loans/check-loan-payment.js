@@ -14,7 +14,7 @@ async function processActiveLoan(req, res) {
     let response = {};
 
     const loans = await db.collection('loans').find( {$expr: {$or: [{$eq: ['$status', 'active']}, {$eq: ['$status', 'completed']}]}} ).toArray();
-    const currentDate = moment(getCurrentDate()).format('YYYY-MM-DD');
+    const currentDate = getCurrentDate();
 
     if (loans.length > 0) {
         loans.map(loan => {
@@ -23,25 +23,25 @@ async function processActiveLoan(req, res) {
             const temp = {...loan};
             if (loan.status === 'active') {
                 if (lastUpdated) {
-                    if (lastUpdated !== currentDate) {
+                    if (lastUpdated !== moment(currentDate).format('YYYY-MM-DD')) {
                         getCashCollections(loanId).then(collection => {
                             if (collection.length > 0) {
                                 // automate mispayments
                                 const lastPayment = collection[collection.length - 1];
                                 const lastDatePayment = moment(lastPayment.dateAdded).add(1, 'days').format('YYYY-MM-DD');
-                                const diff = getWeekDaysCount(new Date(lastDatePayment), new Date());
+                                const diff = getWeekDaysCount(new Date(lastDatePayment), currentDate);
                                 if (diff > 1) {
                                     temp.mispayment = temp.mispayment + diff;
-                                    temp.lastUpdated = moment().format('YYYY-MM-DD');
+                                    temp.lastUpdated = moment(currentDate).format('YYYY-MM-DD');
                                 }
                 
                                 updateLoan(temp);
                                 // automate dilenquent clients if loan is not paid for how many days?
                             } else {
-                                const diff = getWeekDaysCount(new Date(loan.startDate), new Date());
+                                const diff = getWeekDaysCount(new Date(loan.startDate), currentDate);
                                 if (diff > 0) {
                                     temp.mispayment = diff;
-                                    temp.lastUpdated = moment().format('YYYY-MM-DD');
+                                    temp.lastUpdated = moment(currentDate).format('YYYY-MM-DD');
                                 }
     
                                 updateLoan(temp);
@@ -50,10 +50,10 @@ async function processActiveLoan(req, res) {
                     }
                 } else {
                     // automate mispayments
-                    const diff = getWeekDaysCount(new Date(loan.startDate), new Date());
+                    const diff = getWeekDaysCount(new Date(loan.startDate), currentDate);
                     if (diff > 0) {
                         temp.mispayment = diff;
-                        temp.lastUpdated = moment().format('YYYY-MM-DD');
+                        temp.lastUpdated = moment(currentDate).format('YYYY-MM-DD');
                     }
     
                     updateLoan(temp);

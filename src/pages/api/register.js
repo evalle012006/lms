@@ -2,6 +2,7 @@ import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
 import { sendMail } from '@/lib/send-mail';
 import { sendVerificationEmail } from '@/lib/email-templates';
+import { getCurrentDate } from '@/lib/utils';
 import logger from '@/logger';
 
 export default apiHandler({
@@ -44,7 +45,7 @@ async function register(req, res) {
             logged: false,
             status: 'verification',
             lastLogin: null,
-            dateAdded: new Date,
+            dateAdded: getCurrentDate(),
             role: role[0]
         });
 

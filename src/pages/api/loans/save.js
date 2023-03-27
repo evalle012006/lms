@@ -1,5 +1,6 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
+import { getCurrentDate } from '@/lib/utils';
 import moment from 'moment'
 
 export default apiHandler({
@@ -28,7 +29,7 @@ async function save(req, res) {
     } else {
         const loan = await db.collection('loans').insertOne({
             ...loanData,
-            dateAdded: moment(new Date()).format('YYYY-MM-DD')
+            dateAdded: moment(getCurrentDate()).format('YYYY-MM-DD')
         });
 
         response = {

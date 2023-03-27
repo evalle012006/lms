@@ -47,8 +47,8 @@ const CashCollectionDetailsPage = () => {
     const { uuid } = router.query;
     const [loading, setLoading] = useState(true);
     const currentDate = useSelector(state => state.systemSettings.currentDate);
-    const currentMonth = moment().month();
-    const [dateFilter, setDateFilter] = useState(new Date());
+    const currentMonth = moment(currentDate).month();
+    const [dateFilter, setDateFilter] = useState(currentDate);
     const [loan, setLoan] = useState();
     const [showAddDrawer, setShowAddDrawer] = useState(false);
     const [showRemarksModal, setShowRemarksModal] = useState(false);
@@ -846,10 +846,10 @@ const CashCollectionDetailsPage = () => {
 
                     if (cc.hasOwnProperty('_id')) {
                         temp.modifiedBy = currentUser._id;
-                        temp.dateModified = moment(new Date()).format('YYYY-MM-DD');
+                        temp.dateModified = moment(currentDate).format('YYYY-MM-DD');
                     } else {
                         temp.insertedBy = currentUser._id;
-                        temp.dateAdded = moment(new Date()).format('YYYY-MM-DD');
+                        temp.dateAdded = moment(currentDate).format('YYYY-MM-DD');
                     }
                     
                     save = true;
@@ -877,7 +877,7 @@ const CashCollectionDetailsPage = () => {
                         }
     
                         if (temp.status === 'completed') {
-                            temp.fullPaymentDate = temp.fullPaymentDate ? temp.fullPaymentDate : moment(new Date()).format('YYYY-MM-DD');
+                            temp.fullPaymentDate = temp.fullPaymentDate ? temp.fullPaymentDate : moment(currentDate).format('YYYY-MM-DD');
                         }
                         
                         if (typeof temp.remarks === 'object') {
@@ -896,7 +896,7 @@ const CashCollectionDetailsPage = () => {
                     if (editMode) {
                         cashCollection = {
                             ...headerData,
-                            dateModified: moment(new Date()).format('YYYY-MM-DD'),
+                            dateModified: moment(currentDate).format('YYYY-MM-DD'),
                             modifiedBy: currentUser._id,
                             collection: JSON.stringify(dataArr)
                         };
