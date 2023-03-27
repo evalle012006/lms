@@ -305,11 +305,6 @@ const LoanOfficerSummary = () => {
                     temp.mcbuBalanceStr = formatPricePhp(temp.mcbuBalance);
                 }
 
-                if (type === 'weekly') {
-                    temp.mcbuTarget = temp.activeClients * 50;
-                    temp.mcbuTargetStr = temp.mcbuTarget > 0 ? formatPricePhp(temp.mcbuTarget) : '-';
-                }
-
                 prevLos = temp;
             }
 

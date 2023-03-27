@@ -273,7 +273,7 @@ const CashCollectionDetailsPage = () => {
                         mcbuColStr: mcbuCol > 0 ? formatPricePhp(mcbuCol) : '-',
                         mcbuWithdrawal: mcbuWithdrawal,
                         mcbuWithdrawalStr: mcbuWithdrawal > 0 ? formatPricePhp(mcbuWithdrawal) : '-',
-                        mcbuReturnAmt: mcbuReturnAmt > 0,
+                        mcbuReturnAmt: mcbuReturnAmt > 0 ? mcbuReturnAmt : 0,
                         mcbuReturnAmtStr: mcbuReturnAmt > 0 ? formatPricePhp(mcbuReturnAmt) : '-',
                         mcbuInterest: cc.mcbuInterest ? cc.mcbuInterest : 0,
                         mcbuInterestStr: cc.mcbuInterest > 0 ? formatPricePhp(cc.mcbuInterest) : '-',
@@ -390,8 +390,8 @@ const CashCollectionDetailsPage = () => {
                         collection.mcbuColStr = cc.current[0].mcbuCol > 0 ? formatPricePhp(cc.current[0].mcbuCol) : '-';
                         collection.mcbuWithdrawal = cc.current[0].mcbuWithdrawal;
                         collection.mcbuWithdrawalStr = cc.current[0].mcbuWithdrawal > 0 ? formatPricePhp(cc.current[0].mcbuWithdrawal) : '-';
-                        collection.mcbuReturnAmt = cc.current[0].mcbuReturnAmt;
-                        collection.mcbuReturnAmtStr = cc.current[0].mcbuReturnAmt > 0 ? formatPricePhp(cc.current[0].mcbuReturnAmt) : '-';
+                        collection.mcbuReturnAmt = (cc.current[0].hasOwnProperty('mcbuReturnAmt') && cc.current[0].mcbuReturnAmt) ? cc.current[0].mcbuReturnAmt : 0;
+                        collection.mcbuReturnAmtStr = collection.mcbuReturnAmt > 0 ? formatPricePhp(collection.mcbuReturnAmt) : '-';
                         collection.mcbuInterest = cc.current[0].mcbuInterest ? cc.mcbuInterest : 0,
                         collection.mcbuInterestStr = cc.current[0].mcbuInterest > 0 ? formatPricePhp(cc.current[0].mcbuInterest) : '-',
                         collection.advanceDays = cc.current[0].advanceDays;
@@ -633,11 +633,11 @@ const CashCollectionDetailsPage = () => {
                 totalFullPayment += collection.fullPayment ? collection.fullPayment !== '-' ? collection.fullPayment : 0 : 0;
                 totalMispayment += collection.mispaymentStr === 'Yes' ? 1 : 0;
                 totalPastDue += (collection.pastDue && collection.pastDue !== '-') ? collection.pastDue : 0;
-                totalMcbu += collection.mcbu;
-                totalMcbuCol += collection.mcbuCol;
-                totalMcbuWithdraw += collection.mcbuWithdrawal;
-                totalMcbuReturn += collection.mcbuReturnAmt;
-                totalMcbuInterest += collection.mcbuInterest;
+                totalMcbu += collection.mcbu ? collection.mcbu : 0;
+                totalMcbuCol += collection.mcbuCol ? collection.mcbuCol : 0;
+                totalMcbuWithdraw += collection.mcbuWithdrawal ? collection.mcbuWithdrawal : 0;
+                totalMcbuReturn += collection.mcbuReturnAmt ? collection.mcbuReturnAmt : 0;
+                totalMcbuInterest += collection.mcbuInterest ? collection.mcbuInterest : 0;
             }
         });
 
