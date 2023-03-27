@@ -170,7 +170,7 @@ async function updateLoan(loanId, loanData) {
 async function saveGroupSummary(loan) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
-    const currentDate = getCurrentDate();
+    // const currentDate = getCurrentDate();
 
     const groupSummary = await db.collection('groupCashCollections').find({ dateAdded: moment(currentDate).format('YYYY-MM-DD'), groupId: loan.groupId }).toArray();
 

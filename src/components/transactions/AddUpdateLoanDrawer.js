@@ -33,7 +33,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     const [groupOccurence, setGroupOccurence] = useState(type);
     const [clientId, setClientId] = useState();
     const [clientType, setClientType] = useState('pending');
-    const currentDate = moment(new Date()).format('YYYY-MM-DD');
+    const currentDate = useSelector(state => state.systemSettings.currentDate);
 
     const initialValues = {
         branchId: loan.branchId,
