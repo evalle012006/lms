@@ -727,4 +727,5 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
     );
 }
 
+
 export default ViewCashCollectionPage;
