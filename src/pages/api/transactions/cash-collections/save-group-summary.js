@@ -1,5 +1,6 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
+import { getCurrentDate } from '@/lib/utils';
 import moment from 'moment';
 
 let response = {};
@@ -13,10 +14,11 @@ export default apiHandler({
 async function save(req, res) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
+    const currentDate = getCurrentDate();
 
     const loan = req.body;
 
-    const groupSummary = await db.collection('groupCashCollections').find({ dateAdded: moment(new Date()).format('YYYY-MM-DD'), groupId: loan.groupId }).toArray();
+    const groupSummary = await db.collection('groupCashCollections').find({ dateAdded: moment(currentDate).format('YYYY-MM-DD'), groupId: loan.groupId }).toArray();
 
     if (groupSummary.length === 0) {
         let group = await db.collection('groups').find({ _id: ObjectId(loan.groupId) }).toArray();
@@ -29,7 +31,7 @@ async function save(req, res) {
                 groupId: loan.groupId,
                 groupName: group.name,
                 loId: group.loanOfficerId,
-                dateAdded: moment(new Date()).format('YYYY-MM-DD'),
+                dateAdded: moment(currentDate).format('YYYY-MM-DD'),
                 insertBy: loan.insertedBy,
                 mode: group.occurence,
                 status: "pending"

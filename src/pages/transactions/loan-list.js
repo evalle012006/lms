@@ -26,6 +26,7 @@ const LoanListPage = () => {
     const groupList = useSelector(state => state.group.list);
     const clientList = useSelector(state => state.client.list);
     const [loading, setLoading] = useState(true);
+    const currentDate = useSelector(state => state.systemSettings.currentDate);
 
     const [showAddDrawer, setShowAddDrawer] = useState(false);
     const [mode, setMode] = useState('add');
@@ -186,7 +187,7 @@ const LoanListPage = () => {
 
     const handleDelete = () => {
         if (loan) {
-            const loanData = {...loan, deleted: true, deletedBy: currentUser._id, dateDeleted: moment(new Date()).format('YYYY-MM-DD')};
+            const loanData = {...loan, deleted: true, deletedBy: currentUser._id, dateDeleted: moment(currentDate).format('YYYY-MM-DD')};
             setLoading(true);
             fetchWrapper.postCors(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/delete', loanData)
                 .then(response => {

@@ -1,5 +1,6 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
+import { getCurrentDate } from '@/lib/utils';
 import moment from 'moment'
 
 export default apiHandler({
@@ -37,7 +38,7 @@ async function save(req, res) {
             logged: false,
             // status: 'verification',
             lastLogin: null,
-            dateAdded: moment(new Date).format('YYYY-MM-DD'),
+            dateAdded: moment(getCurrentDate()).format('YYYY-MM-DD'),
             role: JSON.parse(role),
             loNo: loNo,
             designatedBranch: designatedBranch,

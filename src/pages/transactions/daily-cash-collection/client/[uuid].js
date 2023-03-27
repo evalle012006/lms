@@ -47,8 +47,8 @@ const CashCollectionDetailsPage = () => {
     const { uuid } = router.query;
     const [loading, setLoading] = useState(true);
     const currentDate = useSelector(state => state.systemSettings.currentDate);
-    const currentMonth = moment().month();
-    const [dateFilter, setDateFilter] = useState(new Date());
+    const currentMonth = moment(currentDate).month();
+    const [dateFilter, setDateFilter] = useState(currentDate);
     const [loan, setLoan] = useState();
     const [showAddDrawer, setShowAddDrawer] = useState(false);
     const [showRemarksModal, setShowRemarksModal] = useState(false);
@@ -273,7 +273,7 @@ const CashCollectionDetailsPage = () => {
                         mcbuColStr: mcbuCol > 0 ? formatPricePhp(mcbuCol) : '-',
                         mcbuWithdrawal: mcbuWithdrawal,
                         mcbuWithdrawalStr: mcbuWithdrawal > 0 ? formatPricePhp(mcbuWithdrawal) : '-',
-                        mcbuReturnAmt: mcbuReturnAmt > 0,
+                        mcbuReturnAmt: mcbuReturnAmt > 0 ? mcbuReturnAmt : 0,
                         mcbuReturnAmtStr: mcbuReturnAmt > 0 ? formatPricePhp(mcbuReturnAmt) : '-',
                         mcbuInterest: cc.mcbuInterest ? cc.mcbuInterest : 0,
                         mcbuInterestStr: cc.mcbuInterest > 0 ? formatPricePhp(cc.mcbuInterest) : '-',
@@ -390,8 +390,8 @@ const CashCollectionDetailsPage = () => {
                         collection.mcbuColStr = cc.current[0].mcbuCol > 0 ? formatPricePhp(cc.current[0].mcbuCol) : '-';
                         collection.mcbuWithdrawal = cc.current[0].mcbuWithdrawal;
                         collection.mcbuWithdrawalStr = cc.current[0].mcbuWithdrawal > 0 ? formatPricePhp(cc.current[0].mcbuWithdrawal) : '-';
-                        collection.mcbuReturnAmt = cc.current[0].mcbuReturnAmt;
-                        collection.mcbuReturnAmtStr = cc.current[0].mcbuReturnAmt > 0 ? formatPricePhp(cc.current[0].mcbuReturnAmt) : '-';
+                        collection.mcbuReturnAmt = (cc.current[0].hasOwnProperty('mcbuReturnAmt') && cc.current[0].mcbuReturnAmt) ? cc.current[0].mcbuReturnAmt : 0;
+                        collection.mcbuReturnAmtStr = collection.mcbuReturnAmt > 0 ? formatPricePhp(collection.mcbuReturnAmt) : '-';
                         collection.mcbuInterest = cc.current[0].mcbuInterest ? cc.mcbuInterest : 0,
                         collection.mcbuInterestStr = cc.current[0].mcbuInterest > 0 ? formatPricePhp(cc.current[0].mcbuInterest) : '-',
                         collection.advanceDays = cc.current[0].advanceDays;
@@ -633,11 +633,11 @@ const CashCollectionDetailsPage = () => {
                 totalFullPayment += collection.fullPayment ? collection.fullPayment !== '-' ? collection.fullPayment : 0 : 0;
                 totalMispayment += collection.mispaymentStr === 'Yes' ? 1 : 0;
                 totalPastDue += (collection.pastDue && collection.pastDue !== '-') ? collection.pastDue : 0;
-                totalMcbu += collection.mcbu;
-                totalMcbuCol += collection.mcbuCol;
-                totalMcbuWithdraw += collection.mcbuWithdrawal;
-                totalMcbuReturn += collection.mcbuReturnAmt;
-                totalMcbuInterest += collection.mcbuInterest;
+                totalMcbu += collection.mcbu ? collection.mcbu : 0;
+                totalMcbuCol += collection.mcbuCol ? collection.mcbuCol : 0;
+                totalMcbuWithdraw += collection.mcbuWithdrawal ? collection.mcbuWithdrawal : 0;
+                totalMcbuReturn += collection.mcbuReturnAmt ? collection.mcbuReturnAmt : 0;
+                totalMcbuInterest += collection.mcbuInterest ? collection.mcbuInterest : 0;
             }
         });
 
@@ -846,10 +846,10 @@ const CashCollectionDetailsPage = () => {
 
                     if (cc.hasOwnProperty('_id')) {
                         temp.modifiedBy = currentUser._id;
-                        temp.dateModified = moment(new Date()).format('YYYY-MM-DD');
+                        temp.dateModified = moment(currentDate).format('YYYY-MM-DD');
                     } else {
                         temp.insertedBy = currentUser._id;
-                        temp.dateAdded = moment(new Date()).format('YYYY-MM-DD');
+                        temp.dateAdded = moment(currentDate).format('YYYY-MM-DD');
                     }
                     
                     save = true;
@@ -877,7 +877,7 @@ const CashCollectionDetailsPage = () => {
                         }
     
                         if (temp.status === 'completed') {
-                            temp.fullPaymentDate = temp.fullPaymentDate ? temp.fullPaymentDate : moment(new Date()).format('YYYY-MM-DD');
+                            temp.fullPaymentDate = temp.fullPaymentDate ? temp.fullPaymentDate : moment(currentDate).format('YYYY-MM-DD');
                         }
                         
                         if (typeof temp.remarks === 'object') {
@@ -896,7 +896,7 @@ const CashCollectionDetailsPage = () => {
                     if (editMode) {
                         cashCollection = {
                             ...headerData,
-                            dateModified: moment(new Date()).format('YYYY-MM-DD'),
+                            dateModified: moment(currentDate).format('YYYY-MM-DD'),
                             modifiedBy: currentUser._id,
                             collection: JSON.stringify(dataArr)
                         };

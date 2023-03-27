@@ -6,14 +6,13 @@ import moment from 'moment';
 let response = {};
 let statusCode = 200;
 
-const currentDate = moment(getCurrentDate()).format('YYYY-MM-DD');
-
 export default apiHandler({
     post: processLOSTotals
 });
 
 async function processLOSTotals(req, res) {
     const { db } = await connectToDatabase();
+    const currentDateStr = moment(getCurrentDate()).format('YYYY-MM-DD');
 
     const data = req.body;
 
@@ -27,7 +26,7 @@ async function processLOSTotals(req, res) {
 
             if (losTotal.length === 0) {
                 await db.collection('losTotals').insertOne(
-                    { ...data, userId: userId, dateAdded: moment().format('YYYY-MM-DD') }
+                    { ...data, userId: userId, dateAdded: currentDateStr }
                 );
             }
         }
@@ -37,7 +36,7 @@ async function processLOSTotals(req, res) {
 
             if (losTotal.length === 0) {
                 await db.collection('losTotals').insertOne(
-                    { ...collection, dateAdded: moment().format('YYYY-MM-DD') }
+                    { ...collection, dateAdded: currentDateStr }
                 );
             }
         });

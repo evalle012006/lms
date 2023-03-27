@@ -31,7 +31,7 @@ const CashCollectionDetailsPage = () => {
     const [currentLO, setCurrentLO] = useState();
     const { uuid } = router.query;
     const currentDate = useSelector(state => state.systemSettings.currentDate);
-    const [dateFilter, setDateFilter] = useState(dateFilterSubject.value ? dateFilterSubject.value : new Date());
+    const [dateFilter, setDateFilter] = useState(dateFilterSubject.value ? dateFilterSubject.value : currentDate);
     const [showSubmitDialog, setShowSubmitDialog] = useState(false);
 
     const handleLOFilter = (selected) => {
