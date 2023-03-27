@@ -519,7 +519,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 filter: 'includes'
             },
             {
-                Header: "Active Clients", // total number of clients per group
+                Header: "Active Clients",
                 accessor: 'activeClients',
                 Filter: SelectColumnFilter,
                 filter: 'includes'
