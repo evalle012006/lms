@@ -696,7 +696,8 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
     }, []);
 
     useEffect(() => {
-        if (type === 'weekly' && !isWeekend && !isHoliday) {
+        console.log(type, isWeekend, isHoliday)
+        if (type === 'weekly') {
             const preSaveCollections = async () => {
                 const data = {
                     loId: currentUser.role.rep === 4 ? currentUser._id : selectedLOSubject.value.length > 0 && selectedLOSubject.value,
@@ -711,7 +712,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 preSaveCollections();
             }, 3000);
         }
-    }, [type, isWeekend, isHoliday]);
+    }, [type]);
 
     return (
         <React.Fragment>
@@ -725,5 +726,6 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
         </React.Fragment>
     );
 }
+
 
 export default ViewCashCollectionPage;
