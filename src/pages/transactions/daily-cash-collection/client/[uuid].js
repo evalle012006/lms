@@ -1268,10 +1268,6 @@ const CashCollectionDetailsPage = () => {
                         // add no of mispayments / maximum of payments per cycle // change to #of mispay
                         temp.error = false;
                         temp.mcbuError = false;
-                        temp.mcbu = temp.mcbu - temp.mcbuCol;
-                        temp.mcbuStr = temp.mcbu > 0 ? formatPricePhp(temp.mcbu) : '-';
-                        temp.mcbuCol = 0;
-                        temp.mcbuColStr = '-';
 
                         if (temp.remarks.value === "delinquent") {
                             temp.delinquent = true;
@@ -1296,6 +1292,14 @@ const CashCollectionDetailsPage = () => {
                             }
                         }
 
+                        if (!temp.error) {
+                            if (temp.mcbuCol) {
+                                temp.mcbu = temp.mcbu - temp.mcbuCol;
+                                temp.mcbuStr = temp.mcbu > 0 ? formatPricePhp(temp.mcbu) : '-';
+                                temp.mcbuCol = 0;
+                                temp.mcbuColStr = '-';
+                            }
+                        }
                     } else if (remarks.value === "past due collection") {
                         // if payment > targetCollection, then put subtract it on the past due amount not on excess
                         if (temp.pastDue > 0 && temp.paymentCollection > temp.activeLoan) {
