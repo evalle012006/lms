@@ -1286,6 +1286,7 @@ const CashCollectionDetailsPage = () => {
                                 toast.error("Error occured. Remarks is not valid due to the amount in Actual Collection.");
                             } else {
                                 temp.targetCollection = 0;
+                                temp.activeLoan = 0;
                                 temp.targetCollectionStr = formatPricePhp(temp.targetCollection);
                                 temp.mispayment = true;
                                 temp.mispaymentStr = 'Yes';

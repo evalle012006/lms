@@ -112,7 +112,11 @@ async function updateLoan(collection) {
         loan = loan[0];
 
         loan.loanBalance = collection.loanBalance;
-        loan.activeLoan = collection.activeLoan;
+
+        if (collection.remarks && (collection.remarks.value !== "excused" || collection.remarks.label !== "Delinquent")) {
+            loan.activeLoan = collection.activeLoan;
+        }
+        
         loan.amountRelease = collection.amountRelease;
         loan.noOfPayments = collection.noOfPayments !== '-' ? collection.noOfPayments : 0;
         loan.fullPaymentDate = '';
