@@ -518,9 +518,9 @@ const ViewByBranchPage = ({dateFilter, type}) => {
 
     useEffect(() => {
         let mounted = true;
-
-        if (dateFilter.dateFilter) {
-            const date = moment(dateFilter.dateFilter).format('YYYY-MM-DD');
+        
+        if (dateFilter) {
+            const date = moment(dateFilter).format('YYYY-MM-DD');
             if (date !== currentDate) {
                 mounted && getBranchCashCollections(date);
             } else {

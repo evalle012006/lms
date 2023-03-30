@@ -32,7 +32,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
     const getGroupCashCollections = async (selectedBranch, date) => {
         setLoading(true);
         const filter = date ? true : false;
-        let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/get-all-loans-per-group?' + new URLSearchParams({ date: date ? date : currentDate, branchCode: selectedBranch });
+        let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/get-all-loans-per-group?' + new URLSearchParams({ date: date ? date : currentDate, branchCode: selectedBranch, dayName: dayName });
         
         const response = await fetchWrapper.get(url);
         if (response.success) {

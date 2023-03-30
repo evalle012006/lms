@@ -606,6 +606,10 @@ const NavComponent = () => {
                 if (menu.label === 'Weekly Transactions') {
                     temp.hidden = true;
                 }
+
+                if (menu.label === "Transfer Client") {
+                    temp.hidden = true;
+                }
             }  else if (userState.role.rep === 4) {
                 if (menu.label === 'Branches') {
                     temp.hidden = true;
@@ -620,6 +624,10 @@ const NavComponent = () => {
                 }
 
                 if (menu.label === 'BM Transactions') {
+                    temp.hidden = true;
+                }
+
+                if (menu.label === "Transfer Client") {
                     temp.hidden = true;
                 }
 

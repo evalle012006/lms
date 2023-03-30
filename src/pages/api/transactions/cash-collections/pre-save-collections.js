@@ -65,7 +65,7 @@ async function save(req, res) {
                     origin: 'pre-save'
                 };
 
-                if (data.occurence === 'weekly') {
+                if (loan.occurence === 'weekly') {
                     data.mcbuTarget = 50;
                     data.groupDay = group[0].day;
                 }
