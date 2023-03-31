@@ -319,7 +319,7 @@ const BranchManagerSummary = () => {
                             collectionTargetDailyStr: los.collectionTargetDaily > 0 ? formatPricePhp(los.collectionTargetDaily) : '-',
                             collectionAdvancePaymentDailyStr: los.collectionAdvancePaymentDaily > 0 ? formatPricePhp(los.collectionAdvancePaymentDaily) : '-',
                             collectionActualDailyStr: los.collectionActualDaily > 0 ? formatPricePhp(los.collectionActualDaily) : '-',
-                            collectionTargeWeeklytStr: los.collectionTargetWeekly > 0 ? formatPricePhp(los.collectionTargetWeekly) : '-',
+                            collectionTargetWeeklyStr: los.collectionTargetWeekly > 0 ? formatPricePhp(los.collectionTargetWeekly) : '-',
                             collectionAdvancePaymentWeeklyStr: los.collectionAdvancePaymentWeekly > 0 ? formatPricePhp(los.collectionAdvancePaymentWeekly) : '-',
                             collectionActualWeeklyStr: los.collectionActualWeekly > 0 ? formatPricePhp(los.collectionActualWeekly) : '-',
                             consolidatedCollectionStr: los.consolidatedCollection > 0 ? formatPricePhp(los.consolidatedCollection) : '-',

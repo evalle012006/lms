@@ -18,7 +18,11 @@ async function save(req, res) {
                     {$eq: ['$loId', loId]},
                     {$or: [
                         {$eq: ['$status', 'active']},
-                        {$eq: ['$status', 'completed']}
+                        {$eq: ['$status', 'completed']},
+                        {$and: [
+                            {$eq: ['$status', 'closed']},
+                            {$eq: ['$fullPaymentDate', currentDate]}
+                        ]}
                     ]}
                 ]
             }}

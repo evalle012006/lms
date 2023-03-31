@@ -410,7 +410,7 @@ const CashCollectionDetailsPage = () => {
             });
 
             response.data.tomorrowPending.map(loan => {
-                const currentLoan = cashCollection.find(l => l.slotNo === loan.slotNo);
+                const currentLoan = cashCollection.find(l => l.slotNo === loan.slotNo && l.clientId === loan.clientId);
                 if (currentLoan && currentLoan.status !== 'pending') {
                     const index = cashCollection.indexOf(currentLoan);
                     if ((currentLoan.fullPaymentDate === currentDate)) { // fullpayment with pending/tomorrow
@@ -912,7 +912,7 @@ const CashCollectionDetailsPage = () => {
                 let temp = {...cc};
                 if (temp.status !== 'open') {
                     if (idx === index) {
-                        if (temp.hasOwnProperty('prevData')) {
+                        if (temp.hasOwnProperty('prevData') && temp.prevData) {
                             temp.loanBalance = temp.prevData.loanBalance;
                             temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
                             temp.total = temp.prevData.total;
@@ -1261,6 +1261,7 @@ const CashCollectionDetailsPage = () => {
                         }
                     } else if (remarks.value === 'advance payment') {
                         if (temp.excess > 0) {
+                            // TODO: Check if collection is divisible by activeLoan
                             const advanceDays = parseFloat(temp.paymentCollection) / parseFloat(temp.activeLoan);
                             temp.advanceDays = temp.advanceDays ? temp.advanceDays + (advanceDays - 1) : advanceDays - 1;
                             temp.error = false;
@@ -1393,6 +1394,7 @@ const CashCollectionDetailsPage = () => {
             temp.targetCollectionStr = formatPricePhp(temp.targetCollection);   
             temp.fullPayment = 0;
             temp.fullPaymentStr = '-';
+            temp.fullPaymentDate = null;
             temp.pastDue = 0;
             temp.pastDueStr = '-'
             temp.remarks = '';

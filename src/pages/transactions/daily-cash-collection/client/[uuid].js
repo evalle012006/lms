@@ -1454,6 +1454,7 @@ const CashCollectionDetailsPage = () => {
             temp.targetCollectionStr = formatPricePhp(temp.targetCollection);   
             temp.fullPayment = 0;
             temp.fullPaymentStr = '-';
+            temp.fullPaymentDate = null;
             temp.pastDue = 0;
             temp.pastDueStr = '-'
             temp.remarks = '';
