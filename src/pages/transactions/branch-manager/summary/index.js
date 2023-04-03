@@ -737,7 +737,7 @@ const BranchManagerSummary = () => {
             totalConsolidatedFullPaymentAmount += wt.consolidatedFullPaymentAmount;
         });
 
-        totalMcbuBalance = fBal.mcbuBalance + totalMcbuActual + totalMcbuWithdrawal + totalMcbuInterest - totalMcbuReturnAmt;
+        totalMcbuBalance = fBal.mcbuBalance + totalMcbuActual - totalMcbuWithdrawal + totalMcbuInterest - totalMcbuReturnAmt;
         totalActiveClients = fBal.activeClients + totalTransfer + totalNewMember - totalOffsetperson;
         totalActiveLoanReleasePerson = fBal.activeLoanReleasePerson + totalConsolidatedLoanReleasePerson - totalConsolidatedFullPaymentPerson;
         totalActiveLoanReleaseAmount = fBal.activeLoanReleaseAmount + totalConsolidatedLoanReleaseAmount - totalConsolidatedFullPaymentAmount;

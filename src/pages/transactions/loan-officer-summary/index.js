@@ -567,7 +567,7 @@ const LoanOfficerSummary = () => {
             totalFullPaymentAmount += wt.fullPaymentAmount;
         });
 
-        totalMcbuBalance = fBal.mcbuBalance + totalMcbuActual + totalMcbuWithdrawal + totalMcbuInterest - totalMcbuReturnAmt;
+        totalMcbuBalance = fBal.mcbuBalance + totalMcbuActual - totalMcbuWithdrawal + totalMcbuInterest - totalMcbuReturnAmt;
         totalActiveClients = fBal.activeClients + totalTransfer + totalNewMember - totalOffsetperson;
         totalActiveLoanReleasePerson = fBal.activeLoanReleasePerson + totalLoanReleasePerson - totalFullPaymentPerson;
         totalActiveLoanReleaseAmount = fBal.activeLoanReleaseAmount + totalLoanReleaseAmount - totalFullPaymentAmount;
