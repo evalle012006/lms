@@ -1734,13 +1734,6 @@ const CashCollectionDetailsPage = () => {
 
     useEffect(() => {
         let cashCollections = addBlankAndTotal(groupClients)
-        // const dateF = moment(dateFilter).format("YYYY-MM-DD");
-
-        // if (dateF !== currentDate) {
-        //     cashCollections = addBlankAndTotal(true, groupClients);
-        // } else {
-        //     cashCollections = addBlankAndTotal(false, groupClients);
-        // }
 
         setData(cashCollections);
         setAllData(cashCollections);
@@ -1761,32 +1754,6 @@ const CashCollectionDetailsPage = () => {
             setEditMode(true);
         }
     }, [revertMode]);
-
-    // useEffect(() => {
-    //     const dayName = moment().format('dddd');
-
-    //     if (dayName === 'Saturday' || dayName === 'Sunday') {
-    //         setWeekend(true);
-    //     } else {
-    //         setWeekend(false);
-    //     }
-    // }, []);
-
-    // useEffect(() => {
-    //     if (holidays) {
-    //         let holidayToday = false;
-    //         const currentYear = moment().year();
-    //         holidays.map(item => {
-    //             const holidayDate = currentYear + '-' + item.date;
-
-    //             if (holidayDate === currentDate) {
-    //                 holidayToday = true;
-    //             }
-    //         });
-
-    //         setHoliday(holidayToday);
-    //     }
-    // }, [holidays]);
 
     return (
         <Layout header={false} noPad={true}>

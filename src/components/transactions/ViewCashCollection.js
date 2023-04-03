@@ -672,6 +672,8 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                     mounted && getCashCollections();
                 }
             }
+        } else {
+            getCashCollections();
         }
 
         return () => {

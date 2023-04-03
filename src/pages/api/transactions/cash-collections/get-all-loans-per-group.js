@@ -246,7 +246,19 @@ async function getAllLoansPerGroup(req, res) {
                                         excess: { $sum: 0 },
                                         total: { $sum: 0 },
                                         mcbu: { $sum: '$mcbu' },
-                                        mcbuTarget: { $sum: '$mcbuTarget' },
+                                        mcbuTarget: { $sum: {
+                                            $cond: {
+                                                if: { $and: [{$eq: ['$occurence', 'weekly']}, {$eq: ['$groupDay', dayName]}] },
+                                                then: {
+                                                    $cond: {
+                                                        if: { $or: [{$eq: ['$remarks.label', 'Delinquent']}, {$eq: ['$remarks.value', 'excused']}, {$eq: ['$remarks.value', 'excused advance payment']}] },
+                                                        then: 0,
+                                                        else: 50
+                                                    }
+                                                },
+                                                else: 0
+                                            }
+                                        } },
                                         mcbuInterest: { $sum: '$mcbuInterest' }
                                     } 
                                 }
@@ -472,7 +484,19 @@ async function getAllLoansPerGroup(req, res) {
                                         excess: { $sum: 0 },
                                         total: { $sum: 0 },
                                         mcbu: { $sum: '$mcbu' },
-                                        mcbuTarget: { $sum: '$mcbuTarget' },
+                                        mcbuTarget: { $sum: {
+                                            $cond: {
+                                                if: { $and: [{$eq: ['$occurence', 'weekly']}, {$eq: ['$groupDay', dayName]}] },
+                                                then: {
+                                                    $cond: {
+                                                        if: { $or: [{$eq: ['$remarks.label', 'Delinquent']}, {$eq: ['$remarks.value', 'excused']}, {$eq: ['$remarks.value', 'excused advance payment']}] },
+                                                        then: 0,
+                                                        else: 50
+                                                    }
+                                                },
+                                                else: 0
+                                            }
+                                        } },
                                         mcbuInterest: { $sum: '$mcbuInterest' }
                                     } 
                                 }
@@ -747,7 +771,19 @@ async function getAllLoansPerGroup(req, res) {
                                             }
                                         } },
                                         mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
-                                        mcbuTarget: { $sum: '$mcbuTarget' },
+                                        mcbuTarget: { $sum: {
+                                            $cond: {
+                                                if: { $and: [{$eq: ['$occurence', 'weekly']}, {$eq: ['$groupDay', dayName]}] },
+                                                then: {
+                                                    $cond: {
+                                                        if: { $or: [{$eq: ['$remarks.label', 'Delinquent']}, {$eq: ['$remarks.value', 'excused']}, {$eq: ['$remarks.value', 'excused advance payment']}] },
+                                                        then: 0,
+                                                        else: 50
+                                                    }
+                                                },
+                                                else: 0
+                                            }
+                                        } },
                                         mcbuInterest: { $sum: '$mcbuInterest' }
                                     } 
                                 }
@@ -951,7 +987,13 @@ async function getAllLoansPerGroup(req, res) {
                                         mcbuTarget: { $sum: {
                                             $cond: {
                                                 if: { $and: [{$eq: ['$occurence', 'weekly']}, {$eq: ['$groupDay', dayName]}] },
-                                                then: 50,
+                                                then: {
+                                                    $cond: {
+                                                        if: { $or: [{$eq: ['$remarks.label', 'Delinquent']}, {$eq: ['$remarks.value', 'excused']}, {$eq: ['$remarks.value', 'excused advance payment']}] },
+                                                        then: 0,
+                                                        else: 50
+                                                    }
+                                                },
                                                 else: 0
                                             }
                                         } },

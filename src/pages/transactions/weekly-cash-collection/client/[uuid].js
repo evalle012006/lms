@@ -701,16 +701,8 @@ const CashCollectionDetailsPage = () => {
                             console.log(cc)
                         errorMsg.add('Error occured. Invalid MCBU Collection.');
                     }
-                } else if (!cc.mcbuCol || parseFloat(cc.mcbuCol) > 50) {
-                    if (cc.remarks && (cc.remarks.value === 'advance payment' || cc.remarks.value === 'reloaner')) {
-                        const excessMcbu = cc.excess / cc.activeLoan;
-                        const finalMcbu = (excessMcbu * 50) + 50;
-                        if (parseFloat(cc.mcbuCol) > finalMcbu) {
-                            errorMsg.add('Error occured. MCBU collection is more than the required collection which is ' + finalMcbu + '.');
-                        }
-                    } else if (cc.remarks && cc.remarks.value !== 'advance payment' && cc.remarks.value !== 'reloaner') {
-                        errorMsg.add('Error occured. MCBU collection is more than 50.');
-                    }
+                } else if (parseFloat(cc.mcbuCol) > 50 && parseFloat(cc.mcbuCol) % 10 !== 0) {
+                    errorMsg.add('Error occured. MCBU collection should be divisible by 10.');
                 }
 
                 if (cc.mcbuWithdrawFlag) {
@@ -735,6 +727,9 @@ const CashCollectionDetailsPage = () => {
             case 'mcbuCol':
                 if (!value || value < 50) {
                     toast.error('Error occured. Minimum MCBU collection is 50.');
+                    temp.mcbuError = true;
+                } else if (value > 50 && value % 10 !== 0) {
+                    toast.error('Error occured. MCBU collection must be divisible by 10.');
                     temp.mcbuError = true;
                 } else {
                     temp.mcbuError = false;
@@ -1064,11 +1059,19 @@ const CashCollectionDetailsPage = () => {
                                 mcbu: temp.mcbu
                             };
                         }
-                        console.log('hello')
+
                         if (mcbuCol < 50) {
                             temp.mcbuError = true;
+                        } else if (parseFloat(mcbuCol) > 50 && (cc.remarks && (cc.remarks.value === 'advance payment' || cc.remarks.value === 'reloaner'))) {
+                            const excessMcbu = cc.excess / cc.activeLoan;
+                            const finalMcbu = (excessMcbu * 50) + 50;
+                            temp.mcbuCol = finalMcbu;
+                            temp.mcbuError = false;
+                            temp.mcbuColStr = formatPricePhp(finalMcbu);
+                            temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + finalMcbu : 0 + finalMcbu;
+                            temp.mcbuStr = formatPricePhp(temp.mcbu);
+                            console.log(mcbuCol)
                         } else {
-                            console.log('here...')
                             temp.mcbuError = false;
                             temp.mcbuCol = mcbuCol;
                             temp.mcbuColStr = formatPricePhp(mcbuCol);
