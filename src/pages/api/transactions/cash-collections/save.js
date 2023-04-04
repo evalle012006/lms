@@ -113,7 +113,7 @@ async function updateLoan(collection) {
 
         loan.loanBalance = collection.loanBalance;
 
-        if (collection.remarks && (collection.remarks.value !== "excused" || collection.remarks.label !== "Delinquent")) {
+        if (collection.remarks && (collection.remarks.value !== "excused" && collection.remarks.label !== "Delinquent")) {
             loan.activeLoan = collection.activeLoan;
         }
         
