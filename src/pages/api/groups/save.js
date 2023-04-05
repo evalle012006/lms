@@ -16,7 +16,7 @@ async function save(req, res) {
 
     const branch = await db
         .collection('branches')
-        .find({_id: ObjectId(groupData.branchId)})
+        .find({_id: new ObjectId(groupData.branchId)})
         .toArray();
 
     const groups = await db

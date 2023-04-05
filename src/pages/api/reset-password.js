@@ -13,7 +13,7 @@ async function resetPassword(req, res) {
     const { objectId, password } = req.body;
     const { db } = await connectToDatabase();
     const dbResponse = await db.collection('users').updateOne(
-        { _id: ObjectId(objectId) },
+        { _id: new ObjectId(objectId) },
         {
             $set: { 'password': bcrypt.hashSync(password, bcrypt.genSaltSync(8), null) },
             $currentDate: { dateModified: true }

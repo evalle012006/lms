@@ -35,7 +35,7 @@ async function updateTransactionsSettings(req, res) {
     const transactionsResp = await db
         .collection('transactionSettings')
         .updateOne(
-            { _id: ObjectId(transactionId) }, 
+            { _id: new ObjectId(transactionId) }, 
             {
                 $set: { ...transactions }
             }, 

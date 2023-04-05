@@ -25,7 +25,7 @@ async function reset(req, res) {
         $set: { status: 'pending', delinquent: false, mcbuHistory: [] }
     });
 
-    await db.collection('groups').updateMany({_id: ObjectId(groupId)}, {
+    await db.collection('groups').updateMany({_id: new ObjectId(groupId)}, {
         $set: { 
             status: 'available',
             noOfClients: 0,

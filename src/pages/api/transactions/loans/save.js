@@ -94,7 +94,7 @@ async function updateUser(loan) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
 
-    let user = await db.collection('users').find({ _id: ObjectId(loan.loId) }).toArray();
+    let user = await db.collection('users').find({ _id: new ObjectId(loan.loId) }).toArray();
     if (user.length > 0) {
         user = user[0];
         
@@ -103,7 +103,7 @@ async function updateUser(loan) {
 
             delete user._id;
             await db.collection('users').updateOne(
-                {  _id: ObjectId(loan.loId) },
+                {  _id: new ObjectId(loan.loId) },
                 {
                     $set: { ...user }
                 }, 
@@ -118,7 +118,7 @@ async function updateGroup(loan) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
 
-    let group = await db.collection('groups').find({ _id: ObjectId(loan.groupId) }).toArray();
+    let group = await db.collection('groups').find({ _id: new ObjectId(loan.groupId) }).toArray();
     if (group.length > 0) {
         group = group[0];
         group.noOfClients = group.noOfClients ? group.noOfClients : 0;
@@ -132,7 +132,7 @@ async function updateGroup(loan) {
 
         delete group._id;
         await db.collection('groups').updateOne(
-            {  _id: ObjectId(loan.groupId) },
+            {  _id: new ObjectId(loan.groupId) },
             {
                 $set: { ...group }
             }, 
@@ -145,7 +145,7 @@ async function updateLoan(loanId, loanData) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
 
-    let loan = await db.collection('loans').find({ _id: ObjectId(loanId) }).toArray();
+    let loan = await db.collection('loans').find({ _id: new ObjectId(loanId) }).toArray();
 
     if (loan.length > 0) {
         loan = loan[0];
@@ -159,7 +159,7 @@ async function updateLoan(loanId, loanData) {
         await db
             .collection('loans')
             .updateOne(
-                { _id: ObjectId(loanId) }, 
+                { _id: new ObjectId(loanId) }, 
                 {
                     $set: { ...loan }
                 }, 
@@ -175,7 +175,7 @@ async function saveGroupSummary(loan) {
     const groupSummary = await db.collection('groupCashCollections').find({ dateAdded: moment(currentDate).format('YYYY-MM-DD'), groupId: loan.groupId }).toArray();
 
     if (groupSummary.length === 0) {
-        let group = await db.collection('groups').find({ _id: ObjectId(loan.groupId) }).toArray();
+        let group = await db.collection('groups').find({ _id: new ObjectId(loan.groupId) }).toArray();
 
         if (group.length > 0) {
             group = group[0];

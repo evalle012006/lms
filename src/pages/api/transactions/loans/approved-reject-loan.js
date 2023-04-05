@@ -29,7 +29,7 @@ async function updateLoan(req, res) {
     if (groupCashCollections.length > 0 && groupCashCollections[0].status === 'close') {
         response = { error: true, message: "Loan can't be approved because the Group Transaction is already closed!" };
     } else {
-        let groupData = await db.collection('groups').find({ _id: ObjectId(loan.groupId) }).toArray();
+        let groupData = await db.collection('groups').find({ _id: new ObjectId(loan.groupId) }).toArray();
         if (groupData.length > 0) {
             groupData = groupData[0];
             let status = groupData.status;
@@ -58,7 +58,7 @@ async function updateLoan(req, res) {
                 const loanResp = await db
                     .collection('loans')
                     .updateOne(
-                        { _id: ObjectId(loanId) }, 
+                        { _id: new ObjectId(loanId) }, 
                         {
                             $set: { ...loan }
                         }, 
@@ -110,7 +110,7 @@ async function updateExistingLoan(clientId) {
             const loanResp = await db
                 .collection('loans')
                 .updateOne(
-                    { _id: ObjectId(loanId) },
+                    { _id: new ObjectId(loanId) },
                     {
                         $set: {...existingLoan}
                     },
@@ -133,7 +133,7 @@ async function updateGroup(group) {
     const groupResp = await db
         .collection('groups')
         .updateOne(
-            { _id: ObjectId(groupId) }, 
+            { _id: new ObjectId(groupId) }, 
             {
                 $set: { ...group }
             }, 
@@ -146,7 +146,7 @@ async function updateClient(clientId) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
 
-    let client = await db.collection('client').find({ _id: ObjectId(clientId) }).toArray();
+    let client = await db.collection('client').find({ _id: new ObjectId(clientId) }).toArray();
 
     if (client.length > 0) {
         client = client[0];
@@ -157,7 +157,7 @@ async function updateClient(clientId) {
         const clientResp = await db
             .collection('client')
             .updateOne(
-                { _id: ObjectId(clientId) }, 
+                { _id: new ObjectId(clientId) }, 
                 {
                     $set: { ...client }
                 }, 
@@ -175,7 +175,7 @@ async function saveGroupSummary(loan) {
     const groupSummary = await db.collection('groupCashCollections').find({ dateAdded: currentDate, groupId: loan.groupId }).toArray();
 
     if (groupSummary.length === 0) {
-        let group = await db.collection('groups').find({ _id: ObjectId(loan.groupId) }).toArray();
+        let group = await db.collection('groups').find({ _id: new ObjectId(loan.groupId) }).toArray();
 
         if (group.length > 0) {
             group = group[0];

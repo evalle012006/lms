@@ -24,7 +24,7 @@ async function deleteUser(req, res) {
     if (user.length > 0) {
         await db
             .collection('users')
-            .deleteOne({ _id: ObjectId(_id) });
+            .deleteOne({ _id: new ObjectId(_id) });
 
         user[0].profile && removeFile.removeFile(user[0].profile);
 

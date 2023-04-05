@@ -12,7 +12,7 @@ async function getRolePermissions(req, res) {
     const { id } = req.query;
     let statusCode = 200;
     let response = {};
-    const rolePermissions = await db.collection('rolesPermissions').find({ _id: ObjectId(id)}).toArray();
+    const rolePermissions = await db.collection('rolesPermissions').find({ _id: new ObjectId(id)}).toArray();
     response = { success: true, rolePermissions: rolePermissions[0] };
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')

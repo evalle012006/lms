@@ -6,7 +6,7 @@ module.exports = {
     // See https://github.com/seppevs/migrate-mongo/#creating-a-new-migration-script
     // Example:
     // await db.collection('albums').updateOne({artist: 'The Beatles'}, {$set: {blacklisted: true}});
-    const branches = await db.collection('branches').find({ _id: ObjectId('63ec80275f28f2393ec01264')}).toArray();
+    const branches = await db.collection('branches').find({ _id: new ObjectId('63ec80275f28f2393ec01264')}).toArray();
     const users = await db.collection('users').find().toArray();
     //63ec7e305f28f2393ec01262
     //63ec7e645f28f2393ec01263

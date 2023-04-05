@@ -101,7 +101,7 @@ const saveFile = async (file, uid) => {
 const findUserByID = async (id) => {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
-    const condition = id ? { _id: ObjectId(id) } : {};
+    const condition = id ? { _id: new ObjectId(id) } : {};
     
     const users = await db
         .collection('users')

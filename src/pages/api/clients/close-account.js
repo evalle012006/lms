@@ -17,7 +17,7 @@ async function updateClient(req, res) {
 
     const loan = req.body;
 
-    let client = await db.collection('client').find({ _id: ObjectId(loan.clientId) }).toArray();
+    let client = await db.collection('client').find({ _id: new ObjectId(loan.clientId) }).toArray();
 
     if (client.length > 0) {
         client = client[0];
@@ -27,7 +27,7 @@ async function updateClient(req, res) {
         const clientResp = await db
             .collection('client')
             .updateOne(
-                { _id: ObjectId(loan.clientId) }, 
+                { _id: new ObjectId(loan.clientId) }, 
                 {
                     $set: { ...client }
                 }, 
@@ -48,7 +48,7 @@ async function updateLoan(loanData) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
 
-    let loan = await db.collection('loans').find({ _id: ObjectId(loanData.loanId) }).toArray();
+    let loan = await db.collection('loans').find({ _id: new ObjectId(loanData.loanId) }).toArray();
 
     if (loan.length > 0) {
         loan = loan[0];
@@ -61,7 +61,7 @@ async function updateLoan(loanData) {
         await db
             .collection('loans')
             .updateOne(
-                { _id: ObjectId(loanData.loanId) }, 
+                { _id: new ObjectId(loanData.loanId) }, 
                 {
                     $set: { ...loan }
                 }, 
@@ -73,7 +73,7 @@ async function updateGroup(loan) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
 
-    let group = await db.collection('groups').find({ _id: ObjectId(loan.groupId) }).toArray();
+    let group = await db.collection('groups').find({ _id: new ObjectId(loan.groupId) }).toArray();
     if (group.length > 0) {
         group = group[0];
 
@@ -87,7 +87,7 @@ async function updateGroup(loan) {
 
         delete group._id;
         await db.collection('groups').updateOne(
-            {  _id: ObjectId(loan.groupId) },
+            {  _id: new ObjectId(loan.groupId) },
             {
                 $set: { ...group }
             }, 

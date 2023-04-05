@@ -15,13 +15,13 @@ async function deleteRole(req, res) {
 
     const rolesPermissions = await db
         .collection('rolesPermissions')
-        .find({ _id: ObjectId(_id) })
+        .find({ _id: new ObjectId(_id) })
         .toArray();
 
     if (rolesPermissions.length > 0) {
         await db
             .collection('rolesPermissions')
-            .deleteOne({ _id: ObjectId(_id) });
+            .deleteOne({ _id: new ObjectId(_id) });
 
         response = {
             success: true

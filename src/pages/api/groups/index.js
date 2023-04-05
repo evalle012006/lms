@@ -12,7 +12,7 @@ async function getGroup(req, res) {
     const { _id } = req.query;
     let statusCode = 200;
     let response = {};
-    const group = await db.collection('groups').find({ _id: ObjectId(_id)}).toArray();
+    const group = await db.collection('groups').find({ _id: new ObjectId(_id)}).toArray();
     response = { success: true, group: group[0] };
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')
@@ -32,7 +32,7 @@ async function updateGroup(req, res) {
     const groupResp = await db
         .collection('groups')
         .updateOne(
-            { _id: ObjectId(groupId) }, 
+            { _id: new ObjectId(groupId) }, 
             {
                 $set: { ...group }
             }, 

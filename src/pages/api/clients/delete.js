@@ -22,12 +22,12 @@ async function deleteUser(req, res) {
       message: `Error. Client has a loan already.`,
     };
   } else {
-    const clients = await db.collection("client").find({ _id: ObjectId(_id) }).toArray();
+    const clients = await db.collection("client").find({ _id: new ObjectId(_id) }).toArray();
 
     if (clients.length > 0) {
       await db
           .collection('client')
-          .deleteOne({ _id: ObjectId(_id) });
+          .deleteOne({ _id: new ObjectId(_id) });
 
       response = {
         success: true,

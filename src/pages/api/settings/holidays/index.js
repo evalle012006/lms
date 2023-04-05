@@ -14,7 +14,7 @@ async function getHoliday(req, res) {
     let response = {};
 
     let holiday = await db.collection('holidays')
-            .find({ _id: ObjectId(_id)})
+            .find({ _id: new ObjectId(_id)})
             .toArray();
     
     response = { success: true, holiday: holiday[0] };
@@ -36,7 +36,7 @@ async function updateHoliday(req, res) {
     const holidayResp = await db
         .collection('holidays')
         .updateOne(
-            { _id: ObjectId(holidayId) }, 
+            { _id: new ObjectId(holidayId) }, 
             {
                 $set: { ...holiday }
             }, 

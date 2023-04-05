@@ -17,7 +17,7 @@ async function resetUserPassword(req, res) {
     const userResp = await db
         .collection('users')
         .updateOne(
-            { _id: ObjectId(userId) }, 
+            { _id: new ObjectId(userId) }, 
             {
                 $unset: { password: "" }
             }, 

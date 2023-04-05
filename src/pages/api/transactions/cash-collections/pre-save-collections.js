@@ -33,7 +33,7 @@ async function save(req, res) {
 
         if (existCC.length === 0) {
             const groupSummary = await db.collection('groupCashCollections').find({ groupId: loan.groupId, dateAdded: currentDate }).toArray();
-            const group = await db.collection('groups').find({ _id: ObjectId(loan.groupId) }).toArray();
+            const group = await db.collection('groups').find({ _id: new ObjectId(loan.groupId) }).toArray();
             if (groupSummary.length > 0) {
                 let data = {
                     loanId: loan._id + '',

@@ -65,7 +65,7 @@ async function checkGroupStatus(groupId) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
 
-    const groupData = await db.collection('groups').find({ _id: ObjectId(groupId) }).toArray();
+    const groupData = await db.collection('groups').find({ _id: new ObjectId(groupId) }).toArray();
 
     return groupData;
 }
@@ -76,7 +76,7 @@ async function updateLoan(loanId, loan) {
 
     await db.collection('loans')
             .updateOne(
-                { _id: ObjectId(loanId) }, 
+                { _id: new ObjectId(loanId) }, 
                 {
                     $set: { ...loan }
                 }, 
@@ -109,7 +109,7 @@ async function updateExistingLoan(loan, lId) {
             await db
                 .collection('loans')
                 .updateOne(
-                    { _id: ObjectId(loanId) },
+                    { _id: new ObjectId(loanId) },
                     {
                         $set: {...existingLoan}
                     }
@@ -118,7 +118,7 @@ async function updateExistingLoan(loan, lId) {
 
         await db.collection('loans')
             .updateOne(
-                { _id: ObjectId(lId) },
+                { _id: new ObjectId(lId) },
                 {
                     $set: {...loan}
                 }
@@ -136,7 +136,7 @@ async function updateGroup(group) {
     const groupResp = await db
         .collection('groups')
         .updateOne(
-            { _id: ObjectId(groupId) }, 
+            { _id: new ObjectId(groupId) }, 
             {
                 $set: { ...group }
             }, 
@@ -149,7 +149,7 @@ async function updateClient(clientId) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
 
-    let client = await db.collection('client').find({ _id: ObjectId(clientId) }).toArray();
+    let client = await db.collection('client').find({ _id: new ObjectId(clientId) }).toArray();
 
     if (client.length > 0) {
         client = client[0];
@@ -160,7 +160,7 @@ async function updateClient(clientId) {
         const clientResp = await db
             .collection('client')
             .updateOne(
-                { _id: ObjectId(clientId) }, 
+                { _id: new ObjectId(clientId) }, 
                 {
                     $set: { ...client }
                 }, 

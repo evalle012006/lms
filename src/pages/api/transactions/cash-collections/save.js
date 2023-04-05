@@ -82,7 +82,7 @@ async function updateCollection(collections) {
             delete collection.origin;
             await db.collection('cashCollections')
                 .updateOne(
-                    { _id: ObjectId(collection.collectionId)},
+                    { _id: new ObjectId(collection.collectionId)},
                     {
                         $unset: { origin: 1 },
                         $set: {...collection}
@@ -92,7 +92,7 @@ async function updateCollection(collections) {
         } else {
             await db.collection('cashCollections')
                 .updateOne(
-                    { _id: ObjectId(collection.collectionId)},
+                    { _id: new ObjectId(collection.collectionId)},
                     {
                         $set: {...collection}
                     },
@@ -107,7 +107,7 @@ async function updateLoan(collection) {
     const ObjectId = require('mongodb').ObjectId;
     const currentDateStr = moment(getCurrentDate()).format('YYYY-MM-DD');
 
-    let loan = await db.collection('loans').find({ _id: ObjectId(collection.loanId) }).toArray();
+    let loan = await db.collection('loans').find({ _id: new ObjectId(collection.loanId) }).toArray();
     if (loan.length > 0) {
         loan = loan[0];
 
@@ -160,7 +160,7 @@ async function updateLoan(collection) {
 
         delete loan._id;
         await db.collection('loans').updateOne(
-            { _id: ObjectId(collection.loanId) }, 
+            { _id: new ObjectId(collection.loanId) }, 
             {
                 $set: { ...loan }
             }
@@ -175,7 +175,7 @@ async function updateClient(loan) {
     const ObjectId = require('mongodb').ObjectId;
     const currentDate = getCurrentDate();
 
-    let client = await db.collection('client').find({ _id: ObjectId(loan.clientId) }).toArray();
+    let client = await db.collection('client').find({ _id: new ObjectId(loan.clientId) }).toArray();
 
     if (client.length > 0) {
         client = client[0];
@@ -216,7 +216,7 @@ async function updateClient(loan) {
         await db
             .collection('client')
             .updateOne(
-                { _id: ObjectId(loan.clientId) }, 
+                { _id: new ObjectId(loan.clientId) }, 
                 {
                     $set: { ...client }
                 }, 
@@ -234,7 +234,7 @@ async function updateLoanClose(loanData) {
     const ObjectId = require('mongodb').ObjectId;
     const currentDateStr = moment(getCurrentDate()).format('YYYY-MM-DD');
     
-    let loan = await db.collection('loans').find({ _id: ObjectId(loanData.loanId) }).toArray();
+    let loan = await db.collection('loans').find({ _id: new ObjectId(loanData.loanId) }).toArray();
 
     if (loan.length > 0) {
         loan = loan[0];
@@ -247,7 +247,7 @@ async function updateLoanClose(loanData) {
         await db
             .collection('loans')
             .updateOne(
-                { _id: ObjectId(loanData.loanId) }, 
+                { _id: new ObjectId(loanData.loanId) }, 
                 {
                     $set: { ...loan }
                 }, 
@@ -258,7 +258,7 @@ async function updateLoanClose(loanData) {
 async function updateGroup(loan) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
-    let group = await db.collection('groups').find({ _id: ObjectId(loan.groupId) }).toArray();
+    let group = await db.collection('groups').find({ _id: new ObjectId(loan.groupId) }).toArray();
 
     if (group.length > 0) {
         group = group[0];
@@ -283,7 +283,7 @@ async function updateGroup(loan) {
 
         delete group._id;
         await db.collection('groups').updateOne(
-            {  _id: ObjectId(loan.groupId) },
+            {  _id: new ObjectId(loan.groupId) },
             {
                 $set: { ...group }
             }, 
