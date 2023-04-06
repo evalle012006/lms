@@ -63,7 +63,7 @@ const SubNav = ({ item, index, activePath, inner=false, className }) => {
                                 <ChevronDownIcon className={`ml-auto ${activePath === item.url ? 'text-gray-800 w-5 h-5' : 'text-white w-5 h-5'} ${subMenuOpen && 'rotate-180'}`} />
                             </a>
                             {subMenuOpen && (
-                                <ul className="relative accordion-collapse collapse">
+                                <ul className="relative">
                                     {item.subMenuItems.map((menu, idx) => {
                                         return !menu.hidden && (
                                             <SubNav key={idx} item={menu} index={idx} activePath={activePath} className="ml-6" inner={true} />

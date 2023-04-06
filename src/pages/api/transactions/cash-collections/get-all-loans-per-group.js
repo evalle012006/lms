@@ -107,7 +107,10 @@ async function getAllLoansPerGroup(req, res) {
                                         mispayment: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },
                                         loanTarget: { $sum: {
                                             $cond: {
-                                                if: { $or: [{$eq: ['$remarks.label', 'Delinquent']}, {$eq: ['$remarks.value', 'excused']}, {$eq: ['$remarks.value', 'excused advance payment']}] },
+                                                if: { $or: [
+                                                    {$eq: ['$remarks.value', 'delinquent']},
+                                                    {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                                                ] },
                                                 then: '$activeLoan',
                                                 else: 0
                                             }
@@ -117,7 +120,7 @@ async function getAllLoansPerGroup(req, res) {
                                         total: { $sum: '$total' },
                                         offsetPerson: { $sum: {
                                             $cond: {
-                                                if: {$eq: ['$remarks.value', 'offset']},
+                                                if: {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
                                                 then: 1,
                                                 else: 0
                                             }
@@ -251,7 +254,10 @@ async function getAllLoansPerGroup(req, res) {
                                                 if: { $and: [{$eq: ['$occurence', 'weekly']}, {$eq: ['$groupDay', dayName]}] },
                                                 then: {
                                                     $cond: {
-                                                        if: { $or: [{$eq: ['$remarks.label', 'Delinquent']}, {$eq: ['$remarks.value', 'excused']}, {$eq: ['$remarks.value', 'excused advance payment']}] },
+                                                        if: { $or: [
+                                                            {$eq: ['$remarks.value', 'delinquent']},
+                                                            {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                                                        ] },
                                                         then: 0,
                                                         else: 50
                                                     }
@@ -343,7 +349,10 @@ async function getAllLoansPerGroup(req, res) {
                                         mispayment: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },
                                         loanTarget: { $sum: {
                                             $cond: {
-                                                if: { $or: [{$eq: ['$remarks.label', 'Delinquent']}, {$eq: ['$remarks.value', 'excused']}, {$eq: ['$remarks.value', 'excused advance payment']}] },
+                                                if: { $or: [
+                                                    {$eq: ['$remarks.value', 'delinquent']},
+                                                    {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                                                ] },
                                                 then: '$activeLoan',
                                                 else: 0
                                             }
@@ -353,7 +362,7 @@ async function getAllLoansPerGroup(req, res) {
                                         total: { $sum: '$total' },
                                         offsetPerson: { $sum: {
                                             $cond: {
-                                                if: {$eq: ['$remarks.value', 'offset']},
+                                                if: {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
                                                 then: 1,
                                                 else: 0
                                             }
@@ -489,7 +498,10 @@ async function getAllLoansPerGroup(req, res) {
                                                 if: { $and: [{$eq: ['$occurence', 'weekly']}, {$eq: ['$groupDay', dayName]}] },
                                                 then: {
                                                     $cond: {
-                                                        if: { $or: [{$eq: ['$remarks.label', 'Delinquent']}, {$eq: ['$remarks.value', 'excused']}, {$eq: ['$remarks.value', 'excused advance payment']}] },
+                                                        if: { $or: [
+                                                            {$eq: ['$remarks.value', 'delinquent']},
+                                                            {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                                                        ] },
                                                         then: 0,
                                                         else: 50
                                                     }
@@ -643,7 +655,10 @@ async function getAllLoansPerGroup(req, res) {
                                                                     then: '$history.activeLoan',
                                                                     else: {
                                                                         $cond: {
-                                                                            if: { $or: [{$eq: ['$remarks.label', 'Delinquent']}, {$eq: ['$remarks.value', 'excused']}, {$eq: ['$remarks.value', 'excused advance payment']}] },
+                                                                            if: { $or: [
+                                                                                {$eq: ['$remarks.value', 'delinquent']},
+                                                                                {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                                                                            ] },
                                                                             then: 0,
                                                                             else: {
                                                                                 $cond: {
@@ -776,7 +791,10 @@ async function getAllLoansPerGroup(req, res) {
                                                 if: { $and: [{$eq: ['$occurence', 'weekly']}, {$eq: ['$groupDay', dayName]}] },
                                                 then: {
                                                     $cond: {
-                                                        if: { $or: [{$eq: ['$remarks.label', 'Delinquent']}, {$eq: ['$remarks.value', 'excused']}, {$eq: ['$remarks.value', 'excused advance payment']}] },
+                                                        if: { $or: [
+                                                            {$eq: ['$remarks.value', 'delinquent']},
+                                                            {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                                                        ] },
                                                         then: 0,
                                                         else: 50
                                                     }
@@ -866,7 +884,10 @@ async function getAllLoansPerGroup(req, res) {
                                                             then: '$history.activeLoan',
                                                             else: {
                                                                 $cond: {
-                                                                    if: { $or: [{$eq: ['$remarks.label', 'Delinquent']}, {$eq: ['$remarks.value', 'excused']}, {$eq: ['$remarks.value', 'excused advance payment']}] },
+                                                                    if: { $or: [
+                                                                        {$eq: ['$remarks.value', 'delinquent']},
+                                                                        {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                                                                    ] },
                                                                     then: 0,
                                                                     else: {
                                                                         $cond: {
@@ -989,7 +1010,10 @@ async function getAllLoansPerGroup(req, res) {
                                                 if: { $and: [{$eq: ['$occurence', 'weekly']}, {$eq: ['$groupDay', dayName]}] },
                                                 then: {
                                                     $cond: {
-                                                        if: { $or: [{$eq: ['$remarks.label', 'Delinquent']}, {$eq: ['$remarks.value', 'excused']}, {$eq: ['$remarks.value', 'excused advance payment']}] },
+                                                        if: { $or: [
+                                                            {$eq: ['$remarks.value', 'delinquent']},
+                                                            {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                                                        ] },
                                                         then: 0,
                                                         else: 50
                                                     }

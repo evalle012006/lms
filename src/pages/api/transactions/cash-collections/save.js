@@ -22,13 +22,13 @@ async function save(req, res) {
             if (cc.status !== "totals") {
                 let collection = {...cc, groupCollectionId: groupHeaderId};
 
-                if (cc.status !== 'offset' || ((cc.remarks && (cc.remarks.value === 'reloaner' || cc.remarks.value === 'pending')) && cc.fullPaymentDate === currentDateStr)) {
+                /* if (cc.status !== 'offset' || ((cc.remarks && (cc.remarks.value === 'reloaner' || cc.remarks.value === 'pending')) && cc.fullPaymentDate === currentDateStr)) {
                     if (cc.occurence === 'weekly') {
                         collection.mcbuTarget = collection.mcbuTarget ? collection.mcbuTarget + 50 : 50;
                     } else {
                         collection.mcbuTarget = collection.mcbuTarget ? collection.mcbuTarget + 10 : 10;
                     }
-                }
+                } */
 
                 if (collection.hasOwnProperty('_id')) {
                     // if (collection.remarks && collection.remarks.value === "delinquent") {
@@ -113,7 +113,7 @@ async function updateLoan(collection) {
 
         loan.loanBalance = collection.loanBalance;
 
-        if (collection.remarks && (collection.remarks.value !== "excused" && collection.remarks.label !== "Delinquent")) {
+        if (collection.remarks && (!collection.remarks.value.startsWith('excused-')  && collection.remarks.value !== 'delinquent')) {
             loan.activeLoan = collection.activeLoan;
         }
         
@@ -209,7 +209,7 @@ async function updateClient(loan) {
 
         client.mcbuHistory = mcbuHistory;
 
-        if (loan.remarks.value === 'delinquent') {
+        if (loan.remarks.value.startsWith('delinquent')) {
             client.delinquent = true;
         }
 
@@ -222,7 +222,7 @@ async function updateClient(loan) {
                 }, 
                 { upsert: false });
         
-        if (loan.remarks.value === "offset") {
+        if (loan.remarks.value.startsWith('offset')) {
             await updateLoanClose(loan);
             await updateGroup(loan);
         }
