@@ -360,7 +360,22 @@ async function list(req, res) {
     } else if (mode === 'view_all_by_group' && groupId) {
         clients = await db
             .collection('client')
-            .find( { groupId: groupId } )
+            // .find( { groupId: groupId } )
+            .aggregate([
+                { $match: { groupId: groupId } },
+                { $addFields: { "clientIdStr": { $toString: "$_id" } } },
+                {
+                    $lookup: {
+                        from: "loans",
+                        localField: "clientIdStr",
+                        foreignField: "clientId",
+                        pipeline: [
+                            { $match: {$expr: {$or: [{$eq: ['$status', 'pending']}, {$eq: ['$status', 'active']}, {$eq: ['$status', 'completed']}]}} }
+                        ],
+                        as: "loans"
+                    }
+                }
+            ])
             .toArray();
     } else {
         clients = await db

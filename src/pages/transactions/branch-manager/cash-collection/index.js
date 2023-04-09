@@ -119,6 +119,12 @@ const BranchCashCollectionPage = () => {
     }, [currentUser]);
 
     useEffect(() => {
+        if (dateFilter === null) {
+            setDateFilter(currentDate);
+        }
+    }, [currentDate]);
+
+    useEffect(() => {
         if (branchList.length > 0) {
             localStorage.setItem('cashCollectionDateFilter', currentDate);
             if (currentUser.role.rep < 4 && !isWeekend && !isHoliday) {

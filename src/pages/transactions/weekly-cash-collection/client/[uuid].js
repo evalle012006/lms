@@ -139,7 +139,12 @@ const CashCollectionDetailsPage = () => {
                 setGroupSummaryIsClose(true);
             }
 
-            response.data.collection.map(cc => {
+            let dataCollection = response.data.collection;
+            if (type === 'filter') {
+                dataCollection = dataCollection.filter(cc => cc.hasOwnProperty('loanId') && cc.loanId !== null );
+            }
+            
+            dataCollection.map(cc => {
                 let collection;
                 if (cc.status === "tomorrow" || cc.status === "pending") {
                     let numMispayment = 0;
@@ -596,7 +601,7 @@ const CashCollectionDetailsPage = () => {
                     totalTargetLoanCollection += collection.history ? collection.history.activeLoan : 0;
                 }
 
-                if (!collection.remarks || (collection.remarks && collection.remarks.value !== "delinquent" && !collection.remarks.value.startsWith("excused-"))) {
+                if (!collection.remarks || (collection.remarks && collection.remarks?.value !== "delinquent" && !collection.remarks?.value.startsWith("excused-"))) {
                     totalTargetLoanCollection += collection.targetCollection  ? collection.targetCollection !== '-' ? collection.targetCollection : 0 : 0;
                 }
 
@@ -661,7 +666,7 @@ const CashCollectionDetailsPage = () => {
                     } else if (parseFloat(cc.paymentCollection) === 0 && !cc.remarks) {
                         errorMsg.add('Error occured. Please select a remarks for 0 or no payment Actual Collection.');
                     } else if ((parseFloat(cc.paymentCollection) === 0 || (parseFloat(cc.paymentCollection) > 0 && parseFloat(cc.paymentCollection) < parseFloat(cc.activeLoan))) 
-                    && (!cc.remarks || (cc.remarks && (!cc.remarks.value.startsWith('delinquent') && cc.remarks.value !== "past due" && !cc.remarks.value.startsWith('excused'))) ) {
+                        && (!cc.remarks || (cc.remarks && (!cc.remarks.value.startsWith('delinquent') && cc.remarks.value !== "past due" && !cc.remarks.value.startsWith('excused')))) ) {
                         errorMsg.add("Error occured. 0 payment should be mark either PAST DUE, DELINQUENT OR EXCUSED in remarks.");
                     } else if ((cc.remarks && cc.remarks.value === "past due") && parseFloat(cc.pastDue) < parseFloat(cc.targetCollection)) {
                         errorMsg.add("Error occured. Past due is less than the target collection.");
@@ -1648,6 +1653,10 @@ const CashCollectionDetailsPage = () => {
         mounted && uuid && getCurrentGroup();
         mounted && currentDate && getCashCollections();
         mounted && getListBranch();
+
+        if (dateFilter === null) {
+            setDateFilter(currentDate);
+        }
 
         return () => {
             mounted = false;

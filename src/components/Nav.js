@@ -507,9 +507,9 @@ const NavComponent = () => {
     const getActivePath = () => {
         const path = router.asPath.replace("#", "");
         const paths = path.split("/").filter((p) => p);
-        
+
         let currentPath = '';
-        if (paths.length > 0) {
+        if (!path && paths.length > 0) {
             if (paths.length === 1) {
                 currentPath = "/".concat(paths[0]);
             } else if (paths.length === 2) {
@@ -595,19 +595,11 @@ const NavComponent = () => {
                     temp.hidden = true;
                 }
 
-                if (menu.label === 'Transfer') {
-                    temp.hidden = true;
-                }
-
                 if (menu.label === 'Daily Transactions') {
                     temp.hidden = true;
                 }
 
                 if (menu.label === 'Weekly Transactions') {
-                    temp.hidden = true;
-                }
-
-                if (menu.label === "Transfer Client") {
                     temp.hidden = true;
                 }
             }  else if (userState.role.rep === 4) {
@@ -624,10 +616,6 @@ const NavComponent = () => {
                 }
 
                 if (menu.label === 'BM Transactions') {
-                    temp.hidden = true;
-                }
-
-                if (menu.label === "Transfer Client") {
                     temp.hidden = true;
                 }
 
@@ -673,8 +661,14 @@ const NavComponent = () => {
                         if (sm.label === 'Loan Officer Summary') {
                             sm.hidden = true;
                         }
+
+                        if (sm.label === 'Transfer Client') {
+                            sm.hidden = true;
+                        }
                     }  else if (userState.role.rep === 4) {
-                        // to do
+                        if (sm.label === 'Transfer Client') {
+                            sm.hidden = true;
+                        }
                     }
 
                     return sm;

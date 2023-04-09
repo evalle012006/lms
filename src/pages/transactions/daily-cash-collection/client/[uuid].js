@@ -143,8 +143,9 @@ const CashCollectionDetailsPage = () => {
     }
 
     const getCashCollections = async (date) => {
+        const type = date ? 'filter' : 'current';
         let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/get-loan-by-group-cash-collection?' 
-            + new URLSearchParams({ date: date ? date : currentDate, mode: 'daily', groupId: uuid, type: date ? 'filter' : 'current' });
+            + new URLSearchParams({ date: date ? date : currentDate, mode: 'daily', groupId: uuid, type: type });
         
         const response = await fetchWrapper.get(url);
         if (response.success) {
@@ -161,8 +162,14 @@ const CashCollectionDetailsPage = () => {
                 setGroupSummaryIsClose(true);
             }
 
-            response.data.collection.map(cc => {
+            let dataCollection = response.data.collection;
+            if (type === 'filter') {
+                dataCollection = dataCollection.filter(cc => cc.hasOwnProperty('loanId') && cc.loanId !== null );
+            }
+            
+            dataCollection.map(cc => {
                 let collection;
+
                 if (cc.status === "tomorrow" || cc.status === "pending") {
                     let numMispayment = 0;
                     if (date) {
@@ -430,7 +437,7 @@ const CashCollectionDetailsPage = () => {
 
                 collection.mcbuWithdrawFlag = false;
 
-                cashCollection.push(collection);
+                cashCollection.push(collection);   
             });
 
             response.data.tomorrowPending.map(loan => {
@@ -624,7 +631,7 @@ const CashCollectionDetailsPage = () => {
                     totalTargetLoanCollection += collection.history ? collection.history.activeLoan : 0;
                 }
 
-                if (!collection.remarks || (collection.remarks && collection.remarks.value !== 'delinquent' && !collection.remarks.value.startsWith('excused-'))) {
+                if (!collection.remarks || (collection.remarks && collection.remarks?.value !== 'delinquent' && !collection.remarks?.value.startsWith('excused-'))) {
                     totalTargetLoanCollection += collection.targetCollection  ? collection.targetCollection !== '-' ? collection.targetCollection : 0 : 0;
                 }
 
@@ -1698,6 +1705,10 @@ const CashCollectionDetailsPage = () => {
         mounted && currentDate && getCashCollections();
         mounted && getListBranch();
 
+        if (dateFilter === null) {
+            setDateFilter(currentDate);
+        }
+
         return () => {
             mounted = false;
         };
@@ -1914,7 +1925,7 @@ const CashCollectionDetailsPage = () => {
                                                         {(!isWeekend && !isHoliday && currentUser.role.rep > 2 &&  (cc.status === 'active' || cc.status === 'completed') && !groupSummaryIsClose) && (
                                                             <div className='flex flex-row p-4'>
                                                                 {(cc.hasOwnProperty('_id') && !filter) && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleRevert(e, cc, index)} />}
-                                                                {(cc.status === 'completed' && (cc.remarks.value && cc.remarks.value.startsWith('reloaner')) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
+                                                                {(cc.status === 'completed' && (cc.remarks.value && cc.remarks.value.startsWith('reloaner'))) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
                                                                 {/* {(!filter && cc.status === 'active') && <CurrencyDollarIcon className="w-5 h-5 mr-6" title="MCBU Withdrawal" onClick={(e) => handleMcbuWithdrawal(e, cc, index)} />} */}
                                                                 {(!filter && !editMode && cc.status !== 'closed' && currentMonth === 11) && <CalculatorIcon className="w-5 h-5 mr-6" title="Calculate MCBU Interest" onClick={(e) => calculateInterest(e, cc, index)} />}
                                                             </div>

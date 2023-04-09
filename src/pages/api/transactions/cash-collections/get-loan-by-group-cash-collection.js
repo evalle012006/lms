@@ -188,7 +188,7 @@ async function getLoanWithCashCollection(req, res) {
                 cashCollectionDay = await db
                     .collection('cashCollections')
                     .aggregate([
-                        { $match: {dateAdded: date, groupId: groupId} },
+                        { $match: { dateAdded: date, groupId: groupId } },
                         {
                             $addFields: {
                                 "clientIdObj": { $toObjectId: "$clientId" },
@@ -264,7 +264,7 @@ async function getLoanWithCashCollection(req, res) {
                                 as: "fullPayment"
                             }
                         },
-                        { $project: { clientIdObj: 0, loanIdStr: 0, startDateObj: 0, groupIdObj: 0 } }
+                        { $project: { clientIdObj: 0, loanIdObj: 0, loanIdStr: 0, startDateObj: 0, groupIdObj: 0 } }
                     ])
                     .toArray();
             }

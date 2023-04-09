@@ -127,6 +127,12 @@ const WeeklyCashCollectionPage = () => {
         };
     }, [currentUser]);
 
+    useEffect(() => {
+        if (dateFilter === null) {
+            setDateFilter(currentDate);
+        }
+    }, [currentDate]);
+
     // useEffect(() => {
     //     if (branchList.length > 0) {
     //         localStorage.setItem('cashCollectionDateFilter', currentDate);

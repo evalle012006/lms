@@ -107,6 +107,12 @@ const WeeklyCashCollectionDetailsPage = () => {
         }
     }, [branch]);
 
+    useEffect(() => {
+        if (dateFilter === null) {
+            setDateFilter(currentDate);
+        }
+    }, [currentDate]);
+
     return (
         <Layout header={false} noPad={true}>
             <div className="overflow-x-auto">
