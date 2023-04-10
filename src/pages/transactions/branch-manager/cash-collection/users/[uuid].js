@@ -148,6 +148,12 @@ const CashCollectionDetailsPage = () => {
     }, [uuid]);
 
     useEffect(() => {
+        if (dateFilter === null) {
+            setDateFilter(currentDate);
+        }
+    }, [currentDate]);
+
+    useEffect(() => {
         if (branch) {
             setCurrentBranch(branch);
         }

@@ -163,6 +163,12 @@ const WeeklyCashCollectionDetailsPage = () => {
         }
     }, [branchList]);
 
+    useEffect(() => {
+        if (dateFilter === null) {
+            setDateFilter(currentDate);
+        }
+    }, [currentDate]);
+
     return (
         <Layout header={false} noPad={true}>
             {loading ? (

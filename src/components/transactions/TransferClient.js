@@ -329,37 +329,37 @@ const TransferClientTransactionPage = ({ mode = "group", setLoading }) => {
             accessor: 'loName',
             filter: 'includes'
         },
-        {
-            Header: "Slot No.",
-            accessor: 'slotNo',
-            Cell: SelectCell,
-            Options: platformRoles,
-            valueIdAccessor: 'targetSlotNo',
-            selectOnChange: updateClient,
-        },
-        {
-            Header: "Loan Status",
-            accessor: 'loanStatus',
-            Cell: StatusPill
-        },
-        {
-            Header: "Active Loan",
-            accessor: 'activeLoanStr',
-        },
-        {
-            Header: "Loan Balance",
-            accessor: 'loanBalanceStr'
-        },
-        {
-            Header: "Delinquent",
-            accessor: 'delinquent',
-            filter: 'includes'
-        },
-        {
-            Header: "Status",
-            accessor: 'status',
-            Cell: StatusPill
-        }
+        // {
+        //     Header: "Slot No.",
+        //     accessor: 'slotNo',
+        //     Cell: SelectCell,
+        //     Options: [],
+        //     valueIdAccessor: 'targetSlotNo',
+        //     selectOnChange: updateClient,
+        // },
+        // {
+        //     Header: "Loan Status",
+        //     accessor: 'loanStatus',
+        //     Cell: StatusPill
+        // },
+        // {
+        //     Header: "Active Loan",
+        //     accessor: 'activeLoanStr',
+        // },
+        // {
+        //     Header: "Loan Balance",
+        //     accessor: 'loanBalanceStr'
+        // },
+        // {
+        //     Header: "Delinquent",
+        //     accessor: 'delinquent',
+        //     filter: 'includes'
+        // },
+        // {
+        //     Header: "Status",
+        //     accessor: 'status',
+        //     Cell: StatusPill
+        // }
     ]);
 
     useEffect(() => {

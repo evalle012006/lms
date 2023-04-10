@@ -100,6 +100,12 @@ const CashCollectionDetailsPage = () => {
             mounted = false;
         };
     }, [uuid]);
+    
+    useEffect(() => {
+        if (dateFilter === null) {
+            setDateFilter(currentDate);
+        }
+    }, [currentDate]);
 
     useEffect(() => {
         if (branch) {

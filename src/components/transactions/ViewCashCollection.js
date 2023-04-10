@@ -62,6 +62,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
             let totalMcbuReturnAmt = 0;
             let totalMcbuTarget = 0;
             let totalMcbuInterest = 0;
+            let totalTransfer = 0;
 
             let selectedBranch;
             response.data && response.data.map(cc => {
@@ -91,6 +92,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                     noPastDue: '-',
                     noOfFullPayment: '-',
                     offSetPerson: '-',
+                    transfer: '-',
                     status: '-'
                 };
                 selectedBranch = cc.branchId;
@@ -195,7 +197,8 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                             mcbuWithdrawalStr: cc.cashCollections[0].mcbuWithdrawal > 0 ? formatPricePhp(cc.cashCollections[0].mcbuWithdrawal): '-',
                             noMcbuReturn: cc.cashCollections[0].mcbuReturnNo ? cc.cashCollections[0].mcbuReturnNo: 0,
                             mcbuReturnAmt: cc.cashCollections[0].mcbuReturnAmt ? cc.cashCollections[0].mcbuReturnAmt: 0,
-                            mcbuReturnAmtStr: cc.cashCollections[0].mcbuReturnAmt > 0 ? formatPricePhp(cc.cashCollections[0].mcbuReturnAmt): '-'
+                            mcbuReturnAmtStr: cc.cashCollections[0].mcbuReturnAmt > 0 ? formatPricePhp(cc.cashCollections[0].mcbuReturnAmt): '-',
+                            transfer: cc.cashCollections[0].transfer
                         };
                         
                         // if (collection.mcbu === 0 || !collection.mcbu) {
@@ -211,6 +214,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         totalMcbuWithdrawal += cc.cashCollections[0].mcbuWithdrawal ? cc.cashCollections[0].mcbuWithdrawal: 0;
                         totalMcbuReturnNo += cc.cashCollections[0].mcbuReturnNo ? cc.cashCollections[0].mcbuReturnNo: 0;
                         totalMcbuReturnAmt += cc.cashCollections[0].mcbuReturnAmt ? cc.cashCollections[0].mcbuReturnAmt: 0;
+                        totalTransfer += collection.transfer;
                     }
     
                     if (cc.currentRelease.length > 0) {
@@ -298,6 +302,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                             mcbuReturnAmtStr: cc.cashCollections[0].mcbuReturnAmt ? formatPricePhp(cc.cashCollections[0].mcbuReturnAmt): 0,
                             mcbuInterest: cc.cashCollections[0].mcbuInterest,
                             mcbuInterestStr: cc.cashCollections[0].mcbuInterest > 0 ? formatPricePhp(cc.cashCollections[0].mcbuInterest) : '-',
+                            transfer: cc.cashCollections[0].transfer,
                             status: '',
                             page: 'collection'
                         };
@@ -323,6 +328,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         totalMcbuReturnAmt += cc.cashCollections[0].mcbuReturnAmt;
                         totalMcbuTarget += cc.cashCollections[0].mcbuTarget ? cc.cashCollections[0].mcbuTarget : 0;
                         totalMcbuInterest += cc.cashCollections[0].mcbuInterest;
+                        totalTransfer += collection.transfer;
                     }
                 }
 
@@ -376,6 +382,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                     mcbuTarget: totalMcbuTarget,
                     mcbuInterest: totalMcbuInterest,
                     mcbuInterestStr: formatPricePhp(totalMcbuInterest),
+                    transfer: totalTransfer,
                     totalData: true,
                     status: '-'
                 }
@@ -405,7 +412,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
         if (yearEnd) {
             grandTotal = {
                 day: 'Year End',
-                transfer: 0,
+                transfer: totals.transfer,
                 newMember: 0,
                 offsetPerson: 0,
                 mcbuTarget: totals.mcbuTarget,
@@ -698,7 +705,6 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
     }, []);
 
     useEffect(() => {
-        console.log(type, isWeekend, isHoliday)
         if (type === 'weekly') {
             const preSaveCollections = async () => {
                 const data = {

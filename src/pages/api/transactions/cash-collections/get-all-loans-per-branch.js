@@ -144,7 +144,14 @@ async function getAllLoansPerGroup(req, res) {
                                                 }
                                             } },
                                             mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
-                                            mcbuInterest: { $sum: '$mcbuInterest' }
+                                            mcbuInterest: { $sum: '$mcbuInterest' },
+                                            transfer: { $sum: {
+                                                $cond: {
+                                                    if: { $eq: ['$transfer', true] },
+                                                    then: 1,
+                                                    else: 0
+                                                }
+                                            } }
                                         } 
                                     }
                                 ],
@@ -471,7 +478,14 @@ async function getAllLoansPerGroup(req, res) {
                                             }
                                         } },
                                         mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
-                                        mcbuInterest: { $sum: '$mcbuInterest' }
+                                        mcbuInterest: { $sum: '$mcbuInterest' },
+                                        transfer: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: 1,
+                                                else: 0
+                                            }
+                                        } }
                                     } 
                                 }
                             ],
@@ -910,7 +924,14 @@ async function getAllLoansPerGroup(req, res) {
                                                     else: 0
                                                 }
                                             } },
-                                            mcbuInterest: { $sum: '$mcbuInterest' }
+                                            mcbuInterest: { $sum: '$mcbuInterest' },
+                                            transfer: { $sum: {
+                                                $cond: {
+                                                    if: { $eq: ['$transfer', true] },
+                                                    then: 1,
+                                                    else: 0
+                                                }
+                                            } }
                                         } 
                                     }
                                 ],
@@ -1141,7 +1162,14 @@ async function getAllLoansPerGroup(req, res) {
                                                 else: 0
                                             }
                                         } },
-                                        mcbuInterest: { $sum: '$mcbuInterest' }
+                                        mcbuInterest: { $sum: '$mcbuInterest' },
+                                        transfer: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: 1,
+                                                else: 0
+                                            }
+                                        } }
                                     } 
                                 }
                             ],

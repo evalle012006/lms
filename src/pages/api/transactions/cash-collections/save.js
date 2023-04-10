@@ -31,7 +31,7 @@ async function save(req, res) {
                 } */
 
                 if (collection.hasOwnProperty('_id')) {
-                    // if (collection.remarks && collection.remarks.value === "delinquent") {
+                    // if (collection.remarks && collection.remarks?.value === "delinquent") {
                     //     collection.targetCollection = 0;
                     // }
 
@@ -113,7 +113,7 @@ async function updateLoan(collection) {
 
         loan.loanBalance = collection.loanBalance;
 
-        if (collection.remarks && (!collection.remarks.value.startsWith('excused-')  && collection.remarks.value !== 'delinquent')) {
+        if (collection.remarks && (!collection.remarks?.value.startsWith('excused-')  && collection.remarks?.value !== 'delinquent')) {
             loan.activeLoan = collection.activeLoan;
         }
         
@@ -133,7 +133,7 @@ async function updateLoan(collection) {
             loan.mcbuInterest = loan.mcbuInterest ? loan.mcbuInterest + collection.mcbuInterest : collection.mcbuInterest !== '-' ? collection.mcbuInterest : 0;
         }
         
-        if (collection.remarks && collection.remarks.value === "past due") {
+        if (collection.remarks && collection.remarks?.value === "past due") {
             loan.noPastDue = loan.noPastDue ? loan.noPastDue + 1 : 1;
         } else {
             loan.noPastDue = loan.noPastDue ? loan.noPastDue : 0;
