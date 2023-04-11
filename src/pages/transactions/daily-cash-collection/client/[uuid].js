@@ -631,7 +631,7 @@ const CashCollectionDetailsPage = () => {
                     totalTargetLoanCollection += collection.history ? collection.history.activeLoan : 0;
                 }
 
-                if (!collection.remarks || (collection.remarks && collection.remarks?.value !== 'delinquent' && !collection.remarks?.value.startsWith('excused-'))) {
+                if (!collection.remarks || (collection.remarks && collection.remarks?.value !== 'delinquent' && !collection.remarks?.value?.startsWith('excused-'))) {
                     totalTargetLoanCollection += collection.targetCollection  ? collection.targetCollection !== '-' ? collection.targetCollection : 0 : 0;
                 }
 
@@ -695,18 +695,18 @@ const CashCollectionDetailsPage = () => {
                 } else if (parseFloat(cc.paymentCollection) === 0 && !cc.remarks) {
                     errorMsg.add('Error occured. Please select a remarks for 0 or no payment Actual Collection.');
                 } else if ((parseFloat(cc.paymentCollection) === 0 || (parseFloat(cc.paymentCollection) > 0 && parseFloat(cc.paymentCollection) < parseFloat(cc.activeLoan))) 
-                        && (!cc.remarks || (cc.remarks && (!cc.remarks.value.startsWith('delinquent') && cc.remarks.value !== "past due" && !cc.remarks.value.startsWith('excused')))) ) {
+                        && (!cc.remarks || (cc.remarks && (!cc.remarks.value?.startsWith('delinquent') && cc.remarks.value !== "past due" && !cc.remarks.value?.startsWith('excused')))) ) {
                     errorMsg.add("Error occured. 0 payment should be mark either PAST DUE, DELINQUENT OR EXCUSED in remarks.");
                 } else if ((cc.remarks && cc.remarks.value === "past due") && parseFloat(cc.pastDue) < parseFloat(cc.targetCollection)) {
                     errorMsg.add("Error occured. Past due is less than the target collection.");
-                } else if (cc.remarks && (cc.remarks.value === "past due" || cc.remarks.value.startsWith("excused-") || cc.remarks.value.startsWith("delinquent")) ) {
+                } else if (cc.remarks && (cc.remarks.value === "past due" || cc.remarks.value?.startsWith('excused-') || cc.remarks.value?.startsWith('delinquent')) ) {
                     if (cc.paymentCollection > 0 && cc.paymentCollection % 10 !== 0) {
                         errorMsg.add("Error occured. Amount collection is not divisible by 10");
                     }
                 } else if (parseFloat(cc.paymentCollection) > 0 && parseFloat(cc.paymentCollection) < cc.activeLoan) {
                     errorMsg.add("Actual collection is below the target collection.");
                 } else if (parseFloat(cc.paymentCollection) % parseFloat(cc.activeLoan) !== 0 && cc.loanBalance !== 0) {
-                    if (cc.remarks && (cc.remarks.value !== "past due" && !cc.remarks.value.startsWith("excused-") && !cc.remarks.value.startsWith("delinquent")) ) {
+                    if (cc.remarks && (cc.remarks.value !== "past due" && !cc.remarks.value?.startsWith('excused-') && !cc.remarks.value?.startsWith('delinquent')) ) {
                         errorMsg.add(`Actual collection should be divisible by ${cc.activeLoan}.`);
                     }
                 } else if (cc.loanBalance > 0 && parseFloat(cc.paymentCollection) === (cc.activeLoan * 2) && (!cc.remarks || cc.remarks && cc.remarks.value !== "advance payment" && cc.remarks.value !== "past due collection")) {
@@ -719,7 +719,7 @@ const CashCollectionDetailsPage = () => {
                     errorMsg.add('Error occured. Please select PENDING, RELOANER or OFFSET remarks for full payment transaction.');
                 }
 
-                if (parseFloat(cc.loanBalance) && (cc.remarks && cc.remarks.value && cc.remarks.value.startsWith('offset'))) {
+                if (parseFloat(cc.loanBalance) && (cc.remarks && cc.remarks.value && cc.remarks.value?.startsWith('offset'))) {
                     errorMsg.add('Error occured. Please input the full balance amount before closing the loan account.');
                 }
 
@@ -752,7 +752,7 @@ const CashCollectionDetailsPage = () => {
                         errorMsg.add('Error occured. MCBU withdrawal amount is less than ₱10.');
                     }
                 }
-            } else if (cc.status === 'completed' && (cc.remarks && !(cc.remarks.value && (cc.remarks.value === 'pending' || cc.remarks.value.startsWith('reloaner') || cc.remarks.value.startsWith('offset'))))) {
+            } else if (cc.status === 'completed' && (cc.remarks && !(cc.remarks.value && (cc.remarks.value === 'pending' || cc.remarks.value?.startsWith('reloaner') || cc.remarks.value?.startsWith('offset'))))) {
                 errorMsg.add("Invalid remarks. Please set it to PENDING, RELOANER OR OFFSET.");
             }
         });
@@ -888,7 +888,7 @@ const CashCollectionDetailsPage = () => {
                         }
                         
                         if (typeof temp.remarks === 'object') {
-                            if (temp.remarks.value && temp.remarks.value.startsWith('offset')) {
+                            if (temp.remarks.value && temp.remarks.value?.startsWith('offset')) {
                                 temp.status = 'closed';
                                 temp.clientStatus = 'offset';
                             } 
@@ -1074,7 +1074,7 @@ const CashCollectionDetailsPage = () => {
                         else if (parseFloat(payment) % parseFloat(temp.activeLoan) !== 0) {
                             // toast.error("Actual collection should be divisible by 100.");
                             temp.paymentCollection = payment;
-                            if (temp.remarks && (temp.remarks.value !== "past due" && temp.remarks.value !== "excused" && temp.remarks.value !== "delinquent") ) {
+                            if (temp.remarks && (temp.remarks.value !== "past due" && !temp.remarks.value?.startsWith('excused-') && !temp.remarks.startsWith('delinquent')) ) {
                                 temp.error = true;
                             }
                         } 
@@ -1240,7 +1240,7 @@ const CashCollectionDetailsPage = () => {
                     }
                     // for pending remarks - this slot no should still be able to change by the following day to change the remarks
                     // by tomorrow only reloaner and offsets...
-                    if (remarks.value && remarks.value.startsWith('offset')) {
+                    if (remarks.value && remarks.value?.startsWith('offset')) {
                         if (parseFloat(temp.loanBalance) !== 0) {
                             toast.error("Please enter the full balance before closing the loan account.");
                             temp.error = true;
@@ -1271,16 +1271,16 @@ const CashCollectionDetailsPage = () => {
                         temp.error = false;
                         temp.excused = true;
                         temp.mcbuError = false;
-                    } else if (remarks.value === "delinquent" || remarks.value === "excused") {
+                    } else if (remarks.value?.startsWith('delinquent') || remarks.value?.startsWith('excused-')) {
                         // add no of mispayments / maximum of payments per cycle // change to #of mispay
                         temp.error = false;
                         temp.mcbuError = false;
 
-                        if (temp.remarks.value === "delinquent") {
+                        if (temp.remarks.value?.startsWith('delinquent')) {
                             temp.delinquent = true;
                         }
 
-                        if (remarks.value === "excused") {
+                        if (remarks.value?.startsWith('excused-')) {
                             temp.excused = true;
                         }
 
@@ -1416,7 +1416,7 @@ const CashCollectionDetailsPage = () => {
             advanceDays: temp.advanceDays
         };
 
-        if (temp.remarks === "offset") {
+        if (temp.remarks.startsWith('offset')) {
             temp.history.loanCycle = temp.loanCycle;
         }
 
@@ -1490,7 +1490,7 @@ const CashCollectionDetailsPage = () => {
     const handleReloan = (e, selected) => {
         e.stopPropagation();
         
-        if (selected.remarks && (selected.remarks.value === "pending" || selected.remarks.value === "reloaner")) {
+        if (selected.remarks && (selected.remarks.value === "pending" || selected.remarks.value?.startsWith('reloaner'))) {
             setShowAddDrawer(true);
             selected.group = currentGroup;
             setLoan(selected);
@@ -1891,7 +1891,7 @@ const CashCollectionDetailsPage = () => {
                                                     { cc.pastDueStr }
                                                 </td>
                                                 { (!isWeekend && !isHoliday && (currentUser.role.rep > 2 && (cc.status === 'active' || cc.status === 'completed') && (editMode && !groupSummaryIsClose) 
-                                                    && (!cc.hasOwnProperty('_id') || revertMode) && !filter) || ((cc.remarks && cc.remarks.value === "reloaner" && cc.status !== "tomorrow") && !groupSummaryIsClose)) ? (
+                                                    && (!cc.hasOwnProperty('_id') || revertMode) && !filter) || ((cc.remarks && cc.remarks.value?.startsWith('reloaner') && cc.status !== "tomorrow") && !groupSummaryIsClose)) ? (
                                                         <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">
                                                             { cc.remarks !== '-' ? (
                                                                 <Select 
@@ -1925,7 +1925,7 @@ const CashCollectionDetailsPage = () => {
                                                         {(!isWeekend && !isHoliday && currentUser.role.rep > 2 &&  (cc.status === 'active' || cc.status === 'completed') && !groupSummaryIsClose) && (
                                                             <div className='flex flex-row p-4'>
                                                                 {(cc.hasOwnProperty('_id') && !filter) && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleRevert(e, cc, index)} />}
-                                                                {(cc.status === 'completed' && (cc.remarks.value && cc.remarks.value.startsWith('reloaner'))) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
+                                                                {(cc.status === 'completed' && (cc.remarks.value && cc.remarks.value?.startsWith('reloaner'))) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
                                                                 {/* {(!filter && cc.status === 'active') && <CurrencyDollarIcon className="w-5 h-5 mr-6" title="MCBU Withdrawal" onClick={(e) => handleMcbuWithdrawal(e, cc, index)} />} */}
                                                                 {(!filter && !editMode && cc.status !== 'closed' && currentMonth === 11) && <CalculatorIcon className="w-5 h-5 mr-6" title="Calculate MCBU Interest" onClick={(e) => calculateInterest(e, cc, index)} />}
                                                             </div>
