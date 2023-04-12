@@ -130,7 +130,10 @@ async function getAllLoansPerGroup(req, res) {
                                         mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
                                         mcbuReturnNo: { $sum: {
                                             $cond: {
-                                                if: {$gt: ['$mcbuReturnAmt', 0]},
+                                                if: { $or: [
+                                                    {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
+                                                    {$gt: ['$mcbuReturnAmt', 0]}
+                                                ] },
                                                 then: 1,
                                                 else: 0
                                             }
@@ -379,7 +382,10 @@ async function getAllLoansPerGroup(req, res) {
                                         mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
                                         mcbuReturnNo: { $sum: {
                                             $cond: {
-                                                if: {$gt: ['$mcbuReturnAmt', 0]},
+                                                if: { $or: [
+                                                    {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
+                                                    {$gt: ['$mcbuReturnAmt', 0]}
+                                                ] },
                                                 then: 1,
                                                 else: 0
                                             }
@@ -794,7 +800,10 @@ async function getAllLoansPerGroup(req, res) {
                                         mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
                                         mcbuReturnNo: { $sum: {
                                             $cond: {
-                                                if: {$gt: ['$mcbuReturnAmt', 0]},
+                                                if: { $or: [
+                                                    {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
+                                                    {$gt: ['$mcbuReturnAmt', 0]}
+                                                ] },
                                                 then: 1,
                                                 else: 0
                                             }
@@ -1020,7 +1029,10 @@ async function getAllLoansPerGroup(req, res) {
                                         mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
                                         mcbuReturnNo: { $sum: {
                                             $cond: {
-                                                if: {$gt: ['$mcbuReturnAmt', 0]},
+                                                if: { $or: [
+                                                    {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
+                                                    {$gt: ['$mcbuReturnAmt', 0]}
+                                                ] },
                                                 then: 1,
                                                 else: 0
                                             }

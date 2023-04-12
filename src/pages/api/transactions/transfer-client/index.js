@@ -109,7 +109,6 @@ async function saveGroupSummary(group) {
     const currentDate = getCurrentDate();
 
     const groupSummary = await db.collection('groupCashCollections').find({ dateAdded: moment(currentDate).format('YYYY-MM-DD'), groupId: group._id }).toArray();
-    console.log(groupSummary)
     if (groupSummary.length === 0) {
         const data = {
             branchId: group.branchId,

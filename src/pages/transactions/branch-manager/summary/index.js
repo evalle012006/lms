@@ -513,12 +513,12 @@ const BranchManagerSummary = () => {
                 });
 
                 if (w.weekNumber === 0) {
-                    totalActiveClients = fBal.activeClients + totalTransfer + totalNewMember - totalOffsetperson;
+                    totalActiveClients = fBal.activeClients + totalTransfer + totalNewMember - totalNoMcbuReturn;
                     totalActiveLoanReleasePerson = fBal.activeLoanReleasePerson + totalConsolidatedLoanReleasePerson - totalConsolidatedFullPaymentPerson;
                     totalActiveLoanReleaseAmount = fBal.activeLoanReleaseAmount + totalConsolidatedLoanReleaseAmount - totalConsolidatedFullPaymentAmount;
                     // totalMcbuBalance = fBal.mcbuBalance + totalMcbuActual + totalMcbuWithdrawals + totalMcbuInterest - totalMcbuReturnAmt;
                 } else {
-                    totalActiveClients = prevWeek.activeClients + totalTransfer + totalNewMember - totalOffsetperson;
+                    totalActiveClients = prevWeek.activeClients + totalTransfer + totalNewMember - totalNoMcbuReturn;
                     totalActiveLoanReleasePerson = prevWeek.activeLoanReleasePerson + totalConsolidatedLoanReleasePerson - totalConsolidatedFullPaymentPerson;
                     totalActiveLoanReleaseAmount = prevWeek.activeLoanReleaseAmount + totalConsolidatedLoanReleaseAmount - totalConsolidatedFullPaymentAmount;
                     // totalMcbuBalance = prevWeek.mcbuBalance + totalMcbuActual + totalMcbuWithdrawals + totalMcbuInterest - totalMcbuReturnAmt;
@@ -738,7 +738,7 @@ const BranchManagerSummary = () => {
         });
 
         totalMcbuBalance = fBal.mcbuBalance + totalMcbuActual - totalMcbuWithdrawal + totalMcbuInterest - totalMcbuReturnAmt;
-        totalActiveClients = fBal.activeClients + totalTransfer + totalNewMember - totalOffsetperson;
+        totalActiveClients = fBal.activeClients + totalTransfer + totalNewMember - totalNoMcbuReturn;
         totalActiveLoanReleasePerson = fBal.activeLoanReleasePerson + totalConsolidatedLoanReleasePerson - totalConsolidatedFullPaymentPerson;
         totalActiveLoanReleaseAmount = fBal.activeLoanReleaseAmount + totalConsolidatedLoanReleaseAmount - totalConsolidatedFullPaymentAmount;
         totalActiveBorrowers = fBal.activeBorrowers + totalConsolidatedLoanReleasePerson - totalConsolidatedFullPaymentPerson;
