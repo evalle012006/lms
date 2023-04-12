@@ -601,7 +601,7 @@ const CashCollectionDetailsPage = () => {
                     totalTargetLoanCollection += collection.history ? collection.history.activeLoan : 0;
                 }
 
-                if (!collection.remarks || (collection.remarks && collection.remarks?.value !== 'delinquent' && !collection.remarks?.value.startsWith("excused-"))) {
+                if (!collection.remarks || (collection.remarks && collection.remarks?.value !== 'delinquent' && !collection.remarks.value?.startsWith("excused-"))) {
                     totalTargetLoanCollection += collection.targetCollection  ? collection.targetCollection !== '-' ? collection.targetCollection : 0 : 0;
                 }
 
@@ -1357,7 +1357,7 @@ const CashCollectionDetailsPage = () => {
             advanceDays: temp.advanceDays
         };
 
-        if (temp.remarks.startsWith('offset')) {
+        if (temp.remarks?.startsWith('offset')) {
             temp.history.loanCycle = temp.loanCycle;
         }
 

@@ -631,7 +631,7 @@ const CashCollectionDetailsPage = () => {
                     totalTargetLoanCollection += collection.history ? collection.history.activeLoan : 0;
                 }
 
-                if (!collection.remarks || (collection.remarks && collection.remarks?.value !== 'delinquent' && !collection.remarks?.value?.startsWith('excused-'))) {
+                if (!collection.remarks || (collection.remarks && collection.remarks?.value !== 'delinquent' && !collection.remarks.value?.startsWith('excused-'))) {
                     totalTargetLoanCollection += collection.targetCollection  ? collection.targetCollection !== '-' ? collection.targetCollection : 0 : 0;
                 }
 
@@ -1074,7 +1074,7 @@ const CashCollectionDetailsPage = () => {
                         else if (parseFloat(payment) % parseFloat(temp.activeLoan) !== 0) {
                             // toast.error("Actual collection should be divisible by 100.");
                             temp.paymentCollection = payment;
-                            if (temp.remarks && (temp.remarks.value !== "past due" && !temp.remarks.value?.startsWith('excused-') && !temp.remarks.startsWith('delinquent')) ) {
+                            if (temp.remarks && (temp.remarks.value !== "past due" && !temp.remarks.value?.startsWith('excused-') && !temp.remarks.value?.startsWith('delinquent')) ) {
                                 temp.error = true;
                             }
                         } 
@@ -1416,7 +1416,7 @@ const CashCollectionDetailsPage = () => {
             advanceDays: temp.advanceDays
         };
 
-        if (temp.remarks.startsWith('offset')) {
+        if (temp.remarks?.startsWith('offset')) {
             temp.history.loanCycle = temp.loanCycle;
         }
 
