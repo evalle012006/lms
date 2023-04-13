@@ -958,6 +958,7 @@ const CashCollectionDetailsPage = () => {
                             temp.excessStr = (temp.excess > 0 || temp.excess !== '-') ? formatPricePhp(temp.excess) : '-';
                             temp.fullPayment = 0;
                             temp.fullPaymentStr = '-';
+                            temp.activeLoan = temp.prevData.activeLoan;
                             temp.targetCollection = temp.activeLoan;
                             temp.targetCollectionStr = formatPricePhp(temp.activeLoan);
                             temp.remarks = '';
@@ -1377,6 +1378,16 @@ const CashCollectionDetailsPage = () => {
                             temp.error = true;
                             toast.error('Error occured. Yesterday transaction is not an Advanced payment');
                         }
+
+                        // TODO
+                        /*if (!temp.error) {
+                            if (temp.mcbuCol) {
+                                temp.mcbu = temp.mcbu - temp.mcbuCol;
+                                temp.mcbuStr = temp.mcbu > 0 ? formatPricePhp(temp.mcbu) : '-';
+                                temp.mcbuCol = 0;
+                                temp.mcbuColStr = '-';
+                            }
+                        }*/
                     } else if (remarks.value === 'reloaner-wd') {
                         temp.mcbu = temp.mcbu - temp.mcbuCol;
                         temp.mcbuCol = 0;

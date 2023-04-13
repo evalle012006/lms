@@ -212,7 +212,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         offsetPerson += cc.cashCollections[0].offsetPerson ? cc.cashCollections[0].offsetPerson : 0;
                         totalMcbuCol += cc.cashCollections[0].mcbuCol ? cc.cashCollections[0].mcbuCol: 0;
                         totalMcbuWithdrawal += cc.cashCollections[0].mcbuWithdrawal ? cc.cashCollections[0].mcbuWithdrawal: 0;
-                        totalMcbuReturnNo += cc.cashCollections[0].mcbuReturnNo ? cc.cashCollections[0].mcbuReturnNo: 0;
+                        totalMcbuReturnNo += collection.noMcbuReturn;
                         totalMcbuReturnAmt += cc.cashCollections[0].mcbuReturnAmt ? cc.cashCollections[0].mcbuReturnAmt: 0;
                         totalTransfer += collection.transfer;
                     }
@@ -325,6 +325,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         // totalMcbu += cc.cashCollections[0].mcbu;
                         totalMcbuCol += cc.cashCollections[0].mcbuCol;
                         totalMcbuWithdrawal += cc.cashCollections[0].mcbuWithdrawal;
+                        totalMcbuReturnNo += collection.noMcbuReturn;
                         totalMcbuReturnAmt += cc.cashCollections[0].mcbuReturnAmt;
                         totalMcbuTarget += cc.cashCollections[0].mcbuTarget ? cc.cashCollections[0].mcbuTarget : 0;
                         totalMcbuInterest += cc.cashCollections[0].mcbuInterest;
