@@ -235,14 +235,14 @@ const CashCollectionDetailsPage = () => {
                         clientId: cc.clientId,
                         slotNo: cc.slotNo,
                         fullName: cc.client.lastName + ', ' + cc.client.firstName,
-                        loanCycle: cc.history.loanCycle,
+                        loanCycle: cc.history?.loanCycle,
                         mispayment: cc.mispayment,
                         mispaymentStr: cc.mispaymentStr,
                         noMispayment: date ? cc.noMispayment : cc.mispayment,
                         noMispaymentStr: numMispayment,
                         collection: 0,
-                        excess: cc.history.excess > 0 ? cc.history.excess : 0,
-                        excessStr: cc.history.excess > 0 ? formatPricePhp(cc.history.excess) : '-',
+                        excess: cc.history?.excess > 0 ? cc.history?.excess : 0,
+                        excessStr: cc.history?.excess > 0 ? formatPricePhp(cc.history?.excess) : '-',
                         total: 0,
                         totalStr: '-',
                         noOfPayments: cc.noOfPayments,
@@ -253,19 +253,19 @@ const CashCollectionDetailsPage = () => {
                         mcbuColStr: mcbuCol > 0 ? formatPricePhp(mcbuCol) : '-',
                         mcbuWithdrawal: mcbuWithdrawal,
                         mcbuWithdrawalStr: mcbuWithdrawal > 0 ? formatPricePhp(mcbuWithdrawal) : '-',
-                        mcbuReturnAmt: mcbuReturnAmt > 0,
+                        mcbuReturnAmt: mcbuReturnAmt,
                         mcbuReturnAmtStr: mcbuReturnAmt > 0 ? formatPricePhp(mcbuReturnAmt) : '-',
                         mcbuInterest: cc.mcbuInterest ? cc.mcbuInterest : 0,
                         mcbuInterestStr: cc.mcbuInterest > 0 ? formatPricePhp(cc.mcbuInterest) : '-',
-                        activeLoan: cc.history.activeLoan,
-                        targetCollection: cc.history.activeLoan,
-                        targetCollectionStr: cc.history.activeLoan > 0 ? formatPricePhp(cc.history.activeLoan) : '-',
+                        activeLoan: cc.history?.activeLoan,
+                        targetCollection: cc.history?.activeLoan,
+                        targetCollectionStr: cc.history?.activeLoan > 0 ? formatPricePhp(cc.history?.activeLoan) : '-',
                         amountRelease: '-',
                         amountReleaseStr: '-',
                         loanBalance: '-',
                         loanBalanceStr: '-',
-                        paymentCollection: cc.history.collection ? cc.history.collection : 0,
-                        paymentCollectionStr: cc.history.collection > 0 ? formatPricePhp(cc.history.collection) : '-',
+                        paymentCollection: cc.history?.collection ? cc.history?.collection : 0,
+                        paymentCollectionStr: cc.history?.collection > 0 ? formatPricePhp(cc.history?.collection) : '-',
                         occurence: cc.group.occurence,
                         currentReleaseAmount: 0,
                         currentReleaseAmountStr: '-',
@@ -390,12 +390,12 @@ const CashCollectionDetailsPage = () => {
     
                     if (cc.loanBalance <= 0) {
                         if (cc.fullPaymentDate === currentDate) {
-                            collection.paymentCollection = cc.history ? cc.history.collection : 0;
+                            collection.paymentCollection = cc.history ? cc.history?.collection : 0;
                             collection.paymentCollectionStr = formatPricePhp(collection.paymentCollection);
                         }
 
                         collection.notCalculate = true;
-                        collection.remarks = cc.history ? cc.history.remarks : '-';
+                        collection.remarks = cc.history ? cc.history?.remarks : '-';
                     }
                 } else {
                     return;
@@ -614,6 +614,7 @@ const CashCollectionDetailsPage = () => {
                 totalMcbuCol += collection.mcbuCol ? collection.mcbuCol : 0;
                 totalMcbuWithdraw += collection.mcbuWithdrawal ? collection.mcbuWithdrawal : 0;
 
+                console.log('Return', collection);
                 totalMcbuReturn += collection.mcbuReturnAmt ? collection.mcbuReturnAmt : 0;
                 totalMcbuInterest += collection.mcbuInterest ? collection.mcbuInterest : 0;
             }
@@ -1891,7 +1892,7 @@ const CashCollectionDetailsPage = () => {
                                                                 </React.Fragment>
                                                             ) : (
                                                                 <React.Fragment>
-                                                                    { cc.history.remarks.label }
+                                                                    { cc.history?.remarks.label }
                                                                 </React.Fragment>
                                                             ) }
                                                         </td>
