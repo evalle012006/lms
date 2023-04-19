@@ -610,11 +610,12 @@ const CashCollectionDetailsPage = () => {
                 totalFullPayment += collection.fullPayment ? collection.fullPayment !== '-' ? collection.fullPayment : 0 : 0;
                 totalMispayment += collection.mispaymentStr === 'Yes' ? 1 : 0;
                 totalPastDue += (collection.pastDue && collection.pastDue !== '-') ? collection.pastDue : 0;
-                totalMcbu += collection.mcbu;
-                totalMcbuCol += collection.mcbuCol;
-                totalMcbuWithdraw += collection.mcbuWithdrawal;
-                totalMcbuReturn += collection.mcbuReturnAmt;
-                totalMcbuInterest += collection.mcbuInterest;
+                totalMcbu += collection.mcbu ? collection.mcbu : 0;
+                totalMcbuCol += collection.mcbuCol ? collection.mcbuCol : 0;
+                totalMcbuWithdraw += collection.mcbuWithdrawal ? collection.mcbuWithdrawal : 0;
+
+                totalMcbuReturn += collection.mcbuReturnAmt ? collection.mcbuReturnAmt : 0;
+                totalMcbuInterest += collection.mcbuInterest ? collection.mcbuInterest : 0;
             }
         });
 
@@ -1357,7 +1358,7 @@ const CashCollectionDetailsPage = () => {
             advanceDays: temp.advanceDays
         };
 
-        if (temp.remarks?.startsWith('offset')) {
+        if (temp.remarks.value?.startsWith('offset')) {
             temp.history.loanCycle = temp.loanCycle;
         }
 

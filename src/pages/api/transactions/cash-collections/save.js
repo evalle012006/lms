@@ -23,7 +23,7 @@ async function save(req, res) {
                 let collection = {...cc, groupCollectionId: groupHeaderId};
 
                 if (cc.occurence === "weekly") {
-                    if (collection.remarks && (collection.remarks?.value.startsWith('excused-') || collection.remarks?.value === 'delinquent')) {
+                    if (collection.remarks && (collection.remarks.value?.startsWith('excused-') || collection.remarks.value === 'delinquent')) {
                         collection.mcbuTarget = 0;
                     } else {
                         collection.mcbuTarget = 50;
@@ -133,7 +133,7 @@ async function updateLoan(collection) {
             loan.mcbuInterest = loan.mcbuInterest ? loan.mcbuInterest + collection.mcbuInterest : collection.mcbuInterest !== '-' ? collection.mcbuInterest : 0;
         }
         
-        if (collection.remarks && collection.remarks?.value === "past due") {
+        if (collection.remarks && collection.remarks.value === "past due") {
             loan.noPastDue = loan.noPastDue ? loan.noPastDue + 1 : 1;
         } else {
             loan.noPastDue = loan.noPastDue ? loan.noPastDue : 0;

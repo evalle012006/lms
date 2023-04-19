@@ -1,5 +1,7 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
+import { getCurrentDate } from '@/lib/utils';
+import moment from 'moment';
 
 export default apiHandler({
     post: save
@@ -10,7 +12,8 @@ async function save(req, res) {
     const ObjectId = require('mongodb').ObjectId;
     let response = {};
     let statusCode = 200;
-    const { loId, currentUser, currentDate } = req.body;
+    const { loId, currentUser } = req.body;
+    const currentDate = moment(getCurrentDate()).format('YYYY-MM-DD');
 
     const loans = await db.collection('loans').find(
             {$expr: {
