@@ -551,20 +551,20 @@ const LoanApplicationPage = () => {
             getListLoan();
             getHistoyListLoan();
 
-            const initGroupCollectionSummary = async () => {
-                if (currentUser.role.rep <= 4) {
-                    const branchId = branchList[0]._id;
-                    const data = { currentUser: currentUser._id, mode: type,  branchId: branchId}
-                    await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary-by-branch', data);
-                } else {
-                    const data = { currentUser: currentUser._id, mode: type}
-                    await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary-by-branch', data);
-                }
-            }
+            // const initGroupCollectionSummary = async () => {
+            //     if (currentUser.role.rep <= 4) {
+            //         const branchId = branchList[0]._id;
+            //         const data = { currentUser: currentUser._id, mode: type,  branchId: branchId}
+            //         await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary-by-branch', data);
+            //     } else {
+            //         const data = { currentUser: currentUser._id, mode: type}
+            //         await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary-by-branch', data);
+            //     }
+            // }
     
-            if (branchList.length > 0 && !isWeekend && !isHoliday) {
-                initGroupCollectionSummary();
-            }
+            // if (branchList.length > 0 && !isWeekend && !isHoliday) {
+            //     initGroupCollectionSummary();
+            // }
         }
     }, [branchList, isWeekend, isHoliday]);
 

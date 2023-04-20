@@ -15,12 +15,13 @@ async function save(req, res) {
     let data = req.body;
     data.collection = JSON.parse(data.collection);
     if (data.collection.length > 0) {
-        const groupHeaderId = data._id;
+        // const groupHeaderId = data._id;
         let existCC = [];
         let newCC = [];
         data.collection.map(async cc => {
             if (cc.status !== "totals") {
-                let collection = {...cc, groupCollectionId: groupHeaderId};
+                // let collection = {...cc, groupCollectionId: groupHeaderId};
+                let collection = {...cc};
 
                 if (cc.occurence === "weekly") {
                     if (collection.remarks && (collection.remarks.value?.startsWith('excused-') || collection.remarks.value === 'delinquent')) {
@@ -31,10 +32,6 @@ async function save(req, res) {
                 }
 
                 if (collection.hasOwnProperty('_id')) {
-                    // if (collection.remarks && collection.remarks?.value === "delinquent") {
-                    //     collection.targetCollection = 0;
-                    // }
-
                     collection.collectionId = collection._id;
                     delete collection._id;
                     existCC.push(collection);

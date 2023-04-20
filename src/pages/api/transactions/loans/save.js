@@ -69,11 +69,11 @@ async function save(req, res) {
                 await updateGroup(loanData);
             }
 
-            const groupSummary = await saveGroupSummary(loanData);
+            // const groupSummary = await saveGroupSummary(loanData);
 
-            if (groupSummary.success) {
+            // if (groupSummary.success) {
                 await saveCashCollection(loanData, currentDate, currentReleaseAmount, reloan);
-            }
+            // }
 
             await updateUser(loanData);
 
@@ -167,47 +167,47 @@ async function updateLoan(loanId, loanData) {
     }
 }
 
-async function saveGroupSummary(loan) {
-    const { db } = await connectToDatabase();
-    const ObjectId = require('mongodb').ObjectId;
-    const currentDate = getCurrentDate();
+// async function saveGroupSummary(loan) {
+//     const { db } = await connectToDatabase();
+//     const ObjectId = require('mongodb').ObjectId;
+//     const currentDate = getCurrentDate();
 
-    const groupSummary = await db.collection('groupCashCollections').find({ dateAdded: moment(currentDate).format('YYYY-MM-DD'), groupId: loan.groupId }).toArray();
+//     const groupSummary = await db.collection('groupCashCollections').find({ dateAdded: moment(currentDate).format('YYYY-MM-DD'), groupId: loan.groupId }).toArray();
 
-    if (groupSummary.length === 0) {
-        let group = await db.collection('groups').find({ _id: new ObjectId(loan.groupId) }).toArray();
+//     if (groupSummary.length === 0) {
+//         let group = await db.collection('groups').find({ _id: new ObjectId(loan.groupId) }).toArray();
 
-        if (group.length > 0) {
-            group = group[0];
+//         if (group.length > 0) {
+//             group = group[0];
 
-            const data = {
-                branchId: loan.branchId,
-                groupId: loan.groupId,
-                groupName: group.name,
-                loId: group.loanOfficerId,
-                dateAdded: moment(currentDate).format('YYYY-MM-DD'),
-                insertBy: loan.insertedBy,
-                mode: group.occurence,
-                status: "pending"
-            };
+//             const data = {
+//                 branchId: loan.branchId,
+//                 groupId: loan.groupId,
+//                 groupName: group.name,
+//                 loId: group.loanOfficerId,
+//                 dateAdded: moment(currentDate).format('YYYY-MM-DD'),
+//                 insertBy: loan.insertedBy,
+//                 mode: group.occurence,
+//                 status: "pending"
+//             };
 
-            const resp = await db.collection('groupCashCollections').insertOne({ ...data });
+//             const resp = await db.collection('groupCashCollections').insertOne({ ...data });
 
-            return { success: true, data: resp };
-        }
-    }
-    return { success: true };
-}
+//             return { success: true, data: resp };
+//         }
+//     }
+//     return { success: true };
+// }
 
 async function saveCashCollection(loan, currentDate, currentReleaseAmount, reloan) {
     const { db } = await connectToDatabase();
     // const currentDate = getCurrentDate();
 
-    let groupSummary = await db.collection('groupCashCollections').find({ dateAdded: currentDate, groupId: loan.groupId }).toArray();
+    // let groupSummary = await db.collection('groupCashCollections').find({ dateAdded: currentDate, groupId: loan.groupId }).toArray();
     // check if tomorrow and 0 payment collection
     // set the following to 0: activeLoan, loanBalance, targetCollection, amountRelease
-    if (groupSummary.length > 0) {
-        groupSummary = groupSummary[0];
+    // if (groupSummary.length > 0) {
+    //     groupSummary = groupSummary[0];
 
         let loanData = await db.collection("loans")
             .aggregate([
@@ -234,7 +234,7 @@ async function saveCashCollection(loan, currentDate, currentReleaseAmount, reloa
             ]).toArray();
         if (loanData.length > 0) {
             loanData = loanData[0];
-            const cashCollection = await db.collection('cashCollections').find({ groupCollectionId: groupSummary._id + '', clientId: loanData.clientId, dateAdded: currentDate }).toArray();
+            const cashCollection = await db.collection('cashCollections').find({ clientId: loanData.clientId, dateAdded: currentDate }).toArray();
             if (cashCollection.length === 0) {
                 let data = {
                     loanId: loanData._id + '',
@@ -267,7 +267,7 @@ async function saveCashCollection(loan, currentDate, currentReleaseAmount, reloa
                     remarks: '',
                     status: loanData.status,
                     dateAdded: moment(currentDate).format('YYYY-MM-DD'),
-                    groupCollectionId: groupSummary._id + '',
+                    groupStatus: 'pending',
                     origin: 'automation'
                 };
 
@@ -285,5 +285,5 @@ async function saveCashCollection(loan, currentDate, currentReleaseAmount, reloa
                 await db.collection('cashCollections').updateOne({ _id: cashCollection[0]._id }, { $set: { currentReleaseAmount: loanData.amountRelease } })
             }
         }
-    }
+    // }
 }

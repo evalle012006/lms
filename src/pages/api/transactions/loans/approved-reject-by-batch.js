@@ -173,10 +173,10 @@ async function updateClient(clientId) {
 async function saveCashCollection(loan) {
     const { db } = await connectToDatabase();
 
-    let groupSummary = await db.collection('groupCashCollections').find({ dateAdded: currentDate, groupId: loan.groupId }).toArray();
+    // let groupSummary = await db.collection('groupCashCollections').find({ dateAdded: currentDate, groupId: loan.groupId }).toArray();
 
-    if (groupSummary.length > 0) {
-        groupSummary = groupSummary[0];
+    // if (groupSummary.length > 0) {
+    //     groupSummary = groupSummary[0];
         
         let loanData = await db.collection("loans")
             .aggregate([
@@ -207,7 +207,7 @@ async function saveCashCollection(loan) {
 
             const status = loanData.status === "active" ? "tomorrow" : loanData.status;
 
-            let cashCollection = await db.collection('cashCollections').find({ groupCollectionId: groupSummary._id + '', clientId: loan.clientId, dateAdded: currentDate }).toArray();
+            let cashCollection = await db.collection('cashCollections').find({ clientId: loan.clientId, dateAdded: currentDate }).toArray();
 
             if (cashCollection.length > 0) {
                 cashCollection = cashCollection[0];
@@ -257,7 +257,7 @@ async function saveCashCollection(loan) {
                     mcbuReturnAmt: 0,
                     status: status,
                     dateAdded: moment(getCurrentDate()).format('YYYY-MM-DD'),
-                    groupCollectionId: groupSummary._id + '',
+                    groupStatus: 'pending',
                     origin: 'automation'
                 };
 
@@ -273,5 +273,5 @@ async function saveCashCollection(loan) {
                 await db.collection('cashCollections').insertOne({ ...data });
             }
         }
-    }
+    // }
 }

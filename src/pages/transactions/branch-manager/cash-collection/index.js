@@ -124,51 +124,25 @@ const BranchCashCollectionPage = () => {
         }
     }, [currentDate]);
 
-    useEffect(() => {
-        if (branchList.length > 0) {
-            localStorage.setItem('cashCollectionDateFilter', currentDate);
-            if (currentUser.role.rep < 4 && !isWeekend && !isHoliday) {
-                const initGroupCollectionSummary = async () => {
-                    if (currentUser.role.rep === 3) {
-                        const branchId = branchList[0]._id;
-                        const data = { currentUser: currentUser._id, branchId: branchId}
-                        await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary-by-branch', data);
-                    } else {
-                        const data = { currentUser: currentUser._id }
-                        await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary-by-branch', data);
-                    }
-                }
-        
-                initGroupCollectionSummary();
-            }
-        }
-    }, [branchList, isWeekend, isHoliday]);
-
     // useEffect(() => {
-    //     const dayName = moment().format('dddd');
-
-    //     if (dayName === 'Saturday' || dayName === 'Sunday') {
-    //         setWeekend(true);
-    //     } else {
-    //         setWeekend(false);
-    //     }
-    // }, []);
-
-    // useEffect(() => {
-    //     if (holidays) {
-    //         let holidayToday = false;
-    //         const currentYear = moment().year();
-    //         holidays.map(item => {
-    //             const holidayDate = currentYear + '-' + item.date;
-
-    //             if (holidayDate === currentDate) {
-    //                 holidayToday = true;
+    //     if (branchList.length > 0) {
+    //         localStorage.setItem('cashCollectionDateFilter', currentDate);
+    //         if (currentUser.role.rep < 4 && !isWeekend && !isHoliday) {
+    //             const initGroupCollectionSummary = async () => {
+    //                 if (currentUser.role.rep === 3) {
+    //                     const branchId = branchList[0]._id;
+    //                     const data = { currentUser: currentUser._id, branchId: branchId}
+    //                     await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary-by-branch', data);
+    //                 } else {
+    //                     const data = { currentUser: currentUser._id }
+    //                     await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary-by-branch', data);
+    //                 }
     //             }
-    //         });
-
-    //         setHoliday(holidayToday);
+        
+    //             initGroupCollectionSummary();
+    //         }
     //     }
-    // }, [holidays]);
+    // }, [branchList, isWeekend, isHoliday]);
 
     return (
         <Layout header={false} noPad={true}>

@@ -39,7 +39,7 @@ const CashCollectionDetailsPage = () => {
     const [editMode, setEditMode] = useState(true);
     const [revertMode, setRevertMode] = useState(false);
     const [groupSummaryIsClose, setGroupSummaryIsClose] = useState(false);
-    const [headerData, setHeaderData] = useState({});
+    // const [headerData, setHeaderData] = useState({});
     const [data, setData] = useState([]);
     const [allData, setAllData] = useState([]);
     const [filteredData, setFilteredData] = useState([]);
@@ -123,10 +123,17 @@ const CashCollectionDetailsPage = () => {
         if (response.success) {
             let cashCollection = [];
 
-            const groupSummary = response.data.groupSummary;
-            setHeaderData(groupSummary);
+            // const groupSummary = response.data.groupSummary;
+            // setHeaderData(groupSummary);
 
-            if (groupSummary.status === 'pending' && (!date || currentDate === date)) {
+            let dataCollection = response.data.collection;
+            if (type === 'filter') {
+                dataCollection = dataCollection.filter(cc => cc.hasOwnProperty('loanId') && cc.loanId !== null );
+            }
+
+            const tansactionStatus = dataCollection.filter(cc => cc.groupStatus === 'closed');
+
+            if (tansactionStatus.length === 0 && (!date || currentDate === date)) {
                 setEditMode(true);
                 setGroupSummaryIsClose(false);
 
@@ -137,11 +144,6 @@ const CashCollectionDetailsPage = () => {
             } else {
                 setEditMode(false);
                 setGroupSummaryIsClose(true);
-            }
-
-            let dataCollection = response.data.collection;
-            if (type === 'filter') {
-                dataCollection = dataCollection.filter(cc => cc.hasOwnProperty('loanId') && cc.loanId !== null );
             }
             
             dataCollection.map(cc => {
@@ -769,7 +771,8 @@ const CashCollectionDetailsPage = () => {
         
         let save = false;
 
-        if (headerData && headerData.status === 'close') {
+        const transactionStatus = data.filter(cc => cc.groupStatus === 'closed');
+        if (transactionStatus.length > 0) {
             toast.error('Updating this record is not allowed since the Group Summary is already closed by the Branch Manager.');
         } else {
             const errorMsgArr = Array.from(validation());
@@ -857,6 +860,9 @@ const CashCollectionDetailsPage = () => {
                             // }
                         }
                     }
+
+                    // if admin it should not override what it is currently saved
+                    temp.groupStatus = 'pending';
                 
                     return temp;   
                 }).filter(cc => cc.status !== "totals");
@@ -870,14 +876,14 @@ const CashCollectionDetailsPage = () => {
                     let cashCollection;
                     if (editMode) {
                         cashCollection = {
-                            ...headerData,
+                            // ...headerData,
                             dateModified: moment(currentDate).format('YYYY-MM-DD'),
                             modifiedBy: currentUser._id,
                             collection: JSON.stringify(dataArr)
                         };
                     } else {
                         cashCollection = {
-                            ...headerData,
+                            // ...headerData,
                             modifiedBy: currentUser._id,
                             collection: JSON.stringify(dataArr),
                             mode: 'weekly'

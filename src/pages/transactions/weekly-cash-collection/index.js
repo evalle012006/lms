@@ -133,36 +133,6 @@ const WeeklyCashCollectionPage = () => {
         }
     }, [currentDate]);
 
-    // useEffect(() => {
-    //     if (branchList.length > 0) {
-    //         localStorage.setItem('cashCollectionDateFilter', currentDate);
-    //         if (currentUser.role.rep < 4) {
-    //             const initGroupCollectionSummary = async () => {
-    //                 if (currentUser.role.rep === 3) {
-    //                     const branchId = branchList[0]._id;
-    //                     const data = { currentUser: currentUser._id, mode: 'weekly',  branchId: branchId}
-    //                     await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary-by-branch', data);
-    //                 } else {
-    //                     const data = { currentUser: currentUser._id, mode: 'weekly'}
-    //                     await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary-by-branch', data);
-    //                 }
-    //             }
-        
-    //             initGroupCollectionSummary();
-    //         }
-    //     }
-    // }, [branchList]);
-
-    // useEffect(() => {
-    //     const dayName = moment().format('dddd');
-
-    //     if (dayName === 'Saturday' || dayName === 'Sunday') {
-    //         setWeekend(true);
-    //     } else {
-    //         setWeekend(false);
-    //     }
-    // }, []);
-
     return (
         <Layout header={false} noPad={true}>
             {loading ? (

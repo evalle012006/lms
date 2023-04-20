@@ -97,6 +97,11 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 };
                 selectedBranch = cc.branchId;
                 let noCurrentRelease = '0 / 0';
+                let groupStatus = 'pending';
+                const transactionStatus = cc.groupStatusArr.filter(status => status === "closed");
+                if (transactionStatus.length > 0) {
+                    groupStatus = 'closed';
+                }
                 if (!filter) {
                     if (cc.loans.length > 0) {
                         let loanTarget = 0;
@@ -689,21 +694,21 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
         };
     }, [dateFilter]);
 
-    useEffect(() => {
-        const initGroupCollectionSummary = async () => {
-            const data = {
-                _id: currentUser.role.rep === 4 ? currentUser._id : selectedLOSubject.value.length > 0 && selectedLOSubject.value,
-                mode: type,
-                status: 'pending',
-                currentUser: currentUser._id,
-                groupSummaryIds: []
-            };
+    // useEffect(() => {
+    //     const initGroupCollectionSummary = async () => {
+    //         const data = {
+    //             _id: currentUser.role.rep === 4 ? currentUser._id : selectedLOSubject.value.length > 0 && selectedLOSubject.value,
+    //             mode: type,
+    //             status: 'pending',
+    //             currentUser: currentUser._id,
+    //             groupSummaryIds: []
+    //         };
 
-            await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary', data);
-        }
+    //         await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary', data);
+    //     }
 
-        initGroupCollectionSummary();
-    }, []);
+    //     initGroupCollectionSummary();
+    // }, []);
 
     useEffect(() => {
         if (type === 'weekly') {
