@@ -305,6 +305,7 @@ async function getAllLoansPerGroup(req, res) {
                                                         $cond: {
                                                             if: { $or: [
                                                                 {$eq: ['$remarks.value', 'delinquent']},
+                                                                {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
                                                                 {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
                                                             ] },
                                                             then: 0,
@@ -643,6 +644,7 @@ async function getAllLoansPerGroup(req, res) {
                                                     $cond: {
                                                         if: { $or: [
                                                             {$eq: ['$remarks.value', 'delinquent']},
+                                                            {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
                                                             {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
                                                         ] },
                                                         then: 0,
@@ -926,6 +928,7 @@ async function getAllLoansPerGroup(req, res) {
                                                         $cond: {
                                                             if: { $or: [
                                                                 {$eq: ['$remarks.value', 'delinquent']},
+                                                                {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
                                                                 {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
                                                             ] },
                                                             then: 0,
@@ -1168,6 +1171,7 @@ async function getAllLoansPerGroup(req, res) {
                                                     $cond: {
                                                         if: { $or: [
                                                             {$eq: ['$remarks.value', 'delinquent']},
+                                                            {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
                                                             {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
                                                         ] },
                                                         then: 0,

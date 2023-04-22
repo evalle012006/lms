@@ -223,6 +223,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                     }
                 } else {
                     if (lo.cashCollections.length > 0) {
+                        console.log(lo.cashCollections[0].totalRelease)
                         collection.activeClients = lo.cashCollections[0].activeClients; 
                         collection.activeBorrowers = lo.cashCollections[0].activeBorrowers;
                         collection.totalLoanRelease = lo.cashCollections[0].totalRelease;
@@ -267,7 +268,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
     
                         noOfClients += lo.cashCollections[0].activeClients;
                         noOfBorrowers += lo.cashCollections[0].activeBorrowers;
-                        totalsLoanRelease += lo.cashCollections[0].totalRelease;
+                        totalsLoanRelease += collection.totalLoanRelease;
                         totalsLoanBalance += lo.cashCollections[0].totalLoanBalance;
                         targetLoanCollection += lo.cashCollections[0].loanTarget;
                         excess += lo.cashCollections[0].excess;
@@ -386,7 +387,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
         collectionData.filter(u => u.transactionType === 'daily').map(collection => {
             noOfClients += (collection.activeClients && collection.activeClients !== '-') ? collection.activeClients : 0;
             noOfBorrowers += (collection.activeBorrowers && collection.activeBorrowers !== '-') ? collection.activeBorrowers : 0;
-            totalsLoanRelease += collection.totalReleases ? collection.totalReleases : 0;
+            totalsLoanRelease += collection.totalLoanRelease ? collection.totalLoanRelease : 0;
             totalsLoanBalance += collection.totalLoanBalance ? collection.totalLoanBalance : 0;
             noOfNewCurrentRelease += collection.newReleasePerson ? collection.newReleasePerson : 0;
             noOfReCurrentRelease += collection.reReleasePerson ? collection.reReleasePerson : 0;
