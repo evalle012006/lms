@@ -16,10 +16,10 @@ async function getLoanWithCashCollection(req, res) {
     let response = {};
     let cashCollection;
 
-    let groupCashCollectionDay = await db.collection('groupCashCollections').find({ dateAdded: date, groupId: groupId }).toArray();
+    // let groupCashCollectionDay = await db.collection('groupCashCollections').find({ dateAdded: date, groupId: groupId }).toArray();
     // need to check if has cashCollections then merged!!! note that the pending and tomorrow is already save in cash collections
-    if (groupCashCollectionDay.length > 0) {
-        groupCashCollectionDay = groupCashCollectionDay[0];
+    // if (groupCashCollectionDay.length > 0) {
+    //     groupCashCollectionDay = groupCashCollectionDay[0];
         let cashCollectionDay = [];
         let tomorrowPending = [];
 
@@ -270,15 +270,15 @@ async function getLoanWithCashCollection(req, res) {
             }
 
             cashCollection = {
-                groupSummary: groupCashCollectionDay,
+                // groupSummary: groupCashCollectionDay,
                 collection: cashCollectionDay,
                 tomorrowPending: tomorrowPending
             };
 
         response = { success: true, data: cashCollection };
-    } else {
-        response = { error: true, message: 'Group Collection Summary not found!' };
-    }
+    // } else {
+    //     response = { error: true, message: 'Group Collection Summary not found!' };
+    // }
 
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')

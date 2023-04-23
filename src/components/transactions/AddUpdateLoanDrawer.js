@@ -34,6 +34,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     const [clientId, setClientId] = useState();
     const [clientType, setClientType] = useState('pending');
     const currentDate = useSelector(state => state.systemSettings.currentDate);
+    const [loanTerms, setLoanTerms] = useState(60);
 
     const initialValues = {
         branchId: loan.branchId,
@@ -139,6 +140,8 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         if (values.principalLoan % 1000 === 0) {
             if (type === 'weekly' && (!values.mcbu || parseFloat(values.mcbu) < 50)) {
                 toast.error('Invalid MCBU amount. Please enter at least 50.');
+            } else if (loanTerms === 100 && values.principalLoan < 10000) {
+                toast.error('For 100 days loan term, principal amount should be greater than or equal to 10,0000.');
             } else {
                 setLoading(true);
                 let group;
@@ -174,16 +177,17 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                     if (group.occurence === 'weekly') {
                         values.activeLoan = (values.principalLoan * 1.20) / 24;
                     } else if (group.occurence === 'daily') {
-                        values.activeLoan = (values.principalLoan * 1.20) / 60;
+                        values.loanTerms = loanTerms;
+                        if (loanTerms === 60) {
+                            values.activeLoan = (values.principalLoan * 1.20) / 60;
+                        } else {
+                            values.activeLoan = (values.principalLoan * 1.20) / 100;
+                        }
                     }
             
                     values.loanBalance = values.principalLoan * 1.20; // initial
                     values.amountRelease = values.loanBalance;
                 }
-
-                // if (group.occurence === 'daily') {
-                //     delete values.mcbu;
-                // }
 
                 if (mode === 'add' || mode === 'reloan') {
                     // should check if the user has previous loan that is loanCycle 0, then set the loanCycle to 1
@@ -347,6 +351,10 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         getListClient(value, selectedGroup);
     }
 
+    const handleLoanTermsChange = (value) => {
+        setLoanTerms(parseInt(value));
+    }
+
     const handleCancel = () => {
         setShowSidebar(false);
         formikRef.current.resetForm();
@@ -360,7 +368,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     useEffect(() => {
         let mounted = true;
 
-        if (mode === 'add' || mode === 'reloan') {
+        if (mode === 'add') {
             setTitle('Add Loan');
         } else if (mode === 'edit') {
             setTitle('Edit Loan');
@@ -372,6 +380,9 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             form.setFieldValue('clientId', loan.clientId);
             form.setFieldValue('groupId', loan.groupId);
             form.setFieldValue('slotNo', loan.slotNo);
+        } else if (mode === 'reloan') {
+            setTitle('Reloan');
+            setLoanTerms(loan.loanTerms);
         }
 
         mounted && setLoading(false);
@@ -544,6 +555,16 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                             setFieldValue={setFieldValue}
                                             errors={touched.mcbu && errors.mcbu ? errors.mcbu : undefined} />
                                     </div>
+                                    {(mode === 'reloan' && loan.occurence === 'daily') && (
+                                        <div className="mt-4 flex flex-col">
+                                            <span className="text-base text-zinc-600">Loan Terms</span>
+                                            <div className="flex flex-row">
+                                                {console.log(loanTerms)}
+                                                <RadioButton id={"radio_60"} name="radio-group-occurence" label={"60 Days"} checked={loanTerms === 60} value={60} onChange={handleLoanTermsChange} />
+                                                <RadioButton id={"radio_100"} name="radio-group-occurence" label={"100 Days"} checked={loanTerms === 100} value={100} onChange={handleLoanTermsChange} />
+                                            </div>
+                                        </div>
+                                    )}
                                     <div className="mt-4">
                                         <InputNumber
                                             name="principalLoan"

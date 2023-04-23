@@ -37,24 +37,24 @@ async function getAllLoansPerGroup(req, res) {
                                 "branchIdstr": { $toString: "$_id" }
                             }
                         },
-                        {
-                            $lookup: {
-                                from: "groupCashCollections",
-                                localField: "branchIdstr",
-                                foreignField: "branchId",
-                                pipeline: [
-                                    { $match: { dateAdded: date } },
-                                    { 
-                                        $group: {
-                                            _id: '$branchId',
-                                            groupSummaryIds: { $addToSet: { _id: '$_id', groupId: '$groupId', status: '$status' } },
-                                            statusArr: { $addToSet: '$status' },
-                                        }
-                                    }
-                                ],
-                                as: 'groupCashCollections'
-                            }
-                        },
+                        // {
+                        //     $lookup: {
+                        //         from: "groupCashCollections",
+                        //         localField: "branchIdstr",
+                        //         foreignField: "branchId",
+                        //         pipeline: [
+                        //             { $match: { dateAdded: date } },
+                        //             { 
+                        //                 $group: {
+                        //                     _id: '$branchId',
+                        //                     groupSummaryIds: { $addToSet: { _id: '$_id', groupId: '$groupId', status: '$status' } },
+                        //                     statusArr: { $addToSet: '$status' },
+                        //                 }
+                        //             }
+                        //         ],
+                        //         as: 'groupCashCollections'
+                        //     }
+                        // },
                         {
                             $lookup: {
                                 from: "groups",
@@ -154,7 +154,8 @@ async function getAllLoansPerGroup(req, res) {
                                                     then: 1,
                                                     else: 0
                                                 }
-                                            } }
+                                            } },
+                                            groupStatusArr: { $addToSet: '$groupStatus' }
                                         } 
                                     }
                                 ],
@@ -375,24 +376,24 @@ async function getAllLoansPerGroup(req, res) {
                             "branchIdstr": { $toString: "$_id" }
                         }
                     },
-                    {
-                        $lookup: {
-                            from: "groupCashCollections",
-                            localField: "branchIdstr",
-                            foreignField: "branchId",
-                            pipeline: [
-                                { $match: { dateAdded: date } },
-                                { 
-                                    $group: {
-                                        _id: '$branchId',
-                                        groupSummaryIds: { $addToSet: { _id: '$_id', groupId: '$groupId', status: '$status' } },
-                                        statusArr: { $addToSet: '$status' },
-                                    }
-                                }
-                            ],
-                            as: 'groupCashCollections'
-                        }
-                    },
+                    // {
+                    //     $lookup: {
+                    //         from: "groupCashCollections",
+                    //         localField: "branchIdstr",
+                    //         foreignField: "branchId",
+                    //         pipeline: [
+                    //             { $match: { dateAdded: date } },
+                    //             { 
+                    //                 $group: {
+                    //                     _id: '$branchId',
+                    //                     groupSummaryIds: { $addToSet: { _id: '$_id', groupId: '$groupId', status: '$status' } },
+                    //                     statusArr: { $addToSet: '$status' },
+                    //                 }
+                    //             }
+                    //         ],
+                    //         as: 'groupCashCollections'
+                    //     }
+                    // },
                     {
                         $lookup: {
                             from: "groups",
@@ -492,7 +493,8 @@ async function getAllLoansPerGroup(req, res) {
                                                 then: 1,
                                                 else: 0
                                             }
-                                        } }
+                                        } },
+                                        groupStatusArr: { $addToSet: '$groupStatus' }
                                     } 
                                 }
                             ],
@@ -943,7 +945,8 @@ async function getAllLoansPerGroup(req, res) {
                                                     then: 1,
                                                     else: 0
                                                 }
-                                            } }
+                                            } },
+                                            groupStatusArr: { $addToSet: '$groupStatus' }
                                         } 
                                     }
                                 ],
@@ -1185,7 +1188,8 @@ async function getAllLoansPerGroup(req, res) {
                                                 then: 1,
                                                 else: 0
                                             }
-                                        } }
+                                        } },
+                                        groupStatusArr: { $addToSet: '$groupStatus' }
                                     } 
                                 }
                             ],

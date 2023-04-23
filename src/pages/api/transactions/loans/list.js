@@ -44,18 +44,21 @@ async function list(req, res) {
                     },
                     {
                         $lookup: {
-                            from: "groupCashCollections",
+                            from: "cashCollections",
                             localField: "groupId",
                             foreignField: "groupId",
                             pipeline: [
                                 { $match: { dateAdded: currentDate } },
-                                { $project: { allowApproved: { $cond: { if: {$eq: ['$status', 'pending']}, then: true, else: false } } } }
+                                { $group: { 
+                                    _id: '$groupId',
+                                    groupStatusArr: { $addToSet: '$groupStatus' } 
+                                } }
                             ],
-                            as: 'groupCashCollections'
+                            as: 'groupStatus'
                         }
                     },
                     {
-                        $unwind: "$groupCashCollections"
+                        $unwind: "$groupStatus"
                     },
                     {
                         $lookup: {
@@ -121,18 +124,21 @@ async function list(req, res) {
                     },
                     {
                         $lookup: {
-                            from: "groupCashCollections",
+                            from: "cashCollections",
                             localField: "groupId",
                             foreignField: "groupId",
                             pipeline: [
                                 { $match: { dateAdded: currentDate } },
-                                { $project: { allowApproved: { $cond: { if: {$eq: ['$status', 'pending']}, then: true, else: false } } } }
+                                { $group: { 
+                                    _id: '$groupId',
+                                    groupStatusArr: { $addToSet: '$groupStatus' } 
+                                } }
                             ],
-                            as: 'groupCashCollections'
+                            as: 'groupStatus'
                         }
                     },
                     {
-                        $unwind: "$groupCashCollections"
+                        $unwind: "$groupStatus"
                     },
                     {
                         $lookup: {
@@ -192,18 +198,21 @@ async function list(req, res) {
                     },
                     {
                         $lookup: {
-                            from: "groupCashCollections",
+                            from: "cashCollections",
                             localField: "groupId",
                             foreignField: "groupId",
                             pipeline: [
                                 { $match: { dateAdded: currentDate } },
-                                { $project: { allowApproved: { $cond: { if: {$eq: ['$status', 'pending']}, then: true, else: false } } } }
+                                { $group: { 
+                                    _id: '$groupId',
+                                    groupStatusArr: { $addToSet: '$groupStatus' } 
+                                } }
                             ],
-                            as: 'groupCashCollections'
+                            as: 'groupStatus'
                         }
                     },
                     {
-                        $unwind: "$groupCashCollections"
+                        $unwind: "$groupStatus"
                     },
                     {
                         $lookup: {
@@ -269,18 +278,21 @@ async function list(req, res) {
                             },
                             {
                                 $lookup: {
-                                    from: "groupCashCollections",
+                                    from: "cashCollections",
                                     localField: "groupId",
                                     foreignField: "groupId",
                                     pipeline: [
                                         { $match: { dateAdded: currentDate } },
-                                        { $project: { allowApproved: { $cond: { if: {$eq: ['$status', 'pending']}, then: true, else: false } } } }
+                                        { $group: { 
+                                            _id: '$groupId',
+                                            groupStatusArr: { $addToSet: '$groupStatus' } 
+                                        } }
                                     ],
-                                    as: 'groupCashCollections'
+                                    as: 'groupStatus'
                                 }
                             },
                             {
-                                $unwind: "$groupCashCollections"
+                                $unwind: "$groupStatus"
                             },
                             {
                                 $lookup: {
@@ -343,18 +355,21 @@ async function list(req, res) {
                     },
                     {
                         $lookup: {
-                            from: "groupCashCollections",
+                            from: "cashCollections",
                             localField: "groupId",
                             foreignField: "groupId",
                             pipeline: [
                                 { $match: { dateAdded: currentDate } },
-                                { $project: { allowApproved: { $cond: { if: {$eq: ['$status', 'pending']}, then: true, else: false } } } }
+                                { $group: { 
+                                    _id: '$groupId',
+                                    groupStatusArr: { $addToSet: '$groupStatus' } 
+                                } }
                             ],
-                            as: 'groupCashCollections'
+                            as: 'groupStatus'
                         }
                     },
                     {
-                        $unwind: "$groupCashCollections"
+                        $unwind: "$groupStatus"
                     },
                     {
                         $lookup: {
@@ -420,18 +435,21 @@ async function list(req, res) {
                 },
                 {
                     $lookup: {
-                        from: "groupCashCollections",
+                        from: "cashCollections",
                         localField: "groupId",
                         foreignField: "groupId",
                         pipeline: [
                             { $match: { dateAdded: currentDate } },
-                            { $project: { allowApproved: { $cond: { if: {$eq: ['$status', 'pending']}, then: true, else: false } } } }
+                            { $group: { 
+                                _id: '$groupId',
+                                groupStatusArr: { $addToSet: '$groupStatus' } 
+                            } }
                         ],
-                        as: 'groupCashCollections'
+                        as: 'groupStatus'
                     }
                 },
                 {
-                    $unwind: "$groupCashCollections"
+                    $unwind: "$groupStatus"
                 },
                 {
                     $lookup: {
@@ -498,18 +516,21 @@ async function list(req, res) {
                 },
                 {
                     $lookup: {
-                        from: "groupCashCollections",
+                        from: "cashCollections",
                         localField: "groupId",
                         foreignField: "groupId",
                         pipeline: [
                             { $match: { dateAdded: currentDate } },
-                            { $project: { allowApproved: { $cond: { if: {$eq: ['$status', 'pending']}, then: true, else: false } } } }
+                            { $group: { 
+                                _id: '$groupId',
+                                groupStatusArr: { $addToSet: '$groupStatus' } 
+                            } }
                         ],
-                        as: 'groupCashCollections'
+                        as: 'groupStatus'
                     }
                 },
                 {
-                    $unwind: "$groupCashCollections"
+                    $unwind: "$groupStatus"
                 },
                 {
                     $lookup: {
@@ -570,18 +591,21 @@ async function list(req, res) {
                 },
                 {
                     $lookup: {
-                        from: "groupCashCollections",
+                        from: "cashCollections",
                         localField: "groupId",
                         foreignField: "groupId",
                         pipeline: [
                             { $match: { dateAdded: currentDate } },
-                            { $project: { allowApproved: { $cond: { if: {$eq: ['$status', 'pending']}, then: true, else: false } } } }
+                            { $group: { 
+                                _id: '$groupId',
+                                groupStatusArr: { $addToSet: '$groupStatus' } 
+                            } }
                         ],
-                        as: 'groupCashCollections'
+                        as: 'groupStatus'
                     }
                 },
                 {
-                    $unwind: "$groupCashCollections"
+                    $unwind: "$groupStatus"
                 },
                 {
                     $lookup: {
@@ -642,18 +666,21 @@ async function list(req, res) {
                 },
                 {
                     $lookup: {
-                        from: "groupCashCollections",
+                        from: "cashCollections",
                         localField: "groupId",
                         foreignField: "groupId",
                         pipeline: [
                             { $match: { dateAdded: currentDate } },
-                            { $project: { allowApproved: { $cond: { if: {$eq: ['$status', 'pending']}, then: true, else: false } } } }
+                            { $group: { 
+                                _id: '$groupId',
+                                groupStatusArr: { $addToSet: '$groupStatus' } 
+                            } }
                         ],
-                        as: 'groupCashCollections'
+                        as: 'groupStatus'
                     }
                 },
                 {
-                    $unwind: "$groupCashCollections"
+                    $unwind: "$groupStatus"
                 },
                 {
                     $lookup: {

@@ -21,14 +21,14 @@ async function updateLoan(req, res) {
     delete loan.loanOfficer;
     delete loan.groupCashCollections;
 
-    const groupCashCollections = await db
-        .collection('groupCashCollections')
-        .find({ groupId: loan.groupId, dateAdded: loan.dateGranted})
-        .toArray();
+    // const groupCashCollections = await db
+    //     .collection('groupCashCollections')
+    //     .find({ groupId: loan.groupId, dateAdded: loan.dateGranted})
+    //     .toArray();
 
-    if (groupCashCollections.length > 0 && groupCashCollections[0].status === 'close') {
-        response = { error: true, message: "Loan can't be approved because the Group Transaction is already closed!" };
-    } else {
+    // if (groupCashCollections.length > 0 && groupCashCollections[0].status === 'close') {
+    //     response = { error: true, message: "Loan can't be approved because the Group Transaction is already closed!" };
+    // } else {
         let groupData = await db.collection('groups').find({ _id: new ObjectId(loan.groupId) }).toArray();
         if (groupData.length > 0) {
             groupData = groupData[0];
@@ -64,11 +64,11 @@ async function updateLoan(req, res) {
                         }, 
                         { upsert: false });
 
-                const groupSummary = await saveGroupSummary(loan);
+                // const groupSummary = await saveGroupSummary(loan);
 
-                if (groupSummary.success) {
+                // if (groupSummary.success) {
                     await saveCashCollection(loan);
-                }
+                // }
 
                 // await saveUpdateTotals(loan, groupData);
                 
@@ -77,7 +77,7 @@ async function updateLoan(req, res) {
         } else {
             response = { error: true, message: 'Group data not found.' };
         }
-    }
+    // }
 
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')
@@ -168,45 +168,45 @@ async function updateClient(clientId) {
 }
 
 
-async function saveGroupSummary(loan) {
-    const { db } = await connectToDatabase();
-    const ObjectId = require('mongodb').ObjectId;
+// async function saveGroupSummary(loan) {
+//     const { db } = await connectToDatabase();
+//     const ObjectId = require('mongodb').ObjectId;
 
-    const groupSummary = await db.collection('groupCashCollections').find({ dateAdded: currentDate, groupId: loan.groupId }).toArray();
+//     const groupSummary = await db.collection('groupCashCollections').find({ dateAdded: currentDate, groupId: loan.groupId }).toArray();
 
-    if (groupSummary.length === 0) {
-        let group = await db.collection('groups').find({ _id: new ObjectId(loan.groupId) }).toArray();
+//     if (groupSummary.length === 0) {
+//         let group = await db.collection('groups').find({ _id: new ObjectId(loan.groupId) }).toArray();
 
-        if (group.length > 0) {
-            group = group[0];
+//         if (group.length > 0) {
+//             group = group[0];
 
-            const data = {
-                branchId: loan.branchId,
-                groupId: loan.groupId,
-                groupName: group.name,
-                loId: group.loanOfficerId,
-                dateAdded: currentDate,
-                insertBy: loan.insertedBy,
-                mode: group.occurence,
-                status: "pending"
-            };
+//             const data = {
+//                 branchId: loan.branchId,
+//                 groupId: loan.groupId,
+//                 groupName: group.name,
+//                 loId: group.loanOfficerId,
+//                 dateAdded: currentDate,
+//                 insertBy: loan.insertedBy,
+//                 mode: group.occurence,
+//                 status: "pending"
+//             };
 
-            const resp = await db.collection('groupCashCollections').insertOne({ ...data });
+//             const resp = await db.collection('groupCashCollections').insertOne({ ...data });
 
-            return { success: true, data: resp };
-        }
-    }
+//             return { success: true, data: resp };
+//         }
+//     }
 
-    return { success: true };
-}
+//     return { success: true };
+// }
 
 async function saveCashCollection(loan) {
     const { db } = await connectToDatabase();
 
-    let groupSummary = await db.collection('groupCashCollections').find({ dateAdded: currentDate, groupId: loan.groupId }).toArray();
+    // let groupSummary = await db.collection('groupCashCollections').find({ dateAdded: currentDate, groupId: loan.groupId }).toArray();
 
-    if (groupSummary.length > 0) {
-        groupSummary = groupSummary[0];
+    // if (groupSummary.length > 0) {
+    //     groupSummary = groupSummary[0];
 
         let loanData = await db.collection("loans")
             .aggregate([
@@ -237,7 +237,7 @@ async function saveCashCollection(loan) {
 
             const status = loanData.status === "active" ? "tomorrow" : loanData.status;
 
-            let cashCollection = await db.collection('cashCollections').find({ groupCollectionId: groupSummary._id + '', clientId: loan.clientId, dateAdded: currentDate }).toArray();
+            let cashCollection = await db.collection('cashCollections').find({ clientId: loan.clientId, dateAdded: currentDate }).toArray();
 
             if (cashCollection.length > 0) {
                 cashCollection = cashCollection[0];
@@ -277,7 +277,7 @@ async function saveCashCollection(loan) {
                     amountRelease: loanData.amountRelease,
                     loanBalance: loanData.loanBalance,
                     paymentCollection: 0,
-                    occurence: groupSummary.mode,
+                    occurence: loanData.groups[0].occurence,
                     currentReleaseAmount: loanData.amountRelease,
                     fullPayment: 0,
                     remarks: '',
@@ -287,7 +287,7 @@ async function saveCashCollection(loan) {
                     mcbuReturnAmt: 0,
                     status: status,
                     dateAdded: currentDate,
-                    groupCollectionId: groupSummary._id + '',
+                    groupStatus: 'pending',
                     origin: 'automation'
                 };
 
@@ -303,5 +303,5 @@ async function saveCashCollection(loan) {
                 await db.collection('cashCollections').insertOne({ ...data });
             }
         }
-    }
+    // }
 }
