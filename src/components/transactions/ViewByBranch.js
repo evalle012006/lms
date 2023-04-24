@@ -79,16 +79,15 @@ const ViewByBranchPage = ({dateFilter, type}) => {
                     status: '-'
                 };
 
-                if (!filter) {
-                    if (branch?.groupCashCollections.length > 0) {
-                        const open = branch.groupCashCollections[0].statusArr.find(status => status === 'open');
-                        if (open) {
-                            collection.status = 'open';
-                        } else {
-                            collection.status = 'close';
-                        }
+                let groupStatus = 'open';
+                if (branch.cashCollections.length > 0) {
+                    const transactionStatus = branch.cashCollections[0].groupStatusArr.filter(status => status === "closed");
+                    if (transactionStatus.length > 0) {
+                        groupStatus = 'close';
                     }
+                }
 
+                if (!filter) {
                     if (branch.activeLoans.length > 0) {
                         collection.activeClients = branch.activeLoans[0].activeClients; 
                         collection.activeBorrowers = branch.activeLoans[0].activeBorrowers;
@@ -113,6 +112,7 @@ const ViewByBranchPage = ({dateFilter, type}) => {
                         collection.noMcbuReturn = 0;
                         collection.mcbuReturnAmt = 0;
                         collection.mcbuReturnAmtStr = '-';
+                        collection.status = groupStatus;
     
                         totalsLoanRelease += branch.loans[0].totalRelease;
                         totalsLoanBalance += branch.loans[0].totalLoanBalance;
@@ -224,6 +224,7 @@ const ViewByBranchPage = ({dateFilter, type}) => {
 
                         collection.noOfFullPayment = branch.cashCollections[0].noOfFullPayment;
                         collection.fullPaymentAmountStr = formatPricePhp(branch.cashCollections[0].fullPaymentAmount);
+                        collection.status = groupStatus;
     
                         noOfClients += branch.cashCollections[0].activeClients;
                         noOfBorrowers += branch.cashCollections[0].activeBorrowers;

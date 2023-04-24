@@ -247,7 +247,7 @@ async function saveCashCollection(loan) {
                     amountRelease: loanData.amountRelease,
                     loanBalance: loanData.loanBalance,
                     paymentCollection: 0,
-                    occurence: groupSummary.mode,
+                    occurence: loanData.groups[0].occurence,
                     currentReleaseAmount: loanData.amountRelease,
                     fullPayment: 0,
                     remarks: '',

@@ -162,6 +162,11 @@ const LoanApplicationPage = () => {
             if (response.success) {
                 let loanList = [];
                 await response.loans && response.loans.map(loan => {
+                    let allowApproved = false;
+                    const transactionStatus = loan.groupStatus.groupStatusArr.filter(s => s === "pending");
+                    if (transactionStatus.length > 0) {
+                        allowApproved = true;
+                    }
                     loanList.push({
                         ...loan,
                         loanOfficerName: `${loan.loanOfficer.lastName}, ${loan.loanOfficer.firstName}`,
@@ -173,7 +178,7 @@ const LoanApplicationPage = () => {
                         loanRelease: loan.amountRelease,
                         loanReleaseStr: formatPricePhp(loan.amountRelease),
                         fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
-                        allowApproved: loan.groupCashCollections.allowApproved,
+                        allowApproved: allowApproved,
                         selected: false
                     });
                 });
@@ -190,6 +195,11 @@ const LoanApplicationPage = () => {
             if (response.success) {
                 let loanList = [];
                 await response.loans && response.loans.map(loan => {
+                    let allowApproved = false;
+                    const transactionStatus = loan.groupStatus.groupStatusArr.filter(s => s === "pending");
+                    if (transactionStatus.length > 0) {
+                        allowApproved = true;
+                    }
                     loanList.push({
                         ...loan,
                         loanOfficerName: `${loan.loanOfficer.lastName}, ${loan.loanOfficer.firstName}`,
@@ -201,7 +211,7 @@ const LoanApplicationPage = () => {
                         loanRelease: loan.amountRelease,
                         loanReleaseStr: formatPricePhp(loan.amountRelease),
                         fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
-                        allowApproved: loan.groupCashCollections.allowApproved,
+                        allowApproved: allowApproved,
                         selected: false
                     });
                 });
@@ -218,6 +228,11 @@ const LoanApplicationPage = () => {
             if (response.success) {
                 let loanList = [];
                 await response.loans && response.loans.map(loan => {
+                    let allowApproved = false;
+                    const transactionStatus = loan.groupStatus.groupStatusArr.filter(s => s === "pending");
+                    if (transactionStatus.length > 0) {
+                        allowApproved = true;
+                    }
                     loanList.push({
                         ...loan,
                         branchName: `${loan.branch[0].code} - ${loan.branch[0].name}`,
@@ -230,7 +245,7 @@ const LoanApplicationPage = () => {
                         loanRelease: loan.amountRelease,
                         loanReleaseStr: formatPricePhp(loan.amountRelease),
                         fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
-                        allowApproved: loan.groupCashCollections.allowApproved,
+                        allowApproved: allowApproved,
                         selected: false
                     });
                 });
@@ -247,6 +262,11 @@ const LoanApplicationPage = () => {
             if (response.success) {
                 let loanList = [];
                 await response.loans && response.loans.map(loan => {
+                    let allowApproved = false;
+                    const transactionStatus = loan.groupStatus.groupStatusArr.filter(s => s === "pending");
+                    if (transactionStatus.length > 0) {
+                        allowApproved = true;
+                    }
                     loanList.push({
                         ...loan,
                         branchName: `${loan.branch[0].code} - ${loan.branch[0].name}`,
@@ -259,7 +279,7 @@ const LoanApplicationPage = () => {
                         loanRelease: loan.amountRelease,
                         loanReleaseStr: formatPricePhp(loan.amountRelease),
                         fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
-                        allowApproved: loan.groupCashCollections.allowApproved,
+                        allowApproved: allowApproved,
                         selected: false
                     });
                 });
@@ -506,11 +526,19 @@ const LoanApplicationPage = () => {
     }
 
     const handleApprove = (row) => {
-        updateClientStatus(row.original, 'active');
+        if (row.original.allowApproved) {
+            updateClientStatus(row.original, 'active');
+        } else {
+            toast.error("Group transaction is already closed for the day.");
+        }
     }
 
     const handleReject = (row) => {
-        updateClientStatus(row.original, 'reject');
+        if (row.original.allowApproved) {
+            updateClientStatus(row.original, 'reject');
+        } else {
+            toast.error("Group transaction is already closed for the day.");
+        }
     }
 
     const [rowActionButtons, setRowActionButtons] = useState([]);

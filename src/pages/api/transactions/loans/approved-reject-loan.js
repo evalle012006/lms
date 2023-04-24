@@ -21,14 +21,14 @@ async function updateLoan(req, res) {
     delete loan.loanOfficer;
     delete loan.groupCashCollections;
 
-    const groupCashCollections = await db
-        .collection('groupCashCollections')
-        .find({ groupId: loan.groupId, dateAdded: loan.dateGranted})
-        .toArray();
+    // const groupCashCollections = await db
+    //     .collection('groupCashCollections')
+    //     .find({ groupId: loan.groupId, dateAdded: loan.dateGranted})
+    //     .toArray();
 
-    if (groupCashCollections.length > 0 && groupCashCollections[0].status === 'close') {
-        response = { error: true, message: "Loan can't be approved because the Group Transaction is already closed!" };
-    } else {
+    // if (groupCashCollections.length > 0 && groupCashCollections[0].status === 'close') {
+    //     response = { error: true, message: "Loan can't be approved because the Group Transaction is already closed!" };
+    // } else {
         let groupData = await db.collection('groups').find({ _id: new ObjectId(loan.groupId) }).toArray();
         if (groupData.length > 0) {
             groupData = groupData[0];
@@ -77,7 +77,7 @@ async function updateLoan(req, res) {
         } else {
             response = { error: true, message: 'Group data not found.' };
         }
-    }
+    // }
 
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')
@@ -277,7 +277,7 @@ async function saveCashCollection(loan) {
                     amountRelease: loanData.amountRelease,
                     loanBalance: loanData.loanBalance,
                     paymentCollection: 0,
-                    occurence: groupSummary.mode,
+                    occurence: loanData.groups[0].occurence,
                     currentReleaseAmount: loanData.amountRelease,
                     fullPayment: 0,
                     remarks: '',

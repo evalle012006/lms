@@ -95,6 +95,14 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                     status: '-'
                 };
 
+                let groupStatus = 'open';
+                if (lo.cashCollections.length > 0) {
+                    const transactionStatus = lo.cashCollections[0].groupStatusArr.filter(status => status === "closed");
+                    if (transactionStatus.length > 0) {
+                        groupStatus = 'close';
+                    }
+                }
+
                 if (!filter) {
                     if (lo.activeLoans.length > 0) {
                         collection.activeClients = lo.activeLoans[0].activeClients; 
@@ -124,6 +132,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                         collection.mcbuReturnAmtStr = '-';
                         collection.mcbuInterest = lo.loans[0].mcbuInterest;
                         collection.mcbuInterestStr = lo.loans[0].mcbuInterest > 0 ? lo.loans[0].mcbuInterest : '-';
+                        collection.status = groupStatus;
     
                         totalsLoanRelease += lo.loans[0].totalRelease;
                         totalsLoanBalance += lo.loans[0].totalLoanBalance;
@@ -133,11 +142,6 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                         totalPastDue += collection.pastDue;
                         totalNoPastDue += collection.noPastDue;
                         // totalMcbu += collection.mcbu;
-                    }
-    
-                    if (lo.groupCashCollections.length > 0) {
-                        collection.groupSummaryIds.push.apply(collection.groupSummaryIds, lo.groupCashCollections[0].groupSummaryIds);
-                        collection.status = lo.groupCashCollections[0].statusArr.find(s => s === 'pending') === 'pending' ? 'open' : 'close';
                     }
 
                     if (lo.transactionType === "weekly") {
@@ -254,6 +258,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                         collection.mcbuReturnAmtStr = collection.mcbuReturnAmt > 0 ? formatPricePhp(collection.mcbuReturnAmt): '-';
                         collection.mcbuInterest = lo.cashCollections[0].mcbuInterest;
                         collection.mcbuInterestStr = lo.cashCollections[0].mcbuInterest > 0 ? lo.cashCollections[0].mcbuInterest : '-';
+                        collection.status = groupStatus;
 
                         const newReleasePerson = lo.cashCollections[0].newCurrentRelease;
                         const reReleasePerson = lo.cashCollections[0].reCurrentRelease;
@@ -882,8 +887,10 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
 
             const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/update-group-transaction-status', data);
             if (response.success) {
-                toast.success(`${data.name} groups are now closed!`);
+                toast.success(`Selected loan officer groups are now closed!`);
                 window.location.reload();
+            } else if (response.error) {
+                toast.error(response.message);
             } else {
                 toast.error('Error updating group summary.');
             }

@@ -257,7 +257,7 @@ async function saveCashCollection(loan, currentDate, currentReleaseAmount, reloa
                     amountRelease: 0,
                     loanBalance: 0,
                     paymentCollection: 0,
-                    occurence: groupSummary.mode,
+                    occurence: loanData.occurence,
                     currentReleaseAmount: currentReleaseAmount,
                     fullPayment: loanData.fullPayment,
                     mcbu: loanData.mcbu,

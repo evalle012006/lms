@@ -69,6 +69,7 @@ async function save(req, res) {
                     status: loan.status,
                     dateAdded: currentDate,
                     groupCollectionId: groupSummary[0]._id + '',
+                    groupStatus: "pending",
                     origin: 'pre-save'
                 };
 
