@@ -1217,6 +1217,10 @@ const CashCollectionDetailsPage = () => {
                         temp.error = false;
                         temp.excused = true;
                         temp.mcbuError = false;
+                        temp.mcbu = temp.mcbu - temp.mcbuCol;
+                        temp.mcbuStr = temp.mcbu > 0 ? formatPricePhp(temp.mcbu) : '-';
+                        temp.mcbuCol = 0;
+                        temp.mcbuColStr = '-';
                     } else if (remarks.value?.startsWith('delinquent') || remarks.value?.startsWith('excused-')) {
                         // add no of mispayments / maximum of payments per cycle // change to #of mispay
                         temp.error = false;
