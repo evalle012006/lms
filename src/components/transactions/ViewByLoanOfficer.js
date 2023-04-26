@@ -112,7 +112,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                     }
     
                     if (lo.loans.length > 0) {
-                        collection.totalReleases = lo.loans[0].totalRelease;
+                        collection.totalLoanRelease = lo.loans[0].totalRelease;
                         collection.totalReleasesStr = lo.loans[0].totalRelease > 0 ? formatPricePhp(lo.loans[0].totalRelease) : '-';
                         collection.totalLoanBalance = lo.loans[0].totalLoanBalance;
                         collection.totalLoanBalanceStr = lo.loans[0].totalLoanBalance > 0 ? formatPricePhp(lo.loans[0].totalLoanBalance) : '-';
@@ -134,10 +134,10 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                         collection.mcbuInterestStr = lo.loans[0].mcbuInterest > 0 ? lo.loans[0].mcbuInterest : '-';
                         collection.status = groupStatus;
     
-                        totalsLoanRelease += lo.loans[0].totalRelease;
-                        totalsLoanBalance += lo.loans[0].totalLoanBalance;
+                        totalsLoanRelease += collection.totalLoanRelease ? collection.totalLoanRelease : 0;
+                        totalsLoanBalance += collection.totalLoanBalance ? collection.totalLoanBalance : 0;
                         if (lo.transactionType === 'daily') {
-                            targetLoanCollection += lo.loans[0].loanTarget;
+                            targetLoanCollection += collection.loanTarget ? collection.loanTarget : 0;
                         }
                         totalPastDue += collection.pastDue;
                         totalNoPastDue += collection.noPastDue;
