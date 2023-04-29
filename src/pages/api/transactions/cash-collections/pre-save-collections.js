@@ -32,7 +32,7 @@ async function save(req, res) {
         ).toArray();
 
     loans.map(async loan => {
-        const existCC = await db.collection('cashCollections').find({ loanId: loan._id + '', dateAdded: currentDate }).toArray();
+        const existCC = await db.collection('cashCollections').find({ clientId: loan.clientId + '', dateAdded: currentDate }).toArray();
 
         if (existCC.length === 0) {
             const group = await db.collection('groups').find({ _id: new ObjectId(loan.groupId) }).toArray();
