@@ -231,9 +231,11 @@ const LoanOfficerSummary = () => {
                 response.data.current.map(los => {
                     const index = losList.findIndex(d => d.day === los.dateAdded);
                     if (index > -1) {
+                        const transfer = los.transfer - los.transferred;
                         losList[index] = {
                             ...los.data,
                             day: los.dateAdded,
+                            transfer: transfer,
                             mcbuTarget: type === 'daily' ? 0 : los.data.mcbuTarget,
                             mcbuTargetStr: type === 'daily' ? '-' : formatPricePhp(los.data.mcbuTarget),
                             mcbuActualStr: formatPricePhp(los.data.mcbuActual),

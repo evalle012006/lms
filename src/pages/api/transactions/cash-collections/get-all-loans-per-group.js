@@ -147,6 +147,13 @@ async function getAllLoansPerGroup(req, res) {
                                                 else: 0
                                             }
                                         } },
+                                        transferred: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transferred', true] },
+                                                then: 1,
+                                                else: 0
+                                            }
+                                        } },
                                         groupStatusArr: { $addToSet: '$groupStatus' }
                                     } 
                                 }
@@ -397,6 +404,13 @@ async function getAllLoansPerGroup(req, res) {
                                         transfer: { $sum: {
                                             $cond: {
                                                 if: { $eq: ['$transfer', true] },
+                                                then: 1,
+                                                else: 0
+                                            }
+                                        } },
+                                        transferred: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transferred', true] },
                                                 then: 1,
                                                 else: 0
                                             }
@@ -838,6 +852,13 @@ async function getAllLoansPerGroup(req, res) {
                                                 else: 0
                                             }
                                         } },
+                                        transferred: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transferred', true] },
+                                                then: 1,
+                                                else: 0
+                                            }
+                                        } },
                                         groupStatusArr: { $addToSet: '$groupStatus' }
                                     } 
                                 }
@@ -1065,6 +1086,13 @@ async function getAllLoansPerGroup(req, res) {
                                         transfer: { $sum: {
                                             $cond: {
                                                 if: { $eq: ['$transfer', true] },
+                                                then: 1,
+                                                else: 0
+                                            }
+                                        } },
+                                        transferred: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transferred', true] },
                                                 then: 1,
                                                 else: 0
                                             }

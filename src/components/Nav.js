@@ -398,7 +398,6 @@ const MenuItems = [
             },
         ]
     },
-// -Consolidated BMS
     {
         label: "Settings",
         url: "#settings",
