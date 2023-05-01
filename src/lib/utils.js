@@ -149,3 +149,19 @@ export const getDaysOfMonth = (year, month) => {
 export const getCurrentDate = (timezone = 'Asia/Manila') => {
     return new Date().toLocaleDateString({}, { timeZone: timezone });
 };
+
+export const getLastWeekdayOfTheMonth = (year, month) => {
+    const days = getDaysOfMonth(year, month);
+    let lastDay;
+    days.map(day => {
+        const dayName = moment(day).format('dddd');
+
+        if (dayName === 'Saturday' || dayName === 'Sunday') {
+            return;
+        }
+
+        lastDay = day;
+    });
+
+    return lastDay;
+}

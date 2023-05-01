@@ -305,9 +305,11 @@ const BranchManagerSummary = () => {
                 response.data.current.map(los => {
                     const index = losList.findIndex(d => d.day === los._id.dateAdded);
                     if (index > -1) {
+                        const transfer = los.transfer - los.transferred;
                         losList[index] = {
                             ...los,
                             day: los._id.dateAdded,
+                            transfer: transfer,
                             mcbuTargetStr: los.mcbuTarget > 0 ? formatPricePhp(los.mcbuTarget) : '-',
                             mcbuActualStr: los.mcbuActual > 0 ? formatPricePhp(los.mcbuActual) : '-',
                             mcbuWithdrawalStr: los.mcbuWithdrawal > 0 ? formatPricePhp(los.mcbuWithdrawal) : '-',

@@ -1,11 +1,12 @@
 import { useEffect } from "react";
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
-import { setCurrentDate, setHoliday, setWeekend } from '@/redux/actions/systemActions';
+import { setCurrentDate, setHoliday, setLastDayOfTheMonth, setWeekend } from '@/redux/actions/systemActions';
 import NavComponent from "./Nav";
 import { setTransactionSettings } from "@/redux/actions/transactionsActions";
 import { setHolidayList } from "@/redux/actions/holidayActions";
 import moment from 'moment';
+import { getLastWeekdayOfTheMonth } from "@/lib/utils";
 
 const Layout = ({ children, bgwhite = false, header = true, noPad = false, actionButtons = [], hScroll = true }) => {
     const state = useSelector(state => state.global);
@@ -75,6 +76,9 @@ const Layout = ({ children, bgwhite = false, header = true, noPad = false, actio
             }
 
             getListHoliday();
+
+            const lastDay = getLastWeekdayOfTheMonth(moment(currentDate).year(), moment(currentDate).month() + 1);
+            dispatch(setLastDayOfTheMonth(lastDay));
         }
     }, [currentDate]);
 

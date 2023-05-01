@@ -389,28 +389,16 @@ const TransferClientPage = () => {
 
         if (selectedClientList.length > 0) {
             if (selectedTargetGroup) {
-                // const errorMsg = new Set();
                 const updatedSelectedClientList = selectedClientList.map(client => {
                     let uClient = {...client};
-                    // const exist = selectedClientList.find(c => c.slotNo === client.slotNo);
 
-                    // if (uClient.slotNo === "-") {
-                    //     errorMsg.add("Some selected clients don't have slot number assigned.");
-                    //     uClient.error = true;
-                    // } else if (exist && uClient._id !== exist._id) {
-                    //     errorMsg.add(`Multiple selected clients have the same slot number: ${client.slotNo}`);
-                    //     uClient.error = true;
-                    // } else {
-                    //     const inUsed = selectedTargetGroup.availableSlots.find(s => s === client.slotNo);
-                    //     if (inUsed) {
-                    //         errorMsg.add(`Slot No ${client.slotNo} is not available.`);
-                    //         uClient.error = true;
-                    //     } else {
-                            uClient.branchId = selectedTargetBranch?._id;
-                            uClient.loId = selectedTargetUser?._id;
-                            uClient.groupId = selectedTargetGroup?._id;
-                    //     }
-                    // }
+                    uClient.branchId = selectedTargetBranch?._id;
+                    uClient.loId = selectedTargetUser?._id;
+                    uClient.groupId = selectedTargetGroup?._id;
+                    uClient.sameLo = client.loId === selectedTargetUser?._id;
+                    uClient.oldGroupId = client.groupId;
+                    uClient.oldBranchid = client.branchId;
+                    uClient.oldLoId = client.loId;
 
                     const index = updatedClientList.findIndex(c => c._id === uClient._id);
                     if (index > -1) {
@@ -421,30 +409,20 @@ const TransferClientPage = () => {
                 });
 
                 dispatch(setTransferClientList(updatedClientList));
-                // const errorMsgArr = Array.from(errorMsg);
-                // if (errorMsgArr.length > 0) {
-                //     let eMsgs;
-                //     errorMsgArr.map(msg => {
-                //         eMsgs = eMsgs ? eMsgs + '\n \n' + msg  : msg;
-                //     });
-                //     setLoading(false);
-                //     toast.error(eMsgs, { autoClose: 5000 });
-                // } else {
-                    const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/transfer-client', updatedSelectedClientList);
+                const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/transfer-client', updatedSelectedClientList);
 
-                    if (response.success) {
-                        setLoading(false);
-                        let msg = 'Selected client/s successfully transfered.';
-                        if (response?.message) {
-                            msg = msg + ' ' + response.message;
-                        }
-                        toast.success(msg);
-                        getListClient(selectedSourceGroup._id);
-                    } else if (response.error) {
-                        setLoading(false);
-                        toast.error(response.message);
+                if (response.success) {
+                    setLoading(false);
+                    let msg = 'Selected client/s successfully transfered.';
+                    if (response?.message) {
+                        msg = msg + ' ' + response.message;
                     }
-                // }
+                    toast.success(msg);
+                    getListClient(selectedSourceGroup._id);
+                } else if (response.error) {
+                    setLoading(false);
+                    toast.error(response.message);
+                }
             } else {
                 setLoading(false);
                 toast.error("Please select target group.");
@@ -503,6 +481,12 @@ const TransferClientPage = () => {
             Cell: StatusPill
         }
     ]);
+
+    useEffect(() => {
+        if ((currentUser.role && currentUser.role.rep !== 2)) {
+            router.push('/');
+        }
+    }, []);
 
     useEffect(() => {
         let mounted = true;

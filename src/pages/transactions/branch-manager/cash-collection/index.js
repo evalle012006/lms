@@ -109,6 +109,12 @@ const BranchCashCollectionPage = () => {
     }
 
     useEffect(() => {
+        if ((currentUser.role && currentUser.role.rep > 3)) {
+            router.push('/');
+        }
+    }, []);
+
+    useEffect(() => {
         let mounted = true;
         
         mounted && getListBranch();

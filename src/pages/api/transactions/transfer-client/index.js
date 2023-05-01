@@ -60,6 +60,9 @@ async function transferClients(req, res) {
                     await saveCashCollection(client, loan, group);
                     
                     const updatedClient = {...client};
+                    delete updatedClient.oldGroupId;
+                    delete updatedClient.oldBranchId;
+                    delete updatedClient.oldLoId;
                     delete updatedClient.selected;
                     delete updatedClient.loans;
                     delete updatedClient.loanStatus;
@@ -104,7 +107,8 @@ async function transferClients(req, res) {
 async function saveCashCollection(client, loan, group) {
     const { db } = await connectToDatabase();
 
-    const cashCollection = await db.collection('cashCollections').find({ clientId: client.clientId, dateAdded: moment(currentDate).format('YYYY-MM-DD') }).toArray();    
+    // add new cash collection entry with updated data
+    const cashCollection = await db.collection('cashCollections').find({ clientId: client._id, groupId: client.groupId, dateAdded: moment(currentDate).format('YYYY-MM-DD') }).toArray();    
     if (cashCollection.length === 0) {
         let data = {
             branchId: client.branchId,
@@ -131,7 +135,58 @@ async function saveCashCollection(client, loan, group) {
             remarks: '',
             dateAdded: moment(currentDate).format('YYYY-MM-DD'),
             groupStatus: 'pending',
-            transfer: true,
+            transfer: client.sameLo ? false : true,
+            origin: 'automation'
+        };
+
+        if (loan) {
+            data.loanId = loan._id;
+            data.slotNo = loan.slotNo;
+            data.loanCycle = loan.loanCycle;
+            data.noOfPayments = loan.noOfPayments;
+            data.status = loan.status;
+            data.mcbu = loan.mcbu;
+
+            if (data.occurence === 'weekly') {
+                data.mcbuTarget = 50;
+                data.groupDay = group.groupDay;
+            }
+        }
+
+        await db.collection('cashCollections').insertOne({ ...data });
+    } else {
+        await db.collection('cashCollections').updateOne({ _id: cashCollection[0]._id }, { $set: { transfer: client.sameLo ? false : true } })
+    }
+
+    // add or update client data on cash collection
+    const existingCashCollection = await db.collection('cashCollections').find({ clientId: client._id, groupId: client.oldGroupId, dateAdded: moment(currentDate).format('YYYY-MM-DD') }).toArray();
+    if (existingCashCollection.length === 0) {
+        let data = {
+            branchId: client.oldBranchId,
+            groupId: client.oldGroupId,
+            loId: client.oldLoId,
+            clientId: client._id,
+            mispayment: false,
+            mispaymentStr: 'No',
+            collection: 0,
+            excess: 0,
+            total: 0,
+            activeLoan: 0,
+            targetCollection: 0,
+            amountRelease: 0,
+            loanBalance: 0,
+            paymentCollection: 0,
+            occurence: group.occurence,
+            currentReleaseAmount: 0,
+            fullPayment: 0,
+            mcbu: 0,
+            mcbuCol: 0,
+            mcbuWithdrawal: 0,
+            mcbuReturnAmt: 0,
+            remarks: '',
+            dateAdded: moment(currentDate).format('YYYY-MM-DD'),
+            groupStatus: 'pending',
+            transferred: client.sameLo ? false : true,
             origin: 'automation'
         };
 
@@ -151,6 +206,6 @@ async function saveCashCollection(client, loan, group) {
 
         await db.collection('cashCollections').insertOne({ ...data });
     } else {
-        await db.collection('cashCollections').updateOne({ _id: cashCollection[0]._id }, { $set: { transfer: true } })
+        await db.collection('cashCollections').updateOne({ _id: cashCollection[0]._id }, { $set: { transferred: client.sameLo ? false : true } })
     }
 }
