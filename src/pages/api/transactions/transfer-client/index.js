@@ -136,7 +136,7 @@ async function saveCashCollection(client, loan, group) {
             dateAdded: moment(currentDate).format('YYYY-MM-DD'),
             groupStatus: 'pending',
             transfer: client.sameLo ? false : true,
-            origin: 'automation'
+            origin: 'automation-trf'
         };
 
         if (loan) {
@@ -187,7 +187,7 @@ async function saveCashCollection(client, loan, group) {
             dateAdded: moment(currentDate).format('YYYY-MM-DD'),
             groupStatus: 'pending',
             transferred: client.sameLo ? false : true,
-            origin: 'automation'
+            origin: 'automation-trf'
         };
 
         if (loan) {

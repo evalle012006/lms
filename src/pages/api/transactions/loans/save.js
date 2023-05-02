@@ -268,7 +268,7 @@ async function saveCashCollection(loan, currentDate, currentReleaseAmount, reloa
                     status: loanData.status,
                     dateAdded: moment(currentDate).format('YYYY-MM-DD'),
                     groupStatus: 'pending',
-                    origin: 'automation'
+                    origin: 'automation-loan'
                 };
 
                 if (data.occurence === 'weekly') {

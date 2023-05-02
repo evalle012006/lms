@@ -220,7 +220,7 @@ async function saveCashCollection(loan) {
                     .updateOne(
                         { _id: ccId }, 
                         {
-                            $set: { ...cashCollection, status: status }
+                            $set: { ...cashCollection, status: status, modifiedDate: currentDate }
                         }, 
                         { upsert: false }
                     );
@@ -258,7 +258,7 @@ async function saveCashCollection(loan) {
                     status: status,
                     dateAdded: moment(getCurrentDate()).format('YYYY-MM-DD'),
                     groupStatus: 'pending',
-                    origin: 'automation'
+                    origin: 'automation-ar-loan-batch'
                 };
 
                 if (data.loanCycle === 1 && data.occurence === 'weekly') {
