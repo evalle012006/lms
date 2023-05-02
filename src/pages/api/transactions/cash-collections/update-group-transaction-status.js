@@ -13,7 +13,7 @@ export default apiHandler({
 
 async function processLOSummary(req, res) {
     const { db } = await connectToDatabase();
-    const { loId } = req.body;
+    const { loId, mode } = req.body;
     const currentDate = getCurrentDate();
 
     if (loId) {
@@ -22,7 +22,7 @@ async function processLOSummary(req, res) {
                 loId: loId,
                 dateAdded: moment(currentDate).format('YYYY-MM-DD')
             }, {
-                $set: { groupStatus: 'closed' }
+                $set: { groupStatus: mode === 'close' ? 'closed' : 'pending' }
             });
 
         if (result.modifiedCount === 0) {

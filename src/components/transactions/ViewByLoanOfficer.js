@@ -825,26 +825,8 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
     const handleOpen = async (row) => {
         if (row.original.activeClients !== 0) {
             setLoading(true);
-            // delete row.original.page;
-            // delete row.original.noCurrentReleaseStr;
-            // delete row.original.currentReleaseAmountStr;
-            // delete row.original.loanTargetStr;
-            // delete row.original.collectionStr;
-            // delete row.original.excessStr;
-            // delete row.original.totalStr;
-            // delete row.original.totalReleasesStr;
-            // delete row.original.totalLoanBalanceStr;
-            // delete row.original.fullPaymentAmountStr;
-            // delete row.original.noFullPaymentStr;
 
-            // let data = {
-            //     ...row.original,
-            //     mode: type,
-            //     status: 'pending',
-            //     currentUser: currentUser._id,
-            // };
-
-            let data = { loId: row.original._id };
+            let data = { loId: row.original._id, mode: 'open' };
 
             const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/update-group-transaction-status', data);
             
@@ -864,26 +846,8 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
     const handleClose = async (row) => {
         if (row.original.activeClients !== 0) {
             setLoading(true);
-            // delete row.original.page;
-            // delete row.original.noCurrentReleaseStr;
-            // delete row.original.currentReleaseAmountStr;
-            // delete row.original.loanTargetStr;
-            // delete row.original.collectionStr;
-            // delete row.original.excessStr;
-            // delete row.original.totalStr;
-            // delete row.original.totalReleasesStr;
-            // delete row.original.totalLoanBalanceStr;
-            // delete row.original.fullPaymentAmountStr;
-            // delete row.original.noFullPaymentStr;
-            
-            // let data = {
-            //     ...row.original,
-            //     mode: type,
-            //     status: 'close',
-            //     currentUser: currentUser._id,
-            // };
 
-            let data = { loId: row.original._id };
+            let data = { loId: row.original._id, mode: 'close' };
 
             const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/update-group-transaction-status', data);
             if (response.success) {
