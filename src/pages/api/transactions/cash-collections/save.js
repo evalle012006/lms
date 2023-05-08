@@ -75,7 +75,7 @@ async function updateCollection(collections) {
 
     collections.map(async collection => {
 
-        if (collection?.origin === 'pre-save') {
+        if (collection?.origin === 'pre-save' || collection?.origin === 'automation-trf') {
             delete collection.origin;
             await db.collection('cashCollections')
                 .updateOne(

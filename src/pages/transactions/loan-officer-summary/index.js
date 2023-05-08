@@ -231,11 +231,9 @@ const LoanOfficerSummary = () => {
                 response.data.current.map(los => {
                     const index = losList.findIndex(d => d.day === los.dateAdded);
                     if (index > -1) {
-                        const transfer = los.transfer - los.transferred;
                         losList[index] = {
                             ...los.data,
                             day: los.dateAdded,
-                            transfer: transfer,
                             mcbuTarget: type === 'daily' ? 0 : los.data.mcbuTarget,
                             mcbuTargetStr: type === 'daily' ? '-' : formatPricePhp(los.data.mcbuTarget),
                             mcbuActualStr: formatPricePhp(los.data.mcbuActual),
@@ -804,11 +802,9 @@ const LoanOfficerSummary = () => {
             }
 
             mounted && getCurrentBranch();
-        } else {
-            // selectedBranchSubject
         }
-
-        if (days.length > 0) {
+        
+        if (days) {
             const fMonth = (typeof selectedMonth === 'number' && selectedMonth < 10) ? '0' + selectedMonth : selectedMonth;
             mounted && type && getListLos(`${selectedYear}-${fMonth}-01`);
             mounted && setLoading(false);

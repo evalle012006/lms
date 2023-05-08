@@ -384,52 +384,59 @@ const TransferClientPage = () => {
 
     const handleTransfer = async () => {
         setLoading(true);
-        const updatedClientList = [...transferList];
-        let selectedClientList = transferList && transferList.filter(client => client.selected === true);
+        if (selectedSourceGroup._id === selectedTargetGroup._id) {
+            toast.error('Selected source and target group are the same.');
+        } else {
+            const updatedClientList = [...transferList];
+            let selectedClientList = transferList && transferList.filter(client => client.selected === true);
 
-        if (selectedClientList.length > 0) {
-            if (selectedTargetGroup) {
-                const updatedSelectedClientList = selectedClientList.map(client => {
-                    let uClient = {...client};
+            if (selectedClientList.length > 0) {
+                if (selectedTargetGroup) {
+                    const updatedSelectedClientList = selectedClientList.map(client => {
+                        let uClient = {...client};
 
-                    uClient.branchId = selectedTargetBranch?._id;
-                    uClient.loId = selectedTargetUser?._id;
-                    uClient.groupId = selectedTargetGroup?._id;
-                    uClient.sameLo = client.loId === selectedTargetUser?._id;
-                    uClient.oldGroupId = client.groupId;
-                    uClient.oldBranchid = client.branchId;
-                    uClient.oldLoId = client.loId;
+                        uClient.branchId = selectedTargetBranch?._id;
+                        uClient.loId = selectedTargetUser?._id;
+                        uClient.groupId = selectedTargetGroup?._id;
+                        uClient.groupName = selectedTargetGroup?.name;
+                        uClient.sameLo = client.loId === selectedTargetUser?._id;
+                        uClient.oldGroupId = client.groupId;
+                        uClient.oldBranchId = client.branchId;
+                        uClient.oldLoId = client.loId;
 
-                    const index = updatedClientList.findIndex(c => c._id === uClient._id);
-                    if (index > -1) {
-                        updatedClientList[index] = uClient;
+                        const index = updatedClientList.findIndex(c => c._id === uClient._id);
+                        if (index > -1) {
+                            updatedClientList[index] = uClient;
+                        }
+
+                        return uClient;
+                    });
+
+                    dispatch(setTransferClientList(updatedClientList));
+                    const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/transfer-client', updatedSelectedClientList);
+
+                    if (response.success) {
+                        setLoading(false);
+                        let msg = 'Selected client/s successfully transfered.';
+                        if (response?.message) {
+                            msg = msg + ' ' + response.message;
+                        }
+                        toast.success(msg);
+                        setTimeout(() => {
+                            getListClient(selectedSourceGroup._id);
+                        }, 800);
+                    } else if (response.error) {
+                        setLoading(false);
+                        toast.error(response.message);
                     }
-
-                    return uClient;
-                });
-
-                dispatch(setTransferClientList(updatedClientList));
-                const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/transfer-client', updatedSelectedClientList);
-
-                if (response.success) {
+                } else {
                     setLoading(false);
-                    let msg = 'Selected client/s successfully transfered.';
-                    if (response?.message) {
-                        msg = msg + ' ' + response.message;
-                    }
-                    toast.success(msg);
-                    getListClient(selectedSourceGroup._id);
-                } else if (response.error) {
-                    setLoading(false);
-                    toast.error(response.message);
+                    toast.error("Please select target group.");
                 }
             } else {
                 setLoading(false);
-                toast.error("Please select target group.");
+                toast.error('No client selected.');
             }
-        } else {
-            setLoading(false);
-            toast.error('No client selected.');
         }
     }
 

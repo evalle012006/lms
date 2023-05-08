@@ -383,11 +383,11 @@ const CashCollectionDetailsPage = () => {
                     delete cc._id;
                     if (cc.hasOwnProperty('current') && cc.current.length > 0) {
                         collection.targetCollection = cc.current[0].targetCollection;
-                        collection.targetCollectionStr = formatPricePhp(cc.current[0].targetCollection);
+                        collection.targetCollectionStr = collection.targetCollection > 0 ? formatPricePhp(collection.targetCollection) : '-';
                         collection.excess = cc.current[0].excess;
-                        collection.excessStr = formatPricePhp(cc.current[0].excess);
+                        collection.excessStr = collection.excess > 0 ? formatPricePhp(collection.excess) : '-';
                         collection.paymentCollection = cc.current[0].paymentCollection;
-                        collection.paymentCollectionStr = formatPricePhp(cc.current[0].paymentCollection);
+                        collection.paymentCollectionStr = collection.paymentCollection > 0 ? formatPricePhp(collection.paymentCollection) : '-';
                         collection.mispayment = cc.current[0].mispayment;
                         collection.mispaymentStr = cc.current[0].mispaymentStr;
                         collection.remarks = cc.current[0].remarks;
@@ -405,7 +405,13 @@ const CashCollectionDetailsPage = () => {
                         collection.mcbuInterest = cc.current[0].mcbuInterest ? cc.mcbuInterest : 0,
                         collection.mcbuInterestStr = cc.current[0].mcbuInterest > 0 ? formatPricePhp(cc.current[0].mcbuInterest) : '-',
                         collection.advanceDays = cc.current[0].advanceDays;
-                        setEditMode(false);
+
+                        if (cc.current[0].hasOwnProperty('origin')) {
+                            collection.origin = cc.current[0].origin;
+                            if (collection.origin !== 'automation-trf') {
+                                setEditMode(false);
+                            }
+                        }
                     }
     
                     if (cc.currentRelease.length > 0) {
@@ -952,7 +958,7 @@ const CashCollectionDetailsPage = () => {
                 let temp = {...cc};
                 if (temp.status !== 'open') {
                     if (idx === index) {
-                        if (temp.hasOwnProperty('prevData')) {
+                        if (temp.prevData) {
                             temp.loanBalance = temp.prevData.loanBalance;
                             temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
                             temp.total = temp.prevData.total;
@@ -1732,23 +1738,11 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.noOfPaymentStr }</td>{/** after submitting please update the no of payments **/}
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
                                                     { cc.mcbuColStr }
-                                                    {/* { (!weekend && !holiday && currentUser.role.rep > 2 && cc.status === 'active' && editMode && (!cc.hasOwnProperty('_id') || revertMode)) ? (
-                                                        <React.Fragment>
-                                                            <input type="number" name={`${cc.clientId}-mcbuCol`} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'mcbuCol')}
-                                                                onClick={(e) => e.stopPropagation()} onBlur={(e) => handlePaymentValidation(e, cc, index, 'mcbuCol')} defaultValue={cc.mcbuCol ? cc.mcbuCol : 0} tabIndex={index + 1}
-                                                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg 
-                                                                            focus:ring-main focus:border-main block p-2.5" style={{ width: '100px' }}/>
-                                                        </React.Fragment>
-                                                        ): 
-                                                            <React.Fragment>
-                                                                {(!editMode || filter || !revertMode || cc.status === 'completed' || cc.status === 'pending' || cc.status === 'totals' || cc.status === 'closed') ? cc.mcbuColStr : '-'}
-                                                            </React.Fragment>
-                                                    } */}
                                                 </td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.targetCollectionStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.excessStr }</td>
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
-                                                    { (!isWeekend && !isHoliday && currentUser.role.rep > 2 && cc.status === 'active' && editMode && (!cc.hasOwnProperty('_id') || revertMode)) ? (
+                                                    { (!isWeekend && !isHoliday && currentUser.role.rep > 2 && cc.status === 'active' && editMode && (!cc.hasOwnProperty('_id') || (cc?.origin && cc?.origin === 'automation-trf') || revertMode)) ? (
                                                         <React.Fragment>
                                                             <input type="number" name={cc.clientId} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'amount', cc.activeLoan)}
                                                                 onClick={(e) => e.stopPropagation()} defaultValue={cc.paymentCollection} tabIndex={index + 1}
@@ -1773,7 +1767,7 @@ const CashCollectionDetailsPage = () => {
                                                     { cc.pastDueStr }
                                                 </td>
                                                 { (!isWeekend && !isHoliday && (currentUser.role.rep > 2 && (cc.status === 'active' || cc.status === 'completed') && (editMode && !groupSummaryIsClose) 
-                                                    && (!cc.hasOwnProperty('_id') || revertMode) && !filter) || ((cc.remarks && cc.remarks.value?.startsWith('reloaner') && cc.status !== "tomorrow") && !groupSummaryIsClose)
+                                                    && (!cc.hasOwnProperty('_id') || (cc?.origin && cc?.origin === 'automation-trf') || revertMode) && !filter) || ((cc.remarks && cc.remarks.value?.startsWith('reloaner') && cc.status !== "tomorrow") && !groupSummaryIsClose)
                                                     && (cc.remarks && cc.remarks.value?.startsWith('reloaner') && cc.fullPaymentDate !== currentDate) && cc.status !== 'pending') ? (
                                                         <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">
                                                             { cc.remarks !== '-' ? (

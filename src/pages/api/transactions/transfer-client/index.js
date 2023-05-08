@@ -17,47 +17,61 @@ async function transferClients(req, res) {
     let response = {};
 
     if (clients.length > 0) {
-        let group = await db.collection('groups').find({ _id: new ObjectId(clients[0].groupId) }).toArray();
+        let sourceGroup = await db.collection('groups').find({ _id: new ObjectId(clients[0].oldGroupId) }).toArray();
+        sourceGroup = sourceGroup.length > 0 ? sourceGroup[0] : [];
+        delete sourceGroup._id;
 
-        if (group.length > 0) {
-            group = group[0];
-            group.noOfClients = group.noOfClients ? group.noOfClients : 0;
+        let targetGroup = await db.collection('groups').find({ _id: new ObjectId(clients[0].groupId) }).toArray();
+        if (targetGroup.length > 0) {
+            targetGroup = targetGroup[0];
+            delete targetGroup._id;
+            targetGroup.noOfClients = targetGroup.noOfClients ? targetGroup.noOfClients : 0;
 
-            let groupFull = false;
+            let targetGroupFull = false;
             clients.map(async c => {
                 let client = {...c};
-                if (group.status === 'full') {
-                    groupFull = true;
+                let loan = client.loans.length > 0 ? client.loans[0] : null;
+                if (targetGroup.status === 'full') {
+                    targetGroupFull = true;
                 } else {
-                    let slotNo = client.slotNo;
-                    if (slotNo !== '-') {
-                        // if slot is not available assigned new slot
-                        if (!group.availableSlots.includes(client.slotNo)) {
+                    if (client.slotNo !== '-') {
+                        let slotNo = client.slotNo;
+                        // if slot is not available assigned new slot   slotNo = 1
+                        if (!targetGroup.availableSlots.includes(slotNo)) { // [6,7,8,9,10]
                             // get always the first available slot
-                            slotNo = group.availableSlots[0];
+                            slotNo = targetGroup.availableSlots[0];
                         }
-                    }
-            
-                    let loan = client.loans.length > 0 ? client.loans[0] : null;
-                    if (loan) {
-                        loan.branchId = client.branchId;
-                        loan.loId = client.loId;
-                        loan.groupId = client.groupId;
-                        loan.slotNo = slotNo;
-                        
-                        const loanId = loan._id;
-                        delete loan._id;
-                        await db.collection('loans').updateOne({ _id: new ObjectId(loanId) }, { $set: { ...loan } });
-                        
-                        group.availableSlots = group.availableSlots.filter(s => s !== loan.slotNo);
-                        group.noOfClients = group.noOfClients + 1;
-    
-                        if (group.noOfClients === group.capacity) {
-                            group.status = 'full';
+
+                        targetGroup.availableSlots = targetGroup.availableSlots.filter(s => s !== slotNo);
+                        targetGroup.noOfClients = targetGroup.noOfClients + 1;
+
+                        if (targetGroup.noOfClients === targetGroup.capacity) {
+                            targetGroup.status = 'full';
+                        }
+
+                        // put back the slotNo in the source group
+                        sourceGroup.availableSlots.push(client.slotNo);
+                        sourceGroup.availableSlots.sort((a, b) => { return a - b; });
+                        sourceGroup.noOfClients = sourceGroup.noOfClients - 1;
+
+                        await db.collection('groups').updateOne( {  _id: new ObjectId(c.oldGroupId) }, { $set: { ...sourceGroup } }, { upsert: false } );
+                        await db.collection('groups').updateOne( {  _id: new ObjectId(c.groupId) }, { $set: { ...targetGroup } }, { upsert: false } );
+
+                        if (loan) {
+                            loan.branchId = client.branchId;
+                            loan.loId = client.loId;
+                            loan.groupId = client.groupId;
+                            loan.groupName = client.groupName;
+                            loan.slotNo = slotNo;
+                            
+                            const loanId = loan._id;
+                            delete loan._id;
+                            await db.collection('loans').updateOne({ _id: new ObjectId(loanId) }, { $set: { ...loan } });
+                            loan._id = loanId;
                         }
                     }
 
-                    await saveCashCollection(client, loan, group);
+                    await saveCashCollection(client, loan, sourceGroup, targetGroup);
                     
                     const updatedClient = {...client};
                     delete updatedClient.oldGroupId;
@@ -70,24 +84,15 @@ async function transferClients(req, res) {
                     delete updatedClient.loanBalanceStr;
                     delete updatedClient.label;
                     delete updatedClient.value;
-                    if (client.slotNo === '-') {
-                        delete updatedClient.slotNo;
-                    }
+                    delete updatedClient.sameLo;
+                    delete updatedClient.clientIdStr;
+                    delete updatedClient.slotNo;
                     delete updatedClient._id;
                     await db.collection('client').updateOne({ _id: new ObjectId(client._id) }, { $set: { ...updatedClient } });
                 }
             });
-
-            delete group._id;
-            await db.collection('groups').updateOne(
-                {  _id: new ObjectId(clients[0].groupId) },
-                {
-                    $set: { ...group }
-                }, 
-                { upsert: false }
-            );
             
-            if (groupFull) {
+            if (targetGroupFull) {
                 response = { success: true, message: "Some client were not successfuly transfered due to selected group is full." };
             } else {
                 response = { success: true };
@@ -104,7 +109,7 @@ async function transferClients(req, res) {
         .end(JSON.stringify(response));
 }
 
-async function saveCashCollection(client, loan, group) {
+async function saveCashCollection(client, loan, sourceGroup, targetGroup) {
     const { db } = await connectToDatabase();
 
     // add new cash collection entry with updated data
@@ -125,7 +130,7 @@ async function saveCashCollection(client, loan, group) {
             amountRelease: 0,
             loanBalance: 0,
             paymentCollection: 0,
-            occurence: group.occurence,
+            occurence: targetGroup.occurence,
             currentReleaseAmount: 0,
             fullPayment: 0,
             mcbu: 0,
@@ -141,6 +146,10 @@ async function saveCashCollection(client, loan, group) {
 
         if (loan) {
             data.loanId = loan._id;
+            data.activeLoan = loan.activeLoan;
+            data.targetCollection = loan.activeLoan;
+            data.amountRelease = loan.amountRelease;
+            data.loanBalance = loan.loanBalance;
             data.slotNo = loan.slotNo;
             data.loanCycle = loan.loanCycle;
             data.noOfPayments = loan.noOfPayments;
@@ -149,7 +158,7 @@ async function saveCashCollection(client, loan, group) {
 
             if (data.occurence === 'weekly') {
                 data.mcbuTarget = 50;
-                data.groupDay = group.groupDay;
+                data.groupDay = targetGroup.groupDay;
             }
         }
 
@@ -176,7 +185,7 @@ async function saveCashCollection(client, loan, group) {
             amountRelease: 0,
             loanBalance: 0,
             paymentCollection: 0,
-            occurence: group.occurence,
+            occurence: sourceGroup.occurence,
             currentReleaseAmount: 0,
             fullPayment: 0,
             mcbu: 0,
@@ -192,6 +201,10 @@ async function saveCashCollection(client, loan, group) {
 
         if (loan) {
             data.loanId = loan._id;
+            data.activeLoan = loan.activeLoan;
+            data.targetCollection = loan.activeLoan;
+            data.amountRelease = loan.amountRelease;
+            data.loanBalance = loan.loanBalance;
             data.slotNo = loan.slotNo;
             data.loanCycle = loan.loanCycle;
             data.noOfPayments = loan.noOfPayments;
@@ -201,11 +214,11 @@ async function saveCashCollection(client, loan, group) {
 
         if (data.occurence === 'weekly') {
             data.mcbuTarget = 50;
-            data.groupDay = group.groupDay;
+            data.groupDay = sourceGroup.groupDay;
         }
 
         await db.collection('cashCollections').insertOne({ ...data });
     } else {
-        await db.collection('cashCollections').updateOne({ _id: cashCollection[0]._id }, { $set: { transferred: client.sameLo ? false : true } })
+        await db.collection('cashCollections').updateOne({ _id: existingCashCollection[0]._id }, { $set: { transferred: client.sameLo ? false : true } })
     }
 }

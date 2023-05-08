@@ -63,7 +63,6 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
             let totalMcbuTarget = 0;
             let totalMcbuInterest = 0;
             let totalTransfer = 0; // total transfer to new group/lo/branch
-            let totalTransferred = 0; // total transfer from old group/lo/branch
 
             let selectedBranch;
             response.data && response.data.map(cc => {
@@ -207,14 +206,16 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                             noMcbuReturn: cc.cashCollections[0].mcbuReturnNo ? cc.cashCollections[0].mcbuReturnNo: 0,
                             mcbuReturnAmt: cc.cashCollections[0].mcbuReturnAmt ? cc.cashCollections[0].mcbuReturnAmt: 0,
                             mcbuReturnAmtStr: cc.cashCollections[0].mcbuReturnAmt > 0 ? formatPricePhp(cc.cashCollections[0].mcbuReturnAmt): '-',
-                            transfer: cc.cashCollections[0].transfer > 0 ? cc.cashCollections[0].transfer : '-',
+                            transfer: cc.cashCollections[0].transfer,
                             transferred: cc.cashCollections[0].transferred
                         };
+
+                        if (collection.transferred > 0) {
+                            collection.transfer = collection.transfer - collection.transferred;
+                        }
                         
-                        // if (collection.mcbu === 0 || !collection.mcbu) {
                         collection.mcbu = cc.cashCollections[0].mcbu;
                         collection.mcbuStr = collection.mcbu > 0 ? formatPricePhp(collection.mcbu): '-';
-                        // }
 
                         excess += cc.cashCollections[0].excess ? cc.cashCollections[0].excess : 0;
                         totalLoanCollection += cc.cashCollections[0].collection ? cc.cashCollections[0].collection : 0;
@@ -224,8 +225,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         totalMcbuWithdrawal += cc.cashCollections[0].mcbuWithdrawal ? cc.cashCollections[0].mcbuWithdrawal: 0;
                         totalMcbuReturnNo += collection.noMcbuReturn;
                         totalMcbuReturnAmt += cc.cashCollections[0].mcbuReturnAmt ? cc.cashCollections[0].mcbuReturnAmt: 0;
-                        totalTransfer += (collection.transfer !== '-' && collection.transfer) ? collection.transfer : 0;
-                        totalTransferred += collection.transferred ? collection.transferred : 0;
+                        totalTransfer += collection.transfer !== '-' ? collection.transfer : 0;
                     }
     
                     if (cc.currentRelease.length > 0) {
@@ -311,11 +311,15 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                             mcbuReturnAmtStr: cc.cashCollections[0].mcbuReturnAmt ? formatPricePhp(cc.cashCollections[0].mcbuReturnAmt): 0,
                             mcbuInterest: cc.cashCollections[0].mcbuInterest,
                             mcbuInterestStr: cc.cashCollections[0].mcbuInterest > 0 ? formatPricePhp(cc.cashCollections[0].mcbuInterest) : '-',
-                            transfer: cc.cashCollections[0].transfer > 0 ? cc.cashCollections[0].transfer : '-',
+                            transfer: cc.cashCollections[0].transfer,
                             transferred: cc.cashCollections[0].transferred,
                             status: groupStatus,
                             page: 'collection'
                         };
+
+                        if (collection.transferred > 0) {
+                            collection.transfer = collection.transfer - collection.transferred;
+                        }
     
                         noOfNewCurrentRelease += cc.cashCollections[0].newCurrentRelease;
                         noOfReCurrentRelease += cc.cashCollections[0].reCurrentRelease;
@@ -339,8 +343,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         totalMcbuReturnAmt += cc.cashCollections[0].mcbuReturnAmt;
                         totalMcbuTarget += cc.cashCollections[0].mcbuTarget ? cc.cashCollections[0].mcbuTarget : 0;
                         totalMcbuInterest += cc.cashCollections[0].mcbuInterest;
-                        totalTransfer += (collection.transfer !== '-' && collection.transfer) ? collection.transfer : 0;
-                        totalTransferred += collection.transferred ? collection.transferred : 0;
+                        totalTransfer += collection.transfer !== '-' ? collection.transfer : 0;
                     }
                 }
 
@@ -355,7 +358,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
             if (collectionData.length > 0) {
                 const totals = {
                     group: 'TOTALS',
-                    transfer: 0,
+                    transfer: totalTransfer,
                     noOfNewCurrentRelease: noOfNewCurrentRelease,
                     noCurrentRelease: noOfNewCurrentRelease + noOfReCurrentRelease,
                     noCurrentReleaseStr: noOfNewCurrentRelease + ' / ' + noOfReCurrentRelease,
@@ -394,8 +397,6 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                     mcbuTarget: totalMcbuTarget,
                     mcbuInterest: totalMcbuInterest,
                     mcbuInterestStr: formatPricePhp(totalMcbuInterest),
-                    transfer: totalTransfer,
-                    transferred: totalTransferred,
                     totalData: true,
                     status: '-'
                 }
@@ -426,7 +427,6 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
             grandTotal = {
                 day: 'Year End',
                 transfer: totals.transfer,
-                transferred: totals.transferred,
                 newMember: 0,
                 offsetPerson: 0,
                 mcbuTarget: totals.mcbuTarget,
@@ -461,7 +461,6 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
             grandTotal = {
                 day: selectedDate,
                 transfer: totals.transfer,
-                transferred: totals.transferred,
                 newMember: totals.noOfNewCurrentRelease,
                 mcbuTarget: totals.mcbuTarget,
                 mcbuActual: totals.mcbuCol,
