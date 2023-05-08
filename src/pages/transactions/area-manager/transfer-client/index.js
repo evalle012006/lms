@@ -15,9 +15,11 @@ import Spinner from "@/components/Spinner";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 import { PlusIcon } from '@heroicons/react/24/solid';
 import { setTransferClientList } from "@/redux/actions/clientActions";
+import { useRouter } from "node_modules/next/router";
 
 const TransferClientPage = () => {
     const [loading, setLoading] = useState(true);
+    const router = useRouter();
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
@@ -490,7 +492,7 @@ const TransferClientPage = () => {
     ]);
 
     useEffect(() => {
-        if ((currentUser.role && currentUser.role.rep !== 2)) {
+        if ((currentUser.role && currentUser.role.rep > 2)) {
             router.push('/');
         }
     }, []);
