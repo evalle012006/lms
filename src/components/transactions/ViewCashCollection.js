@@ -63,6 +63,11 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
             let totalMcbuTarget = 0;
             let totalMcbuInterest = 0;
             let totalTransfer = 0; // total transfer to new group/lo/branch
+            let totalTransferMcbu = 0;
+            let totalTransferAmountRelease = 0;
+            let totalTransferLoanBalance = 0;
+            let totalTransferredAmountRelease = 0;
+            let totalTransferredLoanBalance = 0;
 
             let selectedBranch;
             response.data && response.data.map(cc => {
@@ -226,6 +231,11 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         totalMcbuReturnNo += collection.noMcbuReturn;
                         totalMcbuReturnAmt += cc.cashCollections[0].mcbuReturnAmt ? cc.cashCollections[0].mcbuReturnAmt: 0;
                         totalTransfer += collection.transfer !== '-' ? collection.transfer : 0;
+                        totalTransferMcbu += cc.cashCollections[0].transferMCBU;
+                        totalTransferAmountRelease += cc.cashCollections[0].transferAmountRelease;
+                        totalTransferLoanBalance += cc.cashCollections[0].transferLoanBalance;
+                        totalTransferredAmountRelease += cc.cashCollections[0].transferredAmountRelease;
+                        totalTransferredLoanBalance += cc.cashCollections[0].transferredLoanBalance;
                     }
     
                     if (cc.currentRelease.length > 0) {
@@ -344,6 +354,11 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         totalMcbuTarget += cc.cashCollections[0].mcbuTarget ? cc.cashCollections[0].mcbuTarget : 0;
                         totalMcbuInterest += cc.cashCollections[0].mcbuInterest;
                         totalTransfer += collection.transfer !== '-' ? collection.transfer : 0;
+                        totalTransferMcbu += cc.cashCollections[0].transferMCBU;
+                        totalTransferAmountRelease += cc.cashCollections[0].transferAmountRelease;
+                        totalTransferLoanBalance += cc.cashCollections[0].transferLoanBalance;
+                        totalTransferredAmountRelease += cc.cashCollections[0].transferredAmountRelease;
+                        totalTransferredLoanBalance += cc.cashCollections[0].transferredLoanBalance;
                     }
                 }
 
@@ -397,6 +412,11 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                     mcbuTarget: totalMcbuTarget,
                     mcbuInterest: totalMcbuInterest,
                     mcbuInterestStr: formatPricePhp(totalMcbuInterest),
+                    totalTransferMcbu: totalTransferMcbu,
+                    totalTransferAmountRelease: totalTransferAmountRelease,
+                    totalTransferLoanBalance: totalTransferLoanBalance,
+                    totalTransferredAmountRelease: totalTransferredAmountRelease,
+                    totalTransferredLoanBalance: totalTransferredLoanBalance,
                     totalData: true,
                     status: '-'
                 }
@@ -423,12 +443,18 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
     const createLos = (totals, selectedBranch, selectedLO, dateFilter, yearEnd) => {
         let grandTotal;
 
+        let totalsLoanRelease = totals.totalLoanRelease + totals.totalTransferAmountRelease;
+        let totalsLoanBalance = totals.totalLoanBalance + totals.totalTransferLoanBalance;
+        totalsLoanRelease = totals.totalLoanRelease - totals.totalTransferredAmountRelease;
+        totalsLoanBalance = totals.totalLoanBalance - totals.totalTransferredLoanBalance;
+
         if (yearEnd) {
             grandTotal = {
                 day: 'Year End',
                 transfer: totals.transfer,
                 newMember: 0,
                 offsetPerson: 0,
+                transferMcbu: totals.totalTransferMcbu,
                 mcbuTarget: totals.mcbuTarget,
                 mcbuActual: totals.mcbuCol,
                 mcbuWithdrawal: totals.mcbuWithdrawal,
@@ -439,16 +465,16 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 loanReleasePerson: 0,
                 loanReleaseAmount: 0,
                 activeLoanReleasePerson: totals.activeBorrowers,
-                activeLoanReleaseAmount: totals.totalLoanRelease,
-                collectionAdvancePayment: totals.totalLoanRelease - totals.totalLoanBalance,
-                collectionActual: totals.totalLoanRelease - totals.totalLoanBalance,
+                activeLoanReleaseAmount: totalsLoanRelease,
+                collectionAdvancePayment: totals.excess,
+                collectionActual: totals.collection,
                 pastDuePerson: 0,
                 pastDueAmount: 0,
                 mispaymentPerson: totals.mispaymentPerson,
                 fullPaymentPerson: 0,
                 fullPaymentAmount: 0,
                 activeBorrowers: totals.activeBorrowers,
-                loanBalance: totals.totalLoanBalance
+                loanBalance: totalsLoanBalance
             };
         } else {
             let selectedDate = currentDate;
@@ -462,6 +488,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 day: selectedDate,
                 transfer: totals.transfer,
                 newMember: totals.noOfNewCurrentRelease,
+                transferMcbu: totals.totalTransferMcbu,
                 mcbuTarget: totals.mcbuTarget,
                 mcbuActual: totals.mcbuCol,
                 mcbuWithdrawal: totals.mcbuWithdrawal,
@@ -473,7 +500,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 loanReleasePerson: totals.noCurrentRelease,
                 loanReleaseAmount: totals.currentReleaseAmount,
                 activeLoanReleasePerson: totals.activeBorrowers,
-                activeLoanReleaseAmount: totals.totalLoanRelease,
+                activeLoanReleaseAmount: totalsLoanRelease,
                 collectionTarget: totals.targetLoanCollection,
                 collectionAdvancePayment: totals.excess,
                 collectionActual: totals.collection,
@@ -483,7 +510,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 fullPaymentPerson: totals.noOfFullPayment,
                 fullPaymentAmount: totals.fullPaymentAmount,
                 activeBorrowers: totals.activeBorrowers,
-                loanBalance: totals.totalLoanBalance
+                loanBalance: totalsLoanBalance
             };
         }
 

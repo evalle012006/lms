@@ -147,10 +147,45 @@ async function getAllLoansPerGroup(req, res) {
                                                 else: 0
                                             }
                                         } },
+                                        transferMCBU: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: '$mcbu',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferAmountRelease: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: '$amountRelease',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferLoanBalance: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: '$loanBalance',
+                                                else: 0
+                                            }
+                                        } },
                                         transferred: { $sum: {
                                             $cond: {
                                                 if: { $eq: ['$transferred', true] },
                                                 then: 1,
+                                                else: 0
+                                            }
+                                        } },
+                                        transferredAmountRelease: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transferred', true] },
+                                                then: '$amountRelease',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferredLoanBalance: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transferred', true] },
+                                                then: '$loanBalance',
                                                 else: 0
                                             }
                                         } },
@@ -408,10 +443,45 @@ async function getAllLoansPerGroup(req, res) {
                                                 else: 0
                                             }
                                         } },
+                                        transferMCBU: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: '$mcbu',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferAmountRelease: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: '$amountRelease',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferLoanBalance: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: '$loanBalance',
+                                                else: 0
+                                            }
+                                        } },
                                         transferred: { $sum: {
                                             $cond: {
                                                 if: { $eq: ['$transferred', true] },
                                                 then: 1,
+                                                else: 0
+                                            }
+                                        } },
+                                        transferredAmountRelease: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transferred', true] },
+                                                then: '$amountRelease',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferredLoanBalance: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transferred', true] },
+                                                then: '$loanBalance',
                                                 else: 0
                                             }
                                         } },
@@ -852,10 +922,45 @@ async function getAllLoansPerGroup(req, res) {
                                                 else: 0
                                             }
                                         } },
+                                        transferMCBU: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: '$mcbu',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferAmountRelease: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: '$amountRelease',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferLoanBalance: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: '$loanBalance',
+                                                else: 0
+                                            }
+                                        } },
                                         transferred: { $sum: {
                                             $cond: {
                                                 if: { $eq: ['$transferred', true] },
                                                 then: 1,
+                                                else: 0
+                                            }
+                                        } },
+                                        transferredAmountRelease: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transferred', true] },
+                                                then: '$amountRelease',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferredLoanBalance: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transferred', true] },
+                                                then: '$loanBalance',
                                                 else: 0
                                             }
                                         } },
@@ -1090,10 +1195,44 @@ async function getAllLoansPerGroup(req, res) {
                                                 else: 0
                                             }
                                         } },
+                                        transferMCBU: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: '$mcbu',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferAmountRelease: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: '$amountRelease'
+                                            }
+                                        } },
+                                        transferLoanBalance: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: '$loanBalance',
+                                                else: 0
+                                            }
+                                        } },
                                         transferred: { $sum: {
                                             $cond: {
                                                 if: { $eq: ['$transferred', true] },
                                                 then: 1,
+                                                else: 0
+                                            }
+                                        } },
+                                        transferredAmountRelease: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transferred', true] },
+                                                then: '$amountRelease',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferredLoanBalance: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transferred', true] },
+                                                then: '$loanBalance',
                                                 else: 0
                                             }
                                         } },
