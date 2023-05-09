@@ -225,7 +225,7 @@ async function saveCashCollection(loan, currentReleaseAmount, reloan) {
                 mcbuReturnAmt: 0,
                 remarks: '',
                 status: loanData.status,
-                dateAdded: moment(currentDate).format('YYYY-MM-DD'),
+                dateAdded: currentDate,
                 groupStatus: 'pending',
                 origin: 'automation-loan'
             };
