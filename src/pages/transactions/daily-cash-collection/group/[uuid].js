@@ -37,7 +37,7 @@ const CashCollectionDetailsPage = () => {
     const handleLOFilter = (selected) => {
         setCurrentLO(selected);
         localStorage.setItem('selectedLO', selected._id);
-        router.push('/transactions/daily-cash-collection/group/' + selected._id);
+        router.push(`/transactions/${selected.transactionType}-cash-collection/group/${selected._id}`);
     }
     
     const handleDateFilter = (selected) => {
