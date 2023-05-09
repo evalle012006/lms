@@ -190,6 +190,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                         collection.mcbuInterestStr = lo.cashCollections[0].mcbuInterest > 0 ? lo.cashCollections[0].mcbuInterest : '-';
                         collection.transfer = lo.cashCollections[0].transfer;
                         collection.transferred = lo.cashCollections[0].transferred;
+                        collection.status = groupStatus;
 
                         if (collection.transferred > 0) {
                             collection.transfer = collection.transfer - collection.transferred;
