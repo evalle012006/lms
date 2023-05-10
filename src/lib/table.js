@@ -620,7 +620,7 @@ const TableComponent = ({
 
                                 let fontColor = 'text-gray-500';
                                 if (totalData) {
-                                  fontColor = 'text-red-400';
+                                  fontColor = '!text-red-400';
                                 }
 
                                 return (
