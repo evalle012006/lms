@@ -162,11 +162,11 @@ const LoanApplicationPage = () => {
             if (response.success) {
                 let loanList = [];
                 await response.loans && response.loans.map(loan => {
-                    let allowApproved = false;
-                    const transactionStatus = loan.groupStatus.groupStatusArr.filter(s => s === "pending");
-                    if (transactionStatus.length > 0) {
-                        allowApproved = true;
-                    }
+                    let allowApproved = true;
+                    // const transactionStatus = loan.groupStatus.groupStatusArr.filter(s => s === "pending");
+                    // if (transactionStatus.length > 0) {
+                    //     allowApproved = true;
+                    // }
                     loanList.push({
                         ...loan,
                         loanOfficerName: `${loan.loanOfficer.lastName}, ${loan.loanOfficer.firstName}`,
@@ -195,11 +195,11 @@ const LoanApplicationPage = () => {
             if (response.success) {
                 let loanList = [];
                 await response.loans && response.loans.map(loan => {
-                    let allowApproved = false;
-                    const transactionStatus = loan.groupStatus.groupStatusArr.filter(s => s === "pending");
-                    if (transactionStatus.length > 0) {
-                        allowApproved = true;
-                    }
+                    let allowApproved = true;
+                    // const transactionStatus = loan.groupStatus.groupStatusArr.filter(s => s === "pending");
+                    // if (transactionStatus.length > 0) {
+                    //     allowApproved = true;
+                    // }
                     loanList.push({
                         ...loan,
                         loanOfficerName: `${loan.loanOfficer.lastName}, ${loan.loanOfficer.firstName}`,
@@ -228,11 +228,11 @@ const LoanApplicationPage = () => {
             if (response.success) {
                 let loanList = [];
                 await response.loans && response.loans.map(loan => {
-                    let allowApproved = false;
-                    const transactionStatus = loan.groupStatus.groupStatusArr.filter(s => s === "pending");
-                    if (transactionStatus.length > 0) {
-                        allowApproved = true;
-                    }
+                    let allowApproved = true;
+                    // const transactionStatus = loan.groupStatus.groupStatusArr.filter(s => s === "pending");
+                    // if (transactionStatus.length > 0) {
+                    //     allowApproved = true;
+                    // }
                     loanList.push({
                         ...loan,
                         branchName: `${loan.branch[0].code} - ${loan.branch[0].name}`,
@@ -262,11 +262,11 @@ const LoanApplicationPage = () => {
             if (response.success) {
                 let loanList = [];
                 await response.loans && response.loans.map(loan => {
-                    let allowApproved = false;
-                    const transactionStatus = loan.groupStatus.groupStatusArr.filter(s => s === "pending");
-                    if (transactionStatus.length > 0) {
-                        allowApproved = true;
-                    }
+                    let allowApproved = true;
+                    // const transactionStatus = loan.groupStatus.groupStatusArr.filter(s => s === "pending");
+                    // if (transactionStatus.length > 0) {
+                    //     allowApproved = true;
+                    // }
                     loanList.push({
                         ...loan,
                         branchName: `${loan.branch[0].code} - ${loan.branch[0].name}`,
