@@ -1205,7 +1205,8 @@ async function getAllLoansPerGroup(req, res) {
                                         transferAmountRelease: { $sum: {
                                             $cond: {
                                                 if: { $eq: ['$transfer', true] },
-                                                then: '$amountRelease'
+                                                then: '$amountRelease',
+                                                else: 0
                                             }
                                         } },
                                         transferLoanBalance: { $sum: {
