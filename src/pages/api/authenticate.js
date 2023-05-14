@@ -74,7 +74,7 @@ async function logout(req, res) {
     const query = await db
         .collection('users')
         .updateOne(
-            { _id: ObjectId(user) },
+            { _id: new ObjectId(user) },
             { $set: { logged: false } }
         );
 

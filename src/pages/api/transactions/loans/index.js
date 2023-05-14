@@ -14,9 +14,9 @@ async function getLoan(req, res) {
     let response = {};
     const loan = await db
         .collection('loans')
-        // .find({ _id: ObjectId(_id)})
+        // .find({ _id: new ObjectId(_id)})
         .aggregate([
-            { $match: { _id: ObjectId(_id) } },
+            { $match: { _id: new ObjectId(_id) } },
             {
                 $lookup: {
                     from: "branches",
@@ -59,11 +59,12 @@ async function updateLoan(req, res) {
     const loan = req.body;
     const loanId = loan._id;
     delete loan._id;
+    delete loan.group;
 
     const loanResp = await db
         .collection('loans')
         .updateOne(
-            { _id: ObjectId(loanId) }, 
+            { _id: new ObjectId(loanId) }, 
             {
                 $set: { ...loan }
             }, 

@@ -3,23 +3,26 @@ import { connectToDatabase } from '@/lib/mongodb';
 import { getCurrentDate } from '@/lib/utils';
 import moment from 'moment';
 
+const currentDate = moment(getCurrentDate()).format('YYYY-MM-DD');
+
 export default apiHandler({
     post: save
 });
 
 async function save(req, res) {
-    const loanData = req.body;
-
     const { db } = await connectToDatabase();
     let response = {};
     let statusCode = 200;
+
+    const loanData = req.body;
+    const group = loanData.group;
 
     let mode;
     let oldLoanId;
     let reloan = false;
 
-    const currentDate = loanData.currentDate;
     delete loanData.currentDate;
+    delete loanData.group;
     
     if (loanData.hasOwnProperty('mode')) {
         mode = loanData.mode;
@@ -62,6 +65,11 @@ async function save(req, res) {
                 dateGranted: currentDate
             });
 
+            let loanId;
+            if (loan.acknowledged) {
+                loanId = loan.insertedId;
+            }
+
             if (mode === 'reloan') {
                 reloan = true;
                 await updateLoan(oldLoanId, finalData);
@@ -69,11 +77,7 @@ async function save(req, res) {
                 await updateGroup(loanData);
             }
 
-            const groupSummary = await saveGroupSummary(loanData);
-
-            if (groupSummary.success) {
-                await saveCashCollection(loanData, currentDate, currentReleaseAmount, reloan);
-            }
+            await saveCashCollection(loanData, currentReleaseAmount, reloan, group, loanId);
 
             await updateUser(loanData);
 
@@ -94,7 +98,7 @@ async function updateUser(loan) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
 
-    let user = await db.collection('users').find({ _id: ObjectId(loan.loId) }).toArray();
+    let user = await db.collection('users').find({ _id: new ObjectId(loan.loId) }).toArray();
     if (user.length > 0) {
         user = user[0];
         
@@ -103,7 +107,7 @@ async function updateUser(loan) {
 
             delete user._id;
             await db.collection('users').updateOne(
-                {  _id: ObjectId(loan.loId) },
+                {  _id: new ObjectId(loan.loId) },
                 {
                     $set: { ...user }
                 }, 
@@ -118,7 +122,7 @@ async function updateGroup(loan) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
 
-    let group = await db.collection('groups').find({ _id: ObjectId(loan.groupId) }).toArray();
+    let group = await db.collection('groups').find({ _id: new ObjectId(loan.groupId) }).toArray();
     if (group.length > 0) {
         group = group[0];
         group.noOfClients = group.noOfClients ? group.noOfClients : 0;
@@ -132,7 +136,7 @@ async function updateGroup(loan) {
 
         delete group._id;
         await db.collection('groups').updateOne(
-            {  _id: ObjectId(loan.groupId) },
+            {  _id: new ObjectId(loan.groupId) },
             {
                 $set: { ...group }
             }, 
@@ -145,7 +149,7 @@ async function updateLoan(loanId, loanData) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
 
-    let loan = await db.collection('loans').find({ _id: ObjectId(loanId) }).toArray();
+    let loan = await db.collection('loans').find({ _id: new ObjectId(loanId) }).toArray();
 
     if (loan.length > 0) {
         loan = loan[0];
@@ -159,7 +163,7 @@ async function updateLoan(loanId, loanData) {
         await db
             .collection('loans')
             .updateOne(
-                { _id: ObjectId(loanId) }, 
+                { _id: new ObjectId(loanId) }, 
                 {
                     $set: { ...loan }
                 }, 
@@ -167,123 +171,83 @@ async function updateLoan(loanId, loanData) {
     }
 }
 
-async function saveGroupSummary(loan) {
+async function saveCashCollection(loan, currentReleaseAmount, reloan, group, loanId) {
     const { db } = await connectToDatabase();
-    const ObjectId = require('mongodb').ObjectId;
-    const currentDate = getCurrentDate();
+    // possible issue the previous day were updated instead of the current
+    // let loanData = await db.collection("loans")
+    //     .aggregate([
+    //         { $match: { $expr: { $and: [{$eq: ['$clientId', loan.clientId]}, {$or: [{$eq: ['$status', "pending"]}, {$eq: ['$status', "completed"]}]}] } } },
+    //         {
+    //             $addFields: { clientIdObj: { $toObjectId: "$clientId" }, groupIdObj: { $toObjectId: "$groupId" } }
+    //         },
+    //         {
+    //             $lookup: {
+    //                 from: "client",
+    //                 localField: "clientIdObj",
+    //                 foreignField: "_id",
+    //                 as: "client"
+    //             }
+    //         },
+    //         {
+    //             $lookup: {
+    //                 from: "groups",
+    //                 localField: "groupIdObj",
+    //                 foreignField: "_id",
+    //                 as: "groups"
+    //             }
+    //         }
+    //     ]).toArray();
 
-    const groupSummary = await db.collection('groupCashCollections').find({ dateAdded: moment(currentDate).format('YYYY-MM-DD'), groupId: loan.groupId }).toArray();
-
-    if (groupSummary.length === 0) {
-        let group = await db.collection('groups').find({ _id: ObjectId(loan.groupId) }).toArray();
-
-        if (group.length > 0) {
-            group = group[0];
-
-            const data = {
+    // if (loanData.length > 0) {
+        // loanData = loanData[0];
+        const cashCollection = await db.collection('cashCollections').find({ clientId: loan.clientId, dateAdded: currentDate }).toArray();
+        if (cashCollection.length === 0) {
+            let data = {
+                loanId: loanId,
                 branchId: loan.branchId,
                 groupId: loan.groupId,
-                groupName: group.name,
-                loId: group.loanOfficerId,
-                dateAdded: moment(currentDate).format('YYYY-MM-DD'),
-                insertBy: loan.insertedBy,
-                mode: group.occurence,
-                status: "pending"
+                groupname: loan.groupName,
+                loId: loan.loId,
+                clientId: loan.clientId,
+                slotNo: loan.slotNo,
+                loanCycle: loan.loanCycle,
+                mispayment: false,
+                mispaymentStr: 'No',
+                collection: 0,
+                excess: loan.excess,
+                total: 0,
+                noOfPayments: 0,
+                activeLoan: 0,
+                targetCollection: 0,
+                amountRelease: 0,
+                loanBalance: 0,
+                paymentCollection: 0,
+                occurence: group.occurence,
+                currentReleaseAmount: currentReleaseAmount,
+                fullPayment: loan.fullPayment,
+                mcbu: loan.mcbu,
+                mcbuCol: 0,
+                mcbuWithdrawal: 0,
+                mcbuReturnAmt: 0,
+                remarks: '',
+                status: loan.status,
+                dateAdded: currentDate,
+                groupStatus: 'pending',
+                origin: 'automation-loan'
             };
 
-            const resp = await db.collection('groupCashCollections').insertOne({ ...data });
+            if (data.occurence === 'weekly') {
+                data.mcbuTarget = 50;
+                data.groupDay = group.day;
 
-            return { success: true, data: resp };
-        }
-    }
-    return { success: true };
-}
-
-async function saveCashCollection(loan, currentDate, currentReleaseAmount, reloan) {
-    const { db } = await connectToDatabase();
-    // const currentDate = getCurrentDate();
-
-    let groupSummary = await db.collection('groupCashCollections').find({ dateAdded: currentDate, groupId: loan.groupId }).toArray();
-    // check if tomorrow and 0 payment collection
-    // set the following to 0: activeLoan, loanBalance, targetCollection, amountRelease
-    if (groupSummary.length > 0) {
-        groupSummary = groupSummary[0];
-
-        let loanData = await db.collection("loans")
-            .aggregate([
-                { $match: { $expr: { $and: [{$eq: ['$clientId', loan.clientId]}, {$or: [{$eq: ['$status', "pending"]}, {$eq: ['$status', "commpleted"]}]}] } } },
-                {
-                    $addFields: { clientIdObj: { $toObjectId: "$clientId" }, groupIdObj: { $toObjectId: "$groupId" } }
-                },
-                {
-                    $lookup: {
-                        from: "client",
-                        localField: "clientIdObj",
-                        foreignField: "_id",
-                        as: "client"
-                    }
-                },
-                {
-                    $lookup: {
-                        from: "groups",
-                        localField: "groupIdObj",
-                        foreignField: "_id",
-                        as: "groups"
-                    }
+                if (!reloan) {
+                    data.mcbuCol = loanData.mcbu;
                 }
-            ]).toArray();
-        if (loanData.length > 0) {
-            loanData = loanData[0];
-            const cashCollection = await db.collection('cashCollections').find({ groupCollectionId: groupSummary._id + '', clientId: loanData.clientId, dateAdded: currentDate }).toArray();
-            if (cashCollection.length === 0) {
-                let data = {
-                    loanId: loanData._id + '',
-                    branchId: loanData.branchId,
-                    groupId: loanData.groupId,
-                    groupname: loanData.groupName,
-                    loId: loanData.loId,
-                    clientId: loanData.clientId,
-                    slotNo: loanData.slotNo,
-                    fullName: loanData.client.length > 0 ? loanData.client[0].lastName + ', ' + loanData.client[0].firstName : '',
-                    loanCycle: loanData.loanCycle,
-                    mispayment: false,
-                    mispaymentStr: 'No',
-                    collection: 0,
-                    excess: loanData.excess,
-                    total: 0,
-                    noOfPayments: 0,
-                    activeLoan: 0,
-                    targetCollection: 0,
-                    amountRelease: 0,
-                    loanBalance: 0,
-                    paymentCollection: 0,
-                    occurence: groupSummary.mode,
-                    currentReleaseAmount: currentReleaseAmount,
-                    fullPayment: loanData.fullPayment,
-                    mcbu: loanData.mcbu,
-                    mcbuCol: 0,
-                    mcbuWithdrawal: 0,
-                    mcbuReturnAmt: 0,
-                    remarks: '',
-                    status: loanData.status,
-                    dateAdded: moment(currentDate).format('YYYY-MM-DD'),
-                    groupCollectionId: groupSummary._id + '',
-                    origin: 'automation'
-                };
-
-                if (data.occurence === 'weekly') {
-                    data.mcbuTarget = 50;
-                    data.groupDay = loanData.groups[0].day;
-
-                    if (!reloan) {
-                        data.mcbuCol = loanData.mcbu;
-                    }
-                }
-    
-                await db.collection('cashCollections').insertOne({ ...data });
-            } else {
-                await db.collection('cashCollections').updateOne({ _id: cashCollection[0]._id }, { $set: { currentReleaseAmount: loanData.amountRelease } })
             }
+
+            await db.collection('cashCollections').insertOne({ ...data });
+        } else {
+            await db.collection('cashCollections').updateOne({ _id: cashCollection[0]._id }, { $set: { currentReleaseAmount: loan.amountRelease, status: loan.status, modifiedBy: 'automation-loan' } })
         }
-    }
+    // }
 }

@@ -19,7 +19,7 @@ async function updateLoanData(req, res) {
     if (loans.length > 0) {
         loans.map(async loan => {
             let temp = {...loan};
-            let loanGroup = await db.collection('groups').find({_id: ObjectId(loan.groupId)}).toArray();
+            let loanGroup = await db.collection('groups').find({_id: new ObjectId(loan.groupId)}).toArray();
 
             if (loanGroup.length > 0) {
                 loanGroup = loanGroup[0];
@@ -50,7 +50,7 @@ async function updateLoan(loan) {
     const loanResp = await db
         .collection('loans')
         .updateOne(
-            { _id: ObjectId(loanId) }, 
+            { _id: new ObjectId(loanId) }, 
             {
                 $set: { ...loan }
             }, 

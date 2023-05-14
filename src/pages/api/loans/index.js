@@ -12,7 +12,7 @@ async function getLoan(req, res) {
     const { id } = req.query;
     let statusCode = 200;
     let response = {};
-    const loan = await db.collection('loans').find({ _id: ObjectId(id)}).toArray();
+    const loan = await db.collection('loans').find({ _id: new ObjectId(id)}).toArray();
     response = { success: true, loan: loan[0] };
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')
@@ -32,7 +32,7 @@ async function updateLoan(req, res) {
     const loanResp = await db
         .collection('loans')
         .updateOne(
-            { _id: ObjectId(loanId) }, 
+            { _id: new ObjectId(loanId) }, 
             {
                 $set: { ...loan }
             }, 

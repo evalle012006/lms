@@ -162,6 +162,17 @@ const LoanApplicationPage = () => {
             if (response.success) {
                 let loanList = [];
                 await response.loans && response.loans.map(loan => {
+                    let allowApproved = false;
+
+                    if (loan.groupStatus.length > 0) {
+                        const transactionStatus = loan.groupStatus[0].groupStatusArr.filter(s => s === "pending");
+                        if (transactionStatus.length > 0) {
+                            allowApproved = true;
+                        }
+                    } else {
+                        allowApproved = true;
+                    }
+
                     loanList.push({
                         ...loan,
                         loanOfficerName: `${loan.loanOfficer.lastName}, ${loan.loanOfficer.firstName}`,
@@ -173,7 +184,7 @@ const LoanApplicationPage = () => {
                         loanRelease: loan.amountRelease,
                         loanReleaseStr: formatPricePhp(loan.amountRelease),
                         fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
-                        allowApproved: loan.groupCashCollections.allowApproved,
+                        allowApproved: allowApproved,
                         selected: false
                     });
                 });
@@ -190,6 +201,17 @@ const LoanApplicationPage = () => {
             if (response.success) {
                 let loanList = [];
                 await response.loans && response.loans.map(loan => {
+                    let allowApproved = false;
+
+                    if (loan.groupStatus.length > 0) {
+                        const transactionStatus = loan.groupStatus[0].groupStatusArr.filter(s => s === "pending");
+                        if (transactionStatus.length > 0) {
+                            allowApproved = true;
+                        }
+                    } else {
+                        allowApproved = true;
+                    }
+
                     loanList.push({
                         ...loan,
                         loanOfficerName: `${loan.loanOfficer.lastName}, ${loan.loanOfficer.firstName}`,
@@ -201,7 +223,7 @@ const LoanApplicationPage = () => {
                         loanRelease: loan.amountRelease,
                         loanReleaseStr: formatPricePhp(loan.amountRelease),
                         fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
-                        allowApproved: loan.groupCashCollections.allowApproved,
+                        allowApproved: allowApproved,
                         selected: false
                     });
                 });
@@ -218,6 +240,17 @@ const LoanApplicationPage = () => {
             if (response.success) {
                 let loanList = [];
                 await response.loans && response.loans.map(loan => {
+                    let allowApproved = false;
+
+                    if (loan.groupStatus.length > 0) {
+                        const transactionStatus = loan.groupStatus[0].groupStatusArr.filter(s => s === "pending");
+                        if (transactionStatus.length > 0) {
+                            allowApproved = true;
+                        }
+                    } else {
+                        allowApproved = true;
+                    }
+
                     loanList.push({
                         ...loan,
                         branchName: `${loan.branch[0].code} - ${loan.branch[0].name}`,
@@ -230,7 +263,7 @@ const LoanApplicationPage = () => {
                         loanRelease: loan.amountRelease,
                         loanReleaseStr: formatPricePhp(loan.amountRelease),
                         fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
-                        allowApproved: loan.groupCashCollections.allowApproved,
+                        allowApproved: allowApproved,
                         selected: false
                     });
                 });
@@ -247,6 +280,17 @@ const LoanApplicationPage = () => {
             if (response.success) {
                 let loanList = [];
                 await response.loans && response.loans.map(loan => {
+                    let allowApproved = false;
+
+                    if (loan.groupStatus.length > 0) {
+                        const transactionStatus = loan.groupStatus[0].groupStatusArr.filter(s => s === "pending");
+                        if (transactionStatus.length > 0) {
+                            allowApproved = true;
+                        }
+                    } else {
+                        allowApproved = true;
+                    }
+                    
                     loanList.push({
                         ...loan,
                         branchName: `${loan.branch[0].code} - ${loan.branch[0].name}`,
@@ -259,7 +303,7 @@ const LoanApplicationPage = () => {
                         loanRelease: loan.amountRelease,
                         loanReleaseStr: formatPricePhp(loan.amountRelease),
                         fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
-                        allowApproved: loan.groupCashCollections.allowApproved,
+                        allowApproved: allowApproved,
                         selected: false
                     });
                 });
@@ -506,11 +550,19 @@ const LoanApplicationPage = () => {
     }
 
     const handleApprove = (row) => {
-        updateClientStatus(row.original, 'active');
+        if (row.original.allowApproved) {
+            updateClientStatus(row.original, 'active');
+        } else {
+            toast.error("Group transaction is already closed for the day.");
+        }
     }
 
     const handleReject = (row) => {
-        updateClientStatus(row.original, 'reject');
+        if (row.original.allowApproved) {
+            updateClientStatus(row.original, 'reject');
+        } else {
+            toast.error("Group transaction is already closed for the day.");
+        }
     }
 
     const [rowActionButtons, setRowActionButtons] = useState([]);
@@ -551,20 +603,20 @@ const LoanApplicationPage = () => {
             getListLoan();
             getHistoyListLoan();
 
-            const initGroupCollectionSummary = async () => {
-                if (currentUser.role.rep <= 4) {
-                    const branchId = branchList[0]._id;
-                    const data = { currentUser: currentUser._id, mode: type,  branchId: branchId}
-                    await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary-by-branch', data);
-                } else {
-                    const data = { currentUser: currentUser._id, mode: type}
-                    await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary-by-branch', data);
-                }
-            }
+            // const initGroupCollectionSummary = async () => {
+            //     if (currentUser.role.rep <= 4) {
+            //         const branchId = branchList[0]._id;
+            //         const data = { currentUser: currentUser._id, mode: type,  branchId: branchId}
+            //         await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary-by-branch', data);
+            //     } else {
+            //         const data = { currentUser: currentUser._id, mode: type}
+            //         await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary-by-branch', data);
+            //     }
+            // }
     
-            if (branchList.length > 0 && !isWeekend && !isHoliday) {
-                initGroupCollectionSummary();
-            }
+            // if (branchList.length > 0 && !isWeekend && !isHoliday) {
+            //     initGroupCollectionSummary();
+            // }
         }
     }, [branchList, isWeekend, isHoliday]);
 

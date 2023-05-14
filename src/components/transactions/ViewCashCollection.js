@@ -62,6 +62,12 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
             let totalMcbuReturnAmt = 0;
             let totalMcbuTarget = 0;
             let totalMcbuInterest = 0;
+            let totalTransfer = 0; // total transfer to new group/lo/branch
+            let totalTransferMcbu = 0;
+            let totalTransferAmountRelease = 0;
+            let totalTransferLoanBalance = 0;
+            let totalTransferredAmountRelease = 0;
+            let totalTransferredLoanBalance = 0;
 
             let selectedBranch;
             response.data && response.data.map(cc => {
@@ -91,10 +97,18 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                     noPastDue: '-',
                     noOfFullPayment: '-',
                     offSetPerson: '-',
+                    transfer: '-',
                     status: '-'
                 };
                 selectedBranch = cc.branchId;
                 let noCurrentRelease = '0 / 0';
+                let groupStatus = 'pending';
+                if (cc.cashCollections.length > 0) {
+                    const transactionStatus = cc.cashCollections[0].groupStatusArr.filter(status => status === "closed");
+                    if (transactionStatus.length > 0) {
+                        groupStatus = 'closed';
+                    }
+                }
                 if (!filter) {
                     if (cc.loans.length > 0) {
                         let loanTarget = 0;
@@ -145,7 +159,8 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                             mcbuReturnAmtStr: '-',
                             mcbuInterest: cc.loans[0].mcbuInterest,
                             mcbuInterestStr: cc.loans[0].mcbuInterest > 0 ? formatPricePhp(cc.loans[0].mcbuInterest) : '-',
-                            status: cc.groupCashCollections.length > 0 ? cc.groupCashCollections[0].status : 'No Saved Transaction',
+                            transfer: '-',
+                            status: groupStatus,
                             page: 'collection'
                         };
     
@@ -195,13 +210,17 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                             mcbuWithdrawalStr: cc.cashCollections[0].mcbuWithdrawal > 0 ? formatPricePhp(cc.cashCollections[0].mcbuWithdrawal): '-',
                             noMcbuReturn: cc.cashCollections[0].mcbuReturnNo ? cc.cashCollections[0].mcbuReturnNo: 0,
                             mcbuReturnAmt: cc.cashCollections[0].mcbuReturnAmt ? cc.cashCollections[0].mcbuReturnAmt: 0,
-                            mcbuReturnAmtStr: cc.cashCollections[0].mcbuReturnAmt > 0 ? formatPricePhp(cc.cashCollections[0].mcbuReturnAmt): '-'
+                            mcbuReturnAmtStr: cc.cashCollections[0].mcbuReturnAmt > 0 ? formatPricePhp(cc.cashCollections[0].mcbuReturnAmt): '-',
+                            transfer: cc.cashCollections[0].transfer,
+                            transferred: cc.cashCollections[0].transferred
                         };
+
+                        if (collection.transferred > 0) {
+                            collection.transfer = collection.transfer - collection.transferred;
+                        }
                         
-                        // if (collection.mcbu === 0 || !collection.mcbu) {
                         collection.mcbu = cc.cashCollections[0].mcbu;
                         collection.mcbuStr = collection.mcbu > 0 ? formatPricePhp(collection.mcbu): '-';
-                        // }
 
                         excess += cc.cashCollections[0].excess ? cc.cashCollections[0].excess : 0;
                         totalLoanCollection += cc.cashCollections[0].collection ? cc.cashCollections[0].collection : 0;
@@ -209,8 +228,14 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         offsetPerson += cc.cashCollections[0].offsetPerson ? cc.cashCollections[0].offsetPerson : 0;
                         totalMcbuCol += cc.cashCollections[0].mcbuCol ? cc.cashCollections[0].mcbuCol: 0;
                         totalMcbuWithdrawal += cc.cashCollections[0].mcbuWithdrawal ? cc.cashCollections[0].mcbuWithdrawal: 0;
-                        totalMcbuReturnNo += cc.cashCollections[0].mcbuReturnNo ? cc.cashCollections[0].mcbuReturnNo: 0;
+                        totalMcbuReturnNo += collection.noMcbuReturn;
                         totalMcbuReturnAmt += cc.cashCollections[0].mcbuReturnAmt ? cc.cashCollections[0].mcbuReturnAmt: 0;
+                        totalTransfer += collection.transfer !== '-' ? collection.transfer : 0;
+                        totalTransferMcbu += cc.cashCollections[0].transferMCBU;
+                        totalTransferAmountRelease += cc.cashCollections[0].transferAmountRelease;
+                        totalTransferLoanBalance += cc.cashCollections[0].transferLoanBalance;
+                        totalTransferredAmountRelease += cc.cashCollections[0].transferredAmountRelease;
+                        totalTransferredLoanBalance += cc.cashCollections[0].transferredLoanBalance;
                     }
     
                     if (cc.currentRelease.length > 0) {
@@ -221,8 +246,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                             newCurrentRelease: cc.currentRelease[0].newCurrentRelease ? cc.currentRelease[0].newCurrentRelease : 0,
                             reCurrentRelease: cc.currentRelease[0].reCurrentRelease ? cc.currentRelease[0].reCurrentRelease : 0,
                             currentReleaseAmount: cc.currentRelease[0].currentReleaseAmount ? cc.currentRelease[0].currentReleaseAmount : 0,
-                            currentReleaseAmountStr: cc.currentRelease[0].currentReleaseAmount ? formatPricePhp(cc.currentRelease[0].currentReleaseAmount) : '-',
-                            status: cc.groupCashCollections.length > 0 ? cc.groupCashCollections[0].status : 'No Saved Transaction',
+                            currentReleaseAmountStr: cc.currentRelease[0].currentReleaseAmount ? formatPricePhp(cc.currentRelease[0].currentReleaseAmount) : '-'
                         };
     
                         noOfNewCurrentRelease += cc.currentRelease[0].newCurrentRelease ? cc.currentRelease[0].newCurrentRelease : 0;
@@ -237,8 +261,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                             fullPaymentAmountStr: cc.fullPayment.length > 0 ? formatPricePhp(cc.fullPayment[0].fullPaymentAmount) : 0,
                             noOfFullPayment: cc.fullPayment.length > 0 ? cc.fullPayment[0].noOfFullPayment : 0,
                             newFullPayment: cc.fullPayment.length > 0 ? cc.fullPayment[0].newFullPayment : 0,
-                            reFullPayment: cc.fullPayment.length > 0 ? cc.fullPayment[0].reFullPayment : 0,
-                            status: cc.groupCashCollections.length > 0 ? cc.groupCashCollections[0].status : 'No Saved Transaction',
+                            reFullPayment: cc.fullPayment.length > 0 ? cc.fullPayment[0].reFullPayment : 0
                         };
     
                         fullPaymentAmount += cc.fullPayment[0].fullPaymentAmount ? cc.fullPayment[0].fullPaymentAmount : 0;
@@ -298,9 +321,15 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                             mcbuReturnAmtStr: cc.cashCollections[0].mcbuReturnAmt ? formatPricePhp(cc.cashCollections[0].mcbuReturnAmt): 0,
                             mcbuInterest: cc.cashCollections[0].mcbuInterest,
                             mcbuInterestStr: cc.cashCollections[0].mcbuInterest > 0 ? formatPricePhp(cc.cashCollections[0].mcbuInterest) : '-',
-                            status: '',
+                            transfer: cc.cashCollections[0].transfer,
+                            transferred: cc.cashCollections[0].transferred,
+                            status: groupStatus,
                             page: 'collection'
                         };
+
+                        if (collection.transferred > 0) {
+                            collection.transfer = collection.transfer - collection.transferred;
+                        }
     
                         noOfNewCurrentRelease += cc.cashCollections[0].newCurrentRelease;
                         noOfReCurrentRelease += cc.cashCollections[0].reCurrentRelease;
@@ -320,9 +349,16 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         // totalMcbu += cc.cashCollections[0].mcbu;
                         totalMcbuCol += cc.cashCollections[0].mcbuCol;
                         totalMcbuWithdrawal += cc.cashCollections[0].mcbuWithdrawal;
+                        totalMcbuReturnNo += collection.noMcbuReturn;
                         totalMcbuReturnAmt += cc.cashCollections[0].mcbuReturnAmt;
                         totalMcbuTarget += cc.cashCollections[0].mcbuTarget ? cc.cashCollections[0].mcbuTarget : 0;
                         totalMcbuInterest += cc.cashCollections[0].mcbuInterest;
+                        totalTransfer += collection.transfer !== '-' ? collection.transfer : 0;
+                        totalTransferMcbu += cc.cashCollections[0].transferMCBU;
+                        totalTransferAmountRelease += cc.cashCollections[0].transferAmountRelease;
+                        totalTransferLoanBalance += cc.cashCollections[0].transferLoanBalance;
+                        totalTransferredAmountRelease += cc.cashCollections[0].transferredAmountRelease;
+                        totalTransferredLoanBalance += cc.cashCollections[0].transferredLoanBalance;
                     }
                 }
 
@@ -337,7 +373,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
             if (collectionData.length > 0) {
                 const totals = {
                     group: 'TOTALS',
-                    transfer: 0,
+                    transfer: totalTransfer,
                     noOfNewCurrentRelease: noOfNewCurrentRelease,
                     noCurrentRelease: noOfNewCurrentRelease + noOfReCurrentRelease,
                     noCurrentReleaseStr: noOfNewCurrentRelease + ' / ' + noOfReCurrentRelease,
@@ -376,6 +412,11 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                     mcbuTarget: totalMcbuTarget,
                     mcbuInterest: totalMcbuInterest,
                     mcbuInterestStr: formatPricePhp(totalMcbuInterest),
+                    totalTransferMcbu: totalTransferMcbu,
+                    totalTransferAmountRelease: totalTransferAmountRelease,
+                    totalTransferLoanBalance: totalTransferLoanBalance,
+                    totalTransferredAmountRelease: totalTransferredAmountRelease,
+                    totalTransferredLoanBalance: totalTransferredLoanBalance,
                     totalData: true,
                     status: '-'
                 }
@@ -402,12 +443,18 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
     const createLos = (totals, selectedBranch, selectedLO, dateFilter, yearEnd) => {
         let grandTotal;
 
+        let totalsLoanRelease = totals.totalLoanRelease + totals.totalTransferAmountRelease + totals.currentReleaseAmount;
+        let totalsLoanBalance = totals.totalLoanBalance + totals.totalTransferLoanBalance + totals.currentReleaseAmount;
+        totalsLoanRelease = totals.totalLoanRelease - totals.totalTransferredAmountRelease;
+        totalsLoanBalance = totals.totalLoanBalance - totals.totalTransferredLoanBalance;
+
         if (yearEnd) {
             grandTotal = {
                 day: 'Year End',
-                transfer: 0,
+                transfer: totals.transfer,
                 newMember: 0,
                 offsetPerson: 0,
+                transferMcbu: totals.totalTransferMcbu,
                 mcbuTarget: totals.mcbuTarget,
                 mcbuActual: totals.mcbuCol,
                 mcbuWithdrawal: totals.mcbuWithdrawal,
@@ -418,16 +465,16 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 loanReleasePerson: 0,
                 loanReleaseAmount: 0,
                 activeLoanReleasePerson: totals.activeBorrowers,
-                activeLoanReleaseAmount: totals.totalLoanRelease,
-                collectionAdvancePayment: totals.totalLoanRelease - totals.totalLoanBalance,
-                collectionActual: totals.totalLoanRelease - totals.totalLoanBalance,
+                activeLoanReleaseAmount: totalsLoanRelease,
+                collectionAdvancePayment: totals.excess,
+                collectionActual: totals.collection,
                 pastDuePerson: 0,
                 pastDueAmount: 0,
                 mispaymentPerson: totals.mispaymentPerson,
                 fullPaymentPerson: 0,
                 fullPaymentAmount: 0,
                 activeBorrowers: totals.activeBorrowers,
-                loanBalance: totals.totalLoanBalance
+                loanBalance: totalsLoanBalance
             };
         } else {
             let selectedDate = currentDate;
@@ -441,6 +488,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 day: selectedDate,
                 transfer: totals.transfer,
                 newMember: totals.noOfNewCurrentRelease,
+                transferMcbu: totals.totalTransferMcbu,
                 mcbuTarget: totals.mcbuTarget,
                 mcbuActual: totals.mcbuCol,
                 mcbuWithdrawal: totals.mcbuWithdrawal,
@@ -452,7 +500,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 loanReleasePerson: totals.noCurrentRelease,
                 loanReleaseAmount: totals.currentReleaseAmount,
                 activeLoanReleasePerson: totals.activeBorrowers,
-                activeLoanReleaseAmount: totals.totalLoanRelease,
+                activeLoanReleaseAmount: totalsLoanRelease,
                 collectionTarget: totals.targetLoanCollection,
                 collectionAdvancePayment: totals.excess,
                 collectionActual: totals.collection,
@@ -462,7 +510,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 fullPaymentPerson: totals.noOfFullPayment,
                 fullPaymentAmount: totals.fullPaymentAmount,
                 activeBorrowers: totals.activeBorrowers,
-                loanBalance: totals.totalLoanBalance
+                loanBalance: totalsLoanBalance
             };
         }
 
@@ -635,6 +683,10 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 accessor: 'pastDueStr'
             },
             {
+                Header: "TFR",
+                accessor: 'transfer'
+            },
+            {
                 Header: "Save Status",
                 accessor: 'status',
                 Cell: StatusPill,
@@ -672,6 +724,8 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                     mounted && getCashCollections();
                 }
             }
+        } else {
+            getCashCollections();
         }
 
         return () => {
@@ -679,25 +733,24 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
         };
     }, [dateFilter]);
 
+    // useEffect(() => {
+    //     const initGroupCollectionSummary = async () => {
+    //         const data = {
+    //             _id: currentUser.role.rep === 4 ? currentUser._id : selectedLOSubject.value.length > 0 && selectedLOSubject.value,
+    //             mode: type,
+    //             status: 'pending',
+    //             currentUser: currentUser._id,
+    //             groupSummaryIds: []
+    //         };
+
+    //         await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary', data);
+    //     }
+
+    //     initGroupCollectionSummary();
+    // }, []);
+
     useEffect(() => {
-        const initGroupCollectionSummary = async () => {
-            const data = {
-                _id: currentUser.role.rep === 4 ? currentUser._id : selectedLOSubject.value.length > 0 && selectedLOSubject.value,
-                mode: type,
-                status: 'pending',
-                currentUser: currentUser._id,
-                groupSummaryIds: []
-            };
-
-            await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary', data);
-        }
-
-        initGroupCollectionSummary();
-    }, []);
-
-    useEffect(() => {
-        console.log(type, isWeekend, isHoliday)
-        if (type === 'weekly') {
+        if (type === 'weekly' && !isHoliday && !isWeekend) {
             const preSaveCollections = async () => {
                 const data = {
                     loId: currentUser.role.rep === 4 ? currentUser._id : selectedLOSubject.value.length > 0 && selectedLOSubject.value,
@@ -710,9 +763,9 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
 
             setTimeout(() => {
                 preSaveCollections();
-            }, 3000);
+            }, 1000);
         }
-    }, [type]);
+    }, [type, isHoliday, isWeekend]);
 
     return (
         <React.Fragment>

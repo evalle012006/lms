@@ -35,7 +35,7 @@ async function updateSystemSettings(req, res) {
     const systemResp = await db
         .collection('settings')
         .updateOne(
-            { _id: ObjectId(systemId) }, 
+            { _id: new ObjectId(systemId) }, 
             {
                 $set: { ...system }
             }, 

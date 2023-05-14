@@ -29,24 +29,24 @@ async function getAllLoansPerGroup(req, res) {
                             "loIdStr": { $toString: "$_id" }
                         }
                     },
-                    {
-                        $lookup: {
-                            from: "groupCashCollections",
-                            localField: "loIdStr",
-                            foreignField: "loId",
-                            pipeline: [
-                                { $match: { dateAdded: date } },
-                                { 
-                                    $group: {
-                                        _id: '$loId',
-                                        groupSummaryIds: { $addToSet: { _id: '$_id', groupId: '$groupId', status: '$status' } },
-                                        statusArr: { $addToSet: '$status' },
-                                    }
-                                }
-                            ],
-                            as: 'groupCashCollections'
-                        }
-                    },
+                    // {
+                    //     $lookup: {
+                    //         from: "groupCashCollections",
+                    //         localField: "loIdStr",
+                    //         foreignField: "loId",
+                    //         pipeline: [
+                    //             { $match: { dateAdded: date } },
+                    //             { 
+                    //                 $group: {
+                    //                     _id: '$loId',
+                    //                     groupSummaryIds: { $addToSet: { _id: '$_id', groupId: '$groupId', status: '$status' } },
+                    //                     statusArr: { $addToSet: '$status' },
+                    //                 }
+                    //             }
+                    //         ],
+                    //         as: 'groupCashCollections'
+                    //     }
+                    // },
                     {
                         $lookup: {
                             from: "groups",
@@ -107,7 +107,10 @@ async function getAllLoansPerGroup(req, res) {
                                         mispayment: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },
                                         loanTarget: { $sum: {
                                             $cond: {
-                                                if: { $or: [{$eq: ['$remarks.label', 'Delinquent']}, {$eq: ['$remarks.value', 'excused']}, {$eq: ['$remarks.value', 'excused advance payment']}] },
+                                                if: { $or: [
+                                                    {$eq: ['$remarks.value', 'delinquent']},
+                                                    {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                                                ] },
                                                 then: '$activeLoan',
                                                 else: 0
                                             }
@@ -117,7 +120,7 @@ async function getAllLoansPerGroup(req, res) {
                                         total: { $sum: '$total' },
                                         offsetPerson: { $sum: {
                                             $cond: {
-                                                if: {$eq: ['$remarks.value', 'offset']},
+                                                if: {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
                                                 then: 1,
                                                 else: 0
                                             }
@@ -127,13 +130,66 @@ async function getAllLoansPerGroup(req, res) {
                                         mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
                                         mcbuReturnNo: { $sum: {
                                             $cond: {
-                                                if: {$gt: ['$mcbuReturnAmt', 0]},
+                                                if: { $or: [
+                                                    {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
+                                                    {$gt: ['$mcbuReturnAmt', 0]}
+                                                ] },
                                                 then: 1,
                                                 else: 0
                                             }
                                         } },
                                         mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
-                                        mcbuInterest: { $sum: '$mcbuInterest' }
+                                        mcbuInterest: { $sum: '$mcbuInterest' },
+                                        transfer: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: 1,
+                                                else: 0
+                                            }
+                                        } },
+                                        transferMCBU: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: '$mcbu',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferAmountRelease: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: '$amountRelease',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferLoanBalance: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: '$loanBalance',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferred: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transferred', true] },
+                                                then: 1,
+                                                else: 0
+                                            }
+                                        } },
+                                        transferredAmountRelease: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transferred', true] },
+                                                then: '$amountRelease',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferredLoanBalance: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transferred', true] },
+                                                then: '$loanBalance',
+                                                else: 0
+                                            }
+                                        } },
+                                        groupStatusArr: { $addToSet: '$groupStatus' }
                                     } 
                                 }
                             ],
@@ -246,7 +302,23 @@ async function getAllLoansPerGroup(req, res) {
                                         excess: { $sum: 0 },
                                         total: { $sum: 0 },
                                         mcbu: { $sum: '$mcbu' },
-                                        mcbuTarget: { $sum: '$mcbuTarget' },
+                                        mcbuTarget: { $sum: {
+                                            $cond: {
+                                                if: { $and: [{$eq: ['$occurence', 'weekly']}, {$eq: ['$groupDay', dayName]}] },
+                                                then: {
+                                                    $cond: {
+                                                        if: { $or: [
+                                                            {$eq: ['$remarks.value', 'delinquent']},
+                                                            {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
+                                                            {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                                                        ] },
+                                                        then: 0,
+                                                        else: 50
+                                                    }
+                                                },
+                                                else: 0
+                                            }
+                                        } },
                                         mcbuInterest: { $sum: '$mcbuInterest' }
                                     } 
                                 }
@@ -307,17 +379,17 @@ async function getAllLoansPerGroup(req, res) {
                             "groupIdStr": { $toString: "$_id" }
                         }
                     },
-                    {
-                        $lookup: {
-                            from: "groupCashCollections",
-                            localField: "groupIdStr",
-                            foreignField: "groupId",
-                            pipeline: [
-                                { $match: { dateAdded: date } }
-                            ],
-                            as: 'groupCashCollections'
-                        }
-                    },
+                    // {
+                    //     $lookup: {
+                    //         from: "groupCashCollections",
+                    //         localField: "groupIdStr",
+                    //         foreignField: "groupId",
+                    //         pipeline: [
+                    //             { $match: { dateAdded: date } }
+                    //         ],
+                    //         as: 'groupCashCollections'
+                    //     }
+                    // },
                     {
                         $lookup: {
                             from: "cashCollections",
@@ -331,7 +403,10 @@ async function getAllLoansPerGroup(req, res) {
                                         mispayment: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },
                                         loanTarget: { $sum: {
                                             $cond: {
-                                                if: { $or: [{$eq: ['$remarks.label', 'Delinquent']}, {$eq: ['$remarks.value', 'excused']}, {$eq: ['$remarks.value', 'excused advance payment']}] },
+                                                if: { $or: [
+                                                    {$eq: ['$remarks.value', 'delinquent']},
+                                                    {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                                                ] },
                                                 then: '$activeLoan',
                                                 else: 0
                                             }
@@ -341,7 +416,7 @@ async function getAllLoansPerGroup(req, res) {
                                         total: { $sum: '$total' },
                                         offsetPerson: { $sum: {
                                             $cond: {
-                                                if: {$eq: ['$remarks.value', 'offset']},
+                                                if: {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
                                                 then: 1,
                                                 else: 0
                                             }
@@ -351,13 +426,66 @@ async function getAllLoansPerGroup(req, res) {
                                         mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
                                         mcbuReturnNo: { $sum: {
                                             $cond: {
-                                                if: {$gt: ['$mcbuReturnAmt', 0]},
+                                                if: { $or: [
+                                                    {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
+                                                    {$gt: ['$mcbuReturnAmt', 0]}
+                                                ] },
                                                 then: 1,
                                                 else: 0
                                             }
                                         } },
                                         mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
-                                        mcbuInterest: { $sum: '$mcbuInterest' }
+                                        mcbuInterest: { $sum: '$mcbuInterest' },
+                                        transfer: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: 1,
+                                                else: 0
+                                            }
+                                        } },
+                                        transferMCBU: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: '$mcbu',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferAmountRelease: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: '$amountRelease',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferLoanBalance: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: '$loanBalance',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferred: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transferred', true] },
+                                                then: 1,
+                                                else: 0
+                                            }
+                                        } },
+                                        transferredAmountRelease: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transferred', true] },
+                                                then: '$amountRelease',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferredLoanBalance: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transferred', true] },
+                                                then: '$loanBalance',
+                                                else: 0
+                                            }
+                                        } },
+                                        groupStatusArr: { $addToSet: '$groupStatus' }
                                     } 
                                 }
                             ],
@@ -472,7 +600,23 @@ async function getAllLoansPerGroup(req, res) {
                                         excess: { $sum: 0 },
                                         total: { $sum: 0 },
                                         mcbu: { $sum: '$mcbu' },
-                                        mcbuTarget: { $sum: '$mcbuTarget' },
+                                        mcbuTarget: { $sum: {
+                                            $cond: {
+                                                if: { $and: [{$eq: ['$occurence', 'weekly']}, {$eq: ['$groupDay', dayName]}] },
+                                                then: {
+                                                    $cond: {
+                                                        if: { $or: [
+                                                            {$eq: ['$remarks.value', 'delinquent']},
+                                                            {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
+                                                            {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                                                        ] },
+                                                        then: 0,
+                                                        else: 50
+                                                    }
+                                                },
+                                                else: 0
+                                            }
+                                        } },
                                         mcbuInterest: { $sum: '$mcbuInterest' }
                                     } 
                                 }
@@ -609,30 +753,39 @@ async function getAllLoansPerGroup(req, res) {
                                         loanTarget: { 
                                             $sum: { 
                                                 $cond: {
-                                                    if: { $and: [{ $ne: ['$status', 'pending'] }, { $eq: ['$groupDay', dayName] }] }, 
+                                                    if: { $ne: ['$status', 'pending'] },
                                                     then: { 
                                                         $cond: {
-                                                            if: { $and: [{$eq: ['$activeLoan', 0]}, {$eq: ['$fullPaymentDate', date]}] },
-                                                            then: '$history.activeLoan',
-                                                            else: {
+                                                            if: { $or: [{$eq: ['$occurence', 'daily']}, {$and: [{ $and: [{ $eq: ['$occurence', 'weekly'] }, { $eq: ['$groupDay', dayName] }] }]}] },
+                                                            then: {
                                                                 $cond: {
-                                                                    if: { $or: [{$eq: ['$remarks.label', 'Delinquent']}, {$eq: ['$remarks.value', 'excused']}, {$eq: ['$remarks.value', 'excused advance payment']}] },
-                                                                    then: 0,
+                                                                    if: { $and: [{$eq: ['$activeLoan', 0]}, {$eq: ['$fullPaymentDate', date]}] },
+                                                                    then: '$history.activeLoan',
                                                                     else: {
                                                                         $cond: {
-                                                                            if: {$eq: ['$status', 'tomorrow']},
-                                                                            then: {
+                                                                            if: { $or: [
+                                                                                {$eq: ['$remarks.value', 'delinquent']},
+                                                                                {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                                                                            ] },
+                                                                            then: 0,
+                                                                            else: {
                                                                                 $cond: {
-                                                                                    if: { $gt: ['$activeLoan', 0] },
-                                                                                    then: '$history.activeLoan',
-                                                                                    else: 0
+                                                                                    if: {$eq: ['$status', 'tomorrow']},
+                                                                                    then: {
+                                                                                        $cond: {
+                                                                                            if: { $gt: ['$activeLoan', 0] },
+                                                                                            then: '$history.activeLoan',
+                                                                                            else: 0
+                                                                                        }
+                                                                                    },
+                                                                                    else: '$activeLoan'
                                                                                 }
-                                                                            },
-                                                                            else: '$activeLoan'
+                                                                            }
                                                                         }
                                                                     }
                                                                 }
-                                                            }
+                                                            },
+                                                            else: 0
                                                         } 
                                                     }, 
                                                     else: 0
@@ -735,14 +888,83 @@ async function getAllLoansPerGroup(req, res) {
                                         mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
                                         mcbuReturnNo: { $sum: {
                                             $cond: {
-                                                if: {$gt: ['$mcbuReturnAmt', 0]},
+                                                if: { $or: [
+                                                    {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
+                                                    {$gt: ['$mcbuReturnAmt', 0]}
+                                                ] },
                                                 then: 1,
                                                 else: 0
                                             }
                                         } },
                                         mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
-                                        mcbuTarget: { $sum: '$mcbuTarget' },
-                                        mcbuInterest: { $sum: '$mcbuInterest' }
+                                        mcbuTarget: { $sum: {
+                                            $cond: {
+                                                if: { $and: [{$eq: ['$occurence', 'weekly']}, {$eq: ['$groupDay', dayName]}] },
+                                                then: {
+                                                    $cond: {
+                                                        if: { $or: [
+                                                            {$eq: ['$remarks.value', 'delinquent']},
+                                                            {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
+                                                            {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                                                        ] },
+                                                        then: 0,
+                                                        else: 50
+                                                    }
+                                                },
+                                                else: 0
+                                            }
+                                        } },
+                                        mcbuInterest: { $sum: '$mcbuInterest' },
+                                        transfer: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: 1,
+                                                else: 0
+                                            }
+                                        } },
+                                        transferMCBU: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: '$mcbu',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferAmountRelease: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: '$amountRelease',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferLoanBalance: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: '$loanBalance',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferred: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transferred', true] },
+                                                then: 1,
+                                                else: 0
+                                            }
+                                        } },
+                                        transferredAmountRelease: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transferred', true] },
+                                                then: '$amountRelease',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferredLoanBalance: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transferred', true] },
+                                                then: '$loanBalance',
+                                                else: 0
+                                            }
+                                        } },
+                                        groupStatusArr: { $addToSet: '$groupStatus' }
                                     } 
                                 }
                             ],
@@ -824,7 +1046,10 @@ async function getAllLoansPerGroup(req, res) {
                                                             then: '$history.activeLoan',
                                                             else: {
                                                                 $cond: {
-                                                                    if: { $or: [{$eq: ['$remarks.label', 'Delinquent']}, {$eq: ['$remarks.value', 'excused']}, {$eq: ['$remarks.value', 'excused advance payment']}] },
+                                                                    if: { $or: [
+                                                                        {$eq: ['$remarks.value', 'delinquent']},
+                                                                        {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                                                                    ] },
                                                                     then: 0,
                                                                     else: {
                                                                         $cond: {
@@ -936,7 +1161,10 @@ async function getAllLoansPerGroup(req, res) {
                                         mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
                                         mcbuReturnNo: { $sum: {
                                             $cond: {
-                                                if: {$gt: ['$mcbuReturnAmt', 0]},
+                                                if: { $or: [
+                                                    {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
+                                                    {$gt: ['$mcbuReturnAmt', 0]}
+                                                ] },
                                                 then: 1,
                                                 else: 0
                                             }
@@ -945,11 +1173,71 @@ async function getAllLoansPerGroup(req, res) {
                                         mcbuTarget: { $sum: {
                                             $cond: {
                                                 if: { $and: [{$eq: ['$occurence', 'weekly']}, {$eq: ['$groupDay', dayName]}] },
-                                                then: 50,
+                                                then: {
+                                                    $cond: {
+                                                        if: { $or: [
+                                                            {$eq: ['$remarks.value', 'delinquent']},
+                                                            {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
+                                                            {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                                                        ] },
+                                                        then: 0,
+                                                        else: 50
+                                                    }
+                                                },
                                                 else: 0
                                             }
                                         } },
-                                        mcbuInterest: { $sum: '$mcbuInterest' }
+                                        mcbuInterest: { $sum: '$mcbuInterest' },
+                                        transfer: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: 1,
+                                                else: 0
+                                            }
+                                        } },
+                                        transferMCBU: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: '$mcbu',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferAmountRelease: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: '$amountRelease',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferLoanBalance: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: '$loanBalance',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferred: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transferred', true] },
+                                                then: 1,
+                                                else: 0
+                                            }
+                                        } },
+                                        transferredAmountRelease: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transferred', true] },
+                                                then: '$amountRelease',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferredLoanBalance: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transferred', true] },
+                                                then: '$loanBalance',
+                                                else: 0
+                                            }
+                                        } },
+                                        groupStatusArr: { $addToSet: '$groupStatus' }
                                     } 
                                 }
                             ],

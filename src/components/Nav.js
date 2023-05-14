@@ -63,7 +63,7 @@ const SubNav = ({ item, index, activePath, inner=false, className }) => {
                                 <ChevronDownIcon className={`ml-auto ${activePath === item.url ? 'text-gray-800 w-5 h-5' : 'text-white w-5 h-5'} ${subMenuOpen && 'rotate-180'}`} />
                             </a>
                             {subMenuOpen && (
-                                <ul className="relative accordion-collapse collapse">
+                                <ul className="relative">
                                     {item.subMenuItems.map((menu, idx) => {
                                         return !menu.hidden && (
                                             <SubNav key={idx} item={menu} index={idx} activePath={activePath} className="ml-6" inner={true} />
@@ -398,7 +398,6 @@ const MenuItems = [
             },
         ]
     },
-// -Consolidated BMS
     {
         label: "Settings",
         url: "#settings",
@@ -507,9 +506,9 @@ const NavComponent = () => {
     const getActivePath = () => {
         const path = router.asPath.replace("#", "");
         const paths = path.split("/").filter((p) => p);
-        
+
         let currentPath = '';
-        if (paths.length > 0) {
+        if (!path && paths.length > 0) {
             if (paths.length === 1) {
                 currentPath = "/".concat(paths[0]);
             } else if (paths.length === 2) {
@@ -595,10 +594,6 @@ const NavComponent = () => {
                     temp.hidden = true;
                 }
 
-                if (menu.label === 'Transfer') {
-                    temp.hidden = true;
-                }
-
                 if (menu.label === 'Daily Transactions') {
                     temp.hidden = true;
                 }
@@ -665,8 +660,14 @@ const NavComponent = () => {
                         if (sm.label === 'Loan Officer Summary') {
                             sm.hidden = true;
                         }
+
+                        if (sm.label === 'Transfer Client') {
+                            sm.hidden = true;
+                        }
                     }  else if (userState.role.rep === 4) {
-                        // to do
+                        if (sm.label === 'Transfer Client') {
+                            sm.hidden = true;
+                        }
                     }
 
                     return sm;

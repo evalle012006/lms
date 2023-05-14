@@ -36,7 +36,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
         email: user.email,
         number: user.number,
         position: user.position,
-        designatedBranch: user.designatedBranch ? user.designatedBranch : 0,
+        designatedBranch: user.designatedBranch ? (user.roleId === 2 ? user.designatedBranch.split(', ') : user.designatedBranch) : 0,
         role: user.role ? user.roleId : '',
         loNo: user.loNo,
         transactionType: user.transactionType
@@ -83,7 +83,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
         let designatedBranch = '';
         let designatedBranchId = '';
         if (selectedRole.rep === 2) {
-            designatedBranch = selectedBranchesCode;
+            designatedBranch = JSON.stringify(selectedBranchesCode);
             designatedBranchId = selectedBranchesId;
         } else if (selectedRole.rep > 2) {
             designatedBranch = values.designatedBranch;
@@ -185,11 +185,11 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
             mounted && setOccurence(user.transactionType);
         }
 
-        if (user.role && user.role.rep === 2) {
+        if (user.roleId === 2) {
             const branchesCode = user.designatedBranch;
             let selectedBranchesList = [];
             branches && branches.map(branch => {
-                branchesCode && branchesCode.map(b => {
+                branchesCode && branchesCode.split(', ').map(b => {
                     if (branch.code === b) {
                         selectedBranchesList.push(branch);
                     }

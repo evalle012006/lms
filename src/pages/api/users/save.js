@@ -41,7 +41,7 @@ async function save(req, res) {
             dateAdded: moment(getCurrentDate()).format('YYYY-MM-DD'),
             role: JSON.parse(role),
             loNo: loNo,
-            designatedBranch: designatedBranch,
+            designatedBranch: JSON.parse(designatedBranch),
             transactionType: transactionType
         });
 

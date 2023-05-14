@@ -19,9 +19,9 @@ async function getBranch(req, res) {
 
     if (_id) {
         branch = await db.collection('branches')
-            // .find({ _id: ObjectId(_id)})
+            // .find({ _id: new ObjectId(_id)})
             .aggregate([
-                { $match: { _id: ObjectId(_id) } },
+                { $match: { _id: new ObjectId(_id) } },
                 {
                     $lookup: {
                         from: "users",
@@ -75,7 +75,7 @@ async function updateBranch(req, res) {
     const branchResp = await db
         .collection('branches')
         .updateOne(
-            { _id: ObjectId(branchId) }, 
+            { _id: new ObjectId(branchId) }, 
             {
                 $set: { ...branch }
             }, 

@@ -52,6 +52,7 @@ const ViewByBranchPage = ({dateFilter, type}) => {
             let totalMcbuWithdrawal = 0;
             let totalMcbuReturnNo = 0;
             let totalMcbuReturnAmt = 0;
+            let totalTransfer = 0;
             
             response.data.map(branch => {
                 let collection = {
@@ -75,20 +76,20 @@ const ViewByBranchPage = ({dateFilter, type}) => {
                     noOfFullPayment: '-',
                     pastDueStr: '-',
                     noPastDue: '-',
+                    transfer: '-',
                     page: 'branch-summary',
                     status: '-'
                 };
 
-                if (!filter) {
-                    if (branch?.groupCashCollections.length > 0) {
-                        const open = branch.groupCashCollections[0].statusArr.find(status => status === 'open');
-                        if (open) {
-                            collection.status = 'open';
-                        } else {
-                            collection.status = 'close';
-                        }
+                let groupStatus = 'open';
+                if (branch.cashCollections.length > 0) {
+                    const transactionStatus = branch.cashCollections[0].groupStatusArr.filter(status => status === "closed");
+                    if (transactionStatus.length > 0) {
+                        groupStatus = 'close';
                     }
+                }
 
+                if (!filter) {
                     if (branch.activeLoans.length > 0) {
                         collection.activeClients = branch.activeLoans[0].activeClients; 
                         collection.activeBorrowers = branch.activeLoans[0].activeBorrowers;
@@ -113,6 +114,7 @@ const ViewByBranchPage = ({dateFilter, type}) => {
                         collection.noMcbuReturn = 0;
                         collection.mcbuReturnAmt = 0;
                         collection.mcbuReturnAmtStr = '-';
+                        collection.status = groupStatus;
     
                         totalsLoanRelease += branch.loans[0].totalRelease;
                         totalsLoanBalance += branch.loans[0].totalLoanBalance;
@@ -160,6 +162,12 @@ const ViewByBranchPage = ({dateFilter, type}) => {
                         collection.noMcbuReturn = branch.cashCollections[0].noMcbuReturn;
                         collection.mcbuReturnAmt = branch.cashCollections[0].mcbuReturnAmt;
                         collection.mcbuReturnAmtStr = collection.mcbuReturnAmt ? formatPricePhp(collection.mcbuReturnAmt) : '-';
+                        collection.transfer = branch.cashCollections[0].transfer;
+                        collection.transferred = branch.cashCollections[0].transferred;
+
+                        if (collection.transferred > 0) {
+                            collection.transfer = collection.transfer - collection.transferred;
+                        }
     
                         excess += branch.cashCollections[0].excess;
                         totalLoanCollection += branch.cashCollections[0].collection;
@@ -170,6 +178,7 @@ const ViewByBranchPage = ({dateFilter, type}) => {
                         totalMcbuWithdrawal += collection.mcbuWithdrawal ? collection.mcbuWithdrawal : 0;
                         totalMcbuReturnNo += collection.noMcbuReturn ? collection.noMcbuReturn : 0;
                         totalMcbuReturnAmt += collection.mcbuReturnAmt ? collection.mcbuReturnAmt : 0;
+                        totalTransfer += collection.transfer !== '-' ? collection.transfer : 0;
                     }
     
                     if (branch.currentRelease.length > 0) {
@@ -224,6 +233,14 @@ const ViewByBranchPage = ({dateFilter, type}) => {
 
                         collection.noOfFullPayment = branch.cashCollections[0].noOfFullPayment;
                         collection.fullPaymentAmountStr = formatPricePhp(branch.cashCollections[0].fullPaymentAmount);
+                        collection.status = groupStatus;
+
+                        collection.transfer = branch.cashCollections[0].transfer;
+                        collection.transferred = branch.cashCollections[0].transferred;
+
+                        if (collection.transferred > 0) {
+                            collection.transfer = collection.transfer - collection.transferred;
+                        }
     
                         noOfClients += branch.cashCollections[0].activeClients;
                         noOfBorrowers += branch.cashCollections[0].activeBorrowers;
@@ -245,6 +262,7 @@ const ViewByBranchPage = ({dateFilter, type}) => {
                         totalMcbuWithdrawal += collection.mcbuWithdrawal ? collection.mcbuWithdrawal : 0;
                         totalMcbuReturnNo += collection.noMcbuReturn ? collection.noMcbuReturn : 0;
                         totalMcbuReturnAmt += collection.mcbuReturnAmt ? collection.mcbuReturnAmt : 0;
+                        totalTransfer += collection.transfer !== '-' ? collection.transfer : 0;
                     }
                 }
 
@@ -258,6 +276,7 @@ const ViewByBranchPage = ({dateFilter, type}) => {
 
             const branchTotals = {
                 name: 'TOTALS',
+                transfer: totalTransfer,
                 noCurrentReleaseStr: noOfNewCurrentRelease + ' / ' + noOfReCurrentRelease,
                 currentReleaseAmountStr: formatPricePhp(currentReleaseAmount),
                 activeClients: noOfClients,
@@ -509,6 +528,10 @@ const ViewByBranchPage = ({dateFilter, type}) => {
                 {
                     Header: "PD Amount",
                     accessor: 'pastDueStr'
+                },
+                {
+                    Header: "TFR",
+                    accessor: 'transfer'
                 }
             ];
         }
@@ -518,9 +541,9 @@ const ViewByBranchPage = ({dateFilter, type}) => {
 
     useEffect(() => {
         let mounted = true;
-
-        if (dateFilter.dateFilter) {
-            const date = moment(dateFilter.dateFilter).format('YYYY-MM-DD');
+        
+        if (dateFilter) {
+            const date = moment(dateFilter).format('YYYY-MM-DD');
             if (date !== currentDate) {
                 mounted && getBranchCashCollections(date);
             } else {

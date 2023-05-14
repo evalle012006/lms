@@ -15,13 +15,13 @@ async function deleteHoliday(req, res) {
 
     const holiday = await db
         .collection('holidays')
-        .find({ _id: ObjectId(_id) })
+        .find({ _id: new ObjectId(_id) })
         .toArray();
 
     if (holiday.length > 0) {
         await db
             .collection('holidays')
-            .deleteOne({ _id: ObjectId(_id) });
+            .deleteOne({ _id: new ObjectId(_id) });
 
         response = {
             success: true

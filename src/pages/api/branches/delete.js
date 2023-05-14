@@ -15,7 +15,7 @@ async function deleteBranch(req, res) {
 
     const branches = await db
         .collection('branches')
-        .find({ _id: ObjectId(_id) })
+        .find({ _id: new ObjectId(_id) })
         .toArray();
 
     if (branches.length > 0) {
@@ -29,7 +29,7 @@ async function deleteBranch(req, res) {
         } else {
             await db
                 .collection('branches')
-                .deleteOne({ _id: ObjectId(_id) });
+                .deleteOne({ _id: new ObjectId(_id) });
 
             response = {
                 success: true

@@ -15,7 +15,7 @@ async function updateGroup(req, res) {
     const { groupId, oldGroupId } = req.body;
 
     if (oldGroupId) {
-        const group = await db.collection('groups').find({ _id: ObjectId(oldGroupId) }).toArray();
+        const group = await db.collection('groups').find({ _id: new ObjectId(oldGroupId) }).toArray();
         const noOfClients = group.length > 0 && group[0].noOfClients - 1;
         const capacity = group.length > 0 && group[0].capacity;
         let status = group.length > 0 && group[0].status;
@@ -30,7 +30,7 @@ async function updateGroup(req, res) {
         const oldGroupResp = await db
             .collection('groups')
             .updateOne(
-                { _id: ObjectId(oldGroupId) }, 
+                { _id: new ObjectId(oldGroupId) }, 
                 {
                     $set: {
                         ...groupData,
@@ -42,7 +42,7 @@ async function updateGroup(req, res) {
             );
     }
 
-    const group = await db.collection('groups').find({ _id: ObjectId(groupId) }).toArray();
+    const group = await db.collection('groups').find({ _id: new ObjectId(groupId) }).toArray();
     let status = group.length > 0 && group[0].status;
     let noOfClients = group.length > 0 && group[0].noOfClients;
     const capacity = group.length > 0 && group[0].capacity;
@@ -65,7 +65,7 @@ async function updateGroup(req, res) {
         groupResp = await db
             .collection('groups')
             .updateOne(
-                { _id: ObjectId(groupId) }, 
+                { _id: new ObjectId(groupId) }, 
                 {
                     $set: {
                         ...groupData,

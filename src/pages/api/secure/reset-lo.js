@@ -36,7 +36,7 @@ async function reset(req, res) {
         }
     });
 
-    // await db.collection('users').updateMany({ _id: ObjectId(loId) }, {
+    // await db.collection('users').updateMany({ _id: new ObjectId(loId) }, {
     //     $unset: {
     //         transactionType: 1
     //     }

@@ -44,18 +44,18 @@ async function list(req, res) {
                     },
                     {
                         $lookup: {
-                            from: "groupCashCollections",
+                            from: "cashCollections",
                             localField: "groupId",
                             foreignField: "groupId",
                             pipeline: [
                                 { $match: { dateAdded: currentDate } },
-                                { $project: { allowApproved: { $cond: { if: {$eq: ['$status', 'pending']}, then: true, else: false } } } }
+                                { $group: { 
+                                    _id: '$groupId',
+                                    groupStatusArr: { $addToSet: '$groupStatus' } 
+                                } }
                             ],
-                            as: 'groupCashCollections'
+                            as: 'groupStatus'
                         }
-                    },
-                    {
-                        $unwind: "$groupCashCollections"
                     },
                     {
                         $lookup: {
@@ -121,18 +121,18 @@ async function list(req, res) {
                     },
                     {
                         $lookup: {
-                            from: "groupCashCollections",
+                            from: "cashCollections",
                             localField: "groupId",
                             foreignField: "groupId",
                             pipeline: [
                                 { $match: { dateAdded: currentDate } },
-                                { $project: { allowApproved: { $cond: { if: {$eq: ['$status', 'pending']}, then: true, else: false } } } }
+                                { $group: { 
+                                    _id: '$groupId',
+                                    groupStatusArr: { $addToSet: '$groupStatus' } 
+                                } }
                             ],
-                            as: 'groupCashCollections'
+                            as: 'groupStatus'
                         }
-                    },
-                    {
-                        $unwind: "$groupCashCollections"
                     },
                     {
                         $lookup: {
@@ -192,18 +192,21 @@ async function list(req, res) {
                     },
                     {
                         $lookup: {
-                            from: "groupCashCollections",
+                            from: "cashCollections",
                             localField: "groupId",
                             foreignField: "groupId",
                             pipeline: [
                                 { $match: { dateAdded: currentDate } },
-                                { $project: { allowApproved: { $cond: { if: {$eq: ['$status', 'pending']}, then: true, else: false } } } }
+                                { $group: { 
+                                    _id: '$groupId',
+                                    groupStatusArr: { $addToSet: '$groupStatus' } 
+                                } }
                             ],
-                            as: 'groupCashCollections'
+                            as: 'groupStatus'
                         }
                     },
                     {
-                        $unwind: "$groupCashCollections"
+                        $unwind: "$groupStatus"
                     },
                     {
                         $lookup: {
@@ -241,7 +244,7 @@ async function list(req, res) {
                     { $project: { branchIdObj: 0, groupIdObj: 0, clientIdObj: 0, loIdObj: 0, password: 0 } }
                 ]).toArray();
         } else if (areaManagerId) {
-            const areaManager = await db.collection("users").find({ _id: ObjectId(areaManagerId) }).toArray();
+            const areaManager = await db.collection("users").find({ _id: new ObjectId(areaManagerId) }).toArray();
             if (areaManager.length > 0) {
                 const branchCodes = areaManager[0].designatedBranch;
                 const branches = await db.collection("branches").find({ $expr: { $in: ['$code', branchCodes] } }).toArray();
@@ -269,18 +272,21 @@ async function list(req, res) {
                             },
                             {
                                 $lookup: {
-                                    from: "groupCashCollections",
+                                    from: "cashCollections",
                                     localField: "groupId",
                                     foreignField: "groupId",
                                     pipeline: [
                                         { $match: { dateAdded: currentDate } },
-                                        { $project: { allowApproved: { $cond: { if: {$eq: ['$status', 'pending']}, then: true, else: false } } } }
+                                        { $group: { 
+                                            _id: '$groupId',
+                                            groupStatusArr: { $addToSet: '$groupStatus' } 
+                                        } }
                                     ],
-                                    as: 'groupCashCollections'
+                                    as: 'groupStatus'
                                 }
                             },
                             {
-                                $unwind: "$groupCashCollections"
+                                $unwind: "$groupStatus"
                             },
                             {
                                 $lookup: {
@@ -343,18 +349,21 @@ async function list(req, res) {
                     },
                     {
                         $lookup: {
-                            from: "groupCashCollections",
+                            from: "cashCollections",
                             localField: "groupId",
                             foreignField: "groupId",
                             pipeline: [
                                 { $match: { dateAdded: currentDate } },
-                                { $project: { allowApproved: { $cond: { if: {$eq: ['$status', 'pending']}, then: true, else: false } } } }
+                                { $group: { 
+                                    _id: '$groupId',
+                                    groupStatusArr: { $addToSet: '$groupStatus' } 
+                                } }
                             ],
-                            as: 'groupCashCollections'
+                            as: 'groupStatus'
                         }
                     },
                     {
-                        $unwind: "$groupCashCollections"
+                        $unwind: "$groupStatus"
                     },
                     {
                         $lookup: {
@@ -420,18 +429,21 @@ async function list(req, res) {
                 },
                 {
                     $lookup: {
-                        from: "groupCashCollections",
+                        from: "cashCollections",
                         localField: "groupId",
                         foreignField: "groupId",
                         pipeline: [
                             { $match: { dateAdded: currentDate } },
-                            { $project: { allowApproved: { $cond: { if: {$eq: ['$status', 'pending']}, then: true, else: false } } } }
+                            { $group: { 
+                                _id: '$groupId',
+                                groupStatusArr: { $addToSet: '$groupStatus' } 
+                            } }
                         ],
-                        as: 'groupCashCollections'
+                        as: 'groupStatus'
                     }
                 },
                 {
-                    $unwind: "$groupCashCollections"
+                    $unwind: "$groupStatus"
                 },
                 {
                     $lookup: {
@@ -498,18 +510,21 @@ async function list(req, res) {
                 },
                 {
                     $lookup: {
-                        from: "groupCashCollections",
+                        from: "cashCollections",
                         localField: "groupId",
                         foreignField: "groupId",
                         pipeline: [
                             { $match: { dateAdded: currentDate } },
-                            { $project: { allowApproved: { $cond: { if: {$eq: ['$status', 'pending']}, then: true, else: false } } } }
+                            { $group: { 
+                                _id: '$groupId',
+                                groupStatusArr: { $addToSet: '$groupStatus' } 
+                            } }
                         ],
-                        as: 'groupCashCollections'
+                        as: 'groupStatus'
                     }
                 },
                 {
-                    $unwind: "$groupCashCollections"
+                    $unwind: "$groupStatus"
                 },
                 {
                     $lookup: {
@@ -570,18 +585,21 @@ async function list(req, res) {
                 },
                 {
                     $lookup: {
-                        from: "groupCashCollections",
+                        from: "cashCollections",
                         localField: "groupId",
                         foreignField: "groupId",
                         pipeline: [
                             { $match: { dateAdded: currentDate } },
-                            { $project: { allowApproved: { $cond: { if: {$eq: ['$status', 'pending']}, then: true, else: false } } } }
+                            { $group: { 
+                                _id: '$groupId',
+                                groupStatusArr: { $addToSet: '$groupStatus' } 
+                            } }
                         ],
-                        as: 'groupCashCollections'
+                        as: 'groupStatus'
                     }
                 },
                 {
-                    $unwind: "$groupCashCollections"
+                    $unwind: "$groupStatus"
                 },
                 {
                     $lookup: {
@@ -642,18 +660,21 @@ async function list(req, res) {
                 },
                 {
                     $lookup: {
-                        from: "groupCashCollections",
+                        from: "cashCollections",
                         localField: "groupId",
                         foreignField: "groupId",
                         pipeline: [
                             { $match: { dateAdded: currentDate } },
-                            { $project: { allowApproved: { $cond: { if: {$eq: ['$status', 'pending']}, then: true, else: false } } } }
+                            { $group: { 
+                                _id: '$groupId',
+                                groupStatusArr: { $addToSet: '$groupStatus' } 
+                            } }
                         ],
-                        as: 'groupCashCollections'
+                        as: 'groupStatus'
                     }
                 },
                 {
-                    $unwind: "$groupCashCollections"
+                    $unwind: "$groupStatus"
                 },
                 {
                     $lookup: {

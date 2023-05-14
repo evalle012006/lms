@@ -17,14 +17,16 @@ async function list(req, res) {
         branches = await db
             .collection('branches')
             .find({ code: branchCode })
+            .sort({ code: 1 })
             .toArray();
     } else if (branchCodes) {
         const codes = branchCodes.trim().split(",");
-        branches = await db.collection('branches').find({ $expr: {$in: ["$code", codes]} }).toArray();
+        branches = await db.collection('branches').find({ $expr: {$in: ["$code", codes]} }).sort({ code: 1 }).toArray();
     } else {
         branches = await db
             .collection('branches')
             .find()
+            .sort({ code: 1 })
             .toArray();
 
     }

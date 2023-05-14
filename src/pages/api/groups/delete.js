@@ -15,7 +15,7 @@ async function deleteGroup(req, res) {
 
     const groups = await db
         .collection('groups')
-        .find({ _id: ObjectId(_id) })
+        .find({ _id: new ObjectId(_id) })
         .toArray();
     
     if (groups[0].noOfClients > 0) {
@@ -26,7 +26,7 @@ async function deleteGroup(req, res) {
     } else if (groups.length > 0) {
         await db
             .collection('groups')
-            .deleteOne({ _id: ObjectId(_id) });
+            .deleteOne({ _id: new ObjectId(_id) });
 
         response = {
             success: true

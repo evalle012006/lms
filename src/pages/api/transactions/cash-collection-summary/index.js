@@ -14,7 +14,7 @@ async function getSummary(req, res) {
     let response = {};
     let data;
 
-    const user = await db.collection('users').find({ _id: ObjectId(userId) }).toArray();
+    const user = await db.collection('users').find({ _id: new ObjectId(userId) }).toArray();
 
     if (user.length > 0) {
         const currentMonth = moment(date).month() + 1;
@@ -40,10 +40,10 @@ async function getSummary(req, res) {
                         newMember: { $sum: '$data.newMember' },
                         mcbuTarget: { $sum: { $cond: {
                             if: { $eq: ['$occurence', 'weekly'] },
-                            // then: { $multiply: ['$data.activeClients', 50] },
                             then: '$data.mcbuTarget',
                             else: 0
                         } } },
+                        transferMcbu: { $sum: '$data.transferMcbu' },
                         mcbuActual: { $sum: '$data.mcbuActual' },
                         mcbuWithdrawal: { $sum: '$data.mcbuWithdrawal' },
                         mcbuInterest: { $sum: '$data.mcbuInterest' },

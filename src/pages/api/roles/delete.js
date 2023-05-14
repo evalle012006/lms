@@ -15,7 +15,7 @@ async function deleteRole(req, res) {
 
     const roles = await db
         .collection('roles')
-        .find({ _id: ObjectId(_id) })
+        .find({ _id: new ObjectId(_id) })
         .toArray();
 
     if (roles.length > 0) {
@@ -27,7 +27,7 @@ async function deleteRole(req, res) {
         } else {
             await db
                 .collection('roles')
-                .deleteOne({ _id: ObjectId(_id) });
+                .deleteOne({ _id: new ObjectId(_id) });
 
             response = {
                 success: true

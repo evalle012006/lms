@@ -65,7 +65,7 @@ async function updateGroup(loan) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
 
-    let group = await db.collection('groups').find({ _id: ObjectId(loan.groupId) }).toArray();
+    let group = await db.collection('groups').find({ _id: new ObjectId(loan.groupId) }).toArray();
     if (group.length > 0) {
         group = group[0];
 
@@ -78,7 +78,7 @@ async function updateGroup(loan) {
 
         delete group._id;
         await db.collection('groups').updateOne(
-            {  _id: ObjectId(loan.groupId) },
+            {  _id: new ObjectId(loan.groupId) },
             {
                 $set: { ...group }
             }, 

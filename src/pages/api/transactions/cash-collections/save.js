@@ -15,26 +15,27 @@ async function save(req, res) {
     let data = req.body;
     data.collection = JSON.parse(data.collection);
     if (data.collection.length > 0) {
-        const groupHeaderId = data._id;
+        // const groupHeaderId = data._id;
         let existCC = [];
         let newCC = [];
         data.collection.map(async cc => {
             if (cc.status !== "totals") {
-                let collection = {...cc, groupCollectionId: groupHeaderId};
+                // let collection = {...cc, groupCollectionId: groupHeaderId};
+                let collection = {...cc};
 
-                if (cc.status !== 'offset' || ((cc.remarks && (cc.remarks.value === 'reloaner' || cc.remarks.value === 'pending')) && cc.fullPaymentDate === currentDateStr)) {
-                    if (cc.occurence === 'weekly') {
-                        collection.mcbuTarget = collection.mcbuTarget ? collection.mcbuTarget + 50 : 50;
+                if (cc.occurence === "weekly") {
+                    if (collection.remarks && (collection.remarks.value?.startsWith('excused-') || collection.remarks.value === 'delinquent')) {
+                        collection.mcbuTarget = 0;
                     } else {
-                        collection.mcbuTarget = collection.mcbuTarget ? collection.mcbuTarget + 10 : 10;
+                        collection.mcbuTarget = 50;
                     }
                 }
 
-                if (collection.hasOwnProperty('_id')) {
-                    // if (collection.remarks && collection.remarks.value === "delinquent") {
-                    //     collection.targetCollection = 0;
-                    // }
+                if (collection.status === 'completed' && collection.loanBalance <= 0) {
+                    collection.pastDue = 0;
+                }
 
+                if (collection.hasOwnProperty('_id')) {
                     collection.collectionId = collection._id;
                     delete collection._id;
                     existCC.push(collection);
@@ -78,11 +79,11 @@ async function updateCollection(collections) {
 
     collections.map(async collection => {
 
-        if (collection?.origin === 'pre-save') {
+        if (collection?.origin === 'pre-save' || collection?.origin === 'automation-trf') {
             delete collection.origin;
             await db.collection('cashCollections')
                 .updateOne(
-                    { _id: ObjectId(collection.collectionId)},
+                    { _id: new ObjectId(collection.collectionId)},
                     {
                         $unset: { origin: 1 },
                         $set: {...collection}
@@ -92,7 +93,7 @@ async function updateCollection(collections) {
         } else {
             await db.collection('cashCollections')
                 .updateOne(
-                    { _id: ObjectId(collection.collectionId)},
+                    { _id: new ObjectId(collection.collectionId)},
                     {
                         $set: {...collection}
                     },
@@ -107,12 +108,16 @@ async function updateLoan(collection) {
     const ObjectId = require('mongodb').ObjectId;
     const currentDateStr = moment(getCurrentDate()).format('YYYY-MM-DD');
 
-    let loan = await db.collection('loans').find({ _id: ObjectId(collection.loanId) }).toArray();
+    let loan = await db.collection('loans').find({ _id: new ObjectId(collection.loanId) }).toArray();
     if (loan.length > 0) {
         loan = loan[0];
 
         loan.loanBalance = collection.loanBalance;
-        loan.activeLoan = collection.activeLoan;
+
+        if (collection.remarks && (!collection.remarks.value?.startsWith('excused-')  && collection.remarks.value !== 'delinquent')) {
+            loan.activeLoan = collection.activeLoan;
+        }
+        
         loan.amountRelease = collection.amountRelease;
         loan.noOfPayments = collection.noOfPayments !== '-' ? collection.noOfPayments : 0;
         loan.fullPaymentDate = '';
@@ -150,13 +155,15 @@ async function updateLoan(collection) {
             loan.fullPaymentDate = collection.fullPaymentDate;
             loan.activeLoan = 0;
             loan.amountRelease = 0;
+            loan.noPastDue = 0;
+            loan.pastDue = 0;
         }
 
         loan.lastUpdated = currentDateStr;
 
         delete loan._id;
         await db.collection('loans').updateOne(
-            { _id: ObjectId(collection.loanId) }, 
+            { _id: new ObjectId(collection.loanId) }, 
             {
                 $set: { ...loan }
             }
@@ -171,7 +178,7 @@ async function updateClient(loan) {
     const ObjectId = require('mongodb').ObjectId;
     const currentDate = getCurrentDate();
 
-    let client = await db.collection('client').find({ _id: ObjectId(loan.clientId) }).toArray();
+    let client = await db.collection('client').find({ _id: new ObjectId(loan.clientId) }).toArray();
 
     if (client.length > 0) {
         client = client[0];
@@ -205,20 +212,20 @@ async function updateClient(loan) {
 
         client.mcbuHistory = mcbuHistory;
 
-        if (loan.remarks.value === 'delinquent') {
+        if (loan.remarks && loan.remarks.value?.startsWith('delinquent')) {
             client.delinquent = true;
         }
 
         await db
             .collection('client')
             .updateOne(
-                { _id: ObjectId(loan.clientId) }, 
+                { _id: new ObjectId(loan.clientId) }, 
                 {
                     $set: { ...client }
                 }, 
                 { upsert: false });
         
-        if (loan.remarks.value === "offset") {
+        if (loan.remarks && loan.remarks.value?.startsWith('offset')) {
             await updateLoanClose(loan);
             await updateGroup(loan);
         }
@@ -230,7 +237,7 @@ async function updateLoanClose(loanData) {
     const ObjectId = require('mongodb').ObjectId;
     const currentDateStr = moment(getCurrentDate()).format('YYYY-MM-DD');
     
-    let loan = await db.collection('loans').find({ _id: ObjectId(loanData.loanId) }).toArray();
+    let loan = await db.collection('loans').find({ _id: new ObjectId(loanData.loanId) }).toArray();
 
     if (loan.length > 0) {
         loan = loan[0];
@@ -243,7 +250,7 @@ async function updateLoanClose(loanData) {
         await db
             .collection('loans')
             .updateOne(
-                { _id: ObjectId(loanData.loanId) }, 
+                { _id: new ObjectId(loanData.loanId) }, 
                 {
                     $set: { ...loan }
                 }, 
@@ -254,7 +261,7 @@ async function updateLoanClose(loanData) {
 async function updateGroup(loan) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
-    let group = await db.collection('groups').find({ _id: ObjectId(loan.groupId) }).toArray();
+    let group = await db.collection('groups').find({ _id: new ObjectId(loan.groupId) }).toArray();
 
     if (group.length > 0) {
         group = group[0];
@@ -279,7 +286,7 @@ async function updateGroup(loan) {
 
         delete group._id;
         await db.collection('groups').updateOne(
-            {  _id: ObjectId(loan.groupId) },
+            {  _id: new ObjectId(loan.groupId) },
             {
                 $set: { ...group }
             }, 

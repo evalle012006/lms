@@ -15,13 +15,13 @@ async function deleteLoan(req, res) {
 
     const branches = await db
         .collection('loans')
-        .find({ _id: ObjectId(_id) })
+        .find({ _id: new ObjectId(_id) })
         .toArray();
 
     if (branches.length > 0) {
         await db
             .collection('loans')
-            .deleteOne({ _id: ObjectId(_id) });
+            .deleteOne({ _id: new ObjectId(_id) });
 
         response = {
             success: true

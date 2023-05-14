@@ -52,7 +52,7 @@ async function updateGroup(req, res) {
 
 //             delete temp._id;
 //             await db.collection('groups').updateOne(
-//                 { _id: ObjectId(group._id) },
+//                 { _id: new ObjectId(group._id) },
 //                 { $set: { ...temp } },
 //                 { upsert: false }
 //             );

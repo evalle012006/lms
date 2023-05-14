@@ -602,9 +602,10 @@ const TableComponent = ({
                                 const delinquent = row.original.delinquent;
                                 const totalData = row.original.hasOwnProperty('totalData') ? row.original.totalData : false;
                                 const selected = row.original.hasOwnProperty('selected') ? row.original.selected : false;
-                                const allowApproved = row.original.hasOwnProperty('allowApproved') ? row.original.allowApproved : false;
+                                const allowApproved = row.original.hasOwnProperty('allowApproved') ? row.original.allowApproved : true;
                                 const status = row.original.hasOwnProperty('status') && row.original.status;
                                 const pageName = row.original.hasOwnProperty('page') && row.original.page;
+                                // const error = row.original.error ? row.original.error : false;
 
                                 let bg = 'even:bg-gray-100';
 
@@ -612,11 +613,14 @@ const TableComponent = ({
                                   bg = 'bg-red-100';
                                 } else if (pageName === 'branch-summary' && status === 'open') {
                                   bg = 'bg-blue-200';
-                                }
+                                } 
+                                // else if (error) {
+                                //   bg = 'bg-red-100';
+                                // }
 
                                 let fontColor = 'text-gray-500';
-                                if (totalData) {
-                                  fontColor = 'text-red-400';
+                                if (totalData || (row.original.name?.toLowerCase().includes('totals'))) {
+                                  fontColor = '!text-red-400';
                                 }
 
                                 return (

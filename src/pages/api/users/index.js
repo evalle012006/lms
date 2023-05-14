@@ -53,7 +53,7 @@ async function updateUser(req, res) {
                             position: fields.position,
                             profile: profile,
                             role: JSON.parse(fields.role),
-                            designatedBranch: fields.designatedBranch,
+                            designatedBranch: JSON.parse(fields.designatedBranch),
                             loNo: fields.loNo,
                             transactionType: fields.transactionType
                         },
@@ -101,7 +101,7 @@ const saveFile = async (file, uid) => {
 const findUserByID = async (id) => {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
-    const condition = id ? { _id: ObjectId(id) } : {};
+    const condition = id ? { _id: new ObjectId(id) } : {};
     
     const users = await db
         .collection('users')

@@ -18,7 +18,7 @@ async function getClient(req, res) {
     const clients = await db
         .collection('client')
         .aggregate([
-            { $match: { _id: ObjectId(clientId) } },
+            { $match: { _id: new ObjectId(clientId) } },
             {
                 $addFields: {
                     "clientId": { $toString: "$_id" }
@@ -61,7 +61,7 @@ async function getClient(req, res) {
 //     const clientResp = await db
 //         .collection('client')
 //         .updateOne(
-//             { _id: ObjectId(clientId) }, 
+//             { _id: new ObjectId(clientId) }, 
 //             {
 //                 $set: { ...client }
 //             }, 
@@ -83,7 +83,7 @@ async function updateClient(req, res) {
     const form = new formidable.IncomingForm({ keepExtensions: true });
     const promise = await new Promise((resolve, reject) => {
         form.parse(req, async function (err, fields, files) {
-            let clientData = await db.collection('client').find({ _id: ObjectId(fields._id) }).toArray();
+            let clientData = await db.collection('client').find({ _id: new ObjectId(fields._id) }).toArray();
             clientData = clientData.length > 0 && clientData[0];
 
             let file;
@@ -100,7 +100,7 @@ async function updateClient(req, res) {
             const clientResponse = await db
                 .collection('client')
                 .updateOne(
-                    { _id: ObjectId(clientData._id) },
+                    { _id: new ObjectId(clientData._id) },
                     {
                         $set: {
                             firstName: fields.firstName,

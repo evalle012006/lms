@@ -15,7 +15,7 @@ async function deleteLoan(req, res) {
 
     const loans = await db
         .collection('loans')
-        .find({ _id: ObjectId(loanData._id) })
+        .find({ _id: new ObjectId(loanData._id) })
         .toArray();
 
     if (loans.length > 0) {
@@ -23,7 +23,7 @@ async function deleteLoan(req, res) {
         if (loans[0].status === 'pending') {
             await db
             .collection('loans')
-            .deleteOne({ _id: ObjectId(loanData._id) });
+            .deleteOne({ _id: new ObjectId(loanData._id) });
         
             updateGroup(loans[0]);
 
@@ -51,7 +51,7 @@ async function updateGroup(loan) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
 
-    let group = await db.collection('groups').find({ _id: ObjectId(loan.groupId) }).toArray();
+    let group = await db.collection('groups').find({ _id: new ObjectId(loan.groupId) }).toArray();
     if (group.length > 0) {
         group = group[0];
 
@@ -68,7 +68,7 @@ async function updateGroup(loan) {
 
         delete group._id;
         await db.collection('groups').updateOne(
-            {  _id: ObjectId(loan.groupId) },
+            {  _id: new ObjectId(loan.groupId) },
             {
                 $set: { ...group }
             }, 

@@ -77,7 +77,7 @@ async function update(data) {
     const ObjectId = require('mongodb').ObjectId;
     const currentDate = getCurrentDate();
 
-    let groupCC = await db.collection('groupCashCollections').find({ _id: ObjectId(data._id) }).toArray();
+    let groupCC = await db.collection('groupCashCollections').find({ _id: new ObjectId(data._id) }).toArray();
 
     if (groupCC.length > 0) {
         groupCC = {
@@ -90,7 +90,7 @@ async function update(data) {
 
         await db.collection('groupCashCollections')
             .updateOne(
-                { _id: ObjectId(data._id) }, 
+                { _id: new ObjectId(data._id) }, 
                 {
                     $set: { ...groupCC }
                 }, 

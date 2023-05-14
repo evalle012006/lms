@@ -16,7 +16,7 @@ async function getRole(req, res) {
     let response = {};
     const role = await db.collection('roles')
         .aggregate([
-            { $match: { _id: ObjectId(id) } },
+            { $match: { _id: new ObjectId(id) } },
             {
                 $lookup: {
                     from: "rolesPermissions",
@@ -47,7 +47,7 @@ async function updateRole(req, res) {
     const roleResp = await db
         .collection('roles')
         .updateOne(
-            { _id: ObjectId(roleId) }, 
+            { _id: new ObjectId(roleId) }, 
             {
                 $set: { ...role }
             }, 
