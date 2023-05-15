@@ -208,7 +208,7 @@ async function saveCashCollection(loan, group) {
                 .updateOne(
                     { _id: ccId }, 
                     {
-                        $set: { ...cashCollection, status: status, modifiedDate: currentDate }
+                        $set: { ...cashCollection, status: status, loanCycle: loan.loanCycle, modifiedDate: currentDate }
                     }, 
                     { upsert: false }
                 );
