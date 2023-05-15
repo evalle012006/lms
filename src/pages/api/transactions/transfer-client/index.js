@@ -4,8 +4,12 @@ import { getCurrentDate } from '@/lib/utils';
 import moment from 'moment';
 
 export default apiHandler({
-    post: transferClients
+    post: transferClients,
+    get: getList
 });
+
+let statusCode = 200;
+let response = {};
 
 const currentDate = getCurrentDate();
 
@@ -13,8 +17,6 @@ async function transferClients(req, res) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
     const clients = req.body;
-    let statusCode = 200;
-    let response = {};
 
     if (clients.length > 0) {
         let sourceGroup = await db.collection('groups').find({ _id: new ObjectId(clients[0].oldGroupId) }).toArray();
@@ -220,5 +222,99 @@ async function saveCashCollection(client, loan, sourceGroup, targetGroup) {
         await db.collection('cashCollections').insertOne({ ...data });
     } else {
         await db.collection('cashCollections').updateOne({ _id: existingCashCollection[0]._id }, { $set: { transferred: client.sameLo ? false : true } })
+    }
+}
+
+async function getList(req, res) {
+    const { db } = await connectToDatabase();
+    const ObjectId = require('mongodb').ObjectId;
+    const { _id } = req.query;
+
+    if (_id) {
+        const areaManager = await db.collection("users").find({ _id: new ObjectId(_id) }).toArray();
+        if (areaManager.length > 0) {
+            const branchCodes = areaManager[0].designatedBranch;
+            const branches = await db.collection("branches").find({ $expr: { $in: ['$code', branchCodes] } }).toArray();
+            if (branches.length > 0) {
+                const branchIds = branches.map(b => b._id + '');
+                const transferClients = await db
+                    .collection('transferClients')
+                    .aggregate([
+                        { $match: { $expr: {$and: [{$eq: ['$status', 'pending']}, {$in: ['$branchId', branchIds]}]} } },
+                        {
+                            $addFields: {
+                                "clientIdObj": { $toObjectId: "$clientId" },
+                            }
+                        },
+                        {
+                            $lookup: {
+                                from: "client",
+                                localField: "clientIdObj",
+                                foreignField: "_id",
+                                as: "client"
+                            }
+                        },
+                        {
+                            $unwind: "$client"
+                        },
+                        {
+                            $lookup: {
+                                from: "loans",
+                                localField: 'clientId',
+                                foreignField: 'clientId',
+                                pipeline: [
+                                    { $match: { $expr: { $or: [ { $eq: ['$status', 'active'] }, { $eq: ['$status', 'completed'] } ] } } }
+                                ],
+                                as: 'loans'
+                            }
+                        },
+                        { $project: { clientIdObj: 0 } }
+                    ])
+                    .toArray();
+
+                    response = { success: true, data: transferClients };
+            } else {
+                response = { error: true, message: "No data found." };
+            }
+        } else {
+            response = { error: true, message: "No data found." };
+        }
+    } else {
+        const transferClients = await db
+            .collection('transferClients')
+            .aggregate([
+                { $match: { $expr: { $eq: ['$status', 'pending'] } } },
+                {
+                    $addFields: {
+                        "clientIdObj": { $toObjectId: "$clientId" },
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "client",
+                        localField: "clientIdObj",
+                        foreignField: "_id",
+                        as: "client"
+                    }
+                },
+                {
+                    $unwind: "$client"
+                },
+                {
+                    $lookup: {
+                        from: "loans",
+                        localField: 'clientId',
+                        foreignField: 'clientId',
+                        pipeline: [
+                            { $match: { $expr: { $or: [ { $eq: ['$status', 'active'] }, { $eq: ['$status', 'completed'] } ] } } }
+                        ],
+                        as: 'loans'
+                    }
+                },
+                { $project: { clientIdObj: 0 } }
+            ])
+            .toArray();
+
+            response = { success: true, data: transferClients };
     }
 }
