@@ -445,9 +445,9 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
 
         let totalsLoanRelease = totals.totalLoanRelease + totals.totalTransferAmountRelease + totals.currentReleaseAmount;
         let totalsLoanBalance = totals.totalLoanBalance + totals.totalTransferLoanBalance + totals.currentReleaseAmount;
-        totalsLoanRelease = totals.totalLoanRelease - totals.totalTransferredAmountRelease;
-        totalsLoanBalance = totals.totalLoanBalance - totals.totalTransferredLoanBalance;
-
+        totalsLoanRelease = totalsLoanRelease - totals.totalTransferredAmountRelease;
+        totalsLoanBalance = totalsLoanBalance - totals.totalTransferredLoanBalance;
+        
         if (yearEnd) {
             grandTotal = {
                 day: 'Year End',
