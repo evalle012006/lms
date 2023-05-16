@@ -236,6 +236,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         totalTransferLoanBalance += cc.cashCollections[0].transferLoanBalance;
                         totalTransferredAmountRelease += cc.cashCollections[0].transferredAmountRelease;
                         totalTransferredLoanBalance += cc.cashCollections[0].transferredLoanBalance;
+                        totalMcbuTarget += cc.cashCollections[0].mcbuTarget ? cc.cashCollections[0].mcbuTarget : 0;
                     }
     
                     if (cc.currentRelease.length > 0) {
@@ -268,9 +269,9 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         noOfFullPayment += cc.fullPayment[0].noOfFullPayment ? cc.fullPayment[0].noOfFullPayment : 0;
                     }
 
-                    if (cc.mcbuTarget.length > 0) {
-                        totalMcbuTarget += cc.mcbuTarget[0].total;
-                    }
+                    // if (cc.mcbuTarget.length > 0) {
+                    //     totalMcbuTarget += cc.mcbuTarget[0].total;
+                    // }
                 } else {
                     if (cc.cashCollections.length > 0) {
                         noCurrentRelease = cc.cashCollections[0].newCurrentRelease + ' / ' + cc.cashCollections[0].reCurrentRelease;

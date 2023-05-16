@@ -7,7 +7,53 @@ export default apiHandler({
     post: updateCCData
 });
 
+// fixed no currentReleaseAmount and loanCycle
+// async function updateCCData(req, res) {
+//     const { db } = await connectToDatabase();
+//     const ObjectId = require('mongodb').ObjectId;
 
+//     let statusCode = 200;
+//     let response = {};
+
+
+//     const cashCollections = await db.collection('cashCollections')
+//         .aggregate([
+//             { $match: { "remarks.value": {$regex: /^reloaner/}, currentReleaseAmount: 0, status: "tomorrow" } },
+//             // { $addFields: { "loanIdObj": { $toObjectId: "$loanId" } } },
+//             {
+//                 $lookup: {
+//                     from: 'loans',
+//                     localField: 'clientId',
+//                     foreignField: 'clientId',
+//                     pipeline: [
+//                         {$match: { status: "active" }}
+//                     ],
+//                     as: 'loans'
+//                 }
+//             }
+//         ]).toArray();
+
+//     if (cashCollections.length > 0) {
+//         cashCollections.map(async cc => {
+//             let temp = {...cc};
+
+//             delete temp.loans;
+//             temp.loanCycle = cc.loans[0].loanCycle;
+//             temp.currentReleaseAmount = cc.loans[0].loanRelease;
+//             temp.modifiedRemarks = "remediated";
+
+//             await db.collection('cashCollections').updateOne({_id: cc._id}, {$set: {...temp}});
+//         });
+//     }
+
+//     response = { success: true };
+
+//     res.status(statusCode)
+//         .setHeader('Content-Type', 'application/json')
+//         .end(JSON.stringify(response));
+// }
+
+// adding groupDay on weekly transactions
 async function updateCCData(req, res) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;

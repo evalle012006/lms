@@ -40,7 +40,7 @@ async function save(req, res) {
                 loanId: loan._id + '',
                 branchId: loan.branchId,
                 groupId: loan.groupId,
-                groupname: loan.groupName,
+                groupName: loan.groupName,
                 loId: loan.loId,
                 clientId: loan.clientId,
                 slotNo: loan.slotNo,
