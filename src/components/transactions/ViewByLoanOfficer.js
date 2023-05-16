@@ -23,9 +23,11 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
     const router = useRouter();
 
     const handleRowClick = (selected) => {
-        if (selected && selected.hasOwnProperty('_id')) {
+        if (selected && selected.hasData) {
             localStorage.setItem('selectedLO', selected._id);
             router.push(`/transactions/${selected.transactionType}-cash-collection/group/${selected._id}`);
+        } else {
+            toast.error("Selected LO has no group transactions.");
         }
     };
 
@@ -88,20 +90,23 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                     mispaymentStr: '-',
                     fullPaymentAmountStr: '-',
                     noOfFullPayment: '-',
-                    groupSummaryIds: [],
                     pastDueStr: '-',
                     noPastDue: '-',
                     offsetPerson: '-',
                     transfer: '-',
                     page: 'loan-officer-summary',
-                    status: '-'
+                    status: '-',
+                    hasData: lo?.loans?.length > 0
                 };
 
                 let groupStatus = 'open';
                 if (lo.cashCollections.length > 0) {
-                    const transactionStatus = lo.cashCollections[0].groupStatusArr.filter(status => status === "closed");
-                    if (transactionStatus.length > 0) {
-                        groupStatus = 'close';
+                    const groupStatusArr = lo.cashCollections[0].groupStatusArr;
+                    if (groupStatusArr.length === 1) {
+                        const transactionStatus = groupStatusArr.filter(status => status === "closed");
+                        if (transactionStatus.length > 0) {
+                            groupStatus = 'close';
+                        }   
                     }
                 }
 
@@ -267,7 +272,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                         collection.mcbuReturnAmtStr = collection.mcbuReturnAmt > 0 ? formatPricePhp(collection.mcbuReturnAmt): '-';
                         collection.mcbuInterest = lo.cashCollections[0].mcbuInterest;
                         collection.mcbuInterestStr = lo.cashCollections[0].mcbuInterest > 0 ? lo.cashCollections[0].mcbuInterest : '-';
-                        collection.status = groupStatus;
+                        collection.status = '-';
 
                         const newReleasePerson = lo.cashCollections[0].newCurrentRelease;
                         const reReleasePerson = lo.cashCollections[0].reCurrentRelease;
@@ -505,7 +510,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
         collectionData.filter(u => u.transactionType === 'weekly').map(collection => {
             noOfClients += (collection.activeClients && collection.activeClients !== '-') ? collection.activeClients : 0;
             noOfBorrowers += (collection.activeBorrowers && collection.activeBorrowers !== '-') ? collection.activeBorrowers : 0;
-            totalsLoanRelease += collection.totalReleases ? collection.totalReleases : 0;
+            totalsLoanRelease += collection.totalLoanRelease ? collection.totalLoanRelease : 0;
             totalsLoanBalance += collection.totalLoanBalance ? collection.totalLoanBalance : 0;
             noOfNewCurrentRelease += collection.newReleasePerson ? collection.newReleasePerson : 0;
             noOfReCurrentRelease += collection.reReleasePerson ? collection.reReleasePerson : 0;

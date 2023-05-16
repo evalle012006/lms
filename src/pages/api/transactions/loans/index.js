@@ -59,6 +59,7 @@ async function updateLoan(req, res) {
     const loan = req.body;
     const loanId = loan._id;
     delete loan._id;
+    delete loan.group;
 
     const loanResp = await db
         .collection('loans')

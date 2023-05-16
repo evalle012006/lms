@@ -124,13 +124,15 @@ const CashCollectionDetailsPage = () => {
             // setHeaderData(groupSummary);
 
             let dataCollection = response.data.collection;
+            let transactionStatus;
             if (type === 'filter') {
                 dataCollection = dataCollection.filter(cc => cc.hasOwnProperty('loanId') && cc.loanId !== null );
+                transactionStatus = dataCollection.filter(cc => cc.groupStatus === 'closed');
+            } else {
+                transactionStatus = dataCollection.filter(cc => cc?.current[0]?.groupStatus === 'closed');   
             }
 
-            const tansactionStatus = dataCollection.filter(cc => cc.groupStatus === 'closed');
-
-            if (tansactionStatus.length === 0 && (!date || currentDate === date)) {
+            if (transactionStatus.length === 0 && (!date || currentDate === date)) {
                 setEditMode(true);
                 setGroupSummaryIsClose(false);
 
@@ -208,6 +210,8 @@ const CashCollectionDetailsPage = () => {
                         history: cc.hasOwnProperty('history') ? cc.history : null,
                         prevData: cc.hasOwnProperty('prevData') ? cc.prevData : null
                     }
+
+                    setEditMode(false);
                 } else if (cc.status === "closed") {
                     let numMispayment = cc.mispayment > 0 ? cc.mispayment + ' / ' + maxDays : '-';
                     if (date) {
@@ -279,6 +283,8 @@ const CashCollectionDetailsPage = () => {
                         history: cc.hasOwnProperty('history') ? cc.history : null,
                         prevData: cc.hasOwnProperty('prevData') ? cc.prevData : null
                     }
+
+                    setEditMode(false);
                 } else if (cc.status !== "closed") {
                     let numMispayment = cc.mispayment > 0 ? cc.mispayment + ' / ' + maxDays : '-';
                     if (date) {
@@ -369,11 +375,13 @@ const CashCollectionDetailsPage = () => {
                         collection.mcbuInterestStr = cc.current[0].mcbuInterest > 0 ? formatPricePhp(cc.current[0].mcbuInterest) : '-',
                         collection.advanceDays = cc.current[0].advanceDays;
 
-                        if (cc.current[0].hasOwnProperty('origin')) {
+                        if (cc.current[0]?.origin) {
                             collection.origin = cc.current[0].origin;
                             if (collection.origin !== 'pre-save' && collection.origin !== 'automation-trf') {
                                 setEditMode(false);
                             }
+                        } else {
+                            setEditMode(false);
                         }
                     }
     
@@ -400,7 +408,7 @@ const CashCollectionDetailsPage = () => {
                     return;
                 }
 
-                if (!date && cc.hasOwnProperty('pastDue')) {
+                if (!date && cc?.pastDue) {
                     // if pastDue === loanBalance then make target collection 0
                     if (collection.pastDue === collection.loanBalance) {
                         collection.targetCollection = 0;
@@ -613,7 +621,6 @@ const CashCollectionDetailsPage = () => {
                 totalMcbuCol += collection.mcbuCol ? collection.mcbuCol : 0;
                 totalMcbuWithdraw += collection.mcbuWithdrawal ? collection.mcbuWithdrawal : 0;
 
-                console.log('Return', collection);
                 totalMcbuReturn += collection.mcbuReturnAmt ? collection.mcbuReturnAmt : 0;
                 totalMcbuInterest += collection.mcbuInterest ? collection.mcbuInterest : 0;
             }

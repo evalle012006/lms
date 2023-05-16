@@ -443,8 +443,8 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
     const createLos = (totals, selectedBranch, selectedLO, dateFilter, yearEnd) => {
         let grandTotal;
 
-        let totalsLoanRelease = totals.totalLoanRelease + totals.totalTransferAmountRelease;
-        let totalsLoanBalance = totals.totalLoanBalance + totals.totalTransferLoanBalance;
+        let totalsLoanRelease = totals.totalLoanRelease + totals.totalTransferAmountRelease + totals.currentReleaseAmount;
+        let totalsLoanBalance = totals.totalLoanBalance + totals.totalTransferLoanBalance + totals.currentReleaseAmount;
         totalsLoanRelease = totals.totalLoanRelease - totals.totalTransferredAmountRelease;
         totalsLoanBalance = totals.totalLoanBalance - totals.totalTransferredLoanBalance;
 

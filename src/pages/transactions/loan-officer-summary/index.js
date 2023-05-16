@@ -289,23 +289,30 @@ const LoanOfficerSummary = () => {
                     temp.activeClients = temp.activeClients > 0 ? temp.activeClients : fBal.activeClients;
                     // temp.activeLoanReleasePerson = fBal.activeLoanReleasePerson + loanReleasePerson - fullPaymentPerson;
                     // temp.activeLoanReleaseAmount = fBal.activeLoanReleaseAmount + loanReleaseAmount - fullPaymentAmount;
-                    // temp.activeLoanReleaseAmountStr = formatPricePhp(temp.activeLoanReleaseAmount);
+                    temp.activeLoanReleasePerson = temp.activeLoanReleasePerson > 0 ? temp.activeLoanReleasePerson : fBal.activeLoanReleasePerson;
+                    temp.activeLoanReleaseAmount = temp.activeLoanReleaseAmount > 0 ? temp.activeLoanReleaseAmount : fBal.activeLoanReleaseAmount;
+                    temp.activeLoanReleaseAmountStr = formatPricePhp(temp.activeLoanReleaseAmount);
                     temp.activeBorrowers = temp.activeBorrowers > 0 ? temp.activeBorrowers : fBal.activeBorrowers;
                     // temp.loanBalance = fBal.loanBalance + loanReleaseAmount - collectionActual;
-                    // temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
+                    temp.loanBalance = temp.loanBalance > 0 ? temp.loanBalance : fBal.loanBalance;
+                    temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
                     temp.mcbuBalance = fBalMcbuBalance + mcbuActual - mcbuWithdrawal + mcbuInterest - mcbuReturnAmt + transferMCBU;
                     temp.mcbuBalanceStr = formatPricePhp(temp.mcbuBalance);
                 } else {
                     temp.activeClients = temp.activeClients > 0 ? temp.activeClients : prevLos.activeClients;
                     // temp.activeLoanReleasePerson = prevLos.activeLoanReleasePerson + loanReleasePerson - fullPaymentPerson;
                     // temp.activeLoanReleaseAmount = prevLos.activeLoanReleaseAmount + loanReleaseAmount - fullPaymentAmount;
-                    // temp.activeLoanReleaseAmountStr = formatPricePhp(temp.activeLoanReleaseAmount);
+                    temp.activeLoanReleasePerson = temp.activeLoanReleasePerson > 0 ? temp.activeLoanReleasePerson : prevLos.activeLoanReleasePerson;
+                    temp.activeLoanReleaseAmount = temp.activeLoanReleaseAmount > 0 ? temp.activeLoanReleaseAmount : prevLos.activeLoanReleaseAmount;
+                    temp.activeLoanReleaseAmountStr = formatPricePhp(temp.activeLoanReleaseAmount);
                     temp.activeBorrowers = temp.activeBorrowers > 0 ? temp.activeBorrowers : prevLos.activeBorrowers;
                     // temp.loanBalance = prevLos.loanBalance + loanReleaseAmount - collectionActual;
-                    // temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
+                    temp.loanBalance = temp.loanBalance > 0 ? temp.loanBalance : prevLos.loanBalance;
+                    temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
                     temp.mcbuBalance = prevLos.mcbuBalance + mcbuActual - mcbuWithdrawal + mcbuInterest - mcbuReturnAmt + transferMCBU;
                     temp.mcbuBalanceStr = formatPricePhp(temp.mcbuBalance);
                 }
+
 
                 prevLos = temp;
             }

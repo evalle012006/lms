@@ -619,7 +619,7 @@ const TableComponent = ({
                                 // }
 
                                 let fontColor = 'text-gray-500';
-                                if (totalData) {
+                                if (totalData || (row.original.name?.toLowerCase().includes('totals'))) {
                                   fontColor = '!text-red-400';
                                 }
 
