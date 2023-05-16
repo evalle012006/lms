@@ -23,12 +23,12 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
     const router = useRouter();
 
     const handleRowClick = (selected) => {
-        if (selected && selected.hasData) {
+        // if (selected && selected.hasData) {
             localStorage.setItem('selectedLO', selected._id);
             router.push(`/transactions/${selected.transactionType}-cash-collection/group/${selected._id}`);
-        } else {
-            toast.error("Selected LO has no group transactions.");
-        }
+        // } else {
+        //     toast.error("Selected LO has no group transactions.");
+        // }
     };
 
     const getGroupCashCollections = async (selectedBranch, date) => {
