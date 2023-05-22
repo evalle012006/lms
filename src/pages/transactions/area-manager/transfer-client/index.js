@@ -45,8 +45,8 @@ const TransferClientPage = () => {
             accessor: 'firstName'
         },
         {
-            Header: "Loan Status",
-            accessor: 'loanStatus',
+            Header: "Client Status",
+            accessor: 'status',
         },
         {
             Header: "Active Loan",
@@ -73,9 +73,13 @@ const TransferClientPage = () => {
             accessor: 'mcbuStr'
         },
         {
-            Header: "Status",
-            accessor: 'status',
-        }
+            Header: "Loan Status",
+            accessor: 'loanStatus',
+        },
+        // {
+        //     Header: "Client Status",
+        //     accessor: 'status',
+        // }
     ]);
 
     const handleEditAction = (row) => {
@@ -220,6 +224,7 @@ const TransferClientPage = () => {
     ];
 
     const getTransferList = async () => {
+        // determined all the closed loans it should be highlited with red and option to delete only...
         let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/transfer-client';
         if (currentUser.role.rep === 1) {
             const response = await fetchWrapper.get(url);
@@ -244,7 +249,7 @@ const TransferClientPage = () => {
     }
 
     useEffect(() => {
-        if ((currentUser.role && currentUser.role.rep > 2)) {
+        if ((currentUser?.role?.rep > 2)) {
             router.push('/');
         }
     }, []);

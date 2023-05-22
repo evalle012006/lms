@@ -8,26 +8,19 @@ import InputText from "@/lib/ui/InputText";
 import InputNumber from "@/lib/ui/InputNumber";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
-import Spinner from "../Spinner";
 import 'react-calendar/dist/Calendar.css';
-import moment from 'moment'
 import SelectDropdown from "@/lib/ui/select";
 import SideBar from "@/lib/ui/SideBar";
-import RadioButton from "@/lib/ui/radio-button";
-import { setGroupList } from "@/redux/actions/groupActions";
-import { setClientList } from "@/redux/actions/clientActions";
-import { UppercaseFirstLetter } from "@/lib/utils";
+import { UppercaseFirstLetter, formatPricePhp } from "@/lib/utils";
+import Spinner from "@/components/Spinner";
 
 const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setShowSidebar, onClose }) => {
     const formikRef = useRef();
     const dispatch = useDispatch();
-    const currentUser = useSelector(state => state.user.data);
     const currentDate = useSelector(state => state.systemSettings.currentDate);
     const [loading, setLoading] = useState(false);
     const [title, setTitle] = useState('Add Transfer Client');
     const branchList = useSelector(state => state.branch.list);
-
-    const [slotNumbers, setSelectedSlotNumbers] = useState([]);
 
     const [sourceUserList, setSourceUserList] = useState([]);
     const [sourceGroupList, setSourceGroupList] = useState([]);
@@ -41,6 +34,12 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
     const [selectedTargetUser, setSelectedTargetUser] = useState();
     const [selectedTargetGroup, setSelectedTargetGroup] = useState();
 
+    const [clientList, setClientList] = useState([]);
+    const [selectedClientId, setSelectedClientId] = useState();
+    const [selectedClient, setSelectedClient] = useState();
+    const [slotNumbers, setSlotNumbers] = useState();
+    const [selectedSlotNo, setSelectedSlotNo] = useState();
+
     const initialValues = {
         sourceBranchId: client.sourceBranchId,
         sourceUserId: client.sourceUserId,
@@ -53,41 +52,35 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
     }
 
     const validationSchema = yup.object().shape({
-        sourceBranchId: yup
-            .string()
-            .required('Please select a source branch.'),
-        sourceUserId: yup
-            .string()
-            .required('Please select a source loan officer.'),
-        sourceGroupId: yup
-            .string()
-            .required('Please select a source group.'),
-        targetBranchId: yup
-            .string()
-            .required('Please select a target branch.'),
-        targetUserId: yup
-            .string()
-            .required('Please select a target loan officer.'),
-        targetGroupId: yup
-            .string()
-            .required('Please select a target group.'),
-        selectedClientId: yup
-            .string()
-            .required('Please select client to transfer.'),
-        selectedSlotNo: yup
-            .string()
-            .required('Please select slot number.')
+        // sourceBranchId: yup
+        //     .string()
+        //     .required('Please select a source branch.'),
+        // sourceUserId: yup
+        //     .string()
+        //     .required('Please select a source loan officer.'),
+        // sourceGroupId: yup
+        //     .string()
+        //     .required('Please select a source group.'),
+        // targetBranchId: yup
+        //     .string()
+        //     .required('Please select a target branch.'),
+        // targetUserId: yup
+        //     .string()
+        //     .required('Please select a target loan officer.'),
+        // targetGroupId: yup
+        //     .string()
+        //     .required('Please select a target group.'),
+        // selectedClientId: yup
+        //     .string()
+        //     .required('Please select client to transfer.'),
+        // selectedSlotNo: yup
+        //     .number()
+        //     .required('Please select slot number.')
     });
 
     const getListUser = async (selectedBranch, type) => {
         if (selectedBranch) {
             let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
-            let selectedBranch = {};
-            if (type === "source") {
-                selectedBranch = selectedSourceBranch;
-            } else {
-                selectedBranch = selectedTargetBranch;
-            }
 
             url = url + '?' + new URLSearchParams({ branchCode: selectedBranch.code });
             const response = await fetchWrapper.get(url);
@@ -106,14 +99,15 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
                 userList.sort((a, b) => { return a.loNo - b.loNo; });
                 if (type === "source") {
                     setSourceUserList(userList);
-                    setSourceGroupList([]);
-                    setSelectedSourceGroup({});
-                    dispatch(setTransferClientList([]));
+                    setSourceGroupList();
+                    setSelectedSourceGroup();
+                    setSelectedClientId();
+                    setSelectedClient();
+                    setClientList();
                 } else {
-                    // selected user won't reset...
                     setTargetUserList(userList);
-                    setTargetGroupList([]);
-                    setSelectedTargetGroup({});
+                    setTargetGroupList();
+                    setSelectedTargetGroup();
                 }
                 
             } else {
@@ -128,12 +122,12 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
         let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list';
         let selectedBranch = {};
         if (type === "source") {
-            selectedBranch = selectedSourceBranch;
+            selectedBranch = branchList.find(b => b._id === selectedSourceBranch);
         } else {
-            selectedBranch = selectedTargetBranch;
+            selectedBranch = branchList.find(b => b._id === selectedTargetBranch);
         }
         
-        if (selectedUser) {
+        if (selectedBranch && selectedUser) {
             url = url + '?' + new URLSearchParams({ branchId: selectedBranch._id, loId: selectedUser._id });
             const response = await fetchWrapper.get(url);
             if (response.success) {
@@ -150,11 +144,13 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
 
                 if (type === "source") {
                     setSourceGroupList(groups);
-                    setSelectedSourceGroup({});
-                    dispatch(setTransferClientList([]));
+                    setSelectedSourceGroup();
+                    setSelectedClientId();
+                    setSelectedClient();
+                    setClientList();
                 } else {
                     setTargetGroupList(groups);
-                    setSelectedTargetGroup({});
+                    setSelectedTargetGroup();
                 }
 
                 setLoading(false);
@@ -175,16 +171,13 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
             await response.clients && response.clients.map(client => {
                 clients.push({
                     ...client,
-                    slotNo: client.loans.length > 0 ? client.loans[0].slotNo : '-',
-                    loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
-                    activeLoanStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].activeLoan) : '-',
-                    loanBalanceStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].loanBalance) : '-',
-                    delinquent: client.loans.length > 0 ? client.delinquent ? "Yes" : "No" : '-',
                     label: UppercaseFirstLetter(`${client.lastName}, ${client.firstName}`),
                     value: client._id
                 });   
             });
-            dispatch(setTransferClientList(clients));
+            setSelectedClientId();
+            setSelectedClient();
+            setClientList(clients)
             setLoading(false);
         } else if (response.error) {
             setLoading(false);
@@ -192,273 +185,160 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
         }
     }
 
-    const handleChangeBranch = (selected, type) => {
+    const handleChangeBranch = (field, value, type) => {
+        const selected = branchList.find(b => b._id === value);
         if (type === "source") {
-            setSelectedSourceBranch(selected);
+            setSelectedSourceBranch(value);
+            getListUser(selected, "source");
         } else {
-            setSelectedTargetBranch(selected);
+            setSlotNumbers();
+            setSelectedTargetBranch(value);
+            getListUser(selected, "target");
         }
+
+        const form = formikRef.current;
+        form.setFieldValue(field, value);  
     }
 
-    const handleChangeUser = (selected, type) => {
+    const handleChangeUser = (field, value, type) => {
         if (type === "source") {
-            setSelectedSourceUser(selected);
+            const selected = sourceUserList.find(u => u._id === value);
+            setSelectedSourceUser(value);
+            getListGroup(selected, "source");
         } else {
-            setSelectedTargetUser(selected);
+            const selected = targetUserList.find(u => u._id === value);
+            setSelectedTargetUser(value);
+            getListGroup(selected, "target");
+            setSlotNumbers();
         }
+
+        const form = formikRef.current;
+        form.setFieldValue(field, value);
     }
 
-    const handleChangeGroup = (selected, type) => {
+    const handleChangeGroup = (field, value, type) => {
+        const form = formikRef.current;
         if (type === "source") {
-            setSelectedSourceGroup(selected);
+            setSelectedSourceGroup(value);
+            getListClient(value);
         } else {
-            if (selected._id === selectedSourceGroup._id) {
+            const sourceGroup = sourceGroupList.find(group => group._id === selectedSourceGroup);
+            const targetGroup = targetGroupList.find(group => group._id === value);
+            setSlotNumbers();
+            if (value === sourceGroup._id) {
                 toast.error('Selected group is the same as the source group.');
                 setSelectedTargetGroup(null);
-            } else if (selected.occurence !== selectedSourceGroup.occurence) {
-                toast.error(`Please select a ${selectedSourceGroup.occurence} group.`);
+                form.setFieldValue(field, null);
+            } else if (targetGroup.occurence !== sourceGroup.occurence) {
+                toast.error(`Please select a ${sourceGroup.occurence} group.`);
                 setSelectedTargetGroup(null);
-            } else if (selected.status === 'available') {
-                setSelectedTargetGroup(selected);
+                form.setFieldValue(field, null);
+            } else if (targetGroup.status === 'available') {
+                setSelectedTargetGroup(value);
+                const availableSlots = targetGroup.availableSlots.map(s => {
+                    return { label: s, value: s };
+                })
+                setSlotNumbers(availableSlots);
+                form.setFieldValue(field, value);
             } else {
                 toast.error("Selected group is currently full.");
                 setSelectedTargetGroup(null);
+                form.setFieldValue(field, null);
             }
         }
     }
 
-    const handleMultiSelect = (mode, selectAll, row, rowIndex) => {
-        if (transferList) {
-            if (mode === 'all') {
-                let tempList = transferList.map(loan => {
-                    let temp = {...loan};
+    const handleChangeClient = (field, value) => {
+        const selected = clientList.find(b => b._id === value);
+        setSelectedClient(selected);
+        setSelectedClientId(value);
 
-                    temp.selected = selectAll;
-
-                    if (temp.selected === false) {
-                        delete temp.error;
-                    }
-                    
-                    return temp;
-                });
-
-                dispatch(setTransferClientList(tempList));
-            } else if (mode === 'row') {
-                let tempList = transferList.map((loan, index) => {
-                    let temp = {...loan};
-    
-                    if (index === rowIndex) {
-                        temp.selected = !temp.selected;
-
-                        if (temp.selected === false) {
-                            delete temp.error;
-                        }
-                    }
-    
-                    return temp;
-                });
-
-                dispatch(setTransferClientList(tempList));
-            }
-        }
+        const form = formikRef.current;
+        form.setFieldValue(field, value);  
     }
 
-    // const handleTransfer = async () => {
-    //     setLoading(true);
-    //     if (selectedSourceGroup._id === selectedTargetGroup._id) {
-    //         toast.error('Selected source and target group are the same.');
-    //     } else {
-    //         const updatedClientList = [...transferList];
-    //         let selectedClientList = transferList && transferList.filter(client => client.selected === true);
+    const handleChangeSlotNo = (field, value) => {
+        setSelectedSlotNo(value);
+        const form = formikRef.current;
+        form.setFieldValue(field, value);  
+    }
 
-    //         if (selectedClientList.length > 0) {
-    //             if (selectedTargetGroup) {
-    //                 const updatedSelectedClientList = selectedClientList.map(client => {
-    //                     let uClient = {...client};
-
-    //                     uClient.branchId = selectedTargetBranch?._id;
-    //                     uClient.loId = selectedTargetUser?._id;
-    //                     uClient.groupId = selectedTargetGroup?._id;
-    //                     uClient.groupName = selectedTargetGroup?.name;
-    //                     uClient.sameLo = client.loId === selectedTargetUser?._id;
-    //                     uClient.oldGroupId = client.groupId;
-    //                     uClient.oldBranchId = client.branchId;
-    //                     uClient.oldLoId = client.loId;
-
-    //                     const index = updatedClientList.findIndex(c => c._id === uClient._id);
-    //                     if (index > -1) {
-    //                         updatedClientList[index] = uClient;
-    //                     }
-
-    //                     return uClient;
-    //                 });
-
-    //                 dispatch(setTransferClientList(updatedClientList));
-    //                 const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/transfer-client', updatedSelectedClientList);
-
-    //                 if (response.success) {
-    //                     setLoading(false);
-    //                     let msg = 'Selected client/s successfully transfered.';
-    //                     if (response?.message) {
-    //                         msg = msg + ' ' + response.message;
-    //                     }
-    //                     toast.success(msg);
-    //                     setTimeout(() => {
-    //                         getListClient(selectedSourceGroup._id);
-    //                     }, 800);
-    //                 } else if (response.error) {
-    //                     setLoading(false);
-    //                     toast.error(response.message);
-    //                 }
-    //             } else {
-    //                 setLoading(false);
-    //                 toast.error("Please select target group.");
-    //             }
-    //         } else {
-    //             setLoading(false);
-    //             toast.error('No client selected.');
-    //         }
-    //     }
-    // }
+    const reset = () => {
+        setSourceUserList();
+        setSourceGroupList();
+        setSelectedSourceBranch();
+        setSelectedSourceUser();
+        setSelectedSourceGroup();
+        setTargetUserList();
+        setTargetGroupList();
+        setSelectedTargetBranch();
+        setSelectedTargetUser();
+        setSelectedTargetGroup();
+        setClientList();
+        setSelectedClientId();
+        setSelectedClient();
+        setSlotNumbers();
+        setSelectedSlotNo();
+    }
 
     const handleSaveUpdate = (values, action) => {
-        // if (values.principalLoan % 1000 === 0) {
-        //     if (type === 'weekly' && (!values.mcbu || parseFloat(values.mcbu) < 50)) {
-        //         toast.error('Invalid MCBU amount. Please enter at least 50.');
-        //     } else if (loanTerms === 100 && values.principalLoan < 10000) {
-        //         toast.error('For 100 days loan term, principal amount should be greater than or equal to 10,0000.');
-        //     } else {
-        //         setLoading(true);
-        //         let group;
-        //         values.currentDate = currentDate;
-        //         values.clientId = clientId;
-        //         if (mode !== 'reloan') {
-        //             values.groupId = selectedGroup;
-        //             group = groupList.find(g => g._id === values.groupId);
-        //             values.groupName = group.name;
-        //             const branch = branchList.find(b => b._id === group.branchId);
-        //             values.branchId = branch._id;
-        //             values.brancName = branch.name;
-        //             values.loId = group.loanOfficerId;
-        //         } else {
-        //             group = loan.group;
-        //             values.loId = group.loanOfficerId;
-        //             values.groupId = loan.groupId;
-        //             values.groupName = loan.groupName;
-        //             values.mode = 'reloan';
-        //             values.oldLoanId = loan.loanId;
-        //             values.clientId = loan.clientId;
-        //             values.branchId = loan.branchId;
-        //         }
+        console.log("saving...");
+        setLoading(true);
+        if (selectedSourceGroup === selectedTargetGroup) {
+            setLoading(false);
+            toast.error('Selected source and target groups are the same.');
+        } else if (!selectedClientId) {
+            setLoading(false);
+            toast.error("No selected client!");
+        } else {
+            if (selectedTargetGroup) {
+                let uClient = {...selectedClient};
 
-        //         values.slotNo = mode !== 'reloan' ? slotNo : loan.slotNo;
-        //         values.occurence = group.occurence;
+                uClient.branchId = selectedTargetBranch;
+                uClient.loId = selectedTargetUser;
+                uClient.groupId = selectedTargetGroup;
+                uClient.sameLo = selectedClient.loId === selectedTargetUser;
+                uClient.oldGroupId = selectedClient.groupId;
+                uClient.oldBranchId = selectedClient.branchId;
+                uClient.oldLoId = selectedClient.loId;
+                
+                if (selectedClient.loans.length > 0) {
+                    uClient.loanId = selectedClient.loans[0]._id;
+                    uClient.oldSlotNo = selectedClient.slotNo;
+                    uClient.slotNo = values.selectedSlotNo;
+                }
 
-        //         if (values.occurence === 'weekly') {
-        //             values.groupDay = group.day;
-        //         }
-
-        //         if (values.status !== 'active') {
-        //             if (group.occurence === 'weekly') {
-        //                 values.activeLoan = (values.principalLoan * 1.20) / 24;
-        //             } else if (group.occurence === 'daily') {
-        //                 values.loanTerms = loanTerms;
-        //                 if (loanTerms === 60) {
-        //                     values.activeLoan = (values.principalLoan * 1.20) / 60;
-        //                 } else {
-        //                     values.activeLoan = (values.principalLoan * 1.20) / 100;
-        //                 }
-        //             }
-            
-        //             values.loanBalance = values.principalLoan * 1.20; // initial
-        //             values.amountRelease = values.loanBalance;
-        //         }
-
-        //         values.group = group;
-
-        //         if (mode === 'add' || mode === 'reloan') {
-        //             // should check if the user has previous loan that is loanCycle 0, then set the loanCycle to 1
-        //             const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/save/';
-
-        //             values.lastUpdated = null;  // use only when updating the mispayments
-        //             values.admissionDate = moment(values.admissionDate).format('YYYY-MM-DD');
-        //             values.status = 'pending';
-        //             values.loanCycle = values.loanCycle ? values.loanCycle : 1;
-        //             values.noOfPayments = 0;
-        //             values.insertedBy = currentUser._id;
-        //             values.currentReleaseAmount = values.amountRelease;
-
-        //             fetchWrapper.post(apiUrl, values)
-        //                 .then(response => {
-        //                     setLoading(false);
-        //                     if (response.error) {
-        //                         toast.error(response.message);
-        //                     } else if (response.success) {
-        //                         setShowSidebar(false);
-        //                         toast.success('Loan successfully added.');
-        //                         action.setSubmitting = false;
-        //                         action.resetForm({values: ''});
-        //                         setSelectedGroup();
-        //                         setClientId();
-        //                         setSlotNo();
-        //                         setSlotNumber();
-        //                         onClose();
-        //                     }
-        //                 }).catch(error => {
-        //                     console.log(error)
-        //                 });
-        //         } else if (mode === 'edit') {
-        //             const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans';
-        //             values._id = loan._id;
-        //             values.modifiedBy = currentUser._id;
-        //             values.modifiedDate = moment(new Date()).format("YYYY-MM-DD");
-        //             fetchWrapper.post(apiUrl, values)
-        //                 .then(response => {
-        //                     if (response.success) {
-        //                         let error = false;
-        //                         if (values.status === 'active' && values.groupId !== loan.groupId) {
-        //                             let params = { groupId: values.groupId, oldGroupId: loan.groupId };
-                                    
-        //                             fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'groups/update-group', params)
-        //                                 .then(response => {
-        //                                     if (response.error) {
-        //                                         setLoading(false);
-        //                                         error = true;
-        //                                         toast.error(response.message);
-        //                                     }
-        //                             });
-        //                         }
-
-        //                         if (!error) {
-        //                             setLoading(false);
-        //                             setShowSidebar(false);
-        //                             toast.success('Loan successfully updated.');
-        //                             action.setSubmitting = false;
-        //                             action.resetForm();
-        //                             setSelectedGroup();
-        //                             setClientId();
-        //                             setSlotNo();
-        //                             setSlotNumber();
-        //                             onClose();
-        //                         }
-        //                     } else if (response.error) {
-        //                         setLoading(false);
-        //                         toast.error(response.message);
-        //                     }
-        //                 }).catch(error => {
-        //                     console.log(error);
-        //                 });
-        //         }
-        //     }
-        // } else {
-        //     toast.error('Principal Loan must be divisible by 1000');
-        // }
+                if (mode === "add") {
+                    fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/transfer-client', uClient)
+                        .then(response => {
+                            setLoading(false);
+                            if (response.error) {
+                                toast.error(response.message);
+                            } else if (response.success) {
+                                setShowSidebar(false);
+                                toast.success('Transfer client successfully added.');
+                                action.setSubmitting = false;
+                                action.resetForm({values: ''});
+                                reset();
+                                onClose();
+                            }
+                        }).catch(error => {
+                            console.log(error)
+                        });
+                } else {
+                    // update
+                }
+            } else {
+                setLoading(false);
+                toast.error("Please select target group.");
+            }
+        }
     }
 
     const handleCancel = () => {
         setShowSidebar(false);
         formikRef.current.resetForm();
-        // setSelectedGroup();
+        reset();
         onClose();
     }
 
@@ -486,28 +366,6 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
         };
     }, [mode]);
 
-    useEffect(() => {
-        getListUser(selectedSourceBranch, "source");
-    }, [selectedSourceBranch]);
-
-    useEffect(() => {
-        getListGroup(selectedSourceUser, "source");
-    }, [selectedSourceUser]);
-
-    useEffect(() => {
-        getListUser(selectedTargetBranch, "target");
-    }, [selectedTargetBranch]);
-
-    useEffect(() => {
-        getListGroup(selectedTargetUser, "target");
-    }, [selectedTargetUser]);
-
-    useEffect(() => {
-        if (selectedSourceGroup) {
-            getListClient(selectedSourceGroup._id);
-        }
-    }, [selectedSourceGroup]);
-
     return (
         <React.Fragment>
             <SideBar title={title} showSidebar={showSidebar} setShowSidebar={setShowSidebar} hasCloseButton={false}>
@@ -516,7 +374,7 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
                         <Spinner />
                     </div>
                 ) : (
-                    <div className="px-2">
+                    <div className="px-2 pb-8">
                         <Formik enableReinitialize={true}
                             onSubmit={handleSaveUpdate}
                             initialValues={initialValues}
@@ -537,83 +395,186 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
                                 <form onSubmit={handleSubmit} autoComplete="off">
                                     <div className="mt-4">
                                         <SelectDropdown
-                                            name="groupId"
-                                            field="groupId"
-                                            value={selectedGroup}
-                                            label="Group"
-                                            options={groupList}
-                                            onChange={(field, value) => handleGroupIdChange(field, value)}
+                                            name="sourceBranchId"
+                                            field="sourceBranchId"
+                                            value={selectedSourceBranch}
+                                            label="Source Branch"
+                                            options={branchList}
+                                            onChange={(field, value) => handleChangeBranch(field, value, "source")}
                                             onBlur={setFieldTouched}
-                                            placeholder="Select Group"
-                                            errors={touched.groupId && errors.groupId ? errors.groupId : undefined}
+                                            placeholder="Select Source Branch"
+                                            errors={touched.sourceBranchId && errors.sourceBranchId ? errors.sourceBranchId : undefined}
                                         />
                                     </div>
                                     <div className="mt-4">
                                         <SelectDropdown
-                                            name="clientId"
-                                            field="clientId"
-                                            value={clientId}
-                                            label="Client"
+                                            name="sourceUserId"
+                                            field="sourceUserId"
+                                            value={selectedSourceUser}
+                                            label="Source Loan Officer"
+                                            options={sourceUserList}
+                                            onChange={(field, value) => handleChangeUser(field, value, "source")}
+                                            onBlur={setFieldTouched}
+                                            placeholder="Select Source Loan Officer"
+                                            errors={touched.sourceUserId && errors.sourceUserId ? errors.sourceUserId : undefined}
+                                        />
+                                    </div>
+                                    <div className="mt-4">
+                                        <SelectDropdown
+                                            name="sourceGroupId"
+                                            field="sourceGroupId"
+                                            value={selectedSourceGroup}
+                                            label="Source Group"
+                                            options={sourceGroupList}
+                                            onChange={(field, value) => handleChangeGroup(field, value, "source")}
+                                            onBlur={setFieldTouched}
+                                            placeholder="Select Source Group"
+                                            errors={touched.sourceGroupId && errors.sourceGroupId ? errors.sourceGroupId : undefined}
+                                        />
+                                    </div>
+                                    <div className="mt-4">
+                                        <SelectDropdown
+                                            name="selectedClientId"
+                                            field="selectedClientId"
+                                            value={selectedClientId}
+                                            label="Client to Transfer"
                                             options={clientList}
-                                            onChange={(field, value) => handleClientIdChange(field, value)}
+                                            onChange={(field, value) => handleChangeClient(field, value)}
                                             onBlur={setFieldTouched}
                                             placeholder="Select Client"
-                                            errors={touched.clientId && errors.clientId ? errors.clientId : undefined}
+                                            errors={touched.selectedClientId && errors.selectedClientId ? errors.selectedClientId : undefined}
+                                        />
+                                    </div>
+                                    {selectedClient?.loans.length > 0 && (
+                                        <React.Fragment>
+                                            <div className="mt-4">
+                                                <div className={`flex flex-col border rounded-md px-4 py-2 bg-white border-main`}>
+                                                    <div className="flex justify-between">
+                                                        <label htmlFor={'slotNo'} className={`font-proxima-bold text-xs font-bold text-main`}>
+                                                            Current Slot Number
+                                                        </label>
+                                                    </div>
+                                                    <span className="text-gray-400">{ selectedClient.loans[0].slotNo }</span>
+                                                </div>
+                                            </div>
+                                            <div className="mt-4">
+                                                <div className={`flex flex-col border rounded-md px-4 py-2 bg-white border-main`}>
+                                                    <div className="flex justify-between">
+                                                        <label htmlFor={'slotNo'} className={`font-proxima-bold text-xs font-bold text-main`}>
+                                                            Amount Release
+                                                        </label>
+                                                    </div>
+                                                    <span className="text-gray-400">{ formatPricePhp(selectedClient.loans[0].amountRelease) }</span>
+                                                </div>
+                                            </div>
+                                            <div className="mt-4">
+                                                <div className={`flex flex-col border rounded-md px-4 py-2 bg-white border-main`}>
+                                                    <div className="flex justify-between">
+                                                        <label htmlFor={'slotNo'} className={`font-proxima-bold text-xs font-bold text-main`}>
+                                                            Loan Balance
+                                                        </label>
+                                                    </div>
+                                                    <span className="text-gray-400">{ formatPricePhp(selectedClient.loans[0].loanBalance) }</span>
+                                                </div>
+                                            </div>
+                                            <div className="mt-4">
+                                                <div className={`flex flex-col border rounded-md px-4 py-2 bg-white border-main`}>
+                                                    <div className="flex justify-between">
+                                                        <label htmlFor={'slotNo'} className={`font-proxima-bold text-xs font-bold text-main`}>
+                                                            Target Collection
+                                                        </label>
+                                                    </div>
+                                                    <span className="text-gray-400">{ formatPricePhp(selectedClient.loans[0].amountRelease - selectedClient.loans[0].loanBalance) }</span>
+                                                </div>
+                                            </div>
+                                            <div className="mt-4">
+                                                <div className={`flex flex-col border rounded-md px-4 py-2 bg-white border-main`}>
+                                                    <div className="flex justify-between">
+                                                        <label htmlFor={'slotNo'} className={`font-proxima-bold text-xs font-bold text-main`}>
+                                                            Actual Collection
+                                                        </label>
+                                                    </div>
+                                                    <span className="text-gray-400">{ formatPricePhp(selectedClient.loans[0].amountRelease - selectedClient.loans[0].loanBalance) }</span>
+                                                </div>
+                                            </div>
+                                            <div className="mt-4">
+                                                <div className={`flex flex-col border rounded-md px-4 py-2 bg-white border-main`}>
+                                                    <div className="flex justify-between">
+                                                        <label htmlFor={'slotNo'} className={`font-proxima-bold text-xs font-bold text-main`}>
+                                                            Total MCBU
+                                                        </label>
+                                                    </div>
+                                                    <span className="text-gray-400">{ formatPricePhp(selectedClient.loans[0].mcbu) }</span>
+                                                </div>
+                                            </div>
+                                            {/* <div className="mt-4">
+                                                <div className={`flex flex-col border rounded-md px-4 py-2 bg-white border-main`}>
+                                                    <div className="flex justify-between">
+                                                        <label htmlFor={'slotNo'} className={`font-proxima-bold text-xs font-bold text-main`}>
+                                                            MCBU Collection
+                                                        </label>
+                                                    </div>
+                                                    <span className="text-gray-400">{ formatPricePhp(selectedClient.loans[0].mcbu) }</span>
+                                                </div>
+                                            </div> */}
+                                        </React.Fragment>
+                                    )}
+                                    <div className="border-b border-zinc-300 h-4"></div>
+                                    <div className="mt-4">
+                                        <SelectDropdown
+                                            name="targetBranchId"
+                                            field="targetBranchId"
+                                            value={selectedTargetBranch}
+                                            label="Target Branch"
+                                            options={branchList}
+                                            onChange={(field, value) => handleChangeBranch(field, value, "target")}
+                                            onBlur={setFieldTouched}
+                                            disabled={!selectedClient}
+                                            placeholder="Select Target Branch"
+                                            errors={touched.targetBranchId && errors.targetBranchId ? errors.targetBranchId : undefined}
                                         />
                                     </div>
                                     <div className="mt-4">
                                         <SelectDropdown
-                                            name="slotNo"
-                                            field="slotNo"
-                                            value={slotNo}
-                                            label="Slot Number"
-                                            options={slotNumber}
-                                            onChange={(field, value) => handleSlotNoChange(field, value)}
+                                            name="targetUserId"
+                                            field="targetUserId"
+                                            value={selectedTargetUser}
+                                            label="Target Loan Officer"
+                                            options={targetUserList}
+                                            onChange={(field, value) => handleChangeUser(field, value, "target")}
                                             onBlur={setFieldTouched}
-                                            placeholder="Select Slot No"
-                                            errors={touched.slotNo && errors.slotNo ? errors.slotNo : undefined}
+                                            disabled={!selectedTargetBranch}
+                                            placeholder="Select Target Loan Officer"
+                                            errors={touched.targetUserId && errors.targetUserId ? errors.targetUserId : undefined}
                                         />
                                     </div>
                                     <div className="mt-4">
-                                        <InputNumber
-                                            name="mcbu"
-                                            value={values.mcbu}
-                                            onChange={handleChange}
-                                            label="MCBU"
-                                            placeholder="Enter MCBU"
-                                            setFieldValue={setFieldValue}
-                                            errors={touched.mcbu && errors.mcbu ? errors.mcbu : undefined} />
+                                        <SelectDropdown
+                                            name="targetGroupId"
+                                            field="targetGroupId"
+                                            value={selectedTargetGroup}
+                                            label="Target Group"
+                                            options={targetGroupList}
+                                            onChange={(field, value) => handleChangeGroup(field, value, "target")}
+                                            onBlur={setFieldTouched}
+                                            disabled={!selectedTargetUser}
+                                            placeholder="Select Target Group"
+                                            errors={touched.targetGroupId && errors.targetGroupId ? errors.targetGroupId : undefined}
+                                        />
                                     </div>
                                     <div className="mt-4">
-                                        <InputNumber
-                                            name="principalLoan"
-                                            value={values.principalLoan}
-                                            onChange={handleChange}
-                                            label="Principal Loan"
-                                            disabled={values.status === 'active'}
-                                            placeholder="Enter Principal Loan"
-                                            setFieldValue={setFieldValue}
-                                            errors={touched.principalLoan && errors.principalLoan ? errors.principalLoan : undefined} />
-                                    </div>
-                                    <div className="mt-4">
-                                        <InputText
-                                            name="pnNumber"
-                                            value={values.pnNumber}
-                                            onChange={handleChange}
-                                            label="Promisory Note Number"
-                                            placeholder="Enter PN Number"
-                                            setFieldValue={setFieldValue}
-                                            errors={touched.pnNumber && errors.pnNumber ? errors.pnNumber : undefined} />
-                                    </div>
-                                    <div className="mt-4">
-                                        <InputText
-                                            name="coMaker"
-                                            value={values.coMaker}
-                                            onChange={handleChange}
-                                            label="Co-Maker"
-                                            placeholder="Enter Co-Maker"
-                                            setFieldValue={setFieldValue}
-                                            errors={touched.coMaker && errors.coMaker ? errors.coMaker : undefined} />
+                                        <SelectDropdown
+                                            name="selectedSlotNo"
+                                            field="selectedSlotNo"
+                                            value={selectedSlotNo}
+                                            label="New Slot Number"
+                                            options={slotNumbers}
+                                            onChange={(field, value) => handleChangeSlotNo(field, value)}
+                                            onBlur={setFieldTouched}
+                                            disabled={!selectedTargetGroup}
+                                            placeholder="Select New Stot No"
+                                            errors={touched.selectedSlotNo && errors.selectedSlotNo ? errors.selectedSlotNo : undefined}
+                                        />
                                     </div>
                                     <div className="flex flex-row mt-5">
                                         <ButtonOutline label="Cancel" onClick={handleCancel} className="mr-3" />
