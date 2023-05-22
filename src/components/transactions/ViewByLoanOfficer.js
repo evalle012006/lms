@@ -155,7 +155,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                         let loLoanTarget = 0;
                         let loMcbu = 0;
 
-                        if (lo.groups.length > 0) {
+                        if (lo.groups && lo.groups.length > 0) {
                             lo.groups.map(g => {
                                 if (g.loanTarget.length > 0) {
                                     loLoanTarget += g.loanTarget[0].loanTarget;
