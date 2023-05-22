@@ -1,7 +1,5 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
-import { getCurrentDate } from '@/lib/utils';
-import moment from 'moment';
 
 let response = {};
 let statusCode = 200;
@@ -13,14 +11,13 @@ export default apiHandler({
 
 async function processLOSummary(req, res) {
     const { db } = await connectToDatabase();
-    const { loId, mode } = req.body;
-    const currentDate = getCurrentDate();
+    const { loId, mode, currentDate } = req.body;
 
     if (loId) {
         const result = await db.collection('cashCollections').updateMany(
             {
                 loId: loId,
-                dateAdded: moment(currentDate).format('YYYY-MM-DD')
+                dateAdded: currentDate
             }, {
                 $set: { groupStatus: mode === 'close' ? 'closed' : 'pending' }
             });

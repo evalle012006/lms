@@ -86,7 +86,13 @@ const WeeklyCashCollectionDetailsPage = () => {
     // }
 
     const getListBranch = async () => {
-        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'branches/list');
+        let url = process.env.NEXT_PUBLIC_API_URL + 'branches/list';
+
+        if (currentUser.role.rep === 3 || currentUser.role.rep === 4) {
+            url = url + '?' + new URLSearchParams({ branchCode: currentUser.designatedBranch });
+        }
+        
+        const response = await fetchWrapper.get(url);
         if (response.success) {
             let branches = [];
             response.branches && response.branches.map(branch => {
@@ -97,9 +103,7 @@ const WeeklyCashCollectionDetailsPage = () => {
                 );
             });
 
-            if (currentUser.root !== true && (currentUser.role.rep === 3 || currentUser.role.rep === 4)) {
-                branches = [branches.find(b => b.code === currentUser.designatedBranch)];
-            } else if (selectedBranchSubject.value) {
+            if (selectedBranchSubject.value) {
                 branches = [branches.find(b => b._id === selectedBranchSubject.value)];
             }
             

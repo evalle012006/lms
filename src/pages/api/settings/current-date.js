@@ -1,5 +1,4 @@
 import { apiHandler } from '@/services/api-handler';
-import { getCurrentDate } from '@/lib/utils';
 import moment from 'moment';
 
 export default apiHandler({
@@ -9,8 +8,7 @@ export default apiHandler({
 async function getSystemCurrentDate(req, res) {
     let statusCode = 200;
     let response = {};
-    let { timezone } = req.query;
-    let currentDate = getCurrentDate(timezone);
+    let currentDate = new Date().toLocaleDateString({}, { timeZone: 'Asia/Manila' });
 
     response = {
         success: true,

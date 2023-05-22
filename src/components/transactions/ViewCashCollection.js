@@ -32,7 +32,8 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                     date: dateFilter ? dateFilter : currentDate,
                     mode: type, 
                     loId: selectedLO ? selectedLO : currentUser._id,
-                    dayName: dayName
+                    dayName: dayName,
+                    currentDate: currentDate
                 });
 
         const response = await fetchWrapper.get(url);
@@ -112,7 +113,6 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 if (!filter) {
                     if (cc.loans.length > 0) {
                         let loanTarget = 0;
-                        let mcbu = 0;
                         if ((cc.occurence === 'weekly' && cc.day === dayName) || cc.occurence === 'daily') {
                             loanTarget = cc.loans[0].loanTarget && cc.loans[0].loanTarget;
                         }
@@ -186,11 +186,9 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                     
                     if (cc.cashCollections.length > 0) {
                         let loanTarget = 0;
-                        let mcbu = 0;
                         if ((cc.occurence === 'weekly' && cc.day === dayName) || cc.occurence === 'daily') {
                             loanTarget = collection.loanTarget - cc.cashCollections[0].loanTarget;
                             targetLoanCollection = targetLoanCollection - cc.cashCollections[0].loanTarget;
-                            // mcbu = cc.cashCollections[0].mcbu;
                         }
 
                         collection = { ...collection,
@@ -236,6 +234,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         totalTransferLoanBalance += cc.cashCollections[0].transferLoanBalance;
                         totalTransferredAmountRelease += cc.cashCollections[0].transferredAmountRelease;
                         totalTransferredLoanBalance += cc.cashCollections[0].transferredLoanBalance;
+                        totalMcbuTarget += cc.cashCollections[0].mcbuTarget ? cc.cashCollections[0].mcbuTarget : 0;
                     }
     
                     if (cc.currentRelease.length > 0) {
@@ -268,9 +267,9 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         noOfFullPayment += cc.fullPayment[0].noOfFullPayment ? cc.fullPayment[0].noOfFullPayment : 0;
                     }
 
-                    if (cc.mcbuTarget.length > 0) {
-                        totalMcbuTarget += cc.mcbuTarget[0].total;
-                    }
+                    // if (cc.mcbuTarget.length > 0) {
+                    //     totalMcbuTarget += cc.mcbuTarget[0].total;
+                    // }
                 } else {
                     if (cc.cashCollections.length > 0) {
                         noCurrentRelease = cc.cashCollections[0].newCurrentRelease + ' / ' + cc.cashCollections[0].reCurrentRelease;
@@ -445,9 +444,9 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
 
         let totalsLoanRelease = totals.totalLoanRelease + totals.totalTransferAmountRelease + totals.currentReleaseAmount;
         let totalsLoanBalance = totals.totalLoanBalance + totals.totalTransferLoanBalance + totals.currentReleaseAmount;
-        totalsLoanRelease = totals.totalLoanRelease - totals.totalTransferredAmountRelease;
-        totalsLoanBalance = totals.totalLoanBalance - totals.totalTransferredLoanBalance;
-
+        totalsLoanRelease = totalsLoanRelease - totals.totalTransferredAmountRelease;
+        totalsLoanBalance = totalsLoanBalance - totals.totalTransferredLoanBalance;
+        
         if (yearEnd) {
             grandTotal = {
                 day: 'Year End',
@@ -528,13 +527,14 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
             month: month,
             year: year,
             data: grandTotal,
-            occurence: type
+            occurence: type,
+            currentDate: currentDate
         }
     }
 
     const saveYearEndLos = async (totals, selectedBranch, yearEnd) => {
         if (currentUser.role.rep === 4) {
-            const losTotals = {...createLos(totals, selectedBranch, null, null, yearEnd), losType: 'year-end'};
+            const losTotals = {...createLos(totals, selectedBranch, null, null, yearEnd), losType: 'year-end', currentDate: currentDate};
     
             await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collection-summary/save-update-totals', losTotals);
         }

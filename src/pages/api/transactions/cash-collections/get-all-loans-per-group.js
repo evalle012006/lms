@@ -1,6 +1,5 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
-import { getCurrentDate } from '@/lib/utils';
 import moment from 'moment';
 
 export default apiHandler({
@@ -10,8 +9,7 @@ export default apiHandler({
 async function getAllLoansPerGroup(req, res) {
     const { db } = await connectToDatabase();
 
-    const currentDate = moment(getCurrentDate()).format('YYYY-MM-DD');
-    const { date, mode, branchCode, loId, dayName } = req.query;
+    const { date, mode, branchCode, loId, dayName, currentDate } = req.query;
     let statusCode = 200;
     let response = {};
     let cashCollection;
@@ -31,70 +29,52 @@ async function getAllLoansPerGroup(req, res) {
                     },
                     // {
                     //     $lookup: {
-                    //         from: "groupCashCollections",
+                    //         from: "groups",
                     //         localField: "loIdStr",
-                    //         foreignField: "loId",
+                    //         foreignField: "loanOfficerId",
                     //         pipeline: [
-                    //             { $match: { dateAdded: date } },
-                    //             { 
-                    //                 $group: {
-                    //                     _id: '$loId',
-                    //                     groupSummaryIds: { $addToSet: { _id: '$_id', groupId: '$groupId', status: '$status' } },
-                    //                     statusArr: { $addToSet: '$status' },
+                    //             { $match: { day: currentDay } },
+                    //             {
+                    //                 $addFields: {
+                    //                     "groupIdStr": { $toString: "$_id" }
+                    //                 }
+                    //             },
+                    //             {
+                    //                 $lookup: {
+                    //                     from: "loans",
+                    //                     localField: "groupIdStr",
+                    //                     foreignField: 'groupId',
+                    //                     pipeline: [
+                    //                         { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
+                    //                         {
+                    //                             $group: {
+                    //                                 _id: '$groupId',
+                    //                                 loanTarget: { 
+                    //                                     $sum: { 
+                    //                                         $cond: {
+                    //                                             if: {$and: [{ $ne: ['$status', 'pending']}, {$lte: ['$startDateObj', '$currentDateObj']} ]}, 
+                    //                                             then: { 
+                    //                                                 $cond: {
+                    //                                                     if: { $and: [{$eq: ['$activeLoan', 0]}, {$eq: ['$fullPaymentDate', date]}] },
+                    //                                                     then: '$history.activeLoan',
+                    //                                                     else: '$activeLoan'
+                    //                                                 } 
+                    //                                             }, 
+                    //                                             else: 0
+                    //                                         } 
+                    //                                     }
+                    //                                 },
+                    //                                 mcbu: { $sum: '$mcbu' }
+                    //                             }
+                    //                         }
+                    //                     ],
+                    //                     as: "loanTarget"
                     //                 }
                     //             }
                     //         ],
-                    //         as: 'groupCashCollections'
+                    //         as: 'groups'
                     //     }
                     // },
-                    {
-                        $lookup: {
-                            from: "groups",
-                            localField: "loIdStr",
-                            foreignField: "loanOfficerId",
-                            pipeline: [
-                                { $match: { day: currentDay } },
-                                {
-                                    $addFields: {
-                                        "groupIdStr": { $toString: "$_id" }
-                                    }
-                                },
-                                {
-                                    $lookup: {
-                                        from: "loans",
-                                        localField: "groupIdStr",
-                                        foreignField: 'groupId',
-                                        pipeline: [
-                                            { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
-                                            {
-                                                $group: {
-                                                    _id: '$groupId',
-                                                    loanTarget: { 
-                                                        $sum: { 
-                                                            $cond: {
-                                                                if: {$and: [{ $ne: ['$status', 'pending']}, {$lte: ['$startDateObj', '$currentDateObj']} ]}, 
-                                                                then: { 
-                                                                    $cond: {
-                                                                        if: { $and: [{$eq: ['$activeLoan', 0]}, {$eq: ['$fullPaymentDate', date]}] },
-                                                                        then: '$history.activeLoan',
-                                                                        else: '$activeLoan'
-                                                                    } 
-                                                                }, 
-                                                                else: 0
-                                                            } 
-                                                        }
-                                                    },
-                                                    mcbu: { $sum: '$mcbu' }
-                                                }
-                                            }
-                                        ],
-                                        as: "loanTarget"
-                                    }
-                                }
-                            ],
-                            as: 'groups'
-                        }
-                    },
                     {
                         $lookup: {
                             from: "cashCollections",
@@ -111,7 +91,7 @@ async function getAllLoansPerGroup(req, res) {
                                                     {$eq: ['$remarks.value', 'delinquent']},
                                                     {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
                                                 ] },
-                                                then: '$activeLoan',
+                                                then: '$history.activeLoan',
                                                 else: 0
                                             }
                                         } },
@@ -126,6 +106,23 @@ async function getAllLoansPerGroup(req, res) {
                                             }
                                         } },
                                         mcbu: { $sum: '$mcbu' },
+                                        mcbuTarget: { $sum: {
+                                            $cond: {
+                                                if: { $and: [{$eq: ['$occurence', 'weekly']}, {$eq: ['$groupDay', currentDay]}] },
+                                                then: {
+                                                    $cond: {
+                                                        if: { $or: [
+                                                            {$eq: ['$remarks.value', 'delinquent']},
+                                                            {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
+                                                            {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                                                        ] },
+                                                        then: 0,
+                                                        else: 50
+                                                    }
+                                                },
+                                                else: 0
+                                            }
+                                        } },
                                         mcbuCol: { $sum: '$mcbuCol' },
                                         mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
                                         mcbuReturnNo: { $sum: {
@@ -302,23 +299,6 @@ async function getAllLoansPerGroup(req, res) {
                                         excess: { $sum: 0 },
                                         total: { $sum: 0 },
                                         mcbu: { $sum: '$mcbu' },
-                                        mcbuTarget: { $sum: {
-                                            $cond: {
-                                                if: { $and: [{$eq: ['$occurence', 'weekly']}, {$eq: ['$groupDay', dayName]}] },
-                                                then: {
-                                                    $cond: {
-                                                        if: { $or: [
-                                                            {$eq: ['$remarks.value', 'delinquent']},
-                                                            {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
-                                                            {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
-                                                        ] },
-                                                        then: 0,
-                                                        else: 50
-                                                    }
-                                                },
-                                                else: 0
-                                            }
-                                        } },
                                         mcbuInterest: { $sum: '$mcbuInterest' }
                                     } 
                                 }
@@ -379,17 +359,6 @@ async function getAllLoansPerGroup(req, res) {
                             "groupIdStr": { $toString: "$_id" }
                         }
                     },
-                    // {
-                    //     $lookup: {
-                    //         from: "groupCashCollections",
-                    //         localField: "groupIdStr",
-                    //         foreignField: "groupId",
-                    //         pipeline: [
-                    //             { $match: { dateAdded: date } }
-                    //         ],
-                    //         as: 'groupCashCollections'
-                    //     }
-                    // },
                     {
                         $lookup: {
                             from: "cashCollections",
@@ -407,7 +376,7 @@ async function getAllLoansPerGroup(req, res) {
                                                     {$eq: ['$remarks.value', 'delinquent']},
                                                     {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
                                                 ] },
-                                                then: '$activeLoan',
+                                                then: '$history.activeLoan',
                                                 else: 0
                                             }
                                         } },
@@ -422,6 +391,23 @@ async function getAllLoansPerGroup(req, res) {
                                             }
                                         } },
                                         mcbu: { $sum: '$mcbu' },
+                                        mcbuTarget: { $sum: {
+                                            $cond: {
+                                                if: { $and: [{$eq: ['$occurence', 'weekly']}, {$eq: ['$groupDay', currentDay]}] },
+                                                then: {
+                                                    $cond: {
+                                                        if: { $or: [
+                                                            {$eq: ['$remarks.value', 'delinquent']},
+                                                            {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
+                                                            {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                                                        ] },
+                                                        then: 0,
+                                                        else: 50
+                                                    }
+                                                },
+                                                else: 0
+                                            }
+                                        } },
                                         mcbuCol: { $sum: '$mcbuCol' },
                                         mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
                                         mcbuReturnNo: { $sum: {
@@ -600,23 +586,6 @@ async function getAllLoansPerGroup(req, res) {
                                         excess: { $sum: 0 },
                                         total: { $sum: 0 },
                                         mcbu: { $sum: '$mcbu' },
-                                        mcbuTarget: { $sum: {
-                                            $cond: {
-                                                if: { $and: [{$eq: ['$occurence', 'weekly']}, {$eq: ['$groupDay', dayName]}] },
-                                                then: {
-                                                    $cond: {
-                                                        if: { $or: [
-                                                            {$eq: ['$remarks.value', 'delinquent']},
-                                                            {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
-                                                            {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
-                                                        ] },
-                                                        then: 0,
-                                                        else: 50
-                                                    }
-                                                },
-                                                else: 0
-                                            }
-                                        } },
                                         mcbuInterest: { $sum: '$mcbuInterest' }
                                     } 
                                 }
@@ -666,23 +635,33 @@ async function getAllLoansPerGroup(req, res) {
                             as: "fullPayment"
                         }
                     },
-                    {
-                        $lookup: {
-                            from: "cashCollections",
-                            let: { groupName: '$name' },
-                            localField: "groupIdStr",
-                            foreignField: "groupId",
-                            pipeline: [
-                                { $match: { dateAdded: date, occurence: 'weekly', groupDay: dayName } },
-                                { $group: {
-                                        _id: '$$groupName',
-                                        total: { $sum: 50 }
-                                    }
-                                }
-                            ],
-                            as: "mcbuTarget"
-                        }
-                    },
+                    // {
+                    //     $lookup: {
+                    //         from: "cashCollections",
+                    //         let: { groupName: '$name' },
+                    //         localField: "groupIdStr",
+                    //         foreignField: "groupId",
+                    //         pipeline: [
+                    //             { $match: { dateAdded: date, occurence: 'weekly', groupDay: dayName } },
+                    //             { $group: {
+                    //                     _id: '$$groupName',
+                    //                     total: { $sum: {
+                    //                         $cond: {
+                    //                             if: { $or: [
+                    //                                 {$eq: ['$remarks.value', 'delinquent']},
+                    //                                 {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
+                    //                                 {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                    //                             ] },
+                    //                             then: 0,
+                    //                             else: 50
+                    //                         }
+                    //                     } }
+                    //                 }
+                    //             }
+                    //         ],
+                    //         as: "mcbuTarget"
+                    //     }
+                    // },
                     { $project: { groupIdStr: 0, availableSlots: 0 } },
                     { $sort: { groupNo: 1 } }
                 ])

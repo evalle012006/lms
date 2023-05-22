@@ -777,7 +777,8 @@ const LoanOfficerSummary = () => {
             month: filter ? moment(date).month() + 1 : moment(currentDate).month() + 1,
             year: filter ? moment(date).year() : moment(currentDate).year(),
             data: total,
-            losType: 'commulative'
+            losType: 'commulative',
+            currentDate: currentDate
         }
 
         if (currentUser.role.rep === 4) {
@@ -835,7 +836,7 @@ const LoanOfficerSummary = () => {
                     <LOSHeader page={1} pageTitle="Loan Officers Summary" selectedBranch={selectedBranch} 
                             selectedMonth={selectedMonth} setSelectedMonth={setSelectedMonth} handleMonthFilter={handleMonthFilter}
                             selectedYear={selectedYear} setSelectedYear={setSelectedYear} handleYearFilter={handleYearFilter}/>
-                    <div className="flex flex-col h-[55rem] max-h-[55rem] mt-40 pl-6 pr-2 overflow-y-auto">
+                    <div className="flex flex-col min-h-[55rem] mt-40 pl-6 pr-2 overflow-y-auto">
                         <div className="block rounded-xl overflow-auto h-[49rem]">
                             <table className="relative w-full table-auto border-collapse text-sm bg-white mb-8">
                                 <thead>

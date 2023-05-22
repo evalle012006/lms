@@ -6,7 +6,7 @@ import moment from 'moment';
 export default apiHandler({
     post: processActiveLoan
 });
-
+// not in used
 async function processActiveLoan(req, res) {
     const { db } = await connectToDatabase();
 

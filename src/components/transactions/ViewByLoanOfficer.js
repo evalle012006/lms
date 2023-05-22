@@ -23,18 +23,18 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
     const router = useRouter();
 
     const handleRowClick = (selected) => {
-        if (selected && selected.hasData) {
+        // if (selected && selected.hasData) {
             localStorage.setItem('selectedLO', selected._id);
             router.push(`/transactions/${selected.transactionType}-cash-collection/group/${selected._id}`);
-        } else {
-            toast.error("Selected LO has no group transactions.");
-        }
+        // } else {
+        //     toast.error("Selected LO has no group transactions.");
+        // }
     };
 
     const getGroupCashCollections = async (selectedBranch, date) => {
         setLoading(true);
         const filter = date ? true : false;
-        let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/get-all-loans-per-group?' + new URLSearchParams({ date: date ? date : currentDate, branchCode: selectedBranch, dayName: dayName });
+        let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/get-all-loans-per-group?' + new URLSearchParams({ date: date ? date : currentDate, branchCode: selectedBranch, dayName: dayName, currentDate: currentDate });
         
         const response = await fetchWrapper.get(url);
         if (response.success) {
@@ -155,7 +155,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                         let loLoanTarget = 0;
                         let loMcbu = 0;
 
-                        if (lo.groups.length > 0) {
+                        if (lo.groups && lo.groups.length > 0) {
                             lo.groups.map(g => {
                                 if (g.loanTarget.length > 0) {
                                     loLoanTarget += g.loanTarget[0].loanTarget;
@@ -671,7 +671,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
         if (row.original.activeClients !== 0) {
             setLoading(true);
 
-            let data = { loId: row.original._id, mode: 'open' };
+            let data = { loId: row.original._id, mode: 'open', currentDate: currentDate };
 
             const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/update-group-transaction-status', data);
             
@@ -692,7 +692,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
         if (row.original.activeClients !== 0) {
             setLoading(true);
 
-            let data = { loId: row.original._id, mode: 'close' };
+            let data = { loId: row.original._id, mode: 'close', currentDate: currentDate };
 
             const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/update-group-transaction-status', data);
             if (response.success) {

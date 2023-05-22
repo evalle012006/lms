@@ -10,7 +10,7 @@ let statusCode = 200;
 export default apiHandler({
     post: processLOSummary
 });
-
+// NOT IN USED
 async function processLOSummary(req, res) {
     const { db } = await connectToDatabase();
     const { mode, currentUser, branchId } = req.body;

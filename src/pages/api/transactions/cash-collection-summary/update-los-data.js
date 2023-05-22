@@ -1,12 +1,8 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
-import { getCurrentDate } from '@/lib/utils';
-import moment from 'moment';
 
 let response = {};
 let statusCode = 200;
-
-const currentDate = moment(getCurrentDate()).format('YYYY-MM-DD');
 
 export default apiHandler({
     post: updateStatus

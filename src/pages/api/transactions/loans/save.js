@@ -1,9 +1,5 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
-import { getCurrentDate } from '@/lib/utils';
-import moment from 'moment';
-
-const currentDate = moment(getCurrentDate()).format('YYYY-MM-DD');
 
 export default apiHandler({
     post: save
@@ -20,6 +16,8 @@ async function save(req, res) {
     let mode;
     let oldLoanId;
     let reloan = false;
+
+    const currentDate = loanData.currentDate;
 
     delete loanData.currentDate;
     delete loanData.group;
@@ -77,7 +75,7 @@ async function save(req, res) {
                 await updateGroup(loanData);
             }
 
-            await saveCashCollection(loanData, currentReleaseAmount, reloan, group, loanId);
+            await saveCashCollection(loanData, currentReleaseAmount, reloan, group, loanId, currentDate);
 
             await updateUser(loanData);
 
@@ -171,83 +169,56 @@ async function updateLoan(loanId, loanData) {
     }
 }
 
-async function saveCashCollection(loan, currentReleaseAmount, reloan, group, loanId) {
+async function saveCashCollection(loan, currentReleaseAmount, reloan, group, loanId, currentDate) {
     const { db } = await connectToDatabase();
-    // possible issue the previous day were updated instead of the current
-    // let loanData = await db.collection("loans")
-    //     .aggregate([
-    //         { $match: { $expr: { $and: [{$eq: ['$clientId', loan.clientId]}, {$or: [{$eq: ['$status', "pending"]}, {$eq: ['$status', "completed"]}]}] } } },
-    //         {
-    //             $addFields: { clientIdObj: { $toObjectId: "$clientId" }, groupIdObj: { $toObjectId: "$groupId" } }
-    //         },
-    //         {
-    //             $lookup: {
-    //                 from: "client",
-    //                 localField: "clientIdObj",
-    //                 foreignField: "_id",
-    //                 as: "client"
-    //             }
-    //         },
-    //         {
-    //             $lookup: {
-    //                 from: "groups",
-    //                 localField: "groupIdObj",
-    //                 foreignField: "_id",
-    //                 as: "groups"
-    //             }
-    //         }
-    //     ]).toArray();
 
-    // if (loanData.length > 0) {
-        // loanData = loanData[0];
-        const cashCollection = await db.collection('cashCollections').find({ clientId: loan.clientId, dateAdded: currentDate }).toArray();
-        if (cashCollection.length === 0) {
-            let data = {
-                loanId: loanId,
-                branchId: loan.branchId,
-                groupId: loan.groupId,
-                groupname: loan.groupName,
-                loId: loan.loId,
-                clientId: loan.clientId,
-                slotNo: loan.slotNo,
-                loanCycle: loan.loanCycle,
-                mispayment: false,
-                mispaymentStr: 'No',
-                collection: 0,
-                excess: loan.excess,
-                total: 0,
-                noOfPayments: 0,
-                activeLoan: 0,
-                targetCollection: 0,
-                amountRelease: 0,
-                loanBalance: 0,
-                paymentCollection: 0,
-                occurence: group.occurence,
-                currentReleaseAmount: currentReleaseAmount,
-                fullPayment: loan.fullPayment,
-                mcbu: loan.mcbu,
-                mcbuCol: 0,
-                mcbuWithdrawal: 0,
-                mcbuReturnAmt: 0,
-                remarks: '',
-                status: loan.status,
-                dateAdded: currentDate,
-                groupStatus: 'pending',
-                origin: 'automation-loan'
-            };
+    const cashCollection = await db.collection('cashCollections').find({ clientId: loan.clientId, dateAdded: currentDate }).toArray();
+    if (cashCollection.length === 0) {
+        let data = {
+            loanId: loanId,
+            branchId: loan.branchId,
+            groupId: loan.groupId,
+            groupName: loan.groupName,
+            loId: loan.loId,
+            clientId: loan.clientId,
+            slotNo: loan.slotNo,
+            loanCycle: loan.loanCycle,
+            mispayment: false,
+            mispaymentStr: 'No',
+            collection: 0,
+            excess: loan.excess,
+            total: 0,
+            noOfPayments: 0,
+            activeLoan: 0,
+            targetCollection: 0,
+            amountRelease: 0,
+            loanBalance: 0,
+            paymentCollection: 0,
+            occurence: group.occurence,
+            currentReleaseAmount: currentReleaseAmount,
+            fullPayment: loan.fullPayment,
+            mcbu: loan.mcbu,
+            mcbuCol: 0,
+            mcbuWithdrawal: 0,
+            mcbuReturnAmt: 0,
+            remarks: '',
+            status: loan.status,
+            dateAdded: currentDate,
+            groupStatus: 'pending',
+            origin: 'automation-loan'
+        };
 
-            if (data.occurence === 'weekly') {
-                data.mcbuTarget = 50;
-                data.groupDay = group.day;
+        if (data.occurence === 'weekly') {
+            data.mcbuTarget = 50;
+            data.groupDay = group.day;
 
-                if (!reloan) {
-                    data.mcbuCol = loanData.mcbu;
-                }
+            if (!reloan) {
+                data.mcbuCol = loanData.mcbu;
             }
-
-            await db.collection('cashCollections').insertOne({ ...data });
-        } else {
-            await db.collection('cashCollections').updateOne({ _id: cashCollection[0]._id }, { $set: { currentReleaseAmount: loan.amountRelease, status: loan.status, modifiedBy: 'automation-loan' } })
         }
-    // }
+
+        await db.collection('cashCollections').insertOne({ ...data });
+    } else {
+        await db.collection('cashCollections').updateOne({ _id: cashCollection[0]._id }, { $set: { currentReleaseAmount: currentReleaseAmount, status: loan.status, modifiedBy: 'automation-loan' } })
+    }
 }
