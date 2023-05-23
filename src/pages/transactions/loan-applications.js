@@ -407,10 +407,11 @@ const LoanApplicationPage = () => {
         delete loanData.mcbuStr;
 
         loanData.insertedBy = currentUser._id;
+        loanData.currentDate = currentDate;
         if (loanData.status === 'pending' && updatedValue === 'active') {
-            loanData.dateGranted = moment(currentDate).format('YYYY-MM-DD');
+            loanData.dateGranted = currentDate;
             loanData.status = updatedValue;
-            loanData.startDate = moment(currentDate).add(1, 'days').format('YYYY-MM-DD');
+            loanData.startDate = currentDate;
             loanData.endDate = getEndDate(loanData.dateGranted, group.occurence === type ? 60 : 24 );
             loanData.mispayment = 0;
 
@@ -507,6 +508,7 @@ const LoanApplicationPage = () => {
                 temp.endDate = getEndDate(temp.dateGranted, group.occurence === type ? 60 : 24 );
                 temp.mispayment = 0;
                 temp.insertedBy = currentUser._id;
+                temp.currentDate = currentDate;
 
                 return temp;
             });

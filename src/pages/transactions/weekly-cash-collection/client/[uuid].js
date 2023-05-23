@@ -72,12 +72,10 @@ const CashCollectionDetailsPage = () => {
     const [filter, setFilter] = useState(false);
     const maxDays = 24;
     const [groupFilter, setGroupFilter] = useState();
-    // const [weekend, setWeekend] = useState(false);
     const [showClientInfoModal, setShowClientInfoModal] = useState(false);
     const [allowMcbuWithdrawal, setAllowMcbuWithdrawal] = useState(false);
     const dayName = moment(dateFilter ? dateFilter : currentDate).format('dddd').toLowerCase();
     const [mcbuRate, setMcbuRate] = useState(transactionSettings.mcbu || 8);
-    // const [holiday, setHoliday] = useState(false);
 
     const handleShowClientInfoModal = (selected) => {
         if (selected.status !== 'totals') {
@@ -235,6 +233,7 @@ const CashCollectionDetailsPage = () => {
                         branchId: cc.branchId,
                         groupId: cc.groupId,
                         groupName: cc.groupName,
+                        groupDay: cc.current[0].groupDay,
                         clientId: cc.clientId,
                         slotNo: cc.slotNo,
                         fullName: cc.client.lastName + ', ' + cc.client.firstName,
@@ -350,6 +349,7 @@ const CashCollectionDetailsPage = () => {
 
                     delete cc._id;
                     if (cc.hasOwnProperty('current') && cc.current.length > 0) {
+                        collection.groupDay = cc.current[0].groupDay;
                         collection.targetCollection = cc.current[0].targetCollection;
                         collection.targetCollectionStr = collection.targetCollection > 0 ? formatPricePhp(collection.targetCollection) : '-';
                         collection.excess = cc.current[0].excess;
@@ -858,10 +858,7 @@ const CashCollectionDetailsPage = () => {
                             if (temp.remarks.value && temp.remarks.value?.startsWith('offset')) {
                                 temp.status = 'closed';
                                 temp.clientStatus = 'offset';
-                            } 
-                            // else if (temp.remarks.value === 'delinquent') {
-                            //     temp.clientStatus = "offset";
-                            // }
+                            }
                         }
                     }
 
@@ -876,21 +873,23 @@ const CashCollectionDetailsPage = () => {
                     dataArr = dataArr.filter(cc => cc.mcbuWithdrawFlag);
                 }
 
+                // console.log(dataArr)
+
                 if (save) {
                     let cashCollection;
                     if (editMode) {
                         cashCollection = {
-                            // ...headerData,
-                            dateModified: moment(currentDate).format('YYYY-MM-DD'),
+                            dateModified: currentDate,
                             modifiedBy: currentUser._id,
-                            collection: JSON.stringify(dataArr)
+                            collection: JSON.stringify(dataArr),
+                            currentDate: currentDate
                         };
                     } else {
                         cashCollection = {
-                            // ...headerData,
                             modifiedBy: currentUser._id,
                             collection: JSON.stringify(dataArr),
-                            mode: 'weekly'
+                            mode: 'weekly',
+                            currentDate: currentDate
                         };
                     }
             
@@ -1775,30 +1774,6 @@ const CashCollectionDetailsPage = () => {
             setEditMode(true);
         }
     }, [revertMode]);
-
-    // useEffect(() => {
-    //     if (dayName === 'Saturday' || dayName === 'Sunday') {
-    //         setWeekend(true);
-    //     } else {
-    //         setWeekend(false);
-    //     }
-    // }, []);
-
-    // useEffect(() => {
-    //     if (holidays) {
-    //         let holidayToday = false;
-    //         const currentYear = moment().year();
-    //         holidays.map(item => {
-    //             const holidayDate = currentYear + '-' + item.date;
-
-    //             if (holidayDate === currentDate) {
-    //                 holidayToday = true;
-    //             }
-    //         });
-
-    //         setHoliday(holidayToday);
-    //     }
-    // }, [holidays]);
 
     return (
         <Layout header={false} noPad={true}>

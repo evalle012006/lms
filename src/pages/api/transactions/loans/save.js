@@ -1,9 +1,5 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
-import { getCurrentDate } from '@/lib/utils';
-import moment from 'moment';
-
-const currentDate = moment(getCurrentDate()).format('YYYY-MM-DD');
 
 export default apiHandler({
     post: save
@@ -20,6 +16,8 @@ async function save(req, res) {
     let mode;
     let oldLoanId;
     let reloan = false;
+
+    const currentDate = loanData.currentDate;
 
     delete loanData.currentDate;
     delete loanData.group;
@@ -77,7 +75,7 @@ async function save(req, res) {
                 await updateGroup(loanData);
             }
 
-            await saveCashCollection(loanData, currentReleaseAmount, reloan, group, loanId);
+            await saveCashCollection(loanData, currentReleaseAmount, reloan, group, loanId, currentDate);
 
             await updateUser(loanData);
 
@@ -171,7 +169,7 @@ async function updateLoan(loanId, loanData) {
     }
 }
 
-async function saveCashCollection(loan, currentReleaseAmount, reloan, group, loanId) {
+async function saveCashCollection(loan, currentReleaseAmount, reloan, group, loanId, currentDate) {
     const { db } = await connectToDatabase();
 
     const cashCollection = await db.collection('cashCollections').find({ clientId: loan.clientId, dateAdded: currentDate }).toArray();
@@ -221,6 +219,6 @@ async function saveCashCollection(loan, currentReleaseAmount, reloan, group, loa
 
         await db.collection('cashCollections').insertOne({ ...data });
     } else {
-        await db.collection('cashCollections').updateOne({ _id: cashCollection[0]._id }, { $set: { currentReleaseAmount: loan.amountRelease, status: loan.status, modifiedBy: 'automation-loan' } })
+        await db.collection('cashCollections').updateOne({ _id: cashCollection[0]._id }, { $set: { currentReleaseAmount: currentReleaseAmount, status: loan.status, modifiedBy: 'automation-loan' } })
     }
 }

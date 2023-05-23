@@ -1,6 +1,5 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
-import { getCurrentDate } from '@/lib/utils';
 import moment from 'moment';
 
 export default apiHandler({
@@ -10,8 +9,7 @@ export default apiHandler({
 async function getAllLoansPerGroup(req, res) {
     const { db } = await connectToDatabase();
 
-    const currentDate = moment(getCurrentDate()).format('YYYY-MM-DD');
-    const { date, mode, branchCode, loId, dayName } = req.query;
+    const { date, mode, branchCode, loId, dayName, currentDate } = req.query;
     let statusCode = 200;
     let response = {};
     let cashCollection;
@@ -29,54 +27,54 @@ async function getAllLoansPerGroup(req, res) {
                             "loIdStr": { $toString: "$_id" }
                         }
                     },
-                    {
-                        $lookup: {
-                            from: "groups",
-                            localField: "loIdStr",
-                            foreignField: "loanOfficerId",
-                            pipeline: [
-                                { $match: { day: currentDay } },
-                                {
-                                    $addFields: {
-                                        "groupIdStr": { $toString: "$_id" }
-                                    }
-                                },
-                                {
-                                    $lookup: {
-                                        from: "loans",
-                                        localField: "groupIdStr",
-                                        foreignField: 'groupId',
-                                        pipeline: [
-                                            { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
-                                            {
-                                                $group: {
-                                                    _id: '$groupId',
-                                                    loanTarget: { 
-                                                        $sum: { 
-                                                            $cond: {
-                                                                if: {$and: [{ $ne: ['$status', 'pending']}, {$lte: ['$startDateObj', '$currentDateObj']} ]}, 
-                                                                then: { 
-                                                                    $cond: {
-                                                                        if: { $and: [{$eq: ['$activeLoan', 0]}, {$eq: ['$fullPaymentDate', date]}] },
-                                                                        then: '$history.activeLoan',
-                                                                        else: '$activeLoan'
-                                                                    } 
-                                                                }, 
-                                                                else: 0
-                                                            } 
-                                                        }
-                                                    },
-                                                    mcbu: { $sum: '$mcbu' }
-                                                }
-                                            }
-                                        ],
-                                        as: "loanTarget"
-                                    }
-                                }
-                            ],
-                            as: 'groups'
-                        }
-                    },
+                    // {
+                    //     $lookup: {
+                    //         from: "groups",
+                    //         localField: "loIdStr",
+                    //         foreignField: "loanOfficerId",
+                    //         pipeline: [
+                    //             { $match: { day: currentDay } },
+                    //             {
+                    //                 $addFields: {
+                    //                     "groupIdStr": { $toString: "$_id" }
+                    //                 }
+                    //             },
+                    //             {
+                    //                 $lookup: {
+                    //                     from: "loans",
+                    //                     localField: "groupIdStr",
+                    //                     foreignField: 'groupId',
+                    //                     pipeline: [
+                    //                         { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
+                    //                         {
+                    //                             $group: {
+                    //                                 _id: '$groupId',
+                    //                                 loanTarget: { 
+                    //                                     $sum: { 
+                    //                                         $cond: {
+                    //                                             if: {$and: [{ $ne: ['$status', 'pending']}, {$lte: ['$startDateObj', '$currentDateObj']} ]}, 
+                    //                                             then: { 
+                    //                                                 $cond: {
+                    //                                                     if: { $and: [{$eq: ['$activeLoan', 0]}, {$eq: ['$fullPaymentDate', date]}] },
+                    //                                                     then: '$history.activeLoan',
+                    //                                                     else: '$activeLoan'
+                    //                                                 } 
+                    //                                             }, 
+                    //                                             else: 0
+                    //                                         } 
+                    //                                     }
+                    //                                 },
+                    //                                 mcbu: { $sum: '$mcbu' }
+                    //                             }
+                    //                         }
+                    //                     ],
+                    //                     as: "loanTarget"
+                    //                 }
+                    //             }
+                    //         ],
+                    //         as: 'groups'
+                    //     }
+                    // },
                     {
                         $lookup: {
                             from: "cashCollections",
@@ -93,7 +91,7 @@ async function getAllLoansPerGroup(req, res) {
                                                     {$eq: ['$remarks.value', 'delinquent']},
                                                     {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
                                                 ] },
-                                                then: '$activeLoan',
+                                                then: '$history.activeLoan',
                                                 else: 0
                                             }
                                         } },
@@ -378,7 +376,7 @@ async function getAllLoansPerGroup(req, res) {
                                                     {$eq: ['$remarks.value', 'delinquent']},
                                                     {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
                                                 ] },
-                                                then: '$activeLoan',
+                                                then: '$history.activeLoan',
                                                 else: 0
                                             }
                                         } },

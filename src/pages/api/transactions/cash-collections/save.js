@@ -1,6 +1,5 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
-import { getCurrentDate } from '@/lib/utils';
 import moment from 'moment';
 
 export default apiHandler({
@@ -8,11 +7,10 @@ export default apiHandler({
 });
 
 async function save(req, res) {
-    const { db } = await connectToDatabase();
-    const currentDateStr = moment(getCurrentDate()).format('YYYY-MM-DD');
     let response = {};
     let statusCode = 200;
     let data = req.body;
+    const currentDate = data.currentDate;
     data.collection = JSON.parse(data.collection);
     if (data.collection.length > 0) {
         // const groupHeaderId = data._id;
@@ -44,8 +42,8 @@ async function save(req, res) {
                 }
 
                 if (collection.status !== "pending") {
-                    await updateLoan(collection)
-                    await updateClient(collection);
+                    await updateLoan(collection, currentDate)
+                    await updateClient(collection, currentDate);
                 }
             }
         });
@@ -103,15 +101,14 @@ async function updateCollection(collections) {
     });
 }
 
-async function updateLoan(collection) {
+async function updateLoan(collection, currentDate) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
-    const currentDateStr = moment(getCurrentDate()).format('YYYY-MM-DD');
 
     let loan = await db.collection('loans').find({ _id: new ObjectId(collection.loanId) }).toArray();
     if (loan.length > 0) {
         loan = loan[0];
-
+        delete loan.groupStatus;
         loan.loanBalance = collection.loanBalance;
 
         if (collection.remarks && (!collection.remarks.value?.startsWith('excused-')  && collection.remarks.value !== 'delinquent')) {
@@ -159,7 +156,7 @@ async function updateLoan(collection) {
             loan.pastDue = 0;
         }
 
-        loan.lastUpdated = currentDateStr;
+        loan.lastUpdated = currentDate;
 
         delete loan._id;
         await db.collection('loans').updateOne(
@@ -173,10 +170,9 @@ async function updateLoan(collection) {
     }
 }
 
-async function updateClient(loan) {
+async function updateClient(loan, currentDate) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
-    const currentDate = getCurrentDate();
 
     let client = await db.collection('client').find({ _id: new ObjectId(loan.clientId) }).toArray();
 
@@ -226,16 +222,15 @@ async function updateClient(loan) {
                 { upsert: false });
         
         if (loan.remarks && loan.remarks.value?.startsWith('offset')) {
-            await updateLoanClose(loan);
+            await updateLoanClose(loan, currentDate);
             await updateGroup(loan);
         }
     }
 }
 
-async function updateLoanClose(loanData) {
+async function updateLoanClose(loanData, currentDate) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
-    const currentDateStr = moment(getCurrentDate()).format('YYYY-MM-DD');
     
     let loan = await db.collection('loans').find({ _id: new ObjectId(loanData.loanId) }).toArray();
 
@@ -245,7 +240,7 @@ async function updateLoanClose(loanData) {
         loan.loanCycle = 0;
         loan.remarks = loanData.closeRemarks;
         loan.status = 'closed';
-        loan.dateModified = currentDateStr;
+        loan.dateModified = currentDate;
         delete loan._id;
         await db
             .collection('loans')
