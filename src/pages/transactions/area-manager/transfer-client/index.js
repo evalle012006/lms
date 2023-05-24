@@ -14,6 +14,7 @@ import ButtonOutline from "@/lib/ui/ButtonOutline";
 import { setTransferClientList } from "@/redux/actions/clientActions";
 import AddUpdateTransferClient from "@/components/transactions/transfer/AddUpdateTransferClientDrawer";
 import Dialog from "@/lib/ui/Dialog";
+import { formatPricePhp } from "@/lib/utils";
 
 const TransferClientPage = () => {
     const isHoliday = useSelector(state => state.systemSettings.holiday);
@@ -49,10 +50,6 @@ const TransferClientPage = () => {
             accessor: 'status',
         },
         {
-            Header: "Active Loan",
-            accessor: 'activeLoanStr',
-        },
-        {
             Header: "Amount Release",
             accessor: 'amountReleaseStr'
         },
@@ -69,8 +66,8 @@ const TransferClientPage = () => {
             accessor: 'actualCollectionStr'
         },
         {
-            Header: "MCBU",
-            accessor: 'mcbuStr'
+            Header: "Total MCBU",
+            accessor: 'totalMcbuStr'
         },
         {
             Header: "Loan Status",
@@ -239,7 +236,37 @@ const TransferClientPage = () => {
             url = url + '?' + new URLSearchParams({ _id: currentUser._id });
             const response = await fetchWrapper.get(url);
             if (response.success) {
-                dispatch(setTransferClientList(response.data));
+                const list = [];
+                response.data.map(transfer => {
+                    let temp = {};
+                    const client = transfer.client;
+                    const loan = transfer.loans.length > 0 ? transfer.loans[0] : [];
+
+                    temp.lastName = client.lastName;
+                    temp.firstName = client.firstName;
+                    temp.status = client.status;
+
+                    if (transfer.loans.length > 0) {
+                        temp.amountRelease = loan.amountRelease;
+                        temp.amountReleaseStr = temp.amountRelease > 0 ? formatPricePhp(temp.amountRelease) : '-';
+                        temp.loanBalance = loan.loanBalance;
+                        temp.loanBalanceStr = temp.loanBalance > 0 ? formatPricePhp(temp.loanBalance) : '-';
+                        temp.targetCollection = loan.amountRelease - loan.loanBalance;
+                        temp.targetCollectionStr = temp.targetCollection > 0 ? formatPricePhp(temp.targetCollection) : '-';
+                        temp.actualCollection = loan.amountRelease - loan.loanBalance;
+                        temp.actualCollectionStr = temp.actualCollection > 0 ? formatPricePhp(temp.actualCollection) : '-';
+                        temp.totalMcbu = loan.mcbu;
+                        temp.totalMcbuStr = temp.totalMcbu > 0 ? formatPricePhp(temp.totalMcbu) : '-';
+                        temp.loanStatus = loan.status;
+
+                        if (temp.loanStatus === "closed") {
+                            temp.delinquent = true;
+                        }
+                    }
+
+                    list.push(temp);
+                });
+                dispatch(setTransferClientList(list));
                 setLoading(false);
             } else if (response.error) {
                 setLoading(false);

@@ -47,8 +47,9 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
         targetBranchId: client.targetbranchId,
         targetUserId: client.targetUserId,
         targetGroupId: client.targetGroupId,
-        selectedClientId: client.clientId,
-        selectedSlotNo: client.selectedSlotNo
+        selectedClientId: client.selectedClientId,
+        selectedSlotNo: client.selectedSlotNo,
+        currentSlotNo: client.currentSlotNo
     }
 
     const validationSchema = yup.object().shape({
@@ -61,21 +62,21 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
         // sourceGroupId: yup
         //     .string()
         //     .required('Please select a source group.'),
-        // targetBranchId: yup
-        //     .string()
-        //     .required('Please select a target branch.'),
-        // targetUserId: yup
-        //     .string()
-        //     .required('Please select a target loan officer.'),
-        // targetGroupId: yup
-        //     .string()
-        //     .required('Please select a target group.'),
-        // selectedClientId: yup
-        //     .string()
-        //     .required('Please select client to transfer.'),
-        // selectedSlotNo: yup
-        //     .number()
-        //     .required('Please select slot number.')
+        targetBranchId: yup
+            .string()
+            .required('Please select a target branch.'),
+        targetUserId: yup
+            .string()
+            .required('Please select a target loan officer.'),
+        targetGroupId: yup
+            .string()
+            .required('Please select a target group.'),
+        selectedClientId: yup
+            .string()
+            .required('Please select client to transfer.'),
+        selectedSlotNo: yup
+            .number()
+            .required('Please select slot number.')
     });
 
     const getListUser = async (selectedBranch, type) => {
@@ -163,88 +164,101 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
 
     const getListClient = async (groupId) => {
         setLoading(true);
-        let url = process.env.NEXT_PUBLIC_API_URL + 'clients/list?' + new URLSearchParams({ mode: "view_all_by_group", groupId: groupId });;
+        if (groupId) {
+            let url = process.env.NEXT_PUBLIC_API_URL + 'clients/list?' + new URLSearchParams({ mode: "view_all_by_group", groupId: groupId });;
 
-        const response = await fetchWrapper.get(url);
-        if (response.success) {
-            let clients = [];
-            await response.clients && response.clients.map(client => {
-                clients.push({
-                    ...client,
-                    label: UppercaseFirstLetter(`${client.lastName}, ${client.firstName}`),
-                    value: client._id
-                });   
-            });
-            setSelectedClientId();
-            setSelectedClient();
-            setClientList(clients)
-            setLoading(false);
-        } else if (response.error) {
-            setLoading(false);
-            toast.error(response.message);
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                let clients = [];
+                await response.clients && response.clients.map(client => {
+                    clients.push({
+                        ...client,
+                        label: UppercaseFirstLetter(`${client.lastName}, ${client.firstName}`),
+                        value: client._id
+                    });   
+                });
+
+                setClientList(clients);
+                setSelectedClientId();
+                setSelectedClient();
+                setLoading(false);
+            } else if (response.error) {
+                setLoading(false);
+                toast.error(response.message);
+            }
+        } else {
+            toast.error("No group selected!");
         }
     }
 
-    const handleChangeBranch = (field, value, type) => {
-        const selected = branchList.find(b => b._id === value);
-        if (type === "source") {
-            setSelectedSourceBranch(value);
-            getListUser(selected, "source");
-        } else {
-            setSlotNumbers();
-            setSelectedTargetBranch(value);
-            getListUser(selected, "target");
-        }
-
+    const handleChangeSourceBranch = (field, value) => {
         const form = formikRef.current;
-        form.setFieldValue(field, value);  
+        form.setFieldValue(field, value);
+        
+        const selected = branchList.find(b => b._id === value);
+        setSelectedSourceBranch(value);
+        getListUser(selected, "source");
     }
 
-    const handleChangeUser = (field, value, type) => {
-        if (type === "source") {
-            const selected = sourceUserList.find(u => u._id === value);
-            setSelectedSourceUser(value);
-            getListGroup(selected, "source");
-        } else {
-            const selected = targetUserList.find(u => u._id === value);
-            setSelectedTargetUser(value);
-            getListGroup(selected, "target");
-            setSlotNumbers();
-        }
-
+    const handleChangeTargetBranch = (field, value) => {
+        const selected = branchList.find(b => b._id === value);
+        setSlotNumbers();
+        setSelectedTargetBranch(value);
+        getListUser(selected, "target");
         const form = formikRef.current;
         form.setFieldValue(field, value);
     }
 
-    const handleChangeGroup = (field, value, type) => {
+    const handleChangeSourceUser = (field, value) => {
+        const selected = sourceUserList.find(u => u._id === value);
+        setSelectedSourceUser(value);
+        getListGroup(selected, "source");
         const form = formikRef.current;
-        if (type === "source") {
-            setSelectedSourceGroup(value);
-            getListClient(value);
+        form.setFieldValue(field, value);
+    }
+
+    const handleChangeTargetUser = (field, value) => {
+        const selected = targetUserList.find(u => u._id === value);
+        setSelectedTargetUser(value);
+        getListGroup(selected, "target");
+        setSlotNumbers();
+        const form = formikRef.current;
+        form.setFieldValue(field, value);
+    }
+
+    const handleChangeSourceGroup = (field, value) => {
+        console.log(field, value)
+        const form = formikRef.current;
+        form.setFieldValue(field, value);
+        
+        setSelectedSourceGroup(value);
+        getListClient(value);
+    }
+
+    const handleChangeTargetGroup = (field, value) => {
+        const form = formikRef.current;
+        const sourceGroup = sourceGroupList.find(group => group._id === selectedSourceGroup);
+        const targetGroup = targetGroupList.find(group => group._id === value);
+        setSlotNumbers();
+        if (value === sourceGroup._id) {
+            toast.error('Selected group is the same as the source group.');
+            setSelectedTargetGroup(null);
+            form.setFieldValue(field, null);
+        } else if (targetGroup.occurence !== sourceGroup.occurence) {
+            toast.error(`Please select a ${sourceGroup.occurence} group.`);
+            setSelectedTargetGroup(null);
+            form.setFieldValue(field, null);
+        } else if (targetGroup.status === 'available') {
+            setSelectedTargetGroup(value);
+            const availableSlots = targetGroup.availableSlots.map(s => {
+                return { label: s, value: s };
+            })
+            setSlotNumbers(availableSlots);
+            form.setFieldValue(field, value);
         } else {
-            const sourceGroup = sourceGroupList.find(group => group._id === selectedSourceGroup);
-            const targetGroup = targetGroupList.find(group => group._id === value);
-            setSlotNumbers();
-            if (value === sourceGroup._id) {
-                toast.error('Selected group is the same as the source group.');
-                setSelectedTargetGroup(null);
-                form.setFieldValue(field, null);
-            } else if (targetGroup.occurence !== sourceGroup.occurence) {
-                toast.error(`Please select a ${sourceGroup.occurence} group.`);
-                setSelectedTargetGroup(null);
-                form.setFieldValue(field, null);
-            } else if (targetGroup.status === 'available') {
-                setSelectedTargetGroup(value);
-                const availableSlots = targetGroup.availableSlots.map(s => {
-                    return { label: s, value: s };
-                })
-                setSlotNumbers(availableSlots);
-                form.setFieldValue(field, value);
-            } else {
-                toast.error("Selected group is currently full.");
-                setSelectedTargetGroup(null);
-                form.setFieldValue(field, null);
-            }
+            toast.error("Selected group is currently full.");
+            setSelectedTargetGroup(null);
+            form.setFieldValue(field, null);
         }
     }
 
@@ -282,9 +296,17 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
     }
 
     const handleSaveUpdate = (values, action) => {
-        console.log("saving...");
         setLoading(true);
-        if (selectedSourceGroup === selectedTargetGroup) {
+        if (!selectedSourceBranch) {
+            setLoading(false);
+            toast.error('Selected source branch is required.');
+        } else if (!selectedSourceUser) {
+            setLoading(false);
+            toast.error('Selected source loan officer is required.');
+        } else if (!selectedSourceGroup) {
+            setLoading(false);
+            toast.error('Selected source group is required.');
+        } else if (selectedSourceGroup === selectedTargetGroup) {
             setLoading(false);
             toast.error('Selected source and target groups are the same.');
         } else if (!selectedClientId) {
@@ -292,24 +314,35 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
             toast.error("No selected client!");
         } else {
             if (selectedTargetGroup) {
-                let uClient = {...selectedClient};
+                values.sourceBranchId = selectedSourceBranch;
+                values.sourceUserId = selectedSourceUser;
+                values.sourceGroupId = selectedSourceGroup;
+                values.currentSlotNo = selectedClient.slotNo;
+                // let uClient;
 
-                uClient.branchId = selectedTargetBranch;
-                uClient.loId = selectedTargetUser;
-                uClient.groupId = selectedTargetGroup;
-                uClient.sameLo = selectedClient.loId === selectedTargetUser;
-                uClient.oldGroupId = selectedClient.groupId;
-                uClient.oldBranchId = selectedClient.branchId;
-                uClient.oldLoId = selectedClient.loId;
+                // uClient.clientId = selectedClient._id;
+                // uClient.branchId = selectedTargetBranch;
+                // uClient.loId = selectedTargetUser;
+                // uClient.groupId = selectedTargetGroup;
+                // uClient.sameLo = selectedClient.loId === selectedTargetUser;
+                // uClient.oldGroupId = selectedClient.groupId;
+                // uClient.oldBranchId = selectedClient.branchId;
+                // uClient.oldLoId = selectedClient.loId;
                 
+                // if (selectedClient.loans.length > 0) {
+                //     uClient.loanId = selectedClient.loans[0]._id;
+                //     uClient.oldSlotNo = selectedClient.slotNo;
+                //     uClient.slotNo = values.selectedSlotNo;
+                // }
+
                 if (selectedClient.loans.length > 0) {
-                    uClient.loanId = selectedClient.loans[0]._id;
-                    uClient.oldSlotNo = selectedClient.slotNo;
-                    uClient.slotNo = values.selectedSlotNo;
+                    values.loanId = selectedClient.loans[0]._id;
                 }
 
                 if (mode === "add") {
-                    fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/transfer-client', uClient)
+                    values.status = "pending";
+                    values.dateAdded = currentDate;
+                    fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/transfer-client', values)
                         .then(response => {
                             setLoading(false);
                             if (response.error) {
@@ -400,7 +433,7 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
                                             value={selectedSourceBranch}
                                             label="Source Branch"
                                             options={branchList}
-                                            onChange={(field, value) => handleChangeBranch(field, value, "source")}
+                                            onChange={(field, value) => handleChangeSourceBranch(field, value)}
                                             onBlur={setFieldTouched}
                                             placeholder="Select Source Branch"
                                             errors={touched.sourceBranchId && errors.sourceBranchId ? errors.sourceBranchId : undefined}
@@ -413,7 +446,7 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
                                             value={selectedSourceUser}
                                             label="Source Loan Officer"
                                             options={sourceUserList}
-                                            onChange={(field, value) => handleChangeUser(field, value, "source")}
+                                            onChange={(field, value) => handleChangeSourceUser(field, value)}
                                             onBlur={setFieldTouched}
                                             placeholder="Select Source Loan Officer"
                                             errors={touched.sourceUserId && errors.sourceUserId ? errors.sourceUserId : undefined}
@@ -426,7 +459,7 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
                                             value={selectedSourceGroup}
                                             label="Source Group"
                                             options={sourceGroupList}
-                                            onChange={(field, value) => handleChangeGroup(field, value, "source")}
+                                            onChange={(field, value) => handleChangeSourceGroup(field, value)}
                                             onBlur={setFieldTouched}
                                             placeholder="Select Source Group"
                                             errors={touched.sourceGroupId && errors.sourceGroupId ? errors.sourceGroupId : undefined}
@@ -527,7 +560,7 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
                                             value={selectedTargetBranch}
                                             label="Target Branch"
                                             options={branchList}
-                                            onChange={(field, value) => handleChangeBranch(field, value, "target")}
+                                            onChange={(field, value) => handleChangeTargetBranch(field, value)}
                                             onBlur={setFieldTouched}
                                             disabled={!selectedClient}
                                             placeholder="Select Target Branch"
@@ -541,7 +574,7 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
                                             value={selectedTargetUser}
                                             label="Target Loan Officer"
                                             options={targetUserList}
-                                            onChange={(field, value) => handleChangeUser(field, value, "target")}
+                                            onChange={(field, value) => handleChangeTargetUser(field, value)}
                                             onBlur={setFieldTouched}
                                             disabled={!selectedTargetBranch}
                                             placeholder="Select Target Loan Officer"
@@ -555,7 +588,7 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
                                             value={selectedTargetGroup}
                                             label="Target Group"
                                             options={targetGroupList}
-                                            onChange={(field, value) => handleChangeGroup(field, value, "target")}
+                                            onChange={(field, value) => handleChangeTargetGroup(field, value)}
                                             onBlur={setFieldTouched}
                                             disabled={!selectedTargetUser}
                                             placeholder="Select Target Group"
