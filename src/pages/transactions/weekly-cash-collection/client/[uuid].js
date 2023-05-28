@@ -233,7 +233,6 @@ const CashCollectionDetailsPage = () => {
                         branchId: cc.branchId,
                         groupId: cc.groupId,
                         groupName: cc.groupName,
-                        groupDay: cc.current[0].groupDay,
                         clientId: cc.clientId,
                         slotNo: cc.slotNo,
                         fullName: cc.client.lastName + ', ' + cc.client.firstName,
@@ -349,7 +348,6 @@ const CashCollectionDetailsPage = () => {
 
                     delete cc._id;
                     if (cc.hasOwnProperty('current') && cc.current.length > 0) {
-                        collection.groupDay = cc.current[0].groupDay;
                         collection.targetCollection = cc.current[0].targetCollection;
                         collection.targetCollectionStr = collection.targetCollection > 0 ? formatPricePhp(collection.targetCollection) : '-';
                         collection.excess = cc.current[0].excess;
@@ -416,6 +414,7 @@ const CashCollectionDetailsPage = () => {
                     }
                 }
 
+                collection.groupDay = collection.group.day;
                 collection.mcbuWithdrawFlag = false;
 
                 cashCollection.push(collection);

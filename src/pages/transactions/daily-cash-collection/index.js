@@ -13,8 +13,10 @@ import ViewByBranchPage from "@/components/transactions/ViewByBranch";
 import Dialog from "@/lib/ui/Dialog";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
+import { useRouter } from "node_modules/next/router";
 
 const DailyCashCollectionPage = () => {
+    const router = useRouter();
     const isHoliday = useSelector(state => state.systemSettings.holiday);
     const isWeekend = useSelector(state => state.systemSettings.weekend);
     const dispatch = useDispatch();
@@ -123,6 +125,12 @@ const DailyCashCollectionPage = () => {
 
         setLoading(false);
     }
+
+    useEffect(() => {
+        if (currentUser.role.rep < 3) {
+            router.push("/transactions/branch-manager/cash-collection");
+        }
+    }, [currentUser]);
 
     useEffect(() => {
         let mounted = true;
