@@ -23,6 +23,7 @@ const TransferClientPage = () => {
     const router = useRouter();
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
+    const currentDate = useSelector(state => state.systemSettings.currentDate);
     const transferList = useSelector(state => state.client.transferList);
 
     const [showAddDrawer, setShowAddDrawer] = useState(false);
@@ -79,6 +80,41 @@ const TransferClientPage = () => {
         // }
     ]);
 
+    const updateTransferStatus = async (data, status) => {
+        setLoading(true);
+        
+        let transfer = {...data};
+        let msg = 'Selected client successfully transferred.';
+
+        if (status === "approved") {
+            const clientData = transfer.client;
+
+            transfer.branchId = transfer.targetBranchId;
+            transfer.loId = transfer.targetUserId;
+            transfer.groupId = transfer.targetGroupId;
+            transfer.sameLo = clientData.loId === transfer.targetUserId;
+            transfer.oldGroupId = clientData.groupId;
+            transfer.oldBranchId = clientData.branchId;
+            transfer.oldLoId = clientData.loId;
+            transfer.dateAdded = currentDate;
+            transfer.status = "approved";
+        } else {
+            transfer.status = "rejected";
+            transfer.dateAdded = currentDate;
+            msg = 'Selected transfer was rejected.';
+        }
+
+        const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/transfer-client/approve-reject', [transfer]);
+
+        if (response.success) {
+            setLoading(false);
+            toast.success(msg);
+            setTimeout(() => {
+                getTransferList();
+            }, 500);
+        }
+    }
+
     const handleEditAction = (row) => {
         setMode("edit");
         setClient(row.original);
@@ -97,19 +133,19 @@ const TransferClientPage = () => {
     }
 
     const handleApprove = (row) => {
-        if (row.original.allowApproved) {
-            updateClientStatus(row.original, 'active');
-        } else {
-            toast.error("Group transaction is already closed for the day.");
-        }
+        // if (row.original.allowApproved) {
+            updateTransferStatus(row.original, 'approved');
+        // } else {
+        //     toast.error("Group transaction is already closed for the day.");
+        // }
     }
 
     const handleReject = (row) => {
-        if (row.original.allowApproved) {
-            updateClientStatus(row.original, 'reject');
-        } else {
-            toast.error("Group transaction is already closed for the day.");
-        }
+        // if (row.original.allowApproved) {
+            updateTransferStatus(row.original, 'reject');
+        // } else {
+        //     toast.error("Group transaction is already closed for the day.");
+        // }
     }
 
     const handleDelete = () => {
@@ -119,16 +155,16 @@ const TransferClientPage = () => {
                 .then(response => {
                     if (response.success) {
                         setShowDeleteDialog(false);
-                        toast.success('Loan successfully deleted.');
+                        toast.success('Transfer successfully deleted.');
                         setLoading(false);
-                        getListLoan();
-                        getListGroup();
+                        getTransferList();
                     } else if (response.error) {
                         toast.error(response.message);
                     } else {
                         console.log(response);
                     }
                 });
+            setLoading(false);
         }
     }
 
@@ -140,20 +176,18 @@ const TransferClientPage = () => {
     }
 
     const handleMultiSelect = (mode, selectAll, row, rowIndex) => {
-        if (list) {
+        if (transferList) {
             if (mode === 'all') {
-                const tempList = list.map(loan => {
+                const tempList = transferList.map(loan => {
                     let temp = {...loan};
 
-                    if (temp.allowApproved) {
-                        temp.selected = selectAll;
-                    }
+                    temp.selected = selectAll;
                     
                     return temp;
                 });
-                dispatch(setLoanList(tempList));
+                dispatch(setTransferClientList(tempList));
             } else if (mode === 'row') {
-                const tempList = list.map((loan, index) => {
+                const tempList = transferList.map((loan, index) => {
                     let temp = {...loan};
     
                     if (index === rowIndex) {
@@ -162,49 +196,43 @@ const TransferClientPage = () => {
     
                     return temp;
                 });
-                dispatch(setLoanList(tempList));
+                dispatch(setTransferClientList(tempList));
             }
         }
     }
 
     const handleMultiApprove = async () => {
-        let selectedLoanList = list && list.filter(loan => loan.selected === true);
+        let selectedList = transferList && transferList.filter(t => t.selected === true);
         
-        if (selectedLoanList.length > 0) {
-            selectedLoanList = selectedLoanList.map(loan => {
-                let temp = {...loan};
-                const group = loan.group;
+        if (selectedList.length > 0) {
+            selectedList = selectedList.map(transfer => {
+                let temp = {...transfer};
+                const clientData = transfer.client;
 
-                delete temp.group;
-                delete temp.client;
-                delete temp.branch;
-                delete temp.principalLoanStr;
-                delete temp.activeLoanStr;
-                delete temp.loanBalanceStr;
-                delete temp.mcbuStr;
-                delete temp.selected;
-
-                temp.dateGranted = moment(currentDate).format('YYYY-MM-DD');
-                temp.status = 'active';
-                temp.startDate = moment(currentDate).add(1, 'days').format('YYYY-MM-DD');
-                temp.endDate = getEndDate(temp.dateGranted, group.occurence === type ? 60 : 24 );
-                temp.mispayment = 0;
-                temp.insertedBy = currentUser._id;
+                temp.branchId = temp.targetBranchId;
+                temp.loId = temp.targetUserId;
+                temp.groupId = temp.targetGroupId;
+                temp.sameLo = clientData.loId === temp.targetUserId;
+                temp.oldGroupId = clientData.groupId;
+                temp.oldBranchId = clientData.branchId;
+                temp.oldLoId = clientData.loId;
+                temp.dateAdded = currentDate;
+                temp.status = "approved";
 
                 return temp;
             });
 
-            const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/approved-reject-by-batch', selectedLoanList);
+            const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/transfer-client/approve-reject', selectedList);
 
             if (response.success) {
                 setLoading(false);
-                toast.success('Selected loans successfully approved.');
+                toast.success('Selected clients successfully transferred.');
                 setTimeout(() => {
-                    getListLoan();
+                    getTransferList();
                 }, 500);
             }
         } else {
-            toast.error('No loan selected!');
+            toast.error('No client selected!');
         }
     }
 
@@ -216,8 +244,8 @@ const TransferClientPage = () => {
     const rowActionButtons = [
         { label: 'Approve', action: handleApprove},
         { label: 'Reject', action: handleReject},
-        { label: 'Edit Loan', action: handleEditAction},
-        { label: 'Delete Loan', action: handleDeleteAction}
+        // { label: 'Edit', action: handleEditAction},
+        { label: 'Delete', action: handleDeleteAction}
     ];
 
     const getTransferList = async () => {
@@ -226,7 +254,37 @@ const TransferClientPage = () => {
         if (currentUser.role.rep === 1) {
             const response = await fetchWrapper.get(url);
             if (response.success) {
-                dispatch(setTransferClientList(response.data));
+                const list = [];
+                response.data.map(transfer => {
+                    let temp = {...transfer};
+                    const client = transfer.client;
+                    const loan = transfer.loans.length > 0 ? transfer.loans[0] : [];
+
+                    temp.lastName = client.lastName;
+                    temp.firstName = client.firstName;
+                    temp.status = client.status;
+
+                    if (transfer.loans.length > 0) {
+                        temp.amountRelease = loan.amountRelease;
+                        temp.amountReleaseStr = temp.amountRelease > 0 ? formatPricePhp(temp.amountRelease) : '-';
+                        temp.loanBalance = loan.loanBalance;
+                        temp.loanBalanceStr = temp.loanBalance > 0 ? formatPricePhp(temp.loanBalance) : '-';
+                        temp.targetCollection = loan.amountRelease - loan.loanBalance;
+                        temp.targetCollectionStr = temp.targetCollection > 0 ? formatPricePhp(temp.targetCollection) : '-';
+                        temp.actualCollection = loan.amountRelease - loan.loanBalance;
+                        temp.actualCollectionStr = temp.actualCollection > 0 ? formatPricePhp(temp.actualCollection) : '-';
+                        temp.totalMcbu = loan.mcbu;
+                        temp.totalMcbuStr = temp.totalMcbu > 0 ? formatPricePhp(temp.totalMcbu) : '-';
+                        temp.loanStatus = loan.status;
+
+                        if (temp.loanStatus === "closed") {
+                            temp.delinquent = true;
+                        }
+                    }
+
+                    list.push(temp);
+                });
+                dispatch(setTransferClientList(list));
                 setLoading(false);
             } else if (response.error) {
                 setLoading(false);
@@ -238,7 +296,7 @@ const TransferClientPage = () => {
             if (response.success) {
                 const list = [];
                 response.data.map(transfer => {
-                    let temp = {};
+                    let temp = {...transfer};
                     const client = transfer.client;
                     const loan = transfer.loans.length > 0 ? transfer.loans[0] : [];
 
@@ -333,7 +391,7 @@ const TransferClientPage = () => {
     }, [currentUser]);
 
     return (
-        <Layout actionButtons={(currentUser.role.rep === 2 && !isWeekend && !isHoliday) && actionButtons}>
+        <Layout actionButtons={(currentUser.role.rep <= 2 && !isWeekend && !isHoliday) && actionButtons}>
             <div className="pb-4">
                 { loading ? (
                     <div className="absolute top-1/2 left-1/2">
@@ -341,7 +399,7 @@ const TransferClientPage = () => {
                     </div>
                 ) : (
                     <React.Fragment>
-                        <TableComponent columns={columns} data={transferList} pageSize={50} hasActionButtons={(currentUser.role.rep === 2 && !isWeekend && !isHoliday) ? true : false} rowActionButtons={!isWeekend && !isHoliday && rowActionButtons} showFilters={false} multiSelect={currentUser.role.rep === 2 ? true : false} multiSelectActionFn={handleMultiSelect} />
+                        <TableComponent columns={columns} data={transferList} pageSize={50} hasActionButtons={(currentUser.role.rep <= 2 && !isWeekend && !isHoliday) ? true : false} rowActionButtons={!isWeekend && !isHoliday && rowActionButtons} showFilters={false} multiSelect={currentUser.role.rep <= 2 ? true : false} multiSelectActionFn={handleMultiSelect} />
                         <AddUpdateTransferClient mode={mode} client={client} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
                         <Dialog show={showDeleteDialog}>
                             <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">

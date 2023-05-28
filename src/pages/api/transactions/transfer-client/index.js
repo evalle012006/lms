@@ -54,6 +54,8 @@ async function getList(req, res) {
                             $addFields: {
                                 "clientIdObj": { $toObjectId: "$selectedClientId" },
                                 "loanIdObj": { $toObjectId: "$loanId" },
+                                "sourceGroupIdObj": { $toObjectId: "$sourceGroupId" },
+                                "targetGroupIdObj": { $toObjectId: "$targetGroupId" }
                             }
                         },
                         {
@@ -72,13 +74,32 @@ async function getList(req, res) {
                                 from: "loans",
                                 localField: 'loanIdObj',
                                 foreignField: '_id',
-                                // pipeline: [
-                                //     { $match: { $expr: { $or: [ { $eq: ['$status', 'active'] }, { $eq: ['$status', 'completed'] } ] } } }
-                                // ],
                                 as: 'loans'
                             }
                         },
-                        { $project: { clientIdObj: 0, loanIdObj: 0 } }
+                        {
+                            $lookup: {
+                                from: "groups",
+                                localField: 'sourceGroupIdObj',
+                                foreignField: '_id',
+                                as: 'sourceGroup'
+                            }
+                        },
+                        {
+                            $unwind: "$sourceGroup"
+                        },
+                        {
+                            $lookup: {
+                                from: "groups",
+                                localField: 'targetGroupIdObj',
+                                foreignField: '_id',
+                                as: 'targetGroup'
+                            }
+                        },
+                        {
+                            $unwind: "$targetGroup"
+                        },
+                        { $project: { clientIdObj: 0, loanIdObj: 0, sourceGroupIdObj: 0, targetGroupIdObj: 0 } }
                     ])
                     .toArray();
 
@@ -96,7 +117,10 @@ async function getList(req, res) {
                 { $match: { $expr: { $eq: ['$status', 'pending'] } } },
                 {
                     $addFields: {
-                        "clientIdObj": { $toObjectId: "$clientId" },
+                        "clientIdObj": { $toObjectId: "$selectedClientId" },
+                        "loanIdObj": { $toObjectId: "$loanId" },
+                        "sourceGroupIdObj": { $toObjectId: "$sourceGroupId" },
+                        "targetGroupIdObj": { $toObjectId: "$targetGroupId" }
                     }
                 },
                 {
@@ -113,15 +137,34 @@ async function getList(req, res) {
                 {
                     $lookup: {
                         from: "loans",
-                        localField: 'clientId',
-                        foreignField: 'clientId',
-                        pipeline: [
-                            { $match: { $expr: { $or: [ { $eq: ['$status', 'active'] }, { $eq: ['$status', 'completed'] } ] } } }
-                        ],
+                        localField: 'loanIdObj',
+                        foreignField: '_id',
                         as: 'loans'
                     }
                 },
-                { $project: { clientIdObj: 0 } }
+                {
+                    $lookup: {
+                        from: "groups",
+                        localField: 'sourceGroupIdObj',
+                        foreignField: '_id',
+                        as: 'sourceGroup'
+                    }
+                },
+                {
+                    $unwind: "$sourceGroup"
+                },
+                {
+                    $lookup: {
+                        from: "groups",
+                        localField: 'targetGroupIdObj',
+                        foreignField: '_id',
+                        as: 'targetGroup'
+                    }
+                },
+                {
+                    $unwind: "$targetGroup"
+                },
+                { $project: { clientIdObj: 0, loanIdObj: 0, sourceGroupIdObj: 0, targetGroupIdObj: 0 } }
             ])
             .toArray();
 

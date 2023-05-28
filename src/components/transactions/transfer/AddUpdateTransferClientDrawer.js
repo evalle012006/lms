@@ -74,9 +74,9 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
         selectedClientId: yup
             .string()
             .required('Please select client to transfer.'),
-        selectedSlotNo: yup
-            .number()
-            .required('Please select slot number.')
+        // selectedSlotNo: yup
+        //     .number()
+        //     .required('Please select slot number.')
     });
 
     const getListUser = async (selectedBranch, type) => {
@@ -100,15 +100,8 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
                 userList.sort((a, b) => { return a.loNo - b.loNo; });
                 if (type === "source") {
                     setSourceUserList(userList);
-                    setSourceGroupList();
-                    setSelectedSourceGroup();
-                    setSelectedClientId();
-                    setSelectedClient();
-                    setClientList();
                 } else {
                     setTargetUserList(userList);
-                    setTargetGroupList();
-                    setSelectedTargetGroup();
                 }
                 
             } else {
@@ -145,13 +138,8 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
 
                 if (type === "source") {
                     setSourceGroupList(groups);
-                    setSelectedSourceGroup();
-                    setSelectedClientId();
-                    setSelectedClient();
-                    setClientList();
                 } else {
                     setTargetGroupList(groups);
-                    setSelectedTargetGroup();
                 }
 
                 setLoading(false);
@@ -179,8 +167,6 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
                 });
 
                 setClientList(clients);
-                setSelectedClientId();
-                setSelectedClient();
                 setLoading(false);
             } else if (response.error) {
                 setLoading(false);
@@ -195,76 +181,50 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
         const form = formikRef.current;
         form.setFieldValue(field, value);
         
-        const selected = branchList.find(b => b._id === value);
         setSelectedSourceBranch(value);
-        getListUser(selected, "source");
     }
 
     const handleChangeTargetBranch = (field, value) => {
-        const selected = branchList.find(b => b._id === value);
         setSlotNumbers();
         setSelectedTargetBranch(value);
-        getListUser(selected, "target");
         const form = formikRef.current;
         form.setFieldValue(field, value);
     }
 
     const handleChangeSourceUser = (field, value) => {
-        const selected = sourceUserList.find(u => u._id === value);
+        setSelectedSourceGroup();
+        setSelectedClientId();
+        setSelectedClient();
+        setClientList();
         setSelectedSourceUser(value);
-        getListGroup(selected, "source");
         const form = formikRef.current;
         form.setFieldValue(field, value);
     }
 
     const handleChangeTargetUser = (field, value) => {
-        const selected = targetUserList.find(u => u._id === value);
+        setTargetGroupList();
+        setSelectedTargetGroup();
         setSelectedTargetUser(value);
-        getListGroup(selected, "target");
         setSlotNumbers();
         const form = formikRef.current;
         form.setFieldValue(field, value);
     }
 
     const handleChangeSourceGroup = (field, value) => {
-        console.log(field, value)
         const form = formikRef.current;
         form.setFieldValue(field, value);
-        
+        setSelectedClient();
+        setSelectedClientId();
         setSelectedSourceGroup(value);
-        getListClient(value);
     }
 
     const handleChangeTargetGroup = (field, value) => {
-        const form = formikRef.current;
-        const sourceGroup = sourceGroupList.find(group => group._id === selectedSourceGroup);
-        const targetGroup = targetGroupList.find(group => group._id === value);
-        setSlotNumbers();
-        if (value === sourceGroup._id) {
-            toast.error('Selected group is the same as the source group.');
-            setSelectedTargetGroup(null);
-            form.setFieldValue(field, null);
-        } else if (targetGroup.occurence !== sourceGroup.occurence) {
-            toast.error(`Please select a ${sourceGroup.occurence} group.`);
-            setSelectedTargetGroup(null);
-            form.setFieldValue(field, null);
-        } else if (targetGroup.status === 'available') {
-            setSelectedTargetGroup(value);
-            const availableSlots = targetGroup.availableSlots.map(s => {
-                return { label: s, value: s };
-            })
-            setSlotNumbers(availableSlots);
-            form.setFieldValue(field, value);
-        } else {
-            toast.error("Selected group is currently full.");
-            setSelectedTargetGroup(null);
-            form.setFieldValue(field, null);
-        }
+        setSelectedTargetGroup(value);
     }
 
     const handleChangeClient = (field, value) => {
-        const selected = clientList.find(b => b._id === value);
-        setSelectedClient(selected);
+        setSelectedClientId();
+        setSelectedClient();
         setSelectedClientId(value);
 
         const form = formikRef.current;
@@ -318,22 +278,7 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
                 values.sourceUserId = selectedSourceUser;
                 values.sourceGroupId = selectedSourceGroup;
                 values.currentSlotNo = selectedClient.slotNo;
-                // let uClient;
-
-                // uClient.clientId = selectedClient._id;
-                // uClient.branchId = selectedTargetBranch;
-                // uClient.loId = selectedTargetUser;
-                // uClient.groupId = selectedTargetGroup;
-                // uClient.sameLo = selectedClient.loId === selectedTargetUser;
-                // uClient.oldGroupId = selectedClient.groupId;
-                // uClient.oldBranchId = selectedClient.branchId;
-                // uClient.oldLoId = selectedClient.loId;
-                
-                // if (selectedClient.loans.length > 0) {
-                //     uClient.loanId = selectedClient.loans[0]._id;
-                //     uClient.oldSlotNo = selectedClient.slotNo;
-                //     uClient.slotNo = values.selectedSlotNo;
-                // }
+                values.sameLo = selectedClient.loId === values.targetUserId;
 
                 if (selectedClient.loans.length > 0) {
                     values.loanId = selectedClient.loans[0]._id;
@@ -382,14 +327,16 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
             setTitle('Add Transfer Client');
         } else if (mode === 'edit') {
             setTitle('Edit Transfer Client');
-            const form = formikRef.current;
-            // setClientId(loan.clientId);
-            // setSelectedGroup(loan.groupId);
-            // setSlotNo(loan.slotNo);
 
-            // form.setFieldValue('clientId', loan.clientId);
-            // form.setFieldValue('groupId', loan.groupId);
-            // form.setFieldValue('slotNo', loan.slotNo);
+            if (client) {
+                setSelectedSourceBranch(client.sourceBranchId);
+                setSelectedSourceUser(client.sourceUserId);
+                setSelectedSourceGroup(client.sourceGroupId);
+                setSelectedClientId(client.selectedClientId);
+                setSelectedTargetBranch(client.selectedTargetBranch);
+                setSelectedTargetUser(client.selectedTargetUser);
+                setSelectedTargetGroup(client.selectedTargetGroup);
+            }
         }
 
         mounted && setLoading(false);
@@ -397,7 +344,80 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
         return () => {
             mounted = false;
         };
-    }, [mode]);
+    }, [mode, client]);
+
+    useEffect(() => {
+        if (selectedSourceBranch) {
+            const selected = branchList.find(b => b._id === selectedSourceBranch);
+            getListUser(selected, "source");
+        }
+    }, [selectedSourceBranch]);
+
+    useEffect(() => {
+        if (selectedSourceUser) {
+            const selected = sourceUserList.find(u => u._id === selectedSourceUser);
+            getListGroup(selected, "source");
+        }
+    }, [selectedSourceUser]);
+
+    useEffect(() => {
+        if (selectedSourceGroup) {
+            // console.log(selectedSourceGroup)
+            getListClient(selectedSourceGroup);
+        }
+    }, [selectedSourceGroup]);
+
+    useEffect(() => {
+        if (selectedClientId) {
+            const selected = clientList.find(b => b._id === selectedClientId);
+            setSelectedClient(selected);
+        }
+    }, [selectedClientId]);
+
+    useEffect(() => {
+        if (selectedTargetBranch) {
+            const selected = branchList.find(b => b._id === selectedTargetBranch);
+            getListUser(selected, "target");
+        }
+    }, [selectedTargetBranch]);
+
+    useEffect(() => {
+        if (selectedTargetUser) {
+            const selected = targetUserList.find(u => u._id === selectedTargetUser);
+            getListGroup(selected, "target");
+        }
+    }, [selectedTargetUser]);
+
+    useEffect(() => {
+        if (selectedTargetGroup) {
+            const form = formikRef.current;
+            const sourceGroup = sourceGroupList.find(group => group._id === selectedSourceGroup);
+            const targetGroup = targetGroupList.find(group => group._id === selectedTargetGroup);
+            setSelectedTargetGroup();
+            setSlotNumbers();
+            if (selectedTargetGroup === sourceGroup._id) {
+                toast.error('Selected group is the same as the source group.');
+                setSelectedTargetGroup(null);
+                form.setFieldValue("targetGroupId", null);
+            } else if (targetGroup.occurence !== sourceGroup.occurence) {
+                toast.error(`Please select a ${sourceGroup.occurence} group.`);
+                setSelectedTargetGroup(null);
+                form.setFieldValue("targetGroupId", null);
+            } else if (targetGroup.status === 'available') {
+                setSelectedTargetGroup(selectedTargetGroup);
+                const availableSlots = targetGroup.availableSlots.map(s => {
+                    return { label: s, value: s };
+                })
+                setSlotNumbers(availableSlots);
+                form.setFieldValue("targetGroupId", selectedTargetGroup);
+                mode === "edit" && setSelectedSlotNo(client.selectedSlotNo);
+            } else {
+                toast.error("Selected group is currently full.");
+                setSelectedTargetGroup(null);
+                form.setFieldValue("targetGroupId", null);
+            }
+        }
+    }, [selectedTargetGroup]);
 
     return (
         <React.Fragment>
@@ -595,20 +615,22 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
                                             errors={touched.targetGroupId && errors.targetGroupId ? errors.targetGroupId : undefined}
                                         />
                                     </div>
-                                    <div className="mt-4">
-                                        <SelectDropdown
-                                            name="selectedSlotNo"
-                                            field="selectedSlotNo"
-                                            value={selectedSlotNo}
-                                            label="New Slot Number"
-                                            options={slotNumbers}
-                                            onChange={(field, value) => handleChangeSlotNo(field, value)}
-                                            onBlur={setFieldTouched}
-                                            disabled={!selectedTargetGroup}
-                                            placeholder="Select New Stot No"
-                                            errors={touched.selectedSlotNo && errors.selectedSlotNo ? errors.selectedSlotNo : undefined}
-                                        />
-                                    </div>
+                                    {selectedClient?.loans.length > 0 && (
+                                        <div className="mt-4">
+                                            <SelectDropdown
+                                                name="selectedSlotNo"
+                                                field="selectedSlotNo"
+                                                value={selectedSlotNo}
+                                                label="New Slot Number"
+                                                options={slotNumbers}
+                                                onChange={(field, value) => handleChangeSlotNo(field, value)}
+                                                onBlur={setFieldTouched}
+                                                disabled={!selectedTargetGroup}
+                                                placeholder="Select New Stot No"
+                                                errors={touched.selectedSlotNo && errors.selectedSlotNo ? errors.selectedSlotNo : undefined}
+                                            />
+                                        </div>
+                                    ) }
                                     <div className="flex flex-row mt-5">
                                         <ButtonOutline label="Cancel" onClick={handleCancel} className="mr-3" />
                                         <ButtonSolid label="Submit" type="submit" isSubmitting={isValidating && isSubmitting} />

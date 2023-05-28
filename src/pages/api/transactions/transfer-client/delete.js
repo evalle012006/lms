@@ -21,7 +21,7 @@ async function deleteTransfer(req, res) {
     if (transferClient.length > 0) {
         if (transferClient[0].status === 'pending') {
             await db
-                .collection('loans')
+                .collection('transferClients')
                 .deleteOne({ _id: transferClient[0]._id });
 
             response = { success: true }
