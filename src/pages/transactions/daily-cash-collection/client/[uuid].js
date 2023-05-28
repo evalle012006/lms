@@ -820,28 +820,28 @@ const CashCollectionDetailsPage = () => {
                             temp.loId = currentGroup && currentGroup.loanOfficerId;
                         }
 
-                        if (temp.paymentCollection === temp.targetCollection) {
-                            const excessMcbu = temp.excess / temp.activeLoan;
-                            const finalMcbu = (excessMcbu * 10) + 10;
-                            // check if mcbuCol has data if not set it
-                            if (!temp.mcbuCol || temp.mcbuCol === 0) {
-                                temp.mcbuCol = finalMcbu;
-                                temp.mcbu += temp.mcbuCol;
-                            }
+                        // if (temp.paymentCollection === temp.targetCollection) {
+                        //     const excessMcbu = temp.excess / temp.activeLoan;
+                        //     const finalMcbu = (excessMcbu * 10) + 10;
+                        //     // check if mcbuCol has data if not set it
+                        //     if (!temp.mcbuCol || temp.mcbuCol === 0) {
+                        //         temp.mcbuCol = finalMcbu;
+                        //         temp.mcbu += temp.mcbuCol;
+                        //     }
 
-                            // if mcbuCol is not equal the calculated finalMcbu, set the finalMcbu and set the originalMcbu to the mcbu and add the new mcbuCol
-                            if (temp.mcbuCol !== finalMcbu) {
-                                temp.mcbuCol = finalMcbu;
-                                temp.mcbu = temp.originalMcbu;
-                                temp.mcbu += temp.mcbuCol;
-                            }
+                        //     // if mcbuCol is not equal the calculated finalMcbu, set the finalMcbu and set the originalMcbu to the mcbu and add the new mcbuCol
+                        //     if (temp.mcbuCol !== finalMcbu) {
+                        //         temp.mcbuCol = finalMcbu;
+                        //         temp.mcbu = temp.originalMcbu;
+                        //         temp.mcbu += temp.mcbuCol;
+                        //     }
     
-                            // checking if the calculated mcbu is the same as the originalMcbu + mcbuCol if not set the tempMcbu
-                            const tempMcbu = temp.originalMcbu + temp.mcbuCol;
-                            if (tempMcbu !== temp.mcbu) {
-                                temp.mcbu = tempMcbu;
-                            }
-                        }
+                        //     // checking if the calculated mcbu is the same as the originalMcbu + mcbuCol if not set the tempMcbu
+                        //     const tempMcbu = temp.originalMcbu + temp.mcbuCol;
+                        //     if (tempMcbu !== temp.mcbu) {
+                        //         temp.mcbu = tempMcbu;
+                        //     }
+                        // }
 
                         delete temp.originalMcbu;
     
