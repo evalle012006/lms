@@ -213,7 +213,7 @@ async function saveCashCollection(loan, currentReleaseAmount, reloan, group, loa
             data.groupDay = group.day;
 
             if (!reloan) {
-                data.mcbuCol = loanData.mcbu;
+                data.mcbuCol = loan.mcbu;
             }
         }
 
