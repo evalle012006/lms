@@ -244,10 +244,13 @@ const CashCollectionDetailsPage = () => {
                     let mcbuWithdrawal = cc.mcbuWithdrawal;
                     let mcbuReturnAmt = cc.mcbuReturnAmt;
                     if (cc.hasOwnProperty('current') && cc.current.length > 0) {
-                        mcbu = cc.current[0].mcbu;
-                        mcbuCol = cc.current[0].mcbuCol;
-                        mcbuWithdrawal = cc.current[0].mcbuWithdrawal;
-                        mcbuReturnAmt = cc.current[0].mcbuReturnAmt;
+                        const current = cc.current.find(cur => !cur.hasOwnProperty('origin'));
+                        if (current) {
+                            mcbu = current.mcbu;
+                            mcbuCol = current.mcbuCol;
+                            mcbuWithdrawal = current.mcbuWithdrawal;
+                            mcbuReturnAmt = current.mcbuReturnAmt;
+                        }
                     }
                     collection = {
                         ...cc,
@@ -384,36 +387,32 @@ const CashCollectionDetailsPage = () => {
 
                     delete cc._id;
                     if (cc.hasOwnProperty('current') && cc.current.length > 0) {
-                        collection.targetCollection = cc.current[0].targetCollection;
-                        collection.targetCollectionStr = collection.targetCollection > 0 ? formatPricePhp(collection.targetCollection) : '-';
-                        collection.excess = cc.current[0].excess;
-                        collection.excessStr = collection.excess > 0 ? formatPricePhp(collection.excess) : '-';
-                        collection.paymentCollection = cc.current[0].paymentCollection;
-                        collection.paymentCollectionStr = collection.paymentCollection > 0 ? formatPricePhp(collection.paymentCollection) : '-';
-                        collection.mispayment = cc.current[0].mispayment;
-                        collection.mispaymentStr = cc.current[0].mispaymentStr;
-                        collection.remarks = cc.current[0].remarks;
-                        collection.delinquent = cc.current[0].hasOwnProperty('delinquent') ? cc.current[0].delinquent : false;
-                        collection._id = cc.current[0]._id;
-                        collection.prevData = cc.current[0].prevData;
-                        collection.pastDue = cc.current[0].pastDue ? cc.current[0].pastDue : 0;
-                        collection.pastDueStr = cc.current[0].pastDue ? formatPricePhp(cc.current[0].pastDue) : '-';
-                        collection.mcbuCol = cc.current[0].mcbuCol;
-                        collection.mcbuColStr = cc.current[0].mcbuCol > 0 ? formatPricePhp(cc.current[0].mcbuCol) : '-';
-                        collection.mcbuWithdrawal = cc.current[0].mcbuWithdrawal;
-                        collection.mcbuWithdrawalStr = cc.current[0].mcbuWithdrawal > 0 ? formatPricePhp(cc.current[0].mcbuWithdrawal) : '-';
-                        collection.mcbuReturnAmt = (cc.current[0].hasOwnProperty('mcbuReturnAmt') && cc.current[0].mcbuReturnAmt) ? cc.current[0].mcbuReturnAmt : 0;
-                        collection.mcbuReturnAmtStr = collection.mcbuReturnAmt > 0 ? formatPricePhp(collection.mcbuReturnAmt) : '-';
-                        collection.mcbuInterest = cc.current[0].mcbuInterest ? cc.mcbuInterest : 0,
-                        collection.mcbuInterestStr = cc.current[0].mcbuInterest > 0 ? formatPricePhp(cc.current[0].mcbuInterest) : '-',
-                        collection.advanceDays = cc.current[0].advanceDays;
+                        const current = cc.current.find(cur => !cur.hasOwnProperty('origin'));
+                        if (current) {
+                            collection.targetCollection = current.targetCollection;
+                            collection.targetCollectionStr = collection.targetCollection > 0 ? formatPricePhp(collection.targetCollection) : '-';
+                            collection.excess = current.excess;
+                            collection.excessStr = collection.excess > 0 ? formatPricePhp(collection.excess) : '-';
+                            collection.paymentCollection = current.paymentCollection;
+                            collection.paymentCollectionStr = collection.paymentCollection > 0 ? formatPricePhp(collection.paymentCollection) : '-';
+                            collection.mispayment = current.mispayment;
+                            collection.mispaymentStr = current.mispaymentStr;
+                            collection.remarks = current.remarks;
+                            collection.delinquent = current.hasOwnProperty('delinquent') ? current.delinquent : false;
+                            collection._id = current._id;
+                            collection.prevData = current.prevData;
+                            collection.pastDue = current.pastDue ? current.pastDue : 0;
+                            collection.pastDueStr = current.pastDue ? formatPricePhp(current.pastDue) : '-';
+                            collection.mcbuCol = current.mcbuCol;
+                            collection.mcbuColStr = current.mcbuCol > 0 ? formatPricePhp(current.mcbuCol) : '-';
+                            collection.mcbuWithdrawal = current.mcbuWithdrawal;
+                            collection.mcbuWithdrawalStr = current.mcbuWithdrawal > 0 ? formatPricePhp(current.mcbuWithdrawal) : '-';
+                            collection.mcbuReturnAmt = (current.hasOwnProperty('mcbuReturnAmt') && current.mcbuReturnAmt) ? current.mcbuReturnAmt : 0;
+                            collection.mcbuReturnAmtStr = collection.mcbuReturnAmt > 0 ? formatPricePhp(collection.mcbuReturnAmt) : '-';
+                            collection.mcbuInterest = current.mcbuInterest ? cc.mcbuInterest : 0,
+                            collection.mcbuInterestStr = current.mcbuInterest > 0 ? formatPricePhp(current.mcbuInterest) : '-',
+                            collection.advanceDays = current.advanceDays;
 
-                        if (cc.current[0]?.origin) {
-                            collection.origin = cc.current[0].origin;
-                            if (collection.origin !== 'automation-trf') {
-                                setEditMode(false);
-                            }
-                        } else {
                             setEditMode(false);
                         }
                     }
@@ -515,10 +514,7 @@ const CashCollectionDetailsPage = () => {
                         if (loan.current.length > 0) {
                             cashCollection[index]._id = loan.current[0]._id;
                         }
-
-                        console.log(cashCollection[index])
                     } else if (currentLoan.status !== 'active') {
-                        console.log(currentLoan)
                         cashCollection[index] = {
                             client: currentLoan.client,
                             slotNo: loan.slotNo,

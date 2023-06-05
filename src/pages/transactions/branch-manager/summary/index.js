@@ -338,6 +338,7 @@ const BranchManagerSummary = () => {
                 losList = calculateWeeklyTotals(losList);
                 losList.push(calculateMonthlyTotals(losList[0], losList.filter(los => los.weekTotal)));
                 losList.push(calculateGrandTotals(losList, filter, date));
+                losList = processTransferDetails(losList);
                 dispatch(setLosList(losList));
                 setLoading(false);
             } else if (response.error) {
@@ -345,6 +346,232 @@ const BranchManagerSummary = () => {
                 toast.error(response.message);
             }
         }
+    }
+
+    const processTransferDetails = (losList) => {
+        const parentIndexes = [];
+        const transfers = [];
+        losList.map((los, index) => {
+            let temp = {...los};
+            let transferDailyGvr;
+            let transferDailyRcv;
+            let transferWeeklyGvr;
+            let transferWeeklyRcv;
+            
+            if (temp?.transferDailyGvr?.length > 0) {
+                const data = {...temp.transferDailyGvr[0]};
+                if (Object.keys(data).length > 0) {
+                    let noTransfer = data.transfer;
+                    if (typeof noTransfer === "string") {
+                        noTransfer = noTransfer.replace('(','').replace(')','');
+                        noTransfer = -Math.abs(noTransfer);
+                    }
+                    transferDailyGvr = {
+                        transfer: noTransfer,
+                        mcbuBalance: data.mcbu,
+                        activeLoanReleaseAmount: -Math.abs(data.totalLoanRelease),
+                        collectionTarget: -Math.abs(data.targetLoanCollection),
+                        pastDuePerson: (data?.noPastDue && data?.noPastDue !== '-') ? data?.noPastDue : 0,
+                        pastDueAmount: (data?.pastDue && data?.pastDue !== '-') ? -Math.abs(data?.pastDue) : 0,
+                        loanBalance: -Math.abs(data.totalLoanBalance)
+                    }
+                }
+            }
+
+            if (temp?.transferDailyRcv?.length > 0) {
+                const data = {...temp.transferDailyRcv[0]};
+                if (Object.keys(data).length > 0) {
+                    let noTransfer = data.transfer;
+                    if (typeof noTransfer === "string") {
+                        noTransfer = noTransfer.replace('(','').replace(')','');
+                        noTransfer = -Math.abs(noTransfer);
+                    }
+                    transferDailyRcv = {
+                        transfer: noTransfer,
+                        mcbuBalance: data.mcbu,
+                        activeLoanReleaseAmount: data.totalLoanRelease,
+                        collectionTarget: data.targetLoanCollection,
+                        pastDuePerson: data?.noPastDue,
+                        pastDueAmount: data?.pastDue,
+                        loanBalance: data.totalLoanBalance,
+                    }
+                }
+            }
+
+            if (temp?.transferWeeklyGvr?.length > 0) {
+                const data = {...temp.transferWeeklyGvr[0]};
+                if (Object.keys(data).length > 0) {
+                    let noTransfer = data.transfer;
+                    if (typeof noTransfer === "string") {
+                        noTransfer = noTransfer.replace('(','').replace(')','');
+                        noTransfer = -Math.abs(noTransfer);
+                    }
+                    transferWeeklyGvr = {
+                        transfer: noTransfer,
+                        mcbuBalance: data.mcbu,
+                        activeLoanReleaseAmount: -Math.abs(data.totalLoanRelease),
+                        collectionTarget: -Math.abs(data.targetLoanCollection),
+                        pastDuePerson: (data?.noPastDue && data?.noPastDue !== '-') ? data?.noPastDue : 0,
+                        pastDueAmount: (data?.pastDue && data?.pastDue !== '-') ? -Math.abs(data?.pastDue) : 0,
+                        loanBalance: -Math.abs(data.totalLoanBalance)
+                    }
+                }
+            }
+
+            if (temp?.transferWeeklyRcv?.length > 0) {
+                const data = {...temp.transferWeeklyRcv[0]};
+                if (Object.keys(data).length > 0) {
+                    let noTransfer = data.transfer;
+                    if (typeof noTransfer === "string") {
+                        noTransfer = noTransfer.replace('(','').replace(')','');
+                        noTransfer = -Math.abs(noTransfer);
+                    }
+                    transferWeeklyRcv = {
+                        transfer: noTransfer,
+                        mcbuBalance: data.mcbu,
+                        activeLoanReleaseAmount: data.totalLoanRelease,
+                        collectionTarget: data.targetLoanCollection,
+                        pastDuePerson: data?.noPastDue,
+                        pastDueAmount: data?.pastDue,
+                        loanBalance: data.totalLoanBalance,
+                    }
+                }
+            }
+
+            if (transferDailyGvr || transferDailyRcv || transferWeeklyGvr || transferWeeklyRcv) {
+                let totalTransfer = 0;
+                let totalMcbuBalance = 0;
+                let totalLoanRelease = 0;
+                let totalLoanBalance = 0;
+                let totalDailyTargetCollection = 0;
+                let totalWeeklyTargetCollection = 0;
+                let totalTargetCollection = 0;
+                // let totalActualCollection = 0;
+                let totalPastDue = 0;
+                let totalNoPastDue = 0;
+
+                if (transferDailyGvr) {
+                    totalTransfer = transferDailyGvr?.transfer;
+                    totalMcbuBalance = transferDailyGvr?.mcbuBalance;
+                    totalLoanRelease = transferDailyGvr?.activeLoanReleaseAmount;
+                    totalLoanBalance = transferDailyGvr?.loanBalance;
+                    totalDailyTargetCollection = transferDailyGvr?.collectionTarget;
+                    totalTargetCollection = transferDailyGvr?.collectionTarget;
+                    totalPastDue = transferDailyGvr?.pastDueAmount > 0 ? transferDailyGvr?.pastDueAmount : 0;
+                    totalNoPastDue = transferDailyGvr?.pastDuePerson > 0 ? transferDailyGvr?.pastDuePerson : 0;
+                }
+                console.log(totalTransfer)
+
+                if (transferDailyRcv) {
+                    totalTransfer += transferDailyRcv?.transfer;
+                    totalMcbuBalance += transferDailyRcv?.mcbuBalance;
+                    totalLoanRelease += transferDailyRcv?.activeLoanReleaseAmount;
+                    totalLoanBalance += transferDailyRcv?.loanBalance;
+                    totalDailyTargetCollection += transferDailyRcv?.collectionTarget;
+                    totalTargetCollection += transferDailyRcv?.collectionTarget;
+                    totalPastDue += transferDailyRcv?.pastDueAmount > 0 ? transferDailyRcv?.pastDueAmount : 0;
+                    totalNoPastDue += transferDailyRcv?.pastDuePerson > 0 ? transferDailyRcv?.pastDuePerson : 0;
+                }
+                console.log(totalTransfer)
+
+                if (transferWeeklyGvr) {
+                    totalTransfer += transferWeeklyGvr?.transfer;
+                    totalMcbuBalance += transferWeeklyGvr?.mcbuBalance;
+                    totalLoanRelease += transferWeeklyGvr?.activeLoanReleaseAmount;
+                    totalLoanBalance += transferWeeklyGvr?.loanBalance;
+                    totalWeeklyTargetCollection = transferWeeklyGvr?.collectionTarget;
+                    totalTargetCollection += transferWeeklyGvr?.collectionTarget;
+                    totalPastDue += transferWeeklyGvr?.pastDueAmount > 0 ? transferWeeklyGvr?.pastDueAmount : 0;
+                    totalNoPastDue += transferWeeklyGvr?.pastDuePerson > 0 ? transferWeeklyGvr?.pastDuePerson : 0;
+                }
+                console.log(totalTransfer)
+
+                if (transferWeeklyRcv) {
+                    totalTransfer += transferWeeklyRcv?.transfer;
+                    totalMcbuBalance += transferWeeklyRcv?.mcbuBalance;
+                    totalLoanRelease += transferWeeklyRcv?.activeLoanReleaseAmount;
+                    totalLoanBalance += transferWeeklyRcv?.loanBalance;
+                    totalWeeklyTargetCollection += transferWeeklyRcv?.collectionTarget;
+                    totalTargetCollection += transferWeeklyRcv?.collectionTarget;
+                    totalPastDue += transferWeeklyRcv?.pastDueAmount > 0 ? transfetransferWeeklyRcvrDailyRcv?.pastDueAmount : 0;
+                    totalNoPastDue += transferWeeklyRcv?.pastDuePerson > 0 ? transferWeeklyRcv?.pastDuePerson : 0;
+                }
+                console.log(totalTransfer)
+
+                const transfer = {
+                    day: 'TFR Details',
+                    transfer: totalTransfer,
+                    newMember: '-',
+                    mcbuTarget: 0,
+                    mcbuTargetStr: '-',
+                    mcbuActual: 0,
+                    mcbuActualStr: '-',
+                    mcbuWithdrawal: 0,
+                    mcbuWithdrawalStr: '-',
+                    mcbuInterest: 0,
+                    mcbuInterestStr: '-',
+                    noMcbuReturn: '-',
+                    mcbuReturnAmt: 0,
+                    mcbuReturnAmtStr: '-',
+                    mcbuBalance: totalMcbuBalance,
+                    mcbuBalanceStr: formatPricePhp(totalMcbuBalance),
+                    offsetPerson: '-',
+                    activeClients: '-',
+                    loanReleaseDailyPerson: '-',
+                    loanReleaseDailyAmount: 0,
+                    loanReleaseDailyAmountStr: '-',
+                    loanReleaseWeeklyPerson: '-',
+                    loanReleaseWeeklyAmount: 0,
+                    loanReleaseWeeklyAmountStr: '-',
+                    consolidatedLoanReleasePerson: '-',
+                    consolidatedLoanReleaseAmount: 0,
+                    consolidatedLoanReleaseAmountStr: '-',
+                    activeLoanReleasePerson: '-',
+                    activeLoanReleaseAmount: totalLoanRelease,
+                    activeLoanReleaseAmountStr: formatPricePhp(totalLoanRelease),
+                    collectionTargetDaily: totalDailyTargetCollection,
+                    collectionTargetDailyStr: formatPricePhp(totalDailyTargetCollection),
+                    collectionAdvancePaymentDaily: 0,
+                    collectionAdvancePaymentDailyStr: '-',
+                    collectionActualDaily: 0,
+                    collectionActualDailyStr: '-',
+                    collectionTargetWeekly: totalWeeklyTargetCollection,
+                    collectionTargetWeeklyStr: formatPricePhp(totalWeeklyTargetCollection),
+                    collectionAdvancePaymentWeekly: 0,
+                    collectionAdvancePaymentWeeklyStr: '-',
+                    collectionActualWeekly: 0,
+                    collectionActualWeeklyStr: '-',
+                    consolidatedCollection: 0,
+                    consolidatedCollectionStr: '-',
+                    fullPaymentDailyPerson: '-',
+                    fullPaymentDailyAmount: 0,
+                    fullPaymentDailyAmountStr: '-',
+                    fullPaymentWeeklyPerson: '-',
+                    fullPaymentWeeklyAmount: 0,
+                    fullPaymentWeeklyAmountStr: '-',
+                    consolidatedFullPaymentPerson: '-',
+                    consolidatedFullPaymentAmount: 0,
+                    consolidatedFullPaymentAmountStr: '-',
+                    pastDuePerson: totalNoPastDue,
+                    pastDueAmount: totalPastDue,
+                    pastDueAmountStr: formatPricePhp(totalPastDue),
+                    mispaymentPerson: '-',
+                    activeBorrowers: '-',
+                    loanBalance: totalLoanBalance,
+                    loanBalanceStr: formatPricePhp(totalLoanBalance),
+                    flag: 'transfer'
+                }
+
+                parentIndexes.push(index);
+                transfers.push(transfer);
+            }
+        });
+        let updatedList = [...losList];
+        parentIndexes.map((pIdx, index) => {
+            updatedList.splice(pIdx + 1, 0, transfers[index]);
+        });
+
+        return updatedList;
     }
 
     const calculatePersons = (losList) => {
@@ -1197,7 +1424,7 @@ const BranchManagerSummary = () => {
                                                         <td className="px-2 py-4 text-center border border-gray-300 border-r-0">{ item.loanBalanceStr }</td>
                                                     </tr>
                                                 ) : (
-                                                    <tr className={`${rowBg} ${(item.weekTotal || item.monthTotal) && 'text-red-400 font-bold'}`}>
+                                                    <tr className={`${rowBg} ${(item.weekTotal || item.monthTotal) && 'text-red-400 font-bold'} ${item?.flag === 'transfer' && 'text-orange-400'}`}>
                                                         <td className="px-2 py-4 text-center border border-gray-300 border-l-0">{ item.day }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.transfer }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.newMember }</td>

@@ -38,6 +38,10 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
         
         const response = await fetchWrapper.get(url);
         if (response.success) {
+            const collectionDailyTransferred = [];
+            const collectionDailyReceived = [];
+            const collectionWeeklyTransferred = [];
+            const collectionWeeklyReceived = [];
             let collectionData = [];
             let noOfClients = 0;
             let noOfBorrowers = 0;
@@ -193,13 +197,8 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                         collection.mcbuReturnAmtStr = collection.mcbuReturnAmt ? formatPricePhp(collection.mcbuReturnAmt) : '-';
                         collection.mcbuInterest = lo.cashCollections[0].mcbuInterest;
                         collection.mcbuInterestStr = lo.cashCollections[0].mcbuInterest > 0 ? lo.cashCollections[0].mcbuInterest : '-';
-                        collection.transfer = lo.cashCollections[0].transfer;
-                        collection.transferred = lo.cashCollections[0].transferred;
+                        collection.transfer = '-';
                         collection.status = groupStatus;
-
-                        if (collection.transferred > 0) {
-                            collection.transfer = collection.transfer - collection.transferred;
-                        }
     
                         excess += lo.cashCollections[0].excess;
                         totalLoanCollection += lo.cashCollections[0].collection;
@@ -285,12 +284,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                         collection.fullPaymentAmount = lo.cashCollections[0].fullPaymentAmount;
                         collection.fullPaymentAmountStr = lo.cashCollections[0].fullPaymentAmount > 0 ? formatPricePhp(lo.cashCollections[0].fullPaymentAmount) : '-';
 
-                        collection.transfer = lo.cashCollections[0].transfer;
-                        collection.transferred = lo.cashCollections[0].transferred;
-
-                        if (collection.transferred > 0) {
-                            collection.transfer = collection.transfer - collection.transferred;
-                        }
+                        collection.transfer = '-';
     
                         noOfClients += lo.cashCollections[0].activeClients;
                         noOfBorrowers += lo.cashCollections[0].activeBorrowers;
@@ -314,14 +308,49 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                         totalMcbuReturnNo += collection.noMcbuReturn ? collection.noMcbuReturn : 0;
                         totalMcbuReturnAmt += collection.mcbuReturnAmt ? collection.mcbuReturnAmt : 0;
                         totalMcbuInterest += collection.mcbuInterest ? collection.mcbuInterest : 0;
-                        totalTransfer += collection.transfer !== '-' ? collection.transfer : 0;
                     }
+                }
+
+                if (collection.transactionType) {
+                    let transfer = 0;
+
+                    if (lo.transferDailyReceivedDetails.length > 0) {
+                        collectionDailyTransferred.push.apply(collectionDailyTransferred, lo.transferDailyReceivedDetails);
+                        transfer = transfer - lo.transferDailyReceivedDetails.length;
+                    }
+
+                    if (lo.transferDailyGiverDetails.length > 0) {
+                        collectionDailyReceived.push.apply(collectionDailyReceived, lo.transferDailyGiverDetails);
+                        transfer = transfer + lo.transferDailyGiverDetails.length;
+                    }
+
+                    if (lo.transferWeeklyReceivedDetails.length > 0) {
+                        collectionWeeklyTransferred.push.apply(collectionWeeklyTransferred, lo.transferWeeklyReceivedDetails);
+                        transfer = transfer - lo.transferWeeklyReceivedDetails.length;
+                    }
+
+                    if (lo.transferWeeklyGiverDetails.length > 0) {
+                        collectionWeeklyReceived.push.apply(collectionWeeklyReceived, lo.transferWeeklyGiverDetails);
+                        transfer = transfer + lo.transferWeeklyGiverDetails.length;
+                    }
+                    
+                    collection.transfer = transfer >= 0 ? transfer : `(${transfer * -1})`;
+                    totalTransfer += transfer;
                 }
                 
                 collectionData.push(collection);
             });
 
             collectionData.sort((a, b) => a.order - b.order);
+
+            const transferGvr = transferDetailsTotal(collectionDailyTransferred, collectionWeeklyTransferred, 'Transfer GVR');
+            const transferRcv = transferDetailsTotal(collectionDailyReceived, collectionWeeklyReceived, 'Transfer RCV');
+            if (collectionDailyTransferred.length > 0 || collectionWeeklyTransferred.length > 0) {
+                collectionData.push(transferGvr);
+            }
+            if (collectionDailyReceived.length > 0 || collectionWeeklyReceived.length > 0) {
+                collectionData.push(transferRcv);
+            }
 
             collectionData.push(getDailyTotals(collectionData));
             collectionData.push(getWeeklyTotals(collectionData));
@@ -387,6 +416,77 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
         }
     }
 
+    const transferDetailsTotal = (detailsDaily, detailsWeekly, type) => {
+        let totalTransfer = 0;
+        let totalMcbu = 0;
+        let totalLoanRelease = 0;
+        let totalLoanBalance = 0;
+        let totalTargetCollection = 0;
+        let totalActualCollection = 0;
+        let totalPastDue = 0;
+        let totalNoPastDue = 0;
+
+        detailsDaily.map(transfer => {
+            totalTransfer++;
+            totalMcbu += transfer.mcbu;
+            totalLoanRelease += transfer.amountRelease;
+            totalLoanBalance += transfer.loanBalance;
+            totalTargetCollection += transfer.targetCollection;
+            totalActualCollection += transfer.paymentCollection;
+            totalPastDue += transfer.pastDue;
+            totalNoPastDue += transfer.noPastDue;
+        });
+
+        detailsWeekly.map(transfer => {
+            totalTransfer++;
+            totalMcbu += transfer.mcbu;
+            totalLoanRelease += transfer.amountRelease;
+            totalLoanBalance += transfer.loanBalance;
+            totalTargetCollection += transfer.targetCollection;
+            totalActualCollection += transfer.paymentCollection;
+            totalPastDue += transfer.pastDue;
+            totalNoPastDue += transfer.noPastDue;
+        });
+        
+        return {
+            name: type.toUpperCase(),
+            transfer: (type === 'Transfer GVR' && totalTransfer > 0) ? `(${totalTransfer})` : totalTransfer,
+            noOfNewCurrentRelease: '-',
+            noCurrentReleaseStr: '-',
+            currentReleaseAmount: 0,
+            currentReleaseAmountStr: '-',//(type === 'Transfer GVR' && totalCurrentReleaseAmount > 0) ? `(${formatPricePhp(totalCurrentReleaseAmount)})` : formatPricePhp(totalCurrentReleaseAmount),
+            activeClients: '-',
+            activeBorrowers: '-',
+            totalLoanRelease: totalLoanRelease,
+            totalReleasesStr: (type === 'Transfer GVR' && totalLoanRelease > 0) ? `(${formatPricePhp(totalLoanRelease)})` : formatPricePhp(totalLoanRelease),
+            totalLoanBalance: totalLoanBalance,
+            totalLoanBalanceStr: (type === 'Transfer GVR' && totalLoanBalance > 0) ? `(${formatPricePhp(totalLoanBalance)})` : formatPricePhp(totalLoanBalance),
+            targetLoanCollection: totalTargetCollection,
+            loanTargetStr: (type === 'Transfer GVR' && totalTargetCollection > 0) ? `(${formatPricePhp(totalTargetCollection)})` : formatPricePhp(totalTargetCollection),
+            excessStr: '-',
+            collection: totalActualCollection,
+            collectionStr: (type === 'Transfer GVR' && totalActualCollection > 0) ? `(${formatPricePhp(totalActualCollection)})` : formatPricePhp(totalActualCollection),
+            mispaymentPerson: '-',
+            mispayment: '-',
+            fullPaymentAmountStr: '-',
+            noOfFullPayment: '-',
+            pastDue: totalPastDue,
+            pastDueStr: (type === 'Transfer GVR' && totalPastDue > 0) ? `(${formatPricePhp(totalPastDue)})` : formatPricePhp(totalPastDue),
+            noPastDue: (type === 'Transfer GVR' && totalNoPastDue > 0) ? `(${totalNoPastDue})` : totalNoPastDue,
+            offsetPerson: '-',
+            mcbu: totalMcbu,
+            mcbuStr: (type === 'Transfer GVR' && totalMcbu > 0) ? `(${formatPricePhp(totalMcbu)})` : formatPricePhp(totalMcbu),
+            mcbuColStr: '-',
+            mcbuWithdrawalStr: '-',
+            noMcbuReturn: '-',
+            mcbuReturnAmtStr: '-',
+            mcbuTarget: '-',
+            mcbuInterestStr: '-',
+            totalData: true,
+            status: '-'
+        }
+    }
+
     const getDailyTotals = (collectionData) => {
         let noOfClients = 0;
         let noOfBorrowers = 0;
@@ -413,6 +513,12 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
         let totalTransfer = 0;
 
         collectionData.filter(u => u.transactionType === 'daily').map(collection => {
+            let transfer = collection.transfer;
+            if (typeof collection.transfer === 'string' && collection.transfer !== '-') {
+                transfer = collection.transfer.replace('(','').replace(')','');
+                transfer = -Math.abs(transfer);
+            }
+
             noOfClients += (collection.activeClients && collection.activeClients !== '-') ? collection.activeClients : 0;
             noOfBorrowers += (collection.activeBorrowers && collection.activeBorrowers !== '-') ? collection.activeBorrowers : 0;
             totalsLoanRelease += collection.totalLoanRelease ? collection.totalLoanRelease : 0;
@@ -435,7 +541,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
             totalMcbuReturnNo += collection.mcbuReturnNo ? collection.mcbuReturnNo : 0;
             totalMcbuReturnAmt += collection.mcbuReturnAmt ? collection.mcbuReturnAmt : 0;
             totalMcbuInterest += collection.mcbuInterest ? collection.mcbuInterest : 0;
-            totalTransfer += collection.transfer !== '-' ? collection.transfer : 0;
+            totalTransfer += transfer;
         });
 
         return {
@@ -508,6 +614,11 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
         let totalTransfer = 0;
 
         collectionData.filter(u => u.transactionType === 'weekly').map(collection => {
+            let transfer = collection.transfer;
+            if (typeof collection.transfer === 'string' && collection.transfer !== '-') {
+                transfer = collection.transfer.replace('(','').replace(')','');
+                transfer = -Math.abs(transfer);
+            }
             noOfClients += (collection.activeClients && collection.activeClients !== '-') ? collection.activeClients : 0;
             noOfBorrowers += (collection.activeBorrowers && collection.activeBorrowers !== '-') ? collection.activeBorrowers : 0;
             totalsLoanRelease += collection.totalLoanRelease ? collection.totalLoanRelease : 0;
@@ -530,7 +641,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
             totalMcbuReturnNo += collection.mcbuReturnNo ? collection.mcbuReturnNo : 0;
             totalMcbuReturnAmt += collection.mcbuReturnAmt ? collection.mcbuReturnAmt : 0;
             totalMcbuInterest += collection.mcbuInterest ? collection.mcbuInterest : 0;
-            totalTransfer += collection.transfer !== '-' ? collection.transfer : 0;
+            totalTransfer += transfer;
         });
 
         return {

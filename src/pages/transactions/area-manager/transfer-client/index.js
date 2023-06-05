@@ -15,6 +15,9 @@ import { setTransferClientList } from "@/redux/actions/clientActions";
 import AddUpdateTransferClient from "@/components/transactions/transfer/AddUpdateTransferClientDrawer";
 import Dialog from "@/lib/ui/Dialog";
 import { formatPricePhp } from "@/lib/utils";
+import { TabPanel, useTabs } from "react-headless-tabs";
+import { TabSelector } from "@/lib/ui/tabSelector";
+import TransferHistoryLOToLOPage from "@/components/transactions/transfer/TransferHistoryLOToLO";
 
 const TransferClientPage = () => {
     const isHoliday = useSelector(state => state.systemSettings.holiday);
@@ -30,6 +33,12 @@ const TransferClientPage = () => {
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [mode, setMode] = useState('add');
     const [client, setClient] = useState();
+
+    const [selectedTab, setSelectedTab] = useTabs([
+        'transfer',
+        'history-branch',
+        'history-lo'
+    ]);
 
     const handleShowAddDrawer = () => {
         setShowAddDrawer(true);
@@ -80,38 +89,75 @@ const TransferClientPage = () => {
         // }
     ]);
 
+    const checkGroupsStatus = async (groupIds) => {
+        let errorMsg;
+        const url = process.env.NEXT_PUBLIC_API_URL 
+                    + 'transactions/cash-collections/update-group-transaction-status?' 
+                    + new URLSearchParams({ groupIds: groupIds, currentDate: currentDate });
+        const response = await fetchWrapper.get(url);
+            
+        if (response.success) {
+            const data = response.data;
+            if (data.length > 0) {
+                const pendings = data.find(cc => cc.groupStatus === 'pending');
+
+                if (pendings) {
+                    errorMsg = "One or more group transactions are not yet closed!";
+                }
+            } else {
+                errorMsg = "No transaction found for the day";
+            }
+        }
+
+        return errorMsg;
+    }
+
+    const processTransfer = (data, clientData) => {
+        let transfer = {...data};
+
+        transfer.branchId = transfer.targetBranchId;
+        transfer.loId = transfer.targetUserId;
+        transfer.groupId = transfer.targetGroupId;
+        transfer.sameLo = clientData.loId === transfer.targetUserId;
+        transfer.oldGroupId = clientData.groupId;
+        transfer.oldBranchId = clientData.branchId;
+        transfer.oldLoId = clientData.loId;
+        transfer.dateAdded = currentDate;
+        transfer.status = "approved";
+
+        return transfer;
+    }
+
     const updateTransferStatus = async (data, status) => {
         setLoading(true);
         
         let transfer = {...data};
-        let msg = 'Selected client successfully transferred.';
 
-        if (status === "approved") {
-            const clientData = transfer.client;
-
-            transfer.branchId = transfer.targetBranchId;
-            transfer.loId = transfer.targetUserId;
-            transfer.groupId = transfer.targetGroupId;
-            transfer.sameLo = clientData.loId === transfer.targetUserId;
-            transfer.oldGroupId = clientData.groupId;
-            transfer.oldBranchId = clientData.branchId;
-            transfer.oldLoId = clientData.loId;
-            transfer.dateAdded = currentDate;
-            transfer.status = "approved";
-        } else {
-            transfer.status = "rejected";
-            transfer.dateAdded = currentDate;
-            msg = 'Selected transfer was rejected.';
-        }
-
-        const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/transfer-client/approve-reject', [transfer]);
-
-        if (response.success) {
+        const errorMsg = checkGroupsStatus([transfer.sourceGroupId, transfer.targetGroupId]);
+        if (errorMsg) {
             setLoading(false);
-            toast.success(msg);
-            setTimeout(() => {
-                getTransferList();
-            }, 500);
+            toast.error(errorMsg);
+        } else {
+            let msg = 'Selected client successfully transferred.';
+            if (status === "approved") {
+                const clientData = transfer.client;
+
+                transfer = processTransfer(transfer, clientData);
+            } else {
+                transfer.status = "rejected";
+                transfer.dateAdded = currentDate;
+                msg = 'Selected transfer was rejected.';
+            }
+
+            const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/transfer-client/approve-reject', [transfer]);
+
+            if (response.success) {
+                setLoading(false);
+                toast.success(msg);
+                setTimeout(() => {
+                    getTransferList();
+                }, 500);
+            }
         }
     }
 
@@ -205,31 +251,33 @@ const TransferClientPage = () => {
         let selectedList = transferList && transferList.filter(t => t.selected === true);
         
         if (selectedList.length > 0) {
-            selectedList = selectedList.map(transfer => {
-                let temp = {...transfer};
-                const clientData = transfer.client;
-
-                temp.branchId = temp.targetBranchId;
-                temp.loId = temp.targetUserId;
-                temp.groupId = temp.targetGroupId;
-                temp.sameLo = clientData.loId === temp.targetUserId;
-                temp.oldGroupId = clientData.groupId;
-                temp.oldBranchId = clientData.branchId;
-                temp.oldLoId = clientData.loId;
-                temp.dateAdded = currentDate;
-                temp.status = "approved";
-
-                return temp;
-            });
-
-            const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/transfer-client/approve-reject', selectedList);
-
-            if (response.success) {
+            const sourceGroupIds = selectedList.map(sg => sg.sourceGroupId);
+            const targetGroupIds = selectedList.map(sg => sg.targetGroupId);
+            const groupIds = [...sourceGroupIds, ...targetGroupIds];
+            console.log(groupIds)
+            const errorMsg = checkGroupsStatus(groupIds);
+            if (errorMsg) {
                 setLoading(false);
-                toast.success('Selected clients successfully transferred.');
-                setTimeout(() => {
-                    getTransferList();
-                }, 500);
+                toast.error(errorMsg);
+            } else {
+                selectedList = selectedList.map(transfer => {
+                    let temp = {...transfer};
+                    const clientData = transfer.client;
+    
+                    temp = processTransfer(temp, clientData);
+    
+                    return temp;
+                });
+    
+                const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/transfer-client/approve-reject', selectedList);
+    
+                if (response.success) {
+                    setLoading(false);
+                    toast.success('Selected clients successfully transferred.');
+                    setTimeout(() => {
+                        getTransferList();
+                    }, 500);
+                }   
             }
         } else {
             toast.error('No client selected!');
@@ -399,7 +447,35 @@ const TransferClientPage = () => {
                     </div>
                 ) : (
                     <React.Fragment>
-                        <TableComponent columns={columns} data={transferList} pageSize={50} hasActionButtons={(currentUser.role.rep <= 2 && !isWeekend && !isHoliday) ? true : false} rowActionButtons={!isWeekend && !isHoliday && rowActionButtons} showFilters={false} multiSelect={currentUser.role.rep <= 2 ? true : false} multiSelectActionFn={handleMultiSelect} />
+                        <nav className="flex pl-10 bg-white border-b border-gray-300">
+                            <TabSelector
+                                isActive={selectedTab === "transfer"}
+                                onClick={() => setSelectedTab("transfer")}>
+                                Transfer
+                            </TabSelector>
+                            <TabSelector
+                                isActive={selectedTab === "history-branch"}
+                                onClick={() => setSelectedTab("history-branch")}>
+                                History Branch to Branch
+                            </TabSelector>
+                            <TabSelector
+                                isActive={selectedTab === "history-lo"}
+                                onClick={() => setSelectedTab("history-lo")}>
+                                History LO to LO
+                            </TabSelector>
+                        </nav>
+                        <React.Fragment>
+                            <TabPanel hidden={selectedTab !== "transfer"}>
+                                <TableComponent columns={columns} data={transferList} pageSize={50} hasActionButtons={(currentUser.role.rep <= 2 && !isWeekend && !isHoliday) ? true : false} rowActionButtons={!isWeekend && !isHoliday && rowActionButtons} showFilters={false} multiSelect={currentUser.role.rep <= 2 ? true : false} multiSelectActionFn={handleMultiSelect} />
+                            </TabPanel>
+                            <TabPanel hidden={selectedTab !== "history-branch"}>
+                                <div>UNDER CONSTRUCTION</div>
+                            </TabPanel>
+                            <TabPanel hidden={selectedTab !== "history-lo"}>
+                                {/* <TransferHistoryLOToLOPage /> */}
+                                <div>UNDER CONSTRUCTION</div>
+                            </TabPanel>
+                        </React.Fragment> 
                         <AddUpdateTransferClient mode={mode} client={client} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
                         <Dialog show={showDeleteDialog}>
                             <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">

@@ -19,7 +19,7 @@ async function saveUpdate(req, res) {
         await db.collection("transferClients").updateOne({ _id: new ObjectId(transferId) }, { $set: { ...clientData } });
         response = { success: true };
     } else {
-        const exist = await db.collection("transferClients").find({ selectedClientId: clientData.selectedClientId }).toArray();
+        const exist = await db.collection("transferClients").find({ selectedClientId: clientData.selectedClientId, status: "pending" }).toArray();
 
         if (exist.length === 0) {
             await db.collection("transferClients").insertOne({...clientData});

@@ -6,7 +6,8 @@ let statusCode = 200;
 
 
 export default apiHandler({
-    post: processLOSummary
+    post: processLOSummary,
+    get: getLOSummary
 });
 
 async function processLOSummary(req, res) {
@@ -30,6 +31,25 @@ async function processLOSummary(req, res) {
     } else {
         response = { error: true, message: "Loan Office Id not found." };
     }
+
+    res.status(statusCode)
+        .setHeader('Content-Type', 'application/json')
+        .end(JSON.stringify(response));
+}
+
+async function getLOSummary(req, res) {
+    const { db } = await connectToDatabase();
+    const { groupIds, currentDate } = req.body;
+
+    const groups = await db.collection('cashCollections')
+                            .find({ $expr: {
+                                $and: [
+                                    { $in: ['$groupId', groupIds] },
+                                    { $eq: ['$dateAdded', currentDate] }
+                                ]
+                            } }).toArray();
+
+    response = { success: true, data: groups }
 
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')

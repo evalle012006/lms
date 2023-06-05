@@ -50,8 +50,10 @@ async function approveReject(req, res) {
                     }
     
                     // put back the slotNo in the source group
-                    sourceGroup.availableSlots.push(selectedSlotNo);
-                    sourceGroup.availableSlots.sort((a, b) => { return a - b; });
+                    if (!sourceGroup.availableSlots.includes(selectedSlotNo)) {
+                        sourceGroup.availableSlots.push(selectedSlotNo);
+                        sourceGroup.availableSlots.sort((a, b) => { return a - b; });   
+                    }
                     sourceGroup.noOfClients = sourceGroup.noOfClients - 1;
     
                     await db.collection('groups').updateOne( {  _id: new ObjectId(sourceGroupId) }, { $set: { ...sourceGroup } }, { upsert: false } );
@@ -147,6 +149,8 @@ async function saveCashCollection(transfer, client, loan, sourceGroup, targetGro
             data.noOfPayments = loan.noOfPayments;
             data.status = loan.status;
             data.mcbu = loan.mcbu;
+            data.pastDue = loan.pastDue;
+            data.noPastDue = loan.noPastDue;
 
             if (data.occurence === 'weekly') {
                 // data.mcbuTarget = 50;
