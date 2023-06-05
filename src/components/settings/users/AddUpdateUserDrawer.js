@@ -29,6 +29,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
     const [image, setImage] = useState('');
     const [selectedBranches, setSelectedBranches] = useState([]);
     const [occurence, setOccurence] = useState('daily');
+    const currentDate = useSelector(state => state.systemSettings.currentDate);
 
     const initialValues = {
         firstName: user.firstName,
@@ -36,7 +37,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
         email: user.email,
         number: user.number,
         position: user.position,
-        designatedBranch: user.designatedBranch ? (user.roleId === 2 ? user.designatedBranch.split(', ') : user.designatedBranch) : 0,
+        designatedBranch: user.designatedBranch ? (user.roleId === 2 ? user.designatedBranch : user.designatedBranch) : 0,
         role: user.role ? user.roleId : '',
         loNo: user.loNo,
         transactionType: user.transactionType
@@ -95,6 +96,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
 
         values.designatedBranch = designatedBranch;
         values.transactionType = occurence;
+        values.currentDate = currentDate;
 
         if (mode === 'add') {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'users/save/';
@@ -189,7 +191,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
             const branchesCode = user.designatedBranch;
             let selectedBranchesList = [];
             branches && branches.map(branch => {
-                branchesCode && branchesCode.split(', ').map(b => {
+                branchesCode.map(b => {
                     if (branch.code === b) {
                         selectedBranchesList.push(branch);
                     }

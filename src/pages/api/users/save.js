@@ -1,6 +1,5 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
-import { getCurrentDate } from '@/lib/utils';
 import moment from 'moment'
 
 export default apiHandler({
@@ -8,7 +7,7 @@ export default apiHandler({
 });
 
 async function save(req, res) {
-    const { email, firstName, lastName, number, position, designatedBranch, role, loNo, transactionType } = req.body;
+    const { email, firstName, lastName, number, position, designatedBranch, role, loNo, transactionType, currentDate } = req.body;
 
     const { db } = await connectToDatabase();
 
@@ -28,7 +27,10 @@ async function save(req, res) {
         };
     } else {
         // const role = await db.collection('platformRoles').find({ rep: 1 }).project({ _id: 0 }).toArray();
-
+        let assignedBranch = designatedBranch;
+        if (typeof assignedBranch !== "string") {
+            assignedBranch = JSON.parse(designatedBranch);
+        }
         const user = await db.collection('users').insertOne({
             firstName: firstName,
             lastName: lastName,
@@ -36,12 +38,11 @@ async function save(req, res) {
             number: number,
             position: position,
             logged: false,
-            // status: 'verification',
             lastLogin: null,
-            dateAdded: moment(getCurrentDate()).format('YYYY-MM-DD'),
+            dateAdded: currentDate,
             role: JSON.parse(role),
             loNo: loNo,
-            designatedBranch: JSON.parse(designatedBranch),
+            designatedBranch: assignedBranch,
             transactionType: transactionType
         });
 
