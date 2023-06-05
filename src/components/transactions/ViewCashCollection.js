@@ -498,6 +498,9 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
 
     const createLos = (totals, selectedBranch, selectedLO, dateFilter, yearEnd, transferGvr, transferRcv) => {
         let grandTotal;
+
+        let totalsLoanRelease = totals.totalLoanRelease + totals.currentReleaseAmount;
+        let totalsLoanBalance = totals.totalLoanBalance + totals.currentReleaseAmount;
         
         if (yearEnd) {
             grandTotal = {
@@ -515,7 +518,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 loanReleasePerson: 0,
                 loanReleaseAmount: 0,
                 activeLoanReleasePerson: totals.activeBorrowers,
-                activeLoanReleaseAmount: totals.totalLoanRelease,
+                activeLoanReleaseAmount: totalsLoanRelease,
                 collectionAdvancePayment: totals.excess,
                 collectionActual: totals.collection,
                 pastDuePerson: 0,
@@ -524,7 +527,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 fullPaymentPerson: 0,
                 fullPaymentAmount: 0,
                 activeBorrowers: totals.activeBorrowers,
-                loanBalance: totals.totalLoanBalance,
+                loanBalance: totalsLoanBalance,
                 transferGvr: transferGvr,
                 transferRcv: transferRcv
             };
@@ -551,7 +554,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 loanReleasePerson: totals.noCurrentRelease,
                 loanReleaseAmount: totals.currentReleaseAmount,
                 activeLoanReleasePerson: totals.activeBorrowers,
-                activeLoanReleaseAmount: totals.totalLoanRelease,
+                activeLoanReleaseAmount: totalsLoanRelease,
                 collectionTarget: totals.targetLoanCollection,
                 collectionAdvancePayment: totals.excess,
                 collectionActual: totals.collection,
@@ -561,7 +564,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 fullPaymentPerson: totals.noOfFullPayment,
                 fullPaymentAmount: totals.fullPaymentAmount,
                 activeBorrowers: totals.activeBorrowers,
-                loanBalance: totals.totalLoanBalance,
+                loanBalance: totalsLoanBalance,
                 transferGvr: transferGvr,
                 transferRcv: transferRcv
             };
