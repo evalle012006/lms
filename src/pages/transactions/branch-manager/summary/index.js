@@ -336,9 +336,9 @@ const BranchManagerSummary = () => {
 
                 losList = calculatePersons(losList);
                 losList = calculateWeeklyTotals(losList);
+                losList.push(processTransferDetails(losList));
                 losList.push(calculateMonthlyTotals(losList[0], losList.filter(los => los.weekTotal)));
-                losList.push(calculateGrandTotals(losList, filter, date));
-                losList = processTransferDetails(losList);
+                losList.push(calculateGrandTotals(losList.filter(los => !los.hasOwnProperty('flag')), filter, date));
                 dispatch(setLosList(losList));
                 setLoading(false);
             } else if (response.error) {
@@ -349,8 +349,17 @@ const BranchManagerSummary = () => {
     }
 
     const processTransferDetails = (losList) => {
-        const parentIndexes = [];
-        const transfers = [];
+        // const parentIndexes = [];
+        // const transfers = [];
+        let totalTransfer = 0;
+        let totalMcbuBalance = 0;
+        let totalLoanRelease = 0;
+        let totalLoanBalance = 0;
+        let totalDailyTargetCollection = 0;
+        let totalWeeklyTargetCollection = 0;
+        let totalTargetCollection = 0;
+        let totalPastDue = 0;
+        let totalNoPastDue = 0;
         losList.map((los, index) => {
             let temp = {...los};
             let transferDailyGvr;
@@ -439,17 +448,6 @@ const BranchManagerSummary = () => {
             }
 
             if (transferDailyGvr || transferDailyRcv || transferWeeklyGvr || transferWeeklyRcv) {
-                let totalTransfer = 0;
-                let totalMcbuBalance = 0;
-                let totalLoanRelease = 0;
-                let totalLoanBalance = 0;
-                let totalDailyTargetCollection = 0;
-                let totalWeeklyTargetCollection = 0;
-                let totalTargetCollection = 0;
-                // let totalActualCollection = 0;
-                let totalPastDue = 0;
-                let totalNoPastDue = 0;
-
                 if (transferDailyGvr) {
                     totalTransfer = transferDailyGvr?.transfer;
                     totalMcbuBalance = transferDailyGvr?.mcbuBalance;
@@ -460,7 +458,6 @@ const BranchManagerSummary = () => {
                     totalPastDue = transferDailyGvr?.pastDueAmount > 0 ? transferDailyGvr?.pastDueAmount : 0;
                     totalNoPastDue = transferDailyGvr?.pastDuePerson > 0 ? transferDailyGvr?.pastDuePerson : 0;
                 }
-                console.log(totalTransfer)
 
                 if (transferDailyRcv) {
                     totalTransfer += transferDailyRcv?.transfer;
@@ -472,7 +469,6 @@ const BranchManagerSummary = () => {
                     totalPastDue += transferDailyRcv?.pastDueAmount > 0 ? transferDailyRcv?.pastDueAmount : 0;
                     totalNoPastDue += transferDailyRcv?.pastDuePerson > 0 ? transferDailyRcv?.pastDuePerson : 0;
                 }
-                console.log(totalTransfer)
 
                 if (transferWeeklyGvr) {
                     totalTransfer += transferWeeklyGvr?.transfer;
@@ -484,7 +480,6 @@ const BranchManagerSummary = () => {
                     totalPastDue += transferWeeklyGvr?.pastDueAmount > 0 ? transferWeeklyGvr?.pastDueAmount : 0;
                     totalNoPastDue += transferWeeklyGvr?.pastDuePerson > 0 ? transferWeeklyGvr?.pastDuePerson : 0;
                 }
-                console.log(totalTransfer)
 
                 if (transferWeeklyRcv) {
                     totalTransfer += transferWeeklyRcv?.transfer;
@@ -496,82 +491,81 @@ const BranchManagerSummary = () => {
                     totalPastDue += transferWeeklyRcv?.pastDueAmount > 0 ? transfetransferWeeklyRcvrDailyRcv?.pastDueAmount : 0;
                     totalNoPastDue += transferWeeklyRcv?.pastDuePerson > 0 ? transferWeeklyRcv?.pastDuePerson : 0;
                 }
-                console.log(totalTransfer)
 
-                const transfer = {
-                    day: 'TFR Details',
-                    transfer: totalTransfer,
-                    newMember: '-',
-                    mcbuTarget: 0,
-                    mcbuTargetStr: '-',
-                    mcbuActual: 0,
-                    mcbuActualStr: '-',
-                    mcbuWithdrawal: 0,
-                    mcbuWithdrawalStr: '-',
-                    mcbuInterest: 0,
-                    mcbuInterestStr: '-',
-                    noMcbuReturn: '-',
-                    mcbuReturnAmt: 0,
-                    mcbuReturnAmtStr: '-',
-                    mcbuBalance: totalMcbuBalance,
-                    mcbuBalanceStr: formatPricePhp(totalMcbuBalance),
-                    offsetPerson: '-',
-                    activeClients: '-',
-                    loanReleaseDailyPerson: '-',
-                    loanReleaseDailyAmount: 0,
-                    loanReleaseDailyAmountStr: '-',
-                    loanReleaseWeeklyPerson: '-',
-                    loanReleaseWeeklyAmount: 0,
-                    loanReleaseWeeklyAmountStr: '-',
-                    consolidatedLoanReleasePerson: '-',
-                    consolidatedLoanReleaseAmount: 0,
-                    consolidatedLoanReleaseAmountStr: '-',
-                    activeLoanReleasePerson: '-',
-                    activeLoanReleaseAmount: totalLoanRelease,
-                    activeLoanReleaseAmountStr: formatPricePhp(totalLoanRelease),
-                    collectionTargetDaily: totalDailyTargetCollection,
-                    collectionTargetDailyStr: formatPricePhp(totalDailyTargetCollection),
-                    collectionAdvancePaymentDaily: 0,
-                    collectionAdvancePaymentDailyStr: '-',
-                    collectionActualDaily: 0,
-                    collectionActualDailyStr: '-',
-                    collectionTargetWeekly: totalWeeklyTargetCollection,
-                    collectionTargetWeeklyStr: formatPricePhp(totalWeeklyTargetCollection),
-                    collectionAdvancePaymentWeekly: 0,
-                    collectionAdvancePaymentWeeklyStr: '-',
-                    collectionActualWeekly: 0,
-                    collectionActualWeeklyStr: '-',
-                    consolidatedCollection: 0,
-                    consolidatedCollectionStr: '-',
-                    fullPaymentDailyPerson: '-',
-                    fullPaymentDailyAmount: 0,
-                    fullPaymentDailyAmountStr: '-',
-                    fullPaymentWeeklyPerson: '-',
-                    fullPaymentWeeklyAmount: 0,
-                    fullPaymentWeeklyAmountStr: '-',
-                    consolidatedFullPaymentPerson: '-',
-                    consolidatedFullPaymentAmount: 0,
-                    consolidatedFullPaymentAmountStr: '-',
-                    pastDuePerson: totalNoPastDue,
-                    pastDueAmount: totalPastDue,
-                    pastDueAmountStr: formatPricePhp(totalPastDue),
-                    mispaymentPerson: '-',
-                    activeBorrowers: '-',
-                    loanBalance: totalLoanBalance,
-                    loanBalanceStr: formatPricePhp(totalLoanBalance),
-                    flag: 'transfer'
-                }
-
-                parentIndexes.push(index);
-                transfers.push(transfer);
+                // parentIndexes.push(index);
+                // transfers.push(transfer);
             }
         });
-        let updatedList = [...losList];
-        parentIndexes.map((pIdx, index) => {
-            updatedList.splice(pIdx + 1, 0, transfers[index]);
-        });
+        // let updatedList = [...losList];
+        // parentIndexes.map((pIdx, index) => {
+        //     updatedList.splice(pIdx + 1, 0, transfers[index]);
+        // });
 
-        return updatedList;
+        // return updatedList;
+
+        return {
+            day: 'TFR Total',
+            transfer: totalTransfer,
+            newMember: '-',
+            mcbuTarget: 0,
+            mcbuTargetStr: '-',
+            mcbuActual: 0,
+            mcbuActualStr: '-',
+            mcbuWithdrawal: 0,
+            mcbuWithdrawalStr: '-',
+            mcbuInterest: 0,
+            mcbuInterestStr: '-',
+            noMcbuReturn: '-',
+            mcbuReturnAmt: 0,
+            mcbuReturnAmtStr: '-',
+            mcbuBalance: totalMcbuBalance,
+            mcbuBalanceStr: formatPricePhp(totalMcbuBalance),
+            offsetPerson: '-',
+            activeClients: '-',
+            loanReleaseDailyPerson: '-',
+            loanReleaseDailyAmount: 0,
+            loanReleaseDailyAmountStr: '-',
+            loanReleaseWeeklyPerson: '-',
+            loanReleaseWeeklyAmount: 0,
+            loanReleaseWeeklyAmountStr: '-',
+            consolidatedLoanReleasePerson: '-',
+            consolidatedLoanReleaseAmount: 0,
+            consolidatedLoanReleaseAmountStr: '-',
+            activeLoanReleasePerson: '-',
+            activeLoanReleaseAmount: totalLoanRelease,
+            activeLoanReleaseAmountStr: formatPricePhp(totalLoanRelease),
+            collectionTargetDaily: totalDailyTargetCollection,
+            collectionTargetDailyStr: formatPricePhp(totalDailyTargetCollection),
+            collectionAdvancePaymentDaily: 0,
+            collectionAdvancePaymentDailyStr: '-',
+            collectionActualDaily: 0,
+            collectionActualDailyStr: '-',
+            collectionTargetWeekly: totalWeeklyTargetCollection,
+            collectionTargetWeeklyStr: formatPricePhp(totalWeeklyTargetCollection),
+            collectionAdvancePaymentWeekly: 0,
+            collectionAdvancePaymentWeeklyStr: '-',
+            collectionActualWeekly: 0,
+            collectionActualWeeklyStr: '-',
+            consolidatedCollection: 0,
+            consolidatedCollectionStr: '-',
+            fullPaymentDailyPerson: '-',
+            fullPaymentDailyAmount: 0,
+            fullPaymentDailyAmountStr: '-',
+            fullPaymentWeeklyPerson: '-',
+            fullPaymentWeeklyAmount: 0,
+            fullPaymentWeeklyAmountStr: '-',
+            consolidatedFullPaymentPerson: '-',
+            consolidatedFullPaymentAmount: 0,
+            consolidatedFullPaymentAmountStr: '-',
+            pastDuePerson: totalNoPastDue,
+            pastDueAmount: totalPastDue,
+            pastDueAmountStr: formatPricePhp(totalPastDue),
+            mispaymentPerson: '-',
+            activeBorrowers: '-',
+            loanBalance: totalLoanBalance,
+            loanBalanceStr: formatPricePhp(totalLoanBalance),
+            flag: 'transfer'
+        };
     }
 
     const calculatePersons = (losList) => {
@@ -1378,7 +1372,7 @@ const BranchManagerSummary = () => {
                                     {list.map((item, index) => {
                                         let rowBg = 'even:bg-gray-100';
 
-                                        if (item.weekTotal || item.monthTotal || item.grandTotal) {
+                                        if (item.weekTotal || item.monthTotal || item.grandTotal || item?.flag === 'transfer') {
                                             rowBg = 'bg-blue-100';
                                         }
 
@@ -1424,7 +1418,7 @@ const BranchManagerSummary = () => {
                                                         <td className="px-2 py-4 text-center border border-gray-300 border-r-0">{ item.loanBalanceStr }</td>
                                                     </tr>
                                                 ) : (
-                                                    <tr className={`${rowBg} ${(item.weekTotal || item.monthTotal) && 'text-red-400 font-bold'} ${item?.flag === 'transfer' && 'text-orange-400'}`}>
+                                                    <tr className={`${rowBg} ${(item.weekTotal || item.monthTotal) && 'text-red-400 font-bold'} ${item?.flag === 'transfer' && 'text-orange-400 font-bold'}`}>
                                                         <td className="px-2 py-4 text-center border border-gray-300 border-l-0">{ item.day }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.transfer }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.newMember }</td>

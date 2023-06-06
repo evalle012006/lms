@@ -255,9 +255,9 @@ const LoanOfficerSummary = () => {
 
                 losList = calculatePersons(losList);
                 losList = calculateWeeklyTotals(losList);
+                losList.push(processTransferDetails(losList));
                 losList.push(calculateMonthlyTotals(losList[0], losList.filter(los => los.weekTotal)));
-                losList.push(calculateGrandTotals(losList, filter, date));
-                losList = processTransferDetails(losList);
+                losList.push(calculateGrandTotals(losList.filter(los => !los.hasOwnProperty('flag')), filter, date));
                 dispatch(setLosList(losList));
                 setLoading(false);
             } else if (response.error) {
@@ -268,8 +268,16 @@ const LoanOfficerSummary = () => {
     }
 
     const processTransferDetails = (losList) => {
-        const parentIndexes = [];
-        const transfers = [];
+        // const parentIndexes = [];
+        // const transfers = [];
+        let totalTransfer = 0;
+        let totalMcbuBalance = 0;
+        let totalLoanRelease = 0;
+        let totalLoanBalance = 0;
+        let totalTargetCollection = 0;
+        // let totalActualCollection = 0;
+        let totalPastDue = 0;
+        let totalNoPastDue = 0;
         losList.map((los, index) => {
             let temp = {...los};
             let transferGvr;
@@ -312,15 +320,6 @@ const LoanOfficerSummary = () => {
             }
 
             if (transferGvr || transferRcv) {
-                let totalTransfer = 0;
-                let totalMcbuBalance = 0;
-                let totalLoanRelease = 0;
-                let totalLoanBalance = 0;
-                let totalTargetCollection = 0;
-                // let totalActualCollection = 0;
-                let totalPastDue = 0;
-                let totalNoPastDue = 0;
-
                 if (transferGvr) {
                     totalTransfer = transferGvr?.transfer;
                     totalMcbuBalance = transferGvr?.mcbuBalance;
@@ -341,61 +340,58 @@ const LoanOfficerSummary = () => {
                     totalNoPastDue += transferRcv?.pastDuePerson > 0 ? transferRcv?.pastDuePerson : 0;
                 }
 
-
-                const transfer = {
-                    day: 'TFR Details',
-                    transfer: totalTransfer,
-                    newMember: '-',
-                    mcbuTarget: 0,
-                    mcbuTargetStr: '-',
-                    mcbuActual: 0,
-                    mcbuActualStr: '-',
-                    mcbuWithdrawal: 0,
-                    mcbuWithdrawalStr: '-',
-                    mcbuInterest: 0,
-                    mcbuInterestStr: '-',
-                    noMcbuReturn: '-',
-                    mcbuReturnAmt: 0,
-                    mcbuReturnAmtStr: '-',
-                    mcbuBalance: totalMcbuBalance,
-                    mcbuBalanceStr: formatPricePhp(totalMcbuBalance),
-                    offsetPerson: '-',
-                    activeClients: '-',
-                    loanReleasePerson: '-',
-                    loanReleaseAmount: 0,
-                    loanReleaseAmountStr: '-',
-                    activeLoanReleasePerson: '-',
-                    activeLoanReleaseAmount: totalLoanRelease,
-                    activeLoanReleaseAmountStr: formatPricePhp(totalLoanRelease),
-                    collectionTarget: totalTargetCollection,
-                    collectionTargetStr: formatPricePhp(totalTargetCollection),
-                    collectionAdvancePayment: 0,
-                    collectionAdvancePaymentStr: '-',
-                    collectionActual: 0,
-                    collectionActualStr: '-',
-                    pastDuePerson: totalNoPastDue,
-                    pastDueAmount: totalPastDue,
-                    pastDueAmountStr: formatPricePhp(totalPastDue),
-                    mispaymentPerson: '-',
-                    fullPaymentPerson: '-',
-                    fullPaymentAmount: 0,
-                    fullPaymentAmountStr: '-',
-                    activeBorrowers: '-',
-                    loanBalance: totalLoanBalance,
-                    loanBalanceStr: formatPricePhp(totalLoanBalance),
-                    flag: 'transfer'
-                }
-
-                parentIndexes.push(index);
-                transfers.push(transfer);
+                // parentIndexes.push(index);
+                // transfers.push(transfer);
             }
         });
-        let updatedList = [...losList];
-        parentIndexes.map((pIdx, index) => {
-            updatedList.splice(pIdx + 1, 0, transfers[index]);
-        });
+        // let updatedList = [...losList];
+        // parentIndexes.map((pIdx, index) => {
+        //     updatedList.splice(pIdx + 1, 0, transfers[index]);
+        // });
 
-        return updatedList;
+        return {
+            day: 'TFR Total',
+            transfer: totalTransfer,
+            newMember: '-',
+            mcbuTarget: 0,
+            mcbuTargetStr: '-',
+            mcbuActual: 0,
+            mcbuActualStr: '-',
+            mcbuWithdrawal: 0,
+            mcbuWithdrawalStr: '-',
+            mcbuInterest: 0,
+            mcbuInterestStr: '-',
+            noMcbuReturn: '-',
+            mcbuReturnAmt: 0,
+            mcbuReturnAmtStr: '-',
+            mcbuBalance: totalMcbuBalance,
+            mcbuBalanceStr: formatPricePhp(totalMcbuBalance),
+            offsetPerson: '-',
+            activeClients: '-',
+            loanReleasePerson: '-',
+            loanReleaseAmount: 0,
+            loanReleaseAmountStr: '-',
+            activeLoanReleasePerson: '-',
+            activeLoanReleaseAmount: totalLoanRelease,
+            activeLoanReleaseAmountStr: formatPricePhp(totalLoanRelease),
+            collectionTarget: totalTargetCollection,
+            collectionTargetStr: formatPricePhp(totalTargetCollection),
+            collectionAdvancePayment: 0,
+            collectionAdvancePaymentStr: '-',
+            collectionActual: 0,
+            collectionActualStr: '-',
+            pastDuePerson: totalNoPastDue,
+            pastDueAmount: totalPastDue,
+            pastDueAmountStr: formatPricePhp(totalPastDue),
+            mispaymentPerson: '-',
+            fullPaymentPerson: '-',
+            fullPaymentAmount: 0,
+            fullPaymentAmountStr: '-',
+            activeBorrowers: '-',
+            loanBalance: totalLoanBalance,
+            loanBalanceStr: formatPricePhp(totalLoanBalance),
+            flag: 'transfer'
+        };
     }
 
     const calculatePersons = (losList) => {
@@ -1017,7 +1013,7 @@ const LoanOfficerSummary = () => {
                                     {list.map((item, index) => {
                                         let rowBg = 'even:bg-gray-100';
 
-                                        if (item.weekTotal || item.monthTotal || item.grandTotal) {
+                                        if (item.weekTotal || item.monthTotal || item.grandTotal || item?.flag === 'transfer') {
                                             rowBg = 'bg-blue-100';
                                         }
 
@@ -1052,7 +1048,7 @@ const LoanOfficerSummary = () => {
                                                         <td className="px-2 py-4 text-center border border-gray-300 border-r-0">{ item.loanBalanceStr }</td>
                                                     </tr>
                                                 ) : (
-                                                    <tr className={`${rowBg} ${(item.weekTotal || item.monthTotal) && 'text-red-400 font-bold'} ${item?.flag === 'transfer' && 'text-orange-400'}`}>
+                                                    <tr className={`${rowBg} ${(item.weekTotal || item.monthTotal) && 'text-red-400 font-bold'} ${item?.flag === 'transfer' && 'text-orange-400 font-bold'}`}>
                                                         <td className="px-2 py-4 text-center border border-gray-300 border-l-0">{ item.day }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.transfer }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.newMember }</td>
