@@ -254,8 +254,8 @@ const LoanOfficerSummary = () => {
                 });
 
                 losList = calculatePersons(losList);
+                // losList.push(processTransferDetails(losList));
                 losList = calculateWeeklyTotals(losList);
-                losList.push(processTransferDetails(losList));
                 losList.push(calculateMonthlyTotals(losList[0], losList.filter(los => los.weekTotal)));
                 losList.push(calculateGrandTotals(losList.filter(los => !los.hasOwnProperty('flag')), filter, date));
                 dispatch(setLosList(losList));
@@ -454,6 +454,7 @@ const LoanOfficerSummary = () => {
         const fBal = losList[0];
 
         let prevWeek;
+        let lastWeekTotalIdx;
         weekTotals.map(w => {
             const index = losList.findIndex(los => los.weekNumber === w.weekNumber);
             if (index > -1) {
@@ -605,10 +606,14 @@ const LoanOfficerSummary = () => {
                     loanBalanceStr: formatPricePhp(totalLoanBalance)
                 }
                 prevWeek = losList[index];
+                lastWeekTotalIdx = index;
             }
         });
-    
-        return losList;
+
+        const updatedWithTransfer = [...losList];
+        updatedWithTransfer.splice(lastWeekTotalIdx, 0, processTransferDetails(losList));
+
+        return updatedWithTransfer;
     }
 
     const calculateMonthlyTotals = (fBal, weeklyTotals) => {
