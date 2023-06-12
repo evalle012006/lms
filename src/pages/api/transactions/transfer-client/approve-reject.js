@@ -41,7 +41,7 @@ async function approveReject(req, res) {
                         // get always the first available slot
                         selectedSlotNo = targetGroup.availableSlots[0];
                     }
-    
+
                     targetGroup.availableSlots = targetGroup.availableSlots.filter(s => s !== selectedSlotNo);
                     targetGroup.noOfClients = targetGroup.noOfClients + 1;
     
@@ -50,8 +50,8 @@ async function approveReject(req, res) {
                     }
     
                     // put back the slotNo in the source group
-                    if (!sourceGroup.availableSlots.includes(selectedSlotNo)) {
-                        sourceGroup.availableSlots.push(selectedSlotNo);
+                    if (!sourceGroup.availableSlots.includes(transfer.currentSlotNo)) {
+                        sourceGroup.availableSlots.push(transfer.currentSlotNo);
                         sourceGroup.availableSlots.sort((a, b) => { return a - b; });   
                     }
                     sourceGroup.noOfClients = sourceGroup.noOfClients - 1;
@@ -83,7 +83,14 @@ async function approveReject(req, res) {
                 delete updatedClient._id;
                 
                 await db.collection('client').updateOne({ _id: new ObjectId(client._id) }, { $set: { ...updatedClient } });
-                await db.collection('transferClients').updateOne({_id: new ObjectId(transfer._id)}, { $set: {status: "approved"} });
+                await db.collection('transferClients').updateOne(
+                    {_id: new ObjectId(transfer._id)}, 
+                    { $set: {
+                        status: "approved", 
+                        occurence: sourceGroup.occurence, 
+                        approveRejectDate: transfer.dateAdded
+                    } }
+                );
     
                 response = { success: true };
             }
@@ -134,7 +141,11 @@ async function saveCashCollection(transfer, client, loan, sourceGroup, targetGro
             remarks: '',
             dateAdded: transfer.dateAdded,
             groupStatus: 'pending',
+            transferId: transfer._id,
+            sameLo: transfer.sameLo, 
             transfer: transfer.sameLo ? false : true,
+            loToLo: transfer.loToLo,
+            branchToBranch: transfer.branchToBranch,
             origin: 'automation-trf'
         };
 
@@ -160,7 +171,16 @@ async function saveCashCollection(transfer, client, loan, sourceGroup, targetGro
 
         await db.collection('cashCollections').insertOne({ ...data });
     } else {
-        await db.collection('cashCollections').updateOne({ _id: cashCollection[0]._id }, { $set: { transfer: transfer.sameLo ? false : true } })
+        await db.collection('cashCollections').updateOne(
+            { _id: cashCollection[0]._id }, 
+            { $set: { 
+                transfer: transfer.sameLo ? false : true,
+                sameLo: transfer.sameLo, 
+                transferId: transfer._id, 
+                loToLo: transfer.loToLo, 
+                branchToBranch: transfer.branchToBranch
+            } }
+        )
     }
 
     // add or update client data on cash collection
@@ -191,7 +211,11 @@ async function saveCashCollection(transfer, client, loan, sourceGroup, targetGro
             remarks: '',
             dateAdded: transfer.dateAdded,
             groupStatus: 'pending',
+            transferId: transfer._id,
+            sameLo: transfer.sameLo, 
             transferred: transfer.sameLo ? false : true,
+            loToLo: transfer.loToLo,
+            branchToBranch: transfer.branchToBranch,
             origin: 'automation-trf'
         };
 
@@ -215,6 +239,15 @@ async function saveCashCollection(transfer, client, loan, sourceGroup, targetGro
 
         await db.collection('cashCollections').insertOne({ ...data });
     } else {
-        await db.collection('cashCollections').updateOne({ _id: existingCashCollection[0]._id }, { $set: { transferred: transfer.sameLo ? false : true } })
+        await db.collection('cashCollections').updateOne(
+            { _id: existingCashCollection[0]._id }, 
+            { $set: { 
+                transfer: transfer.sameLo ? false : true,
+                sameLo: transfer.sameLo, 
+                transferId: transfer._id, 
+                loToLo: transfer.loToLo, 
+                branchToBranch: transfer.branchToBranch
+            } }
+        )
     }
 }

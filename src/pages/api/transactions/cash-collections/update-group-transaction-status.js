@@ -39,12 +39,13 @@ async function processLOSummary(req, res) {
 
 async function getLOSummary(req, res) {
     const { db } = await connectToDatabase();
-    const { groupIds, currentDate } = req.body;
+    const { groupIds, currentDate } = req.query;
+    const ids = groupIds.split(',');
 
     const groups = await db.collection('cashCollections')
                             .find({ $expr: {
                                 $and: [
-                                    { $in: ['$groupId', groupIds] },
+                                    { $in: ['$groupId', ids] },
                                     { $eq: ['$dateAdded', currentDate] }
                                 ]
                             } }).toArray();

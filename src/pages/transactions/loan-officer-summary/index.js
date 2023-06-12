@@ -970,8 +970,8 @@ const LoanOfficerSummary = () => {
                             selectedMonth={selectedMonth} setSelectedMonth={setSelectedMonth} handleMonthFilter={handleMonthFilter}
                             selectedYear={selectedYear} setSelectedYear={setSelectedYear} handleYearFilter={handleYearFilter}/>
                     <div className="flex flex-col min-h-[55rem] mt-40 pl-6 pr-2 overflow-y-auto">
-                        <div className="block rounded-xl overflow-auto h-[49rem]">
-                            <table className="relative w-full table-auto border-collapse text-sm bg-white mb-8">
+                        <div className="block rounded-xl overflow-auto h-screen">
+                            <table className="relative w-full table-auto border-collapse text-sm bg-white" style={{ marginBottom: "14em", marginRight: "2em" }}>
                                 <thead>
                                     <tr>
                                         <th rowSpan={3} className="sticky top-0 bg-white border border-gray-300 border-l-0 border-t-0  px-2 py-2 text-gray-500 uppercase">Date</th>

@@ -118,7 +118,10 @@ const TransferClientPage = () => {
         transfer.branchId = transfer.targetBranchId;
         transfer.loId = transfer.targetUserId;
         transfer.groupId = transfer.targetGroupId;
+        transfer.occurence = transfer.sourceGroup?.occurence;
         transfer.sameLo = clientData.loId === transfer.targetUserId;
+        transfer.loToLo = transfer.targetBranchId === clientData.branchId;
+        transfer.branchToBranch = transfer.targetBranchId !== clientData.branchId;
         transfer.oldGroupId = clientData.groupId;
         transfer.oldBranchId = clientData.branchId;
         transfer.oldLoId = clientData.loId;
@@ -133,11 +136,11 @@ const TransferClientPage = () => {
         
         let transfer = {...data};
 
-        const errorMsg = checkGroupsStatus([transfer.sourceGroupId, transfer.targetGroupId]);
-        if (errorMsg) {
-            setLoading(false);
-            toast.error(errorMsg);
-        } else {
+        // const errorMsg = await checkGroupsStatus([transfer.sourceGroupId, transfer.targetGroupId]);
+        // if (errorMsg) {
+        //     setLoading(false);
+        //     toast.error(errorMsg);
+        // } else {
             let msg = 'Selected client successfully transferred.';
             if (status === "approved") {
                 const clientData = transfer.client;
@@ -158,7 +161,7 @@ const TransferClientPage = () => {
                     getTransferList();
                 }, 500);
             }
-        }
+        // }
     }
 
     const handleEditAction = (row) => {
@@ -254,8 +257,8 @@ const TransferClientPage = () => {
             const sourceGroupIds = selectedList.map(sg => sg.sourceGroupId);
             const targetGroupIds = selectedList.map(sg => sg.targetGroupId);
             const groupIds = [...sourceGroupIds, ...targetGroupIds];
-            console.log(groupIds)
-            const errorMsg = checkGroupsStatus(groupIds);
+
+            const errorMsg = await checkGroupsStatus(groupIds);
             if (errorMsg) {
                 setLoading(false);
                 toast.error(errorMsg);
@@ -472,8 +475,7 @@ const TransferClientPage = () => {
                                 <div>UNDER CONSTRUCTION</div>
                             </TabPanel>
                             <TabPanel hidden={selectedTab !== "history-lo"}>
-                                {/* <TransferHistoryLOToLOPage /> */}
-                                <div>UNDER CONSTRUCTION</div>
+                                <TransferHistoryLOToLOPage />
                             </TabPanel>
                         </React.Fragment> 
                         <AddUpdateTransferClient mode={mode} client={client} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />

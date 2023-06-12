@@ -161,11 +161,12 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
                 await response.clients && response.clients.map(client => {
                     clients.push({
                         ...client,
+                        slotNo: client.loans.length > 0 ? client.loans[0].slotNo : 100, // for sorting purposes
                         label: UppercaseFirstLetter(`${client.lastName}, ${client.firstName}`),
                         value: client._id
                     });   
                 });
-
+                clients.sort((a, b) => { return a.slotNo - b.slotNo });
                 setClientList(clients);
                 setLoading(false);
             } else if (response.error) {
@@ -274,11 +275,15 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
             toast.error("No selected client!");
         } else {
             if (selectedTargetGroup) {
+                const sourceGroup = sourceGroupList.find(group => group._id === selectedSourceGroup);
                 values.sourceBranchId = selectedSourceBranch;
                 values.sourceUserId = selectedSourceUser;
                 values.sourceGroupId = selectedSourceGroup;
                 values.currentSlotNo = selectedClient.slotNo;
+                values.occurence = sourceGroup?.occurence;
                 values.sameLo = selectedClient.loId === values.targetUserId;
+                values.loToLo = selectedSourceBranch === selectedTargetBranch;
+                values.branchToBranch = selectedSourceBranch !== selectedTargetBranch;
 
                 if (selectedClient.loans.length > 0) {
                     values.loanId = selectedClient.loans[0]._id;
