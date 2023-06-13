@@ -448,7 +448,7 @@ async function getAllLoansPerGroup(req, res) {
                                                     {$eq: ['$remarks.value', 'delinquent']},
                                                     {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
                                                 ] },
-                                                then: '$history.activeLoan',
+                                                then: '$prevData.activeLoan',
                                                 else: 0
                                             }
                                         } },
