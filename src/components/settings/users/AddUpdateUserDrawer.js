@@ -397,7 +397,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
                                             </div>
                                         </React.Fragment>
                                     )}
-                                    <div className="flex flex-row mt-5">
+                                    <div className="flex flex-row mt-5 pb-6">
                                         <ButtonOutline label="Cancel" onClick={handleCancel} className="mr-3" />
                                         <ButtonSolid label="Submit" type="submit" isSubmitting={isValidating && isSubmitting} />
                                     </div>
