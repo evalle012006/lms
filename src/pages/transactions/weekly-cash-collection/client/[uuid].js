@@ -23,6 +23,7 @@ import { BehaviorSubject } from 'rxjs';
 import Modal from '@/lib/ui/Modal';
 import ClientDetailPage from '@/components/clients/ClientDetailPage';
 import { setClient } from '@/redux/actions/clientActions';
+import { LOR_WEEKLY_REMARKS } from '@/lib/constants';
 
 const CashCollectionDetailsPage = () => {
     const isHoliday = useSelector(state => state.systemSettings.holiday);
@@ -39,7 +40,6 @@ const CashCollectionDetailsPage = () => {
     const [editMode, setEditMode] = useState(true);
     const [revertMode, setRevertMode] = useState(false);
     const [groupSummaryIsClose, setGroupSummaryIsClose] = useState(false);
-    // const [headerData, setHeaderData] = useState({});
     const [data, setData] = useState([]);
     const [allData, setAllData] = useState([]);
     const [filteredData, setFilteredData] = useState([]);
@@ -54,21 +54,7 @@ const CashCollectionDetailsPage = () => {
     const [showRemarksModal, setShowRemarksModal] = useState(false);
     const [closeAccountRemarks, setCloseAccountRemarks] = useState();
     const [closeLoan, setCloseLoan] = useState();
-    const remarksArr = [
-        { label: 'Remarks', value: ''},
-        { label: 'Advance Payment', value: 'advance payment'},
-        { label: 'Reloaner', value: 'reloaner'},
-        { label: 'For Close/Offset - Good Client', value: 'offset-good'},
-        { label: 'For Close/Offset - Delinquent Client', value: 'offset-delinquent'},
-        { label: 'Past Due', value: 'past due'},
-        { label: 'Past Due Collection', value: 'past due collection'},
-        { label: 'Delinquent', value: 'delinquent'},
-        { label: 'Delinquent Client for Offset', value: 'delinquent-offset'},
-        { label: 'Good Excused due to Advance Payment', value: 'excused advance payment'},
-        { label: 'Excused Due to Calamity', value: 'excused-calamity'},
-        { label: 'Excused - Hospitalization', value: 'excused-hospital'},
-        { label: 'Excused - Death of Clients/Family Member', value: 'excused-death'}
-    ];
+    const remarksArr = LOR_WEEKLY_REMARKS;
     const [filter, setFilter] = useState(false);
     const maxDays = 24;
     const [groupFilter, setGroupFilter] = useState();
@@ -117,9 +103,6 @@ const CashCollectionDetailsPage = () => {
         const response = await fetchWrapper.get(url);
         if (response.success) {
             let cashCollection = [];
-
-            // const groupSummary = response.data.groupSummary;
-            // setHeaderData(groupSummary);
 
             let dataCollection = response.data.collection;
             let transactionStatus;
@@ -947,14 +930,14 @@ const CashCollectionDetailsPage = () => {
                             temp.pastDueStr = temp.pastDue > 0 ? formatPricePhp(temp.pastDue) : '-';
                             temp.status = 'active';
                             temp.advanceDays = temp.prevData.advanceDays;
-                            // temp.mcbu = temp.prevData.mcbu;
-                            // temp.mcbuStr = temp.mcbu > 0 ? formatPricePhp(temp.mcbu) : '-';
+                            temp.mcbu = temp.prevData.mcbu;
+                            temp.mcbuStr = temp.mcbu > 0 ? formatPricePhp(temp.mcbu) : '-';
                             // temp.mcbuCol = 0;
                             // temp.mcbuColStr = '-';
-                            // temp.mcbuWithdrawal = 0;
-                            // temp.mcbuWithdrawalStr = '-';
-                            // temp.mcbuReturnAmt = 0;
-                            // temp.mcbuReturnAmtStr = '-';
+                            temp.mcbuWithdrawal = 0;
+                            temp.mcbuWithdrawalStr = '-';
+                            temp.mcbuReturnAmt = 0;
+                            temp.mcbuReturnAmtStr = '-';
                             delete temp.excused;
                             delete temp.delinquent;
                         } else {
@@ -970,6 +953,11 @@ const CashCollectionDetailsPage = () => {
                                 mcbu: temp.mcbu,
                                 advanceDays: temp.advanceDays
                             };
+                        }
+
+                        if (temp.mcbuCol > 0) {
+                            temp.mcbu = temp.mcbu + temp.mcbuCol;
+                            temp.mcbuStr = temp.mcbu > 0 ? formatPricePhp(temp.mcbu) : '-';
                         }
 
                         if (containsAnyLetters(value)) {
@@ -1091,7 +1079,6 @@ const CashCollectionDetailsPage = () => {
                             temp.mcbuColStr = formatPricePhp(finalMcbu);
                             temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + finalMcbu : 0 + finalMcbu;
                             temp.mcbuStr = formatPricePhp(temp.mcbu);
-                            console.log(mcbuCol)
                         } else {
                             temp.mcbuError = false;
                             temp.mcbuCol = mcbuCol;
@@ -1101,6 +1088,24 @@ const CashCollectionDetailsPage = () => {
                         }
                     }
 
+                    return temp;
+                });
+
+                const totalsObj = calculateTotals(list);
+                list[totalIdx] = totalsObj;
+
+                list.sort((a, b) => { return a.slotNo - b.slotNo; });
+                dispatch(setCashCollectionGroup(list));
+            } else {
+                let list = data.map((cc, idx) => {
+                    let temp = {...cc};
+
+                    if (idx === index) {
+                        if (temp?.prevData) {
+                            temp.mcbu = temp.prevData.mcbu;
+                            temp.mcbuStr = temp.mcbu > 0 ? formatPricePhp(temp.mcbu) : '-';
+                        }
+                    }
                     return temp;
                 });
 
@@ -1195,7 +1200,7 @@ const CashCollectionDetailsPage = () => {
                         temp.mcbuWithdrawal = 0;
                         temp.mcbuWithdrawalStr = '-';
 
-                        if (temp.hasOwnProperty('mcbuHistory')) {
+                        if (temp.hasOwnProperty('mcbuHistory') && temp.mcbuHistory) {
                             temp.mcbu = temp.mcbuHistory.mcbu;
                             temp.mcbuStr = temp.mcbu > 0 ? formatPricePhp(temp.mcbu) : '-';
                             temp.mcbuCol = temp.mcbuHistory.mcbuCol;

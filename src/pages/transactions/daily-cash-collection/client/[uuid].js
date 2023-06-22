@@ -23,6 +23,7 @@ import { BehaviorSubject } from 'rxjs';
 import Modal from '@/lib/ui/Modal';
 import ClientDetailPage from '@/components/clients/ClientDetailPage';
 import { setClient } from '@/redux/actions/clientActions';
+import { LOR_DAILY_REMARKS } from '@/lib/constants';
 
 const CashCollectionDetailsPage = () => {
     const isHoliday = useSelector(state => state.systemSettings.holiday);
@@ -54,24 +55,7 @@ const CashCollectionDetailsPage = () => {
     const [showRemarksModal, setShowRemarksModal] = useState(false);
     const [closeAccountRemarks, setCloseAccountRemarks] = useState();
     const [closeLoan, setCloseLoan] = useState();
-    const remarksArr = [
-        { label: 'Remarks', value: ''},
-        { label: 'Advance Payment', value: 'advance payment'},
-        // { label: 'Pending', value: 'pending'},
-        // { label: 'Reloaner', value: 'reloaner'},
-        { label: 'Reloaner Cont/MCBU', value: 'reloaner-cont'},
-        { label: 'Reloaner WD/MCBU', value: 'reloaner-wd'},
-        { label: 'For Close/Offset - Good Client', value: 'offset-good'},
-        { label: 'For Close/Offset - Delinquent Client', value: 'offset-delinquent'},
-        { label: 'Past Due', value: 'past due'},
-        { label: 'Past Due Collection', value: 'past due collection'},
-        { label: 'Delinquent', value: 'delinquent'},
-        { label: 'Delinquent Client for Offset', value: 'delinquent-offset'},
-        { label: 'Good Excused due to Advance Payment', value: 'excused advance payment'},
-        { label: 'Excused Due to Calamity', value: 'excused-calamity'},
-        { label: 'Excused - Hospitalization', value: 'excused-hospital'},
-        { label: 'Excused - Death of Clients/Family Member', value: 'excused-death'}
-    ];
+    const remarksArr = LOR_DAILY_REMARKS;
     const [filter, setFilter] = useState(false);
     const maxDays = 60;
     const [groupFilter, setGroupFilter] = useState();
