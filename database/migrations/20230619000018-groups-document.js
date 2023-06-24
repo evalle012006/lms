@@ -6,7 +6,7 @@ module.exports = {
     // See https://github.com/seppevs/migrate-mongo/#creating-a-new-migration-script
     // Example:
     // await db.collection('albums').updateOne({artist: 'The Beatles'}, {$set: {blacklisted: true}});
-    const branches = await db.collection('branches').find({ _id: new ObjectId('63ec80275f28f2393ec01264')}).toArray();
+    const branches = await db.collection('branches').find({ _id: new ObjectId('6489615d06ccad20515c2b1a')}).toArray();
     const users = await db.collection('users').find().toArray();
     //63ec7e305f28f2393ec01262
     //63ec7e645f28f2393ec01263
@@ -224,7 +224,8 @@ module.exports = {
               //       dateAdded: new Date()
               //     }
               //   ]);
-              // } else if (user.firstName === 'LO 2') {
+              // } else 
+              // if (user.firstName === 'LO 2') {
               //   db.collection('groups').insertMany([
               //     {
               //       name: "MERCURY",
@@ -431,216 +432,215 @@ module.exports = {
               //       dateAdded: new Date()
               //     }
               //   ]);
-              // } else 
-              if (user.firstName === 'LO 3') {
-                db.collection('groups').insertMany([
-                  {
-                    name: "DAISY",
-                    branchId: branch._id + '',
-                    branchName: branch.name,
-                    day: "all",
-                    dayNo: 0,
-                    time: "7:30AM-7:45AM",
-                    groupNo: 1,
-                    occurence: "daily",
-                    loanOfficerId: user._id + '',
-                    loanOfficerName: user.lastName + ', ' + user.firstName,
-                    availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
-                    capacity: 26,
-                    noOfClients: 0,
-                    status: "available",
-                    dateAdded: new Date()
-                  },
-                  {
-                    name: "ROSE",
-                    branchId: branch._id + '',
-                    branchName: branch.name,
-                    day: "all",
-                    dayNo: 0,
-                    time: "7:30AM-7:45AM",
-                    groupNo: 2,
-                    occurence: "daily",
-                    loanOfficerId: user._id + '',
-                    loanOfficerName: user.lastName + ', ' + user.firstName,
-                    availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
-                    capacity: 26,
-                    noOfClients: 0,
-                    status: "available",
-                    dateAdded: new Date()
-                  },
-                  {
-                    name: "IRIS",
-                    branchId: branch._id + '',
-                    branchName: branch.name,
-                    day: "all",
-                    dayNo: 0,
-                    time: "7:30AM-7:45AM",
-                    groupNo: 3,
-                    occurence: "daily",
-                    loanOfficerId: user._id + '',
-                    loanOfficerName: user.lastName + ', ' + user.firstName,
-                    availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
-                    capacity: 26,
-                    noOfClients: 0,
-                    status: "available",
-                    dateAdded: new Date()
-                  },
-                  {
-                    name: "ORCHIDS",
-                    branchId: branch._id + '',
-                    branchName: branch.name,
-                    day: "all",
-                    dayNo: 0,
-                    time: "7:30AM-7:45AM",
-                    groupNo: 4,
-                    occurence: "daily",
-                    loanOfficerId: user._id + '',
-                    loanOfficerName: user.lastName + ', ' + user.firstName,
-                    availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
-                    capacity: 26,
-                    noOfClients: 0,
-                    status: "available",
-                    dateAdded: new Date()
-                  },
-                  {
-                    name: "TULIP",
-                    branchId: branch._id + '',
-                    branchName: branch.name,
-                    day: "all",
-                    dayNo: 0,
-                    time: "7:30AM-7:45AM",
-                    groupNo: 5,
-                    occurence: "daily",
-                    loanOfficerId: user._id + '',
-                    loanOfficerName: user.lastName + ', ' + user.firstName,
-                    availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
-                    capacity: 26,
-                    noOfClients: 0,
-                    status: "available",
-                    dateAdded: new Date()
-                  },
-                  {
-                    name: "PANSY",
-                    branchId: branch._id + '',
-                    branchName: branch.name,
-                    day: "all",
-                    dayNo: 6,
-                    time: "7:30AM-7:45AM",
-                    groupNo: 6,
-                    occurence: "daily",
-                    loanOfficerId: user._id + '',
-                    loanOfficerName: user.lastName + ', ' + user.firstName,
-                    availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
-                    capacity: 26,
-                    noOfClients: 0,
-                    status: "available",
-                    dateAdded: new Date()
-                  },
-                  {
-                    name: "LILY",
-                    branchId: branch._id + '',
-                    branchName: branch.name,
-                    day: "all",
-                    dayNo: 0,
-                    time: "7:30AM-7:45AM",
-                    groupNo: 7,
-                    occurence: "daily",
-                    loanOfficerId: user._id + '',
-                    loanOfficerName: user.lastName + ', ' + user.firstName,
-                    availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
-                    capacity: 26,
-                    noOfClients: 0,
-                    status: "available",
-                    dateAdded: new Date()
-                  },
-                  {
-                    name: "ANEMONE",
-                    branchId: branch._id + '',
-                    branchName: branch.name,
-                    day: "all",
-                    dayNo: 0,
-                    time: "7:30AM-7:45AM",
-                    groupNo: 8,
-                    occurence: "daily",
-                    loanOfficerId: user._id + '',
-                    loanOfficerName: user.lastName + ', ' + user.firstName,
-                    availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
-                    capacity: 26,
-                    noOfClients: 0,
-                    status: "available",
-                    dateAdded: new Date()
-                  },
-                  {
-                    name: "BLUEBELL",
-                    branchId: branch._id + '',
-                    branchName: branch.name,
-                    day: "all",
-                    dayNo: 0,
-                    time: "7:30AM-7:45AM",
-                    groupNo: 9,
-                    occurence: "daily",
-                    loanOfficerId: user._id + '',
-                    loanOfficerName: user.lastName + ', ' + user.firstName,
-                    availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
-                    capacity: 26,
-                    noOfClients: 0,
-                    status: "available",
-                    dateAdded: new Date()
-                  },
-                  {
-                    name: "POPPY",
-                    branchId: branch._id + '',
-                    branchName: branch.name,
-                    day: "all",
-                    dayNo: 0,
-                    time: "7:30AM-7:45AM",
-                    groupNo: 10,
-                    occurence: "daily",
-                    loanOfficerId: user._id + '',
-                    loanOfficerName: user.lastName + ', ' + user.firstName,
-                    availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
-                    capacity: 26,
-                    noOfClients: 0,
-                    status: "available",
-                    dateAdded: new Date()
-                  },
-                  {
-                    name: "MIMOSA",
-                    branchId: branch._id + '',
-                    branchName: branch.name,
-                    day: "all",
-                    dayNo: 0,
-                    time: "7:30AM-7:45AM",
-                    groupNo: 11,
-                    occurence: "daily",
-                    loanOfficerId: user._id + '',
-                    loanOfficerName: user.lastName + ', ' + user.firstName,
-                    availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
-                    capacity: 26,
-                    noOfClients: 0,
-                    status: "available",
-                    dateAdded: new Date()
-                  },
-                  {
-                    name: "CARNATION",
-                    branchId: branch._id + '',
-                    branchName: branch.name,
-                    day: "all",
-                    dayNo: 0,
-                    time: "7:30AM-7:45AM",
-                    groupNo: 12,
-                    occurence: "daily",
-                    loanOfficerId: user._id + '',
-                    loanOfficerName: user.lastName + ', ' + user.firstName,
-                    availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
-                    capacity: 26,
-                    noOfClients: 0,
-                    status: "available",
-                    dateAdded: new Date()
-                  }
-                ]);
-              } 
-              // else if (user.firstName === 'LO 4') {
+              // }  else 
+              // if (user.firstName === 'LO 3') {
+              //   db.collection('groups').insertMany([
+              //     {
+              //       name: "DAISY",
+              //       branchId: branch._id + '',
+              //       branchName: branch.name,
+              //       day: "all",
+              //       dayNo: 0,
+              //       time: "7:30AM-7:45AM",
+              //       groupNo: 1,
+              //       occurence: "daily",
+              //       loanOfficerId: user._id + '',
+              //       loanOfficerName: user.lastName + ', ' + user.firstName,
+              //       availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
+              //       capacity: 26,
+              //       noOfClients: 0,
+              //       status: "available",
+              //       dateAdded: new Date()
+              //     },
+              //     {
+              //       name: "ROSE",
+              //       branchId: branch._id + '',
+              //       branchName: branch.name,
+              //       day: "all",
+              //       dayNo: 0,
+              //       time: "7:30AM-7:45AM",
+              //       groupNo: 2,
+              //       occurence: "daily",
+              //       loanOfficerId: user._id + '',
+              //       loanOfficerName: user.lastName + ', ' + user.firstName,
+              //       availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
+              //       capacity: 26,
+              //       noOfClients: 0,
+              //       status: "available",
+              //       dateAdded: new Date()
+              //     },
+              //     {
+              //       name: "IRIS",
+              //       branchId: branch._id + '',
+              //       branchName: branch.name,
+              //       day: "all",
+              //       dayNo: 0,
+              //       time: "7:30AM-7:45AM",
+              //       groupNo: 3,
+              //       occurence: "daily",
+              //       loanOfficerId: user._id + '',
+              //       loanOfficerName: user.lastName + ', ' + user.firstName,
+              //       availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
+              //       capacity: 26,
+              //       noOfClients: 0,
+              //       status: "available",
+              //       dateAdded: new Date()
+              //     },
+              //     {
+              //       name: "ORCHIDS",
+              //       branchId: branch._id + '',
+              //       branchName: branch.name,
+              //       day: "all",
+              //       dayNo: 0,
+              //       time: "7:30AM-7:45AM",
+              //       groupNo: 4,
+              //       occurence: "daily",
+              //       loanOfficerId: user._id + '',
+              //       loanOfficerName: user.lastName + ', ' + user.firstName,
+              //       availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
+              //       capacity: 26,
+              //       noOfClients: 0,
+              //       status: "available",
+              //       dateAdded: new Date()
+              //     },
+              //     {
+              //       name: "TULIP",
+              //       branchId: branch._id + '',
+              //       branchName: branch.name,
+              //       day: "all",
+              //       dayNo: 0,
+              //       time: "7:30AM-7:45AM",
+              //       groupNo: 5,
+              //       occurence: "daily",
+              //       loanOfficerId: user._id + '',
+              //       loanOfficerName: user.lastName + ', ' + user.firstName,
+              //       availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
+              //       capacity: 26,
+              //       noOfClients: 0,
+              //       status: "available",
+              //       dateAdded: new Date()
+              //     },
+              //     {
+              //       name: "PANSY",
+              //       branchId: branch._id + '',
+              //       branchName: branch.name,
+              //       day: "all",
+              //       dayNo: 6,
+              //       time: "7:30AM-7:45AM",
+              //       groupNo: 6,
+              //       occurence: "daily",
+              //       loanOfficerId: user._id + '',
+              //       loanOfficerName: user.lastName + ', ' + user.firstName,
+              //       availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
+              //       capacity: 26,
+              //       noOfClients: 0,
+              //       status: "available",
+              //       dateAdded: new Date()
+              //     },
+              //     {
+              //       name: "LILY",
+              //       branchId: branch._id + '',
+              //       branchName: branch.name,
+              //       day: "all",
+              //       dayNo: 0,
+              //       time: "7:30AM-7:45AM",
+              //       groupNo: 7,
+              //       occurence: "daily",
+              //       loanOfficerId: user._id + '',
+              //       loanOfficerName: user.lastName + ', ' + user.firstName,
+              //       availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
+              //       capacity: 26,
+              //       noOfClients: 0,
+              //       status: "available",
+              //       dateAdded: new Date()
+              //     },
+              //     {
+              //       name: "ANEMONE",
+              //       branchId: branch._id + '',
+              //       branchName: branch.name,
+              //       day: "all",
+              //       dayNo: 0,
+              //       time: "7:30AM-7:45AM",
+              //       groupNo: 8,
+              //       occurence: "daily",
+              //       loanOfficerId: user._id + '',
+              //       loanOfficerName: user.lastName + ', ' + user.firstName,
+              //       availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
+              //       capacity: 26,
+              //       noOfClients: 0,
+              //       status: "available",
+              //       dateAdded: new Date()
+              //     },
+              //     {
+              //       name: "BLUEBELL",
+              //       branchId: branch._id + '',
+              //       branchName: branch.name,
+              //       day: "all",
+              //       dayNo: 0,
+              //       time: "7:30AM-7:45AM",
+              //       groupNo: 9,
+              //       occurence: "daily",
+              //       loanOfficerId: user._id + '',
+              //       loanOfficerName: user.lastName + ', ' + user.firstName,
+              //       availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
+              //       capacity: 26,
+              //       noOfClients: 0,
+              //       status: "available",
+              //       dateAdded: new Date()
+              //     },
+              //     {
+              //       name: "POPPY",
+              //       branchId: branch._id + '',
+              //       branchName: branch.name,
+              //       day: "all",
+              //       dayNo: 0,
+              //       time: "7:30AM-7:45AM",
+              //       groupNo: 10,
+              //       occurence: "daily",
+              //       loanOfficerId: user._id + '',
+              //       loanOfficerName: user.lastName + ', ' + user.firstName,
+              //       availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
+              //       capacity: 26,
+              //       noOfClients: 0,
+              //       status: "available",
+              //       dateAdded: new Date()
+              //     },
+              //     {
+              //       name: "MIMOSA",
+              //       branchId: branch._id + '',
+              //       branchName: branch.name,
+              //       day: "all",
+              //       dayNo: 0,
+              //       time: "7:30AM-7:45AM",
+              //       groupNo: 11,
+              //       occurence: "daily",
+              //       loanOfficerId: user._id + '',
+              //       loanOfficerName: user.lastName + ', ' + user.firstName,
+              //       availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
+              //       capacity: 26,
+              //       noOfClients: 0,
+              //       status: "available",
+              //       dateAdded: new Date()
+              //     },
+              //     {
+              //       name: "CARNATION",
+              //       branchId: branch._id + '',
+              //       branchName: branch.name,
+              //       day: "all",
+              //       dayNo: 0,
+              //       time: "7:30AM-7:45AM",
+              //       groupNo: 12,
+              //       occurence: "daily",
+              //       loanOfficerId: user._id + '',
+              //       loanOfficerName: user.lastName + ', ' + user.firstName,
+              //       availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
+              //       capacity: 26,
+              //       noOfClients: 0,
+              //       status: "available",
+              //       dateAdded: new Date()
+              //     }
+              //   ]);
+              // } else if (user.firstName === 'LO 4') {
               //   db.collection('groups').insertMany([
               //     {
               //       name: "ZEUS",
@@ -847,214 +847,217 @@ module.exports = {
               //       dateAdded: new Date()
               //     }
               //   ]);
-              // } else if (user.firstName === 'LO 5') {
-              //   db.collection('groups').insertMany([
-              //     {
-              //       name: "BORON",
-              //       branchId: branch._id + '',
-              //       branchName: branch.name,
-              //       day: "all",
-              //       dayNo: 0,
-              //       time: "7:30AM-7:45AM",
-              //       groupNo: 1,
-              //       occurence: "daily",
-              //       loanOfficerId: user._id + '',
-              //       loanOfficerName: user.lastName + ', ' + user.firstName,
-              //       availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
-              //       capacity: 26,
-              //       noOfClients: 0,
-              //       status: "available",
-              //       dateAdded: new Date()
-              //     },
-              //     {
-              //       name: "CARBON",
-              //       branchId: branch._id + '',
-              //       branchName: branch.name,
-              //       day: "all",
-              //       dayNo: 0,
-              //       time: "7:30AM-7:45AM",
-              //       groupNo: 2,
-              //       occurence: "daily",
-              //       loanOfficerId: user._id + '',
-              //       loanOfficerName: user.lastName + ', ' + user.firstName,
-              //       availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
-              //       capacity: 26,
-              //       noOfClients: 0,
-              //       status: "available",
-              //       dateAdded: new Date()
-              //     },
-              //     {
-              //       name: "NITROGEN",
-              //       branchId: branch._id + '',
-              //       branchName: branch.name,
-              //       day: "all",
-              //       dayNo: 0,
-              //       time: "7:30AM-7:45AM",
-              //       groupNo: 3,
-              //       occurence: "daily",
-              //       loanOfficerId: user._id + '',
-              //       loanOfficerName: user.lastName + ', ' + user.firstName,
-              //       availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
-              //       capacity: 26,
-              //       noOfClients: 0,
-              //       status: "available",
-              //       dateAdded: new Date()
-              //     },
-              //     {
-              //       name: "OXYGEN",
-              //       branchId: branch._id + '',
-              //       branchName: branch.name,
-              //       day: "all",
-              //       dayNo: 0,
-              //       time: "7:30AM-7:45AM",
-              //       groupNo: 4,
-              //       occurence: "daily",
-              //       loanOfficerId: user._id + '',
-              //       loanOfficerName: user.lastName + ', ' + user.firstName,
-              //       availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
-              //       capacity: 26,
-              //       noOfClients: 0,
-              //       status: "available",
-              //       dateAdded: new Date()
-              //     },
-              //     {
-              //       name: "NEON",
-              //       branchId: branch._id + '',
-              //       branchName: branch.name,
-              //       day: "all",
-              //       dayNo: 0,
-              //       time: "7:30AM-7:45AM",
-              //       groupNo: 5,
-              //       occurence: "daily",
-              //       loanOfficerId: user._id + '',
-              //       loanOfficerName: user.lastName + ', ' + user.firstName,
-              //       availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
-              //       capacity: 26,
-              //       noOfClients: 0,
-              //       status: "available",
-              //       dateAdded: new Date()
-              //     },
-              //     {
-              //       name: "SODIUM",
-              //       branchId: branch._id + '',
-              //       branchName: branch.name,
-              //       day: "all",
-              //       dayNo: 6,
-              //       time: "7:30AM-7:45AM",
-              //       groupNo: 6,
-              //       occurence: "daily",
-              //       loanOfficerId: user._id + '',
-              //       loanOfficerName: user.lastName + ', ' + user.firstName,
-              //       availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
-              //       capacity: 26,
-              //       noOfClients: 0,
-              //       status: "available",
-              //       dateAdded: new Date()
-              //     },
-              //     {
-              //       name: "SILICON",
-              //       branchId: branch._id + '',
-              //       branchName: branch.name,
-              //       day: "all",
-              //       dayNo: 0,
-              //       time: "7:30AM-7:45AM",
-              //       groupNo: 7,
-              //       occurence: "daily",
-              //       loanOfficerId: user._id + '',
-              //       loanOfficerName: user.lastName + ', ' + user.firstName,
-              //       availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
-              //       capacity: 26,
-              //       noOfClients: 0,
-              //       status: "available",
-              //       dateAdded: new Date()
-              //     },
-              //     {
-              //       name: "SULFUR",
-              //       branchId: branch._id + '',
-              //       branchName: branch.name,
-              //       day: "all",
-              //       dayNo: 0,
-              //       time: "7:30AM-7:45AM",
-              //       groupNo: 8,
-              //       occurence: "daily",
-              //       loanOfficerId: user._id + '',
-              //       loanOfficerName: user.lastName + ', ' + user.firstName,
-              //       availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
-              //       capacity: 26,
-              //       noOfClients: 0,
-              //       status: "available",
-              //       dateAdded: new Date()
-              //     },
-              //     {
-              //       name: "ARGON",
-              //       branchId: branch._id + '',
-              //       branchName: branch.name,
-              //       day: "all",
-              //       dayNo: 0,
-              //       time: "7:30AM-7:45AM",
-              //       groupNo: 9,
-              //       occurence: "daily",
-              //       loanOfficerId: user._id + '',
-              //       loanOfficerName: user.lastName + ', ' + user.firstName,
-              //       availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
-              //       capacity: 26,
-              //       noOfClients: 0,
-              //       status: "available",
-              //       dateAdded: new Date()
-              //     },
-              //     {
-              //       name: "IRON",
-              //       branchId: branch._id + '',
-              //       branchName: branch.name,
-              //       day: "all",
-              //       dayNo: 0,
-              //       time: "7:30AM-7:45AM",
-              //       groupNo: 10,
-              //       occurence: "daily",
-              //       loanOfficerId: user._id + '',
-              //       loanOfficerName: user.lastName + ', ' + user.firstName,
-              //       availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
-              //       capacity: 26,
-              //       noOfClients: 0,
-              //       status: "available",
-              //       dateAdded: new Date()
-              //     },
-              //     {
-              //       name: "ZINC",
-              //       branchId: branch._id + '',
-              //       branchName: branch.name,
-              //       day: "all",
-              //       dayNo: 0,
-              //       time: "7:30AM-7:45AM",
-              //       groupNo: 11,
-              //       occurence: "daily",
-              //       loanOfficerId: user._id + '',
-              //       loanOfficerName: user.lastName + ', ' + user.firstName,
-              //       availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
-              //       capacity: 26,
-              //       noOfClients: 0,
-              //       status: "available",
-              //       dateAdded: new Date()
-              //     },
-              //     {
-              //       name: "SILVER",
-              //       branchId: branch._id + '',
-              //       branchName: branch.name,
-              //       day: "all",
-              //       dayNo: 0,
-              //       time: "7:30AM-7:45AM",
-              //       groupNo: 12,
-              //       occurence: "daily",
-              //       loanOfficerId: user._id + '',
-              //       loanOfficerName: user.lastName + ', ' + user.firstName,
-              //       availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
-              //       capacity: 26,
-              //       noOfClients: 0,
-              //       status: "available",
-              //       dateAdded: new Date()
-              //     }
-              //   ]);
-              // } else if (user.firstName === 'LO 6') {
+              // } else 
+              if (user.firstName === 'LO 5') {
+                db.collection('groups').insertMany([
+                  {
+                    name: "BORON",
+                    branchId: branch._id + '',
+                    branchName: branch.name,
+                    day: "all",
+                    dayNo: 0,
+                    time: "7:30AM-7:45AM",
+                    groupNo: 1,
+                    occurence: "daily",
+                    loanOfficerId: user._id + '',
+                    loanOfficerName: user.lastName + ', ' + user.firstName,
+                    availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
+                    capacity: 26,
+                    noOfClients: 0,
+                    status: "available",
+                    dateAdded: new Date()
+                  },
+                  {
+                    name: "CARBON",
+                    branchId: branch._id + '',
+                    branchName: branch.name,
+                    day: "all",
+                    dayNo: 0,
+                    time: "7:30AM-7:45AM",
+                    groupNo: 2,
+                    occurence: "daily",
+                    loanOfficerId: user._id + '',
+                    loanOfficerName: user.lastName + ', ' + user.firstName,
+                    availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
+                    capacity: 26,
+                    noOfClients: 0,
+                    status: "available",
+                    dateAdded: new Date()
+                  },
+                  {
+                    name: "NITROGEN",
+                    branchId: branch._id + '',
+                    branchName: branch.name,
+                    day: "all",
+                    dayNo: 0,
+                    time: "7:30AM-7:45AM",
+                    groupNo: 3,
+                    occurence: "daily",
+                    loanOfficerId: user._id + '',
+                    loanOfficerName: user.lastName + ', ' + user.firstName,
+                    availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
+                    capacity: 26,
+                    noOfClients: 0,
+                    status: "available",
+                    dateAdded: new Date()
+                  },
+                  {
+                    name: "OXYGEN",
+                    branchId: branch._id + '',
+                    branchName: branch.name,
+                    day: "all",
+                    dayNo: 0,
+                    time: "7:30AM-7:45AM",
+                    groupNo: 4,
+                    occurence: "daily",
+                    loanOfficerId: user._id + '',
+                    loanOfficerName: user.lastName + ', ' + user.firstName,
+                    availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
+                    capacity: 26,
+                    noOfClients: 0,
+                    status: "available",
+                    dateAdded: new Date()
+                  },
+                  {
+                    name: "NEON",
+                    branchId: branch._id + '',
+                    branchName: branch.name,
+                    day: "all",
+                    dayNo: 0,
+                    time: "7:30AM-7:45AM",
+                    groupNo: 5,
+                    occurence: "daily",
+                    loanOfficerId: user._id + '',
+                    loanOfficerName: user.lastName + ', ' + user.firstName,
+                    availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
+                    capacity: 26,
+                    noOfClients: 0,
+                    status: "available",
+                    dateAdded: new Date()
+                  },
+                  {
+                    name: "SODIUM",
+                    branchId: branch._id + '',
+                    branchName: branch.name,
+                    day: "all",
+                    dayNo: 6,
+                    time: "7:30AM-7:45AM",
+                    groupNo: 6,
+                    occurence: "daily",
+                    loanOfficerId: user._id + '',
+                    loanOfficerName: user.lastName + ', ' + user.firstName,
+                    availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
+                    capacity: 26,
+                    noOfClients: 0,
+                    status: "available",
+                    dateAdded: new Date()
+                  },
+                  {
+                    name: "SILICON",
+                    branchId: branch._id + '',
+                    branchName: branch.name,
+                    day: "all",
+                    dayNo: 0,
+                    time: "7:30AM-7:45AM",
+                    groupNo: 7,
+                    occurence: "daily",
+                    loanOfficerId: user._id + '',
+                    loanOfficerName: user.lastName + ', ' + user.firstName,
+                    availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
+                    capacity: 26,
+                    noOfClients: 0,
+                    status: "available",
+                    dateAdded: new Date()
+                  },
+                  {
+                    name: "SULFUR",
+                    branchId: branch._id + '',
+                    branchName: branch.name,
+                    day: "all",
+                    dayNo: 0,
+                    time: "7:30AM-7:45AM",
+                    groupNo: 8,
+                    occurence: "daily",
+                    loanOfficerId: user._id + '',
+                    loanOfficerName: user.lastName + ', ' + user.firstName,
+                    availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
+                    capacity: 26,
+                    noOfClients: 0,
+                    status: "available",
+                    dateAdded: new Date()
+                  },
+                  {
+                    name: "ARGON",
+                    branchId: branch._id + '',
+                    branchName: branch.name,
+                    day: "all",
+                    dayNo: 0,
+                    time: "7:30AM-7:45AM",
+                    groupNo: 9,
+                    occurence: "daily",
+                    loanOfficerId: user._id + '',
+                    loanOfficerName: user.lastName + ', ' + user.firstName,
+                    availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
+                    capacity: 26,
+                    noOfClients: 0,
+                    status: "available",
+                    dateAdded: new Date()
+                  },
+                  {
+                    name: "IRON",
+                    branchId: branch._id + '',
+                    branchName: branch.name,
+                    day: "all",
+                    dayNo: 0,
+                    time: "7:30AM-7:45AM",
+                    groupNo: 10,
+                    occurence: "daily",
+                    loanOfficerId: user._id + '',
+                    loanOfficerName: user.lastName + ', ' + user.firstName,
+                    availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
+                    capacity: 26,
+                    noOfClients: 0,
+                    status: "available",
+                    dateAdded: new Date()
+                  },
+                  {
+                    name: "ZINC",
+                    branchId: branch._id + '',
+                    branchName: branch.name,
+                    day: "all",
+                    dayNo: 0,
+                    time: "7:30AM-7:45AM",
+                    groupNo: 11,
+                    occurence: "daily",
+                    loanOfficerId: user._id + '',
+                    loanOfficerName: user.lastName + ', ' + user.firstName,
+                    availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
+                    capacity: 26,
+                    noOfClients: 0,
+                    status: "available",
+                    dateAdded: new Date()
+                  },
+                  {
+                    name: "SILVER",
+                    branchId: branch._id + '',
+                    branchName: branch.name,
+                    day: "all",
+                    dayNo: 0,
+                    time: "7:30AM-7:45AM",
+                    groupNo: 12,
+                    occurence: "daily",
+                    loanOfficerId: user._id + '',
+                    loanOfficerName: user.lastName + ', ' + user.firstName,
+                    availableSlots: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
+                    capacity: 26,
+                    noOfClients: 0,
+                    status: "available",
+                    dateAdded: new Date()
+                  }
+                ]);
+              } 
+              // else 
+              // if (user.firstName === 'LO 6') {
               //   db.collection('groups').insertMany([
               //     {
               //       name: "AUSTRIA",
@@ -1261,7 +1264,8 @@ module.exports = {
               //       dateAdded: new Date()
               //     }
               //   ]);
-              // } else if (user.firstName === 'LO 7') {
+              // } 
+              // else if (user.firstName === 'LO 7') {
               //   db.collection('groups').insertMany([
               //     {
               //       name: "EMERALD",
@@ -1468,7 +1472,8 @@ module.exports = {
               //       dateAdded: new Date()
               //     }
               //   ]);
-              // } else if (user.firstName === 'LO 8') {
+              // } 
+              // else if (user.firstName === 'LO 8') {
               //   db.collection('groups').insertMany([
               //     {
               //       name: "ARIES",
@@ -1676,7 +1681,9 @@ module.exports = {
               //       dateAdded: new Date()
               //     }
               //   ]);
-              // } else if (user.firstName === 'LO 9') {
+              // } 
+              // else 
+              // if (user.firstName === 'LO 9') {
               //   db.collection('groups').insertMany([
               //     {
               //       name: "NARRA",
@@ -1883,7 +1890,8 @@ module.exports = {
               //       dateAdded: new Date()
               //     }
               //   ]);
-              // } else if (user.firstName === 'LO 10') {
+              // } 
+              // else if (user.firstName === 'LO 10') {
               //   db.collection('groups').insertMany([
               //     {
               //       name: "MERCY",
@@ -2089,7 +2097,7 @@ module.exports = {
               //       status: "available",
               //       dateAdded: new Date()
               //     }
-                // ]);
+              //   ]);
               // }
             });
         } 
