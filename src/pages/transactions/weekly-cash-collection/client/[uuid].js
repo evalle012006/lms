@@ -1071,20 +1071,22 @@ const CashCollectionDetailsPage = () => {
 
                         if (mcbuCol < 50) {
                             temp.mcbuError = true;
-                        } else if (parseFloat(mcbuCol) > 50 && (cc.remarks && (cc.remarks.value === 'advance payment' || cc.remarks.value === 'reloaner'))) {
-                            const excessMcbu = cc.excess / cc.activeLoan;
-                            const finalMcbu = (excessMcbu * 50) + 50;
-                            temp.mcbuCol = finalMcbu;
-                            temp.mcbuError = false;
-                            temp.mcbuColStr = formatPricePhp(finalMcbu);
-                            temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + finalMcbu : 0 + finalMcbu;
-                            temp.mcbuStr = formatPricePhp(temp.mcbu);
+                        // } else if (parseFloat(mcbuCol) > 50 && (cc.remarks && (cc.remarks.value === 'advance payment' || cc.remarks.value === 'reloaner'))) {
+                        //     const excessMcbu = cc.excess / cc.activeLoan;
+                        //     const finalMcbu = (excessMcbu * 50) + 50;
+                        //     temp.mcbuCol = finalMcbu;
+                        //     temp.mcbuError = false;
+                        //     temp.mcbuColStr = formatPricePhp(finalMcbu);
+                        //     temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + finalMcbu : 0 + finalMcbu;
+                        //     temp.mcbuStr = formatPricePhp(temp.mcbu);
+                        //     temp.prevData.mcbuCol = finalMcbu;
                         } else {
                             temp.mcbuError = false;
                             temp.mcbuCol = mcbuCol;
                             temp.mcbuColStr = formatPricePhp(mcbuCol);
                             temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + mcbuCol : 0 + mcbuCol;
                             temp.mcbuStr = formatPricePhp(temp.mcbu);
+                            temp.prevData.mcbuCol = mcbuCol;
                         }
                     }
 
@@ -1175,7 +1177,6 @@ const CashCollectionDetailsPage = () => {
                     } else {
                         // always reset these fields
                         if (temp.hasOwnProperty('prevData') && temp.prevData) {
-                            console.log(temp.prevData)
                             temp.targetCollection = temp.prevData.activeLoan;
                             temp.activeLoan = temp.prevData.activeLoan;
                             temp.pastDue = temp.prevData.pastDue;
@@ -1200,17 +1201,17 @@ const CashCollectionDetailsPage = () => {
                         temp.mcbuWithdrawal = 0;
                         temp.mcbuWithdrawalStr = '-';
 
-                        if (temp.hasOwnProperty('mcbuHistory') && temp.mcbuHistory) {
-                            temp.mcbu = temp.mcbuHistory.mcbu;
-                            temp.mcbuStr = temp.mcbu > 0 ? formatPricePhp(temp.mcbu) : '-';
-                            temp.mcbuCol = temp.mcbuHistory.mcbuCol;
-                            temp.mcbuColStr = temp.mcbuCol > 0 ? formatPricePhp(temp.mcbuCol) : '-';
-                        } else {
-                            temp.mcbuHistory = {
-                                mcbu: temp.mcbu,
-                                mcbuCol: temp.mcbuCol
-                            }
-                        }
+                        // if (temp.hasOwnProperty('mcbuHistory') && temp.mcbuHistory) {
+                        //     temp.mcbu = temp.mcbuHistory.mcbu;
+                        //     temp.mcbuStr = temp.mcbu > 0 ? formatPricePhp(temp.mcbu) : '-';
+                        //     temp.mcbuCol = temp.mcbuHistory.mcbuCol;
+                        //     temp.mcbuColStr = temp.mcbuCol > 0 ? formatPricePhp(temp.mcbuCol) : '-';
+                        // } else {
+                        //     temp.mcbuHistory = {
+                        //         mcbu: temp.mcbu,
+                        //         mcbuCol: temp.mcbuCol
+                        //     }
+                        // }
 
                         temp.targetCollection = temp.activeLoan;
                         temp.targetCollectionStr = formatPricePhp(temp.targetCollection);
@@ -1229,7 +1230,12 @@ const CashCollectionDetailsPage = () => {
                                 temp.error = false;
                                 setEditMode(true);
 
-                                if (temp.mcbuCol && temp.mcbuCol > 0) {
+                                if (temp.history && (temp.history?.remarks?.value?.startsWith('offset') || temp.history?.remarks?.value?.startsWith('reloaner'))) {
+                                    temp.mcbu = temp.prevData.mcbu;
+                                    temp.mcbuCol = temp.prevData.mcbuCol;
+                                }
+                                
+                                if (temp.mcbu !== temp.prevData.mcbu && temp.mcbuCol && temp.mcbuCol > 0) {
                                     temp.mcbu = temp.mcbu - temp.mcbuCol;
                                 }
                                 
@@ -1374,6 +1380,13 @@ const CashCollectionDetailsPage = () => {
                                 toast.error('Error occured. Yesterday transaction is not an Advanced payment');
                             }
                         } else {
+                            if (remarks.value === 'reloaner' && (temp.history && (temp?.history?.remarks?.value === "reloaner" || temp?.history?.remarks?.value?.startsWith('offset')))) {
+                                temp.mcbu = temp.prevData.mcbu;
+                                temp.mcbuCol = temp.prevData.mcbuCol;
+                                temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + temp.mcbuCol : 0 + temp.mcbuCol;
+                                temp.mcbuStr = formatPricePhp(temp.mcbu);
+                            }
+
                             temp.closeRemarks = '';
                             setCloseLoan();
                             temp.error = false;

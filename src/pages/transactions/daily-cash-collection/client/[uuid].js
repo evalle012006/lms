@@ -952,11 +952,11 @@ const CashCollectionDetailsPage = () => {
                         }
 
                         // Reset MCBU
-                        if (temp.hasOwnProperty('mcbuHistory')) {
-                            temp.mcbu = temp.mcbuHistory.mcbu;
-                            temp.mcbuStr = temp.mcbu > 0 ? formatPricePhp(temp.mcbu) : '-';
-                            temp.prevData.mcbu = temp.mcbuHistory.mcbu;
-                        }
+                        // if (temp.hasOwnProperty('mcbuHistory')) {
+                        //     temp.mcbu = temp.mcbuHistory.mcbu;
+                        //     temp.mcbuStr = temp.mcbu > 0 ? formatPricePhp(temp.mcbu) : '-';
+                        //     temp.prevData.mcbu = temp.mcbuHistory.mcbu;
+                        // }
 
                         if (containsAnyLetters(value)) {
                             toast.error("Invalid amount in actual collection. Please input numeric only.");
@@ -1091,17 +1091,17 @@ const CashCollectionDetailsPage = () => {
                         temp.mcbuWithdrawal = 0;
                         temp.mcbuWithdrawalStr = '-';
                         
-                        if (temp.hasOwnProperty('mcbuHistory') && temp.mcbuHistory) {
-                            temp.mcbu = temp.mcbuHistory.mcbu;
-                            temp.mcbuStr = temp.mcbu > 0 ? formatPricePhp(temp.mcbu) : '-';
-                            temp.mcbuCol = temp.mcbuHistory.mcbuCol;
-                            temp.mcbuColStr = temp.mcbuCol > 0 ? formatPricePhp(temp.mcbuCol) : '-';
-                        } else {
-                            temp.mcbuHistory = {
-                                mcbu: temp.mcbu,
-                                mcbuCol: temp.mcbuCol
-                            }
-                        }
+                        // if (temp.hasOwnProperty('mcbuHistory') && temp.mcbuHistory) {
+                        //     temp.mcbu = temp.mcbuHistory.mcbu;
+                        //     temp.mcbuStr = temp.mcbu > 0 ? formatPricePhp(temp.mcbu) : '-';
+                        //     temp.mcbuCol = temp.mcbuHistory.mcbuCol;
+                        //     temp.mcbuColStr = temp.mcbuCol > 0 ? formatPricePhp(temp.mcbuCol) : '-';
+                        // } else {
+                        //     temp.mcbuHistory = {
+                        //         mcbu: temp.mcbu,
+                        //         mcbuCol: temp.mcbuCol
+                        //     }
+                        // }
     
                         temp.targetCollection = temp.activeLoan;
                         temp.targetCollectionStr = formatPricePhp(temp.targetCollection);
@@ -1125,7 +1125,7 @@ const CashCollectionDetailsPage = () => {
                                     temp.mcbu = temp.prevData.mcbu;
                                 }
                                 
-                                if (temp.mcbuCol && temp.mcbuCol > 0) {
+                                if (temp.mcbu !== temp.prevData.mcbu && temp.mcbuCol && temp.mcbuCol > 0) {
                                     temp.mcbu = temp.mcbu - temp.mcbuCol;
                                 }
 
@@ -1269,11 +1269,11 @@ const CashCollectionDetailsPage = () => {
                                 toast.error('Error occured. Yesterday transaction is not an Advanced payment');
                             }
                         } else if (remarks.value === 'reloaner-wd') {
-                            if (temp.history && (temp.history?.remarks?.value?.startsWith('offset'))) {
+                            if (temp.history && (temp.history?.remarks?.value?.startsWith('offset') || temp.history?.remarks?.value?.startsWith('reloaner'))) {
                                 temp.mcbu = temp.prevData.mcbu;
                             }
                             
-                            if (temp.mcbuCol && temp.mcbuCol > 0) {
+                            if (temp.mcbu !== temp.prevData.mcbu && temp.mcbuCol && temp.mcbuCol > 0) {
                                 temp.mcbu = temp.mcbu - temp.mcbuCol;
                             }
 
