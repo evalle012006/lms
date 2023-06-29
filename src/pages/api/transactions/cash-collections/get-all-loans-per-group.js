@@ -248,7 +248,16 @@ async function getAllLoansPerGroup(req, res) {
                             foreignField: "loId",
                             pipeline: [
                                 { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
-                                { $match: {$expr:  {$and: [{$ne: ['$status', 'closed']}, {$ne: ['$status', 'reject']}]} } },
+                                { $match: {$expr:  {$and: [
+                                            {$or: [
+                                                {$ne: ['$status', 'closed']},
+                                                {$and: [
+                                                    {$eq: ['$status', 'closed']},
+                                                    {$eq: ['$transferred', true]}
+                                                ]}
+                                            ]},
+                                            {$ne: ['$status', 'reject']}
+                                        ]} } },
                                 { $group: { 
                                         _id: '$loId',
                                         activeClients: { $sum: {
@@ -558,7 +567,16 @@ async function getAllLoansPerGroup(req, res) {
                             foreignField: "groupId",
                             pipeline: [
                                 { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
-                                { $match: {$expr:  {$and: [{$ne: ['$status', 'closed']}, {$ne: ['$status', 'reject']}]} } },
+                                { $match: {$expr:  {$and: [
+                                                    {$or: [
+                                                        {$ne: ['$status', 'closed']},
+                                                        {$and: [
+                                                            {$eq: ['$status', 'closed']},
+                                                            {$eq: ['$transferred', true]}
+                                                        ]}
+                                                    ]},
+                                                    {$ne: ['$status', 'reject']}
+                                                ]} } },
                                 { $group: { 
                                         _id: '$$groupName',
                                         activeClients: { $sum: {

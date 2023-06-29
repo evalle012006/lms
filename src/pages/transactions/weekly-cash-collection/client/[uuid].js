@@ -202,15 +202,25 @@ const CashCollectionDetailsPage = () => {
                     let mcbu = cc.mcbu;
                     let mcbuWithdrawal = cc.mcbuWithdrawal;
                     let mcbuReturnAmt = cc.mcbuReturnAmt;
+                    let amountRelease = 0;
+                    let loanBalance = 0;
+                    let mispayment = false;
                     if (cc.hasOwnProperty('current') && cc.current.length > 0) {
-                        const current = cc.current.find(cur => cur?.origin !== 'automation-trf');
+                        const current = cc.current.find(cur => !cur.hasOwnProperty('transfer'));
                         if (current) {
+                            if (current?.transferred) {
+                                amountRelease = current.amountRelease;
+                                loanBalance = current.loanBalance;
+                                mispayment = current.mispayment;
+                            }
+
                             mcbu = current.mcbu;
                             mcbuCol = current.mcbuCol;
                             mcbuWithdrawal = current.mcbuWithdrawal;
-                            mcbuReturnAmt = current.mcbuReturnAmt;   
+                            mcbuReturnAmt = current.mcbuReturnAmt;
                         }
                     }
+                    
                     collection = {
                         ...cc,
                         group: cc.group,
@@ -223,8 +233,8 @@ const CashCollectionDetailsPage = () => {
                         slotNo: cc.slotNo,
                         fullName: cc.client.lastName + ', ' + cc.client.firstName,
                         loanCycle: cc.history?.loanCycle,
-                        mispayment: cc.mispayment,
-                        mispaymentStr: cc.mispaymentStr,
+                        mispayment: mispayment,
+                        mispaymentStr: mispayment ? "Yes" : "No",
                         noMispayment: date ? cc.noMispayment : cc.mispayment,
                         noMispaymentStr: numMispayment,
                         collection: 0,
@@ -247,10 +257,10 @@ const CashCollectionDetailsPage = () => {
                         activeLoan: cc.history?.activeLoan,
                         targetCollection: cc.history?.activeLoan,
                         targetCollectionStr: cc.history?.activeLoan > 0 ? formatPricePhp(cc.history?.activeLoan) : '-',
-                        amountRelease: '-',
-                        amountReleaseStr: '-',
-                        loanBalance: '-',
-                        loanBalanceStr: '-',
+                        amountRelease: amountRelease,
+                        amountReleaseStr: amountRelease > 0 ? formatPricePhp(amountRelease) : '-',
+                        loanBalance: loanBalance,
+                        loanBalanceStr: loanBalance > 0 ? formatPricePhp(loanBalance) : '-',
                         paymentCollection: cc.history?.collection ? cc.history?.collection : 0,
                         paymentCollectionStr: cc.history?.collection > 0 ? formatPricePhp(cc.history?.collection) : '-',
                         occurence: cc.group.occurence,
@@ -266,6 +276,10 @@ const CashCollectionDetailsPage = () => {
                         fullPaymentDate: cc.fullPaymentDate ? cc.fullPaymentDate : null,
                         history: cc.hasOwnProperty('history') ? cc.history : null,
                         prevData: cc.hasOwnProperty('prevData') ? cc.prevData : null
+                    }
+
+                    if (loanBalance > 0) {
+                        collection.transferred = true;
                     }
 
                     setEditMode(false);
@@ -334,7 +348,7 @@ const CashCollectionDetailsPage = () => {
 
                     delete cc._id;
                     if (cc.hasOwnProperty('current') && cc.current.length > 0) {
-                        const current = cc.current.find(cur => cur?.origin !== 'automation-trf');
+                        const current = cc.current.find(cur => !cur.hasOwnProperty('transferId'));
                         if (current) {
                             collection.targetCollection = current.targetCollection;
                             collection.targetCollectionStr = collection.targetCollection > 0 ? formatPricePhp(collection.targetCollection) : '-';
@@ -583,7 +597,7 @@ const CashCollectionDetailsPage = () => {
 
         dataArr.map(collection => {
             if (collection.status !== 'open' && collection.status !== 'totals') {
-                if (collection.status === 'active') {
+                if (collection.status === 'active' || collection?.transferred) {
                     totalLoanRelease += collection.amountRelease ? collection.amountRelease !== '-' ? collection.amountRelease : 0 : 0;
                     totalLoanBalance += collection.loanBalance ? collection.loanBalance !== '-' ? collection.loanBalance : 0 : 0;
                 }
@@ -592,11 +606,11 @@ const CashCollectionDetailsPage = () => {
                     totalReleaseAmount += collection.currentReleaseAmount ? collection.currentReleaseAmount !== '-' ? collection.currentReleaseAmount : 0 : 0;
                 }
 
-                if (collection.fullPaymentDate === currentDate && collection.status === "completed") {
+                if ((collection.status === 'tomorrow' || (collection.hasOwnProperty('tomorrow') && collection.tomorrow) || collection?.transferred)) {
                     totalTargetLoanCollection += collection.history ? collection.history.activeLoan : 0;
                 }
 
-                if (!collection.remarks || (collection.remarks && collection.remarks?.value !== 'delinquent' && !collection.remarks.value?.startsWith("excused-"))) {
+                if (!collection.remarks || (collection.remarks && collection.remarks?.value !== 'delinquent' && !collection.remarks.value?.startsWith("excused-")) || collection?.transferred) {
                     totalTargetLoanCollection += collection.targetCollection  ? collection.targetCollection !== '-' ? collection.targetCollection : 0 : 0;
                 }
 
@@ -1855,6 +1869,10 @@ const CashCollectionDetailsPage = () => {
                                             rowBg = 'bg-zinc-200';
                                         } else if (cc.excused) {
                                             rowBg = 'bg-orange-100';
+                                        }
+
+                                        if (cc?.transferred) {
+                                            rowBg = 'bg-violet-100';
                                         }
 
                                         if (cc.error || cc.mcbuError) {

@@ -60,15 +60,24 @@ async function approveReject(req, res) {
                     await db.collection('groups').updateOne( {  _id: new ObjectId(targetGroupId) }, { $set: { ...targetGroup } }, { upsert: false } );
     
                     if (loan) {
-                        loan.branchId = transfer.targetBranchId;
-                        loan.loId = transfer.targetUserId;
-                        loan.groupId = transfer.targetGroupId;
-                        loan.slotNo = selectedSlotNo;
-                        
                         const loanId = loan._id;
                         delete loan._id;
-                        await db.collection('loans').updateOne({ _id: new ObjectId(loanId) }, { $set: { ...loan } });
-                        loan._id = loanId;
+                        let updatedLoan = {...loan};
+                        updatedLoan.branchId = transfer.targetBranchId;
+                        updatedLoan.loId = transfer.targetUserId;
+                        updatedLoan.groupId = transfer.targetGroupId;
+                        updatedLoan.slotNo = selectedSlotNo;
+                        updatedLoan.startDate = moment(transfer.dateAdded).add(1, 'days').format("YYYY-MM-DD");
+                        console.log(updatedLoan.startDate)
+                        const newLoan = await db.collection('loans').insertOne({ ...updatedLoan });
+                        if (newLoan.acknowledged) {
+                            console.log(newLoan)
+                            loan.status = "closed"
+                            loan.transferred = true;
+                            await db.collection('loans').updateOne({ _id: new ObjectId(loanId) }, { $set: { ...loan } });
+                            loan._id = newLoan.insertedId + "";
+                            loan.oldId = loanId;
+                        }
                     }
                 }                
                 
@@ -184,7 +193,7 @@ async function saveCashCollection(transfer, client, loan, sourceGroup, targetGro
     }
 
     // add or update client data on cash collection
-    const existingCashCollection = await db.collection('cashCollections').find({ clientId: client._id, groupId: client.oldGroupId, dateAdded: transfer.dateAdded }).toArray();
+    const existingCashCollection = await db.collection('cashCollections').find({ clientId: client._id, groupId: transfer.oldGroupId, dateAdded: transfer.dateAdded }).toArray();
     if (existingCashCollection.length === 0) {
         let data = {
             branchId: transfer.oldBranchId,
@@ -220,7 +229,7 @@ async function saveCashCollection(transfer, client, loan, sourceGroup, targetGro
         };
 
         if (loan) {
-            data.loanId = loan._id;
+            data.loanId = loan.oldId;
             data.activeLoan = loan.activeLoan;
             data.targetCollection = loan.activeLoan;
             data.amountRelease = loan.amountRelease;
@@ -242,7 +251,7 @@ async function saveCashCollection(transfer, client, loan, sourceGroup, targetGro
         await db.collection('cashCollections').updateOne(
             { _id: existingCashCollection[0]._id }, 
             { $set: { 
-                transfer: transfer.sameLo ? false : true,
+                transferred: transfer.sameLo ? false : true,
                 sameLo: transfer.sameLo, 
                 transferId: transfer._id, 
                 loToLo: transfer.loToLo, 

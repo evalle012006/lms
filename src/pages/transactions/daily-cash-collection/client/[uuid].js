@@ -227,9 +227,18 @@ const CashCollectionDetailsPage = () => {
                     let mcbu = cc.mcbu;
                     let mcbuWithdrawal = cc.mcbuWithdrawal;
                     let mcbuReturnAmt = cc.mcbuReturnAmt;
+                    let amountRelease = 0;
+                    let loanBalance = 0;
+                    let mispayment = false;
                     if (cc.hasOwnProperty('current') && cc.current.length > 0) {
-                        const current = cc.current.find(cur => !cur.hasOwnProperty('origin'));
+                        const current = cc.current.find(cur => !cur.hasOwnProperty('transfer'));
                         if (current) {
+                            if (current?.transferred) {
+                                amountRelease = current.amountRelease;
+                                loanBalance = current.loanBalance;
+                                mispayment = current.mispayment;
+                            }
+
                             mcbu = current.mcbu;
                             mcbuCol = current.mcbuCol;
                             mcbuWithdrawal = current.mcbuWithdrawal;
@@ -248,8 +257,8 @@ const CashCollectionDetailsPage = () => {
                         slotNo: cc.slotNo,
                         fullName: cc.client.lastName + ', ' + cc.client.firstName,
                         loanCycle: cc?.history?.loanCycle ? cc?.history?.loanCycle : cc.loanCycle,
-                        mispayment: cc.mispayment,
-                        mispaymentStr: cc.mispaymentStr,
+                        mispayment: mispayment,
+                        mispaymentStr: mispayment ? "Yes" : "No",
                         noMispayment: date ? cc.noMispayment : cc.mispayment,
                         noMispaymentStr: numMispayment,
                         collection: 0,
@@ -272,10 +281,10 @@ const CashCollectionDetailsPage = () => {
                         mcbuReturnAmtStr: mcbuReturnAmt > 0 ? formatPricePhp(mcbuReturnAmt) : '-',
                         mcbuInterest: cc.mcbuInterest ? cc.mcbuInterest : 0,
                         mcbuInterestStr: cc.mcbuInterest > 0 ? formatPricePhp(cc.mcbuInterest) : '-',
-                        amountRelease: '-',
-                        amountReleaseStr: '-',
-                        loanBalance: '-',
-                        loanBalanceStr: '-',
+                        amountRelease: amountRelease,
+                        amountReleaseStr: amountRelease > 0 ? formatPricePhp(amountRelease) : '-',
+                        loanBalance: loanBalance,
+                        loanBalanceStr: loanBalance > 0 ? formatPricePhp(loanBalance) : '-',
                         paymentCollection: cc?.history?.collection ? cc.history.collection : 0,
                         paymentCollectionStr: cc?.history?.collection > 0 ? formatPricePhp(cc.history.collection) : '-',
                         occurence: cc.group.occurence,
@@ -290,11 +299,15 @@ const CashCollectionDetailsPage = () => {
                         delinquent: cc.client.delinquent,
                         fullPaymentDate: cc.fullPaymentDate ? cc.fullPaymentDate : null,
                         history: cc.hasOwnProperty('history') ? cc.history : null,
-                        prevData: cc.hasOwnProperty('prevData') ? cc.prevData : null
+                        prevData: cc.hasOwnProperty('prevData') ? cc.prevData : null,
+                    }
+
+                    if (loanBalance > 0) {
+                        collection.transferred = true;
                     }
 
                     setEditMode(false);
-                } else if (cc.status !== "closed") {
+                } else if (cc.status !== "closed" && cc.current.length < 2) {
                     let numMispayment = cc.mispayment > 0 ? cc.mispayment + ' / ' + cc.loanTerms : '-';
                     if (date) {
                         numMispayment = cc.noMispayment > 0 ? cc.noMispayment + ' / ' + cc.loanTerms : '-';
@@ -371,7 +384,7 @@ const CashCollectionDetailsPage = () => {
 
                     delete cc._id;
                     if (cc.hasOwnProperty('current') && cc.current.length > 0) {
-                        const current = cc.current.find(cur => !cur.hasOwnProperty('origin'));
+                        const current = cc.current.find(cur => !cur.hasOwnProperty('transferId'));
                         if (current) {
                             collection.targetCollection = current.targetCollection;
                             collection.targetCollectionStr = collection.targetCollection > 0 ? formatPricePhp(collection.targetCollection) : '-';
@@ -597,6 +610,7 @@ const CashCollectionDetailsPage = () => {
     }
 
     const calculateTotals = (dataArr) => {
+        console.log('here...')
         let totalLoanRelease = 0;
         let totalLoanBalance = 0;
         let totalReleaseAmount = 0;
@@ -614,12 +628,12 @@ const CashCollectionDetailsPage = () => {
 
         dataArr.map(collection => {
             if (collection.status !== 'open' && collection.status !== 'totals') {
-                if (collection.status === 'active') {
+                if (collection.status === 'active' || collection?.transferred) {
                     totalLoanRelease += collection.amountRelease ? collection.amountRelease !== '-' ? collection.amountRelease : 0 : 0;
                     totalLoanBalance += collection.loanBalance ? collection.loanBalance !== '-' ? collection.loanBalance : 0 : 0;
                 }
 
-                if (collection.status === 'tomorrow' || (collection.hasOwnProperty('tomorrow') && collection.tomorrow)) {
+                if ((collection.status === 'tomorrow' || (collection.hasOwnProperty('tomorrow') && collection.tomorrow) || collection?.transferred)) {
                     totalReleaseAmount += collection.currentReleaseAmount ? collection.currentReleaseAmount !== '-' ? collection.currentReleaseAmount : 0 : 0;
                 }
 
@@ -627,7 +641,7 @@ const CashCollectionDetailsPage = () => {
                     totalTargetLoanCollection += collection.history ? collection.history.activeLoan : 0;
                 }
 
-                if (!collection.remarks || (collection.remarks && collection.remarks?.value !== 'delinquent' && !collection.remarks.value?.startsWith('excused-'))) {
+                if (!collection.remarks || (collection.remarks && collection.remarks?.value !== 'delinquent' && !collection.remarks.value?.startsWith('excused-')) || collection?.transferred) {
                     totalTargetLoanCollection += collection.targetCollection  ? collection.targetCollection !== '-' ? collection.targetCollection : 0 : 0;
                 }
 
@@ -1673,12 +1687,16 @@ const CashCollectionDetailsPage = () => {
                                             rowBg = 'bg-orange-100';
                                         }
 
+                                        if (cc?.transferred) {
+                                            rowBg = 'bg-violet-100';
+                                        }
+
                                         if (cc.error || cc.mcbuError) {
                                             rowBg = 'bg-red-100';
                                         }
 
                                         return (
-                                            <tr key={index} className={`w-full hover:bg-slate-200 border-b border-b-gray-300 font-proxima 
+                                            <tr key={index} className={`w-full hover:bg-slate-200 border-b border-b-gray-300 font-proxima
                                                                 ${rowBg} ${cc.status === 'totals' ? 'font-bold font-proxima-bold text-red-400' : 'text-gray-600'}`} >
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.status !== 'totals' ? cc.slotNo : '' }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer" onClick={() => handleShowClientInfoModal(cc)}>{ cc.fullName }</td>
