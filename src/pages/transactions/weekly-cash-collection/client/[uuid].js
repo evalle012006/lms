@@ -283,7 +283,7 @@ const CashCollectionDetailsPage = () => {
                     }
 
                     setEditMode(false);
-                } else if (cc.status !== "closed") {
+                } else if (cc.status !== "closed" && cc?.current?.length < 2) {
                     let numMispayment = cc.mispayment > 0 ? cc.mispayment + ' / ' + maxDays : '-';
                     if (date) {
                         numMispayment = cc.noMispayment > 0 ? cc.noMispayment + ' / ' + maxDays : '-';
@@ -1715,8 +1715,8 @@ const CashCollectionDetailsPage = () => {
                         }
                     );
                 });
-    
-                if (selectedBranchSubject.value) {
+
+                if (currentUser.role.rep < 3 && selectedBranchSubject.value) {
                     branches = [branches.find(b => b._id === selectedBranchSubject.value)];
                 }
                 

@@ -68,7 +68,6 @@ async function approveReject(req, res) {
                         updatedLoan.groupId = transfer.targetGroupId;
                         updatedLoan.slotNo = selectedSlotNo;
                         updatedLoan.startDate = moment(transfer.dateAdded).add(1, 'days').format("YYYY-MM-DD");
-                        console.log(updatedLoan.startDate)
                         const newLoan = await db.collection('loans').insertOne({ ...updatedLoan });
                         if (newLoan.acknowledged) {
                             console.log(newLoan)
@@ -159,6 +158,7 @@ async function saveCashCollection(transfer, client, loan, sourceGroup, targetGro
         };
 
         if (loan) {
+            data.oldLoanId = loan.oldLoanId;
             data.loanId = loan._id;
             data.activeLoan = loan.activeLoan;
             data.targetCollection = loan.activeLoan;
