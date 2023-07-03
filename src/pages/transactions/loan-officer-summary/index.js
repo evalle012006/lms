@@ -300,15 +300,23 @@ const LoanOfficerSummary = () => {
                     noTransfer = noTransfer.replace('(','').replace(')','');
                     noTransfer = -Math.abs(noTransfer);
                 }
+
+                const mcbuTarget = data.mcbuTarget !== '-' ? data?.mcbuTarget > 0 ? -Math.abs(data.mcbuTarget) : 0 : 0;
+                const mcbuActual = data.mcbu !== '-' ? -Math.abs(data.mcbu) : 0;
+                const mcbuWithdrawal = (data.mcbuWithdrawal && data.mcbuWithdrawal !== '-') ? -Math.abs(data.mcbuWithdrawal) : 0;
+                const mcbuInterest = (data.mcbuInterest && data.mcbuInterest !== '-') ? -Math.abs(data.mcbuInterest) : 0;
+                const noMcbuReturn = (data.noMcbuReturn && data.noMcbuReturn !== '-') ? -Math.abs(data.noMcbuReturn) : 0;
+                const mcbuReturnAmt = (data.mcbuReturnAmt && data.mcbuReturnAmt !== '-') ? -Math.abs(data.mcbuReturnAmt) : 0;
+                
                 transferGvr = {
                     transfer: noTransfer,
-                    mcbuTarget: data?.mcbuTarget > 0 ? -Math.abs(data.mcbuTarget) : 0,
-                    mcbuActual: -Math.abs(data.mcbu),
-                    mcbuWithdrawal: -Math.abs(data.mcbuWithdrawal),
-                    mcbuInterest: -Math.abs(data.mcbuInterest),
-                    noMcbuReturn: -Math.abs(data.noMcbuReturn),
-                    mcbuReturnAmt: -Math.abs(data.mcbuReturnAmt),
-                    mcbuBalance: -Math.abs(data.mcbu - data.mcbuWithdrawal + data.mcbuInterest - data.mcbuReturnAmt),
+                    mcbuTarget: mcbuTarget,
+                    mcbuActual: mcbuActual,
+                    mcbuWithdrawal: mcbuWithdrawal,
+                    mcbuInterest: mcbuInterest,
+                    noMcbuReturn: noMcbuReturn,
+                    mcbuReturnAmt: mcbuReturnAmt,
+                    mcbuBalance: -Math.abs(mcbuActual - mcbuWithdrawal + mcbuInterest - mcbuReturnAmt),
                     loanReleaseAmount: -Math.abs(data.totalLoanRelease),
                     collectionTarget: -Math.abs(data.targetLoanCollection + data.excess),
                     collectionActual: -Math.abs(data.collection),
@@ -330,15 +338,23 @@ const LoanOfficerSummary = () => {
                     noTransfer = noTransfer.replace('(','').replace(')','');
                     noTransfer = -Math.abs(noTransfer);
                 }
+
+                const mcbuTarget = data.mcbuTarget !== '-' ? data?.mcbuTarget > 0 ? data.mcbuTarget : 0 : 0;
+                const mcbuActual = data.mcbu !== '-' ? data.mcbu : 0;
+                const mcbuWithdrawal = (data.mcbuWithdrawal && data.mcbuWithdrawal !== '-') ? data.mcbuWithdrawal : 0;
+                const mcbuInterest = (data.mcbuInterest && data.mcbuInterest !== '-') ? data.mcbuInterest : 0;
+                const noMcbuReturn = (data.noMcbuReturn && data.noMcbuReturn !== '-') ? data.noMcbuReturn : 0;
+                const mcbuReturnAmt = (data.mcbuReturnAmt && data.mcbuReturnAmt !== '-') ? data.mcbuReturnAmt : 0;
+
                 transferRcv = {
                     transfer: noTransfer,
-                    mcbuTarget: data?.mcbuTarget > 0 ? data.mcbuTarget : 0,
-                    mcbuActual: data.mcbu,
-                    mcbuWithdrawal: data.mcbuWithdrawal,
-                    mcbuInterest: data.mcbuInterest,
-                    noMcbuReturn: data.noMcbuReturn,
-                    mcbuReturnAmt: data.mcbuReturnAmt,
-                    mcbuBalance: data.mcbu - data.mcbuWithdrawal + data.mcbuInterest - data.mcbuReturnAmt,
+                    mcbuTarget: mcbuTarget,
+                    mcbuActual: mcbuActual,
+                    mcbuWithdrawal: mcbuWithdrawal,
+                    mcbuInterest: mcbuInterest,
+                    noMcbuReturn: noMcbuReturn,
+                    mcbuReturnAmt: mcbuReturnAmt,
+                    mcbuBalance: mcbuActual - mcbuWithdrawal + mcbuInterest - mcbuReturnAmt,
                     loanReleaseAmount: data.totalLoanRelease,
                     collectionTarget: data.targetLoanCollection + data.excess,
                     collectionActual: data.collection,
@@ -385,8 +401,9 @@ const LoanOfficerSummary = () => {
                     totalPastDue += transferRcv?.pastDueAmount > 0 ? transferRcv?.pastDueAmount : 0;
                     totalNoPastDue += transferRcv?.pastDuePerson > 0 ? transferRcv?.pastDuePerson : 0;
                 }
-
-                mcbuBalance = temp.mcbuBalance + totalMcbuBalance;
+                if (totalMcbuBalance !== 0) {
+                    mcbuBalance = temp.mcbuBalance + totalMcbuBalance;
+                }
             }
         });
 

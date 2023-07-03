@@ -349,6 +349,7 @@ const BranchManagerSummary = () => {
 
     const processTransferDetails = (losList) => {
         let totalTransfer = 0;
+        let totalMcbuTarget = 0;
         let totalMcbuActual = 0;
         let totalMcbuWithdrawal = 0;
         let totalMcbuInterest = 0;
@@ -392,14 +393,23 @@ const BranchManagerSummary = () => {
                             noTransfer = noTransfer.replace('(','').replace(')','');
                             noTransfer = -Math.abs(noTransfer);
                         }
+
+                        const mcbuTarget = data.mcbuTarget !== '-' ? data?.mcbuTarget > 0 ? -Math.abs(data.mcbuTarget) : 0 : 0;
+                        const mcbuActual = data.mcbu !== '-' ? -Math.abs(data.mcbu) : 0;
+                        const mcbuWithdrawal = (data.mcbuWithdrawal && data.mcbuWithdrawal !== '-') ? -Math.abs(data.mcbuWithdrawal) : 0;
+                        const mcbuInterest = (data.mcbuInterest && data.mcbuInterest !== '-') ? -Math.abs(data.mcbuInterest) : 0;
+                        const noMcbuReturn = (data.noMcbuReturn && data.noMcbuReturn !== '-') ? -Math.abs(data.noMcbuReturn) : 0;
+                        const mcbuReturnAmt = (data.mcbuReturnAmt && data.mcbuReturnAmt !== '-') ? -Math.abs(data.mcbuReturnAmt) : 0;
+
                         transferDailyGvr = {
                             transfer: noTransfer,
-                            mcbuActual: -Math.abs(data.mcbu),
-                            mcbuWithdrawal: -Math.abs(data.mcbuWithdrawal),
-                            mcbuInterest: -Math.abs(data.mcbuInterest),
-                            noMcbuReturn: -Math.abs(data.noMcbuReturn),
-                            mcbuReturnAmt: -Math.abs(data.mcbuReturnAmt),
-                            mcbuBalance: -Math.abs(data.mcbu - data.mcbuWithdrawal + data.mcbuInterest - data.mcbuReturnAmt),
+                            mcbuTarget: mcbuTarget,
+                            mcbuActual: mcbuActual,
+                            mcbuWithdrawal: mcbuWithdrawal,
+                            mcbuInterest: mcbuInterest,
+                            noMcbuReturn: noMcbuReturn,
+                            mcbuReturnAmt: mcbuReturnAmt,
+                            mcbuBalance: mcbuActual - mcbuWithdrawal + mcbuInterest - mcbuReturnAmt,
                             loanReleaseAmount: -Math.abs(data.totalLoanRelease),
                             collectionTarget: -Math.abs(data.targetLoanCollection + data.excess),
                             collectionActual: -Math.abs(data.collection),
@@ -425,14 +435,23 @@ const BranchManagerSummary = () => {
                             noTransfer = noTransfer.replace('(','').replace(')','');
                             noTransfer = -Math.abs(noTransfer);
                         }
+
+                        const mcbuTarget = data.mcbuTarget !== '-' ? data?.mcbuTarget > 0 ? data.mcbuTarget : 0 : 0;
+                        const mcbuActual = data.mcbu !== '-' ? data.mcbu : 0;
+                        const mcbuWithdrawal = (data.mcbuWithdrawal && data.mcbuWithdrawal !== '-') ? data.mcbuWithdrawal : 0;
+                        const mcbuInterest = (data.mcbuInterest && data.mcbuInterest !== '-') ? data.mcbuInterest : 0;
+                        const noMcbuReturn = (data.noMcbuReturn && data.noMcbuReturn !== '-') ? data.noMcbuReturn : 0;
+                        const mcbuReturnAmt = (data.mcbuReturnAmt && data.mcbuReturnAmt !== '-') ? data.mcbuReturnAmt : 0;
+
                         transferDailyRcv = {
                             transfer: noTransfer,
-                            mcbuActual: data.mcbu,
-                            mcbuWithdrawal: data.mcbuWithdrawal,
-                            mcbuInterest: data.mcbuInterest,
-                            noMcbuReturn: data.noMcbuReturn,
-                            mcbuReturnAmt: data.mcbuReturnAmt,
-                            mcbuBalance: data.mcbu - data.mcbuWithdrawal + data.mcbuInterest - data.mcbuReturnAmt,
+                            mcbuTarget: mcbuTarget,
+                            mcbuActual: mcbuActual,
+                            mcbuWithdrawal: mcbuWithdrawal,
+                            mcbuInterest: mcbuInterest,
+                            noMcbuReturn: noMcbuReturn,
+                            mcbuReturnAmt: mcbuReturnAmt,
+                            mcbuBalance: mcbuActual - mcbuWithdrawal + mcbuInterest - mcbuReturnAmt,
                             loanReleaseAmount: data.totalLoanRelease,
                             collectionTarget: data.targetLoanCollection + data.excess,
                             collectionActual: data.collection,
@@ -458,14 +477,23 @@ const BranchManagerSummary = () => {
                             noTransfer = noTransfer.replace('(','').replace(')','');
                             noTransfer = -Math.abs(noTransfer);
                         }
+
+                        const mcbuTarget = data.mcbuTarget !== '-' ? data?.mcbuTarget > 0 ? -Math.abs(data.mcbuTarget) : 0 : 0;
+                        const mcbuActual = data.mcbu !== '-' ? -Math.abs(data.mcbu) : 0;
+                        const mcbuWithdrawal = (data.mcbuWithdrawal && data.mcbuWithdrawal !== '-') ? -Math.abs(data.mcbuWithdrawal) : 0;
+                        const mcbuInterest = (data.mcbuInterest && data.mcbuInterest !== '-') ? -Math.abs(data.mcbuInterest) : 0;
+                        const noMcbuReturn = (data.noMcbuReturn && data.noMcbuReturn !== '-') ? -Math.abs(data.noMcbuReturn) : 0;
+                        const mcbuReturnAmt = (data.mcbuReturnAmt && data.mcbuReturnAmt !== '-') ? -Math.abs(data.mcbuReturnAmt) : 0;
+
                         transferWeeklyGvr = {
                             transfer: noTransfer,
-                            mcbuActual: -Math.abs(data.mcbu),
-                            mcbuWithdrawal: -Math.abs(data.mcbuWithdrawal),
-                            mcbuInterest: -Math.abs(data.mcbuInterest),
-                            noMcbuReturn: -Math.abs(data.noMcbuReturn),
-                            mcbuReturnAmt: -Math.abs(data.mcbuReturnAmt),
-                            mcbuBalance: -Math.abs(data.mcbu - data.mcbuWithdrawal + data.mcbuInterest - data.mcbuReturnAmt),
+                            mcbuTarget: mcbuTarget,
+                            mcbuActual: mcbuActual,
+                            mcbuWithdrawal: mcbuWithdrawal,
+                            mcbuInterest: mcbuInterest,
+                            noMcbuReturn: noMcbuReturn,
+                            mcbuReturnAmt: mcbuReturnAmt,
+                            mcbuBalance: mcbuActual - mcbuWithdrawal + mcbuInterest - mcbuReturnAmt,
                             loanReleaseAmount: -Math.abs(data.totalLoanRelease),
                             collectionTarget: -Math.abs(data.targetLoanCollection + data.excess),
                             collectionActual: -Math.abs(data.collection),
@@ -491,14 +519,23 @@ const BranchManagerSummary = () => {
                             noTransfer = noTransfer.replace('(','').replace(')','');
                             noTransfer = -Math.abs(noTransfer);
                         }
+
+                        const mcbuTarget = data.mcbuTarget !== '-' ? data?.mcbuTarget > 0 ? data.mcbuTarget : 0 : 0;
+                        const mcbuActual = data.mcbu !== '-' ? data.mcbu : 0;
+                        const mcbuWithdrawal = (data.mcbuWithdrawal && data.mcbuWithdrawal !== '-') ? data.mcbuWithdrawal : 0;
+                        const mcbuInterest = (data.mcbuInterest && data.mcbuInterest !== '-') ? data.mcbuInterest : 0;
+                        const noMcbuReturn = (data.noMcbuReturn && data.noMcbuReturn !== '-') ? data.noMcbuReturn : 0;
+                        const mcbuReturnAmt = (data.mcbuReturnAmt && data.mcbuReturnAmt !== '-') ? data.mcbuReturnAmt : 0;
+
                         transferWeeklyRcv = {
                             transfer: noTransfer,
-                            mcbuActual: data.mcbu,
-                            mcbuWithdrawal: data.mcbuWithdrawal,
-                            mcbuInterest: data.mcbuInterest,
-                            noMcbuReturn: data.noMcbuReturn,
-                            mcbuReturnAmt: data.mcbuReturnAmt,
-                            mcbuBalance: data.mcbu - data.mcbuWithdrawal + data.mcbuInterest - data.mcbuReturnAmt,
+                            mcbuTarget: mcbuTarget,
+                            mcbuActual: mcbuActual,
+                            mcbuWithdrawal: mcbuWithdrawal,
+                            mcbuInterest: mcbuInterest,
+                            noMcbuReturn: noMcbuReturn,
+                            mcbuReturnAmt: mcbuReturnAmt,
+                            mcbuBalance: mcbuActual - mcbuWithdrawal + mcbuInterest - mcbuReturnAmt,
                             loanReleaseAmount: data.totalLoanRelease,
                             collectionTarget: data.targetLoanCollection + data.excess,
                             collectionActual: data.collection,
@@ -518,6 +555,7 @@ const BranchManagerSummary = () => {
             if (transferDailyGvr || transferDailyRcv || transferWeeklyGvr || transferWeeklyRcv) {
                 if (transferDailyGvr) {
                     totalTransfer = transferDailyGvr?.transfer;
+                    totalMcbuTarget = transferDailyGvr?.mcbuTarget;
                     totalMcbuActual = transferDailyGvr?.mcbuActual;
                     totalMcbuWithdrawal = transferDailyGvr?.mcbuWithdrawal;
                     totalMcbuInterest = transferDailyGvr?.mcbuInterest;
@@ -534,6 +572,7 @@ const BranchManagerSummary = () => {
 
                 if (transferDailyRcv) {
                     totalTransfer += transferDailyRcv?.transfer;
+                    totalMcbuTarget += transferDailyRcv?.mcbuTarget;
                     totalMcbuActual += transferDailyRcv?.mcbuActual;
                     totalMcbuWithdrawal += transferDailyRcv?.mcbuWithdrawal;
                     totalMcbuInterest += transferDailyRcv?.mcbuInterest;
@@ -550,6 +589,7 @@ const BranchManagerSummary = () => {
 
                 if (transferWeeklyGvr) {
                     totalTransfer += transferWeeklyGvr?.transfer;
+                    totalMcbuTarget += transferDailyRcv?.mcbuTarget;
                     totalMcbuActual += transferWeeklyGvr?.mcbuActual;
                     totalMcbuWithdrawal += transferWeeklyGvr?.mcbuWithdrawal;
                     totalMcbuInterest += transferWeeklyGvr?.mcbuInterest;
@@ -566,6 +606,7 @@ const BranchManagerSummary = () => {
 
                 if (transferWeeklyRcv) {
                     totalTransfer += transferWeeklyRcv?.transfer;
+                    totalMcbuTarget += transferDailyRcv?.mcbuTarget;
                     totalMcbuActual += transferWeeklyRcv?.mcbuActual;
                     totalMcbuWithdrawal += transferWeeklyRcv?.mcbuWithdrawal;
                     totalMcbuInterest += transferWeeklyRcv?.mcbuInterest;
@@ -579,7 +620,10 @@ const BranchManagerSummary = () => {
                     totalNoPastDue += transferWeeklyRcv?.pastDuePerson > 0 ? transferWeeklyRcv?.pastDuePerson : 0;
                 }
 
-                mcbuBalance = temp.mcbuBalance + totalMcbuBalance;
+                if (totalMcbuBalance !== 0) {
+                    mcbuBalance = temp.mcbuBalance + totalMcbuBalance;
+                }
+
                 totalConsolidatedActualCollection = totalDailyActualCollection + totalWeeklyActualCollection;
                 totalConsolidatedNoLoanRelease = totalDailyNoLoanRelease + totalWeeklyNoLoanRelease;
                 totalConsolidatedLoanRelease = totalDailyLoanRelease + totalWeeklyLoanRelease;

@@ -70,9 +70,9 @@ async function approveReject(req, res) {
                         updatedLoan.startDate = moment(transfer.dateAdded).add(1, 'days').format("YYYY-MM-DD");
                         const newLoan = await db.collection('loans').insertOne({ ...updatedLoan });
                         if (newLoan.acknowledged) {
-                            console.log(newLoan)
                             loan.status = "closed"
                             loan.transferred = true;
+                            loan.endDate = transfer.dateAdded;
                             await db.collection('loans').updateOne({ _id: new ObjectId(loanId) }, { $set: { ...loan } });
                             loan._id = newLoan.insertedId + "";
                             loan.oldId = loanId;
