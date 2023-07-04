@@ -554,18 +554,20 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
             totalLoanBalance += transfer.loanBalance;
 
             const details = transfer?.data[0];
-            totalMcbuTarget += details.mcbuTarget;
-            totalMcbuCol += details.mcbuCol;
-            totalMcbuWithdrawal += details.mcbuWithdrawal;
-            totalMcbuReturnAmt += details.mcbuReturnAmt;
-            totalMcbuNoReturn += details.mcbuNoReturn;
-            totalMcbuInterest += details.mcbuInterest;
-            totalTargetCollection += details.targetCollection;
-            totalExcess += details.excess;
-            totalActualCollection += details.actualCollection;
-            totalPastDue += details.pastDue;
-            totalNoPastDue += details.noPastDue;
-            totalMispay += details.mispay;
+            if (details) {
+                totalMcbuTarget += details.mcbuTarget;
+                totalMcbuCol += details.mcbuCol;
+                totalMcbuWithdrawal += details.mcbuWithdrawal;
+                totalMcbuReturnAmt += details.mcbuReturnAmt;
+                totalMcbuNoReturn += details.mcbuNoReturn;
+                totalMcbuInterest += details.mcbuInterest;
+                totalTargetCollection += details.targetCollection;
+                totalExcess += details.excess;
+                totalActualCollection += details.actualCollection;
+                totalPastDue += details.pastDue;
+                totalNoPastDue += details.noPastDue;
+                totalMispay += details.mispay;
+            }
         });
 
         return {
