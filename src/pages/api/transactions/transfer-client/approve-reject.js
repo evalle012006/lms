@@ -158,7 +158,7 @@ async function saveCashCollection(transfer, client, loan, sourceGroup, targetGro
         };
 
         if (loan) {
-            data.oldLoanId = loan.oldLoanId;
+            data.oldLoanId = loan.oldId;
             data.loanId = loan._id;
             data.activeLoan = loan.activeLoan;
             data.targetCollection = loan.activeLoan;
