@@ -148,7 +148,7 @@ async function saveCashCollection(transfer, client, loan, sourceGroup, targetGro
             mcbuReturnAmt: 0,
             remarks: '',
             dateAdded: transfer.dateAdded,
-            groupStatus: 'pending',
+            groupStatus: 'closed',
             transferId: transfer._id,
             sameLo: transfer.sameLo, 
             transfer: transfer.sameLo ? false : true,
@@ -171,6 +171,7 @@ async function saveCashCollection(transfer, client, loan, sourceGroup, targetGro
             data.mcbu = loan.mcbu;
             data.pastDue = loan.pastDue;
             data.noPastDue = loan.noPastDue;
+            data.loanTerms = loan.loanTerms;
 
             if (data.occurence === 'weekly') {
                 // data.mcbuTarget = 50;
@@ -219,7 +220,7 @@ async function saveCashCollection(transfer, client, loan, sourceGroup, targetGro
             mcbuReturnAmt: 0,
             remarks: '',
             dateAdded: transfer.dateAdded,
-            groupStatus: 'pending',
+            groupStatus: 'closed',
             transferId: transfer._id,
             sameLo: transfer.sameLo, 
             transferred: transfer.sameLo ? false : true,
@@ -239,6 +240,7 @@ async function saveCashCollection(transfer, client, loan, sourceGroup, targetGro
             data.noOfPayments = loan.noOfPayments;
             data.status = loan.status;
             data.mcbu = loan.mcbu;
+            data.loanTerms = loan.loanTerms;
         }
 
         if (data.occurence === 'weekly') {

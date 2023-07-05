@@ -214,11 +214,12 @@ const CashCollectionDetailsPage = () => {
                         delinquent: cc.client.delinquent,
                         fullPaymentDate: cc.fullPaymentDate ? cc.fullPaymentDate : null,
                         history: cc.hasOwnProperty('history') ? cc.history : null,
-                        prevData: cc.hasOwnProperty('prevData') ? cc.prevData : null
+                        prevData: cc.hasOwnProperty('prevData') ? cc.prevData : null,
+                        loanTerms: cc.loanTerms
                     }
 
                     setEditMode(false);
-                } else if (cc.status === "closed") {
+                } else if (cc.status === "closed" && !cc.transfer) {
                     let numMispayment = cc.mispayment > 0 ? cc.mispayment + ' / ' + cc.loanTerms : '-';
                     if (date) {
                         numMispayment = cc.noMispayment > 0 ? cc.noMispayment + ' / ' + cc.loanTerms : '-';
@@ -300,6 +301,8 @@ const CashCollectionDetailsPage = () => {
                         fullPaymentDate: cc.fullPaymentDate ? cc.fullPaymentDate : null,
                         history: cc.hasOwnProperty('history') ? cc.history : null,
                         prevData: cc.hasOwnProperty('prevData') ? cc.prevData : null,
+                        loanTerms: cc.loanTerms,
+                        transferred: cc.transferred
                     }
 
                     if (loanBalance > 0) {
@@ -307,7 +310,7 @@ const CashCollectionDetailsPage = () => {
                     }
 
                     setEditMode(false);
-                } else if (cc.status !== "closed" && cc?.current?.length < 2) {
+                } else if (cc.status !== "closed" || (type !== 'filter' && cc?.current?.length < 2)) {
                     let numMispayment = cc.mispayment > 0 ? cc.mispayment + ' / ' + cc.loanTerms : '-';
                     if (date) {
                         numMispayment = cc.noMispayment > 0 ? cc.noMispayment + ' / ' + cc.loanTerms : '-';
@@ -379,7 +382,8 @@ const CashCollectionDetailsPage = () => {
                         advanceDays: cc.advanceDays,
                         history: cc.hasOwnProperty('history') ? cc.history : null,
                         status: cc.status,
-                        loanTerms: cc.loanTerms
+                        loanTerms: cc.loanTerms,
+                        transferred: cc.transferred
                     }
 
                     delete cc._id;
@@ -505,6 +509,7 @@ const CashCollectionDetailsPage = () => {
                             delinquent: currentLoan.delinquent,
                             advanceDays: currentLoan.advanceDays,
                             status: loan.status === "active" ? "tomorrow" : loan.status,
+                            loanTerms: cc.loanTerms,
                             pending: loan.status === 'pending' ? true : false,
                             tomorrow: loan.status === 'active' ? true : false
                         };
@@ -546,7 +551,8 @@ const CashCollectionDetailsPage = () => {
                             mcbuInterestStr: loan.mcbuInterest > 0 ? formatPricePhp(loan.mcbuInterest) : '-',
                             remarks: '-',
                             fullPaymentStr: '-',
-                            status: loan.status === 'active' ? 'tomorrow' : 'pending'
+                            loanTerms: cc.loanTerms,
+                            status: loan.status === 'active' ? 'tomorrow' : 'pending',
                         };
 
                         if (loan.current.length > 0) {
@@ -591,6 +597,7 @@ const CashCollectionDetailsPage = () => {
                         remarks: '-',
                         pastDueStr: '-',
                         fullPaymentStr: '-',
+                        loanTerms: cc.loanTerms,
                         status: loan.status === 'active' ? 'tomorrow' : 'pending'
                     };
 

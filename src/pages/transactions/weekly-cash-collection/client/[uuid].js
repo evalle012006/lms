@@ -189,11 +189,12 @@ const CashCollectionDetailsPage = () => {
                         delinquent: cc.client.delinquent,
                         fullPaymentDate: cc.fullPaymentDate ? cc.fullPaymentDate : null,
                         history: cc.hasOwnProperty('history') ? cc.history : null,
-                        prevData: cc.hasOwnProperty('prevData') ? cc.prevData : null
+                        prevData: cc.hasOwnProperty('prevData') ? cc.prevData : null,
+                        loanTerms: cc.loanTerms
                     }
 
                     setEditMode(false);
-                } else if (cc.status === "closed") {
+                } else if (cc.status === "closed" && !cc.transfer) {
                     let numMispayment = cc.mispayment > 0 ? cc.mispayment + ' / ' + maxDays : '-';
                     if (date) {
                         numMispayment = cc.noMispayment > 0 ? cc.noMispayment + ' / ' + maxDays : '-';
@@ -275,7 +276,8 @@ const CashCollectionDetailsPage = () => {
                         delinquent: cc.client.delinquent,
                         fullPaymentDate: cc.fullPaymentDate ? cc.fullPaymentDate : null,
                         history: cc.hasOwnProperty('history') ? cc.history : null,
-                        prevData: cc.hasOwnProperty('prevData') ? cc.prevData : null
+                        prevData: cc.hasOwnProperty('prevData') ? cc.prevData : null,
+                        loanTerms: cc.loanTerms
                     }
 
                     if (loanBalance > 0) {
@@ -283,7 +285,7 @@ const CashCollectionDetailsPage = () => {
                     }
 
                     setEditMode(false);
-                } else if (cc.status !== "closed" && cc?.current?.length < 2) {
+                } else if (cc.status !== "closed" || (type !== 'filter' && cc?.current?.length < 2)) {
                     let numMispayment = cc.mispayment > 0 ? cc.mispayment + ' / ' + maxDays : '-';
                     if (date) {
                         numMispayment = cc.noMispayment > 0 ? cc.noMispayment + ' / ' + maxDays : '-';
@@ -343,7 +345,8 @@ const CashCollectionDetailsPage = () => {
                         fullPaymentDate: cc.fullPaymentDate ? cc.fullPaymentDate : null,
                         history: cc.hasOwnProperty('history') ? cc.history : null,
                         advanceDays: cc.advanceDays,
-                        status: cc.status
+                        status: cc.status,
+                        loanTerms: cc.loanTerms
                     }
 
                     delete cc._id;
@@ -476,7 +479,8 @@ const CashCollectionDetailsPage = () => {
                             advanceDays: currentLoan.advanceDays,
                             status: loan.status === "active" ? "tomorrow" : loan.status,
                             pending: loan.status === 'pending' ? true : false,
-                            tomorrow: loan.status === 'active' ? true : false
+                            tomorrow: loan.status === 'active' ? true : false,
+                            loanTerms: cc.loanTerms
                         };
                         if (loan.current.length > 0) {
                             cashCollection[index]._id = loan.current[0]._id;
@@ -516,7 +520,8 @@ const CashCollectionDetailsPage = () => {
                             paymentCollectionStr: currentLoan.prevData ? formatPricePhp(currentLoan.prevData.paymentCollection) : '-',
                             remarks: '-',
                             fullPaymentStr: '-',
-                            status: loan.status === 'active' ? 'tomorrow' : 'pending'
+                            status: loan.status === 'active' ? 'tomorrow' : 'pending',
+                            loanTerms: cc.loanTerms
                         };
 
                         if (loan.current.length > 0) {
@@ -561,7 +566,8 @@ const CashCollectionDetailsPage = () => {
                         remarks: '-',
                         pastDueStr: '-',
                         fullPaymentStr: '-',
-                        status: loan.status === 'active' ? 'tomorrow' : 'pending'
+                        status: loan.status === 'active' ? 'tomorrow' : 'pending',
+                        loanTerms: cc.loanTerms
                     };
 
                     cashCollection.push(pendingTomorrow);
