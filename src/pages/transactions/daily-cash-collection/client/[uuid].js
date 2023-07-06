@@ -509,7 +509,7 @@ const CashCollectionDetailsPage = () => {
                             delinquent: currentLoan.delinquent,
                             advanceDays: currentLoan.advanceDays,
                             status: loan.status === "active" ? "tomorrow" : loan.status,
-                            loanTerms: cc.loanTerms,
+                            loanTerms: loan.loanTerms,
                             pending: loan.status === 'pending' ? true : false,
                             tomorrow: loan.status === 'active' ? true : false
                         };
@@ -551,7 +551,7 @@ const CashCollectionDetailsPage = () => {
                             mcbuInterestStr: loan.mcbuInterest > 0 ? formatPricePhp(loan.mcbuInterest) : '-',
                             remarks: '-',
                             fullPaymentStr: '-',
-                            loanTerms: cc.loanTerms,
+                            loanTerms: loan.loanTerms,
                             status: loan.status === 'active' ? 'tomorrow' : 'pending',
                         };
 
@@ -597,7 +597,7 @@ const CashCollectionDetailsPage = () => {
                         remarks: '-',
                         pastDueStr: '-',
                         fullPaymentStr: '-',
-                        loanTerms: cc.loanTerms,
+                        loanTerms: loan.loanTerms,
                         status: loan.status === 'active' ? 'tomorrow' : 'pending'
                     };
 

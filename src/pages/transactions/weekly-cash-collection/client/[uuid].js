@@ -480,7 +480,7 @@ const CashCollectionDetailsPage = () => {
                             status: loan.status === "active" ? "tomorrow" : loan.status,
                             pending: loan.status === 'pending' ? true : false,
                             tomorrow: loan.status === 'active' ? true : false,
-                            loanTerms: cc.loanTerms
+                            loanTerms: loan.loanTerms
                         };
                         if (loan.current.length > 0) {
                             cashCollection[index]._id = loan.current[0]._id;
@@ -521,7 +521,7 @@ const CashCollectionDetailsPage = () => {
                             remarks: '-',
                             fullPaymentStr: '-',
                             status: loan.status === 'active' ? 'tomorrow' : 'pending',
-                            loanTerms: cc.loanTerms
+                            loanTerms: loan.loanTerms
                         };
 
                         if (loan.current.length > 0) {
@@ -567,7 +567,7 @@ const CashCollectionDetailsPage = () => {
                         pastDueStr: '-',
                         fullPaymentStr: '-',
                         status: loan.status === 'active' ? 'tomorrow' : 'pending',
-                        loanTerms: cc.loanTerms
+                        loanTerms: loan.loanTerms
                     };
 
                     cashCollection.push(pendingTomorrow);
