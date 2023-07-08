@@ -26,7 +26,7 @@ const RegistrationPage = () => {
     const { action, email, objectId } = router.query;
     const actions = ['activate'];
     let type = action ? action : 'default';
-
+ 
     // // set default action
     // if (typeof action === "undefined") {
     //     action = 'default';
