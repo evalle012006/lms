@@ -388,7 +388,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 const transferGvr = transferDetailsTotal(collectionTransferred, 'Transfer GVR');
                 const transferRcv = transferDetailsTotal(collectionReceived, 'Transfer RCV');
                 
-                const totals = {
+                let totals = {
                     group: 'GRAND TOTALS',
                     transfer: totalTransfer >= 0 ? totalTransfer : -Math.abs(totalTransfer),
                     transferStr: totalTransfer >= 0 ? totalTransfer : `(${totalTransfer * -1})`,
@@ -437,7 +437,17 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 if (collectionTransferred.length > 0 || collectionReceived.length > 0) {
                     collectionData.push(consolidateTotals(totals, transferGvr, transferRcv));
                 }
-    
+
+                // if (transferGvr?.mcbu > 0) {
+                //     totals.mcbu -= transferGvr.mcbu;
+                //     totals.mcbuStr = formatPricePhp(totals.mcbu);
+                // }
+
+                // if (transferRcv?.mcbu > 0) {
+                //     totals.mcbu += transferRcv.mcbu;
+                //     totals.mcbuStr = formatPricePhp(totals.mcbu);
+                // }
+
                 if (collectionTransferred.length > 0) {
                     collectionData.push(transferGvr);
                 }
@@ -470,7 +480,6 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
         let totalLoanRelease = totals.totalLoanRelease;
         let totalLoanBalance = totals.totalLoanBalance;
         let totalTargetCollection = totals.targetLoanCollection;
-        // let totalActualCollection = totals.collection;
         let totalPastDue = totals.pastDue;
         let totalNoPastDue = totals.noPastDue;
 
@@ -487,7 +496,6 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
             totalLoanRelease += transferGvr.totalLoanRelease;
             totalLoanBalance += transferGvr.totalLoanBalance;
             totalTargetCollection += transferGvr.targetLoanCollection;
-            // totalActualCollection += transferGvr.collection;
             totalPastDue += transferGvr.pastDue;
             totalNoPastDue += transferGvr.noPastDue;
         }
@@ -499,7 +507,6 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
             totalLoanRelease -= transferRcv.totalLoanRelease;
             totalLoanBalance -= transferRcv.totalLoanBalance;
             totalTargetCollection -= transferRcv.targetLoanCollection;
-            // totalActualCollection -= transferRcv.collection;
             totalPastDue -= transferRcv.pastDue;
             totalNoPastDue -= transferRcv.noPastDue;
         }
@@ -620,6 +627,14 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
 
         let totalsLoanRelease = totals.totalLoanRelease + totals.currentReleaseAmount;
         let totalsLoanBalance = totals.totalLoanBalance + totals.currentReleaseAmount;
+        let totalsMcbuTransfer = 0;
+        // if (transferGvr?.mcbu > 0) {
+        //     totalsMcbuTransfer -= transferGvr.mcbu;
+        // }
+
+        // if (transferRcv?.mcbu > 0) {
+        //     totalsMcbuTransfer += transferRcv.mcbu;
+        // }
         
         if (yearEnd) {
             grandTotal = {
@@ -627,6 +642,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 transfer: totals.transfer,
                 newMember: 0,
                 offsetPerson: 0,
+                mcbuTransfer: totalsMcbuTransfer,
                 mcbuTarget: totals.mcbuTarget,
                 mcbuActual: totals.mcbuCol,
                 mcbuWithdrawal: totals.mcbuWithdrawal,
@@ -662,6 +678,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 day: selectedDate,
                 transfer: totals.transfer,
                 newMember: totals.noOfNewCurrentRelease,
+                mcbuTransfer: totalsMcbuTransfer,
                 mcbuTarget: totals.mcbuTarget,
                 mcbuActual: totals.mcbuCol,
                 mcbuWithdrawal: totals.mcbuWithdrawal,

@@ -464,6 +464,8 @@ const LoanOfficerSummary = () => {
                 const mcbuInterest = los.mcbuInterest !== '-' ? los.mcbuInterest : 0;
                 const mcbuReturnAmt = los.mcbuReturnAmt !== '-' ? los.mcbuReturnAmt : 0;
                 const fBalMcbuBalance = fBal.mcbuBalance !== '-' ? fBal.mcbuBalance : 0;
+                // const mcbuTransfer = los.mcbuTransfer ? los.mcbuTransfer : 0;
+                const mcbuTransfer = 0;
 
                 if (index === 1) {
                     temp.activeClients = temp.activeClients > 0 ? temp.activeClients : fBal.activeClients;
@@ -473,7 +475,7 @@ const LoanOfficerSummary = () => {
                     temp.activeBorrowers = temp.activeBorrowers > 0 ? temp.activeBorrowers : fBal.activeBorrowers;
                     temp.loanBalance = temp.loanBalance > 0 ? temp.loanBalance : fBal.loanBalance;
                     temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
-                    temp.mcbuBalance = fBalMcbuBalance + mcbuActual - mcbuWithdrawal + mcbuInterest - mcbuReturnAmt;
+                    temp.mcbuBalance = fBalMcbuBalance + mcbuActual - mcbuWithdrawal + mcbuInterest - mcbuReturnAmt + mcbuTransfer;
                     temp.mcbuBalanceStr = formatPricePhp(temp.mcbuBalance);
                 } else {
                     temp.activeClients = temp.activeClients > 0 ? temp.activeClients : prevLos.activeClients;
@@ -483,7 +485,7 @@ const LoanOfficerSummary = () => {
                     temp.activeBorrowers = temp.activeBorrowers > 0 ? temp.activeBorrowers : prevLos.activeBorrowers;
                     temp.loanBalance = temp.loanBalance > 0 ? temp.loanBalance : prevLos.loanBalance;
                     temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
-                    temp.mcbuBalance = prevLos.mcbuBalance + mcbuActual - mcbuWithdrawal + mcbuInterest - mcbuReturnAmt;
+                    temp.mcbuBalance = prevLos.mcbuBalance + mcbuActual - mcbuWithdrawal + mcbuInterest - mcbuReturnAmt + mcbuTransfer;
                     temp.mcbuBalanceStr = formatPricePhp(temp.mcbuBalance);
                 }
 
