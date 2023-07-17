@@ -166,7 +166,8 @@ async function getAllLoansPerGroup(req, res) {
                                                         {$eq: ['$endDate', date]}
                                                     ]}
                                                 ]},
-                                                {$ne: ['$status', 'reject']}
+                                                {$ne: ['$status', 'reject']},
+                                                {$lte: ['$startDateObj', '$currentDateObj']}
                                             ]} } },
                                     { $group: { 
                                             _id: '$branchId',
@@ -501,7 +502,8 @@ async function getAllLoansPerGroup(req, res) {
                                                 {$eq: ['$endDate', date]}
                                             ]}
                                         ]},
-                                        {$ne: ['$status', 'reject']}
+                                        {$ne: ['$status', 'reject']},
+                                        {$lte: ['$startDateObj', '$currentDateObj']}
                                         ]} } },
                                 { $group: { 
                                         _id: '$branchId',

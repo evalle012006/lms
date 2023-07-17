@@ -461,7 +461,8 @@ async function getAllLoansPerGroup(req, res) {
                                             {$eq: ['$endDate', date]}
                                         ]}
                                     ]},
-                                    {$ne: ['$status', 'reject']}
+                                    {$ne: ['$status', 'reject']},
+                                    {$lte: ['$startDateObj', '$currentDateObj']}
                                 ]}  } },
                                 { $group: { 
                                         _id: '$loId',
@@ -890,6 +891,7 @@ async function getAllLoansPerGroup(req, res) {
                                 { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
                                 { $match: {
                                     $expr:  {$and: [
+                                                    {$lte: ['$startDateObj', '$currentDateObj']},
                                                     {$or: [
                                                         {$ne: ['$status', 'closed']},
                                                         {$and: [

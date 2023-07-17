@@ -220,9 +220,10 @@ const TransferClientPage = () => {
 
     const handleCloseAddDrawer = () => {
         setLoading(true);
-        getTransferList();
+        // getTransferList();
         setMode('add');
         setClient({});
+        window.location.reload();
     }
 
     const handleMultiSelect = (mode, selectAll, row, rowIndex) => {
@@ -443,7 +444,7 @@ const TransferClientPage = () => {
     }, [currentUser]);
 
     return (
-        <Layout actionButtons={(currentUser.role.rep <= 2 && !isWeekend && !isHoliday && currentDate === lastMonthDate) && actionButtons}>
+        <Layout actionButtons={(currentUser.role.rep <= 2 && !isWeekend && !isHoliday) && actionButtons}>
             <div className="pb-4">
                 { loading ? (
                     <div className="absolute top-1/2 left-1/2">
@@ -475,7 +476,7 @@ const TransferClientPage = () => {
                             <TabPanel hidden={selectedTab !== "history-branch"}>
                                 <div>UNDER CONSTRUCTION</div>
                             </TabPanel>
-                            <TabPanel hidden={selectedTab !== "history-lo"}>
+                            <TabPanel className="px-4" hidden={selectedTab !== "history-lo"}>
                                 <TransferHistoryLOToLOPage />
                             </TabPanel>
                         </React.Fragment> 
