@@ -525,7 +525,8 @@ const LoanApplicationPage = () => {
                 setLoading(false);
                 toast.success('Selected loans successfully approved.');
                 setTimeout(() => {
-                    getListLoan();
+                    window.location.reload();
+                    // getListLoan();
                 }, 500);
             }
         } else {

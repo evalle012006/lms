@@ -214,7 +214,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                     }
                     totalMcbu += collection.mcbu ? collection.mcbu : 0;
                     totalMcbuInterest += collection.mcbuInterest ? collection.mcbuInterest : 0;
-    
+
                     if (lo.currentRelease.length > 0) {
                         const newReleasePerson = lo.currentRelease[0].newCurrentRelease ? lo.currentRelease[0].newCurrentRelease : 0;
                         const reReleasePerson = lo.currentRelease[0].reCurrentRelease ? lo.currentRelease[0].reCurrentRelease : 0;
@@ -227,12 +227,12 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                         noOfNewCurrentRelease += lo.currentRelease[0].newCurrentRelease;
                         noOfReCurrentRelease += lo.currentRelease[0].reCurrentRelease;
                         currentReleaseAmount += lo.currentRelease[0].currentReleaseAmount;
-                        
-                        if (!collection.hasOwnProperty('status') || collection.status === '-') {
+
+                        if (newReleasePerson > 0 && collection.activeClients === '-') {
                             collection.activeClients = newReleasePerson;
                             collection.status = "close";
+                            collection.page = 'loan-officer-summary';
                             collection.allNew = true;
-
                             noOfClients += newReleasePerson;
                         }
                     }

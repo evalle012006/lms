@@ -216,7 +216,7 @@ async function saveCashCollection(loan, group, currentDate) {
             mcbuReturnAmt: 0,
             status: status,
             dateAdded: currentDate,
-            groupStatus: 'pending',
+            groupStatus: 'closed',
             origin: 'automation-ar-loan'
         };
 

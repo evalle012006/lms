@@ -642,7 +642,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
         // if (transferRcv?.mcbu > 0) {
         //     totalsMcbuTransfer += transferRcv.mcbu;
         // }
-        
+
         if (yearEnd) {
             grandTotal = {
                 day: 'Year End',
@@ -681,6 +681,11 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 }
             }
 
+            let totalActiveBorrowers = totals.activeBorrowers;
+            if (totalActiveBorrowers === 0 && totals.activeClients > 0) {
+                totalActiveBorrowers = totals.activeClients;
+            }
+
             grandTotal = {
                 day: selectedDate,
                 transfer: totals.transfer,
@@ -696,7 +701,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 activeClients: totals.activeClients,
                 loanReleasePerson: totals.noCurrentRelease,
                 loanReleaseAmount: totals.currentReleaseAmount,
-                activeLoanReleasePerson: totals.activeBorrowers,
+                activeLoanReleasePerson: totalActiveBorrowers,
                 activeLoanReleaseAmount: totalsLoanRelease,
                 collectionTarget: totals.targetLoanCollection,
                 collectionAdvancePayment: totals.excess,
@@ -706,7 +711,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 mispaymentPerson: totals.mispaymentPerson,
                 fullPaymentPerson: totals.noOfFullPayment,
                 fullPaymentAmount: totals.fullPaymentAmount,
-                activeBorrowers: totals.activeBorrowers,
+                activeBorrowers: totalActiveBorrowers,
                 loanBalance: totalsLoanBalance,
                 transferGvr: transferGvr,
                 transferRcv: transferRcv
