@@ -9,6 +9,7 @@ import moment from 'moment'
 import DatePicker from "@/lib/ui/DatePicker";
 import { useRouter } from 'next/router';
 import { ArrowLeftCircleIcon } from '@heroicons/react/24/solid';
+import ButtonOutline from "@/lib/ui/ButtonOutline";
 
 const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, dateFilter, setDateFilter, handleDateFilter, groupFilter, handleGroupFilter, groupTransactionStatus, allowMcbuWithdrawal }) => {
     const router = useRouter();
@@ -126,8 +127,9 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
                         </div>
                     </div>
                     {(showSaveButton || allowMcbuWithdrawal) && (
-                        <div className="flex items-center w-40">
-                            <ButtonSolid label="Submit Collection" onClick={handleSaveUpdate} />
+                        <div className="flex items-center w-96">
+                            <ButtonOutline label="Save Draft" type="button" className="p-2 mr-3" onClick={() => handleSaveUpdate(true)} />
+                            <ButtonSolid label="Submit Collection" onClick={() => handleSaveUpdate(false)} />
                         </div>
                     )}
                 </div>

@@ -333,7 +333,7 @@ async function getAllLoansPerGroup(req, res) {
                             localField: "loIdStr",
                             foreignField: "loId",
                             pipeline: [
-                                { $match: { dateAdded: date } },
+                                { $match: { dateAdded: date, draft: false } },
                                 { $group: { 
                                         _id: '$loId',
                                         mispayment: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },
@@ -768,7 +768,7 @@ async function getAllLoansPerGroup(req, res) {
                             localField: "groupIdStr",
                             foreignField: "groupId",
                             pipeline: [
-                                { $match: { dateAdded: date } },
+                                { $match: { dateAdded: date, draft: false } },
                                 { $group: { 
                                         _id: '$$groupName',
                                         mispayment: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },

@@ -1,6 +1,7 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
 import moment from 'moment';
+import { faL } from 'node_modules/@fortawesome/free-solid-svg-icons/index';
 
 export default apiHandler({
     get: getAllLoansPerGroup
@@ -89,7 +90,7 @@ async function getAllLoansPerGroup(req, res) {
                                 localField: "branchIdstr",
                                 foreignField: "branchId",
                                 pipeline: [
-                                    { $match: { dateAdded: date } },
+                                    { $match: { dateAdded: date, draft: false } },
                                     { $group: { 
                                             _id: '$branchId',
                                             mispayment: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },
@@ -424,7 +425,7 @@ async function getAllLoansPerGroup(req, res) {
                             localField: "branchIdstr",
                             foreignField: "branchId",
                             pipeline: [
-                                { $match: { dateAdded: date } },
+                                { $match: { dateAdded: date, draft: false } },
                                 { $group: { 
                                         _id: '$branchId',
                                         mispayment: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },

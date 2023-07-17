@@ -923,7 +923,7 @@ const LoanOfficerSummary = () => {
             totalMcbuInterest = fBal.mcbuInterest + monthly.mcbuInterest;
             totalNoMcbuReturn = fBal.noMcbuReturn + monthly.noMcbuReturn;
             totalMcbuReturnAmt = fBal.mcbuReturnAmt + monthly.mcbuReturnAmt;
-            totalMcbuBalance = fBal.mcbuBalance + monthly.mcbuBalance;
+            totalMcbuBalance = totalMcbuActual - totalMcbuWithdrawal + totalMcbuInterest - totalMcbuReturnAmt;
             totalOffsetperson = fBal.offsetPerson + monthly.offsetPerson;
             totalActiveClients = monthly.activeClients ;
             totalActiveLoanReleasePerson = monthly.activeLoanReleasePerson;

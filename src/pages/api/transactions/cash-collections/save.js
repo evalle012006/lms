@@ -41,7 +41,7 @@ async function save(req, res) {
                     newCC.push(collection);
                 }
 
-                if (collection.status !== "pending") {
+                if (collection.status !== "pending" && !collection.draft) {
                     await updateLoan(collection, currentDate)
                     await updateClient(collection, currentDate);
                 }

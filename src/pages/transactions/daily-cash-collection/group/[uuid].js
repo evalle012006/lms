@@ -55,10 +55,14 @@ const CashCollectionDetailsPage = () => {
         if (cashCollectionList.length > 0 || loCollectionList.length > 0) {
             if (currentUser.role.rep === 1) {
                 const pending = cashCollectionList.filter(cc => cc.status === 'pending');
+                const draft = cashCollectionList.filter(cc => cc.draft);
 
                 if (pending.length > 0) {
                     setLoading(false);
                     toast.error("One or more group/s transaction is not yet closed.");
+                } else if (draft.length > 0) {
+                    setLoading(false);
+                    toast.error("One or more group/s transaction has a draft data.");
                 } else {
                     if (loSummary && Object.keys(loSummary).length > 0) {
                         const resp = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collection-summary/save-update-totals', loSummary);

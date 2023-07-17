@@ -50,10 +50,14 @@ const CashCollectionDetailsPage = () => {
 
         if (currentBranch && loCashCollectionList.length > 0) {
             const pending = loCashCollectionList.filter(cc => cc.status === 'open');
+            const draft = loCashCollectionList.filter(cc => cc.draft);
 
             if (pending.length > 0) {
                 setLoading(false);
                 toast.error("One or more group/s transaction is not yet closed.");
+            } else if (draft.length > 0) {
+                setLoading(false);
+                toast.error("One or more group/s transaction has a draft data.");
             } else {
                 let date = currentDate;
                 if (dateFilter) {
