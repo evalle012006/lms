@@ -779,7 +779,7 @@ const CashCollectionDetailsPage = () => {
             toast.error('Updating this record is not allowed since the Group Summary is already closed by the Branch Manager.');
         } else {
             const errorMsgArr = Array.from(validation());
-            if (errorMsgArr.length > 0) {
+            if (errorMsgArr.length > 0 && !draft) {
                 let errorMsg;
                 errorMsgArr.map(msg => {
                     errorMsg = errorMsg ? errorMsg + '\n \n' + msg  : msg;
