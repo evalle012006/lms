@@ -227,6 +227,13 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                         noOfNewCurrentRelease += lo.currentRelease[0].newCurrentRelease;
                         noOfReCurrentRelease += lo.currentRelease[0].reCurrentRelease;
                         currentReleaseAmount += lo.currentRelease[0].currentReleaseAmount;
+                        
+                        if (!collection.hasOwnProperty('status') || collection.status === '-') {
+                            collection.activeClients = newReleasePerson;
+                            collection.status = groupStatus;
+
+                            noOfClients += newReleasePerson;
+                        }
                     }
     
                     if (lo.fullPayment.length > 0) {

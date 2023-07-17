@@ -262,6 +262,13 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         noOfNewCurrentRelease += cc.currentRelease[0].newCurrentRelease ? cc.currentRelease[0].newCurrentRelease : 0;
                         noOfReCurrentRelease += cc.currentRelease[0].reCurrentRelease ? cc.currentRelease[0].reCurrentRelease : 0;
                         currentReleaseAmount += cc.currentRelease[0].currentReleaseAmount ? cc.currentRelease[0].currentReleaseAmount : 0;
+                        
+                        if (!collection.hasOwnProperty('status') || collection.status === '-') {
+                            collection.activeClients = collection.newCurrentRelease;
+                            collection.status = groupStatus;
+                            collection.page = "collection";
+                            noOfClients += collection.newCurrentRelease;
+                        }
                     }
     
                     if (cc.fullPayment.length > 0) {
