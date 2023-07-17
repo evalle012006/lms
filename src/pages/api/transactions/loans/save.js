@@ -204,7 +204,7 @@ async function saveCashCollection(loan, currentReleaseAmount, reloan, group, loa
             remarks: '',
             status: loan.status,
             dateAdded: currentDate,
-            groupStatus: 'pending',
+            groupStatus: 'closed',
             origin: 'automation-loan'
         };
 

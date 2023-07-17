@@ -230,7 +230,8 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                         
                         if (!collection.hasOwnProperty('status') || collection.status === '-') {
                             collection.activeClients = newReleasePerson;
-                            collection.status = groupStatus;
+                            collection.status = "close";
+                            collection.allNew = true;
 
                             noOfClients += newReleasePerson;
                         }
@@ -786,7 +787,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
     
     
     const handleOpen = async (row) => {
-        if (row.original.activeClients !== 0) {
+        if (row.original.activeClients > 0 && !row.original.hasOwnProperty("allNew")) {
             setLoading(true);
 
             let data = { loId: row.original._id, mode: 'open', currentDate: currentDate };
@@ -801,13 +802,15 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
             }
 
             setLoading(false);
+        } else if (row.original.hasOwnProperty("allNew")) {
+            toast.error("All transactions are current releases no need to changed the group's status.");
         } else {
             toast.error('No transaction detected for this Loan Officer!');
         }
     }
 
     const handleClose = async (row) => {
-        if (row.original.activeClients !== 0) {
+        if (row.original.activeClients > 0 && !row.original.hasOwnProperty("allNew")) {
             setLoading(true);
 
             let data = { loId: row.original._id, mode: 'close', currentDate: currentDate };
@@ -823,6 +826,8 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
             }
 
             setLoading(false);
+        } else if (row.original.hasOwnProperty("allNew")) {
+            toast.error("All transactions are current releases no need to changed the group's status.");
         } else {
             toast.error('No transaction detected for this Loan Officer!');
         }

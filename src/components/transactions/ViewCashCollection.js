@@ -265,7 +265,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         
                         if (!collection.hasOwnProperty('status') || collection.status === '-') {
                             collection.activeClients = collection.newCurrentRelease;
-                            collection.status = groupStatus;
+                            collection.status = "closed";
                             collection.page = "collection";
                             noOfClients += collection.newCurrentRelease;
                         }
