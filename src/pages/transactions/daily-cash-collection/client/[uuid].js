@@ -440,7 +440,7 @@ const CashCollectionDetailsPage = () => {
                         collection.fullPaymentStr = cc.fullPayment[0].fullPaymentAmount ? formatPricePhp(cc.fullPayment[0].fullPaymentAmount) : '-';
                     }
     
-                    if (cc.loanBalance <= 0) {
+                    if (cc.loanBalance <= 0 && cc.status !== 'completed') {
                         if (cc.fullPaymentDate === currentDate) {
                             collection.paymentCollection = cc.history ? cc.history.collection : 0;
                             collection.paymentCollectionStr = formatPricePhp(collection.paymentCollection);
@@ -1789,7 +1789,7 @@ const CashCollectionDetailsPage = () => {
                                                 }
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">
                                                     <React.Fragment>
-                                                        {(!isWeekend && !isHoliday && currentUser.role.rep > 2 &&  (cc.status === 'active' || cc.status === 'completed') && !groupSummaryIsClose) && (
+                                                        {(!isWeekend && !isHoliday && currentUser.role.rep > 2 &&  (cc.status === 'active' || cc.status === 'completed') && !groupSummaryIsClose && !cc.draft) && (
                                                             <div className='flex flex-row p-4'>
                                                                 {(cc.hasOwnProperty('_id') && cc.status === 'active' && !filter && !cc.draft) && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleRevert(e, cc, index)} />}
                                                                 {(cc.status === 'completed' && (cc.remarks.value && cc.remarks.value?.startsWith('reloaner'))) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
