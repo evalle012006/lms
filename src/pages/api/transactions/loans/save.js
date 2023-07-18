@@ -65,7 +65,7 @@ async function save(req, res) {
 
             let loanId;
             if (loan.acknowledged) {
-                loanId = loan.insertedId;
+                loanId = loan.insertedId + "";
             }
 
             if (mode === 'reloan') {

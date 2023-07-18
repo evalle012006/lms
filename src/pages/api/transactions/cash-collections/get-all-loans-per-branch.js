@@ -166,7 +166,7 @@ async function getAllLoansPerGroup(req, res) {
                                     { $match: {
                                         $expr: {
                                             $and: [
-                                                { $and: [{$lte: ['$startDateObj', '$currentDateObj']}, {$ne: ['$status', 'reject']}] },
+                                                { $and: [{$gte: ['$currentDateObj', '$startDateObj']}, {$ne: ['$status', 'reject']}] },
                                                 { $or: [
                                                     { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}] },
                                                     { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$transferred', true]}, {$eq: ['$endDate', date]}] },
@@ -176,7 +176,7 @@ async function getAllLoansPerGroup(req, res) {
                                         } } 
                                     },
                                     { $group: { 
-                                            _id: '$branchId',
+                                            _id: '$$groupName',
                                             activeClients: { $sum: {
                                                 $cond: {
                                                     if: { $ne: ['$status', 'pending'] },
@@ -195,15 +195,12 @@ async function getAllLoansPerGroup(req, res) {
                                                     if: { $ne: ['$status', 'pending'] },
                                                     then: {
                                                         $cond: {
-                                                            if: {$and: [{$gt: ['$loanBalance', 0]}, {$gte: ['$currentDateObj', '$startDateObj']}]},
+                                                            if: { $or: [
+                                                                {$and: [{$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}, {$regexMatch: { input: '$history.remarks.value', regex: /^reloaner/ }},]}, 
+                                                                {$eq: ['$status', 'active']},
+                                                            ] },
                                                             then: 1,
-                                                            else: {
-                                                                $cond: {
-                                                                    if: {$eq: ['$status', 'active']},
-                                                                    then: 1,
-                                                                    else: 0
-                                                                }
-                                                            }
+                                                            else: 0
                                                         }
                                                     }, 
                                                     else: 0
@@ -508,7 +505,7 @@ async function getAllLoansPerGroup(req, res) {
                                 { $match: {
                                     $expr: {
                                         $and: [
-                                            { $and: [{$lte: ['$startDateObj', '$currentDateObj']}, {$ne: ['$status', 'reject']}] },
+                                            { $and: [{$gte: ['$currentDateObj', '$startDateObj']}, {$ne: ['$status', 'reject']}] },
                                             { $or: [
                                                 { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}] },
                                                 { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$transferred', true]}, {$eq: ['$endDate', date]}] },
@@ -518,7 +515,7 @@ async function getAllLoansPerGroup(req, res) {
                                     } } 
                                 },
                                 { $group: { 
-                                        _id: '$branchId',
+                                        _id: '$$groupName',
                                         activeClients: { $sum: {
                                             $cond: {
                                                 if: { $ne: ['$status', 'pending'] },
@@ -537,15 +534,12 @@ async function getAllLoansPerGroup(req, res) {
                                                 if: { $ne: ['$status', 'pending'] },
                                                 then: {
                                                     $cond: {
-                                                        if: {$and: [{$gt: ['$loanBalance', 0]}, {$gte: ['$currentDateObj', '$startDateObj']}]},
+                                                        if: { $or: [
+                                                            {$and: [{$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}, {$regexMatch: { input: '$history.remarks.value', regex: /^reloaner/ }},]}, 
+                                                            {$eq: ['$status', 'active']},
+                                                        ] },
                                                         then: 1,
-                                                        else: {
-                                                            $cond: {
-                                                                if: {$eq: ['$status', 'active']},
-                                                                then: 1,
-                                                                else: 0
-                                                            }
-                                                        }
+                                                        else: 0
                                                     }
                                                 }, 
                                                 else: 0

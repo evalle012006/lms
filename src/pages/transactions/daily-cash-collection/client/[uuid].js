@@ -1441,7 +1441,7 @@ const CashCollectionDetailsPage = () => {
     const handleReloan = (e, selected) => {
         e.stopPropagation();
         
-        if (selected.remarks && (selected.remarks.value === "pending" || selected.remarks.value?.startsWith('reloaner'))) {
+        if ((selected.remarks && (selected.remarks.value === "pending" || selected.remarks.value?.startsWith('reloaner'))) || (selected.status === 'completed' && !selected.remarks)) {
             setShowAddDrawer(true);
             selected.group = currentGroup;
             setLoan(selected);
@@ -1757,7 +1757,8 @@ const CashCollectionDetailsPage = () => {
                                                     { cc.pastDueStr }
                                                 </td>
                                                 { (!isWeekend && !isHoliday && (currentUser.role.rep > 2 && (cc.status === 'active' || cc.status === 'completed') && (editMode && !groupSummaryIsClose) 
-                                                    && (!cc.hasOwnProperty('_id') || (cc?.origin && cc?.origin === 'automation-trf') || revertMode) && !filter) || ((cc.remarks && cc.remarks.value?.startsWith('reloaner') && cc.status !== "tomorrow") && !groupSummaryIsClose)
+                                                    && (!cc.hasOwnProperty('_id') || (cc?.origin && cc?.origin === 'automation-trf') || revertMode) && !filter) || 
+                                                    (((cc.remarks && cc.remarks.value?.startsWith('reloaner') && cc.status !== "tomorrow") || (cc.status === 'completed') && !cc.remarks) && !groupSummaryIsClose)
                                                     && (cc.remarks && cc.remarks.value?.startsWith('reloaner') && cc.fullPaymentDate !== currentDate) && cc.status !== 'pending' || cc.draft) ? (
                                                         <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">
                                                             { cc.remarks !== '-' ? (
@@ -1791,8 +1792,9 @@ const CashCollectionDetailsPage = () => {
                                                     <React.Fragment>
                                                         {(!isWeekend && !isHoliday && currentUser.role.rep > 2 &&  (cc.status === 'active' || cc.status === 'completed') && !groupSummaryIsClose && !cc.draft) && (
                                                             <div className='flex flex-row p-4'>
+                                                                {console.log(cc)}
                                                                 {(cc.hasOwnProperty('_id') && cc.status === 'active' && !filter && !cc.draft) && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleRevert(e, cc, index)} />}
-                                                                {(cc.status === 'completed' && (cc.remarks.value && cc.remarks.value?.startsWith('reloaner'))) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
+                                                                {(cc.status === 'completed' && ((cc.remarks.value && cc.remarks.value?.startsWith('reloaner')) || (cc.status === 'completed' && !cc.remarks))) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
                                                                 {/* {(!filter && cc.status === 'active') && <CurrencyDollarIcon className="w-5 h-5 mr-6" title="MCBU Withdrawal" onClick={(e) => handleMcbuWithdrawal(e, cc, index)} />} */}
                                                                 {(!filter && !editMode && cc.status !== 'closed' && currentMonth === 11) && <CalculatorIcon className="w-5 h-5 mr-6" title="Calculate MCBU Interest" onClick={(e) => calculateInterest(e, cc, index)} />}
                                                             </div>
