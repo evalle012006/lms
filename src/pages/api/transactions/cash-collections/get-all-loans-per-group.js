@@ -471,7 +471,7 @@ async function getAllLoansPerGroup(req, res) {
                                     } } 
                                 },
                                 { $group: { 
-                                        _id: '$$groupName',
+                                        _id: '$loId',
                                         activeClients: { $sum: {
                                             $cond: {
                                                 if: { $ne: ['$status', 'pending'] },
