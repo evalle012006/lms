@@ -176,6 +176,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                 if (values.status !== 'active') {
                     if (group.occurence === 'weekly') {
                         values.activeLoan = (values.principalLoan * 1.20) / 24;
+                        values.loanTerms = 24;
                     } else if (group.occurence === 'daily') {
                         values.loanTerms = loanTerms;
                         if (loanTerms === 60) {
@@ -564,7 +565,6 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                         <div className="mt-4 flex flex-col">
                                             <span className="text-base text-zinc-600">Loan Terms</span>
                                             <div className="flex flex-row">
-                                                {console.log(loanTerms)}
                                                 <RadioButton id={"radio_60"} name="radio-group-occurence" label={"60 Days"} checked={loanTerms === 60} value={60} onChange={handleLoanTermsChange} />
                                                 <RadioButton id={"radio_100"} name="radio-group-occurence" label={"100 Days"} checked={loanTerms === 100} value={100} onChange={handleLoanTermsChange} />
                                             </div>

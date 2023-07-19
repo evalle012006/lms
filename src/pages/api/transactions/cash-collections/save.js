@@ -34,10 +34,12 @@ async function save(req, res) {
                 }
 
                 if (collection.hasOwnProperty('_id')) {
+                    collection.modifiedDateTime = new Date();
                     collection.collectionId = collection._id;
                     delete collection._id;
                     existCC.push(collection);
                 } else {
+                    collection.insertedDateTime = new Date();
                     newCC.push(collection);
                 }
 
@@ -110,6 +112,7 @@ async function updateLoan(collection, currentDate) {
         loan = loan[0];
         delete loan.groupStatus;
         loan.loanBalance = collection.loanBalance;
+        loan.modifiedDateTime = new Date();
 
         if (collection.remarks && (!collection.remarks.value?.startsWith('excused-')  && collection.remarks.value !== 'delinquent')) {
             loan.activeLoan = collection.activeLoan;

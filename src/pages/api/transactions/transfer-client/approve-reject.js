@@ -68,11 +68,13 @@ async function approveReject(req, res) {
                         updatedLoan.groupId = transfer.targetGroupId;
                         updatedLoan.slotNo = selectedSlotNo;
                         updatedLoan.startDate = moment(transfer.dateAdded).add(1, 'days').format("YYYY-MM-DD");
+                        updatedLoan.insertedDateTime = new Date();
                         const newLoan = await db.collection('loans').insertOne({ ...updatedLoan });
                         if (newLoan.acknowledged) {
                             loan.status = "closed"
                             loan.transferred = true;
                             loan.endDate = transfer.dateAdded;
+                            loan.modifiedDateTime = new Date();
                             await db.collection('loans').updateOne({ _id: new ObjectId(loanId) }, { $set: { ...loan } });
                             loan._id = newLoan.insertedId + "";
                             loan.oldId = loanId;
@@ -96,14 +98,15 @@ async function approveReject(req, res) {
                     { $set: {
                         status: "approved", 
                         occurence: sourceGroup.occurence, 
-                        approveRejectDate: transfer.dateAdded
+                        approveRejectDate: transfer.dateAdded,
+                        modifiedDateTime: new Date()
                     } }
                 );
     
                 response = { success: true };
             }
         } else {
-            await db.collection('transferClients').updateOne({_id: new ObjectId(transfer._id)}, { $set: {status: "rejected"} });
+            await db.collection('transferClients').updateOne({_id: new ObjectId(transfer._id)}, { $set: {status: "rejected", modifiedDateTime: new Date()} });
         }
     });
 
@@ -154,6 +157,7 @@ async function saveCashCollection(transfer, client, loan, sourceGroup, targetGro
             transfer: transfer.sameLo ? false : true,
             loToLo: transfer.loToLo,
             branchToBranch: transfer.branchToBranch,
+            insertedDateTime: new Date(),
             origin: 'automation-trf'
         };
 
@@ -188,7 +192,8 @@ async function saveCashCollection(transfer, client, loan, sourceGroup, targetGro
                 sameLo: transfer.sameLo, 
                 transferId: transfer._id, 
                 loToLo: transfer.loToLo, 
-                branchToBranch: transfer.branchToBranch
+                branchToBranch: transfer.branchToBranch,
+                modifiedDateTime: new Date()
             } }
         )
     }
@@ -226,6 +231,7 @@ async function saveCashCollection(transfer, client, loan, sourceGroup, targetGro
             transferred: transfer.sameLo ? false : true,
             loToLo: transfer.loToLo,
             branchToBranch: transfer.branchToBranch,
+            insertedDateTime: new Date(),
             origin: 'automation-trf'
         };
 
@@ -257,7 +263,8 @@ async function saveCashCollection(transfer, client, loan, sourceGroup, targetGro
                 sameLo: transfer.sameLo, 
                 transferId: transfer._id, 
                 loToLo: transfer.loToLo, 
-                branchToBranch: transfer.branchToBranch
+                branchToBranch: transfer.branchToBranch,
+                modifiedDateTime: new Date()
             } }
         )
     }

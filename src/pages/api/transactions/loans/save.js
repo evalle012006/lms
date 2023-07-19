@@ -60,7 +60,8 @@ async function save(req, res) {
             delete finalData.currentReleaseAmount;
             const loan = await db.collection('loans').insertOne({
                 ...finalData,
-                dateGranted: currentDate
+                dateGranted: currentDate,
+                insertedDateTime: new Date()
             });
 
             let loanId;
@@ -70,6 +71,7 @@ async function save(req, res) {
 
             if (mode === 'reloan') {
                 reloan = true;
+                finalData.modifiedDateTime = new Date();
                 await updateLoan(oldLoanId, finalData);
             } else {
                 await updateGroup(loanData);
@@ -204,6 +206,7 @@ async function saveCashCollection(loan, currentReleaseAmount, reloan, group, loa
             remarks: '',
             status: loan.status,
             dateAdded: currentDate,
+            insertedDateTime: new Date(),
             groupStatus: 'pending',
             origin: 'automation-loan'
         };
@@ -219,6 +222,6 @@ async function saveCashCollection(loan, currentReleaseAmount, reloan, group, loa
 
         await db.collection('cashCollections').insertOne({ ...data });
     } else {
-        await db.collection('cashCollections').updateOne({ _id: cashCollection[0]._id }, { $set: { currentReleaseAmount: currentReleaseAmount, status: loan.status, modifiedBy: 'automation-loan' } })
+        await db.collection('cashCollections').updateOne({ _id: cashCollection[0]._id }, { $set: { currentReleaseAmount: currentReleaseAmount, status: loan.status, modifiedBy: 'automation-loan', modifiedDateTime: new Date() } })
     }
 }

@@ -16,13 +16,13 @@ async function saveUpdate(req, res) {
 
     if (clientData?._id) {
         const transferId = clientData._id;
-        await db.collection("transferClients").updateOne({ _id: new ObjectId(transferId) }, { $set: { ...clientData } });
+        await db.collection("transferClients").updateOne({ _id: new ObjectId(transferId) }, { $set: { ...clientData, insertedDateTime: new Date() } });
         response = { success: true };
     } else {
         const exist = await db.collection("transferClients").find({ selectedClientId: clientData.selectedClientId, status: "pending" }).toArray();
 
         if (exist.length === 0) {
-            await db.collection("transferClients").insertOne({...clientData});
+            await db.collection("transferClients").insertOne({...clientData, modifiedDateTime: new Date()});
             response = { success: true };
         } else {
             response = { error: true, message: "Client has an existing pending transfer." };

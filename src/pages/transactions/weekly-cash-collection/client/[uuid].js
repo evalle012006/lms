@@ -76,9 +76,13 @@ const CashCollectionDetailsPage = () => {
     }
 
     const handleGroupFilter = (selected) => {
+        setLoading(true);
         setGroupFilter(selected._id);
         setCurrentGroup(selected);
         router.push('/transactions/weekly-cash-collection/client/' + selected._id);
+        setTimeout(() => {
+            window.location.reload();
+        }, 200);
     }
     
     const handleDateFilter = (selected) => {
@@ -377,6 +381,7 @@ const CashCollectionDetailsPage = () => {
                             collection.mcbuInterest = current.mcbuInterest ? cc.mcbuInterest : 0,
                             collection.mcbuInterestStr = current.mcbuInterest > 0 ? formatPricePhp(current.mcbuInterest) : '-',
                             collection.advanceDays = current.advanceDays;
+                            collection.draft = current.draft;
 
                             if (current?.origin) {
                                 collection.origin = current.origin;
@@ -389,7 +394,7 @@ const CashCollectionDetailsPage = () => {
                                 collection.loanBalance = current.loanBalance;
                                 collection.loanBalanceStr = formatPricePhp(current.loanBalance);
                                 collection.noOfPayments = (collection.status === "active" || (collection.status === "completed" && collection.fullPaymentDate === currentDate)) ? current.noOfPayments : 0;
-                                collection.noOfPaymentStr = (collection.status === "active" || (collection.status === "completed" && collection.fullPaymentDate === currentDate)) ? current.noOfPayments + ' / ' + collection.loanTerms : '-';
+                                collection.noOfPaymentStr = (collection.status === "active" || (collection.status === "completed" && collection.fullPaymentDate === currentDate)) ? current.noOfPayments + ' / ' + maxDays : '-';
                                 collection.total = current.total;
                                 setEditMode(true);
                             } else {
