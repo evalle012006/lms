@@ -457,15 +457,14 @@ async function getAllLoansPerGroup(req, res) {
                             localField: "loIdStr",
                             foreignField: "loId",
                             pipeline: [
-                                { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
                                 { $match: {
                                     $expr: {
                                         $and: [
-                                            { $and: [{$gte: ['$currentDateObj', '$startDateObj']}, {$ne: ['$status', 'reject']}] },
+                                            {$ne: ['$status', 'reject']},
                                             { $or: [
                                                 { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}] },
                                                 { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$transferred', true]}, {$eq: ['$endDate', date]}] },
-                                                { $eq: ['$status', 'active'] }
+                                                { $eq: ['$status', 'active'] }, { $eq: ['$status', 'pending'] }
                                             ] }
                                         ]
                                     } } 
@@ -474,7 +473,7 @@ async function getAllLoansPerGroup(req, res) {
                                         _id: '$loId',
                                         activeClients: { $sum: {
                                             $cond: {
-                                                if: { $ne: ['$status', 'pending'] },
+                                                if: {$and: [{ $ne: ['$status', 'pending'] }, { $ne: ['$status', 'closed'] }]},
                                                 then: 1,
                                                 else: {
                                                     $cond: {
@@ -897,15 +896,14 @@ async function getAllLoansPerGroup(req, res) {
                             localField: "groupIdStr",
                             foreignField: "groupId",
                             pipeline: [
-                                { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
                                 { $match: {
                                     $expr: {
                                         $and: [
-                                            { $and: [{$gte: ['$currentDateObj', '$startDateObj']}, {$ne: ['$status', 'reject']}] },
+                                            {$ne: ['$status', 'reject']},
                                             { $or: [
                                                 { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}] },
                                                 { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$transferred', true]}, {$eq: ['$endDate', date]}] },
-                                                { $eq: ['$status', 'active'] }
+                                                { $eq: ['$status', 'active'] }, { $eq: ['$status', 'pending'] }
                                             ] }
                                         ]
                                     } } 
@@ -914,7 +912,7 @@ async function getAllLoansPerGroup(req, res) {
                                         _id: '$$groupName',
                                         activeClients: { $sum: {
                                             $cond: {
-                                                if: { $ne: ['$status', 'pending'] },
+                                                if: {$and: [{ $ne: ['$status', 'pending'] }, { $ne: ['$status', 'closed'] }]},
                                                 then: 1,
                                                 else: {
                                                     $cond: {

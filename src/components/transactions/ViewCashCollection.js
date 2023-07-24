@@ -172,7 +172,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         // totalMcbuTarget += cc.loans[0].mcbuTarget ? cc.loans[0].mcbuTarget : 0;
                         totalMcbuInterest += cc.loans[0].mcbuInterest;
                     } 
-    
+
                     if (cc.activeLoans.length > 0) {
                         collection = {
                             ...collection,
@@ -211,8 +211,10 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                             transferStr: '-',
                         };
                         
-                        collection.mcbu = cc.cashCollections[0].mcbu;
-                        collection.mcbuStr = collection.mcbu > 0 ? formatPricePhp(collection.mcbu): '-';
+                        if (cc.cashCollections[0].mcbu > 0) {
+                            collection.mcbu = cc.cashCollections[0].mcbu;
+                            collection.mcbuStr = collection.mcbu > 0 ? formatPricePhp(collection.mcbu): '-';
+                        }
 
                         excess += cc.cashCollections[0].excess ? cc.cashCollections[0].excess : 0;
                         totalLoanCollection += cc.cashCollections[0].collection ? cc.cashCollections[0].collection : 0;
