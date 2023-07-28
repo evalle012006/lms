@@ -31,6 +31,12 @@ export const LOR_WEEKLY_REMARKS = [
     { label: 'Excused - Death of Clients/Family Member', value: 'excused-death'}
 ];
 
+export const LOR_ONLY_OFFSET_REMARKS = [
+    { label: 'Remarks', value: ''},
+    { label: 'For Close/Offset - Good Client', value: 'offset-good'},
+    { label: 'For Close/Offset - Delinquent Client', value: 'offset-delinquent'}
+];
+
 export const WEEKLY_GROUPS = [
     "APPLE", "BANANA", "CHERRY", "MANGO", "PINEAPPLE", "WATERMELON", "GRAPES", "KIWI", "PEAR", "PEACH", "STRAWBERRY", "BLUEBERRY", "RASPBERRY", "LEMON", "LIME"
 ];
