@@ -169,7 +169,7 @@ async function getAllLoansPerGroup(req, res) {
                                                 { $or: [
                                                     { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}] },
                                                     { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$transferred', true]}, {$eq: ['$endDate', date]}] },
-                                                    { $eq: ['$status', 'active'] }, { $eq: ['$status', 'pending'] }
+                                                    { $eq: ['$status', 'active'] }, { $eq: ['$status', 'pending'] }, { $eq: ['$status', 'completed'] }
                                                 ] }
                                             ]
                                         } } 
@@ -182,10 +182,7 @@ async function getAllLoansPerGroup(req, res) {
                                                     then: 1,
                                                     else: {
                                                         $cond: {
-                                                            if: {$or: [
-                                                                { $and: [{$eq: ['$status', 'pending']}, {$gt: ['$loanCycle', 1]}] },
-                                                                {$and: [{$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}, {$regexMatch: { input: '$history.remarks.value', regex: /^offset/ }}]}
-                                                            ]},
+                                                            if: { $and: [{$eq: ['$status', 'pending']}, {$gt: ['$loanCycle', 1]}] },
                                                             then: 1,
                                                             else: 0
                                                         }
@@ -197,40 +194,8 @@ async function getAllLoansPerGroup(req, res) {
                                                     if: { $ne: ['$status', 'pending'] },
                                                     then: {
                                                         $cond: {
-                                                            if: { $or: [
-                                                                {$and: [{$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}, {$regexMatch: { input: '$history.remarks.value', regex: /^offset/ }}]}, 
-                                                                {$eq: ['$status', 'active']},
-                                                            ] },
+                                                            if: {$eq: ['$status', 'active']},
                                                             then: 1,
-                                                            else: 0
-                                                        }
-                                                    }, 
-                                                    else: 0
-                                                } 
-                                            } },
-                                            activeClientsUID: { $push: {
-                                                $cond: {
-                                                    if: {$and: [{ $ne: ['$status', 'pending'] }, { $ne: ['$status', 'closed'] }]},
-                                                    then: {origin: '1', id: '$_id', startDate: '$startDate', status: '$status'},
-                                                    else: {
-                                                        $cond: {
-                                                            if: { $and: [{$eq: ['$status', 'pending']}, {$gt: ['$loanCycle', 1]}] },
-                                                            then: {origin: '2', id: '$_id', startDate: '$startDate', status: '$status'},
-                                                            else: 0
-                                                        }
-                                                    }
-                                                }
-                                            } },
-                                            activeBorrowersUid: { $push: { 
-                                                $cond: {
-                                                    if: { $ne: ['$status', 'pending'] },
-                                                    then: {
-                                                        $cond: {
-                                                            if: { $or: [
-                                                                {$and: [{$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}, {$regexMatch: { input: '$history.remarks.value', regex: /^offset/ }},]}, 
-                                                                {$eq: ['$status', 'active']},
-                                                            ] },
-                                                            then: {origin: '1', id: '$_id', startDate: '$startDate', status: '$status'},
                                                             else: 0
                                                         }
                                                     }, 
@@ -539,7 +504,7 @@ async function getAllLoansPerGroup(req, res) {
                                             { $or: [
                                                 { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}] },
                                                 { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$transferred', true]}, {$eq: ['$endDate', date]}] },
-                                                { $eq: ['$status', 'active'] }, { $eq: ['$status', 'pending'] }
+                                                { $eq: ['$status', 'active'] }, { $eq: ['$status', 'pending'] }, { $eq: ['$status', 'completed'] }
                                             ] }
                                         ]
                                     } } 
@@ -552,10 +517,7 @@ async function getAllLoansPerGroup(req, res) {
                                                 then: 1,
                                                 else: {
                                                     $cond: {
-                                                        if: {$or: [
-                                                            { $and: [{$eq: ['$status', 'pending']}, {$gt: ['$loanCycle', 1]}] },
-                                                            {$and: [{$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}, {$regexMatch: { input: '$history.remarks.value', regex: /^offset/ }}]}
-                                                        ]},
+                                                        if: { $and: [{$eq: ['$status', 'pending']}, {$gt: ['$loanCycle', 1]}] },
                                                         then: 1,
                                                         else: 0
                                                     }
@@ -567,40 +529,8 @@ async function getAllLoansPerGroup(req, res) {
                                                 if: { $ne: ['$status', 'pending'] },
                                                 then: {
                                                     $cond: {
-                                                        if: { $or: [
-                                                            {$and: [{$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}, {$regexMatch: { input: '$history.remarks.value', regex: /^offset/ }}]}, 
-                                                            {$eq: ['$status', 'active']},
-                                                        ] },
+                                                        if: {$eq: ['$status', 'active']},
                                                         then: 1,
-                                                        else: 0
-                                                    }
-                                                }, 
-                                                else: 0
-                                            } 
-                                        } },
-                                        activeClientsUID: { $push: {
-                                            $cond: {
-                                                if: {$and: [{ $ne: ['$status', 'pending'] }, { $ne: ['$status', 'closed'] }]},
-                                                then: {origin: '1', id: '$_id', startDate: '$startDate', status: '$status'},
-                                                else: {
-                                                    $cond: {
-                                                        if: { $and: [{$eq: ['$status', 'pending']}, {$gt: ['$loanCycle', 1]}] },
-                                                        then: {origin: '2', id: '$_id', startDate: '$startDate', status: '$status'},
-                                                        else: 0
-                                                    }
-                                                }
-                                            }
-                                        } },
-                                        activeBorrowersUid: { $push: { 
-                                            $cond: {
-                                                if: { $ne: ['$status', 'pending'] },
-                                                then: {
-                                                    $cond: {
-                                                        if: { $or: [
-                                                            {$and: [{$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}, {$regexMatch: { input: '$history.remarks.value', regex: /^offset/ }},]}, 
-                                                            {$eq: ['$status', 'active']},
-                                                        ] },
-                                                        then: {origin: '1', id: '$_id', startDate: '$startDate', status: '$status'},
                                                         else: 0
                                                     }
                                                 }, 
