@@ -260,6 +260,21 @@ const MenuItems = [
                 active: false,
                 hasSub: false,
                 hidden: false
+            },
+            {
+                label: "Daily Collection Sheet",
+                url: "/transactions/daily-collection-sheet", 
+                icon: {
+                    active: (
+                        <ClipboardDocumentIcon className="text-gray-800 w-5 h-5" />
+                    ),
+                    notActive: (
+                        <ClipboardDocumentIcon className="text-white w-5 h-5" />
+                    ),
+                },
+                active: false,
+                hasSub: false,
+                hidden: false
             }
         ]
     },
@@ -315,6 +330,21 @@ const MenuItems = [
                     ),
                     notActive: (
                         <ChartBarSquareIcon className="text-white w-5 h-5" />
+                    ),
+                },
+                active: false,
+                hasSub: false,
+                hidden: false
+            },
+            {
+                label: "Daily Collection Sheet",
+                url: "/transactions/daily-collection-sheet", 
+                icon: {
+                    active: (
+                        <ClipboardDocumentIcon className="text-gray-800 w-5 h-5" />
+                    ),
+                    notActive: (
+                        <ClipboardDocumentIcon className="text-white w-5 h-5" />
                     ),
                 },
                 active: false,
@@ -382,6 +412,21 @@ const MenuItems = [
                 hidden: false
             },
             {
+                label: "Daily Collection Sheet",
+                url: "/transactions/daily-collection-sheet", 
+                icon: {
+                    active: (
+                        <ClipboardDocumentIcon className="text-gray-800 w-5 h-5" />
+                    ),
+                    notActive: (
+                        <ClipboardDocumentIcon className="text-white w-5 h-5" />
+                    ),
+                },
+                active: false,
+                hasSub: false,
+                hidden: false
+            },
+            {
                 label: "Transfer Client",
                 url: "/transactions/area-manager/transfer-client", 
                 icon: {
@@ -395,7 +440,7 @@ const MenuItems = [
                 active: false,
                 hasSub: false,
                 hidden: false
-            },
+            }
         ]
     },
     {
@@ -642,11 +687,17 @@ const NavComponent = () => {
                         if (sm.label === 'Branch Manager Summary') {
                             sm.hidden = true;
                         }
+                        if (sm.label === 'Daily Collection Sheet') {
+                            sm.hidden = true;
+                        }
                     } else if (userState.role.rep === 2) {
                         if (sm.label === 'Loan Officer Summary') {
                             sm.hidden = true;
                         }
                         if (sm.label === 'Branch Manager Summary') {
+                            sm.hidden = true;
+                        }
+                        if (sm.label === 'Daily Collection Sheet') {
                             sm.hidden = true;
                         }
                     } else if (userState.role.rep === 3) {
