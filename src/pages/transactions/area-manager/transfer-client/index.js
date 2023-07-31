@@ -20,6 +20,7 @@ import { TabSelector } from "@/lib/ui/tabSelector";
 import TransferHistoryLOToLOPage from "@/components/transactions/transfer/TransferHistoryLOToLO";
 
 const TransferClientPage = () => {
+    const lastMonthDate = useSelector(state => state.systemSettings.lastDay);
     const isHoliday = useSelector(state => state.systemSettings.holiday);
     const isWeekend = useSelector(state => state.systemSettings.weekend);
     const [loading, setLoading] = useState(true);
@@ -442,7 +443,7 @@ const TransferClientPage = () => {
     }, [currentUser]);
 
     return (
-        <Layout actionButtons={(currentUser.role.rep <= 2 && !isWeekend && !isHoliday) && actionButtons}>
+        <Layout actionButtons={(currentUser.role.rep <= 2 && !isWeekend && !isHoliday && currentDate === lastMonthDate) && actionButtons}>
             <div className="pb-4">
                 { loading ? (
                     <div className="absolute top-1/2 left-1/2">

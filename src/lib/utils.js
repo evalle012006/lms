@@ -150,13 +150,19 @@ export const getCurrentDate = (timezone = 'Asia/Manila') => {
     return new Date().toLocaleDateString({}, { timeZone: timezone });
 };
 
-export const getLastWeekdayOfTheMonth = (year, month) => {
+export const getLastWeekdayOfTheMonth = (year, month, holidayList = []) => {
     const days = getDaysOfMonth(year, month);
     let lastDay;
     days.map(day => {
         const dayName = moment(day).format('dddd');
 
         if (dayName === 'Saturday' || dayName === 'Sunday') {
+            return;
+        }
+
+        const dateArr = day.split('-');
+        const dateStr = dateArr[1] + "-" + dateArr[2];
+        if (holidayList.includes(dateStr)) {
             return;
         }
 

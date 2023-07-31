@@ -44,7 +44,7 @@ const Layout = ({ children, bgwhite = false, header = true, noPad = false, actio
                 if (response.success) {
                     const holidays = response.holidays.map(h => {
                         let temp = {...h};
-                        
+
                         const tempDate = moment(currentDate).year() + '-' + temp.date;
                         temp.dateStr = moment(tempDate).format('MMMM DD');
         
@@ -79,11 +79,17 @@ const Layout = ({ children, bgwhite = false, header = true, noPad = false, actio
             if (holidayList?.length === 0) {
                 getListHoliday();
             }
-
-            const lastDay = getLastWeekdayOfTheMonth(moment(currentDate).year(), moment(currentDate).month() + 1);
-            dispatch(setLastDayOfTheMonth(lastDay));
         }
     }, [currentDate]);
+
+    useEffect(() => {
+        const holidays = holidayList.map(h => {
+            return h.date;
+        });
+
+        const lastDay = getLastWeekdayOfTheMonth(moment(currentDate).year(), moment(currentDate).month() + 1, holidays);
+        dispatch(setLastDayOfTheMonth(lastDay));
+    }, [holidayList]);
 
     return (
         <div className="flex bg-white">
