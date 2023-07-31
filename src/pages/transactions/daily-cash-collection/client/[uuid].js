@@ -152,100 +152,62 @@ const CashCollectionDetailsPage = () => {
 
             dataCollection.map(cc => {
                 let collection;
-
-                if (cc.status === "tomorrow" || cc.status === "pending") {
-                    let numMispayment = 0;
-                    if (date) {
-                        numMispayment = cc.noMispayment && cc.noMispayment !== '-' ? cc.noMispayment : 0;
-                    } else {
-                        numMispayment = cc.mispayment ? cc.mispayment : 0;
-                    }
-                    collection = {
-                        ...cc,
-                        group: cc.group,
-                        loanId: cc.loanId,
-                        branchId: cc.branchId,
-                        loId: cc.loId,
-                        groupId: cc.groupId,
-                        groupName: cc.groupName,
-                        clientId: cc.clientId,
-                        slotNo: cc.slotNo,
-                        fullName: cc.client.lastName + ', ' + cc.client.firstName,
-                        loanCycle: cc.loanCycle,
-                        mispayment: '-',
-                        mispaymentStr: '-',
-                        noMispayment: numMispayment,
-                        noMispaymentStr: numMispayment > 0 ? numMispayment + ' / ' + cc.loanTerms : '-',
-                        collection: 0,
-                        excess: cc.excess > 0 ? cc.excess : 0,
-                        excessStr: cc.excess > 0 ? formatPricePhp(cc.excess) : '-',
-                        total: 0,
-                        totalStr: '-',
-                        noOfPayments: '-',
-                        noOfPaymentStr: '-',
-                        activeLoan: '-',
-                        targetCollection: cc.hasOwnProperty('prevData') ? cc.prevData.activeLoan : 0,
-                        targetCollectionStr: cc.hasOwnProperty('prevData') ? formatPricePhp(cc.prevData.activeLoan) : 0,
-                        mcbu: cc.mcbu,
-                        mcbuStr: cc.mcbu > 0 ? formatPricePhp(cc.mcbu) : '-',
-                        mcbuCol: cc.mcbuCol,
-                        mcbuColStr: cc.mcbuCol > 0 ? formatPricePhp(cc.mcbuCol) : '-',
-                        mcbuWithdrawal: cc.mcbuWithdrawal,
-                        mcbuWithdrawalStr: cc.mcbuWithdrawal > 0 ? formatPricePhp(cc.mcbuWithdrawal) : '-',
-                        mcbuReturnAmt: cc.mcbuReturnAmt,
-                        mcbuReturnAmtStr: cc.mcbuReturnAmt > 0 ? formatPricePhp(cc.mcbuReturnAmt) : '-',
-                        mcbuInterest: cc.mcbuInterest ? cc.mcbuInterest : 0,
-                        mcbuInterestStr: cc.mcbuInterest > 0 ? formatPricePhp(cc.mcbuInterest) : '-',
-                        amountRelease: '-',
-                        amountReleaseStr: '-',
-                        loanBalance: '-',
-                        loanBalanceStr: '-',
-                        paymentCollection: cc.paymentCollection,
-                        paymentCollectionStr: cc.paymentCollection > 0 ? formatPricePhp(cc.paymentCollection) : '-',
-                        occurence: cc.group.occurence,
-                        currentReleaseAmount: cc.currentReleaseAmount,
-                        currentReleaseAmountStr: formatPricePhp(cc.currentReleaseAmount),
-                        fullPayment: (cc.hasOwnProperty('prevData') && cc.fullPayment.length > 0) ? cc.fullPayment[0].fullPaymentAmount : 0,
-                        fullPaymentStr: (cc.hasOwnProperty('prevData') && cc.fullPayment.length > 0) ? formatPricePhp(cc.fullPayment[0].fullPaymentAmount) : '-',
-                        remarks: cc.remarks ? cc.remarks : '',
-                        pastDue: cc.pastDue ? cc.pastDue : 0,
-                        pastDueStr: cc.pastDue ? formatPricePhp(cc.pastDue) : '-',
-                        clientStatus: cc.client.status ? cc.client.status : '-',
-                        delinquent: cc.client.delinquent,
-                        fullPaymentDate: cc.fullPaymentDate ? cc.fullPaymentDate : null,
-                        history: cc.hasOwnProperty('history') ? cc.history : null,
-                        prevData: cc.hasOwnProperty('prevData') ? cc.prevData : null,
-                        loanTerms: cc.loanTerms
-                    }
-
-                    setEditMode(false);
-                } else if (cc.status === "closed" && !cc.transfer) {
+                let transferStr = '-';
+                if (cc?.transferred || (cc?.transfer && !cc.hasOwnProperty('current'))) {
                     let numMispayment = cc.mispayment > 0 ? cc.mispayment + ' / ' + cc.loanTerms : '-';
                     if (date) {
                         numMispayment = cc.noMispayment > 0 ? cc.noMispayment + ' / ' + cc.loanTerms : '-';
                     }
+                    let activeLoan = 0;
+                    let excess = 0;
+                    let paymentCollection = 0;
                     let mcbuCol = 0;
-                    let mcbu = cc.mcbu;
+                    let mcbu = 0;
                     let mcbuWithdrawal = cc.mcbuWithdrawal;
                     let mcbuReturnAmt = cc.mcbuReturnAmt;
                     let amountRelease = 0;
                     let loanBalance = 0;
                     let mispayment = false;
                     if (cc.hasOwnProperty('current') && cc.current.length > 0) {
-                        const current = cc.current.find(cur => !cur.hasOwnProperty('transfer'));
-                        if (current) {
-                            if (current?.transferred) {
-                                amountRelease = current.amountRelease;
-                                loanBalance = current.loanBalance;
-                                mispayment = current.mispayment;
-                            }
-
+                        const current = cc.current[0];
+                        if (cc?.transfer) {
+                            transferStr = 'TCR';
                             mcbu = current.mcbu;
+                            amountRelease = current.amountRelease;
+                            loanBalance = current.loanBalance;
+                            mispayment = current.mispayment;
+                            numMispayment = '';
+                        }
+
+                        if (cc?.transferred) {
+                            transferStr = 'TCG';
                             mcbuCol = current.mcbuCol;
                             mcbuWithdrawal = current.mcbuWithdrawal;
                             mcbuReturnAmt = current.mcbuReturnAmt;
+                            activeLoan = cc?.history?.activeLoan ? cc.history.activeLoan : cc.activeLoan;
+                            excess = cc?.history?.excess > 0 ? cc.history.excess : cc.excess;
+                            paymentCollection = cc?.history?.collection ? cc.history.collection : 0;
+                        }
+                    } else {
+                        if (cc?.transfer) {
+                            transferStr = 'TCR';
+                            mcbu = cc.mcbu;
+                            amountRelease = cc.amountRelease;
+                            loanBalance = cc.loanBalance;
+                            numMispayment = '';
+                        }
+
+                        if (cc?.transferred) {
+                            transferStr = 'TCG';
+                            mcbuCol = cc.mcbuCol;
+                            mcbuWithdrawal = cc.mcbuWithdrawal;
+                            mcbuReturnAmt = cc.mcbuReturnAmt;
+                            activeLoan = cc?.history?.activeLoan ? cc.history.activeLoan : cc.activeLoan;
+                            excess = cc?.history?.excess > 0 ? cc.history.excess : cc.excess;
+                            paymentCollection = cc?.history?.collection ? cc.history.collection : 0;
                         }
                     }
+
                     collection = {
                         ...cc,
                         group: cc.group,
@@ -256,24 +218,24 @@ const CashCollectionDetailsPage = () => {
                         groupName: cc.groupName,
                         clientId: cc.clientId,
                         slotNo: cc.slotNo,
-                        fullName: cc.client.lastName + ', ' + cc.client.firstName,
-                        loanCycle: cc?.history?.loanCycle ? cc?.history?.loanCycle : cc.loanCycle,
+                        fullName: cc.transfer ? cc.client.lastName + ', ' + cc.client.firstName : '-',
+                        loanCycle: cc.transfer ? cc?.history?.loanCycle ? cc?.history?.loanCycle : cc.loanCycle : '-',
                         mispayment: mispayment,
                         mispaymentStr: mispayment ? "Yes" : "No",
                         noMispayment: date ? cc.noMispayment : cc.mispayment,
                         noMispaymentStr: numMispayment,
                         collection: 0,
-                        excess: cc?.history?.excess > 0 ? cc.history.excess : cc.excess,
-                        excessStr: cc?.history?.excess > 0 ? formatPricePhp(cc.history.excess) : '-',
+                        excess: excess,
+                        excessStr: excess > 0 ? formatPricePhp(excess) : '-',
                         total: 0,
                         totalStr: '-',
                         noOfPayments: cc.noOfPayments,
                         noOfPaymentStr: cc.noOfPayments + ' / ' + cc.loanTerms,
-                        activeLoan: cc?.history?.activeLoan ? cc.history.activeLoan : cc.activeLoan,
-                        targetCollection: cc?.history?.activeLoan ? cc.history.activeLoan : cc.activeLoan,
-                        targetCollectionStr: cc?.history?.activeLoan > 0 ? formatPricePhp(cc.history.activeLoan) : '-',
-                        mcbu: mcbu,
-                        mcbuStr: mcbu > 0 ? formatPricePhp(mcbu) : '-',
+                        activeLoan: activeLoan,
+                        targetCollection: activeLoan,
+                        targetCollectionStr: activeLoan > 0 ? formatPricePhp(activeLoan) : '-',
+                        mcbu: cc.transferred ? 0 : mcbu,
+                        mcbuStr: (cc.transfer && mcbu > 0) ? formatPricePhp(mcbu) : '-',
                         mcbuCol: mcbuCol ,
                         mcbuColStr: mcbuCol > 0 ? formatPricePhp(mcbuCol) : '-',
                         mcbuWithdrawal: mcbuWithdrawal,
@@ -282,12 +244,12 @@ const CashCollectionDetailsPage = () => {
                         mcbuReturnAmtStr: mcbuReturnAmt > 0 ? formatPricePhp(mcbuReturnAmt) : '-',
                         mcbuInterest: cc.mcbuInterest ? cc.mcbuInterest : 0,
                         mcbuInterestStr: cc.mcbuInterest > 0 ? formatPricePhp(cc.mcbuInterest) : '-',
-                        amountRelease: amountRelease,
-                        amountReleaseStr: amountRelease > 0 ? formatPricePhp(amountRelease) : '-',
-                        loanBalance: loanBalance,
-                        loanBalanceStr: loanBalance > 0 ? formatPricePhp(loanBalance) : '-',
-                        paymentCollection: cc?.history?.collection ? cc.history.collection : 0,
-                        paymentCollectionStr: cc?.history?.collection > 0 ? formatPricePhp(cc.history.collection) : '-',
+                        amountRelease: cc.transferred ? 0 : amountRelease,
+                        amountReleaseStr: (cc.transfer && amountRelease > 0) ? formatPricePhp(amountRelease) : '-',
+                        loanBalance: cc.transferred ? 0 : loanBalance,
+                        loanBalanceStr: (cc.transfer && loanBalance > 0) ? formatPricePhp(loanBalance) : '-',
+                        paymentCollection: paymentCollection,
+                        paymentCollectionStr: paymentCollection > 0 ? formatPricePhp(paymentCollection) : '-',
                         occurence: cc.group.occurence,
                         currentReleaseAmount: 0,
                         currentReleaseAmountStr: '-',
@@ -302,155 +264,330 @@ const CashCollectionDetailsPage = () => {
                         history: cc.hasOwnProperty('history') ? cc.history : null,
                         prevData: cc.hasOwnProperty('prevData') ? cc.prevData : null,
                         loanTerms: cc.loanTerms,
-                        transferred: cc.transferred
+                        transferStr: transferStr
                     }
 
-                    if (loanBalance > 0) {
+                    if (cc?.transferred && loanBalance > 0) {
                         collection.transferred = true;
                     }
 
                     setEditMode(false);
-                } else if (cc.status !== "closed" || (type !== 'filter' && cc?.current?.length < 2)) {
-                    let numMispayment = cc.mispayment > 0 ? cc.mispayment + ' / ' + cc.loanTerms : '-';
-                    if (date) {
-                        numMispayment = cc.noMispayment > 0 ? cc.noMispayment + ' / ' + cc.loanTerms : '-';
-                    }
-
-                    let mispaymentStr = '-';
-                    if (cc.mispayment !== undefined) {
-                        mispaymentStr = cc.mispayment ? 'Yes' : 'No';
-                    } else {
-                        if (cc.status === "active" || (cc.status === "completed" && cc.fullPaymentDate === currentDate)) {
-                            mispaymentStr = 'No';
+                } else {
+                    if (cc.status === "tomorrow" || cc.status === "pending") {
+                        let numMispayment = 0;
+                        if (date) {
+                            numMispayment = cc.noMispayment && cc.noMispayment !== '-' ? cc.noMispayment : 0;
+                        } else {
+                            numMispayment = cc.mispayment ? cc.mispayment : 0;
                         }
-                    }
-
-                    collection = {
-                        client: cc.client,
-                        group: cc.group,
-                        loanId: cc._id,
-                        loId: cc.loId,
-                        branchId: cc.branchId,
-                        groupId: cc.groupId,
-                        groupName: cc.groupName,
-                        clientId: cc.clientId,
-                        slotNo: cc.slotNo,
-                        fullName: cc.client.lastName + ', ' + cc.client.firstName,
-                        loanCycle: cc.loanCycle,
-                        mispayment: cc.mispayment ? cc.mispayment : false,
-                        mispaymentStr: mispaymentStr,
-                        noMispayment: date ? cc.noMispayment ? cc.noMispayment : 0 : cc.mispayment,
-                        noMispaymentStr: numMispayment,
-                        collection: 0,
-                        excess: cc.excess,
-                        excessStr: cc.excess > 0 ? formatPricePhp(cc.excess) : '-',
-                        total: 0,
-                        totalStr: '-',
-                        noOfPayments: (cc.status === "active" || (cc.status === "completed" && cc.fullPaymentDate === currentDate)) ? cc.noOfPayments : 0,
-                        noOfPaymentStr: (cc.status === "active" || (cc.status === "completed" && cc.fullPaymentDate === currentDate)) ? cc.noOfPayments + ' / ' + cc.loanTerms : '-',
-                        originalMcbu: cc.mcub,
-                        mcbu: cc.mcbu,
-                        mcbuStr: cc.mcbu > 0 ? formatPricePhp(cc.mcbu) : '-',
-                        mcbuCol: cc.mcbuCol,
-                        mcbuColStr: cc.mcbuCol > 0 ? formatPricePhp(cc.mcbuCol) : '-',
-                        mcbuWithdrawal: 0,
-                        mcbuWithdrawalStr: '-',
-                        mcbuReturnAmt: 0,
-                        mcbuReturnAmtStr: '-',
-                        mcbuInterest: cc.mcbuInterest ? cc.mcbuInterest : 0,
-                        mcbuInterestStr: cc.mcbuInterest > 0 ? formatPricePhp(cc.mcbuInterest) : '-',
-                        activeLoan: cc.activeLoan,
-                        targetCollection: cc.activeLoan,
-                        targetCollectionStr: cc.activeLoan > 0 ? formatPricePhp(cc.activeLoan) : '-',
-                        amountRelease: cc.amountRelease,
-                        amountReleaseStr: cc.amountRelease > 0 ? formatPricePhp(cc.amountRelease) : '-',
-                        loanBalance: cc.loanBalance,
-                        loanBalanceStr: cc.loanBalance > 0 ? formatPricePhp(cc.loanBalance) : '-',
-                        paymentCollection: cc.paymentCollection ? cc.paymentCollection : 0,
-                        paymentCollectionStr: cc.paymentCollection ? formatPricePhp(cc.paymentCollection) : '-',
-                        occurence: cc.group.occurence,
-                        currentReleaseAmount: cc.currentReleaseAmount ? cc.currentReleaseAmount : 0,
-                        currentReleaseAmountStr: cc.currentReleaseAmount ? formatPricePhp(cc.currentReleaseAmount) : '-',
-                        fullPayment: cc.fullPaymentAmount ? cc.fullPaymentAmount : 0,
-                        fullPaymentStr: cc.fullPaymentAmount > 0 ? formatPricePhp(cc.fullPaymentAmount) : '-',
-                        remarks: cc.remarks ? cc.remarks : '',
-                        pastDue: cc.pastDue ? cc.pastDue : 0,
-                        pastDueStr: cc.pastDue ? formatPricePhp(cc.pastDue) : '-',
-                        clientStatus: cc.client.status ? cc.client.status : '-',
-                        delinquent: cc.client.delinquent,
-                        fullPaymentDate: cc.fullPaymentDate ? cc.fullPaymentDate : null,
-                        advanceDays: cc.advanceDays,
-                        history: cc.hasOwnProperty('history') ? cc.history : null,
-                        status: cc.status,
-                        loanTerms: cc.loanTerms,
-                        transferred: cc.transferred
-                    }
-
-                    delete cc._id;
-                    if (cc.hasOwnProperty('current') && cc.current.length > 0) {
-                        const current = cc.current.find(cur => !cur.hasOwnProperty('transferId'));
-                        if (current) {
-                            collection.targetCollection = current.targetCollection;
-                            collection.targetCollectionStr = collection.targetCollection > 0 ? formatPricePhp(collection.targetCollection) : '-';
-                            collection.excess = current.excess;
-                            collection.excessStr = collection.excess > 0 ? formatPricePhp(collection.excess) : '-';
-                            collection.paymentCollection = current.paymentCollection;
-                            collection.paymentCollectionStr = collection.paymentCollection > 0 ? formatPricePhp(collection.paymentCollection) : '-';
-                            collection.mispayment = current.mispayment;
-                            collection.mispaymentStr = current.mispaymentStr;
-                            collection.remarks = current.remarks;
-                            collection.delinquent = current.hasOwnProperty('delinquent') ? current.delinquent : false;
-                            collection._id = current._id;
-                            collection.prevData = current.prevData;
-                            collection.pastDue = current.pastDue ? current.pastDue : 0;
-                            collection.pastDueStr = current.pastDue ? formatPricePhp(current.pastDue) : '-';
-                            collection.mcbuCol = current.mcbuCol;
-                            collection.mcbuColStr = current.mcbuCol > 0 ? formatPricePhp(current.mcbuCol) : '-';
-                            collection.mcbuWithdrawal = current.mcbuWithdrawal;
-                            collection.mcbuWithdrawalStr = current.mcbuWithdrawal > 0 ? formatPricePhp(current.mcbuWithdrawal) : '-';
-                            collection.mcbuReturnAmt = (current.hasOwnProperty('mcbuReturnAmt') && current.mcbuReturnAmt) ? current.mcbuReturnAmt : 0;
-                            collection.mcbuReturnAmtStr = collection.mcbuReturnAmt > 0 ? formatPricePhp(collection.mcbuReturnAmt) : '-';
-                            collection.mcbuInterest = current.mcbuInterest ? cc.mcbuInterest : 0,
-                            collection.mcbuInterestStr = current.mcbuInterest > 0 ? formatPricePhp(current.mcbuInterest) : '-',
-                            collection.advanceDays = current.advanceDays;
-                            collection.draft = current.draft;
-
-                            if (current.draft) {
-                                collection.mcbu = current.mcbu;
-                                collection.mcbuStr = current.mcbu > 0 ? formatPricePhp(current.mcbu) : '-',
-                                collection.loanBalance = current.loanBalance;
-                                collection.loanBalanceStr = formatPricePhp(current.loanBalance);
-                                collection.noOfPayments = (collection.status === "active" || (collection.status === "completed" && collection.fullPaymentDate === currentDate)) ? current.noOfPayments : 0;
-                                collection.noOfPaymentStr = (collection.status === "active" || (collection.status === "completed" && collection.fullPaymentDate === currentDate)) ? current.noOfPayments + ' / ' + collection.loanTerms : '-';
-                                collection.total = current.total;
-                                setEditMode(true);
-                            } else {
-                                setEditMode(false);
+                        collection = {
+                            ...cc,
+                            group: cc.group,
+                            loanId: cc.loanId,
+                            branchId: cc.branchId,
+                            loId: cc.loId,
+                            groupId: cc.groupId,
+                            groupName: cc.groupName,
+                            clientId: cc.clientId,
+                            slotNo: cc.slotNo,
+                            fullName: cc.client.lastName + ', ' + cc.client.firstName,
+                            loanCycle: cc.loanCycle,
+                            mispayment: '-',
+                            mispaymentStr: '-',
+                            noMispayment: numMispayment,
+                            noMispaymentStr: numMispayment > 0 ? numMispayment + ' / ' + cc.loanTerms : '-',
+                            collection: 0,
+                            excess: cc.excess > 0 ? cc.excess : 0,
+                            excessStr: cc.excess > 0 ? formatPricePhp(cc.excess) : '-',
+                            total: 0,
+                            totalStr: '-',
+                            noOfPayments: '-',
+                            noOfPaymentStr: '-',
+                            activeLoan: '-',
+                            targetCollection: cc.hasOwnProperty('prevData') ? cc.prevData.activeLoan : 0,
+                            targetCollectionStr: cc.hasOwnProperty('prevData') ? formatPricePhp(cc.prevData.activeLoan) : 0,
+                            mcbu: cc.mcbu,
+                            mcbuStr: cc.mcbu > 0 ? formatPricePhp(cc.mcbu) : '-',
+                            mcbuCol: cc.mcbuCol,
+                            mcbuColStr: cc.mcbuCol > 0 ? formatPricePhp(cc.mcbuCol) : '-',
+                            mcbuWithdrawal: cc.mcbuWithdrawal,
+                            mcbuWithdrawalStr: cc.mcbuWithdrawal > 0 ? formatPricePhp(cc.mcbuWithdrawal) : '-',
+                            mcbuReturnAmt: cc.mcbuReturnAmt,
+                            mcbuReturnAmtStr: cc.mcbuReturnAmt > 0 ? formatPricePhp(cc.mcbuReturnAmt) : '-',
+                            mcbuInterest: cc.mcbuInterest ? cc.mcbuInterest : 0,
+                            mcbuInterestStr: cc.mcbuInterest > 0 ? formatPricePhp(cc.mcbuInterest) : '-',
+                            amountRelease: '-',
+                            amountReleaseStr: '-',
+                            loanBalance: '-',
+                            loanBalanceStr: '-',
+                            paymentCollection: cc.paymentCollection,
+                            paymentCollectionStr: cc.paymentCollection > 0 ? formatPricePhp(cc.paymentCollection) : '-',
+                            occurence: cc.group.occurence,
+                            currentReleaseAmount: cc.currentReleaseAmount,
+                            currentReleaseAmountStr: formatPricePhp(cc.currentReleaseAmount),
+                            fullPayment: (cc.hasOwnProperty('prevData') && cc.fullPayment.length > 0) ? cc.fullPayment[0].fullPaymentAmount : 0,
+                            fullPaymentStr: (cc.hasOwnProperty('prevData') && cc.fullPayment.length > 0) ? formatPricePhp(cc.fullPayment[0].fullPaymentAmount) : '-',
+                            remarks: cc.remarks ? cc.remarks : '',
+                            pastDue: cc.pastDue ? cc.pastDue : 0,
+                            pastDueStr: cc.pastDue ? formatPricePhp(cc.pastDue) : '-',
+                            clientStatus: cc.client.status ? cc.client.status : '-',
+                            delinquent: cc.client.delinquent,
+                            fullPaymentDate: cc.fullPaymentDate ? cc.fullPaymentDate : null,
+                            history: cc.hasOwnProperty('history') ? cc.history : null,
+                            prevData: cc.hasOwnProperty('prevData') ? cc.prevData : null,
+                            loanTerms: cc.loanTerms
+                        }
+    
+                        setEditMode(false);
+                    } else if (cc.status === "closed" && !cc.transfer) {
+                        let numMispayment = cc.mispayment > 0 ? cc.mispayment + ' / ' + cc.loanTerms : '-';
+                        if (date) {
+                            numMispayment = cc.noMispayment > 0 ? cc.noMispayment + ' / ' + cc.loanTerms : '-';
+                        }
+                        let mcbuCol = 0;
+                        let mcbu = cc.mcbu;
+                        let mcbuWithdrawal = cc.mcbuWithdrawal;
+                        let mcbuReturnAmt = cc.mcbuReturnAmt;
+                        let amountRelease = 0;
+                        let loanBalance = 0;
+                        let mispayment = false;
+                        if (cc.hasOwnProperty('current') && cc.current.length > 0) {
+                            const current = cc.current.find(cur => !cur.hasOwnProperty('transfer'));
+                            if (current) {
+                                if (current?.transferred) {
+                                    amountRelease = current.amountRelease;
+                                    loanBalance = current.loanBalance;
+                                    mispayment = current.mispayment;
+                                }
+    
+                                mcbu = current.mcbu;
+                                mcbuCol = current.mcbuCol;
+                                mcbuWithdrawal = current.mcbuWithdrawal;
+                                mcbuReturnAmt = current.mcbuReturnAmt;
                             }
                         }
-                    }
+                        collection = {
+                            ...cc,
+                            group: cc.group,
+                            loId: cc.loId,
+                            loanId: cc.loanId,
+                            branchId: cc.branchId,
+                            groupId: cc.groupId,
+                            groupName: cc.groupName,
+                            clientId: cc.clientId,
+                            slotNo: cc.slotNo,
+                            fullName: cc.client.lastName + ', ' + cc.client.firstName,
+                            loanCycle: cc?.history?.loanCycle ? cc?.history?.loanCycle : cc.loanCycle,
+                            mispayment: mispayment,
+                            mispaymentStr: mispayment ? "Yes" : "No",
+                            noMispayment: date ? cc.noMispayment : cc.mispayment,
+                            noMispaymentStr: numMispayment,
+                            collection: 0,
+                            excess: cc?.history?.excess > 0 ? cc.history.excess : cc.excess,
+                            excessStr: cc?.history?.excess > 0 ? formatPricePhp(cc.history.excess) : '-',
+                            total: 0,
+                            totalStr: '-',
+                            noOfPayments: cc.noOfPayments,
+                            noOfPaymentStr: cc.noOfPayments + ' / ' + cc.loanTerms,
+                            activeLoan: cc?.history?.activeLoan ? cc.history.activeLoan : cc.activeLoan,
+                            targetCollection: cc?.history?.activeLoan ? cc.history.activeLoan : cc.activeLoan,
+                            targetCollectionStr: cc?.history?.activeLoan > 0 ? formatPricePhp(cc.history.activeLoan) : '-',
+                            mcbu: mcbu,
+                            mcbuStr: mcbu > 0 ? formatPricePhp(mcbu) : '-',
+                            mcbuCol: mcbuCol ,
+                            mcbuColStr: mcbuCol > 0 ? formatPricePhp(mcbuCol) : '-',
+                            mcbuWithdrawal: mcbuWithdrawal,
+                            mcbuWithdrawalStr: mcbuWithdrawal > 0 ? formatPricePhp(mcbuWithdrawal) : '-',
+                            mcbuReturnAmt: mcbuReturnAmt > 0 ? mcbuReturnAmt : 0,
+                            mcbuReturnAmtStr: mcbuReturnAmt > 0 ? formatPricePhp(mcbuReturnAmt) : '-',
+                            mcbuInterest: cc.mcbuInterest ? cc.mcbuInterest : 0,
+                            mcbuInterestStr: cc.mcbuInterest > 0 ? formatPricePhp(cc.mcbuInterest) : '-',
+                            amountRelease: amountRelease,
+                            amountReleaseStr: amountRelease > 0 ? formatPricePhp(amountRelease) : '-',
+                            loanBalance: loanBalance,
+                            loanBalanceStr: loanBalance > 0 ? formatPricePhp(loanBalance) : '-',
+                            paymentCollection: cc?.history?.collection ? cc.history.collection : 0,
+                            paymentCollectionStr: cc?.history?.collection > 0 ? formatPricePhp(cc.history.collection) : '-',
+                            occurence: cc.group.occurence,
+                            currentReleaseAmount: 0,
+                            currentReleaseAmountStr: '-',
+                            fullPayment: cc.fullPayment.length > 0 ? cc.fullPayment[0].fullPaymentAmount : 0,
+                            fullPaymentStr: cc.fullPayment.length > 0 ? formatPricePhp(cc.fullPayment[0].fullPaymentAmount) : '-',
+                            remarks: cc.remarks ? cc.remarks : '',
+                            pastDue: cc.pastDue ? cc.pastDue : 0,
+                            pastDueStr: cc.pastDue ? formatPricePhp(cc.pastDue) : '-',
+                            clientStatus: cc.client.status ? cc.client.status : '-',
+                            delinquent: cc.client.delinquent,
+                            fullPaymentDate: cc.fullPaymentDate ? cc.fullPaymentDate : null,
+                            history: cc.hasOwnProperty('history') ? cc.history : null,
+                            prevData: cc.hasOwnProperty('prevData') ? cc.prevData : null,
+                            loanTerms: cc.loanTerms,
+                            transferred: cc.transferred
+                        }
     
-                    if (cc.currentRelease.length > 0) {
-                        collection.currentReleaseAmount = cc.currentRelease[0].currentReleaseAmount;
-                        collection.currentReleaseAmountStr = cc.currentRelease[0].currentReleaseAmount ? formatPricePhp(cc.currentRelease[0].currentReleaseAmount) : '-';
-                    }
+                        if (loanBalance > 0) {
+                            collection.transferred = true;
+                        }
     
-                    if (cc.fullPayment.length > 0) {
-                        collection.fullPayment = cc.fullPayment[0].fullPaymentAmount;
-                        collection.fullPaymentStr = cc.fullPayment[0].fullPaymentAmount ? formatPricePhp(cc.fullPayment[0].fullPaymentAmount) : '-';
-                    }
+                        setEditMode(false);
+                    } else if (cc.status !== "closed" || (type !== 'filter' && cc?.current?.length < 2)) {
+                        let noPaymentsStr = (cc.status === "active" || (cc.status === "completed" && cc.fullPaymentDate === currentDate)) ? cc.noOfPayments + ' / ' + cc.loanTerms : '-';
+                        let numMispayment = cc.mispayment > 0 ? cc.mispayment + ' / ' + cc.loanTerms : '-';
+                        let noMispayment = date ? cc.noMispayment ? cc.noMispayment : 0 : cc.mispayment;
+                        if (date) {
+                            numMispayment = cc.noMispayment > 0 ? cc.noMispayment + ' / ' + cc.loanTerms : '-';
+                        }
     
-                    if (cc.loanBalance <= 0 && cc.status !== 'completed') {
-                        if (cc.fullPaymentDate === currentDate) {
-                            collection.paymentCollection = cc.history ? cc.history.collection : 0;
-                            collection.paymentCollectionStr = formatPricePhp(collection.paymentCollection);
+                        let mispaymentStr = '-';
+                        if (cc.mispayment !== undefined) {
+                            mispaymentStr = cc.mispayment ? 'Yes' : 'No';
+                        } else {
+                            if (cc.status === "active" || (cc.status === "completed" && cc.fullPaymentDate === currentDate)) {
+                                mispaymentStr = 'No';
+                            }
                         }
 
-                        collection.notCalculate = true;
-                        collection.remarks = cc.history ? cc.history.remarks : '-';
+                        if (cc?.transfer && cc?.transferDate === currentDate) {
+                            numMispayment = '';
+                            noMispayment = 0;
+                            mispaymentStr = '-';
+                            noPaymentsStr = '-';
+                        }
+    
+                        collection = {
+                            client: cc.client,
+                            group: cc.group,
+                            loanId: cc._id,
+                            loId: cc.loId,
+                            branchId: cc.branchId,
+                            groupId: cc.groupId,
+                            groupName: cc.groupName,
+                            clientId: cc.clientId,
+                            slotNo: cc.slotNo,
+                            fullName: cc.client.lastName + ', ' + cc.client.firstName,
+                            loanCycle: cc.loanCycle,
+                            mispayment: cc.mispayment ? cc.mispayment : false,
+                            mispaymentStr: mispaymentStr,
+                            noMispayment: noMispayment,
+                            noMispaymentStr: numMispayment,
+                            collection: 0,
+                            excess: cc.excess,
+                            excessStr: cc.excess > 0 ? formatPricePhp(cc.excess) : '-',
+                            total: 0,
+                            totalStr: '-',
+                            noOfPayments: (cc.status === "active" || (cc.status === "completed" && cc.fullPaymentDate === currentDate)) ? cc.noOfPayments : 0,
+                            noOfPaymentStr: noPaymentsStr,
+                            originalMcbu: cc.mcub,
+                            mcbu: cc.mcbu,
+                            mcbuStr: cc.mcbu > 0 ? formatPricePhp(cc.mcbu) : '-',
+                            mcbuCol: cc.mcbuCol,
+                            mcbuColStr: cc.mcbuCol > 0 ? formatPricePhp(cc.mcbuCol) : '-',
+                            mcbuWithdrawal: 0,
+                            mcbuWithdrawalStr: '-',
+                            mcbuReturnAmt: 0,
+                            mcbuReturnAmtStr: '-',
+                            mcbuInterest: cc.mcbuInterest ? cc.mcbuInterest : 0,
+                            mcbuInterestStr: cc.mcbuInterest > 0 ? formatPricePhp(cc.mcbuInterest) : '-',
+                            activeLoan: cc?.transfer ? 0 : cc.activeLoan,
+                            targetCollection: cc?.transfer ? 0 : cc.activeLoan,
+                            targetCollectionStr: (!cc?.transfer && cc.activeLoan > 0) ? formatPricePhp(cc.activeLoan) : '-',
+                            amountRelease: cc.amountRelease,
+                            amountReleaseStr: cc.amountRelease > 0 ? formatPricePhp(cc.amountRelease) : '-',
+                            loanBalance: cc.loanBalance,
+                            loanBalanceStr: cc.loanBalance > 0 ? formatPricePhp(cc.loanBalance) : '-',
+                            paymentCollection: cc.paymentCollection ? cc.paymentCollection : 0,
+                            paymentCollectionStr: cc.paymentCollection ? formatPricePhp(cc.paymentCollection) : '-',
+                            occurence: cc.group.occurence,
+                            currentReleaseAmount: cc.currentReleaseAmount ? cc.currentReleaseAmount : 0,
+                            currentReleaseAmountStr: cc.currentReleaseAmount ? formatPricePhp(cc.currentReleaseAmount) : '-',
+                            fullPayment: cc.fullPaymentAmount ? cc.fullPaymentAmount : 0,
+                            fullPaymentStr: cc.fullPaymentAmount > 0 ? formatPricePhp(cc.fullPaymentAmount) : '-',
+                            remarks: cc.remarks ? cc.remarks : '',
+                            pastDue: cc.pastDue ? cc.pastDue : 0,
+                            pastDueStr: cc.pastDue ? formatPricePhp(cc.pastDue) : '-',
+                            clientStatus: cc.client.status ? cc.client.status : '-',
+                            delinquent: cc.client.delinquent,
+                            fullPaymentDate: cc.fullPaymentDate ? cc.fullPaymentDate : null,
+                            advanceDays: cc.advanceDays,
+                            history: cc.hasOwnProperty('history') ? cc.history : null,
+                            status: cc.status,
+                            loanTerms: cc.loanTerms,
+                            transferred: cc.transferred
+                        }
+    
+                        delete cc._id;
+                        if (cc.hasOwnProperty('current') && cc.current.length > 0) {
+                            const current = cc.current.find(cur => !cur.hasOwnProperty('transferId'));
+                            if (current) {
+                                collection.targetCollection = current.targetCollection;
+                                collection.targetCollectionStr = collection.targetCollection > 0 ? formatPricePhp(collection.targetCollection) : '-';
+                                collection.excess = current.excess;
+                                collection.excessStr = collection.excess > 0 ? formatPricePhp(collection.excess) : '-';
+                                collection.paymentCollection = current.paymentCollection;
+                                collection.paymentCollectionStr = collection.paymentCollection > 0 ? formatPricePhp(collection.paymentCollection) : '-';
+                                collection.mispayment = current.mispayment;
+                                collection.mispaymentStr = current.mispaymentStr;
+                                collection.remarks = current.remarks;
+                                collection.delinquent = current.hasOwnProperty('delinquent') ? current.delinquent : false;
+                                collection._id = current._id;
+                                collection.prevData = current.prevData;
+                                collection.pastDue = current.pastDue ? current.pastDue : 0;
+                                collection.pastDueStr = current.pastDue ? formatPricePhp(current.pastDue) : '-';
+                                collection.mcbuCol = current.mcbuCol;
+                                collection.mcbuColStr = current.mcbuCol > 0 ? formatPricePhp(current.mcbuCol) : '-';
+                                collection.mcbuWithdrawal = current.mcbuWithdrawal;
+                                collection.mcbuWithdrawalStr = current.mcbuWithdrawal > 0 ? formatPricePhp(current.mcbuWithdrawal) : '-';
+                                collection.mcbuReturnAmt = (current.hasOwnProperty('mcbuReturnAmt') && current.mcbuReturnAmt) ? current.mcbuReturnAmt : 0;
+                                collection.mcbuReturnAmtStr = collection.mcbuReturnAmt > 0 ? formatPricePhp(collection.mcbuReturnAmt) : '-';
+                                collection.mcbuInterest = current.mcbuInterest ? cc.mcbuInterest : 0,
+                                collection.mcbuInterestStr = current.mcbuInterest > 0 ? formatPricePhp(current.mcbuInterest) : '-',
+                                collection.advanceDays = current.advanceDays;
+                                collection.draft = current.draft;
+    
+                                if (current.draft) {
+                                    collection.mcbu = current.mcbu;
+                                    collection.mcbuStr = current.mcbu > 0 ? formatPricePhp(current.mcbu) : '-',
+                                    collection.loanBalance = current.loanBalance;
+                                    collection.loanBalanceStr = formatPricePhp(current.loanBalance);
+                                    collection.noOfPayments = (collection.status === "active" || (collection.status === "completed" && collection.fullPaymentDate === currentDate)) ? current.noOfPayments : 0;
+                                    collection.noOfPaymentStr = (collection.status === "active" || (collection.status === "completed" && collection.fullPaymentDate === currentDate)) ? current.noOfPayments + ' / ' + collection.loanTerms : '-';
+                                    collection.total = current.total;
+                                    setEditMode(true);
+                                } else {
+                                    setEditMode(false);
+                                }
+                            }
+                        }
+        
+                        if (cc.currentRelease.length > 0) {
+                            collection.currentReleaseAmount = cc.currentRelease[0].currentReleaseAmount;
+                            collection.currentReleaseAmountStr = cc.currentRelease[0].currentReleaseAmount ? formatPricePhp(cc.currentRelease[0].currentReleaseAmount) : '-';
+                        }
+        
+                        if (cc.fullPayment.length > 0) {
+                            collection.fullPayment = cc.fullPayment[0].fullPaymentAmount;
+                            collection.fullPaymentStr = cc.fullPayment[0].fullPaymentAmount ? formatPricePhp(cc.fullPayment[0].fullPaymentAmount) : '-';
+                        }
+        
+                        if (cc.loanBalance <= 0 && cc.status !== 'completed') {
+                            if (cc.fullPaymentDate === currentDate) {
+                                collection.paymentCollection = cc.history ? cc.history.collection : 0;
+                                collection.paymentCollectionStr = formatPricePhp(collection.paymentCollection);
+                            }
+    
+                            collection.notCalculate = true;
+                            collection.remarks = cc.history ? cc.history.remarks : '-';
+                        }
+
+                        if (cc?.transfer && cc?.transferDate === currentDate) {
+                            collection.transfer = true;
+                            transferStr = 'TCR';
+                        }
+                    } else {
+                        return;
                     }
-                } else {
-                    return;
+
+                    collection.transferStr = transferStr;
                 }
 
                 if (!date && cc.hasOwnProperty('pastDue')) {
@@ -813,7 +950,7 @@ const CashCollectionDetailsPage = () => {
                     delete temp.mcbuInterestStr;
                     delete temp.mcbuError;
                     delete temp.client;
-                    // delete temp.clientStatus;
+                    delete temp.transferStr;
 
                     if (cc.hasOwnProperty('_id')) {
                         temp.modifiedBy = currentUser._id;
@@ -1689,6 +1826,7 @@ const CashCollectionDetailsPage = () => {
                                         <th className="p-2 text-center"># of Mispay</th>
                                         <th className="p-2 text-center">Past Due</th>
                                         <th className="p-2 text-center">Remarks</th>
+                                        <th className="p-2 text-center">TFR</th>
                                         <th className="p-2 text-center">Actions</th>
                                     </tr>
                                 </thead>
@@ -1709,6 +1847,8 @@ const CashCollectionDetailsPage = () => {
 
                                         if (cc?.transferred) {
                                             rowBg = 'bg-violet-100';
+                                        } else if (cc.transferStr === 'TCR') {
+                                            rowBg = 'bg-blue-100';
                                         }
 
                                         if (cc.error || cc.mcbuError) {
@@ -1788,11 +1928,11 @@ const CashCollectionDetailsPage = () => {
                                                         </td>
                                                     )
                                                 }
+                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.transferStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">
                                                     <React.Fragment>
                                                         {(!isWeekend && !isHoliday && currentUser.role.rep > 2 &&  (cc.status === 'active' || cc.status === 'completed') && !groupSummaryIsClose && !cc.draft) && (
                                                             <div className='flex flex-row p-4'>
-                                                                {console.log(cc)}
                                                                 {(cc.hasOwnProperty('_id') && cc.status === 'active' && !filter && !cc.draft) && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleRevert(e, cc, index)} />}
                                                                 {(cc.status === 'completed' && ((cc.remarks.value && cc.remarks.value?.startsWith('reloaner')) || (cc.status === 'completed' && !cc.remarks))) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
                                                                 {/* {(!filter && cc.status === 'active') && <CurrencyDollarIcon className="w-5 h-5 mr-6" title="MCBU Withdrawal" onClick={(e) => handleMcbuWithdrawal(e, cc, index)} />} */}

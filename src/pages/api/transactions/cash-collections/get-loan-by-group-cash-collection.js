@@ -28,7 +28,10 @@ async function getLoanWithCashCollection(req, res) {
                     $expr: { 
                         $and: [
                             {$eq: ['$groupId', groupId]},
-                            {$gte: ['$currentDateObj', '$startDateObj']},
+                            {$or: [
+                                {$gte: ['$currentDateObj', '$startDateObj']},
+                                {$eq: ['$transfer', true]}
+                            ]},
                             {$or: [ 
                                 {$eq: ['$status', 'active']},
                                 {$eq: ['$status', 'completed']},
@@ -116,6 +119,7 @@ async function getLoanWithCashCollection(req, res) {
                         as: "fullPayment"
                     }
                 },
+                { $sort: { slotNo: 1 } },
                 { $project: { clientIdObj: 0, loanIdStr: 0, startDateObj: 0, groupIdObj: 0 } }
             ])
             .toArray();
@@ -176,6 +180,7 @@ async function getLoanWithCashCollection(req, res) {
                 {
                     $unwind: "$client"
                 },
+                { $sort: { slotNo: 1 } },
                 { $project: { branchIdObj: 0, groupIdObj: 0, clientIdObj: 0 } }
             ])
             .toArray();
@@ -259,6 +264,7 @@ async function getLoanWithCashCollection(req, res) {
                         as: "fullPayment"
                     }
                 },
+                { $sort: { slotNo: 1 } },
                 { $project: { clientIdObj: 0, loanIdObj: 0, loanIdStr: 0, startDateObj: 0, groupIdObj: 0 } }
             ])
             .toArray();

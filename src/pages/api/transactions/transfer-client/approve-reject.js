@@ -66,8 +66,12 @@ async function approveReject(req, res) {
                         updatedLoan.branchId = transfer.targetBranchId;
                         updatedLoan.loId = transfer.targetUserId;
                         updatedLoan.groupId = transfer.targetGroupId;
+                        updatedLoan.groupName = targetGroup.name;
                         updatedLoan.slotNo = selectedSlotNo;
+                        updatedLoan.transferId = transfer._id;
+                        updatedLoan.transfer = true;
                         updatedLoan.startDate = moment(transfer.dateAdded).add(1, 'days').format("YYYY-MM-DD");
+                        updatedLoan.transferDate = transfer.dateAdded;
                         updatedLoan.insertedDateTime = new Date();
                         const newLoan = await db.collection('loans').insertOne({ ...updatedLoan });
                         if (newLoan.acknowledged) {
@@ -87,7 +91,7 @@ async function approveReject(req, res) {
                 client.groupId = transfer.targetGroupId;
                 client.groupName = targetGroup.name;
 
-                await saveCashCollection(transfer, client, loan, sourceGroup, targetGroup);
+                await saveCashCollection(transfer, client, loan, sourceGroup, targetGroup, selectedSlotNo);
 
                 const updatedClient = {...client};
                 delete updatedClient._id;
@@ -121,7 +125,7 @@ async function approveReject(req, res) {
         .end(JSON.stringify(response));
 }
 
-async function saveCashCollection(transfer, client, loan, sourceGroup, targetGroup) {
+async function saveCashCollection(transfer, client, loan, sourceGroup, targetGroup, selectedSlotNo) {
     const { db } = await connectToDatabase();
 
     // add new cash collection entry with updated data
@@ -164,14 +168,14 @@ async function saveCashCollection(transfer, client, loan, sourceGroup, targetGro
         if (loan) {
             data.oldLoanId = loan.oldId;
             data.loanId = loan._id;
-            data.activeLoan = loan.activeLoan;
-            data.targetCollection = loan.activeLoan;
+            // data.activeLoan = loan.activeLoan;
+            // data.targetCollection = loan.activeLoan;
             data.amountRelease = loan.amountRelease;
             data.loanBalance = loan.loanBalance;
-            data.slotNo = loan.slotNo;
+            data.slotNo = selectedSlotNo;
             data.loanCycle = loan.loanCycle;
             data.noOfPayments = loan.noOfPayments;
-            data.status = loan.status;
+            data.status = loan.status === 'closed' ? 'active' : loan.status;
             data.mcbu = loan.mcbu;
             data.pastDue = loan.pastDue;
             data.noPastDue = loan.noPastDue;
@@ -188,6 +192,8 @@ async function saveCashCollection(transfer, client, loan, sourceGroup, targetGro
         await db.collection('cashCollections').updateOne(
             { _id: cashCollection[0]._id }, 
             { $set: { 
+                activeLoan: 0,
+                targetCollection: 0,
                 transfer: transfer.sameLo ? false : true,
                 sameLo: transfer.sameLo, 
                 transferId: transfer._id, 
@@ -239,13 +245,13 @@ async function saveCashCollection(transfer, client, loan, sourceGroup, targetGro
             data.loanId = loan.oldId;
             data.activeLoan = loan.activeLoan;
             data.targetCollection = loan.activeLoan;
-            data.amountRelease = loan.amountRelease;
-            data.loanBalance = loan.loanBalance;
+            // data.amountRelease = loan.amountRelease;
+            // data.loanBalance = loan.loanBalance;
             data.slotNo = loan.slotNo;
             data.loanCycle = loan.loanCycle;
             data.noOfPayments = loan.noOfPayments;
             data.status = loan.status;
-            data.mcbu = loan.mcbu;
+            // data.mcbu = loan.mcbu;
             data.loanTerms = loan.loanTerms;
         }
 
@@ -258,7 +264,10 @@ async function saveCashCollection(transfer, client, loan, sourceGroup, targetGro
     } else {
         await db.collection('cashCollections').updateOne(
             { _id: existingCashCollection[0]._id }, 
-            { $set: { 
+            { $set: {
+                amountRelease: 0,
+                loanBalance: 0,
+                mcbu: 0,
                 transferred: transfer.sameLo ? false : true,
                 sameLo: transfer.sameLo, 
                 transferId: transfer._id, 

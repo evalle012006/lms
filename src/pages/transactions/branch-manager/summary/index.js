@@ -395,7 +395,7 @@ const BranchManagerSummary = () => {
                         }
 
                         const mcbuTarget = data.mcbuTarget !== '-' ? data?.mcbuTarget > 0 ? -Math.abs(data.mcbuTarget) : 0 : 0;
-                        const mcbuActual = data.mcbu !== '-' ? -Math.abs(data.mcbu) : 0;
+                        const mcbuActual = data.mcbuCol !== '-' ? -Math.abs(data.mcbuCol) : 0;
                         const mcbuWithdrawal = (data.mcbuWithdrawal && data.mcbuWithdrawal !== '-') ? -Math.abs(data.mcbuWithdrawal) : 0;
                         const mcbuInterest = (data.mcbuInterest && data.mcbuInterest !== '-') ? -Math.abs(data.mcbuInterest) : 0;
                         const noMcbuReturn = (data.noMcbuReturn && data.noMcbuReturn !== '-') ? -Math.abs(data.noMcbuReturn) : 0;
@@ -410,7 +410,7 @@ const BranchManagerSummary = () => {
                             noMcbuReturn: noMcbuReturn,
                             mcbuReturnAmt: mcbuReturnAmt,
                             mcbuBalance: mcbuActual - mcbuWithdrawal + mcbuInterest - mcbuReturnAmt,
-                            loanReleaseAmount: -Math.abs(data.totalLoanRelease),
+                            loanReleaseAmount: -Math.abs(data.currentReleaseAmount),
                             collectionTarget: -Math.abs(data.targetLoanCollection + data.excess),
                             collectionActual: -Math.abs(data.collection),
                             pastDuePerson: (data?.noPastDue && data?.noPastDue !== '-') ? data?.noPastDue : 0,
@@ -421,7 +421,7 @@ const BranchManagerSummary = () => {
                         activeBorrowers = temp.activeBorrowers + noTransfer;
                         activeLoanReleasePerson = temp.activeLoanReleasePerson + noTransfer;
                         activeLoanReleaseAmount = temp.activeLoanReleaseAmount - data.totalLoanRelease;
-                        loanBalance = temp.loanBalance - data.totalLoanBalance;
+                        loanBalance = temp.loanBalance - (data.currentReleaseAmount - data.collection);
                     }
                 }
             });
@@ -437,7 +437,7 @@ const BranchManagerSummary = () => {
                         }
 
                         const mcbuTarget = data.mcbuTarget !== '-' ? data?.mcbuTarget > 0 ? data.mcbuTarget : 0 : 0;
-                        const mcbuActual = data.mcbu !== '-' ? data.mcbu : 0;
+                        const mcbuActual = data.mcbuCol !== '-' ? data.mcbuCol : 0;
                         const mcbuWithdrawal = (data.mcbuWithdrawal && data.mcbuWithdrawal !== '-') ? data.mcbuWithdrawal : 0;
                         const mcbuInterest = (data.mcbuInterest && data.mcbuInterest !== '-') ? data.mcbuInterest : 0;
                         const noMcbuReturn = (data.noMcbuReturn && data.noMcbuReturn !== '-') ? data.noMcbuReturn : 0;
@@ -452,7 +452,7 @@ const BranchManagerSummary = () => {
                             noMcbuReturn: noMcbuReturn,
                             mcbuReturnAmt: mcbuReturnAmt,
                             mcbuBalance: mcbuActual - mcbuWithdrawal + mcbuInterest - mcbuReturnAmt,
-                            loanReleaseAmount: data.totalLoanRelease,
+                            loanReleaseAmount: data.currentReleaseAmount,
                             collectionTarget: data.targetLoanCollection + data.excess,
                             collectionActual: data.collection,
                             pastDuePerson: (data?.noPastDue && data?.noPastDue !== '-') ? data?.noPastDue : 0,
@@ -463,7 +463,7 @@ const BranchManagerSummary = () => {
                         activeBorrowers += noTransfer;
                         activeLoanReleasePerson += noTransfer;
                         activeLoanReleaseAmount += data.totalLoanRelease;
-                        loanBalance += data.totalLoanBalance;
+                        loanBalance += (data.currentReleaseAmount - data.collection);
                     }
                 }
             });
