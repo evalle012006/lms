@@ -619,7 +619,9 @@ const LoanOfficerSummary = () => {
                     totalMcbuInterest += transferRow.mcbuInterest;
                     totalNoMcbuReturn += transferRow.noMcbuReturn;
                     totalMcbuReturnAmt += transferRow.mcbuReturnAmt;
-                    totalMcbuBalance = transferRow.mcbuBalance;
+                    if (transferRow.mcbuBalance > 0) {
+                        totalMcbuBalance = transferRow.mcbuBalance;
+                    }
                     totalLoanReleaseAmount += transferRow.loanReleaseAmount;
                     totalActiveLoanReleasePerson = transferRow.activeLoanReleasePerson;
                     totalActiveLoanReleaseAmount = transferRow.activeLoanReleaseAmount;

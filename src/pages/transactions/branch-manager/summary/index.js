@@ -905,7 +905,9 @@ const BranchManagerSummary = () => {
                     totalMcbuInterest += transferRow.mcbuInterest;
                     totalNoMcbuReturn += transferRow.noMcbuReturn;
                     totalMcbuReturnAmt += transferRow.mcbuReturnAmt;
-                    totalMcbuBalance = transferRow.mcbuBalance;
+                    if (transferRow.mcbuBalance > 0) {
+                        totalMcbuBalance = transferRow.mcbuBalance;
+                    }
                     totalLoanReleaseDailyPerson += noDailyTransfer;
                     totalLoanReleaseDailyAmount += transferRow.loanReleaseDailyAmount;
                     totalLoanReleaseWeeklyPerson += noWeeklyTransfer;
