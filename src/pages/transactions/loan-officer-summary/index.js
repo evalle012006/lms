@@ -612,6 +612,12 @@ const LoanOfficerSummary = () => {
                 // +/- with the transfer
                 // apply only to the last week total
                 if (wIndex === weekTotals.length - 1) {
+                    let noTransfer = transferRow.loanReleasePerson;
+                    if (typeof noTransfer === "string" && noTransfer !== '-') {
+                        noTransfer = noTransfer.replace('(','').replace(')','');
+                        noTransfer = -Math.abs(noTransfer);
+                    }
+
                     totalMcbuTarget += transferRow.mcbuTarget;
                     totalMcbuActual += transferRow.mcbuActual;
                     totalMcbuWithdrawal += transferRow.mcbuWithdrawal;
@@ -621,6 +627,7 @@ const LoanOfficerSummary = () => {
                     if (transferRow.mcbuBalance > 0) {
                         totalMcbuBalance = transferRow.mcbuBalance;
                     }
+                    totalLoanReleasePerson += noTransfer;
                     totalLoanReleaseAmount += transferRow.loanReleaseAmount;
                     totalActiveLoanReleasePerson = transferRow.activeLoanReleasePerson;
                     totalActiveLoanReleaseAmount = transferRow.activeLoanReleaseAmount;

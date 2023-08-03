@@ -395,8 +395,9 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         if (!filter) {
                             collection.activeClients += 1;
                             collection.activeBorrowers += 1;
+                            collection.mcbu += rcv.mcbu;
                         }
-                        collection.mcbu += rcv.mcbu;
+
                         collection.totalReleases += rcv.amountRelease;
                         collection.totalLoanBalance += rcv.loanBalance;
 
@@ -478,9 +479,9 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                     totalData: true,
                     status: '-'
                 }
-
+                const consolidateTotalData = consolidateTotals(totals, transferGvr, transferRcv);
                 if (collectionTransferred.length > 0 || collectionReceived.length > 0) {
-                    collectionData.push(consolidateTotals(totals, transferGvr, transferRcv));
+                    collectionData.push(consolidateTotalData);
                 }
 
                 if (transferGvr?.currentReleaseAmount > 0) {
@@ -529,7 +530,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 }
                 collectionData.push(totals);
                 dispatch(setGroupSummaryTotals(totals));
-                const dailyLos = {...createLos(totals, selectedBranch, selectedLO, dateFilter, false, transferGvr, transferRcv), losType: 'daily'};
+                const dailyLos = {...createLos(totals, selectedBranch, selectedLO, dateFilter, false, transferGvr, transferRcv, consolidateTotalData), losType: 'daily'};
                 if ((collectionTransferred.length > 0 || collectionReceived.length > 0) && !filter && !isWeekend && !isHoliday) {
                     await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collection-summary/add-transfer-data-to-los', { userId: currentUser._id, date: currentDate, newLos: dailyLos });
                 }
@@ -698,19 +699,24 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
         }
     }
 
-    const createLos = (totals, selectedBranch, selectedLO, dateFilter, yearEnd, transferGvr, transferRcv) => {
+    const createLos = (totals, selectedBranch, selectedLO, dateFilter, yearEnd, transferGvr, transferRcv, consolidateTotalData) => {
         let grandTotal;
 
         let totalsLoanRelease = totals.totalLoanRelease + totals.currentReleaseAmount;
         let totalsLoanBalance = totals.totalLoanBalance + totals.currentReleaseAmount;
         let totalsMcbuTransfer = 0;
-        // if (transferGvr?.mcbu > 0) {
-        //     totalsMcbuTransfer -= transferGvr.mcbuCol;
-        // }
-
-        // if (transferRcv?.mcbu > 0) {
-        //     totalsMcbuTransfer += transferRcv.mcbuCol;
-        // }
+        let totalsMcbuCol = totals.mcbuCol;
+        let totalsCurrentReleaseAmount = totals.currentReleaseAmount;
+        let totalsCollectionTarget = totals.targetLoanCollection;
+        let totalsCollectionExcess = totals.excess;
+        let totalsCollectionActual = totals.collection;
+        if (transferGvr?.currentReleaseAmount > 0 || transferRcv?.currentReleaseAmount > 0) {
+            totalsMcbuCol = consolidateTotalData.mcbuCol;
+            totalsCurrentReleaseAmount = consolidateTotalData.currentReleaseAmount;
+            totalsCollectionTarget = consolidateTotalData.targetLoanCollection;
+            totalsCollectionExcess = consolidateTotalData.excess;
+            totalsCollectionActual = consolidateTotalData.collection;
+        }
 
         if (yearEnd) {
             grandTotal = {
@@ -720,7 +726,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 offsetPerson: 0,
                 mcbuTransfer: totalsMcbuTransfer,
                 mcbuTarget: totals.mcbuTarget,
-                mcbuActual: totals.mcbuCol,
+                mcbuActual: totalsMcbuCol,
                 mcbuWithdrawal: totals.mcbuWithdrawal,
                 mcbuInterest: totals.mcbuInterest,
                 noMcbuReturn: totals.noMcbuReturn,
@@ -730,8 +736,8 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 loanReleaseAmount: 0,
                 activeLoanReleasePerson: totals.activeBorrowers,
                 activeLoanReleaseAmount: totalsLoanRelease,
-                collectionAdvancePayment: totals.excess,
-                collectionActual: totals.collection,
+                collectionAdvancePayment: totalsCollectionExcess,
+                collectionActual: totalsCollectionActual,
                 pastDuePerson: 0,
                 pastDueAmount: 0,
                 mispaymentPerson: totals.mispaymentPerson,
@@ -761,7 +767,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 newMember: totals.noOfNewCurrentRelease,
                 mcbuTransfer: totalsMcbuTransfer,
                 mcbuTarget: totals.mcbuTarget,
-                mcbuActual: totals.mcbuCol,
+                mcbuActual: totalsMcbuCol,
                 mcbuWithdrawal: totals.mcbuWithdrawal,
                 mcbuInterest: totals.mcbuInterest,
                 noMcbuReturn: totals.noMcbuReturn,
@@ -769,12 +775,12 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 offsetPerson: totals.offsetPerson,
                 activeClients: totals.activeClients,
                 loanReleasePerson: totals.noCurrentRelease,
-                loanReleaseAmount: totals.currentReleaseAmount,
+                loanReleaseAmount: totalsCurrentReleaseAmount,
                 activeLoanReleasePerson: totalActiveBorrowers,
                 activeLoanReleaseAmount: totalsLoanRelease,
-                collectionTarget: totals.targetLoanCollection,
-                collectionAdvancePayment: totals.excess,
-                collectionActual: totals.collection,
+                collectionTarget: totalsCollectionTarget,
+                collectionAdvancePayment: totalsCollectionExcess,
+                collectionActual: totalsCollectionActual,
                 pastDuePerson: totals.noPastDue,
                 pastDueAmount: totals.pastDue,
                 mispaymentPerson: totals.mispaymentPerson,

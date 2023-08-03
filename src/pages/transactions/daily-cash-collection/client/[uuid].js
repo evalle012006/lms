@@ -1310,6 +1310,10 @@ const CashCollectionDetailsPage = () => {
                                 temp.mcbuError = false;
                                 temp.pastDue = 0;
                                 temp.pastDueStr = '-';
+
+                                if (temp.loanBalance === 0 && temp.paymentCollection === 0) {
+                                    temp.fullPayment = temp?.history?.amountRelease;
+                                }
                             }
     
                             temp.mispayment = false;
