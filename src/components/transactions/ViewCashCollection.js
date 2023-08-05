@@ -568,6 +568,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 transfer = parseInt(transfer);
             }
 
+            transfer = Math.abs(transfer);
             totalTransfer += transfer !== "-" ? transfer : 0;
             totalMcbu += transferGvr.mcbu;
             totalLoanRelease += transferGvr.totalLoanRelease;
@@ -587,14 +588,14 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
             totalPastDue -= transferRcv.pastDue;
             totalNoPastDue -= transferRcv.noPastDue;
         }
-        
+
         return {
             ...totals,
             group: 'TOTALS',
             transfer: 0,
             transferStr: "-",
-            activeClients: totals.activeClients,
-            activeBorrowers: totals.activeBorrowers,
+            activeClients: totals.activeClients + totalTransfer,
+            activeBorrowers: totals.activeBorrowers + totalTransfer,
             totalLoanRelease: totalLoanRelease,
             totalReleasesStr: totalLoanRelease ? formatPricePhp(totalLoanRelease) : 0,
             totalLoanBalance: totalLoanBalance,
@@ -704,6 +705,8 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
 
         let totalsLoanRelease = totals.totalLoanRelease + totals.currentReleaseAmount;
         let totalsLoanBalance = totals.totalLoanBalance + totals.currentReleaseAmount;
+        let totalActiveClients = totals.activeClients;
+        let totalActiveBorrowers = totals.activeBorrowers;
         let totalsMcbuTransfer = 0;
         let totalsMcbuCol = totals.mcbuCol;
         let totalsCurrentReleaseAmount = totals.currentReleaseAmount;
@@ -711,17 +714,33 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
         let totalsCollectionExcess = totals.excess;
         let totalsCollectionActual = totals.collection;
         if (transferGvr?.currentReleaseAmount > 0 || transferRcv?.currentReleaseAmount > 0) {
+            let transferCurrentReleaseAmount = 0;
+            if (transferGvr?.currentReleaseAmount > 0) {
+                transferCurrentReleaseAmount = Math.abs(transferGvr.currentReleaseAmount);
+            }
+            if (transferRcv?.currentReleaseAmount > 0) {
+                transferCurrentReleaseAmount -= transferRcv.currentReleaseAmount;
+            }
+
+            if (transferCurrentReleaseAmount === 0 && transferRcv.currentReleaseAmount > 0) {
+                transferCurrentReleaseAmount = -Math.abs(transferRcv.currentReleaseAmount);
+            }
+
+            totalsLoanRelease = consolidateTotalData.totalLoanRelease + consolidateTotalData.currentReleaseAmount + transferCurrentReleaseAmount;
+            // totalsLoanBalance = totalsLoanRelease;
             totalsMcbuCol = consolidateTotalData.mcbuCol;
             totalsCurrentReleaseAmount = consolidateTotalData.currentReleaseAmount;
             totalsCollectionTarget = consolidateTotalData.targetLoanCollection;
             totalsCollectionExcess = consolidateTotalData.excess;
             totalsCollectionActual = consolidateTotalData.collection;
+            totalActiveClients = consolidateTotalData.activeClients;
+            totalActiveBorrowers = consolidateTotalData.activeBorrowers;
         }
 
         if (yearEnd) {
             grandTotal = {
                 day: 'Year End',
-                transfer: totals.transfer,
+                transfer: 0,
                 newMember: 0,
                 offsetPerson: 0,
                 mcbuTransfer: totalsMcbuTransfer,
@@ -731,10 +750,10 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 mcbuInterest: totals.mcbuInterest,
                 noMcbuReturn: totals.noMcbuReturn,
                 mcbuReturnAmt: totals.mcbuReturnAmt,
-                activeClients: totals.activeClients,
+                activeClients: totalActiveClients,
                 loanReleasePerson: 0,
                 loanReleaseAmount: 0,
-                activeLoanReleasePerson: totals.activeBorrowers,
+                activeLoanReleasePerson: totalActiveBorrowers,
                 activeLoanReleaseAmount: totalsLoanRelease,
                 collectionAdvancePayment: totalsCollectionExcess,
                 collectionActual: totalsCollectionActual,
@@ -743,7 +762,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 mispaymentPerson: totals.mispaymentPerson,
                 fullPaymentPerson: 0,
                 fullPaymentAmount: 0,
-                activeBorrowers: totals.activeBorrowers,
+                activeBorrowers: totalActiveBorrowers,
                 loanBalance: totalsLoanBalance,
                 transferGvr: transferGvr,
                 transferRcv: transferRcv
@@ -756,14 +775,14 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 }
             }
 
-            let totalActiveBorrowers = totals.activeBorrowers;
-            if (totalActiveBorrowers === 0 && totals.activeClients > 0) {
-                totalActiveBorrowers = totals.activeClients;
+            // let totalActiveBorrowers = totals.activeBorrowers;
+            if (totalActiveBorrowers === 0 && totalActiveClients > 0) {
+                totalActiveBorrowers = totalActiveClients;
             }
 
             grandTotal = {
                 day: selectedDate,
-                transfer: totals.transfer,
+                transfer: 0,
                 newMember: totals.noOfNewCurrentRelease,
                 mcbuTransfer: totalsMcbuTransfer,
                 mcbuTarget: totals.mcbuTarget,
@@ -773,7 +792,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 noMcbuReturn: totals.noMcbuReturn,
                 mcbuReturnAmt: totals.mcbuReturnAmt,
                 offsetPerson: totals.offsetPerson,
-                activeClients: totals.activeClients,
+                activeClients: totalActiveClients,
                 loanReleasePerson: totals.noCurrentRelease,
                 loanReleaseAmount: totalsCurrentReleaseAmount,
                 activeLoanReleasePerson: totalActiveBorrowers,

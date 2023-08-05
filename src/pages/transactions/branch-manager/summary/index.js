@@ -420,7 +420,7 @@ const BranchManagerSummary = () => {
                         activeClients = temp.activeClients + noTransfer;
                         activeBorrowers = temp.activeBorrowers + noTransfer;
                         activeLoanReleasePerson = temp.activeLoanReleasePerson + noTransfer;
-                        activeLoanReleaseAmount = temp.activeLoanReleaseAmount - data.totalLoanRelease;
+                        activeLoanReleaseAmount = temp.activeLoanReleaseAmount - data.totalLoanRelease - data.currentReleaseAmount;
                         loanBalance = temp.loanBalance - (data.currentReleaseAmount - data.collection);
                     }
                 }
@@ -462,7 +462,7 @@ const BranchManagerSummary = () => {
                         activeClients += noTransfer;
                         activeBorrowers += noTransfer;
                         activeLoanReleasePerson += noTransfer;
-                        activeLoanReleaseAmount += data.totalLoanRelease;
+                        activeLoanReleaseAmount += data.totalLoanRelease + data.currentReleaseAmount;
                         loanBalance += (data.currentReleaseAmount - data.collection);
                     }
                 }
@@ -621,7 +621,7 @@ const BranchManagerSummary = () => {
                 }
 
                 if (totalMcbuBalance !== 0) {
-                    mcbuBalance = temp.mcbuBalance + totalMcbuBalance;
+                    mcbuBalance = temp.mcbuBalance ? temp.mcbuBalance : 0 + totalMcbuBalance;
                 }
 
                 totalConsolidatedActualCollection = totalDailyActualCollection + totalWeeklyActualCollection;
@@ -807,14 +807,14 @@ const BranchManagerSummary = () => {
                 let totalMcbuBalance = 0;
                 
                 losSlice.map(los => {
-                    let noTransfer = los.transfer;
-                    console.log(los)
-                    if (typeof noTransfer === "string" && noTransfer !== '-') {
-                        noTransfer = noTransfer.replace('(','').replace(')','');
-                        noTransfer = -Math.abs(noTransfer);
-                    }
+                    // let noTransfer = los.transfer;
+                    // console.log(los)
+                    // if (typeof noTransfer === "string" && noTransfer !== '-') {
+                    //     noTransfer = noTransfer.replace('(','').replace(')','');
+                    //     noTransfer = -Math.abs(noTransfer);
+                    // }
                     
-                    totalTransfer += noTransfer !== '-' ? noTransfer : 0;
+                    // totalTransfer += noTransfer !== '-' ? noTransfer : 0;
                     totalNewMember += los.newMember !== '-' ? los.newMember : 0;
                     totalOffsetperson += los.offsetPerson !== '-' ? los.offsetPerson : 0;
                     totalLoanReleaseDailyPerson += los.loanReleaseDailyPerson !== '-' ? los.loanReleaseDailyPerson : 0;
@@ -899,8 +899,9 @@ const BranchManagerSummary = () => {
                         noConsolidatedTransfer = -Math.abs(noConsolidatedTransfer);
                     }
 
-                    totalMcbuTarget += transferRow.mcbuTarget;
-                    totalMcbuActual += transferRow.mcbuActual;
+                    totalActiveClients += noConsolidatedTransfer;
+                    totalMcbuTarget += transferRow.mcbuTarget ? transferRow.mcbuTarget : 0;
+                    totalMcbuActual += transferRow.mcbuActual ? transferRow.mcbuActual : 0;
                     totalMcbuWithdrawal += transferRow.mcbuWithdrawal;
                     totalMcbuInterest += transferRow.mcbuInterest;
                     totalNoMcbuReturn += transferRow.noMcbuReturn;
@@ -916,9 +917,9 @@ const BranchManagerSummary = () => {
                     totalConsolidatedLoanReleaseAmount += transferRow.consolidatedLoanReleaseAmount;
                     totalActiveLoanReleasePerson = transferRow.activeLoanReleasePerson;
                     totalActiveLoanReleaseAmount = transferRow.activeLoanReleaseAmount;
-                    totalCollectionTargetDaily += transferRow.collectionTargetDaily;
+                    totalCollectionTargetDaily += transferRow.collectionTargetDaily ? transferRow.collectionTargetDaily : 0;
                     totalCollectionActualDaily += transferRow.collectionActualDaily;
-                    totalCollectionTargetWeekly += transferRow.collectionTargetWeekly;
+                    totalCollectionTargetWeekly += transferRow.collectionTargetWeekly ? transferRow.collectionTargetWeekly : 0;
                     totalCollectionActualWeekly += transferRow.collectionActualWeekly;
                     totalConsolidatedCollection += transferRow.consolidatedCollection;
                     totalPastDuePerson += transferRow.pastDuePerson;
@@ -1106,7 +1107,7 @@ const BranchManagerSummary = () => {
         weeklyTotals.map(wt => {
             totalTransfer += wt.transfer;
             totalNewMember += wt.newMember;
-            totalMcbuTarget += wt.mcbuTarget;
+            totalMcbuActual += wt.mcbuActual ? wt.mcbuActual : 0;
             totalMcbuActual += wt.mcbuActual;
             totalMcbuWithdrawal += wt.mcbuWithdrawal;
             totalMcbuInterest += wt.mcbuInterest;
