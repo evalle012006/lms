@@ -403,8 +403,10 @@ const LoanOfficerSummary = () => {
                 }
 
                 if (totalMcbuBalance !== 0) {
-                    mcbuBalance = temp.mcbuBalance ? temp.mcbuBalance : 0 + totalMcbuBalance;
+                    mcbuBalance = temp.mcbuBalance ? temp.mcbuBalance : 0 //+ totalMcbuBalance;
                 }
+
+                mcbuBalance += totalMcbuBalance;
             }
         });
 

@@ -485,8 +485,8 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 }
 
                 if (transferGvr?.currentReleaseAmount > 0) {
-                    totals.currentReleaseAmount -= transferGvr.currentReleaseAmount;
-                    totals.currentReleaseAmountStr = formatPricePhp(totals.currentReleaseAmount);
+                    // totals.currentReleaseAmount -= transferGvr.currentReleaseAmount;
+                    // totals.currentReleaseAmountStr = formatPricePhp(totals.currentReleaseAmount);
                     totals.mcbuCol -= transferGvr.mcbuCol;
                     totals.mcbuColStr = formatPricePhp(totals.mcbuCol);
                     totals.targetLoanCollection -= transferGvr.targetLoanCollection;
@@ -504,8 +504,8 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 }
 
                 if (transferRcv?.currentReleaseAmount > 0) {
-                    totals.currentReleaseAmount += transferRcv.currentReleaseAmount;
-                    totals.currentReleaseAmountStr = formatPricePhp(totals.currentReleaseAmount);
+                    // totals.currentReleaseAmount += transferRcv.currentReleaseAmount;
+                    // totals.currentReleaseAmountStr = formatPricePhp(totals.currentReleaseAmount);
                     totals.mcbuCol += transferRcv.mcbuCol;
                     totals.mcbuColStr = formatPricePhp(totals.mcbuCol);
                     totals.targetLoanCollection += transferRcv.targetLoanCollection;
@@ -662,7 +662,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
             noOfNewCurrentRelease: '-',
             noCurrentReleaseStr: '-',
             currentReleaseAmount: totalLoanRelease,
-            currentReleaseAmountStr: (type === 'Transfer GVR' && totalLoanRelease > 0) ? `(${formatPricePhp(totalLoanRelease)})` : formatPricePhp(totalLoanRelease),
+            currentReleaseAmountStr: '-', // don't display in group summary
             activeClients: '-',
             activeBorrowers: '-',
             totalLoanRelease: 0,
@@ -713,23 +713,32 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
         let totalsCollectionTarget = totals.targetLoanCollection;
         let totalsCollectionExcess = totals.excess;
         let totalsCollectionActual = totals.collection;
+
         if (transferGvr?.currentReleaseAmount > 0 || transferRcv?.currentReleaseAmount > 0) {
             let transferCurrentReleaseAmount = 0;
             if (transferGvr?.currentReleaseAmount > 0) {
                 transferCurrentReleaseAmount = Math.abs(transferGvr.currentReleaseAmount);
+                totalsLoanBalance -= transferGvr.targetLoanCollection;
             }
+
             if (transferRcv?.currentReleaseAmount > 0) {
                 transferCurrentReleaseAmount -= transferRcv.currentReleaseAmount;
+                totalsLoanBalance += transferRcv.targetLoanCollection;
             }
 
             if (transferCurrentReleaseAmount === 0 && transferRcv.currentReleaseAmount > 0) {
                 transferCurrentReleaseAmount = -Math.abs(transferRcv.currentReleaseAmount);
+                totalsLoanBalance += transferRcv.targetLoanCollection;
+            }
+            // if only receiver...
+            if (transferGvr?.currentReleaseAmount === 0 && transferRcv.currentReleaseAmount > 0) {
+                transferCurrentReleaseAmount += -Math.abs(transferRcv.currentReleaseAmount);
+                totalsLoanBalance += transferRcv.targetLoanCollection;
             }
 
             totalsLoanRelease = consolidateTotalData.totalLoanRelease + consolidateTotalData.currentReleaseAmount + transferCurrentReleaseAmount;
-            // totalsLoanBalance = totalsLoanRelease;
+            totalsLoanBalance += transferCurrentReleaseAmount;
             totalsMcbuCol = consolidateTotalData.mcbuCol;
-            totalsCurrentReleaseAmount = consolidateTotalData.currentReleaseAmount;
             totalsCollectionTarget = consolidateTotalData.targetLoanCollection;
             totalsCollectionExcess = consolidateTotalData.excess;
             totalsCollectionActual = consolidateTotalData.collection;
@@ -1031,22 +1040,6 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
             mounted = false;
         };
     }, [dateFilter]);
-
-    // useEffect(() => {
-    //     const initGroupCollectionSummary = async () => {
-    //         const data = {
-    //             _id: currentUser.role.rep === 4 ? currentUser._id : selectedLOSubject.value.length > 0 && selectedLOSubject.value,
-    //             mode: type,
-    //             status: 'pending',
-    //             currentUser: currentUser._id,
-    //             groupSummaryIds: []
-    //         };
-
-    //         await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary', data);
-    //     }
-
-    //     initGroupCollectionSummary();
-    // }, []);
 
     useEffect(() => {
         if (type === 'weekly' && !isHoliday && !isWeekend) {

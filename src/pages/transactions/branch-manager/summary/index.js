@@ -621,8 +621,10 @@ const BranchManagerSummary = () => {
                 }
 
                 if (totalMcbuBalance !== 0) {
-                    mcbuBalance = temp.mcbuBalance ? temp.mcbuBalance : 0 + totalMcbuBalance;
+                    mcbuBalance = temp.mcbuBalance ? temp.mcbuBalance : 0;
                 }
+
+                mcbuBalance += totalMcbuBalance;
 
                 totalConsolidatedActualCollection = totalDailyActualCollection + totalWeeklyActualCollection;
                 totalConsolidatedNoLoanRelease = totalDailyNoLoanRelease + totalWeeklyNoLoanRelease;
