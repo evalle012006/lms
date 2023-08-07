@@ -391,19 +391,19 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                     collectionReceived.push.apply(collectionReceived, cc.transferReceivedDetails);
                     transfer = transfer + cc.transferReceivedDetails.length;
 
-                    cc.transferReceivedDetails.map(rcv => {
-                        if (!filter) {
+                    if (!filter) {
+                        cc.transferReceivedDetails.map(rcv => {
                             collection.activeClients += 1;
                             collection.activeBorrowers += 1;
                             collection.mcbu += rcv.mcbu;
-                        }
 
-                        collection.totalReleases += rcv.amountRelease;
-                        // collection.totalLoanBalance += rcv.loanBalance;
+                            collection.totalReleases += rcv.amountRelease;
+                            collection.totalLoanBalance += rcv.loanBalance;
 
-                        totalsLoanRelease += rcv.amountRelease;
-                        // totalsLoanBalance += rcv.loanBalance;
-                    });
+                            totalsLoanRelease += rcv.amountRelease;
+                            totalsLoanBalance += rcv.loanBalance;
+                        });
+                    }
                 }
 
                 if (cc.transferGiverDetails.length > 0 || cc.transferReceivedDetails.length > 0) {
@@ -730,13 +730,17 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 transferCurrentReleaseAmount = -Math.abs(transferRcv.currentReleaseAmount);
                 totalsLoanBalance += transferRcv.targetLoanCollection;
             }
+            // if only giver...
+            if (transferRcv?.currentReleaseAmount === 0 && transferGvr.currentReleaseAmount > 0) {
+                totalsLoanRelease += transferGvr.currentReleaseAmount;
+            }
             // if only receiver...
             if (transferGvr?.currentReleaseAmount === 0 && transferRcv.currentReleaseAmount > 0) {
                 transferCurrentReleaseAmount += -Math.abs(transferRcv.currentReleaseAmount);
                 totalsLoanBalance += transferRcv.targetLoanCollection;
+                totalsLoanRelease -= transferRcv.currentReleaseAmount;
             }
-
-            totalsLoanRelease = consolidateTotalData.totalLoanRelease + consolidateTotalData.currentReleaseAmount + transferCurrentReleaseAmount;
+            // totalsLoanRelease = consolidateTotalData.totalLoanRelease + consolidateTotalData.currentReleaseAmount + transferCurrentReleaseAmount;
             totalsLoanBalance += transferCurrentReleaseAmount;
             totalsMcbuCol = consolidateTotalData.mcbuCol;
             totalsCollectionTarget = consolidateTotalData.targetLoanCollection;
