@@ -399,10 +399,10 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         }
 
                         collection.totalReleases += rcv.amountRelease;
-                        collection.totalLoanBalance += rcv.loanBalance;
+                        // collection.totalLoanBalance += rcv.loanBalance;
 
                         totalsLoanRelease += rcv.amountRelease;
-                        totalsLoanBalance += rcv.loanBalance;
+                        // totalsLoanBalance += rcv.loanBalance;
                     });
                 }
 
@@ -667,7 +667,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
             activeBorrowers: '-',
             totalLoanRelease: 0,
             totalReleasesStr: '-',
-            totalLoanBalance: 0,
+            totalLoanBalance: totalLoanBalance,
             totalLoanBalanceStr: '-',
             targetLoanCollection: totalTargetCollection,
             loanTargetStr: (type === 'Transfer GVR' && totalTargetCollection > 0) ? `(${formatPricePhp(totalTargetCollection)})` : formatPricePhp(totalTargetCollection),
@@ -723,7 +723,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
 
             if (transferRcv?.currentReleaseAmount > 0) {
                 transferCurrentReleaseAmount -= transferRcv.currentReleaseAmount;
-                totalsLoanBalance += transferRcv.targetLoanCollection;
+                totalsLoanBalance += transferRcv.targetLoanCollection + transferRcv.totalLoanBalance;
             }
 
             if (transferCurrentReleaseAmount === 0 && transferRcv.currentReleaseAmount > 0) {
