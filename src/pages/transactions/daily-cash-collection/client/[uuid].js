@@ -1274,12 +1274,6 @@ const CashCollectionDetailsPage = () => {
                             if (parseFloat(temp.loanBalance) !== 0) {
                                 toast.error("Please enter the full balance before closing the loan account.");
                                 temp.error = true;
-                            } else if (remarks.value === 'offset-unclaimed' && temp.mcbu <= temp.loanBalance) {
-                                toast.error("Invalid remarks. Unclaimed Amount remarks is for offset transaction with remaining MCBU.");
-                                temp.error = true;
-                            } else if (remarks.value !== 'offset-unclaimed' && temp.mcbu > temp.loanBalance) {
-                                toast.error("Invalid remarks. Please used Unclaimed Amount remarks.");
-                                temp.error = true;
                             } else {
                                 setShowRemarksModal(true);
                                 setCloseLoan(cc);
@@ -1295,18 +1289,10 @@ const CashCollectionDetailsPage = () => {
                                 }
 
                                 temp.mcbuCol = 0;
-                                temp.mcbuColStr = '-';
-                                
-                                if (remarks.value === 'offset-unclaimed') {
-                                    temp.mcbu = temp.mcbu - temp.loanBalance;
-                                    temp.mcbuReturnAmt = parseFloat(temp.mcbu);
-                                    temp.mcbuReturnAmtStr = formatPricePhp(temp.mcbuReturnAmt);
-                                } else {
-                                    temp.mcbuReturnAmt = parseFloat(temp.mcbu);
-                                    temp.mcbuReturnAmtStr = formatPricePhp(temp.mcbuReturnAmt);
-                                    temp.mcbu = 0;
-                                }
-                                
+                                temp.mcbuColStr = '-';    
+                                temp.mcbuReturnAmt = parseFloat(temp.mcbu);
+                                temp.mcbuReturnAmtStr = formatPricePhp(temp.mcbuReturnAmt);
+                                temp.mcbu = 0;
                                 temp.mcbuStr = formatPricePhp(temp.mcbu);
                                 temp.mcbuError = false;
                                 temp.pastDue = 0;
