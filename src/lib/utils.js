@@ -158,24 +158,17 @@ export const getCurrentDate = (timezone = 'Asia/Manila') => {
 
 export const getLastWeekdayOfTheMonth = (year, month, holidayList = []) => {
     const days = getDaysOfMonth(year, month);
-    let lastDay;
-    days.map(day => {
+    const dateArr = days.filter(day => {
         const dayName = moment(day).format('dddd');
-
-        if (dayName === 'Saturday' || dayName === 'Sunday') {
-            return;
-        }
 
         const dateArr = day.split('-');
         const dateStr = dateArr[1] + "-" + dateArr[2];
-        if (holidayList.includes(dateStr)) {
-            return;
+        if (dayName !== 'Saturday' && dayName !== 'Sunday' && (holidayList && !holidayList.includes(dateStr))) {
+            return day;
         }
-
-        lastDay = day;
     });
 
-    return lastDay;
+    return dateArr[dateArr.length - 1];
 }
 
 export const getMonths = () => {

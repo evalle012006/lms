@@ -112,12 +112,10 @@ const TransferHistoryDetails = ({ type }) => {
 
     const handleMonthChange = (selected) => {
         setSelectedFilterMonth(selected.value);
-        setSelectedLastDate(getLastDateOfTheMonth(selected.value, selectedFilterYear));
     }
 
     const handleYearChange = (selected) => {
         setSelectedFilterYear(parseInt(selected.value));
-        setSelectedLastDate(getLastDateOfTheMonth(selectedFilterMonth, parseInt(selected.value)));
     }
 
     const handleBranchChange = (selected) => {
@@ -267,7 +265,6 @@ const TransferHistoryDetails = ({ type }) => {
             setReceiverTotal(getTotals(receiverData));
 
             consolidatedData = getConsolidatedData(giverData, receiverData);
-            console.log(giverData, consolidatedData)
             setConsolidatedList(consolidatedData);
             setConsolidatedTotal(getTotals(consolidatedData));
         }
@@ -414,8 +411,24 @@ const TransferHistoryDetails = ({ type }) => {
     }, [branchList]);
 
     useEffect(() => {
+        if (selectedFilterMonth && selectedFilterYear) {
+            const days = getDaysOfMonth(selectedFilterYear, selectedFilterMonth);
+            const dateArr = days.filter(day => {
+                const dayName = moment(day).format('dddd');
+        
+                const dateArr = day.split('-');
+                const dateStr = dateArr[1] + "-" + dateArr[2];
+                if (dayName !== 'Saturday' && dayName !== 'Sunday' && (holidayList && !holidayList.includes(dateStr))) {
+                    return day;
+                }
+            });
+
+            setSelectedLastDate(dateArr[dateArr.length - 1]);
+        }
+    }, [selectedFilterMonth, selectedFilterYear]);
+
+    useEffect(() => {
         if (selectedFilterBranch && selectedFilterMonth && selectedFilterYear && selectedLastDate) {
-            
             getHistory();
         }
     }, [selectedFilterBranch, selectedFilterMonth, selectedFilterYear, selectedLastDate]);

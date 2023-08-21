@@ -5,7 +5,7 @@ export const LOR_DAILY_REMARKS = [
     { label: 'Reloaner WD/MCBU', value: 'reloaner-wd'},
     { label: 'For Close/Offset - Good Client', value: 'offset-good'},
     { label: 'For Close/Offset - Delinquent Client', value: 'offset-delinquent'},
-    { label: 'For Close/Offset - Unclaimed Amount', value: 'offset-unclaimed'},
+    // { label: 'For Close/Offset - Unclaimed Amount', value: 'offset-unclaimed'},
     { label: 'Past Due', value: 'past due'},
     { label: 'Past Due Collection', value: 'past due collection'},
     { label: 'Delinquent', value: 'delinquent'},
@@ -22,7 +22,7 @@ export const LOR_WEEKLY_REMARKS = [
     { label: 'Reloaner', value: 'reloaner'},
     { label: 'For Close/Offset - Good Client', value: 'offset-good'},
     { label: 'For Close/Offset - Delinquent Client', value: 'offset-delinquent'},
-    { label: 'For Close/Offset - Unclaimed Amount', value: 'offset-unclaimed'},
+    // { label: 'For Close/Offset - Unclaimed Amount', value: 'offset-unclaimed'},
     { label: 'Past Due', value: 'past due'},
     { label: 'Past Due Collection', value: 'past due collection'},
     { label: 'Delinquent', value: 'delinquent'},
@@ -37,7 +37,7 @@ export const LOR_ONLY_OFFSET_REMARKS = [
     { label: 'Remarks', value: ''},
     { label: 'For Close/Offset - Good Client', value: 'offset-good'},
     { label: 'For Close/Offset - Delinquent Client', value: 'offset-delinquent'},
-    { label: 'For Close/Offset - Unclaimed Amount', value: 'offset-unclaimed'}
+    // { label: 'For Close/Offset - Unclaimed Amount', value: 'offset-unclaimed'}
 ];
 
 export const WEEKLY_GROUPS = [

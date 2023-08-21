@@ -101,10 +101,6 @@ const BranchCashCollectionPage = () => {
                     }
                 );
             });
-
-            // if (currentUser.root !== true && (currentUser.role.rep === 3)) {
-            //     branches = [branches.find(b => b.code === currentUser.designatedBranch)];
-            // } 
             
             dispatch(setBranchList(branches));
         } else {

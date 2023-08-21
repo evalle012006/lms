@@ -4,6 +4,7 @@ import {
     Squares2X2Icon, 
     BuildingOffice2Icon,
     ChartBarSquareIcon,
+    ChartBarIcon,
     ClipboardDocumentIcon,
     ClipboardDocumentListIcon,
     ClipboardDocumentCheckIcon,
@@ -12,8 +13,7 @@ import {
     UserGroupIcon,
     TicketIcon,
     Cog6ToothIcon,
-    TableCellsIcon,
-    PlusIcon,
+    DocumentChartBarIcon,
     BuildingLibraryIcon,
     ChevronDownIcon,
     UserCircleIcon,
@@ -444,6 +444,34 @@ const MenuItems = [
         ]
     },
     {
+        label: "Reports",
+        url: "#reports",
+        subMenuIndex: 1,
+        icon: {
+            active: <ChartBarIcon className="text-gray-800 w-5 h-5" />,
+            notActive: <ChartBarIcon className="text-white w-5 h-5" />,
+        },
+        active: true,
+        hasSub: true,
+        hidden: false,
+        subMenuItems: [
+            {
+                label: "Transaction by Remarks",
+                url: "/reports/transaction-remarks",
+                icon: {
+                    active: (
+                        <DocumentChartBarIcon className="text-gray-800 w-5 h-5" />
+                    ),
+                    notActive: (
+                        <DocumentChartBarIcon className="text-white w-5 h-5" />
+                    ),
+                },
+                active: false,
+                hasSub: false
+            },
+        ]
+    },
+    {
         label: "Settings",
         url: "#settings",
         subMenuIndex: 1,
@@ -536,7 +564,7 @@ const MenuItems = [
         active: false,
         borderBottom: true,
         hasSub: false
-    },
+    }
 ];
 
 const NavComponent = () => {

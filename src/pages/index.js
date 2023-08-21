@@ -5,11 +5,13 @@ import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { setSystemSettings } from '@/redux/actions/systemActions';
 import moment from 'moment';
 import { useState } from 'react';
+import DashboardPage from '@/components/dashboard/DashboardPage';
 
 const Index = () => {
     const dispatch = useDispatch();
     const [loading, setLoading] = useState(false);
     const currentDate = useSelector(state => state.systemSettings.currentDate);
+    const currentUser = useSelector(state => state.user.data);
 
     useEffect(() => {
         let mounted = true;
@@ -52,10 +54,8 @@ const Index = () => {
     }, []);
 
     return (
-        <Layout>
-            <div className="flex space-x-4 m-4">
-                
-            </div>
+        <Layout header={false} noPad={true}>
+            <DashboardPage />
         </Layout>
     );
 }

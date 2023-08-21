@@ -113,10 +113,6 @@ const DailyCashCollectionPage = () => {
                     }
                 );
             });
-
-            // if (currentUser.root !== true && (currentUser.role.rep === 3 || currentUser.role.rep === 4)) {
-            //     branches = [branches.find(b => b.code === currentUser.designatedBranch)];
-            // } 
             
             dispatch(setBranchList(branches));
         } else {
