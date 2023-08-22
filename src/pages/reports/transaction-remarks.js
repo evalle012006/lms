@@ -91,10 +91,6 @@ const TransactionRemarksPage = () => {
         {
             Header: "Name",
             accessor: 'name'
-        },
-        {
-            Header: "Total Loan Release",
-            accessor: 'amountRelease'
         }
     ]);
 
@@ -127,13 +123,24 @@ const TransactionRemarksPage = () => {
         const result = [];
 
         responseData.map(data => {
-            result.push({
+            let temp = {
                 _id: data._id,
                 groupName: data.group.length > 0 ? data.group[0].name : '',
                 slotNo: data.slotNo,
-                name: data.client.length > 0 ? data.client[0].firstName + ' ' + data.client[0].lastName : '',
-                amountRelease: data.amountRelease > 0 ? formatPricePhp(data.amountRelease) : formatPricePhp(data.history.amountRelease)
-            });
+                name: data.client.length > 0 ? data.client[0].firstName + ' ' + data.client[0].lastName : ''
+            };
+
+            if (data.remarks && data?.remarks?.value == 'offset-unclaimed') {
+                const unclaimedMcbu = data?.mcbuReturnAmt - data?.history?.loanBalance;
+                temp = {
+                    ...temp,
+                    dateOfOffset: data.fullPaymentDate,
+                    unclaimedMcbu: unclaimedMcbu,
+                    unclaimedMcbuStr: formatPricePhp(unclaimedMcbu)
+                }
+            }
+
+            result.push(temp);
         });
 
         setList(result);
@@ -287,10 +294,16 @@ const TransactionRemarksPage = () => {
         const updateCols = [...columns];
         switch(selectedFilterRemarks) {
             case 'offset-unclaimed':
-                updateCols.push({
-                    Header: "Unclaimed MCBU",
-                    accessor: 'unclaimed-mcbu'
-                });
+                updateCols.push.apply(updateCols, [
+                    {
+                        Header: "Date of Offset",
+                        accessor: 'dateOfOffset'
+                    },
+                    {
+                        Header: "Unclaimed Amount",
+                        accessor: 'unclaimedMcbuStr'
+                    }
+                ]);
                 break;
             default:
                 break;
