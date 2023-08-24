@@ -60,6 +60,11 @@ const TransactionRemarksPage = () => {
     const handleUserChange = (selected) => {
         setSelectedFilterUser(selected.value);
         getListGroup(selected.value);
+        setOccurence(selected.transactionType);
+
+        if (occurence !== selected.transactionType) {
+            setSelectedFilterRemarks(null);
+        }
     }
 
     const handleGroupChange = (selected) => {
@@ -91,6 +96,14 @@ const TransactionRemarksPage = () => {
         {
             Header: "Name",
             accessor: 'name'
+        },
+        {
+            Header: "Amount Release",
+            accessor: 'amountReleaseStr'
+        },
+        {
+            Header: "Loan Balance",
+            accessor: 'loanBalanceStr'
         }
     ]);
 
@@ -123,11 +136,21 @@ const TransactionRemarksPage = () => {
         const result = [];
 
         responseData.map(data => {
+            let amountRelease = data.amountRelease;
+            let loanBalance = data.loanBalance;
+
+            if (data.status === 'completed' || data.status === 'closed' || data.status === 'tomorrow') {
+                amountRelease = data?.history?.amountRelease;
+                // loanBalance = data?.history?.loanBalance;
+            }
+
             let temp = {
                 _id: data._id,
                 groupName: data.group.length > 0 ? data.group[0].name : '',
                 slotNo: data.slotNo,
-                name: data.client.length > 0 ? data.client[0].firstName + ' ' + data.client[0].lastName : ''
+                name: data.client.length > 0 ? data.client[0].firstName + ' ' + data.client[0].lastName : '',
+                amountReleaseStr: formatPricePhp(amountRelease),
+                loanBalanceStr: formatPricePhp(loanBalance)
             };
 
             if (data.remarks && data?.remarks?.value == 'offset-unclaimed') {
@@ -222,7 +245,23 @@ const TransactionRemarksPage = () => {
                 );
             });
             userList.sort((a, b) => { return a.loNo - b.loNo; });
+
+            if (currentUser.role.rep === 4) {
+                const name = `${currentUser.firstName} ${currentUser.lastName}`;
+                userList = [];
+                userList.push({
+                    ...currentUser,
+                    name: name,
+                    label: name,
+                    value: currentUser._id
+                });
+            }
+
             dispatch(setUserList(userList));
+
+            if (currentUser.role.rep === 4) {
+                setSelectedFilterUser(currentUser._id);
+            }
         } else {
             toast.error('Error retrieving user list.');
         }
@@ -287,7 +326,9 @@ const TransactionRemarksPage = () => {
     }, [selectedFilterMonth, selectedFilterYear]);
 
     useEffect(() => {
-        setRemarksList(occurence === 'daily' ? LOR_DAILY_REMARKS : LOR_WEEKLY_REMARKS);
+        let remarksList = occurence === 'daily' ? LOR_DAILY_REMARKS : LOR_WEEKLY_REMARKS;
+        remarksList = remarksList.filter(rm => rm.label !== 'Remarks');
+        setRemarksList(remarksList);
     }, [occurence]);
 
     useEffect(() => {
@@ -312,6 +353,17 @@ const TransactionRemarksPage = () => {
         setColumns(updateCols);
     }, [selectedFilterRemarks]);
 
+    useEffect(() => {
+        if (currentUser.role.rep === 3 || currentUser.role.rep === 4 && branchList.length > 0) {
+            setSelectedFilterBranch(branchList[0]?.value);
+            getListUser(branchList[0]?.code);
+        }
+
+        if (currentUser.role.rep === 4) {
+            setOccurence(currentUser.transactionType);
+        }
+    }, [currentUser, branchList]);
+
     return (
         <Layout>
             {loading ? (
@@ -324,7 +376,7 @@ const TransactionRemarksPage = () => {
                         <div className='flex flex-row justify-between'>
                             <div className='flex flex-row mb-4'>
                                 <div className='flex flex-row'>
-                                    <span className='text-zinc-300 mr-4'>Type of Remarks:</span>
+                                    <span className='text-zinc-400 mr-4'>Type of Remarks:</span>
                                     <Select 
                                         options={remarksList}
                                         value={remarksList && remarksList.find(remark => { return remark.value === selectedFilterRemarks } )}
@@ -335,13 +387,15 @@ const TransactionRemarksPage = () => {
                                         closeMenuOnSelect={true}
                                         placeholder={'Remarks Filter'}/>
                                 </div>
-                                <div className='flex flex-row ml-4'>
-                                    <span className='text-zinc-300'>Occurence:</span>
-                                    <div className="flex flex-row ml-4 -mt-2 mb-2">
-                                        <RadioButton id={"radio_daily"} name="radio-occurence" label={"Daily"} checked={occurence === 'daily'} value="daily" onChange={() => setOccurence('daily')} />
-                                        <RadioButton id={"radio_weekly"} name="radio-occurence" label={"Weekly"} checked={occurence === 'weekly'} value="weekly" onChange={() => setOccurence('weekly')} />
+                                {currentUser.role.rep !== 4 && (
+                                    <div className='flex flex-row ml-4'>
+                                        <span className='text-zinc-400'>Occurence:</span>
+                                        <div className="flex flex-row ml-4 -mt-2 mb-2">
+                                            <RadioButton id={"radio_daily"} name="radio-occurence" label={"Daily"} checked={occurence === 'daily'} value="daily" onChange={() => setOccurence('daily')} />
+                                            <RadioButton id={"radio_weekly"} name="radio-occurence" label={"Weekly"} checked={occurence === 'weekly'} value="weekly" onChange={() => setOccurence('weekly')} />
+                                        </div>
                                     </div>
-                                </div>
+                                )}
                             </div>
                             <div className='mr-8'>
                                 <ButtonSolid label="Apply Filter" onClick={setApplyFilter} />
@@ -390,7 +444,7 @@ const TransactionRemarksPage = () => {
                                 </div>
                             </div>
                             <div className='flex flex-col ml-4'>
-                                <span className='text-zinc-300 mb-1'>Branch:</span>
+                                <span className='text-zinc-400 mb-1'>Branch:</span>
                                 <Select 
                                     options={branchList}
                                     value={branchList && branchList.find(branch => { return branch.value === selectedFilterBranch } )}
@@ -402,7 +456,7 @@ const TransactionRemarksPage = () => {
                                     placeholder={'Branch Filter'}/>
                             </div>
                             <div className='flex flex-col ml-4'>
-                                <span className='text-zinc-300 mb-1'>Loan Officer:</span>
+                                <span className='text-zinc-400 mb-1'>Loan Officer:</span>
                                 <Select 
                                     options={userList}
                                     value={userList && userList.find(user => { return user.value === selectedFilterUser } )}
@@ -414,7 +468,7 @@ const TransactionRemarksPage = () => {
                                     placeholder={'LO Filter'}/>
                             </div>
                             <div className='flex flex-col ml-4'>
-                                <span className='text-zinc-300 mb-1'>Group:</span>
+                                <span className='text-zinc-400 mb-1'>Group:</span>
                                 <Select 
                                     options={groupList}
                                     value={groupList && groupList.find(group => { return group.value === selectedFilterGroup } )}
