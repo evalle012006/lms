@@ -428,6 +428,7 @@ const LoanApplicationPage = () => {
     const updateClientStatus = async (data, updatedValue) => {
         setLoading(true);
         const group = data.group;
+        const lo = data.loanOfficer;
 
         let loanData = {...data};
         delete loanData.group;
@@ -444,7 +445,7 @@ const LoanApplicationPage = () => {
             loanData.dateGranted = currentDate;
             loanData.status = updatedValue;
             loanData.startDate = currentDate;
-            loanData.endDate = getEndDate(loanData.dateGranted, group.occurence === type ? 60 : 24 );
+            loanData.endDate = getEndDate(loanData.dateGranted, group.occurence === lo.transactionType ? 60 : 24 );
             loanData.mispayment = 0;
 
             delete loanData.selected;
@@ -522,6 +523,7 @@ const LoanApplicationPage = () => {
             selectedLoanList = selectedLoanList.map(loan => {
                 let temp = {...loan};
                 const group = loan.group;
+                const lo = loan.loanOfficer;
 
                 delete temp.group;
                 delete temp.client;
@@ -535,7 +537,7 @@ const LoanApplicationPage = () => {
                 temp.dateGranted = moment(currentDate).format('YYYY-MM-DD');
                 temp.status = 'active';
                 temp.startDate = moment(currentDate).add(1, 'days').format('YYYY-MM-DD');
-                temp.endDate = getEndDate(temp.dateGranted, group.occurence === type ? 60 : 24 );
+                temp.endDate = getEndDate(temp.dateGranted, group.occurence === lo.transactionType ? 60 : 24 );
                 temp.mispayment = 0;
                 temp.insertedBy = currentUser._id;
                 temp.currentDate = currentDate;
