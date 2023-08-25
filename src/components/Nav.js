@@ -218,7 +218,7 @@ const MenuItems = [
         subMenuItems: [
             {
                 label: "Loan Approval",
-                url: "/transactions/loan-applications?type=daily",
+                url: "/transactions/loan-applications",
                 icon: {
                     active: (
                         <ClipboardDocumentCheckIcon className="text-gray-800 w-5 h-5" />
@@ -248,7 +248,7 @@ const MenuItems = [
             },
             {
                 label: "Loan Officer Summary",
-                url: "/transactions/loan-officer-summary", 
+                url: "/transactions/loan-officer-summary?type=daily", 
                 icon: {
                     active: (
                         <ChartBarSquareIcon className="text-gray-800 w-5 h-5" />
@@ -293,7 +293,7 @@ const MenuItems = [
         subMenuItems: [
             {
                 label: "Loan Approval",
-                url: "/transactions/loan-applications?type=weekly",
+                url: "/transactions/loan-applications",
                 icon: {
                     active: (
                         <ClipboardDocumentCheckIcon className="text-gray-800 w-5 h-5" />
@@ -323,7 +323,7 @@ const MenuItems = [
             },
             {
                 label: "Loan Officer Summary",
-                url: "/transactions/loan-officer-summary", 
+                url: "/transactions/loan-officer-summary?type=weekly", 
                 icon: {
                     active: (
                         <ChartBarSquareIcon className="text-gray-800 w-5 h-5" />
