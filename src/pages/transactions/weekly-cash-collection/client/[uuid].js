@@ -1082,10 +1082,11 @@ const CashCollectionDetailsPage = () => {
                         toast.success('Payment collection successfully submitted.');
             
                         setTimeout(() => {
-                            setLoading(true);
-                            getCashCollections();
+                            // setLoading(true);
+                            // getCashCollections();
                             setAllowOffsetTransaction(false);
-                        }, 1000);
+                            window.location.reload();
+                        }, 800);
                     }
                 } else {
                     toast.warning('No active data to be saved.');

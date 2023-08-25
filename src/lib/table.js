@@ -440,7 +440,7 @@ const TableComponent = ({
   border = false,
   multiSelect = false,
   multiSelectActionFn = null,
-  pageSize = 20
+  pageSize = 50
 }) => {
   // Use the state and functions returned from useTable to build your UI
   const {

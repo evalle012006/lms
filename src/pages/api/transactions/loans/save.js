@@ -21,6 +21,7 @@ async function save(req, res) {
 
     delete loanData.currentDate;
     delete loanData.group;
+    delete loanData.groupStatus;
     
     if (loanData.hasOwnProperty('mode')) {
         mode = loanData.mode;

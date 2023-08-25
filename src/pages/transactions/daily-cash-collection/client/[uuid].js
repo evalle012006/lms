@@ -488,9 +488,9 @@ const CashCollectionDetailsPage = () => {
                             mcbuReturnAmtStr: '-',
                             mcbuInterest: cc.mcbuInterest ? cc.mcbuInterest : 0,
                             mcbuInterestStr: cc.mcbuInterest > 0 ? formatPricePhp(cc.mcbuInterest) : '-',
-                            activeLoan: cc?.transfer ? 0 : cc.activeLoan,
-                            targetCollection: cc?.transfer ? 0 : cc.activeLoan,
-                            targetCollectionStr: (!cc?.transfer && cc.activeLoan > 0) ? formatPricePhp(cc.activeLoan) : '-',
+                            activeLoan: cc.activeLoan,
+                            targetCollection: cc.activeLoan,
+                            targetCollectionStr: cc.activeLoan > 0 ? formatPricePhp(cc.activeLoan) : '-',
                             amountRelease: cc.amountRelease,
                             amountReleaseStr: cc.amountRelease > 0 ? formatPricePhp(cc.amountRelease) : '-',
                             loanBalance: cc.loanBalance,
@@ -969,29 +969,6 @@ const CashCollectionDetailsPage = () => {
                             temp.loId = currentGroup && currentGroup.loanOfficerId;
                         }
 
-                        // if (temp.paymentCollection === temp.targetCollection) {
-                        //     const excessMcbu = temp.excess / temp.activeLoan;
-                        //     const finalMcbu = (excessMcbu * 10) + 10;
-                        //     // check if mcbuCol has data if not set it
-                        //     if (!temp.mcbuCol || temp.mcbuCol === 0) {
-                        //         temp.mcbuCol = finalMcbu;
-                        //         temp.mcbu += temp.mcbuCol;
-                        //     }
-
-                        //     // if mcbuCol is not equal the calculated finalMcbu, set the finalMcbu and set the originalMcbu to the mcbu and add the new mcbuCol
-                        //     if (temp.mcbuCol !== finalMcbu) {
-                        //         temp.mcbuCol = finalMcbu;
-                        //         temp.mcbu = temp.originalMcbu;
-                        //         temp.mcbu += temp.mcbuCol;
-                        //     }
-    
-                        //     // checking if the calculated mcbu is the same as the originalMcbu + mcbuCol if not set the tempMcbu
-                        //     const tempMcbu = temp.originalMcbu + temp.mcbuCol;
-                        //     if (tempMcbu !== temp.mcbu) {
-                        //         temp.mcbu = tempMcbu;
-                        //     }
-                        // }
-
                         delete temp.originalMcbu;
     
                         temp.loanBalance = parseFloat(temp.loanBalance);
@@ -1053,9 +1030,10 @@ const CashCollectionDetailsPage = () => {
                         toast.success('Payment collection successfully submitted.');
             
                         setTimeout(() => {
-                            setLoading(true);
-                            getCashCollections();
-                        }, 1000);
+                            // setLoading(true);
+                            // getCashCollections();
+                            window.location.reload();
+                        }, 800);
                     }
                 } else {
                     toast.error('No active data to be saved.');
