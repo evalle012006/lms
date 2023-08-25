@@ -433,10 +433,10 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                             {/* - hide the groupOccurence radio button
                                             - if role.rep === 3 it should display the list of lo's under that branch
                                             - based the groupOccurence with lo.transactionType */}
-                                            <div className="mt-4 flex flex-row">
+                                            {/* <div className="mt-4 flex flex-row">
                                                 <RadioButton id={"radio_daily"} name="radio-group-occurence" label={"Daily"} checked={groupOccurence === 'daily'} value="daily" onChange={handleOccurenceChange} />
                                                 <RadioButton id={"radio_weekly"} name="radio-group-occurence" label={"Weekly"} checked={groupOccurence === 'weekly'} value="weekly" onChange={handleOccurenceChange} />
-                                            </div>
+                                            </div> */}
                                             <div className="mt-4">
                                                 <SelectDropdown
                                                     name="groupId"

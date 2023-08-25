@@ -1,10 +1,11 @@
-import { SET_ADD_UPDATE_LOAN, SET_LOAN, SET_LOAN_LIST } from "../actions/loanActions";
+import { SET_ADD_UPDATE_LOAN, SET_FILTERED_LOAN_LIST, SET_LOAN, SET_LOAN_LIST } from "../actions/loanActions";
 
 
 const initialLoanState = {
     data: {},
     addUpdate: {},
-    list: []
+    list: [],
+    filteredList: []
 };
 
 const loanReducer = (state = initialLoanState, action) => {
@@ -15,6 +16,8 @@ const loanReducer = (state = initialLoanState, action) => {
             return { ...state, list: action.payload }
         case SET_ADD_UPDATE_LOAN:
             return { ...state, addUpdate: action.payload }
+        case SET_FILTERED_LOAN_LIST:
+            return { ...state, filteredList: action.payload }
         default:
             return { ...state }
     }

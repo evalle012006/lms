@@ -1,6 +1,7 @@
 export const SET_LOAN = 'SET_LOAN';
 export const SET_LOAN_LIST = 'SET_LOAN_LIST';
 export const SET_ADD_UPDATE_LOAN = 'SET_ADD_UPDATE_LOAN';
+export const SET_FILTERED_LOAN_LIST = 'SET_FILTERED_LOAN_LIST';
 
 export const setLoan = (loan) => ({
     type: SET_LOAN,
@@ -15,4 +16,9 @@ export const setLoanList = (loanList) => ({
 export const setAddUpdateLoan = (loan) => ({
     type: SET_ADD_UPDATE_LOAN,
     payload: loan
+});
+
+export const setFilteredLoanList = (loanList) => ({
+    type: SET_FILTERED_LOAN_LIST,
+    payload: loanList
 });

@@ -19,6 +19,12 @@ async function list(req, res) {
             .find({ branchId: branchId, status: 'available', loanOfficerId: loId,occurence: occurence })
             .sort({ groupNo: 1 })
             .toArray();
+    } else if (loId) {
+        groups = await db
+            .collection('groups')
+            .find({ status: 'available', loanOfficerId: loId, occurence: occurence })
+            .sort({ groupNo: 1 })
+            .toArray();
     } else if (branchId) {
         groups = await db
             .collection('groups')
