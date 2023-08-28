@@ -1,6 +1,6 @@
 import React from 'react'
 
-const ButtonSolid = ({ label, type="button", onClick, icon, className = '', disabled, homeIndicator = false, isSubmitting, gray }) => {
+const ButtonSolid = ({ label, type="button", onClick, icon, className = '', disabled, homeIndicator = false, isSubmitting, gray, width = 'w-full' }) => {
     let disableClass = '';
     if (gray) {
         disabled = true;
@@ -16,7 +16,7 @@ const ButtonSolid = ({ label, type="button", onClick, icon, className = '', disa
                 <div className='button-container'>
                     <button
                         type={type}
-                        className={`${gray ? 'solid-gray-button' : 'solid-button'} ${disableClass} ${className}`}
+                        className={`${gray ? 'solid-gray-button' : 'solid-button'} ${disableClass} ${width} ${className}`}
                         disabled={disabled}
                         onClick={onClick}
                     >{ icon ? (
@@ -62,7 +62,7 @@ const ButtonSolid = ({ label, type="button", onClick, icon, className = '', disa
             ) : (
                 <button
                     type={type}
-                    className={`${gray ? 'solid-gray-button' : 'solid-button'} p-2 ${disableClass} ${className} `}
+                    className={`${gray ? 'solid-gray-button' : 'solid-button'} p-2 ${disableClass} ${width} ${className} `}
                     disabled={disabled}
                     onClick={onClick}
                 >{ icon ? (

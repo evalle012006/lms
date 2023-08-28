@@ -14,33 +14,46 @@ async function getLoan(req, res) {
     let response = {};
     const loan = await db
         .collection('loans')
-        // .find({ _id: new ObjectId(_id)})
         .aggregate([
             { $match: { _id: new ObjectId(_id) } },
             {
+                $addFields: {
+                    "branchIdObj": { $toObjectId: "$branchId" },
+                    "groupIdObj": { $toObjectId: "$groupId" },
+                    "clientIdObj": { $toObjectId: "$clientId" }
+                }
+            },
+            {
                 $lookup: {
                     from: "branches",
-                    localField: "_id",
-                    foreignField: "branchid",
+                    localField: "branchIdObj",
+                    foreignField: "_id",
                     as: "branch"
                 }
             },
             {
                 $lookup: {
                     from: "groups",
-                    localField: "_id",
-                    foreignField: "groupId",
+                    localField: "groupIdObj",
+                    foreignField: "_id",
                     as: "group"
                 }
             },
             {
+                $unwind: "$group"
+            },
+            {
                 $lookup: {
-                    from: "clients",
-                    localField: "_id",
-                    foreignField: "clientId",
+                    from: "client",
+                    localField: "clientIdObj",
+                    foreignField: "_id",
                     as: "client"
                 }
-            }
+            },
+            {
+                $unwind: "$client"
+            },
+            { $project: { branchIdObj: 0, groupIdObj: 0, clientIdObj: 0 } }
         ])
         .toArray();
         

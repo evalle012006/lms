@@ -43,8 +43,6 @@ const LoanApplicationPage = () => {
     const [loan, setLoan] = useState();
     const currentDate = useSelector(state => state.systemSettings.currentDate);
 
-    const [showApproveReject, setShowApproveReject] = useState(true);
-
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
     const [historyList, setHistoryList] = useState([]);
@@ -600,6 +598,11 @@ const LoanApplicationPage = () => {
         }
     }
 
+    const handleShowNDSAction = (row) => {
+        setLoan(row.original);
+        window.open(`/transactions/loan-applications/${row.original._id}`, '_blank');
+    }
+
     const [rowActionButtons, setRowActionButtons] = useState([]);
 
     const handleDelete = () => {
@@ -677,7 +680,7 @@ const LoanApplicationPage = () => {
                     accessor: 'principalLoanStr'
                 },
                 {
-                    Header: "Active Loan",
+                    Header: "Target Loan Collection",
                     accessor: 'activeLoanStr'
                 },
                 {
@@ -725,14 +728,15 @@ const LoanApplicationPage = () => {
 
             let rowActionBtn = [];
 
-            if (currentUser.role.rep <= 3) {
+            if (currentUser.role.rep === 3) {
                 rowActionBtn = [
                     { label: 'Approve', action: handleApprove},
                     { label: 'Reject', action: handleReject},
                     { label: 'Edit Loan', action: handleEditAction},
-                    { label: 'Delete Loan', action: handleDeleteAction}
+                    { label: 'Delete Loan', action: handleDeleteAction},
+                    { label: 'NDS', action: handleShowNDSAction}
                 ];
-            } else {
+            } else if (currentUser.role.rep === 4) {
                 rowActionBtn = [
                     { label: 'Edit Loan', action: handleEditAction},
                     { label: 'Delete Loan', action: handleDeleteAction}
@@ -762,7 +766,7 @@ const LoanApplicationPage = () => {
     }, [data]);
 
     return (
-        <Layout actionButtons={(currentUser.role.rep > 2 && !isWeekend && !isHoliday) && actionButtons}>
+        <Layout actionButtons={(currentUser.role.rep > 2 && !isHoliday) && actionButtons}>
             <div className="pb-4">
                 {loading ?
                     (
@@ -823,7 +827,7 @@ const LoanApplicationPage = () => {
                                                 placeholder={'Group Filter'}/>
                                         </div>
                                     </div>
-                                    <TableComponent columns={columns} data={data} pageSize={50} hasActionButtons={(currentUser.role.rep > 2 && !isWeekend && !isHoliday) ? true : false} rowActionButtons={!isWeekend && !isHoliday && rowActionButtons} showFilters={false} multiSelect={currentUser.role.rep === 3 ? true : false} multiSelectActionFn={handleMultiSelect} />
+                                    <TableComponent columns={columns} data={data} pageSize={50} hasActionButtons={(currentUser.role.rep > 2  && !isHoliday) ? true : false} rowActionButtons={!isHoliday && rowActionButtons} showFilters={false} multiSelect={currentUser.role.rep === 3 ? true : false} multiSelectActionFn={handleMultiSelect} />
                                     <footer className="pl-64 text-md font-bold text-center fixed inset-x-0 bottom-0 text-red-400">
                                         <div className="flex flex-row justify-center bg-white px-4 py-2 shadow-inner border-t-4 border-zinc-200">
                                             <div className="flex flex-row">

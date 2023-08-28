@@ -84,7 +84,7 @@ const TransactionRemarksPage = () => {
         setSelectedFilterRemarks(selected.value);
     }
 
-    const [columns, setColumns] = useState([
+    const defaultColumns = [
         {
             Header: "Group",
             accessor: 'groupName'
@@ -105,7 +105,9 @@ const TransactionRemarksPage = () => {
             Header: "Loan Balance",
             accessor: 'loanBalanceStr'
         }
-    ]);
+    ];
+
+    const [columns, setColumns] = useState([]);
 
     const setApplyFilter = async () => {
         if (selectedFilterRemarks) {
@@ -137,11 +139,10 @@ const TransactionRemarksPage = () => {
 
         responseData.map(data => {
             let amountRelease = data.amountRelease;
-            let loanBalance = data.loanBalance;
+            let loanBalance = data.loan[0].loanBalance;
 
             if (data.status === 'completed' || data.status === 'closed' || data.status === 'tomorrow') {
                 amountRelease = data?.history?.amountRelease;
-                // loanBalance = data?.history?.loanBalance;
             }
 
             let temp = {
@@ -153,7 +154,59 @@ const TransactionRemarksPage = () => {
                 loanBalanceStr: formatPricePhp(loanBalance)
             };
 
-            if (data.remarks && data?.remarks?.value == 'offset-unclaimed') {
+            if (data.remarks && (data?.remarks?.value == 'advance payment' || data?.remarks?.value == 'excused advance payment') ) {
+                temp = {
+                    ...temp,
+                    excess: data.excess,
+                    excessStr: formatPricePhp(data.excess),
+                    advanceDays: data.advanceDays
+                }
+            } else if (data.remarks && (data?.remarks?.value == 'reloaner-cont') || data?.remarks?.value == 'reloaner') {
+                temp = {
+                    ...temp,
+                    mcbu: data.mcbu,
+                    mcbuStr: formatPricePhp(data.mcbu)
+                }
+            } else if (data.remarks && data?.remarks?.value == 'reloaner-wd') {
+                temp = {
+                    ...temp,
+                    mcbuWithdrawal: data.mcbuWithdrawal,
+                    mcbuWithdrawalStr: formatPricePhp(data.mcbuWithdrawal)
+                }
+            } else if (data.remarks && (data?.remarks?.value == 'offset-good' || data?.remarks?.value == 'offset-delinquent')) {
+                temp = {
+                    ...temp,
+                    mcbuReturnAmt: data.mcbuReturnAmt,
+                    mcbuReturnAmtStr: formatPricePhp(data.mcbuReturnAmt)
+                }
+            } else if (data.remarks && (data?.remarks?.value == 'past due' || data?.remarks?.value == 'past due collection')) {
+                const netLoanBalance = (data.loan.loanBalance - data.mcbu);
+                const pastDueCollection = (data.paymentCollection - data.activeLoan);
+                temp = {
+                    ...temp,
+                    mcbu: data.loan.mcbu,
+                    mcbuStr: formatPricePhp(data.loan.mcbu),
+                    pastDue: data.pastDue,
+                    pastDueStr: formatPricePhp(data.pastDue),
+                    netLoanBalance: netLoanBalance,
+                    netLoanBalanceStr: formatPricePhp(netLoanBalance),
+                    pastDueCollection: pastDueCollection,
+                    pastDueCollectionStr: formatPricePhp(pastDueCollection),
+                    noPastDue: data.loan.noPastDue,
+                    totalMispayment: data.loan.mispayment
+                }
+            } else if (data.remarks && (data?.remarks?.value == 'delinquent' || data?.remarks?.value == 'delinquent-offset' 
+                            || data?.remarks?.value == 'excused-calamity' || data?.remarks?.value == 'excused-hospital' || data?.remarks?.value == 'excused-death')) {
+                const netLoanBalance = (data.loan.loanBalance - data.mcbu);
+                temp = {
+                    ...temp,
+                    mcbu: data.loan.mcbu,
+                    mcbuStr: formatPricePhp(data.loan.mcbu),
+                    totalMispayment: data.loan.mispayment,
+                    netLoanBalance: netLoanBalance,
+                    netLoanBalanceStr: formatPricePhp(netLoanBalance)
+                }
+            } else if (data.remarks && data?.remarks?.value == 'offset-unclaimed') {
                 const unclaimedMcbu = data?.mcbuReturnAmt - data?.history?.loanBalance;
                 temp = {
                     ...temp,
@@ -326,14 +379,47 @@ const TransactionRemarksPage = () => {
     }, [selectedFilterMonth, selectedFilterYear]);
 
     useEffect(() => {
-        let remarksList = occurence === 'daily' ? LOR_DAILY_REMARKS : LOR_WEEKLY_REMARKS;
+        let remarksList = [{ label: 'Pending', value: 'pending' }];
+        remarksList.push.apply(remarksList, occurence === 'daily' ? LOR_DAILY_REMARKS : LOR_WEEKLY_REMARKS);
         remarksList = remarksList.filter(rm => rm.label !== 'Remarks');
         setRemarksList(remarksList);
     }, [occurence]);
 
     useEffect(() => {
-        const updateCols = [...columns];
+        const updateCols = [...defaultColumns];
         switch(selectedFilterRemarks) {
+            case 'advance payment': case 'excused advance payment':
+                updateCols.push.apply(updateCols, [
+                    {
+                        Header: "Advanced Payment",
+                        accessor: 'excessStr'
+                    }
+                ]);
+                break;
+            case 'reloaner-cont': case 'reloaner':
+                updateCols.push.apply(updateCols, [
+                    {
+                        Header: "MCBU",
+                        accessor: 'mcbuStr'
+                    }
+                ]);
+                break;
+            case 'reloaner-wd':
+                updateCols.push.apply(updateCols, [
+                    {
+                        Header: "MCBU Withdraw Amount",
+                        accessor: 'mcbuWithdrawalStr'
+                    }
+                ]);
+                break;
+            case 'offset-good': case 'offset-delinquent':
+                updateCols.push.apply(updateCols, [
+                    {
+                        Header: "MCBU Return Amount",
+                        accessor: 'mcbuReturnAmtStr'
+                    }
+                ]);
+                break;
             case 'offset-unclaimed':
                 updateCols.push.apply(updateCols, [
                     {
@@ -343,6 +429,62 @@ const TransactionRemarksPage = () => {
                     {
                         Header: "Unclaimed Amount",
                         accessor: 'unclaimedMcbuStr'
+                    }
+                ]);
+                break;
+            case 'past due':
+                updateCols.push.apply(updateCols, [
+                    {
+                        Header: "MCBU",
+                        accessor: 'mcbuStr'
+                    }, 
+                    {
+                        Header: "Past Due",
+                        accessor: 'pastDueStr'
+                    },
+                    {
+                        Header: "# of Mispay",
+                        accessor: 'totalMispayment'
+                    },
+                    {
+                        Header: "Net Loan Balance",
+                        accessor: 'netLoanBalanceStr'
+                    }
+                ]);
+                break;
+            case 'past due collection':
+                updateCols.push.apply(updateCols, [
+                    {
+                        Header: "MCBU",
+                        accessor: 'mcbuStr'
+                    }, 
+                    {
+                        Header: "Past Due",
+                        accessor: 'pastDueStr'
+                    },
+                    {
+                        Header: "Past Due Collection",
+                        accessor: 'pastDueCollectionStr'
+                    },
+                    {
+                        Header: "Net Loan Balance",
+                        accessor: 'netLoanBalanceStr'
+                    }
+                ]);
+                break;
+            case 'delinquent': case 'delinquent-offset': case 'excused-calamity': case 'excused-hospital': case 'excused-death':
+                updateCols.push.apply(updateCols, [
+                    {
+                        Header: "MCBU",
+                        accessor: 'mcbuStr'
+                    },
+                    {
+                        Header: "# of Mispayment",
+                        accessor: 'totalMispayment'
+                    },
+                    {
+                        Header: "Net Loan Balance",
+                        accessor: 'netLoanBalanceStr'
                     }
                 ]);
                 break;

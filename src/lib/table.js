@@ -23,7 +23,8 @@ import {
   LockOpenIcon,
   XCircleIcon,
   ArrowPathIcon,
-  KeyIcon
+  KeyIcon,
+  DocumentIcon
 } from '@heroicons/react/24/solid';
 import CheckBox from "./ui/checkbox";
 import { useEffect } from "react";
@@ -369,6 +370,11 @@ const ActionButton = ({ row, rowActionButtons }) => {
                       {(item.label === 'Delete Loan' && status !== 'active') && (
                         <div className="px-1" onClick={() => item.action(row)} title="Delete">
                           <TrashIcon className="cursor-pointer h-5" />
+                        </div>
+                      )}
+                      {(item.label === 'NDS' && status !== 'active') && (
+                        <div className="px-1" onClick={() => item.action(row)} title="Show NDS">
+                          <DocumentIcon className="cursor-pointer h-5" />
                         </div>
                       )}
                       {(item.label === 'Edit') && (
