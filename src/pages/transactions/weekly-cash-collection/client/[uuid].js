@@ -1056,8 +1056,6 @@ const CashCollectionDetailsPage = () => {
                     dataArr = dataArr.filter(cc => cc.mcbuWithdrawFlag || cc.offsetTransFlag);
                 }
 
-                // console.log(dataArr)
-
                 if (save) {
                     let cashCollection;
                     if (editMode) {
@@ -1078,15 +1076,17 @@ const CashCollectionDetailsPage = () => {
             
                     const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save', cashCollection);
                     if (response.success) {
-                        setLoading(false);
-                        toast.success('Payment collection successfully submitted.');
-            
                         setTimeout(() => {
-                            // setLoading(true);
-                            // getCashCollections();
-                            setAllowOffsetTransaction(false);
-                            window.location.reload();
-                        }, 800);
+                            setLoading(false);
+                            toast.success('Payment collection successfully submitted. Reloading page please wait.');
+                
+                            setTimeout(() => {
+                                setLoading(true);
+                                getCashCollections();
+                                setAllowOffsetTransaction(false);
+                                // window.location.reload();
+                            }, 1000);
+                        }, 500);
                     }
                 } else {
                     toast.warning('No active data to be saved.');

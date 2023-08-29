@@ -21,6 +21,7 @@ async function updateLoan(req, res) {
     delete loan.loanReleaseStr;
     delete loan.allowApproved;
     delete loan.currentDate;
+    delete loan.groupStatus;
 
     let groupData = await db.collection('groups').find({ _id: new ObjectId(loan.groupId) }).toArray();
     if (groupData.length > 0) {

@@ -24,7 +24,8 @@ async function processData(req, res) {
         delete loan.loanReleaseStr;
         delete loan.allowApproved;
         delete loan.currentDate;
-        
+        delete loan.groupStatus;
+
         let groupData = await checkGroupStatus(loan.groupId);
         if (groupData.length > 0) {
             groupData = groupData[0];

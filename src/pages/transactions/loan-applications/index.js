@@ -766,7 +766,7 @@ const LoanApplicationPage = () => {
     }, [data]);
 
     return (
-        <Layout actionButtons={(currentUser.role.rep > 2 && !isHoliday) && actionButtons}>
+        <Layout actionButtons={(currentUser.role.rep > 2 && !isWeekend && !isHoliday) && actionButtons}>
             <div className="pb-4">
                 {loading ?
                     (
@@ -827,7 +827,7 @@ const LoanApplicationPage = () => {
                                                 placeholder={'Group Filter'}/>
                                         </div>
                                     </div>
-                                    <TableComponent columns={columns} data={data} pageSize={50} hasActionButtons={(currentUser.role.rep > 2  && !isHoliday) ? true : false} rowActionButtons={!isHoliday && rowActionButtons} showFilters={false} multiSelect={currentUser.role.rep === 3 ? true : false} multiSelectActionFn={handleMultiSelect} />
+                                    <TableComponent columns={columns} data={data} pageSize={50} hasActionButtons={(currentUser.role.rep > 2 && !isWeekend && !isHoliday) ? true : false} rowActionButtons={!isWeekend && !isHoliday && rowActionButtons} showFilters={false} multiSelect={currentUser.role.rep === 3 ? true : false} multiSelectActionFn={handleMultiSelect} />
                                     <footer className="pl-64 text-md font-bold text-center fixed inset-x-0 bottom-0 text-red-400">
                                         <div className="flex flex-row justify-center bg-white px-4 py-2 shadow-inner border-t-4 border-zinc-200">
                                             <div className="flex flex-row">
