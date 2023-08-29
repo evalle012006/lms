@@ -12,8 +12,6 @@ export default apiHandler({
 
 async function processLOSTotals(req, res) {
     const { db } = await connectToDatabase();
-    const currentDateStr = moment(getCurrentDate()).format('YYYY-MM-DD');
-
     const data = req.body;
 
     switch (data.losType) {
@@ -21,7 +19,7 @@ async function processLOSTotals(req, res) {
             await saveUpdateYearEnd(data);
             break;
         case 'daily':
-            const filter = data.data.day === currentDateStr ? false : true;
+            const filter = data.data.day === data.currentDate ? false : true;
             const cashCollections = await db.collection('cashCollections').find({ loId: data.userId, dateAdded: data.data.day, occurence: data.occurence }).toArray();
 
             if (cashCollections.length === 0) {
@@ -45,7 +43,7 @@ async function processLOSTotals(req, res) {
 
 async function saveUpdateYearEnd(total) {
     const { db } = await connectToDatabase();
-    const currentDateStr = moment(getCurrentDate()).format('YYYY-MM-DD');
+    const currentDateStr = total.currentDate;
     let resp;
 
     let losTotal = await db.collection('losTotals').find({ userId: total.userId, month: 12, year: total.year, losType: 'year-end', occurence: total.occurence }).toArray();
@@ -61,8 +59,10 @@ async function saveUpdateYearEnd(total) {
             } }
         );
     } else {
+        const finalData = {...total};
+        delete finalData.currentDate;
         resp = await db.collection('losTotals').insertOne(
-            { ...total, dateAdded: currentDateStr }
+            { ...finalData, dateAdded: currentDateStr }
         );
     }
 
@@ -72,7 +72,7 @@ async function saveUpdateYearEnd(total) {
 
 async function saveUpdateDaily(total, filter) {
     const { db } = await connectToDatabase();
-    const currentDateStr = moment(getCurrentDate()).format('YYYY-MM-DD');
+    const currentDateStr = total.currentDate;
     let resp;
 
     let losTotal = await db.collection('losTotals').find({ userId: total.userId, dateAdded: total.data.day, losType: 'daily', occurence: total.occurence }).toArray();
@@ -91,9 +91,11 @@ async function saveUpdateDaily(total, filter) {
                 } }
             );
         } else {
+            const finalData = {...total};
+            delete finalData.currentDate;
             await db.collection('losTotals').insertOne(
                 { 
-                    ...total, 
+                    ...finalData, 
                     dateAdded: total.data.day, 
                     insertedBy: 'admin',
                     insertedDate: currentDateStr
@@ -112,8 +114,10 @@ async function saveUpdateDaily(total, filter) {
                 } }
             );
         } else {
+            const finalData = {...total};
+            delete finalData.currentDate;
             await db.collection('losTotals').insertOne(
-                { ...total, dateAdded: currentDateStr }
+                { ...finalData, dateAdded: currentDateStr }
             );
         }
     }
@@ -123,7 +127,7 @@ async function saveUpdateDaily(total, filter) {
 
 async function saveUpdateCommulative(total) {
     const { db } = await connectToDatabase();
-    const currentDateStr = moment(getCurrentDate()).format('YYYY-MM-DD');
+    const currentDateStr = total.currentDate;
     let resp;
 
     let losTotal = await db.collection('losTotals').find({ userId: total.userId, month: total.month, year: total.year, losType: 'commulative', occurence: total.occurence }).toArray();
@@ -139,8 +143,10 @@ async function saveUpdateCommulative(total) {
             } }
         );
     } else {
+        const finalData = {...total};
+        delete finalData.currentDate;
         await db.collection('losTotals').insertOne(
-            { ...total, dateAdded: currentDateStr }
+            { ...finalData, dateAdded: currentDateStr }
         );
     }
 

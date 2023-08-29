@@ -23,7 +23,8 @@ import {
   LockOpenIcon,
   XCircleIcon,
   ArrowPathIcon,
-  KeyIcon
+  KeyIcon,
+  DocumentIcon
 } from '@heroicons/react/24/solid';
 import CheckBox from "./ui/checkbox";
 import { useEffect } from "react";
@@ -371,6 +372,11 @@ const ActionButton = ({ row, rowActionButtons }) => {
                           <TrashIcon className="cursor-pointer h-5" />
                         </div>
                       )}
+                      {(item.label === 'NDS' && status !== 'active') && (
+                        <div className="px-1" onClick={() => item.action(row)} title="Show NDS">
+                          <DocumentIcon className="cursor-pointer h-5" />
+                        </div>
+                      )}
                       {(item.label === 'Edit') && (
                         <div className="px-1" onClick={() => item.action(row)} title="Edit">
                           <PencilIcon className="cursor-pointer h-5" />
@@ -440,7 +446,7 @@ const TableComponent = ({
   border = false,
   multiSelect = false,
   multiSelectActionFn = null,
-  pageSize = 20
+  pageSize = 50
 }) => {
   // Use the state and functions returned from useTable to build your UI
   const {

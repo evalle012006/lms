@@ -11,8 +11,10 @@ import holidays from './holidayReducer';
 import transactionsSettings from './transactionsReducer';
 import systemSettings from './systemReducer';
 import global from './globalReducer';
+import transfer from './transferReducer';
 
 const rootReducer = combineReducers({
+    transfer: transfer,
     los: los,
     cashCollection: cashCollection,
     loan: loan,

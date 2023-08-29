@@ -1,26 +1,24 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
-import { getCurrentDate } from '@/lib/utils';
-import moment from 'moment';
 
 let response = {};
 let statusCode = 200;
 
 
 export default apiHandler({
-    post: processLOSummary
+    post: processLOSummary,
+    get: getLOSummary
 });
 
 async function processLOSummary(req, res) {
     const { db } = await connectToDatabase();
-    const { loId, mode } = req.body;
-    const currentDate = getCurrentDate();
+    const { loId, mode, currentDate } = req.body;
 
     if (loId) {
         const result = await db.collection('cashCollections').updateMany(
             {
                 loId: loId,
-                dateAdded: moment(currentDate).format('YYYY-MM-DD')
+                dateAdded: currentDate
             }, {
                 $set: { groupStatus: mode === 'close' ? 'closed' : 'pending' }
             });
@@ -33,6 +31,26 @@ async function processLOSummary(req, res) {
     } else {
         response = { error: true, message: "Loan Office Id not found." };
     }
+
+    res.status(statusCode)
+        .setHeader('Content-Type', 'application/json')
+        .end(JSON.stringify(response));
+}
+
+async function getLOSummary(req, res) {
+    const { db } = await connectToDatabase();
+    const { groupIds, currentDate } = req.query;
+    const ids = groupIds.split(',');
+
+    const groups = await db.collection('cashCollections')
+                            .find({ $expr: {
+                                $and: [
+                                    { $in: ['$groupId', ids] },
+                                    { $eq: ['$dateAdded', currentDate] }
+                                ]
+                            } }).toArray();
+
+    response = { success: true, data: groups }
 
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')

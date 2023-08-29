@@ -55,10 +55,14 @@ const CashCollectionDetailsPage = () => {
         if (cashCollectionList.length > 0 || loCollectionList.length > 0) {
             if (currentUser.role.rep === 1) {
                 const pending = cashCollectionList.filter(cc => cc.status === 'pending');
+                const draft = cashCollectionList.filter(cc => cc.draft);
 
                 if (pending.length > 0) {
                     setLoading(false);
                     toast.error("One or more group/s transaction is not yet closed.");
+                } else if (draft.length > 0) {
+                    setLoading(false);
+                    toast.error("One or more group/s transaction has a draft data.");
                 } else {
                     if (loSummary && Object.keys(loSummary).length > 0) {
                         const resp = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collection-summary/save-update-totals', loSummary);
@@ -79,7 +83,13 @@ const CashCollectionDetailsPage = () => {
     }
 
     const getListBranch = async () => {
-        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'branches/list');
+        let url = process.env.NEXT_PUBLIC_API_URL + 'branches/list';
+
+        if (currentUser.role.rep === 3 || currentUser.role.rep === 4) {
+            url = url + '?' + new URLSearchParams({ branchCode: currentUser.designatedBranch });
+        }
+
+        const response = await fetchWrapper.get(url);
         if (response.success) {
             let branches = [];
             response.branches && response.branches.map(branch => {
@@ -90,9 +100,7 @@ const CashCollectionDetailsPage = () => {
                 );
             });
 
-            if (currentUser.root !== true && (currentUser.role.rep === 3 || currentUser.role.rep === 4)) {
-                branches = [branches.find(b => b.code === currentUser.designatedBranch)];
-            } else if (selectedBranchSubject.value) {
+            if (selectedBranchSubject.value) {
                 branches = [branches.find(b => b._id === selectedBranchSubject.value)];
             }
             

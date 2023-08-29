@@ -1,6 +1,5 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
-import { getCurrentDate } from '@/lib/utils';
 import moment from 'moment';
 
 export default apiHandler({
@@ -10,8 +9,7 @@ export default apiHandler({
 async function getAllLoansPerGroup(req, res) {
     const { db } = await connectToDatabase();
 
-    const currentDate = moment(getCurrentDate()).format('YYYY-MM-DD');
-    const { date, mode, branchCode, loId, dayName } = req.query;
+    const { date, mode, branchCode, loId, dayName, currentDate } = req.query;
     let statusCode = 200;
     let response = {};
     let cashCollection;
@@ -29,24 +27,6 @@ async function getAllLoansPerGroup(req, res) {
                             "loIdStr": { $toString: "$_id" }
                         }
                     },
-                    // {
-                    //     $lookup: {
-                    //         from: "groupCashCollections",
-                    //         localField: "loIdStr",
-                    //         foreignField: "loId",
-                    //         pipeline: [
-                    //             { $match: { dateAdded: date } },
-                    //             { 
-                    //                 $group: {
-                    //                     _id: '$loId',
-                    //                     groupSummaryIds: { $addToSet: { _id: '$_id', groupId: '$groupId', status: '$status' } },
-                    //                     statusArr: { $addToSet: '$status' },
-                    //                 }
-                    //             }
-                    //         ],
-                    //         as: 'groupCashCollections'
-                    //     }
-                    // },
                     {
                         $lookup: {
                             from: "groups",
@@ -98,10 +78,268 @@ async function getAllLoansPerGroup(req, res) {
                     {
                         $lookup: {
                             from: "cashCollections",
+                            let: { groupName: '$name' },
                             localField: "loIdStr",
                             foreignField: "loId",
                             pipeline: [
-                                { $match: { dateAdded: date } },
+                                { $match: { transfer: true, dateAdded: date, occurence: 'daily' } },
+                                {
+                                    $lookup: {
+                                        from: "cashCollections",
+                                        localField: "oldLoanId",
+                                        foreignField: "loanId",
+                                        pipeline: [
+                                            {
+                                                $group: {
+                                                    _id: '$loId',
+                                                    mcbuTarget: { $sum: {
+                                                        $cond: {
+                                                            if: { $eq: ['$occurence', 'weekly'] },
+                                                            then: '$mcbuTarget',
+                                                            else: 0
+                                                        }
+                                                    } },
+                                                    mcbuCol: { $sum: '$mcbuCol' },
+                                                    targetCollection: { $sum: '$activeLoan' },
+                                                    excess: { $sum: '$excess' },
+                                                    actualCollection: { $sum: '$paymentCollection' },
+                                                    mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
+                                                    mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
+                                                    mcbuNoReturn: { $sum: {
+                                                        $cond: {
+                                                            if: { $gt: ['$mcbuReturnAmt', 0] },
+                                                            then: 1,
+                                                            else: 0
+                                                        }
+                                                    } },
+                                                    mcbuInterest: { $sum: '$mcbuInterest' },
+                                                    mispay: { $sum: {
+                                                        $cond: {
+                                                            if: { $eq: ['$mispayment', true] },
+                                                            then: 1,
+                                                            else: 0
+                                                        }
+                                                    } },
+                                                    pastDue: { $sum: '$pastDue' },
+                                                    noPastDue: { $sum: {
+                                                        $cond: {
+                                                            if: { $gt: ['$pastDue', 0] },
+                                                            then: 1,
+                                                            else: 0
+                                                        }
+                                                    } }
+                                                }
+                                            }
+                                        ],
+                                        as: "data"
+                                    }
+                                }
+                            ],
+                            as: "transferDailyReceivedDetails"
+                        }
+                    },
+                    {
+                        $lookup: {
+                            from: "cashCollections",
+                            let: { groupName: '$name' },
+                            localField: "loIdStr",
+                            foreignField: "loId",
+                            pipeline: [
+                                { $match: { transferred: true, dateAdded: date, occurence: 'daily' } },
+                                {
+                                    $lookup: {
+                                        from: "cashCollections",
+                                        localField: "loanId",
+                                        foreignField: "loanId",
+                                        pipeline: [
+                                            {
+                                                $group: {
+                                                    _id: '$loId',
+                                                    mcbuTarget: { $sum: {
+                                                        $cond: {
+                                                            if: { $eq: ['$occurence', 'weekly'] },
+                                                            then: '$mcbuTarget',
+                                                            else: 0
+                                                        }
+                                                    } },
+                                                    mcbuCol: { $sum: '$mcbuCol' },
+                                                    targetCollection: { $sum: '$activeLoan' },
+                                                    excess: { $sum: '$excess' },
+                                                    actualCollection: { $sum: '$paymentCollection' },
+                                                    mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
+                                                    mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
+                                                    mcbuNoReturn: { $sum: {
+                                                        $cond: {
+                                                            if: { $gt: ['$mcbuReturnAmt', 0] },
+                                                            then: 1,
+                                                            else: 0
+                                                        }
+                                                    } },
+                                                    mcbuInterest: { $sum: '$mcbuInterest' },
+                                                    mispay: { $sum: {
+                                                        $cond: {
+                                                            if: { $eq: ['$mispayment', true] },
+                                                            then: 1,
+                                                            else: 0
+                                                        }
+                                                    } },
+                                                    pastDue: { $sum: '$pastDue' },
+                                                    noPastDue: { $sum: {
+                                                        $cond: {
+                                                            if: { $gt: ['$pastDue', 0] },
+                                                            then: 1,
+                                                            else: 0
+                                                        }
+                                                    } }
+                                                }
+                                            }
+                                        ],
+                                        as: "data"
+                                    }
+                                }
+                            ],
+                            as: "transferDailyGiverDetails"
+                        }
+                    },
+                    {
+                        $lookup: {
+                            from: "cashCollections",
+                            let: { groupName: '$name' },
+                            localField: "loIdStr",
+                            foreignField: "loId",
+                            pipeline: [
+                                { $match: { transfer: true, dateAdded: date, occurence: 'weekly' } },
+                                {
+                                    $lookup: {
+                                        from: "cashCollections",
+                                        localField: "oldLoanId",
+                                        foreignField: "loanId",
+                                        pipeline: [
+                                            {
+                                                $group: {
+                                                    _id: '$loId',
+                                                    mcbuTarget: { $sum: {
+                                                        $cond: {
+                                                            if: { $eq: ['$occurence', 'weekly'] },
+                                                            then: '$mcbuTarget',
+                                                            else: 0
+                                                        }
+                                                    } },
+                                                    mcbuCol: { $sum: '$mcbuCol' },
+                                                    targetCollection: { $sum: '$activeLoan' },
+                                                    excess: { $sum: '$excess' },
+                                                    actualCollection: { $sum: '$paymentCollection' },
+                                                    mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
+                                                    mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
+                                                    mcbuNoReturn: { $sum: {
+                                                        $cond: {
+                                                            if: { $gt: ['$mcbuReturnAmt', 0] },
+                                                            then: 1,
+                                                            else: 0
+                                                        }
+                                                    } },
+                                                    mcbuInterest: { $sum: '$mcbuInterest' },
+                                                    mispay: { $sum: {
+                                                        $cond: {
+                                                            if: { $eq: ['$mispayment', true] },
+                                                            then: 1,
+                                                            else: 0
+                                                        }
+                                                    } },
+                                                    pastDue: { $sum: '$pastDue' },
+                                                    noPastDue: { $sum: {
+                                                        $cond: {
+                                                            if: { $gt: ['$pastDue', 0] },
+                                                            then: 1,
+                                                            else: 0
+                                                        }
+                                                    } }
+                                                }
+                                            }
+                                        ],
+                                        as: "data"
+                                    }
+                                }
+                            ],
+                            as: "transferWeeklyReceivedDetails"
+                        }
+                    },
+                    {
+                        $lookup: {
+                            from: "cashCollections",
+                            let: { groupName: '$name' },
+                            localField: "loIdStr",
+                            foreignField: "loId",
+                            pipeline: [
+                                { $match: { transferred: true, dateAdded: date, occurence: 'weekly' } },
+                                {
+                                    $lookup: {
+                                        from: "cashCollections",
+                                        localField: "loanId",
+                                        foreignField: "loanId",
+                                        pipeline: [
+                                            {
+                                                $group: {
+                                                    _id: '$loId',
+                                                    mcbuTarget: { $sum: {
+                                                        $cond: {
+                                                            if: { $eq: ['$occurence', 'weekly'] },
+                                                            then: '$mcbuTarget',
+                                                            else: 0
+                                                        }
+                                                    } },
+                                                    mcbuCol: { $sum: '$mcbuCol' },
+                                                    targetCollection: { $sum: '$activeLoan' },
+                                                    excess: { $sum: '$excess' },
+                                                    actualCollection: { $sum: '$paymentCollection' },
+                                                    mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
+                                                    mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
+                                                    mcbuNoReturn: { $sum: {
+                                                        $cond: {
+                                                            if: { $gt: ['$mcbuReturnAmt', 0] },
+                                                            then: 1,
+                                                            else: 0
+                                                        }
+                                                    } },
+                                                    mcbuInterest: { $sum: '$mcbuInterest' },
+                                                    mispay: { $sum: {
+                                                        $cond: {
+                                                            if: { $eq: ['$mispayment', true] },
+                                                            then: 1,
+                                                            else: 0
+                                                        }
+                                                    } },
+                                                    pastDue: { $sum: '$pastDue' },
+                                                    noPastDue: { $sum: {
+                                                        $cond: {
+                                                            if: { $gt: ['$pastDue', 0] },
+                                                            then: 1,
+                                                            else: 0
+                                                        }
+                                                    } }
+                                                }
+                                            }
+                                        ],
+                                        as: "data"
+                                    }
+                                }
+                            ],
+                            as: "transferWeeklyGiverDetails"
+                        }
+                    },
+                    {
+                        $lookup: {
+                            from: "cashCollections",
+                            localField: "loIdStr",
+                            foreignField: "loId",
+                            pipeline: [
+                                { $match: { $expr: { $and: [
+                                    { $eq: ['$dateAdded', date] },
+                                    { $or: [
+                                        { $ifNull: ['$draft', 'Unspecified'] },
+                                        { $eq: ['$draft', false] }
+                                    ] }
+                                ] } } },
                                 { $group: { 
                                         _id: '$loId',
                                         mispayment: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },
@@ -111,7 +349,7 @@ async function getAllLoansPerGroup(req, res) {
                                                     {$eq: ['$remarks.value', 'delinquent']},
                                                     {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
                                                 ] },
-                                                then: '$activeLoan',
+                                                then: '$prevData.activeLoan',
                                                 else: 0
                                             }
                                         } },
@@ -126,6 +364,23 @@ async function getAllLoansPerGroup(req, res) {
                                             }
                                         } },
                                         mcbu: { $sum: '$mcbu' },
+                                        mcbuTarget: { $sum: {
+                                            $cond: {
+                                                if: { $and: [{$eq: ['$occurence', 'weekly']}, {$eq: ['$groupDay', currentDay]}] },
+                                                then: {
+                                                    $cond: {
+                                                        if: { $or: [
+                                                            {$eq: ['$remarks.value', 'delinquent']},
+                                                            {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
+                                                            {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                                                        ] },
+                                                        then: 0,
+                                                        else: 50
+                                                    }
+                                                },
+                                                else: 0
+                                            }
+                                        } },
                                         mcbuCol: { $sum: '$mcbuCol' },
                                         mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
                                         mcbuReturnNo: { $sum: {
@@ -202,13 +457,23 @@ async function getAllLoansPerGroup(req, res) {
                             localField: "loIdStr",
                             foreignField: "loId",
                             pipeline: [
-                                { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
-                                { $match: {$expr:  {$and: [{$ne: ['$status', 'closed']}, {$ne: ['$status', 'reject']}]} } },
+                                { $match: {
+                                    $expr: {
+                                        $and: [
+                                            {$ne: ['$status', 'reject']},
+                                            { $or: [
+                                                { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}] },
+                                                { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$transferred', true]}, {$eq: ['$endDate', date]}] },
+                                                { $eq: ['$status', 'active'] }, { $eq: ['$status', 'pending'] }, { $eq: ['$status', 'completed'] }
+                                            ] }
+                                        ]
+                                    } } 
+                                },
                                 { $group: { 
                                         _id: '$loId',
                                         activeClients: { $sum: {
                                             $cond: {
-                                                if: { $ne: ['$status', 'pending'] },
+                                                if: {$and: [{ $ne: ['$status', 'pending'] }, { $ne: ['$status', 'closed'] }]},
                                                 then: 1,
                                                 else: {
                                                     $cond: {
@@ -224,15 +489,9 @@ async function getAllLoansPerGroup(req, res) {
                                                 if: { $ne: ['$status', 'pending'] },
                                                 then: {
                                                     $cond: {
-                                                        if: {$and: [{$gt: ['$loanBalance', 0]}, {$gte: ['$currentDateObj', '$startDateObj']}]},
+                                                        if: {$eq: ['$status', 'active']},
                                                         then: 1,
-                                                        else: {
-                                                            $cond: {
-                                                                if: {$eq: ['$status', 'active']},
-                                                                then: 1,
-                                                                else: 0
-                                                            }
-                                                        }
+                                                        else: 0
                                                     }
                                                 }, 
                                                 else: 0
@@ -251,7 +510,21 @@ async function getAllLoansPerGroup(req, res) {
                             foreignField: "loId",
                             pipeline: [
                                 { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
-                                { $match: {$expr:  {$and: [{$ne: ['$status', 'reject']}, {$lte: ['$startDateObj', '$currentDateObj']}]} } },
+                                { $match: {$expr:  {
+                                    $and: [
+                                        {$or: [ 
+                                            {$eq: ['$status', 'active']}, 
+                                            {$eq: ['$status', 'completed']}, 
+                                            {$and: [
+                                                { $or: [
+                                                    { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}] },
+                                                    { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$transferred', true]}, {$eq: ['$endDate', date]}] }
+                                                ] }
+                                            ]}
+                                        ]}, 
+                                        {$lte: ['$startDateObj', '$currentDateObj']}
+                                    ]
+                                } } },
                                 { $group: { 
                                         _id: '$loId',
                                         mispayment: { $sum: { $cond:{
@@ -302,23 +575,6 @@ async function getAllLoansPerGroup(req, res) {
                                         excess: { $sum: 0 },
                                         total: { $sum: 0 },
                                         mcbu: { $sum: '$mcbu' },
-                                        mcbuTarget: { $sum: {
-                                            $cond: {
-                                                if: { $and: [{$eq: ['$occurence', 'weekly']}, {$eq: ['$groupDay', dayName]}] },
-                                                then: {
-                                                    $cond: {
-                                                        if: { $or: [
-                                                            {$eq: ['$remarks.value', 'delinquent']},
-                                                            {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
-                                                            {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
-                                                        ] },
-                                                        then: 0,
-                                                        else: 50
-                                                    }
-                                                },
-                                                else: 0
-                                            }
-                                        } },
                                         mcbuInterest: { $sum: '$mcbuInterest' }
                                     } 
                                 }
@@ -379,17 +635,6 @@ async function getAllLoansPerGroup(req, res) {
                             "groupIdStr": { $toString: "$_id" }
                         }
                     },
-                    // {
-                    //     $lookup: {
-                    //         from: "groupCashCollections",
-                    //         localField: "groupIdStr",
-                    //         foreignField: "groupId",
-                    //         pipeline: [
-                    //             { $match: { dateAdded: date } }
-                    //         ],
-                    //         as: 'groupCashCollections'
-                    //     }
-                    // },
                     {
                         $lookup: {
                             from: "cashCollections",
@@ -397,7 +642,139 @@ async function getAllLoansPerGroup(req, res) {
                             localField: "groupIdStr",
                             foreignField: "groupId",
                             pipeline: [
-                                { $match: { dateAdded: date} },
+                                { $match: { transfer: true, dateAdded: date } },
+                                {
+                                    $lookup: {
+                                        from: "cashCollections",
+                                        localField: "oldLoanId",
+                                        foreignField: "loanId",
+                                        pipeline: [
+                                            {
+                                                $group: {
+                                                    _id: '$groupId',
+                                                    mcbuTarget: { $sum: {
+                                                        $cond: {
+                                                            if: { $eq: ['$occurence', 'weekly'] },
+                                                            then: '$mcbuTarget',
+                                                            else: 0
+                                                        }
+                                                    } },
+                                                    mcbuCol: { $sum: '$mcbuCol' },
+                                                    targetCollection: { $sum: '$activeLoan' },
+                                                    excess: { $sum: '$excess' },
+                                                    actualCollection: { $sum: '$paymentCollection' },
+                                                    mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
+                                                    mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
+                                                    mcbuNoReturn: { $sum: {
+                                                        $cond: {
+                                                            if: { $gt: ['$mcbuReturnAmt', 0] },
+                                                            then: 1,
+                                                            else: 0
+                                                        }
+                                                    } },
+                                                    mcbuInterest: { $sum: '$mcbuInterest' },
+                                                    mispay: { $sum: {
+                                                        $cond: {
+                                                            if: { $eq: ['$mispayment', true] },
+                                                            then: 1,
+                                                            else: 0
+                                                        }
+                                                    } },
+                                                    pastDue: { $sum: '$pastDue' },
+                                                    noPastDue: { $sum: {
+                                                        $cond: {
+                                                            if: { $gt: ['$pastDue', 0] },
+                                                            then: 1,
+                                                            else: 0
+                                                        }
+                                                    } }
+                                                }
+                                            }
+                                        ],
+                                        as: "data"
+                                    }
+                                }
+                            ],
+                            as: "transferReceivedDetails"
+                        }
+                    },
+                    {
+                        $lookup: {
+                            from: "cashCollections",
+                            let: { groupName: '$name' },
+                            localField: "groupIdStr",
+                            foreignField: "groupId",
+                            pipeline: [
+                                { $match: { transferred: true, dateAdded: date } },
+                                {
+                                    $lookup: {
+                                        from: "cashCollections",
+                                        localField: "loanId",
+                                        foreignField: "loanId",
+                                        pipeline: [
+                                            {
+                                                $group: {
+                                                    _id: '$groupId',
+                                                    mcbuTarget: { $sum: {
+                                                        $cond: {
+                                                            if: { $eq: ['$occurence', 'weekly'] },
+                                                            then: '$mcbuTarget',
+                                                            else: 0
+                                                        }
+                                                    } },
+                                                    mcbuCol: { $sum: '$mcbuCol' },
+                                                    targetCollection: { $sum: '$activeLoan' },
+                                                    excess: { $sum: '$excess' },
+                                                    actualCollection: { $sum: '$paymentCollection' },
+                                                    mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
+                                                    mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
+                                                    mcbuNoReturn: { $sum: {
+                                                        $cond: {
+                                                            if: { $gt: ['$mcbuReturnAmt', 0] },
+                                                            then: 1,
+                                                            else: 0
+                                                        }
+                                                    } },
+                                                    mcbuInterest: { $sum: '$mcbuInterest' },
+                                                    mispay: { $sum: {
+                                                        $cond: {
+                                                            if: { $eq: ['$mispayment', true] },
+                                                            then: 1,
+                                                            else: 0
+                                                        }
+                                                    } },
+                                                    pastDue: { $sum: '$pastDue' },
+                                                    noPastDue: { $sum: {
+                                                        $cond: {
+                                                            if: { $gt: ['$pastDue', 0] },
+                                                            then: 1,
+                                                            else: 0
+                                                        }
+                                                    } }
+                                                }
+                                            }
+                                        ],
+                                        as: "data"
+                                    }
+                                }
+                            ],
+                            as: "transferGiverDetails"
+                        }
+                    },
+                    {
+                        $lookup: {
+                            from: "cashCollections",
+                            let: { groupName: '$name' },
+                            localField: "groupIdStr",
+                            foreignField: "groupId",
+                            pipeline: [
+                                { $match: { $expr: { $and: [
+                                    { $eq: ['$dateAdded', date] },
+                                    { $or: [
+                                        { $ifNull: ['$draft', 'Unspecified'] },
+                                        { $eq: ['$draft', false] }
+                                    ] }
+                                ] } } },
                                 { $group: { 
                                         _id: '$$groupName',
                                         mispayment: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },
@@ -407,7 +784,7 @@ async function getAllLoansPerGroup(req, res) {
                                                     {$eq: ['$remarks.value', 'delinquent']},
                                                     {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
                                                 ] },
-                                                then: '$activeLoan',
+                                                then: '$prevData.activeLoan',
                                                 else: 0
                                             }
                                         } },
@@ -422,6 +799,23 @@ async function getAllLoansPerGroup(req, res) {
                                             }
                                         } },
                                         mcbu: { $sum: '$mcbu' },
+                                        mcbuTarget: { $sum: {
+                                            $cond: {
+                                                if: { $and: [{$eq: ['$occurence', 'weekly']}, {$eq: ['$groupDay', currentDay]}] },
+                                                then: {
+                                                    $cond: {
+                                                        if: { $or: [
+                                                            {$eq: ['$remarks.value', 'delinquent']},
+                                                            {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
+                                                            {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                                                        ] },
+                                                        then: 0,
+                                                        else: 50
+                                                    }
+                                                },
+                                                else: 0
+                                            }
+                                        } },
                                         mcbuCol: { $sum: '$mcbuCol' },
                                         mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
                                         mcbuReturnNo: { $sum: {
@@ -499,13 +893,23 @@ async function getAllLoansPerGroup(req, res) {
                             localField: "groupIdStr",
                             foreignField: "groupId",
                             pipeline: [
-                                { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
-                                { $match: {$expr:  {$and: [{$ne: ['$status', 'closed']}, {$ne: ['$status', 'reject']}]} } },
+                                { $match: {
+                                    $expr: {
+                                        $and: [
+                                            {$ne: ['$status', 'reject']},
+                                            { $or: [
+                                                { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}] },
+                                                { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$transferred', true]}, {$eq: ['$endDate', date]}] },
+                                                { $eq: ['$status', 'active'] }, { $eq: ['$status', 'pending'] }, { $eq: ['$status', 'completed'] }
+                                            ] }
+                                        ]
+                                    } } 
+                                },
                                 { $group: { 
                                         _id: '$$groupName',
                                         activeClients: { $sum: {
                                             $cond: {
-                                                if: { $ne: ['$status', 'pending'] },
+                                                if: {$and: [{ $ne: ['$status', 'pending'] }, { $ne: ['$status', 'closed'] }]},
                                                 then: 1,
                                                 else: {
                                                     $cond: {
@@ -521,15 +925,9 @@ async function getAllLoansPerGroup(req, res) {
                                                 if: { $ne: ['$status', 'pending'] },
                                                 then: {
                                                     $cond: {
-                                                        if: {$and: [{$gt: ['$loanBalance', 0]}, {$gte: ['$currentDateObj', '$startDateObj']}]},
+                                                        if: {$eq: ['$status', 'active']},
                                                         then: 1,
-                                                        else: {
-                                                            $cond: {
-                                                                if: {$eq: ['$status', 'active']},
-                                                                then: 1,
-                                                                else: 0
-                                                            }
-                                                        }
+                                                        else: 0
                                                     }
                                                 }, 
                                                 else: 0
@@ -549,7 +947,21 @@ async function getAllLoansPerGroup(req, res) {
                             foreignField: "groupId",
                             pipeline: [
                                 { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
-                                { $match: {$expr:  {$and: [{$ne: ['$status', 'reject']}, {$lte: ['$startDateObj', '$currentDateObj']}]} } },
+                                { $match: {$expr:  {
+                                    $and: [
+                                        {$or: [ 
+                                            {$eq: ['$status', 'active']}, 
+                                            {$eq: ['$status', 'completed']}, 
+                                            {$and: [
+                                                { $or: [
+                                                    { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}] },
+                                                    { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$transferred', true]}, {$eq: ['$endDate', date]}] }
+                                                ] }
+                                            ]}
+                                        ]}, 
+                                        {$lte: ['$startDateObj', '$currentDateObj']}
+                                    ] } 
+                                } },
                                 { $group: { 
                                         _id: '$loId',
                                         mispayment: { $sum: { $cond:{
@@ -600,23 +1012,6 @@ async function getAllLoansPerGroup(req, res) {
                                         excess: { $sum: 0 },
                                         total: { $sum: 0 },
                                         mcbu: { $sum: '$mcbu' },
-                                        mcbuTarget: { $sum: {
-                                            $cond: {
-                                                if: { $and: [{$eq: ['$occurence', 'weekly']}, {$eq: ['$groupDay', dayName]}] },
-                                                then: {
-                                                    $cond: {
-                                                        if: { $or: [
-                                                            {$eq: ['$remarks.value', 'delinquent']},
-                                                            {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
-                                                            {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
-                                                        ] },
-                                                        then: 0,
-                                                        else: 50
-                                                    }
-                                                },
-                                                else: 0
-                                            }
-                                        } },
                                         mcbuInterest: { $sum: '$mcbuInterest' }
                                     } 
                                 }
@@ -666,23 +1061,33 @@ async function getAllLoansPerGroup(req, res) {
                             as: "fullPayment"
                         }
                     },
-                    {
-                        $lookup: {
-                            from: "cashCollections",
-                            let: { groupName: '$name' },
-                            localField: "groupIdStr",
-                            foreignField: "groupId",
-                            pipeline: [
-                                { $match: { dateAdded: date, occurence: 'weekly', groupDay: dayName } },
-                                { $group: {
-                                        _id: '$$groupName',
-                                        total: { $sum: 50 }
-                                    }
-                                }
-                            ],
-                            as: "mcbuTarget"
-                        }
-                    },
+                    // {
+                    //     $lookup: {
+                    //         from: "cashCollections",
+                    //         let: { groupName: '$name' },
+                    //         localField: "groupIdStr",
+                    //         foreignField: "groupId",
+                    //         pipeline: [
+                    //             { $match: { dateAdded: date, occurence: 'weekly', groupDay: dayName } },
+                    //             { $group: {
+                    //                     _id: '$$groupName',
+                    //                     total: { $sum: {
+                    //                         $cond: {
+                    //                             if: { $or: [
+                    //                                 {$eq: ['$remarks.value', 'delinquent']},
+                    //                                 {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
+                    //                                 {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                    //                             ] },
+                    //                             then: 0,
+                    //                             else: 50
+                    //                         }
+                    //                     } }
+                    //                 }
+                    //             }
+                    //         ],
+                    //         as: "mcbuTarget"
+                    //     }
+                    // },
                     { $project: { groupIdStr: 0, availableSlots: 0 } },
                     { $sort: { groupNo: 1 } }
                 ])
@@ -697,6 +1102,258 @@ async function getAllLoansPerGroup(req, res) {
                     {
                         $addFields: {
                             "loIdStr": { $toString: "$_id" }
+                        }
+                    },
+                    {
+                        $lookup: {
+                            from: "cashCollections",
+                            let: { groupName: '$name' },
+                            localField: "loIdStr",
+                            foreignField: "loId",
+                            pipeline: [
+                                { $match: { transfer: true, dateAdded: date, occurence: 'daily' } },
+                                {
+                                    $lookup: {
+                                        from: "cashCollections",
+                                        localField: "oldLoanId",
+                                        foreignField: "loanId",
+                                        pipeline: [
+                                            {
+                                                $group: {
+                                                    _id: '$loId',
+                                                    mcbuTarget: { $sum: {
+                                                        $cond: {
+                                                            if: { $eq: ['$occurence', 'weekly'] },
+                                                            then: '$mcbuTarget',
+                                                            else: 0
+                                                        }
+                                                    } },
+                                                    mcbuCol: { $sum: '$mcbuCol' },
+                                                    targetCollection: { $sum: '$activeLoan' },
+                                                    excess: { $sum: '$excess' },
+                                                    actualCollection: { $sum: '$paymentCollection' },
+                                                    mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
+                                                    mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
+                                                    mcbuNoReturn: { $sum: {
+                                                        $cond: {
+                                                            if: { $gt: ['$mcbuReturnAmt', 0] },
+                                                            then: 1,
+                                                            else: 0
+                                                        }
+                                                    } },
+                                                    mcbuInterest: { $sum: '$mcbuInterest' },
+                                                    mispay: { $sum: {
+                                                        $cond: {
+                                                            if: { $eq: ['$mispayment', true] },
+                                                            then: 1,
+                                                            else: 0
+                                                        }
+                                                    } },
+                                                    pastDue: { $sum: '$pastDue' },
+                                                    noPastDue: { $sum: {
+                                                        $cond: {
+                                                            if: { $gt: ['$pastDue', 0] },
+                                                            then: 1,
+                                                            else: 0
+                                                        }
+                                                    } }
+                                                }
+                                            }
+                                        ],
+                                        as: "data"
+                                    }
+                                }
+                            ],
+                            as: "transferDailyReceivedDetails"
+                        }
+                    },
+                    {
+                        $lookup: {
+                            from: "cashCollections",
+                            let: { groupName: '$name' },
+                            localField: "loIdStr",
+                            foreignField: "loId",
+                            pipeline: [
+                                { $match: { transferred: true, dateAdded: date, occurence: 'daily' } },
+                                {
+                                    $lookup: {
+                                        from: "cashCollections",
+                                        localField: "loanId",
+                                        foreignField: "loanId",
+                                        pipeline: [
+                                            {
+                                                $group: {
+                                                    _id: '$loId',
+                                                    mcbuTarget: { $sum: {
+                                                        $cond: {
+                                                            if: { $eq: ['$occurence', 'weekly'] },
+                                                            then: '$mcbuTarget',
+                                                            else: 0
+                                                        }
+                                                    } },
+                                                    mcbuCol: { $sum: '$mcbuCol' },
+                                                    targetCollection: { $sum: '$activeLoan' },
+                                                    excess: { $sum: '$excess' },
+                                                    actualCollection: { $sum: '$paymentCollection' },
+                                                    mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
+                                                    mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
+                                                    mcbuNoReturn: { $sum: {
+                                                        $cond: {
+                                                            if: { $gt: ['$mcbuReturnAmt', 0] },
+                                                            then: 1,
+                                                            else: 0
+                                                        }
+                                                    } },
+                                                    mcbuInterest: { $sum: '$mcbuInterest' },
+                                                    mispay: { $sum: {
+                                                        $cond: {
+                                                            if: { $eq: ['$mispayment', true] },
+                                                            then: 1,
+                                                            else: 0
+                                                        }
+                                                    } },
+                                                    pastDue: { $sum: '$pastDue' },
+                                                    noPastDue: { $sum: {
+                                                        $cond: {
+                                                            if: { $gt: ['$pastDue', 0] },
+                                                            then: 1,
+                                                            else: 0
+                                                        }
+                                                    } }
+                                                }
+                                            }
+                                        ],
+                                        as: "data"
+                                    }
+                                }
+                            ],
+                            as: "transferDailyGiverDetails"
+                        }
+                    },
+                    {
+                        $lookup: {
+                            from: "cashCollections",
+                            let: { groupName: '$name' },
+                            localField: "loIdStr",
+                            foreignField: "loId",
+                            pipeline: [
+                                { $match: { transfer: true, dateAdded: date, occurence: 'weekly' } },
+                                {
+                                    $lookup: {
+                                        from: "cashCollections",
+                                        localField: "oldLoanId",
+                                        foreignField: "loanId",
+                                        pipeline: [
+                                            {
+                                                $group: {
+                                                    _id: '$loId',
+                                                    mcbuTarget: { $sum: {
+                                                        $cond: {
+                                                            if: { $eq: ['$occurence', 'weekly'] },
+                                                            then: '$mcbuTarget',
+                                                            else: 0
+                                                        }
+                                                    } },
+                                                    mcbuCol: { $sum: '$mcbuCol' },
+                                                    targetCollection: { $sum: '$activeLoan' },
+                                                    excess: { $sum: '$excess' },
+                                                    actualCollection: { $sum: '$paymentCollection' },
+                                                    mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
+                                                    mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
+                                                    mcbuNoReturn: { $sum: {
+                                                        $cond: {
+                                                            if: { $gt: ['$mcbuReturnAmt', 0] },
+                                                            then: 1,
+                                                            else: 0
+                                                        }
+                                                    } },
+                                                    mcbuInterest: { $sum: '$mcbuInterest' },
+                                                    mispay: { $sum: {
+                                                        $cond: {
+                                                            if: { $eq: ['$mispayment', true] },
+                                                            then: 1,
+                                                            else: 0
+                                                        }
+                                                    } },
+                                                    pastDue: { $sum: '$pastDue' },
+                                                    noPastDue: { $sum: {
+                                                        $cond: {
+                                                            if: { $gt: ['$pastDue', 0] },
+                                                            then: 1,
+                                                            else: 0
+                                                        }
+                                                    } }
+                                                }
+                                            }
+                                        ],
+                                        as: "data"
+                                    }
+                                }
+                            ],
+                            as: "transferWeeklyReceivedDetails"
+                        }
+                    },
+                    {
+                        $lookup: {
+                            from: "cashCollections",
+                            let: { groupName: '$name' },
+                            localField: "loIdStr",
+                            foreignField: "loId",
+                            pipeline: [
+                                { $match: { transferred: true, dateAdded: date, occurence: 'weekly' } },
+                                {
+                                    $lookup: {
+                                        from: "cashCollections",
+                                        localField: "loanId",
+                                        foreignField: "loanId",
+                                        pipeline: [
+                                            {
+                                                $group: {
+                                                    _id: '$loId',
+                                                    mcbuTarget: { $sum: {
+                                                        $cond: {
+                                                            if: { $eq: ['$occurence', 'weekly'] },
+                                                            then: '$mcbuTarget',
+                                                            else: 0
+                                                        }
+                                                    } },
+                                                    mcbuCol: { $sum: '$mcbuCol' },
+                                                    targetCollection: { $sum: '$activeLoan' },
+                                                    excess: { $sum: '$excess' },
+                                                    actualCollection: { $sum: '$paymentCollection' },
+                                                    mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
+                                                    mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
+                                                    mcbuNoReturn: { $sum: {
+                                                        $cond: {
+                                                            if: { $gt: ['$mcbuReturnAmt', 0] },
+                                                            then: 1,
+                                                            else: 0
+                                                        }
+                                                    } },
+                                                    mcbuInterest: { $sum: '$mcbuInterest' },
+                                                    mispay: { $sum: {
+                                                        $cond: {
+                                                            if: { $eq: ['$mispayment', true] },
+                                                            then: 1,
+                                                            else: 0
+                                                        }
+                                                    } },
+                                                    pastDue: { $sum: '$pastDue' },
+                                                    noPastDue: { $sum: {
+                                                        $cond: {
+                                                            if: { $gt: ['$pastDue', 0] },
+                                                            then: 1,
+                                                            else: 0
+                                                        }
+                                                    } }
+                                                }
+                                            }
+                                        ],
+                                        as: "data"
+                                    }
+                                }
+                            ],
+                            as: "transferWeeklyGiverDetails"
                         }
                     },
                     {
@@ -991,7 +1648,133 @@ async function getAllLoansPerGroup(req, res) {
                             localField: "groupIdStr",
                             foreignField: "groupId",
                             pipeline: [
-                                { $match: { dateAdded: date} },
+                                { $match: { transfer: true, dateAdded: date } },
+                                {
+                                    $lookup: {
+                                        from: "cashCollections",
+                                        localField: "oldLoanId",
+                                        foreignField: "loanId",
+                                        pipeline: [
+                                            {
+                                                $group: {
+                                                    _id: '$groupId',
+                                                    mcbuTarget: { $sum: {
+                                                        $cond: {
+                                                            if: { $eq: ['$occurence', 'weekly'] },
+                                                            then: '$mcbuTarget',
+                                                            else: 0
+                                                        }
+                                                    } },
+                                                    mcbuCol: { $sum: '$mcbuCol' },
+                                                    targetCollection: { $sum: '$activeLoan' },
+                                                    excess: { $sum: '$excess' },
+                                                    actualCollection: { $sum: '$paymentCollection' },
+                                                    mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
+                                                    mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
+                                                    mcbuNoReturn: { $sum: {
+                                                        $cond: {
+                                                            if: { $gt: ['$mcbuReturnAmt', 0] },
+                                                            then: 1,
+                                                            else: 0
+                                                        }
+                                                    } },
+                                                    mcbuInterest: { $sum: '$mcbuInterest' },
+                                                    mispay: { $sum: {
+                                                        $cond: {
+                                                            if: { $eq: ['$mispayment', true] },
+                                                            then: 1,
+                                                            else: 0
+                                                        }
+                                                    } },
+                                                    pastDue: { $sum: '$pastDue' },
+                                                    noPastDue: { $sum: {
+                                                        $cond: {
+                                                            if: { $gt: ['$pastDue', 0] },
+                                                            then: 1,
+                                                            else: 0
+                                                        }
+                                                    } }
+                                                }
+                                            }
+                                        ],
+                                        as: "data"
+                                    }
+                                }
+                            ],
+                            as: "transferReceivedDetails"
+                        }
+                    },
+                    {
+                        $lookup: {
+                            from: "cashCollections",
+                            let: { groupName: '$name' },
+                            localField: "groupIdStr",
+                            foreignField: "groupId",
+                            pipeline: [
+                                { $match: { transferred: true, dateAdded: date } },
+                                {
+                                    $lookup: {
+                                        from: "cashCollections",
+                                        localField: "loanId",
+                                        foreignField: "loanId",
+                                        pipeline: [
+                                            {
+                                                $group: {
+                                                    _id: '$groupId',
+                                                    mcbuTarget: { $sum: {
+                                                        $cond: {
+                                                            if: { $eq: ['$occurence', 'weekly'] },
+                                                            then: '$mcbuTarget',
+                                                            else: 0
+                                                        }
+                                                    } },
+                                                    mcbuCol: { $sum: '$mcbuCol' },
+                                                    targetCollection: { $sum: '$activeLoan' },
+                                                    excess: { $sum: '$excess' },
+                                                    actualCollection: { $sum: '$paymentCollection' },
+                                                    mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
+                                                    mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
+                                                    mcbuNoReturn: { $sum: {
+                                                        $cond: {
+                                                            if: { $gt: ['$mcbuReturnAmt', 0] },
+                                                            then: 1,
+                                                            else: 0
+                                                        }
+                                                    } },
+                                                    mcbuInterest: { $sum: '$mcbuInterest' },
+                                                    mispay: { $sum: {
+                                                        $cond: {
+                                                            if: { $eq: ['$mispayment', true] },
+                                                            then: 1,
+                                                            else: 0
+                                                        }
+                                                    } },
+                                                    pastDue: { $sum: '$pastDue' },
+                                                    noPastDue: { $sum: {
+                                                        $cond: {
+                                                            if: { $gt: ['$pastDue', 0] },
+                                                            then: 1,
+                                                            else: 0
+                                                        }
+                                                    } }
+                                                }
+                                            }
+                                        ],
+                                        as: "data"
+                                    }
+                                }
+                            ],
+                            as: "transferGiverDetails"
+                        }
+                    },
+                    {
+                        $lookup: {
+                            from: "cashCollections",
+                            let: { groupName: '$name' },
+                            localField: "groupIdStr",
+                            foreignField: "groupId",
+                            pipeline: [
+                                { $match: { dateAdded: date } },
                                 { $group: { 
                                         _id: '$$groupName',
                                         activeClients: { $sum: {

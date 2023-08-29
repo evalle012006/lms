@@ -13,6 +13,7 @@ import '@/styles/common-forms.css';
 import '@/styles/settings.css';
 import '@/styles/table.css';
 import '@/styles/avatar.css';
+import '@/styles/print.css';
 
 const ACLoanManagementApp = ({ Component, pageProps }) => {
     return (

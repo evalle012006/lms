@@ -40,6 +40,11 @@ async function updateUser(req, res) {
             }
 
             const profile = file ? file : userData.profile;
+            const role = JSON.parse(fields.role);
+            let designatedBranch = fields.designatedBranch;
+            if (role.rep === 2) {
+                designatedBranch = JSON.parse(fields.designatedBranch);
+            }
 
             const userResponse = await db
                 .collection('users')
@@ -52,8 +57,8 @@ async function updateUser(req, res) {
                             number: fields.number,
                             position: fields.position,
                             profile: profile,
-                            role: JSON.parse(fields.role),
-                            designatedBranch: JSON.parse(fields.designatedBranch),
+                            role: role,
+                            designatedBranch: designatedBranch,
                             loNo: fields.loNo,
                             transactionType: fields.transactionType
                         },

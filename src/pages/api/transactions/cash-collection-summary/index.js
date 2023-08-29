@@ -161,7 +161,27 @@ async function getSummary(req, res) {
                         consolidatedFullPaymentPerson: { $sum: '$data.fullPaymentPerson' },
                         consolidatedFullPaymentAmount: { $sum: '$data.fullPaymentAmount' },
                         activeBorrowers: { $sum: '$data.activeBorrowers' },
-                        loanBalance: { $sum: '$data.loanBalance' }
+                        loanBalance: { $sum: '$data.loanBalance' },
+                        transferDailyGvr: { $addToSet: { $cond: {
+                            if: { $eq: ['$occurence', 'daily'] },
+                            then: '$data.transferGvr',
+                            else: null
+                        } } },
+                        transferDailyRcv: { $addToSet: { $cond: {
+                            if: { $eq: ['$occurence', 'daily'] },
+                            then: '$data.transferRcv',
+                            else: null
+                        } } },
+                        transferWeeklyGvr: { $addToSet: { $cond: {
+                            if: { $eq: ['$occurence', 'weekly'] },
+                            then: '$data.transferGvr',
+                            else: null
+                        } } },
+                        transferWeeklyRcv: { $addToSet: { $cond: {
+                            if: { $eq: ['$occurence', 'weekly'] },
+                            then: '$data.transferRcv',
+                            else: null
+                        } } },
                     }
                 }
             ]).toArray();

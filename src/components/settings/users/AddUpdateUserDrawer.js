@@ -29,6 +29,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
     const [image, setImage] = useState('');
     const [selectedBranches, setSelectedBranches] = useState([]);
     const [occurence, setOccurence] = useState('daily');
+    const currentDate = useSelector(state => state.systemSettings.currentDate);
 
     const initialValues = {
         firstName: user.firstName,
@@ -36,7 +37,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
         email: user.email,
         number: user.number,
         position: user.position,
-        designatedBranch: user.designatedBranch ? (user.roleId === 2 ? user.designatedBranch.split(', ') : user.designatedBranch) : 0,
+        designatedBranch: user.designatedBranch ? (user.roleId === 2 ? user.designatedBranch : user.designatedBranch) : 0,
         role: user.role ? user.roleId : '',
         loNo: user.loNo,
         transactionType: user.transactionType
@@ -95,6 +96,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
 
         values.designatedBranch = designatedBranch;
         values.transactionType = occurence;
+        values.currentDate = currentDate;
 
         if (mode === 'add') {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'users/save/';
@@ -189,7 +191,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
             const branchesCode = user.designatedBranch;
             let selectedBranchesList = [];
             branches && branches.map(branch => {
-                branchesCode && branchesCode.split(', ').map(b => {
+                branchesCode.map(b => {
                     if (branch.code === b) {
                         selectedBranchesList.push(branch);
                     }
@@ -378,7 +380,17 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
                                                         {label: '7', value: 7},
                                                         {label: '8', value: 8},
                                                         {label: '9', value: 9},
-                                                        {label: '10', value: 10}
+                                                        {label: '10', value: 10},
+                                                        {label: '11', value: 11},
+                                                        {label: '12', value: 12},
+                                                        {label: '13', value: 13},
+                                                        {label: '14', value: 14},
+                                                        {label: '15', value: 15},
+                                                        {label: '16', value: 16},
+                                                        {label: '17', value: 17},
+                                                        {label: '18', value: 18},
+                                                        {label: '19', value: 19},
+                                                        {label: '20', value: 20}
                                                     ]}
                                                     onChange={setFieldValue}
                                                     onBlur={setFieldTouched}
@@ -395,7 +407,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
                                             </div>
                                         </React.Fragment>
                                     )}
-                                    <div className="flex flex-row mt-5">
+                                    <div className="flex flex-row mt-5 pb-6">
                                         <ButtonOutline label="Cancel" onClick={handleCancel} className="mr-3" />
                                         <ButtonSolid label="Submit" type="submit" isSubmitting={isValidating && isSubmitting} />
                                     </div>

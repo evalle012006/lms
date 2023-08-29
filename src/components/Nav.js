@@ -4,6 +4,7 @@ import {
     Squares2X2Icon, 
     BuildingOffice2Icon,
     ChartBarSquareIcon,
+    ChartBarIcon,
     ClipboardDocumentIcon,
     ClipboardDocumentListIcon,
     ClipboardDocumentCheckIcon,
@@ -12,8 +13,7 @@ import {
     UserGroupIcon,
     TicketIcon,
     Cog6ToothIcon,
-    TableCellsIcon,
-    PlusIcon,
+    DocumentChartBarIcon,
     BuildingLibraryIcon,
     ChevronDownIcon,
     UserCircleIcon,
@@ -218,7 +218,7 @@ const MenuItems = [
         subMenuItems: [
             {
                 label: "Loan Approval",
-                url: "/transactions/loan-applications?type=daily",
+                url: "/transactions/loan-applications",
                 icon: {
                     active: (
                         <ClipboardDocumentCheckIcon className="text-gray-800 w-5 h-5" />
@@ -260,6 +260,21 @@ const MenuItems = [
                 active: false,
                 hasSub: false,
                 hidden: false
+            },
+            {
+                label: "Daily Collection Sheet",
+                url: "/transactions/daily-collection-sheet", 
+                icon: {
+                    active: (
+                        <ClipboardDocumentIcon className="text-gray-800 w-5 h-5" />
+                    ),
+                    notActive: (
+                        <ClipboardDocumentIcon className="text-white w-5 h-5" />
+                    ),
+                },
+                active: false,
+                hasSub: false,
+                hidden: false
             }
         ]
     },
@@ -278,7 +293,7 @@ const MenuItems = [
         subMenuItems: [
             {
                 label: "Loan Approval",
-                url: "/transactions/loan-applications?type=weekly",
+                url: "/transactions/loan-applications",
                 icon: {
                     active: (
                         <ClipboardDocumentCheckIcon className="text-gray-800 w-5 h-5" />
@@ -320,6 +335,21 @@ const MenuItems = [
                 active: false,
                 hasSub: false,
                 hidden: false
+            },
+            {
+                label: "Daily Collection Sheet",
+                url: "/transactions/daily-collection-sheet", 
+                icon: {
+                    active: (
+                        <ClipboardDocumentIcon className="text-gray-800 w-5 h-5" />
+                    ),
+                    notActive: (
+                        <ClipboardDocumentIcon className="text-white w-5 h-5" />
+                    ),
+                },
+                active: false,
+                hasSub: false,
+                hidden: false
             }
         ]
     },
@@ -338,7 +368,7 @@ const MenuItems = [
         subMenuItems: [
             {
                 label: "Loan Approval",
-                url: "/transactions/loan-applications?type=branch",
+                url: "/transactions/loan-applications",
                 icon: {
                     active: (
                         <ClipboardDocumentCheckIcon className="text-gray-800 w-5 h-5" />
@@ -382,6 +412,21 @@ const MenuItems = [
                 hidden: false
             },
             {
+                label: "Daily Collection Sheet",
+                url: "/transactions/daily-collection-sheet", 
+                icon: {
+                    active: (
+                        <ClipboardDocumentIcon className="text-gray-800 w-5 h-5" />
+                    ),
+                    notActive: (
+                        <ClipboardDocumentIcon className="text-white w-5 h-5" />
+                    ),
+                },
+                active: false,
+                hasSub: false,
+                hidden: false
+            },
+            {
                 label: "Transfer Client",
                 url: "/transactions/area-manager/transfer-client", 
                 icon: {
@@ -395,6 +440,34 @@ const MenuItems = [
                 active: false,
                 hasSub: false,
                 hidden: false
+            }
+        ]
+    },
+    {
+        label: "Reports",
+        url: "#reports",
+        subMenuIndex: 1,
+        icon: {
+            active: <ChartBarIcon className="text-gray-800 w-5 h-5" />,
+            notActive: <ChartBarIcon className="text-white w-5 h-5" />,
+        },
+        active: true,
+        hasSub: true,
+        hidden: false,
+        subMenuItems: [
+            {
+                label: "Transaction by Remarks",
+                url: "/reports/transaction-remarks",
+                icon: {
+                    active: (
+                        <DocumentChartBarIcon className="text-gray-800 w-5 h-5" />
+                    ),
+                    notActive: (
+                        <DocumentChartBarIcon className="text-white w-5 h-5" />
+                    ),
+                },
+                active: false,
+                hasSub: false
             },
         ]
     },
@@ -491,7 +564,7 @@ const MenuItems = [
         active: false,
         borderBottom: true,
         hasSub: false
-    },
+    }
 ];
 
 const NavComponent = () => {
@@ -642,11 +715,17 @@ const NavComponent = () => {
                         if (sm.label === 'Branch Manager Summary') {
                             sm.hidden = true;
                         }
+                        if (sm.label === 'Daily Collection Sheet') {
+                            sm.hidden = true;
+                        }
                     } else if (userState.role.rep === 2) {
                         if (sm.label === 'Loan Officer Summary') {
                             sm.hidden = true;
                         }
                         if (sm.label === 'Branch Manager Summary') {
+                            sm.hidden = true;
+                        }
+                        if (sm.label === 'Daily Collection Sheet') {
                             sm.hidden = true;
                         }
                     } else if (userState.role.rep === 3) {

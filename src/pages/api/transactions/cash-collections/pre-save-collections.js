@@ -1,7 +1,5 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
-import { getCurrentDate } from '@/lib/utils';
-import moment from 'moment';
 
 export default apiHandler({
     post: save
@@ -12,11 +10,11 @@ async function save(req, res) {
     const ObjectId = require('mongodb').ObjectId;
     let response = {};
     let statusCode = 200;
-    const { loId, currentUser } = req.body;
-    const currentDate = moment(getCurrentDate()).format('YYYY-MM-DD');
+    const { loId, currentDate } = req.body;
 
-    const loans = await db.collection('loans').find(
-            {$expr: {
+    const loans = await db.collection('loans')
+        .aggregate([
+            { $match: {$expr: {
                 $and: [
                     {$eq: ['$loId', loId]},
                     {$or: [
@@ -28,19 +26,31 @@ async function save(req, res) {
                         ]}
                     ]}
                 ]
-            }}
+            }} },
+            { $addFields: { 'groupIdObj': { $toObjectId: '$groupId' } } },
+            {
+                $lookup: {
+                    from: "groups",
+                    localField: "groupIdObj",
+                    foreignField: "_id",
+                    as: "group"
+                }
+            },
+            { $unwind: "$group" },
+            { $project: { groupIdObj: 0 } }
+        ]
         ).toArray();
 
     loans.map(async loan => {
         const existCC = await db.collection('cashCollections').find({ clientId: loan.clientId + '', dateAdded: currentDate }).toArray();
 
         if (existCC.length === 0) {
-            const group = await db.collection('groups').find({ _id: new ObjectId(loan.groupId) }).toArray();
+            // const group = await db.collection('groups').find({ _id: new ObjectId(loan.groupId) }).toArray();
             let data = {
                 loanId: loan._id + '',
                 branchId: loan.branchId,
                 groupId: loan.groupId,
-                groupname: loan.groupName,
+                groupName: loan.groupName,
                 loId: loan.loId,
                 clientId: loan.clientId,
                 slotNo: loan.slotNo,
@@ -56,8 +66,10 @@ async function save(req, res) {
                 amountRelease: loan.amountRelease,
                 loanBalance: loan.loanBalance,
                 paymentCollection: 0,
-                occurence: loan.occurence,
+                occurence: loan.group.occurence,
                 currentReleaseAmount: 0,
+                mcbuTarget: 50,
+                groupDay: loan.group.day,
                 fullPayment: 0,
                 mcbu: loan.mcbu,
                 mcbuCol: 0,
@@ -67,13 +79,9 @@ async function save(req, res) {
                 status: loan.status,
                 dateAdded: currentDate,
                 groupStatus: "pending",
+                insertedDateTime: new Date(),
                 origin: 'pre-save'
             };
-
-            if (loan.occurence === 'weekly') {
-                data.mcbuTarget = 50;
-                data.groupDay = group[0].day;
-            }
 
             await db.collection('cashCollections').insertOne({ ...data });
         }

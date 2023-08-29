@@ -9,7 +9,7 @@ let statusCode = 200;
 export default apiHandler({
     post: processLOSTotals
 });
-
+// NOT IN USED
 async function processLOSTotals(req, res) {
     const { db } = await connectToDatabase();
     const currentDateStr = moment(getCurrentDate()).format('YYYY-MM-DD');

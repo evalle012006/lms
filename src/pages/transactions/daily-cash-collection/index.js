@@ -13,8 +13,10 @@ import ViewByBranchPage from "@/components/transactions/ViewByBranch";
 import Dialog from "@/lib/ui/Dialog";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
+import { useRouter } from "node_modules/next/router";
 
 const DailyCashCollectionPage = () => {
+    const router = useRouter();
     const isHoliday = useSelector(state => state.systemSettings.holiday);
     const isWeekend = useSelector(state => state.systemSettings.weekend);
     const dispatch = useDispatch();
@@ -94,7 +96,14 @@ const DailyCashCollectionPage = () => {
     }
 
     const getListBranch = async () => {
-        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'branches/list');
+        let url = process.env.NEXT_PUBLIC_API_URL + 'branches/list';
+
+        if (currentUser.role.rep === 3 || currentUser.role.rep === 4) {
+            url = url + '?' + new URLSearchParams({ branchCode: currentUser.designatedBranch });
+        }
+
+        const response = await fetchWrapper.get(url);
+
         if (response.success) {
             let branches = [];
             response.branches && response.branches.map(branch => {
@@ -104,10 +113,6 @@ const DailyCashCollectionPage = () => {
                     }
                 );
             });
-
-            if (currentUser.root !== true && (currentUser.role.rep === 3 || currentUser.role.rep === 4)) {
-                branches = [branches.find(b => b.code === currentUser.designatedBranch)];
-            } 
             
             dispatch(setBranchList(branches));
         } else {
@@ -116,6 +121,12 @@ const DailyCashCollectionPage = () => {
 
         setLoading(false);
     }
+
+    useEffect(() => {
+        if (currentUser.role.rep < 3) {
+            router.push("/transactions/branch-manager/cash-collection");
+        }
+    }, [currentUser]);
 
     useEffect(() => {
         let mounted = true;

@@ -23,9 +23,9 @@ const ViewByBranchPage = ({dateFilter, type}) => {
         let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/get-all-loans-per-branch';
 
         if (currentUser.role.rep === 2) {
-            url = url + "?" + new URLSearchParams({ date: date ? date : currentDate, mode: type, areaManagerId: currentUser._id, dayName: dayName });
+            url = url + "?" + new URLSearchParams({ date: date ? date : currentDate, mode: type, areaManagerId: currentUser._id, dayName: dayName, currentDate: currentDate });
         } else {
-            url = url + "?" + new URLSearchParams({ date: date ? date : currentDate, mode: type, dayName: dayName });
+            url = url + "?" + new URLSearchParams({ date: date ? date : currentDate, mode: type, dayName: dayName, currentDate: currentDate });
         }
         
         const response = await fetchWrapper.get(url);
@@ -566,7 +566,7 @@ const ViewByBranchPage = ({dateFilter, type}) => {
                     <div className="absolute top-1/2 left-1/2">
                         <Spinner />
                     </div>
-                ) : <TableComponent columns={columns} data={branchCollectionData} hasActionButtons={false} rowActionButtons={false} showFilters={false} pageSize={50} rowClick={handleRowClick} />}
+                ) : <TableComponent columns={columns} data={branchCollectionData} hasActionButtons={false} rowActionButtons={false} showFilters={false} showPagination={false} pageSize={100} rowClick={handleRowClick} />}
         </React.Fragment>
     );
 }

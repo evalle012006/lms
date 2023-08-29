@@ -256,7 +256,7 @@ const LoanOfficerSummary = () => {
                 losList = calculatePersons(losList);
                 losList = calculateWeeklyTotals(losList);
                 losList.push(calculateMonthlyTotals(losList[0], losList.filter(los => los.weekTotal)));
-                losList.push(calculateGrandTotals(losList, filter, date));
+                losList.push(calculateGrandTotals(losList.filter(los => !los.hasOwnProperty('flag')), filter, date));
                 dispatch(setLosList(losList));
                 setLoading(false);
             } else if (response.error) {
@@ -266,6 +266,202 @@ const LoanOfficerSummary = () => {
         }
     }
 
+    const processTransferDetails = (losList) => {
+        let totalTransfer = 0;
+        let totalMcbuTarget = 0;
+        let totalMcbuActual = 0;
+        let totalMcbuWithdrawal = 0;
+        let totalMcbuInterest = 0;
+        let totalMcbuReturnAmt = 0;
+        let totalMcbuNoReturn = 0;
+        let totalMcbuBalance = 0;
+        let totalTargetCollection = 0;
+        let totalExcess = 0;
+        let totalActualCollection = 0;
+        let totalPastDue = 0;
+        let totalNoPastDue = 0;
+        let totalLoanRelease = 0;
+
+        let mcbuBalance = 0;
+        let activeClients = 0;
+        let activeBorrowers = 0;
+        let activeLoanReleasePerson = 0;
+        let activeLoanReleaseAmount = 0;
+        let loanBalance = 0;
+
+        losList.map((los, index) => {
+            let temp = {...los};
+            let transferGvr;
+            let transferRcv;
+
+            if (temp?.transferGvr) {
+                const data = {...temp.transferGvr};
+                let noTransfer = data.transfer;
+                if (typeof noTransfer === "string") {
+                    noTransfer = noTransfer.replace('(','').replace(')','');
+                    noTransfer = -Math.abs(noTransfer);
+                }
+                
+                const mcbuTarget = data.mcbuTarget !== '-' ? data?.mcbuTarget > 0 ? -Math.abs(data.mcbuTarget) : 0 : 0;
+                const mcbuActual = data.mcbuCol !== '-' ? -Math.abs(data.mcbuCol) : 0;
+                const mcbuWithdrawal = (data.mcbuWithdrawal && data.mcbuWithdrawal !== '-') ? -Math.abs(data.mcbuWithdrawal) : 0;
+                const mcbuInterest = (data.mcbuInterest && data.mcbuInterest !== '-') ? -Math.abs(data.mcbuInterest) : 0;
+                const noMcbuReturn = (data.noMcbuReturn && data.noMcbuReturn !== '-') ? -Math.abs(data.noMcbuReturn) : 0;
+                const mcbuReturnAmt = (data.mcbuReturnAmt && data.mcbuReturnAmt !== '-') ? -Math.abs(data.mcbuReturnAmt) : 0;
+                const excess = data.excess !== '-' ? data.excess > 0 ? -Math.abs(data.excess) : 0 : 0;
+                
+                transferGvr = {
+                    transfer: noTransfer,
+                    mcbuTarget: mcbuTarget,
+                    mcbuActual: mcbuActual,
+                    mcbuWithdrawal: mcbuWithdrawal,
+                    mcbuInterest: mcbuInterest,
+                    noMcbuReturn: noMcbuReturn,
+                    mcbuReturnAmt: mcbuReturnAmt,
+                    mcbuBalance: -Math.abs(mcbuActual - mcbuWithdrawal + mcbuInterest - mcbuReturnAmt),
+                    loanReleaseAmount: -Math.abs(data.currentReleaseAmount),
+                    collectionTarget: -Math.abs(data.targetLoanCollection + excess),
+                    collectionActual: -Math.abs(data.collection),
+                    pastDuePerson: (data?.noPastDue && data?.noPastDue !== '-') ? data?.noPastDue : 0,
+                    pastDueAmount: (data?.pastDue && data?.pastDue !== '-') ? -Math.abs(data?.pastDue) : 0,
+                    // excess: excess
+                }
+
+                activeClients = temp.activeClients + noTransfer;
+                activeBorrowers = temp.activeBorrowers + noTransfer;
+                activeLoanReleasePerson = temp.activeLoanReleasePerson + noTransfer;
+                activeLoanReleaseAmount = temp.activeLoanReleaseAmount - data.totalLoanRelease - data.currentReleaseAmount;
+                loanBalance = temp.loanBalance - (data.currentReleaseAmount - data.collection);
+            }
+
+            if (temp?.transferRcv) {
+                const data = {...temp.transferRcv};
+                let noTransfer = data.transfer;
+                if (typeof noTransfer === "string") {
+                    noTransfer = noTransfer.replace('(','').replace(')','');
+                    noTransfer = -Math.abs(noTransfer);
+                }
+
+                const mcbuTarget = data.mcbuTarget !== '-' ? data?.mcbuTarget > 0 ? data.mcbuTarget : 0 : 0;
+                const mcbuActual = data.mcbuCol !== '-' ? data.mcbuCol : 0;
+                const mcbuWithdrawal = (data.mcbuWithdrawal && data.mcbuWithdrawal !== '-') ? data.mcbuWithdrawal : 0;
+                const mcbuInterest = (data.mcbuInterest && data.mcbuInterest !== '-') ? data.mcbuInterest : 0;
+                const noMcbuReturn = (data.noMcbuReturn && data.noMcbuReturn !== '-') ? data.noMcbuReturn : 0;
+                const mcbuReturnAmt = (data.mcbuReturnAmt && data.mcbuReturnAmt !== '-') ? data.mcbuReturnAmt : 0;
+                const excess = data.excess !== '-' ? data.excess : 0;
+
+                transferRcv = {
+                    transfer: noTransfer,
+                    mcbuTarget: mcbuTarget,
+                    mcbuActual: mcbuActual,
+                    mcbuWithdrawal: mcbuWithdrawal,
+                    mcbuInterest: mcbuInterest,
+                    noMcbuReturn: noMcbuReturn,
+                    mcbuReturnAmt: mcbuReturnAmt,
+                    mcbuBalance: mcbuActual - mcbuWithdrawal + mcbuInterest - mcbuReturnAmt,
+                    loanReleaseAmount: data.currentReleaseAmount,
+                    collectionTarget: data.targetLoanCollection + excess,
+                    collectionActual: data.collection,
+                    pastDuePerson: (data?.noPastDue && data?.noPastDue !== '-') ? data?.noPastDue : 0,
+                    pastDueAmount: (data?.pastDue && data?.pastDue !== '-') ? -Math.abs(data?.pastDue) : 0,
+                    // excess: excess
+                }
+
+                activeClients += noTransfer;
+                activeBorrowers += noTransfer;
+                activeLoanReleasePerson += noTransfer;
+                activeLoanReleaseAmount += data.totalLoanRelease + data.currentReleaseAmount;
+                loanBalance += (data.currentReleaseAmount - data.collection);
+            }
+
+            if (transferGvr || transferRcv) {
+                if (transferGvr) {
+                    totalTransfer = transferGvr?.transfer;
+                    totalMcbuTarget = transferGvr?.mcbuTarget;
+                    totalMcbuActual = transferGvr?.mcbuActual;
+                    totalMcbuWithdrawal = transferGvr?.mcbuWithdrawal;
+                    totalMcbuInterest = transferGvr?.mcbuInterest;
+                    totalMcbuNoReturn = transferGvr?.noMcbuReturn;
+                    totalMcbuReturnAmt = transferGvr?.mcbuReturnAmt;
+                    totalMcbuBalance = transferGvr?.mcbuBalance;
+                    totalLoanRelease = transferGvr?.loanReleaseAmount;
+                    totalTargetCollection = transferGvr?.collectionTarget;
+                    totalActualCollection = transferGvr?.collectionActual;
+                    totalPastDue = transferGvr?.pastDueAmount > 0 ? transferGvr?.pastDueAmount : 0;
+                    totalNoPastDue = transferGvr?.pastDuePerson > 0 ? transferGvr?.pastDuePerson : 0;
+                    // totalExcess = transferGvr?.excess;
+                }
+
+                if (transferRcv) {
+                    totalTransfer += transferRcv?.transfer;
+                    totalMcbuTarget += transferRcv?.mcbuTarget;
+                    totalMcbuActual += transferRcv?.mcbuActual;
+                    totalMcbuWithdrawal += transferRcv?.mcbuWithdrawal;
+                    totalMcbuInterest += transferRcv?.mcbuInterest;
+                    totalMcbuNoReturn += transferRcv?.noMcbuReturn;
+                    totalMcbuReturnAmt += transferRcv.mcbuReturnAmt;
+                    totalMcbuBalance += transferRcv?.mcbuBalance;
+                    totalLoanRelease += transferRcv?.loanReleaseAmount;
+                    totalTargetCollection += transferRcv?.collectionTarget;
+                    totalActualCollection += transferRcv?.collectionActual;
+                    totalPastDue += transferRcv?.pastDueAmount > 0 ? transferRcv?.pastDueAmount : 0;
+                    totalNoPastDue += transferRcv?.pastDuePerson > 0 ? transferRcv?.pastDuePerson : 0;
+                    // totalExcess += transferRcv?.excess;
+                }
+
+                if (totalMcbuBalance !== 0) {
+                    mcbuBalance = temp.mcbuBalance ? temp.mcbuBalance : 0 //+ totalMcbuBalance;
+                }
+
+                mcbuBalance += totalMcbuBalance;
+            }
+        });
+
+        return {
+            day: 'TFR Total',
+            transfer: totalTransfer < 0 ? `(${Math.abs(totalTransfer)})` : totalTransfer,
+            newMember: '-',
+            mcbuTarget: totalMcbuTarget,
+            mcbuTargetStr: totalMcbuTarget < 0 ? `(${formatPricePhp(Math.abs(totalMcbuTarget))})` : formatPricePhp(totalMcbuTarget),
+            mcbuActual: totalMcbuActual,
+            mcbuActualStr: totalMcbuActual < 0 ? `(${formatPricePhp(Math.abs(totalMcbuActual))})` : formatPricePhp(totalMcbuActual),
+            mcbuWithdrawal: totalMcbuWithdrawal,
+            mcbuWithdrawalStr: totalMcbuWithdrawal < 0 ? `(${formatPricePhp(Math.abs(totalMcbuWithdrawal))})` : formatPricePhp(totalMcbuWithdrawal),
+            mcbuInterest: totalMcbuInterest,
+            mcbuInterestStr: totalMcbuInterest < 0 ? `(${formatPricePhp(Match.abs(totalMcbuInterest))})` : formatPricePhp(totalMcbuInterest),
+            noMcbuReturn: totalMcbuNoReturn,
+            mcbuReturnAmt: totalMcbuReturnAmt,
+            mcbuReturnAmtStr: totalMcbuReturnAmt < 0 ? `(${formatPricePhp(Math.abs(totalMcbuReturnAmt))})` : formatPricePhp(totalMcbuReturnAmt),
+            mcbuBalance: mcbuBalance,
+            mcbuBalanceStr: mcbuBalance < 0 ? `(${formatPricePhp(Math.abs(mcbuBalance))})` : formatPricePhp(mcbuBalance),
+            offsetPerson: '-',
+            activeClients: activeClients,
+            loanReleasePerson: totalTransfer < 0 ? `(${Math.abs(totalTransfer)})` : totalTransfer,
+            loanReleaseAmount: totalLoanRelease,
+            loanReleaseAmountStr: totalLoanRelease < 0 ? `(${formatPricePhp(Math.abs(totalLoanRelease))})` : formatPricePhp(totalLoanRelease),
+            activeLoanReleasePerson: activeLoanReleasePerson,
+            activeLoanReleaseAmount: activeLoanReleaseAmount,
+            activeLoanReleaseAmountStr: activeLoanReleaseAmount < 0 ? `(${formatPricePhp(Math.abs(activeLoanReleaseAmount))})` : formatPricePhp(activeLoanReleaseAmount),
+            collectionTarget: totalTargetCollection,
+            collectionTargetStr: totalTargetCollection < 0 ? `(${formatPricePhp(Math.abs(totalTargetCollection))})` : formatPricePhp(totalTargetCollection),
+            collectionAdvancePayment: 0,
+            collectionAdvancePaymentStr: '-',//totalExcess < 0 ? `(${formatPricePhp(Math.abs(totalExcess))})` : formatPricePhp(totalExcess),
+            collectionActual: totalActualCollection,
+            collectionActualStr: totalActualCollection < 0 ? `(${formatPricePhp(Math.abs(totalActualCollection))})` : formatPricePhp(totalActualCollection),
+            pastDuePerson: totalNoPastDue,
+            pastDueAmount: totalPastDue,
+            pastDueAmountStr: totalPastDue < 0 ? `(${formatPricePhp(Math.abs(totalPastDue))})` : formatPricePhp(totalPastDue),
+            mispaymentPerson: '-',
+            fullPaymentPerson: '-',
+            fullPaymentAmount: 0,
+            fullPaymentAmountStr: '-',
+            activeBorrowers: activeBorrowers,
+            loanBalance: loanBalance,
+            loanBalanceStr: loanBalance < 0 ? `(${formatPricePhp(Math.abs(loanBalance))})` : formatPricePhp(loanBalance),
+            flag: 'transfer'
+        };
+    }
+
     const calculatePersons = (losList) => {
         const fBal = losList[0];
         let prevLos;
@@ -273,46 +469,34 @@ const LoanOfficerSummary = () => {
             let temp = {...los};
 
             if (index !== 0 && !los.weekTotal) {
-                const loanReleasePerson = los.loanReleasePerson !== '-' ? los.loanReleasePerson : 0;
-                const fullPaymentPerson = los.fullPaymentPerson !== '-' ? los.fullPaymentPerson : 0;
-                const fullPaymentAmount = los.fullPaymentAmount !== '-' ? los.fullPaymentAmount : 0;
-                const loanReleaseAmount = los.loanReleaseAmount !== '-' ? los.loanReleaseAmount : 0;
-                const collectionActual = los.collectionActual !== '-' ? los.collectionActual : 0;
                 const mcbuActual = los.mcbuActual !== '-' ? los.mcbuActual : 0;
                 const mcbuWithdrawal = los.mcbuWithdrawal !== '-' ? los.mcbuWithdrawal : 0;
                 const mcbuInterest = los.mcbuInterest !== '-' ? los.mcbuInterest : 0;
                 const mcbuReturnAmt = los.mcbuReturnAmt !== '-' ? los.mcbuReturnAmt : 0;
                 const fBalMcbuBalance = fBal.mcbuBalance !== '-' ? fBal.mcbuBalance : 0;
-                const transferMCBU = los.transferMcbu ? los.transferMcbu : 0;
+                const mcbuTransfer = 0;
 
                 if (index === 1) {
                     temp.activeClients = temp.activeClients > 0 ? temp.activeClients : fBal.activeClients;
-                    // temp.activeLoanReleasePerson = fBal.activeLoanReleasePerson + loanReleasePerson - fullPaymentPerson;
-                    // temp.activeLoanReleaseAmount = fBal.activeLoanReleaseAmount + loanReleaseAmount - fullPaymentAmount;
                     temp.activeLoanReleasePerson = temp.activeLoanReleasePerson > 0 ? temp.activeLoanReleasePerson : fBal.activeLoanReleasePerson;
                     temp.activeLoanReleaseAmount = temp.activeLoanReleaseAmount > 0 ? temp.activeLoanReleaseAmount : fBal.activeLoanReleaseAmount;
                     temp.activeLoanReleaseAmountStr = formatPricePhp(temp.activeLoanReleaseAmount);
                     temp.activeBorrowers = temp.activeBorrowers > 0 ? temp.activeBorrowers : fBal.activeBorrowers;
-                    // temp.loanBalance = fBal.loanBalance + loanReleaseAmount - collectionActual;
                     temp.loanBalance = temp.loanBalance > 0 ? temp.loanBalance : fBal.loanBalance;
                     temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
-                    temp.mcbuBalance = fBalMcbuBalance + mcbuActual - mcbuWithdrawal + mcbuInterest - mcbuReturnAmt + transferMCBU;
+                    temp.mcbuBalance = fBalMcbuBalance + mcbuActual - mcbuWithdrawal + mcbuInterest - mcbuReturnAmt + mcbuTransfer;
                     temp.mcbuBalanceStr = formatPricePhp(temp.mcbuBalance);
                 } else {
                     temp.activeClients = temp.activeClients > 0 ? temp.activeClients : prevLos.activeClients;
-                    // temp.activeLoanReleasePerson = prevLos.activeLoanReleasePerson + loanReleasePerson - fullPaymentPerson;
-                    // temp.activeLoanReleaseAmount = prevLos.activeLoanReleaseAmount + loanReleaseAmount - fullPaymentAmount;
                     temp.activeLoanReleasePerson = temp.activeLoanReleasePerson > 0 ? temp.activeLoanReleasePerson : prevLos.activeLoanReleasePerson;
                     temp.activeLoanReleaseAmount = temp.activeLoanReleaseAmount > 0 ? temp.activeLoanReleaseAmount : prevLos.activeLoanReleaseAmount;
                     temp.activeLoanReleaseAmountStr = formatPricePhp(temp.activeLoanReleaseAmount);
                     temp.activeBorrowers = temp.activeBorrowers > 0 ? temp.activeBorrowers : prevLos.activeBorrowers;
-                    // temp.loanBalance = prevLos.loanBalance + loanReleaseAmount - collectionActual;
                     temp.loanBalance = temp.loanBalance > 0 ? temp.loanBalance : prevLos.loanBalance;
                     temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
-                    temp.mcbuBalance = prevLos.mcbuBalance + mcbuActual - mcbuWithdrawal + mcbuInterest - mcbuReturnAmt + transferMCBU;
+                    temp.mcbuBalance = prevLos.mcbuBalance + mcbuActual - mcbuWithdrawal + mcbuInterest - mcbuReturnAmt + mcbuTransfer;
                     temp.mcbuBalanceStr = formatPricePhp(temp.mcbuBalance);
                 }
-
 
                 prevLos = temp;
             }
@@ -322,11 +506,13 @@ const LoanOfficerSummary = () => {
     }
 
     const calculateWeeklyTotals = (losList) => {
+        const transferRow = processTransferDetails(losList);
         const weekTotals = losList.filter(los => los.weekTotal);
         const fBal = losList[0];
 
         let prevWeek;
-        weekTotals.map(w => {
+        let lastWeekTotalIdx;
+        weekTotals.map((w, wIndex) => {
             const index = losList.findIndex(los => los.weekNumber === w.weekNumber);
             if (index > -1) {
                 let losSlice;
@@ -361,9 +547,6 @@ const LoanOfficerSummary = () => {
                 let totalActiveBorrowers = 0; // last row
                 let totalLoanBalance = 0; // last row
 
-                let lastOffsetperson = 0;
-                let lastActiveClient = 0;
-
                 let lastPastDueAmount = 0;
                 let lastPastDuePerson = 0;
                 let lastLoanBalance = 0;
@@ -378,7 +561,13 @@ const LoanOfficerSummary = () => {
                 let totalMcbuBalance = 0;
                 
                 losSlice.map(los => {
-                    totalTransfer += los.transfer !== '-' ? los.transfer : 0;
+                    // let noTransfer = los.transfer;
+                    // if (typeof noTransfer === "string" && noTransfer !== '-') {
+                    //     noTransfer = noTransfer.replace('(','').replace(')','');
+                    //     noTransfer = -Math.abs(noTransfer);
+                    // }
+ 
+                    // totalTransfer += noTransfer !== '-' ? noTransfer : 0;
                     totalNewMember += los.newMember !== '-' ? los.newMember : 0;
                     totalOffsetperson += los.offsetPerson !== '-' ? los.offsetPerson : 0;
                     totalLoanReleasePerson += los.loanReleasePerson !== '-' ? los.loanReleasePerson : 0;
@@ -386,8 +575,6 @@ const LoanOfficerSummary = () => {
                     totalCollectionTarget += los.collectionTarget !== '-' ? los.collectionTarget : 0;
                     totalCollectionAdvancePayment += los.collectionAdvancePayment !== '-' ? los.collectionAdvancePayment : 0;
                     totalCollectionActual += los.collectionActual !== '-' ? los.collectionActual : 0;
-                    // totalPastDuePerson += los.pastDuePerson !== '-' ? los.pastDuePerson : 0;
-                    // totalPastDueAmount += los.pastDueAmount !== '-' ? los.pastDueAmount : 0;
                     totalMispaymentPerson += los.mispaymentPerson !== '-' ? los.mispaymentPerson : 0;
                     if (los.pastDuePerson !== '-') {
                         lastPastDuePerson = los.pastDuePerson;
@@ -407,7 +594,6 @@ const LoanOfficerSummary = () => {
 
                     totalFullPaymentPerson += los.fullPaymentPerson !== '-' ? los.fullPaymentPerson : 0;
                     totalFullPaymentAmount += los.fullPaymentAmount !== '-' ? los.fullPaymentAmount : 0;
-
                     totalMcbuTarget += (los.mcbuTarget !== '-' && los.mcbuTarget) ? los.mcbuTarget : 0;
                     totalMcbuActual += (los.mcbuActual !== '-'  && los.mcbuActual)? los.mcbuActual : 0;
                     totalMcbuWithdrawal += (los.mcbuWithdrawal !== '-' && los.mcbuWithdrawal) ? los.mcbuWithdrawal : 0;
@@ -420,12 +606,10 @@ const LoanOfficerSummary = () => {
                     totalActiveClients = fBal.activeClients + totalTransfer + totalNewMember - totalNoMcbuReturn;
                     totalActiveLoanReleasePerson = fBal.activeLoanReleasePerson + totalLoanReleasePerson - totalFullPaymentPerson;
                     totalActiveLoanReleaseAmount = fBal.activeLoanReleaseAmount + totalLoanReleaseAmount - totalFullPaymentAmount;
-                    // totalMcbuBalance = fBal.mcbuBalance + totalMcbuActual + totalMcbuWithdrawals + totalMcbuInterest - totalMcbuReturnAmt;
                 } else {
                     totalActiveClients = prevWeek.activeClients + totalTransfer + totalNewMember - totalNoMcbuReturn;
                     totalActiveLoanReleasePerson = prevWeek.activeLoanReleasePerson + totalLoanReleasePerson - totalFullPaymentPerson;
                     totalActiveLoanReleaseAmount = prevWeek.activeLoanReleaseAmount + totalLoanReleaseAmount - totalFullPaymentAmount;
-                    // totalMcbuBalance = prevWeek.mcbuBalance + totalMcbuActual + totalMcbuWithdrawals + totalMcbuInterest - totalMcbuReturnAmt;
                 }
 
                 totalMcbuBalance = lastMcbuBalance;
@@ -434,9 +618,41 @@ const LoanOfficerSummary = () => {
                 totalActiveBorrowers = losSlice[losSlice.length - 1].activeBorrowers;
                 totalLoanBalance =  lastLoanBalance;
 
+                // +/- with the transfer
+                // apply only to the last week total
+                if (wIndex === weekTotals.length - 1) {
+                    let noTransfer = transferRow.loanReleasePerson;
+                    if (typeof noTransfer === "string" && noTransfer !== '-') {
+                        noTransfer = noTransfer.replace('(','').replace(')','');
+                        noTransfer = -Math.abs(noTransfer);
+                    }
+                    totalActiveClients += noTransfer;
+                    totalTransfer = transferRow.loanReleasePerson;
+                    totalMcbuTarget += transferRow.mcbuTarget ? transferRow.mcbuTarget : 0;
+                    totalMcbuActual += transferRow.mcbuActual ? transferRow.mcbuActual : 0;
+                    totalMcbuWithdrawal += transferRow.mcbuWithdrawal;
+                    totalMcbuInterest += transferRow.mcbuInterest;
+                    totalNoMcbuReturn += transferRow.noMcbuReturn;
+                    totalMcbuReturnAmt += transferRow.mcbuReturnAmt;
+                    if (transferRow.mcbuBalance > 0) {
+                        totalMcbuBalance = transferRow.mcbuBalance;
+                    }
+                    totalLoanReleasePerson += noTransfer;
+                    totalLoanReleaseAmount += transferRow.loanReleaseAmount;
+                    totalActiveLoanReleasePerson = transferRow.activeLoanReleasePerson;
+                    totalActiveLoanReleaseAmount = transferRow.activeLoanReleaseAmount;
+                    totalCollectionTarget += transferRow.collectionTarget ? transferRow.collectionTarget : 0;
+                    totalCollectionAdvancePayment += transferRow.collectionAdvancePayment;
+                    totalCollectionActual += transferRow.collectionActual;
+                    totalPastDuePerson += transferRow.pastDuePerson;
+                    totalPastDueAmount += transferRow.pastDueAmount;
+                    totalActiveBorrowers = transferRow.activeBorrowers;
+                    totalLoanBalance = transferRow.loanBalance;
+                }
+
                 losList[index] = {
                     ...w,
-                    transfer: totalTransfer,
+                    transfer: totalTransfer < 0 ? `(${Math.abs(totalTransfer)})` : totalTransfer,
                     newMember: totalNewMember,
                     mcbuTarget: totalMcbuTarget,
                     mcbuTargetStr: formatPricePhp(totalMcbuTarget),
@@ -477,10 +693,14 @@ const LoanOfficerSummary = () => {
                     loanBalanceStr: formatPricePhp(totalLoanBalance)
                 }
                 prevWeek = losList[index];
+                lastWeekTotalIdx = index;
             }
         });
-    
-        return losList;
+
+        const updatedWithTransfer = [...losList];
+        updatedWithTransfer.splice(lastWeekTotalIdx, 0, transferRow);
+
+        return updatedWithTransfer;
     }
 
     const calculateMonthlyTotals = (fBal, weeklyTotals) => {
@@ -555,10 +775,16 @@ const LoanOfficerSummary = () => {
         let totalLoanBalance = 0; // last row
 
         weeklyTotals.map(wt => {
-            totalTransfer += wt.transfer;
+            let noTransfer = wt.transfer;
+            if (typeof noTransfer === "string" && noTransfer !== '-') {
+                noTransfer = noTransfer.replace('(','').replace(')','');
+                noTransfer = -Math.abs(noTransfer);
+            }
+
+            totalTransfer += noTransfer;
             totalNewMember += wt.newMember;
             totalMcbuTarget += wt.mcbuTarget;
-            totalMcbuActual += wt.mcbuActual;
+            totalMcbuActual += wt.mcbuActual ? wt.mcbuActual : 0;
             totalMcbuWithdrawal += wt.mcbuWithdrawal;
             totalMcbuInterest += wt.mcbuInterest;
             totalNoMcbuReturn += wt.noMcbuReturn;
@@ -583,7 +809,7 @@ const LoanOfficerSummary = () => {
         totalActiveBorrowers = fBal.activeBorrowers + totalLoanReleasePerson - totalFullPaymentPerson;
         totalLoanBalance = fBal.loanBalance + totalLoanReleaseAmount - totalCollectionActual;
 
-        monthlyTotal.transfer = totalTransfer;
+        monthlyTotal.transfer = totalTransfer < 0 ? `(${Math.abs(totalTransfer)})` : totalTransfer;
         monthlyTotal.newMember = totalNewMember;
         monthlyTotal.mcbuTarget = totalMcbuTarget;
         monthlyTotal.mcbuTargetStr = formatPricePhp(totalMcbuTarget);
@@ -697,7 +923,19 @@ const LoanOfficerSummary = () => {
         const monthly = losList.find(los => los.monthTotal);
 
         if (fBal && monthly) {
-            totalTransfer = fBal.transfer + monthly.transfer;
+            let fnoTransfer = fBal.transfer;
+            if (typeof fnoTransfer === "string") {
+                fnoTransfer = fnoTransfer.replace('(','').replace(')','');
+                fnoTransfer = -Math.abs(fnoTransfer);
+            }
+
+            let mnoTransfer = monthly.transfer;
+            if (typeof mnoTransfer === "string") {
+                mnoTransfer = mnoTransfer.replace('(','').replace(')','');
+                mnoTransfer = -Math.abs(mnoTransfer);
+            }
+            const tTransfer = fnoTransfer + mnoTransfer;
+            totalTransfer = tTransfer < 0 ? `(${Math.abs(tTransfer)})` : tTransfer;
             totalNewMember = fBal.newMember + monthly.newMember;
             totalMcbuTarget = fBal.mcbuTarget + monthly.mcbuTarget;
             totalMcbuActual = fBal.mcbuActual + monthly.mcbuActual;
@@ -705,11 +943,9 @@ const LoanOfficerSummary = () => {
             totalMcbuInterest = fBal.mcbuInterest + monthly.mcbuInterest;
             totalNoMcbuReturn = fBal.noMcbuReturn + monthly.noMcbuReturn;
             totalMcbuReturnAmt = fBal.mcbuReturnAmt + monthly.mcbuReturnAmt;
-            totalMcbuBalance = fBal.mcbuBalance + monthly.mcbuBalance;
+            totalMcbuBalance = totalMcbuActual - totalMcbuWithdrawal + totalMcbuInterest - totalMcbuReturnAmt;
             totalOffsetperson = fBal.offsetPerson + monthly.offsetPerson;
             totalActiveClients = monthly.activeClients ;
-            // totalLoanReleasePerson = monthly.loanReleasePerson;
-            // totalLoanReleaseAmount = monthly.loanReleaseAmount;
             totalActiveLoanReleasePerson = monthly.activeLoanReleasePerson;
             totalActiveLoanReleaseAmount = monthly.activeLoanReleaseAmount;
             totalCollectionAdvancePayment = fBal.collectionAdvancePayment + monthly.collectionTarget + monthly.collectionAdvancePayment - monthly.fullPaymentAmount;
@@ -777,7 +1013,8 @@ const LoanOfficerSummary = () => {
             month: filter ? moment(date).month() + 1 : moment(currentDate).month() + 1,
             year: filter ? moment(date).year() : moment(currentDate).year(),
             data: total,
-            losType: 'commulative'
+            losType: 'commulative',
+            currentDate: currentDate
         }
 
         if (currentUser.role.rep === 4) {
@@ -812,17 +1049,17 @@ const LoanOfficerSummary = () => {
 
             mounted && getCurrentBranch();
         }
-        
-        if (days) {
+
+        if (mounted && type && days && days.length > 0) {
             const fMonth = (typeof selectedMonth === 'number' && selectedMonth < 10) ? '0' + selectedMonth : selectedMonth;
-            mounted && type && getListLos(`${selectedYear}-${fMonth}-01`);
-            mounted && setLoading(false);
+            getListLos(`${selectedYear}-${fMonth}-01`);
+            setLoading(false);
         }
 
         return (() => {
             mounted = false;
         })
-    }, [type, days]);
+    }, [days]);
 
     return (
         <Layout header={false} noPad={false} hScroll={false}>
@@ -835,9 +1072,9 @@ const LoanOfficerSummary = () => {
                     <LOSHeader page={1} pageTitle="Loan Officers Summary" selectedBranch={selectedBranch} 
                             selectedMonth={selectedMonth} setSelectedMonth={setSelectedMonth} handleMonthFilter={handleMonthFilter}
                             selectedYear={selectedYear} setSelectedYear={setSelectedYear} handleYearFilter={handleYearFilter}/>
-                    <div className="flex flex-col h-[55rem] max-h-[55rem] mt-40 pl-6 pr-2 overflow-y-auto">
-                        <div className="block rounded-xl overflow-auto h-[49rem]">
-                            <table className="relative w-full table-auto border-collapse text-sm bg-white mb-8">
+                    <div className="flex flex-col min-h-[55rem] mt-40 pl-6 pr-2 overflow-y-auto">
+                        <div className="block rounded-xl overflow-auto h-screen">
+                            <table className="relative w-full table-auto border-collapse text-sm bg-white" style={{ marginBottom: "14em", marginRight: "2em" }}>
                                 <thead>
                                     <tr>
                                         <th rowSpan={3} className="sticky top-0 bg-white border border-gray-300 border-l-0 border-t-0  px-2 py-2 text-gray-500 uppercase">Date</th>
@@ -884,7 +1121,7 @@ const LoanOfficerSummary = () => {
                                     {list.map((item, index) => {
                                         let rowBg = 'even:bg-gray-100';
 
-                                        if (item.weekTotal || item.monthTotal || item.grandTotal) {
+                                        if (item.weekTotal || item.monthTotal || item.grandTotal || item?.flag === 'transfer') {
                                             rowBg = 'bg-blue-100';
                                         }
 
@@ -919,7 +1156,7 @@ const LoanOfficerSummary = () => {
                                                         <td className="px-2 py-4 text-center border border-gray-300 border-r-0">{ item.loanBalanceStr }</td>
                                                     </tr>
                                                 ) : (
-                                                    <tr className={`${rowBg} ${(item.weekTotal || item.monthTotal) && 'text-red-400 font-bold'}`}>
+                                                    <tr className={`${rowBg} ${(item.weekTotal || item.monthTotal) && 'text-red-400 font-bold'} ${item?.flag === 'transfer' && 'text-orange-400 font-bold'}`}>
                                                         <td className="px-2 py-4 text-center border border-gray-300 border-l-0">{ item.day }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.transfer }</td>
                                                         <td className="px-2 py-4 text-center border border-gray-300">{ item.newMember }</td>

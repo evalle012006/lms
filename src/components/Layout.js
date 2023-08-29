@@ -13,6 +13,7 @@ const Layout = ({ children, bgwhite = false, header = true, noPad = false, actio
     const pageTitle = state.title;
     const dispatch = useDispatch();
     const currentDate = useSelector(state => state.systemSettings.currentDate);
+    const holidayList = useSelector(state => state.holidays.list);
 
     const getCurrentDate = async () => {
         const apiURL = `${process.env.NEXT_PUBLIC_API_URL}settings/current-date`;
@@ -22,17 +23,17 @@ const Layout = ({ children, bgwhite = false, header = true, noPad = false, actio
         }
     }
 
-    const getTransactionSettings = async () => {
-        const apiURL = `${process.env.NEXT_PUBLIC_API_URL}settings/transactions`;
-        const response = await fetchWrapper.get(apiURL);
-        if (response.success) {
-            dispatch(setTransactionSettings(response.transactions));
-        }
-    }
+    // const getTransactionSettings = async () => {
+    //     const apiURL = `${process.env.NEXT_PUBLIC_API_URL}settings/transactions`;
+    //     const response = await fetchWrapper.get(apiURL);
+    //     if (response.success) {
+    //         dispatch(setTransactionSettings(response.transactions));
+    //     }
+    // }
 
     useEffect(() => {
         getCurrentDate();
-        getTransactionSettings();
+        // getTransactionSettings();
     }, []);
 
     useEffect(() => {
@@ -43,7 +44,7 @@ const Layout = ({ children, bgwhite = false, header = true, noPad = false, actio
                 if (response.success) {
                     const holidays = response.holidays.map(h => {
                         let temp = {...h};
-                        
+
                         const tempDate = moment(currentDate).year() + '-' + temp.date;
                         temp.dateStr = moment(tempDate).format('MMMM DD');
         
@@ -74,13 +75,21 @@ const Layout = ({ children, bgwhite = false, header = true, noPad = false, actio
             } else {
                 dispatch(setWeekend(false));
             }
-
-            getListHoliday();
-
-            const lastDay = getLastWeekdayOfTheMonth(moment(currentDate).year(), moment(currentDate).month() + 1);
-            dispatch(setLastDayOfTheMonth(lastDay));
+            // will need to find a way for this to check if there is an update
+            if (holidayList?.length === 0) {
+                getListHoliday();
+            }
         }
     }, [currentDate]);
+
+    useEffect(() => {
+        const holidays = holidayList.map(h => {
+            return h.date;
+        });
+
+        const lastDay = getLastWeekdayOfTheMonth(moment(currentDate).year(), moment(currentDate).month() + 1, holidays);
+        dispatch(setLastDayOfTheMonth(lastDay));
+    }, [holidayList]);
 
     return (
         <div className="flex bg-white">

@@ -49,7 +49,12 @@ const TeamPage = () => {
         const response = await fetchWrapper.get(url);
         let users = [];
         response.users && response.users.filter(u => !u.root).map((user) => {
-            const designatedBranch = user.role.rep === 2 ? user.designatedBranch.join(', ') : user.designatedBranch;
+            let designatedBranch = user.designatedBranch;
+            if (user.role.rep === 2) {
+                if (typeof designatedBranch === 'string') {
+                    designatedBranch = JSON.parse(user.designatedBranch);
+                }
+            }
 
             users.push({
                 _id: user._id,
