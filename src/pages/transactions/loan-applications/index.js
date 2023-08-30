@@ -465,7 +465,10 @@ const LoanApplicationPage = () => {
             if (response.success) {
                 setLoading(false);
                 toast.success('Loan successfully updated.');
-                window.location.reload();
+                setTimeout(() => {
+                    getListLoan();
+                    window.location.reload();
+                }, 1000);
             } else if (response.error) {
                 setLoading(false);
                 toast.error(response.message);
@@ -483,7 +486,11 @@ const LoanApplicationPage = () => {
         setLoading(true);
         setMode('add');
         setLoan({});
-        window.location.reload();
+        getListLoan();
+        getListGroup();
+        setTimeout(() => {
+            window.location.reload();
+        }, 800);
     }
 
     const handleMultiSelect = (mode, selectAll, row, rowIndex) => {
@@ -549,9 +556,9 @@ const LoanApplicationPage = () => {
                 setLoading(false);
                 toast.success('Selected loans successfully approved.');
                 setTimeout(() => {
+                    getListLoan();
                     window.location.reload();
-                    // getListLoan();
-                }, 500);
+                }, 1000);
             }
         } else {
             toast.error('No loan selected!');

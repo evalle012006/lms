@@ -101,6 +101,7 @@ const CashCollectionDetailsPage = () => {
     }
 
     const getCashCollections = async (date) => {
+        setLoading(true);
         const type = date ? 'filter' : 'current';
         let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/get-loan-by-group-cash-collection?' 
             + new URLSearchParams({ date: date ? date : currentDate, mode: 'weekly', groupId: uuid, type: type });
@@ -738,7 +739,9 @@ const CashCollectionDetailsPage = () => {
             });
 
             dispatch(setCashCollectionGroup(cashCollection));
-            setLoading(false);
+            setTimeout(() => {
+                setLoading(false);
+            }, 1000);
         } else if (response.error){
             toast.error('Error retrieving cash collection list.');
             setTimeout(() => {
@@ -1081,12 +1084,11 @@ const CashCollectionDetailsPage = () => {
                             toast.success('Payment collection successfully submitted. Reloading page please wait.');
                 
                             setTimeout(() => {
-                                setLoading(true);
                                 getCashCollections();
                                 setAllowOffsetTransaction(false);
                                 // window.location.reload();
-                            }, 1000);
-                        }, 500);
+                            }, 1200);
+                        }, 800);
                     }
                 } else {
                     toast.warning('No active data to be saved.');
@@ -1907,7 +1909,6 @@ const CashCollectionDetailsPage = () => {
 
     useEffect(() => {
         let mounted = true;
-        setLoading(true);
 
         const getListBranch = async () => {
             let url = process.env.NEXT_PUBLIC_API_URL + 'branches/list';
@@ -1936,7 +1937,6 @@ const CashCollectionDetailsPage = () => {
                 toast.error('Error retrieving branches list.');
             }
     
-            setLoading(false);
         }
 
         const getCurrentGroup = async () => {
@@ -1948,7 +1948,6 @@ const CashCollectionDetailsPage = () => {
                     dispatch(setGroup(response.group));
                     setCurrentGroup(response.group);
                     setGroupFilter(uuid);
-                    setLoading(false);
                 } else {
                     toast.error('Error while loading data');
                 }
