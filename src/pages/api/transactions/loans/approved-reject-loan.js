@@ -48,20 +48,22 @@ async function updateLoan(req, res) {
                     await updateGroup(groupData);
                 }
             }
-        
-            const loanResp = await db
-                .collection('loans')
-                .updateOne(
-                    { _id: new ObjectId(loanId) }, 
-                    {
-                        $set: { ...loan }
-                    }, 
-                    { upsert: false });
 
-            loan._id = loanId;
-            await saveCashCollection(loan, groupData, currentDate);
-            
-            response = { success: true, loan: loanResp };
+            if (loan.status === 'active' || loan.status === 'reject') {
+                const loanResp = await db
+                    .collection('loans')
+                    .updateOne(
+                        { _id: new ObjectId(loanId) }, 
+                        {
+                            $set: { ...loan }
+                        }, 
+                        { upsert: false });
+
+                loan._id = loanId;
+                await saveCashCollection(loan, groupData, currentDate);
+                
+                response = { success: true, loan: loanResp };   
+            }
         }
     } else {
         response = { error: true, message: 'Group data not found.' };

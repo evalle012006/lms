@@ -52,16 +52,18 @@ async function processData(req, res) {
                     }
                 }
 
-                await db.collection('loans')
-                    .updateOne(
-                        { _id: new ObjectId(loanId) }, 
-                        {
-                            $set: { ...loan }
-                        }, 
-                        { upsert: false });
-                
-                loan._id = loanId;
-                await saveCashCollection(loan, groupData, currentDate);
+                if (loan.status === 'active' || loan.status === 'reject') {
+                    await db.collection('loans')
+                        .updateOne(
+                            { _id: new ObjectId(loanId) }, 
+                            {
+                                $set: { ...loan }
+                            }, 
+                            { upsert: false });
+                    
+                    loan._id = loanId;
+                    await saveCashCollection(loan, groupData, currentDate);
+                }
             }
         }
     });
