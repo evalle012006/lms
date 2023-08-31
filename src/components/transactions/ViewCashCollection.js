@@ -601,6 +601,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
             totalLoanBalanceStr: totalLoanBalance ? formatPricePhp(totalLoanBalance) : 0,
             targetLoanCollection: totalTargetCollection,
             loanTargetStr: totalTargetCollection ? formatPricePhp(totalTargetCollection) : 0,
+            excessStr: '-',
             // collection: totalActualCollection,
             // collectionStr: totalActualCollection ? formatPricePhp(totalActualCollection) : 0,
             pastDue: totalPastDue,

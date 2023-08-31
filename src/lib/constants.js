@@ -5,6 +5,7 @@ export const LOR_DAILY_REMARKS = [
     { label: 'Reloaner WD/MCBU', value: 'reloaner-wd'},
     { label: 'For Close/Offset - Good Client', value: 'offset-good'},
     { label: 'For Close/Offset - Delinquent Client', value: 'offset-delinquent'},
+    { label: 'For Close/Offset - Unclaimed Amount', value: 'offset-unclaimed'},
     { label: 'Past Due', value: 'past due'},
     { label: 'Past Due Collection', value: 'past due collection'},
     { label: 'Delinquent', value: 'delinquent'},
@@ -21,6 +22,7 @@ export const LOR_WEEKLY_REMARKS = [
     { label: 'Reloaner', value: 'reloaner'},
     { label: 'For Close/Offset - Good Client', value: 'offset-good'},
     { label: 'For Close/Offset - Delinquent Client', value: 'offset-delinquent'},
+    { label: 'For Close/Offset - Unclaimed Amount', value: 'offset-unclaimed'},
     { label: 'Past Due', value: 'past due'},
     { label: 'Past Due Collection', value: 'past due collection'},
     { label: 'Delinquent', value: 'delinquent'},
@@ -34,7 +36,8 @@ export const LOR_WEEKLY_REMARKS = [
 export const LOR_ONLY_OFFSET_REMARKS = [
     { label: 'Remarks', value: ''},
     { label: 'For Close/Offset - Good Client', value: 'offset-good'},
-    { label: 'For Close/Offset - Delinquent Client', value: 'offset-delinquent'}
+    { label: 'For Close/Offset - Delinquent Client', value: 'offset-delinquent'},
+    { label: 'For Close/Offset - Unclaimed Amount', value: 'offset-unclaimed'}
 ];
 
 export const WEEKLY_GROUPS = [
@@ -79,4 +82,44 @@ export const LO_9_DAILY_GROUPS = [
 
 export const LO_10_DAILY_GROUPS = [
     'MERCY', 'PATIENCE', 'PEACE', 'CARE', 'HONEST', 'GENEROUS', 'FIDELITY', 'PRUDENCE', 'HONOR', 'LOVE', 'TRUST', 'HOPE'
+];
+
+export const LO_11_DAILY_GROUPS = [
+    'AMBER', 'BEIGE', 'BLACK', 'CYAN', 'INDIGO', 'MAROON', 'RUST', 'TEAL', 'WHITE', 'AQUA', 'BLOND', 'BURGUNDY'
+];
+
+export const LO_12_DAILY_GROUPS = [
+    'KROTOA', 'MAGOR', 'ARBER', 'BURU', 'CHURA', 'HAIRU', 'NARON', 'SAFFAR', 'ARBER', 'AMATERU', 'BRAN', 'GUARANI'
+];
+
+export const LO_13_DAILY_GROUPS = [
+    'DAFFODIL', 'DAHLIA', 'LAVENDER', 'MARIGOLD', 'PEONY', 'ASTER', 'JASMINE', 'SUNFLOWER', 'PETUNIA', 'AZALEA', 'AMARYLLIS', 'HYDRANGEA'
+];
+
+export const LO_14_DAILY_GROUPS = [
+    'HERMES', 'ARES', 'HADES', 'CRONUS', 'EROS', 'PERSOPHONIE', 'HELIOS', 'GAIA', 'PAN', 'RHEA', 'ATLAS', 'HERACLES'
+];
+
+export const LO_15_DAILY_GROUPS = [
+    'HYDROGEN', 'HELIUM', 'FLOURINE', 'BERYLLIUM', 'LITHIUM', 'MAGNESIUM', 'POTASSIUM', 'BARIUM', 'CALCIUM', 'NEON', 'COPPER', 'NICKEL'
+];
+
+export const LO_16_DAILY_GROUPS = [
+    'PERSIA', 'CAMBODIA', 'HUNGARY', 'ALBANIA', 'INDONESIA', 'JAPAN', 'INDIA', 'CUBA', 'BULGARIA', 'PHILIPPINES', 'COLOMBIA', 'GHANA'
+];
+
+export const LO_17_DAILY_GROUPS = [
+    'AMETHYST', 'DIAMOND', 'PEARL', 'TOPAZ', 'SAPPHIRE', 'AQUAMARINE', 'CITRINE', 'CORUNDUM', 'QUARTZ', 'TOURMALINE', 'JASPER', 'CARNELIAN'
+];
+
+export const LO_18_DAILY_GROUPS = [
+    'RAT', 'OX', 'TIGER', 'RABBIT', 'DRAGON', 'SNAKE', 'HORSE', 'SHEEP', 'MONKEY', 'ROOSTER', 'DOG', 'PIG'
+];
+
+export const LO_19_DAILY_GROUPS = [
+    'OAK', 'MAPLE', 'BIRCH', 'CEDAR', 'PICEA', 'POPLAR', 'WALNUT', 'ABIES', 'SAPELE', 'ALDER', 'PINE', 'BEECH'
+];
+
+export const LO_20_DAILY_GROUPS = [
+    'BEAUTY', 'COURAGE', 'CONFIDENCE', 'FAITH', 'DIGNITY', 'JUSTICE', 'LOYALTY', 'ETHICAL', 'SINCERITY', 'UNITY', 'WISDOM', 'GRATITUDE'
 ];

@@ -1426,6 +1426,9 @@ const CashCollectionDetailsPage = () => {
                             if (parseFloat(temp.loanBalance) !== 0) {
                                 toast.error("Please enter the full balance before closing the loan account.");
                                 temp.error = true;
+                            } else if (remarks.value === 'offset-unclaimed' && temp.mcbu > temp.loanBalance) {
+                                toast.error("Invalid remarks. Unclaimed Amount remarks is for offset transaction with remaining MCBU.");
+                                temp.error = true;
                             } else {
                                 setShowRemarksModal(true);
                                 setCloseLoan(cc);

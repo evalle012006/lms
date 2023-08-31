@@ -1,7 +1,14 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
 import moment from 'moment'
-import { LO_10_DAILY_GROUPS, LO_1_DAILY_GROUPS, LO_2_DAILY_GROUPS, LO_3_DAILY_GROUPS, LO_4_DAILY_GROUPS, LO_5_DAILY_GROUPS, LO_6_DAILY_GROUPS, LO_7_DAILY_GROUPS, LO_9_DAILY_GROUPS, WEEKLY_GROUPS } from '@/lib/constants';
+import { LO_10_DAILY_GROUPS, LO_11_DAILY_GROUPS, LO_12_DAILY_GROUPS, LO_13_DAILY_GROUPS, LO_14_DAILY_GROUPS, LO_15_DAILY_GROUPS, LO_16_DAILY_GROUPS, LO_17_DAILY_GROUPS, LO_18_DAILY_GROUPS, LO_19_DAILY_GROUPS, LO_1_DAILY_GROUPS, LO_20_DAILY_GROUPS, LO_2_DAILY_GROUPS, LO_3_DAILY_GROUPS, LO_4_DAILY_GROUPS, LO_5_DAILY_GROUPS, LO_6_DAILY_GROUPS, LO_7_DAILY_GROUPS, LO_8_DAILY_GROUPS, LO_9_DAILY_GROUPS, WEEKLY_GROUPS } from '@/lib/constants';
+
+const LOGROUPS = [
+    LO_1_DAILY_GROUPS, LO_2_DAILY_GROUPS, LO_3_DAILY_GROUPS, LO_4_DAILY_GROUPS, LO_5_DAILY_GROUPS,
+    LO_6_DAILY_GROUPS, LO_7_DAILY_GROUPS, LO_8_DAILY_GROUPS, LO_9_DAILY_GROUPS, LO_10_DAILY_GROUPS, 
+    LO_11_DAILY_GROUPS, LO_12_DAILY_GROUPS, LO_13_DAILY_GROUPS, LO_14_DAILY_GROUPS, LO_15_DAILY_GROUPS, 
+    LO_16_DAILY_GROUPS, LO_17_DAILY_GROUPS, LO_18_DAILY_GROUPS, LO_19_DAILY_GROUPS, LO_20_DAILY_GROUPS
+];
 
 export default apiHandler({
     post: save
@@ -71,70 +78,143 @@ async function createGroups (user) {
     const { db } = await connectToDatabase();
 
     if (user.transactionType === 'daily') {
-        switch (parseInt(user.loNo)) {
-            case 1:
-                LO_1_DAILY_GROUPS.map(async (g, i) => {
-                    const groups = createDailyGroupData(g, user, i + 1);
-                    await db.collection('groups').insertOne(groups);
-                });
-                break;
-            case 2:
-                LO_2_DAILY_GROUPS.map(async (g, i) => {
-                    const groups = createDailyGroupData(g, user, i + 1);
-                    await db.collection('groups').insertOne(groups);
-                });
-                break;
-            case 3:
-                LO_3_DAILY_GROUPS.map(async (g, i) => {
-                    const groups = createDailyGroupData(g, user, i + 1);
-                    await db.collection('groups').insertOne(groups);
-                });
-                break;
-            case 4:
-                LO_4_DAILY_GROUPS.map(async (g, i) => {
-                    const groups = createDailyGroupData(g, user, i + 1);
-                    await db.collection('groups').insertOne(groups);
-                });
-                break;
-            case 5:
-                LO_5_DAILY_GROUPS.map(async (g, i) => {
-                    const groups = createDailyGroupData(g, user, i + 1);
-                    await db.collection('groups').insertOne(groups);
-                });
-                break;
-            case 6:
-                LO_6_DAILY_GROUPS.map(async (g, i) => {
-                    const groups = createDailyGroupData(g, user, i + 1);
-                    await db.collection('groups').insertOne(groups);
-                });
-                break;
-            case 7:
-                LO_7_DAILY_GROUPS.map(async (g, i) => {
-                    const groups = createDailyGroupData(g, user, i + 1);
-                    await db.collection('groups').insertOne(groups);
-                });
-                break;
-            case 8:
-                LO_1_DAILY_GROUPS.map(async (g, i) => {
-                    const groups = createDailyGroupData(g, user, i + 1);
-                    await db.collection('groups').insertOne(groups);
-                });
-                break;
-            case 9:
-                LO_9_DAILY_GROUPS.map(async (g, i) => {
-                    const groups = createDailyGroupData(g, user, i + 1);
-                    await db.collection('groups').insertOne(groups);
-                });
-                break;
-            case 10:
-                LO_10_DAILY_GROUPS.map(async (g, i) => {
-                    const groups = createDailyGroupData(g, user, i + 1);
-                    await db.collection('groups').insertOne(groups);
-                });
-                break;
-            default:
-                break;
+        const loNo = parseInt(user.loNo);
+        if (loNo) {
+            LOGROUPS[loNo - 1].map(async (g, i) => {
+                const groups = createDailyGroupData(g, user, i + 1);
+                await db.collection('groups').insertOne(groups);
+            });
         }
+        // switch (parseInt(user.loNo)) {
+        //     case 1:
+        //         LO_1_DAILY_GROUPS.map(async (g, i) => {
+        //             const groups = createDailyGroupData(g, user, i + 1);
+        //             await db.collection('groups').insertOne(groups);
+        //         });
+        //         break;
+        //     case 2:
+        //         LO_2_DAILY_GROUPS.map(async (g, i) => {
+        //             const groups = createDailyGroupData(g, user, i + 1);
+        //             await db.collection('groups').insertOne(groups);
+        //         });
+        //         break;
+        //     case 3:
+        //         LO_3_DAILY_GROUPS.map(async (g, i) => {
+        //             const groups = createDailyGroupData(g, user, i + 1);
+        //             await db.collection('groups').insertOne(groups);
+        //         });
+        //         break;
+        //     case 4:
+        //         LO_4_DAILY_GROUPS.map(async (g, i) => {
+        //             const groups = createDailyGroupData(g, user, i + 1);
+        //             await db.collection('groups').insertOne(groups);
+        //         });
+        //         break;
+        //     case 5:
+        //         LO_5_DAILY_GROUPS.map(async (g, i) => {
+        //             const groups = createDailyGroupData(g, user, i + 1);
+        //             await db.collection('groups').insertOne(groups);
+        //         });
+        //         break;
+        //     case 6:
+        //         LO_6_DAILY_GROUPS.map(async (g, i) => {
+        //             const groups = createDailyGroupData(g, user, i + 1);
+        //             await db.collection('groups').insertOne(groups);
+        //         });
+        //         break;
+        //     case 7:
+        //         LO_7_DAILY_GROUPS.map(async (g, i) => {
+        //             const groups = createDailyGroupData(g, user, i + 1);
+        //             await db.collection('groups').insertOne(groups);
+        //         });
+        //         break;
+        //     case 8:
+        //         LO_8_DAILY_GROUPS.map(async (g, i) => {
+        //             const groups = createDailyGroupData(g, user, i + 1);
+        //             await db.collection('groups').insertOne(groups);
+        //         });
+        //         break;
+        //     case 9:
+        //         LO_9_DAILY_GROUPS.map(async (g, i) => {
+        //             const groups = createDailyGroupData(g, user, i + 1);
+        //             await db.collection('groups').insertOne(groups);
+        //         });
+        //         break;
+        //     case 10:
+        //         LO_10_DAILY_GROUPS.map(async (g, i) => {
+        //             const groups = createDailyGroupData(g, user, i + 1);
+        //             await db.collection('groups').insertOne(groups);
+        //         });
+        //         break;
+        //     case 10:
+        //         LO_10_DAILY_GROUPS.map(async (g, i) => {
+        //             const groups = createDailyGroupData(g, user, i + 1);
+        //             await db.collection('groups').insertOne(groups);
+        //         });
+        //         break;
+        //     case 11:
+        //         LO_11_DAILY_GROUPS.map(async (g, i) => {
+        //             const groups = createDailyGroupData(g, user, i + 1);
+        //             await db.collection('groups').insertOne(groups);
+        //         });
+        //         break;
+        //     case 12:
+        //         LO_12_DAILY_GROUPS.map(async (g, i) => {
+        //             const groups = createDailyGroupData(g, user, i + 1);
+        //             await db.collection('groups').insertOne(groups);
+        //         });
+        //         break;
+        //     case 13:
+        //         LO_13_DAILY_GROUPS.map(async (g, i) => {
+        //             const groups = createDailyGroupData(g, user, i + 1);
+        //             await db.collection('groups').insertOne(groups);
+        //         });
+        //         break;
+        //     case 14:
+        //         LO_14_DAILY_GROUPS.map(async (g, i) => {
+        //             const groups = createDailyGroupData(g, user, i + 1);
+        //             await db.collection('groups').insertOne(groups);
+        //         });
+        //         break;
+        //     case 15:
+        //         LO_15_DAILY_GROUPS.map(async (g, i) => {
+        //             const groups = createDailyGroupData(g, user, i + 1);
+        //             await db.collection('groups').insertOne(groups);
+        //         });
+        //         break;
+        //     case 16:
+        //         LO_16_DAILY_GROUPS.map(async (g, i) => {
+        //             const groups = createDailyGroupData(g, user, i + 1);
+        //             await db.collection('groups').insertOne(groups);
+        //         });
+        //         break;
+        //     case 17:
+        //         LO_17_DAILY_GROUPS.map(async (g, i) => {
+        //             const groups = createDailyGroupData(g, user, i + 1);
+        //             await db.collection('groups').insertOne(groups);
+        //         });
+        //         break;
+        //     case 18:
+        //         LO_18_DAILY_GROUPS.map(async (g, i) => {
+        //             const groups = createDailyGroupData(g, user, i + 1);
+        //             await db.collection('groups').insertOne(groups);
+        //         });
+        //         break;
+        //     case 19:
+        //         LO_19_DAILY_GROUPS.map(async (g, i) => {
+        //             const groups = createDailyGroupData(g, user, i + 1);
+        //             await db.collection('groups').insertOne(groups);
+        //         });
+        //         break;
+        //     case 20:
+        //         LO_20_DAILY_GROUPS.map(async (g, i) => {
+        //             const groups = createDailyGroupData(g, user, i + 1);
+        //             await db.collection('groups').insertOne(groups);
+        //         });
+        //         break;
+        //     default:
+        //         break;
+        // }
     } else if (user.transactionType === 'weekly') {
         WEEKLY_GROUPS.map(async (g, i) => {
             const groupNo = i + 1;

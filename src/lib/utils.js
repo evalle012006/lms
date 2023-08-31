@@ -48,8 +48,14 @@ export const formatBytes = (bytes, decimals = 2) => {
 
 export const formatPricePhp = (num) => {
     if (num) {
-        const price = new Intl.NumberFormat('fil-PH', { style: 'currency', currency: 'PHP' }).format(num);
-        return price.replace('.00', '');
+        if (num < 0) {
+            const absNum = Math.abs(num);
+            const price = new Intl.NumberFormat('fil-PH', { style: 'currency', currency: 'PHP' }).format(absNum);
+            return `(${price.replace('.00', '')})`;
+        } else {
+            const price = new Intl.NumberFormat('fil-PH', { style: 'currency', currency: 'PHP' }).format(num);
+            return price.replace('.00', '');
+        }
     } else {
         return '0';
     }

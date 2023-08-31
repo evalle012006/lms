@@ -1261,18 +1261,6 @@ const CashCollectionDetailsPage = () => {
                         temp.mcbuReturnAmtStr = '-';
                         temp.mcbuWithdrawal = 0;
                         temp.mcbuWithdrawalStr = '-';
-                        
-                        // if (temp.hasOwnProperty('mcbuHistory') && temp.mcbuHistory) {
-                        //     temp.mcbu = temp.mcbuHistory.mcbu;
-                        //     temp.mcbuStr = temp.mcbu > 0 ? formatPricePhp(temp.mcbu) : '-';
-                        //     temp.mcbuCol = temp.mcbuHistory.mcbuCol;
-                        //     temp.mcbuColStr = temp.mcbuCol > 0 ? formatPricePhp(temp.mcbuCol) : '-';
-                        // } else {
-                        //     temp.mcbuHistory = {
-                        //         mcbu: temp.mcbu,
-                        //         mcbuCol: temp.mcbuCol
-                        //     }
-                        // }
     
                         temp.targetCollection = temp.activeLoan;
                         temp.targetCollectionStr = formatPricePhp(temp.targetCollection);
@@ -1285,6 +1273,9 @@ const CashCollectionDetailsPage = () => {
                         if (remarks.value && remarks.value?.startsWith('offset')) {
                             if (parseFloat(temp.loanBalance) !== 0) {
                                 toast.error("Please enter the full balance before closing the loan account.");
+                                temp.error = true;
+                            } else if (remarks.value === 'offset-unclaimed' && temp.mcbu > temp.loanBalance) {
+                                toast.error("Invalid remarks. Unclaimed Amount remarks is for offset transaction with remaining MCBU.");
                                 temp.error = true;
                             } else {
                                 setShowRemarksModal(true);
