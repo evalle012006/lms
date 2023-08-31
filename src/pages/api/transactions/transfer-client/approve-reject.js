@@ -168,8 +168,8 @@ async function saveCashCollection(transfer, client, loan, sourceGroup, targetGro
         if (loan) {
             data.oldLoanId = loan.oldId;
             data.loanId = loan._id;
-            // data.activeLoan = loan.activeLoan;
-            // data.targetCollection = loan.activeLoan;
+            data.activeLoan = loan.activeLoan;
+            data.targetCollection = loan.activeLoan;
             data.amountRelease = loan.amountRelease;
             data.loanBalance = loan.loanBalance;
             data.slotNo = selectedSlotNo;
@@ -245,13 +245,13 @@ async function saveCashCollection(transfer, client, loan, sourceGroup, targetGro
             data.loanId = loan.oldId;
             data.activeLoan = loan.activeLoan;
             data.targetCollection = loan.activeLoan;
-            // data.amountRelease = loan.amountRelease;
-            // data.loanBalance = loan.loanBalance;
+            data.amountRelease = loan.amountRelease;
+            data.loanBalance = loan.loanBalance;
             data.slotNo = loan.slotNo;
             data.loanCycle = loan.loanCycle;
             data.noOfPayments = loan.noOfPayments;
             data.status = loan.status;
-            // data.mcbu = loan.mcbu;
+            data.mcbu = loan.mcbu;
             data.loanTerms = loan.loanTerms;
         }
 
