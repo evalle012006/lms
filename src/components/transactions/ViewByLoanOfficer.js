@@ -331,19 +331,18 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                         collectionDailyTransferred.push.apply(collectionDailyTransferred, lo.transferDailyReceivedDetails);
                         transfer = transfer - lo.transferDailyReceivedDetails.length;
 
-                        lo.transferDailyReceivedDetails.map(rcv => {
-                            if (!filter) {
-                                collection.activeClients += 1;
-                                collection.activeBorrowers += 1;
-                                collection.mcbu += rcv.mcbu;
-                            }
-    
-                            collection.totalLoanRelease += rcv.amountRelease;
-                            collection.totalLoanBalance += rcv.loanBalance;
-    
-                            totalsLoanRelease += rcv.amountRelease;
-                            totalsLoanBalance += rcv.loanBalance;
-                        });
+                        if (!filter) {
+                            lo.transferDailyReceivedDetails.map(rcv => {
+                                // collection.activeClients += 1;
+                                // collection.activeBorrowers += 1;
+                                // collection.mcbu += rcv.mcbu;
+                                collection.totalLoanRelease += rcv.amountRelease;
+                                collection.totalLoanBalance += rcv.loanBalance;
+        
+                                totalsLoanRelease += rcv.amountRelease;
+                                totalsLoanBalance += rcv.loanBalance;
+                            });
+                        }
                     }
 
                     if (lo.transferDailyGiverDetails.length > 0) {
@@ -368,19 +367,18 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                         collectionWeeklyTransferred.push.apply(collectionWeeklyTransferred, lo.transferWeeklyReceivedDetails);
                         transfer = transfer - lo.transferWeeklyReceivedDetails.length;
 
-                        lo.transferWeeklyReceivedDetails.map(rcv => {
-                            if (!filter) {
-                                collection.activeClients += 1;
-                                collection.activeBorrowers += 1;
-                                collection.mcbu += rcv.mcbu;
-                            }
-    
-                            collection.totalLoanRelease += rcv.amountRelease;
-                            collection.totalLoanBalance += rcv.loanBalance;
-    
-                            totalsLoanRelease += rcv.amountRelease;
-                            totalsLoanBalance += rcv.loanBalance;
-                        });
+                        if (!filter) {
+                            lo.transferWeeklyReceivedDetails.map(rcv => {
+                                // collection.activeClients += 1;
+                                // collection.activeBorrowers += 1;
+                                // collection.mcbu += rcv.mcbu;
+                                collection.totalLoanRelease += rcv.amountRelease;
+                                collection.totalLoanBalance += rcv.loanBalance;
+        
+                                totalsLoanRelease += rcv.amountRelease;
+                                totalsLoanBalance += rcv.loanBalance;
+                            });
+                        }
                     }
 
                     if (lo.transferWeeklyGiverDetails.length > 0) {

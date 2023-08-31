@@ -568,7 +568,7 @@ const CashCollectionDetailsPage = () => {
 
                 if (!date && cc?.pastDue) {
                     // if pastDue === loanBalance then make target collection 0
-                    if (collection.pastDue === collection.loanBalance) {
+                    if (collection.pastDue === collection.loanBalance && collection.loanBalance > 0) {
                         collection.targetCollection = 0;
                         collection.activeLoan = 0;
                     }

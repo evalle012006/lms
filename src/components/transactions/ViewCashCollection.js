@@ -718,11 +718,14 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
             if (transferGvr?.currentReleaseAmount > 0) {
                 transferCurrentReleaseAmount = Math.abs(transferGvr.currentReleaseAmount);
                 totalsLoanBalance -= transferGvr.targetLoanCollection;
+                totalsLoanBalance -= transferGvr.excess;
             }
 
             if (transferRcv?.currentReleaseAmount > 0) {
                 transferCurrentReleaseAmount -= transferRcv.currentReleaseAmount;
-                totalsLoanBalance += transferRcv.targetLoanCollection + transferRcv.totalLoanBalance;
+                totalsLoanBalance += transferRcv.targetLoanCollection;
+                totalsLoanBalance += transferRcv.totalLoanBalance;
+                totalsLoanBalance += transferRcv.excess;
             }
 
             if (transferCurrentReleaseAmount === 0 && transferRcv.currentReleaseAmount > 0) {
@@ -737,14 +740,13 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
             if (transferGvr?.currentReleaseAmount === 0 && transferRcv.currentReleaseAmount > 0) {
                 transferCurrentReleaseAmount += -Math.abs(transferRcv.currentReleaseAmount);
                 totalsLoanBalance += transferRcv.targetLoanCollection;
+                totalsLoanBalance += transferRcv.excess;
                 totalsLoanRelease -= transferRcv.currentReleaseAmount;
             }
 
-            // totalsLoanRelease = consolidateTotalData.totalLoanRelease + consolidateTotalData.currentReleaseAmount + transferCurrentReleaseAmount;
             totalsLoanBalance += transferCurrentReleaseAmount;
             totalsMcbuCol = consolidateTotalData.mcbuCol;
             totalsCollectionTarget = consolidateTotalData.targetLoanCollection;
-            totalsCollectionExcess = consolidateTotalData.excess;
             totalsCollectionActual = consolidateTotalData.collection;
             totalActiveClients = consolidateTotalData.activeClients;
             totalActiveBorrowers = consolidateTotalData.activeBorrowers;

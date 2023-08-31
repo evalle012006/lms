@@ -591,7 +591,7 @@ const CashCollectionDetailsPage = () => {
                 }
 
                 if (!date && cc.hasOwnProperty('pastDue')) {
-                    if (collection.pastDue === collection.loanBalance) {
+                    if (collection.pastDue === collection.loanBalance && collection.loanBalance > 0) {
                         collection.targetCollection = 0;
                         collection.activeLoan = 0;
                     }
