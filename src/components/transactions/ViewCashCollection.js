@@ -749,6 +749,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
             totalsCollectionTarget = consolidateTotalData.targetLoanCollection;
             totalsCollectionActual = consolidateTotalData.collection;
             totalActiveClients = consolidateTotalData.activeClients;
+            totalsCollectionExcess = consolidateTotalData.excess;
             totalActiveBorrowers = consolidateTotalData.activeBorrowers;
         }
 

@@ -276,6 +276,7 @@ const LoanOfficerSummary = () => {
         let totalMcbuNoReturn = 0;
         let totalMcbuBalance = 0;
         let totalTargetCollection = 0;
+        let totalExcess = 0;
         let totalActualCollection = 0;
         let totalPastDue = 0;
         let totalNoPastDue = 0;
@@ -307,6 +308,7 @@ const LoanOfficerSummary = () => {
                 const mcbuInterest = (data.mcbuInterest && data.mcbuInterest !== '-') ? -Math.abs(data.mcbuInterest) : 0;
                 const noMcbuReturn = (data.noMcbuReturn && data.noMcbuReturn !== '-') ? -Math.abs(data.noMcbuReturn) : 0;
                 const mcbuReturnAmt = (data.mcbuReturnAmt && data.mcbuReturnAmt !== '-') ? -Math.abs(data.mcbuReturnAmt) : 0;
+                const excess = data.excess !== '-' ? data.excess > 0 ? -Math.abs(data.excess) : 0 : 0;
                 
                 transferGvr = {
                     transfer: noTransfer,
@@ -322,6 +324,7 @@ const LoanOfficerSummary = () => {
                     collectionActual: -Math.abs(data.collection),
                     pastDuePerson: (data?.noPastDue && data?.noPastDue !== '-') ? data?.noPastDue : 0,
                     pastDueAmount: (data?.pastDue && data?.pastDue !== '-') ? -Math.abs(data?.pastDue) : 0,
+                    excess: excess
                 }
 
                 activeClients = temp.activeClients + noTransfer;
@@ -345,6 +348,7 @@ const LoanOfficerSummary = () => {
                 const mcbuInterest = (data.mcbuInterest && data.mcbuInterest !== '-') ? data.mcbuInterest : 0;
                 const noMcbuReturn = (data.noMcbuReturn && data.noMcbuReturn !== '-') ? data.noMcbuReturn : 0;
                 const mcbuReturnAmt = (data.mcbuReturnAmt && data.mcbuReturnAmt !== '-') ? data.mcbuReturnAmt : 0;
+                const excess = data.excess !== '-' ? data.excess : 0;
 
                 transferRcv = {
                     transfer: noTransfer,
@@ -359,7 +363,8 @@ const LoanOfficerSummary = () => {
                     collectionTarget: data.targetLoanCollection + data.excess,
                     collectionActual: data.collection,
                     pastDuePerson: (data?.noPastDue && data?.noPastDue !== '-') ? data?.noPastDue : 0,
-                    pastDueAmount: (data?.pastDue && data?.pastDue !== '-') ? -Math.abs(data?.pastDue) : 0
+                    pastDueAmount: (data?.pastDue && data?.pastDue !== '-') ? -Math.abs(data?.pastDue) : 0,
+                    excess: excess
                 }
 
                 activeClients += noTransfer;
@@ -384,6 +389,7 @@ const LoanOfficerSummary = () => {
                     totalActualCollection = transferGvr?.collectionActual;
                     totalPastDue = transferGvr?.pastDueAmount > 0 ? transferGvr?.pastDueAmount : 0;
                     totalNoPastDue = transferGvr?.pastDuePerson > 0 ? transferGvr?.pastDuePerson : 0;
+                    totalExcess = transferGvr?.excess;
                 }
 
                 if (transferRcv) {
@@ -400,6 +406,7 @@ const LoanOfficerSummary = () => {
                     totalActualCollection += transferRcv?.collectionActual;
                     totalPastDue += transferRcv?.pastDueAmount > 0 ? transferRcv?.pastDueAmount : 0;
                     totalNoPastDue += transferRcv?.pastDuePerson > 0 ? transferRcv?.pastDuePerson : 0;
+                    totalExcess += transferRcv?.excess;
                 }
 
                 if (totalMcbuBalance !== 0) {
@@ -437,8 +444,8 @@ const LoanOfficerSummary = () => {
             activeLoanReleaseAmountStr: activeLoanReleaseAmount < 0 ? `(${formatPricePhp(Math.abs(activeLoanReleaseAmount))})` : formatPricePhp(activeLoanReleaseAmount),
             collectionTarget: totalTargetCollection,
             collectionTargetStr: totalTargetCollection < 0 ? `(${formatPricePhp(Math.abs(totalTargetCollection))})` : formatPricePhp(totalTargetCollection),
-            collectionAdvancePayment: 0,
-            collectionAdvancePaymentStr: '-',
+            collectionAdvancePayment: totalExcess,
+            collectionAdvancePaymentStr: totalExcess < 0 ? `(${formatPricePhp(Math.abs(totalExcess))})` : formatPricePhp(totalExcess),
             collectionActual: totalActualCollection,
             collectionActualStr: totalActualCollection < 0 ? `(${formatPricePhp(Math.abs(totalActualCollection))})` : formatPricePhp(totalActualCollection),
             pastDuePerson: totalNoPastDue,
@@ -635,6 +642,7 @@ const LoanOfficerSummary = () => {
                     totalActiveLoanReleasePerson = transferRow.activeLoanReleasePerson;
                     totalActiveLoanReleaseAmount = transferRow.activeLoanReleaseAmount;
                     totalCollectionTarget += transferRow.collectionTarget ? transferRow.collectionTarget : 0;
+                    totalCollectionAdvancePayment += transferRow.collectionAdvancePayment;
                     totalCollectionActual += transferRow.collectionActual;
                     totalPastDuePerson += transferRow.pastDuePerson;
                     totalPastDueAmount += transferRow.pastDueAmount;

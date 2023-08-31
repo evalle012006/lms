@@ -358,6 +358,8 @@ const BranchManagerSummary = () => {
         let totalMcbuBalance = 0;
         let totalDailyTargetCollection = 0;
         let totalWeeklyTargetCollection = 0;
+        let totalDailyCollectionAdvancePayment = 0;
+        let totalWeeklyCollectionAdvancePayment = 0;
         let totalDailyActualCollection = 0;
         let totalWeeklyActualCollection = 0;
         let totalConsolidatedActualCollection = 0;
@@ -400,6 +402,7 @@ const BranchManagerSummary = () => {
                         const mcbuInterest = (data.mcbuInterest && data.mcbuInterest !== '-') ? -Math.abs(data.mcbuInterest) : 0;
                         const noMcbuReturn = (data.noMcbuReturn && data.noMcbuReturn !== '-') ? -Math.abs(data.noMcbuReturn) : 0;
                         const mcbuReturnAmt = (data.mcbuReturnAmt && data.mcbuReturnAmt !== '-') ? -Math.abs(data.mcbuReturnAmt) : 0;
+                        const excess = data.excess !== '-' ? data.excess > 0 ? -Math.abs(data.excess) : 0 : 0;
 
                         transferDailyGvr = {
                             transfer: noTransfer,
@@ -414,7 +417,8 @@ const BranchManagerSummary = () => {
                             collectionTarget: -Math.abs(data.targetLoanCollection + data.excess),
                             collectionActual: -Math.abs(data.collection),
                             pastDuePerson: (data?.noPastDue && data?.noPastDue !== '-') ? data?.noPastDue : 0,
-                            pastDueAmount: (data?.pastDue && data?.pastDue !== '-') ? -Math.abs(data?.pastDue) : 0
+                            pastDueAmount: (data?.pastDue && data?.pastDue !== '-') ? -Math.abs(data?.pastDue) : 0,
+                            excess: excess
                         }
 
                         activeClients = temp.activeClients + noTransfer;
@@ -442,6 +446,7 @@ const BranchManagerSummary = () => {
                         const mcbuInterest = (data.mcbuInterest && data.mcbuInterest !== '-') ? data.mcbuInterest : 0;
                         const noMcbuReturn = (data.noMcbuReturn && data.noMcbuReturn !== '-') ? data.noMcbuReturn : 0;
                         const mcbuReturnAmt = (data.mcbuReturnAmt && data.mcbuReturnAmt !== '-') ? data.mcbuReturnAmt : 0;
+                        const excess = data.excess !== '-' ? data.excess : 0;
 
                         transferDailyRcv = {
                             transfer: noTransfer,
@@ -456,7 +461,8 @@ const BranchManagerSummary = () => {
                             collectionTarget: data.targetLoanCollection + data.excess,
                             collectionActual: data.collection,
                             pastDuePerson: (data?.noPastDue && data?.noPastDue !== '-') ? data?.noPastDue : 0,
-                            pastDueAmount: (data?.pastDue && data?.pastDue !== '-') ? -Math.abs(data?.pastDue) : 0
+                            pastDueAmount: (data?.pastDue && data?.pastDue !== '-') ? -Math.abs(data?.pastDue) : 0,
+                            excess: excess
                         }
 
                         activeClients += noTransfer;
@@ -484,6 +490,7 @@ const BranchManagerSummary = () => {
                         const mcbuInterest = (data.mcbuInterest && data.mcbuInterest !== '-') ? -Math.abs(data.mcbuInterest) : 0;
                         const noMcbuReturn = (data.noMcbuReturn && data.noMcbuReturn !== '-') ? -Math.abs(data.noMcbuReturn) : 0;
                         const mcbuReturnAmt = (data.mcbuReturnAmt && data.mcbuReturnAmt !== '-') ? -Math.abs(data.mcbuReturnAmt) : 0;
+                        const excess = data.excess !== '-' ? data.excess > 0 ? -Math.abs(data.excess) : 0 : 0;
 
                         transferWeeklyGvr = {
                             transfer: noTransfer,
@@ -498,7 +505,8 @@ const BranchManagerSummary = () => {
                             collectionTarget: -Math.abs(data.targetLoanCollection + data.excess),
                             collectionActual: -Math.abs(data.collection),
                             pastDuePerson: (data?.noPastDue && data?.noPastDue !== '-') ? data?.noPastDue : 0,
-                            pastDueAmount: (data?.pastDue && data?.pastDue !== '-') ? -Math.abs(data?.pastDue) : 0
+                            pastDueAmount: (data?.pastDue && data?.pastDue !== '-') ? -Math.abs(data?.pastDue) : 0,
+                            excess: excess
                         }
 
                         activeClients = temp.activeClients + noTransfer;
@@ -526,6 +534,7 @@ const BranchManagerSummary = () => {
                         const mcbuInterest = (data.mcbuInterest && data.mcbuInterest !== '-') ? data.mcbuInterest : 0;
                         const noMcbuReturn = (data.noMcbuReturn && data.noMcbuReturn !== '-') ? data.noMcbuReturn : 0;
                         const mcbuReturnAmt = (data.mcbuReturnAmt && data.mcbuReturnAmt !== '-') ? data.mcbuReturnAmt : 0;
+                        const excess = data.excess !== '-' ? data.excess : 0;
 
                         transferWeeklyRcv = {
                             transfer: noTransfer,
@@ -540,7 +549,8 @@ const BranchManagerSummary = () => {
                             collectionTarget: data.targetLoanCollection + data.excess,
                             collectionActual: data.collection,
                             pastDuePerson: (data?.noPastDue && data?.noPastDue !== '-') ? data?.noPastDue : 0,
-                            pastDueAmount: (data?.pastDue && data?.pastDue !== '-') ? -Math.abs(data?.pastDue) : 0
+                            pastDueAmount: (data?.pastDue && data?.pastDue !== '-') ? -Math.abs(data?.pastDue) : 0,
+                            excess: excess
                         }
 
                         activeClients += noTransfer;
@@ -568,6 +578,7 @@ const BranchManagerSummary = () => {
                     totalDailyActualCollection = transferDailyGvr?.collectionActual;
                     totalPastDue = transferDailyGvr?.pastDueAmount > 0 ? transferDailyGvr?.pastDueAmount : 0;
                     totalNoPastDue = transferDailyGvr?.pastDuePerson > 0 ? transferDailyGvr?.pastDuePerson : 0;
+                    totalDailyCollectionAdvancePayment = transferDailyGvr?.excess;
                 }
 
                 if (transferDailyRcv) {
@@ -585,6 +596,7 @@ const BranchManagerSummary = () => {
                     totalDailyActualCollection += transferDailyRcv?.collectionActual;
                     totalPastDue += transferDailyRcv?.pastDueAmount > 0 ? transferDailyRcv?.pastDueAmount : 0;
                     totalNoPastDue += transferDailyRcv?.pastDuePerson > 0 ? transferDailyRcv?.pastDuePerson : 0;
+                    totalDailyCollectionAdvancePayment += transferDailyRcv?.excess;
                 }
 
                 if (transferWeeklyGvr) {
@@ -602,6 +614,7 @@ const BranchManagerSummary = () => {
                     totalWeeklyActualCollection += transferWeeklyGvr?.collectionActual;
                     totalPastDue += transferWeeklyGvr?.pastDueAmount > 0 ? transferDailyRcv?.pastDueAmount : 0;
                     totalNoPastDue += transferWeeklyGvr?.pastDuePerson > 0 ? transferWeeklyGvr?.pastDuePerson : 0;
+                    totalWeeklyCollectionAdvancePayment += transferWeeklyGvr?.excess;
                 }
 
                 if (transferWeeklyRcv) {
@@ -618,6 +631,7 @@ const BranchManagerSummary = () => {
                     totalWeeklyActualCollection += transferWeeklyRcv?.collectionActual;
                     totalPastDue += transferWeeklyRcv?.pastDueAmount > 0 ? transferWeeklyRcv?.pastDueAmount : 0;
                     totalNoPastDue += transferWeeklyRcv?.pastDuePerson > 0 ? transferWeeklyRcv?.pastDuePerson : 0;
+                    totalWeeklyCollectionAdvancePayment += transferWeeklyRcv?.excess;
                 }
 
                 if (totalMcbuBalance !== 0) {
@@ -665,14 +679,14 @@ const BranchManagerSummary = () => {
             activeLoanReleaseAmountStr: activeLoanReleaseAmount < 0 ? `(${formatPricePhp(Math.abs(activeLoanReleaseAmount))})` : formatPricePhp(activeLoanReleaseAmount),
             collectionTargetDaily: totalDailyTargetCollection,
             collectionTargetDailyStr: totalDailyTargetCollection < 0 ? `(${formatPricePhp(Math.abs(totalDailyTargetCollection))})` : formatPricePhp(totalDailyTargetCollection),
-            collectionAdvancePaymentDaily: 0,
-            collectionAdvancePaymentDailyStr: '-',
+            collectionAdvancePaymentDaily: totalDailyCollectionAdvancePayment,
+            collectionAdvancePaymentDailyStr: totalDailyCollectionAdvancePayment < 0 ? `(${formatPricePhp(Math.abs(totalDailyCollectionAdvancePayment))})` : formatPricePhp(totalDailyCollectionAdvancePayment),
             collectionActualDaily: totalDailyActualCollection,
             collectionActualDailyStr: totalDailyActualCollection < 0 ? `(${formatPricePhp(Math.abs(totalDailyActualCollection))})` : formatPricePhp(totalDailyActualCollection),
             collectionTargetWeekly: totalWeeklyTargetCollection,
             collectionTargetWeeklyStr: totalWeeklyTargetCollection < 0 ? `(${formatPricePhp(Math.abs(totalWeeklyTargetCollection))})` : formatPricePhp(totalWeeklyTargetCollection),
-            collectionAdvancePaymentWeekly: 0,
-            collectionAdvancePaymentWeeklyStr: '-',
+            collectionAdvancePaymentWeekly: totalWeeklyCollectionAdvancePayment,
+            collectionAdvancePaymentWeeklyStr: totalWeeklyCollectionAdvancePayment < 0 ? `(${formatPricePhp(Math.abs(totalWeeklyCollectionAdvancePayment))})` : formatPricePhp(totalWeeklyCollectionAdvancePayment),
             collectionActualWeekly: totalWeeklyActualCollection,
             collectionActualWeeklyStr: totalWeeklyActualCollection < 0 ? `(${formatPricePhp(Math.abs(totalWeeklyActualCollection))})` : formatPricePhp(totalWeeklyActualCollection),
             consolidatedCollection: totalConsolidatedActualCollection,
