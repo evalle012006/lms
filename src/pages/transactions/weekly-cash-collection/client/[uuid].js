@@ -133,7 +133,7 @@ const CashCollectionDetailsPage = () => {
             dataCollection.map(cc => {
                 let collection;
                 let transferStr = '-';
-                if (cc?.transferred || (cc?.transfer && !cc.hasOwnProperty('current'))) {
+                if (cc?.transferred || cc?.transfer) {
                     let numMispayment = cc.mispayment > 0 ? cc.mispayment + ' / ' + cc.loanTerms : '-';
                     if (date) {
                         numMispayment = cc.noMispayment > 0 ? cc.noMispayment + ' / ' + cc.loanTerms : '-';
@@ -164,9 +164,9 @@ const CashCollectionDetailsPage = () => {
                             mcbuCol = current.mcbuCol;
                             mcbuWithdrawal = current.mcbuWithdrawal;
                             mcbuReturnAmt = current.mcbuReturnAmt;
-                            activeLoan = cc?.history?.activeLoan ? cc.history.activeLoan : cc.activeLoan;
-                            excess = cc?.history?.excess > 0 ? cc.history.excess : cc.excess;
-                            paymentCollection = cc?.history?.collection ? cc.history.collection : 0;
+                            activeLoan = cc.fullPaymentDate ? cc.history.activeLoan : cc.activeLoan;
+                            excess = cc.fullPaymentDate ? cc.history.excess : cc.excess;
+                            paymentCollection = cc.fullPaymentDate ? cc.history.collection : cc.paymentCollection;
                         }
                     } else {
                         if (cc?.transfer) {
@@ -182,9 +182,9 @@ const CashCollectionDetailsPage = () => {
                             mcbuCol = cc.mcbuCol;
                             mcbuWithdrawal = cc.mcbuWithdrawal;
                             mcbuReturnAmt = cc.mcbuReturnAmt;
-                            activeLoan = cc?.history?.activeLoan ? cc.history.activeLoan : cc.activeLoan;
-                            excess = cc?.history?.excess > 0 ? cc.history.excess : cc.excess;
-                            paymentCollection = cc?.history?.collection ? cc.history.collection : 0;
+                            activeLoan = cc.fullPaymentDate ? cc.history.activeLoan : cc.activeLoan;
+                            excess = cc.fullPaymentDate ? cc.history.excess : cc.excess;
+                            paymentCollection = cc.fullPaymentDate ? cc.history.collection : cc.paymentCollection;
                         }
                     }
 
@@ -250,7 +250,7 @@ const CashCollectionDetailsPage = () => {
                     if (cc?.transferred && loanBalance > 0) {
                         collection.transferred = true;
                     }
-
+                    console.log(activeLoan, collection)
                     // setEditMode(false);
                 } else {
                     if (cc.status === "tomorrow" || cc.status === "pending") {
