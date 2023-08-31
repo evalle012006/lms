@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import toast from 'react-hot-toast';
 import Select from 'react-select';
 import { DropdownIndicator, borderStyles } from "@/styles/select";
-import { formatPricePhp, getLastWeekdayOfTheMonth, getMonths, getYears } from "@/lib/utils";
+import { formatPricePhp, getDaysOfMonth, getLastWeekdayOfTheMonth, getMonths, getYears } from "@/lib/utils";
 import moment from 'moment';
 import { useDispatch, useSelector } from "react-redux";
 import { fetchWrapper } from "@/lib/fetch-wrapper";
