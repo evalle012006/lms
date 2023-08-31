@@ -571,9 +571,9 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
             transfer = Math.abs(transfer);
             totalTransfer += transfer !== "-" ? transfer : 0;
             totalMcbu += transferGvr.mcbu;
-            totalLoanRelease += transferGvr.totalLoanRelease;
-            totalLoanBalance += transferGvr.totalLoanBalance;
-            totalTargetCollection += transferGvr.targetLoanCollection;
+            // totalLoanRelease += transferGvr.totalLoanRelease;
+            // totalLoanBalance += transferGvr.totalLoanBalance;
+            // totalTargetCollection += transferGvr.targetLoanCollection;
             totalPastDue += transferGvr.pastDue;
             totalNoPastDue += transferGvr.noPastDue;
         }
@@ -582,13 +582,12 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
             let transfer = transferRcv.transfer;
             totalTransfer -= transfer !== "-" ? transfer : 0;
             totalMcbu -= transferRcv.mcbu;
-            totalLoanRelease -= transferRcv.totalLoanRelease;
-            totalLoanBalance -= transferRcv.totalLoanBalance;
-            totalTargetCollection -= transferRcv.targetLoanCollection;
+            // totalLoanRelease -= transferRcv.totalLoanRelease;
+            // totalLoanBalance -= transferRcv.totalLoanBalance;
+            // totalTargetCollection -= transferRcv.targetLoanCollection;
             totalPastDue -= transferRcv.pastDue;
             totalNoPastDue -= transferRcv.noPastDue;
         }
-
         return {
             ...totals,
             group: 'TOTALS',
@@ -740,6 +739,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 totalsLoanBalance += transferRcv.targetLoanCollection;
                 totalsLoanRelease -= transferRcv.currentReleaseAmount;
             }
+
             // totalsLoanRelease = consolidateTotalData.totalLoanRelease + consolidateTotalData.currentReleaseAmount + transferCurrentReleaseAmount;
             totalsLoanBalance += transferCurrentReleaseAmount;
             totalsMcbuCol = consolidateTotalData.mcbuCol;

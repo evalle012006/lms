@@ -192,8 +192,6 @@ async function saveCashCollection(transfer, client, loan, sourceGroup, targetGro
         await db.collection('cashCollections').updateOne(
             { _id: cashCollection[0]._id }, 
             { $set: { 
-                activeLoan: 0,
-                targetCollection: 0,
                 transfer: transfer.sameLo ? false : true,
                 sameLo: transfer.sameLo, 
                 transferId: transfer._id, 
@@ -265,9 +263,6 @@ async function saveCashCollection(transfer, client, loan, sourceGroup, targetGro
         await db.collection('cashCollections').updateOne(
             { _id: existingCashCollection[0]._id }, 
             { $set: {
-                amountRelease: 0,
-                loanBalance: 0,
-                mcbu: 0,
                 transferred: transfer.sameLo ? false : true,
                 sameLo: transfer.sameLo, 
                 transferId: transfer._id, 
