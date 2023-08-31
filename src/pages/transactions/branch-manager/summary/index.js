@@ -414,11 +414,11 @@ const BranchManagerSummary = () => {
                             mcbuReturnAmt: mcbuReturnAmt,
                             mcbuBalance: mcbuActual - mcbuWithdrawal + mcbuInterest - mcbuReturnAmt,
                             loanReleaseAmount: -Math.abs(data.currentReleaseAmount),
-                            collectionTarget: -Math.abs(data.targetLoanCollection + data.excess),
+                            collectionTarget: -Math.abs(data.targetLoanCollection + excess),
                             collectionActual: -Math.abs(data.collection),
                             pastDuePerson: (data?.noPastDue && data?.noPastDue !== '-') ? data?.noPastDue : 0,
                             pastDueAmount: (data?.pastDue && data?.pastDue !== '-') ? -Math.abs(data?.pastDue) : 0,
-                            excess: excess
+                            // excess: excess
                         }
 
                         activeClients = temp.activeClients + noTransfer;
@@ -458,11 +458,11 @@ const BranchManagerSummary = () => {
                             mcbuReturnAmt: mcbuReturnAmt,
                             mcbuBalance: mcbuActual - mcbuWithdrawal + mcbuInterest - mcbuReturnAmt,
                             loanReleaseAmount: data.currentReleaseAmount,
-                            collectionTarget: data.targetLoanCollection + data.excess,
+                            collectionTarget: data.targetLoanCollection + excess,
                             collectionActual: data.collection,
                             pastDuePerson: (data?.noPastDue && data?.noPastDue !== '-') ? data?.noPastDue : 0,
                             pastDueAmount: (data?.pastDue && data?.pastDue !== '-') ? -Math.abs(data?.pastDue) : 0,
-                            excess: excess
+                            // excess: excess
                         }
 
                         activeClients += noTransfer;
@@ -502,11 +502,11 @@ const BranchManagerSummary = () => {
                             mcbuReturnAmt: mcbuReturnAmt,
                             mcbuBalance: mcbuActual - mcbuWithdrawal + mcbuInterest - mcbuReturnAmt,
                             loanReleaseAmount: -Math.abs(data.totalLoanRelease),
-                            collectionTarget: -Math.abs(data.targetLoanCollection + data.excess),
+                            collectionTarget: -Math.abs(data.targetLoanCollection + excess),
                             collectionActual: -Math.abs(data.collection),
                             pastDuePerson: (data?.noPastDue && data?.noPastDue !== '-') ? data?.noPastDue : 0,
                             pastDueAmount: (data?.pastDue && data?.pastDue !== '-') ? -Math.abs(data?.pastDue) : 0,
-                            excess: excess
+                            // excess: excess
                         }
 
                         activeClients = temp.activeClients + noTransfer;
@@ -546,11 +546,11 @@ const BranchManagerSummary = () => {
                             mcbuReturnAmt: mcbuReturnAmt,
                             mcbuBalance: mcbuActual - mcbuWithdrawal + mcbuInterest - mcbuReturnAmt,
                             loanReleaseAmount: data.totalLoanRelease,
-                            collectionTarget: data.targetLoanCollection + data.excess,
+                            collectionTarget: data.targetLoanCollection + excess,
                             collectionActual: data.collection,
                             pastDuePerson: (data?.noPastDue && data?.noPastDue !== '-') ? data?.noPastDue : 0,
                             pastDueAmount: (data?.pastDue && data?.pastDue !== '-') ? -Math.abs(data?.pastDue) : 0,
-                            excess: excess
+                            // excess: excess
                         }
 
                         activeClients += noTransfer;
@@ -679,14 +679,14 @@ const BranchManagerSummary = () => {
             activeLoanReleaseAmountStr: activeLoanReleaseAmount < 0 ? `(${formatPricePhp(Math.abs(activeLoanReleaseAmount))})` : formatPricePhp(activeLoanReleaseAmount),
             collectionTargetDaily: totalDailyTargetCollection,
             collectionTargetDailyStr: totalDailyTargetCollection < 0 ? `(${formatPricePhp(Math.abs(totalDailyTargetCollection))})` : formatPricePhp(totalDailyTargetCollection),
-            collectionAdvancePaymentDaily: totalDailyCollectionAdvancePayment,
-            collectionAdvancePaymentDailyStr: totalDailyCollectionAdvancePayment < 0 ? `(${formatPricePhp(Math.abs(totalDailyCollectionAdvancePayment))})` : formatPricePhp(totalDailyCollectionAdvancePayment),
+            collectionAdvancePaymentDaily: 0,
+            collectionAdvancePaymentDailyStr: '-', //totalDailyCollectionAdvancePayment < 0 ? `(${formatPricePhp(Math.abs(totalDailyCollectionAdvancePayment))})` : formatPricePhp(totalDailyCollectionAdvancePayment),
             collectionActualDaily: totalDailyActualCollection,
             collectionActualDailyStr: totalDailyActualCollection < 0 ? `(${formatPricePhp(Math.abs(totalDailyActualCollection))})` : formatPricePhp(totalDailyActualCollection),
             collectionTargetWeekly: totalWeeklyTargetCollection,
             collectionTargetWeeklyStr: totalWeeklyTargetCollection < 0 ? `(${formatPricePhp(Math.abs(totalWeeklyTargetCollection))})` : formatPricePhp(totalWeeklyTargetCollection),
-            collectionAdvancePaymentWeekly: totalWeeklyCollectionAdvancePayment,
-            collectionAdvancePaymentWeeklyStr: totalWeeklyCollectionAdvancePayment < 0 ? `(${formatPricePhp(Math.abs(totalWeeklyCollectionAdvancePayment))})` : formatPricePhp(totalWeeklyCollectionAdvancePayment),
+            collectionAdvancePaymentWeekly: 0,
+            collectionAdvancePaymentWeeklyStr: '-', //totalWeeklyCollectionAdvancePayment < 0 ? `(${formatPricePhp(Math.abs(totalWeeklyCollectionAdvancePayment))})` : formatPricePhp(totalWeeklyCollectionAdvancePayment),
             collectionActualWeekly: totalWeeklyActualCollection,
             collectionActualWeeklyStr: totalWeeklyActualCollection < 0 ? `(${formatPricePhp(Math.abs(totalWeeklyActualCollection))})` : formatPricePhp(totalWeeklyActualCollection),
             consolidatedCollection: totalConsolidatedActualCollection,

@@ -528,8 +528,8 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                 totalMcbuReturnAmt += details.mcbuReturnAmt;
                 totalMcbuNoReturn += details.mcbuNoReturn;
                 totalMcbuInterest += details.mcbuInterest;
-                totalTargetCollection += details.targetCollection;
-                totalExcess += details.excess;
+                totalTargetCollection += details.targetCollection + details.excess;
+                // totalExcess += details.excess;
                 totalActualCollection += details.actualCollection;
                 totalPastDue += details.pastDue;
                 totalNoPastDue += details.noPastDue;
@@ -551,8 +551,8 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                 totalMcbuReturnAmt += details.mcbuReturnAmt;
                 totalMcbuNoReturn += details.mcbuNoReturn;
                 totalMcbuInterest += details.mcbuInterest;
-                totalTargetCollection += details.targetCollection;
-                totalExcess += details.excess;
+                totalTargetCollection += details.targetCollection + details.excess;
+                // totalExcess += details.excess;
                 totalActualCollection += details.actualCollection;
                 totalPastDue += details.pastDue;
                 totalNoPastDue += details.noPastDue;
@@ -576,8 +576,8 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
             totalLoanBalanceStr: '-',
             targetLoanCollection: totalTargetCollection,
             loanTargetStr: (type === 'Transfer GVR' && totalTargetCollection > 0) ? `(${formatPricePhp(totalTargetCollection)})` : formatPricePhp(totalTargetCollection),
-            excess: totalExcess,
-            excessStr: (type === 'Transfer GVR' && totalExcess > 0) ? `(${formatPricePhp(totalExcess)})` : formatPricePhp(totalExcess),
+            excess: 0,
+            excessStr: '-', //(type === 'Transfer GVR' && totalExcess > 0) ? `(${formatPricePhp(totalExcess)})` : formatPricePhp(totalExcess),
             collection: totalActualCollection,
             collectionStr: (type === 'Transfer GVR' && totalActualCollection > 0) ? `(${formatPricePhp(totalActualCollection)})` : formatPricePhp(totalActualCollection),
             mispaymentPerson: totalMispay,

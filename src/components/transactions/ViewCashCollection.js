@@ -645,8 +645,8 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 totalMcbuReturnAmt += details.mcbuReturnAmt;
                 totalMcbuNoReturn += details.mcbuNoReturn;
                 totalMcbuInterest += details.mcbuInterest;
-                totalTargetCollection += details.targetCollection;
-                totalExcess += details.excess;
+                totalTargetCollection += details.targetCollection + details.excess;
+                // totalExcess += details.excess;
                 totalActualCollection += details.actualCollection;
                 totalPastDue += details.pastDue;
                 totalNoPastDue += details.noPastDue;
@@ -670,8 +670,8 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
             totalLoanBalanceStr: '-',
             targetLoanCollection: totalTargetCollection,
             loanTargetStr: (type === 'Transfer GVR' && totalTargetCollection > 0) ? `(${formatPricePhp(totalTargetCollection)})` : formatPricePhp(totalTargetCollection),
-            excess: totalExcess,
-            excessStr: (type === 'Transfer GVR' && totalExcess > 0) ? `(${formatPricePhp(totalExcess)})` : formatPricePhp(totalExcess),
+            excess: 0,
+            excessStr: '-', // (type === 'Transfer GVR' && totalExcess > 0) ? `(${formatPricePhp(totalExcess)})` : formatPricePhp(totalExcess),
             collection: totalActualCollection,
             collectionStr: (type === 'Transfer GVR' && totalActualCollection > 0) ? `(${formatPricePhp(totalActualCollection)})` : formatPricePhp(totalActualCollection),
             mispaymentPerson: totalMispay,
@@ -749,7 +749,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
             totalsCollectionTarget = consolidateTotalData.targetLoanCollection;
             totalsCollectionActual = consolidateTotalData.collection;
             totalActiveClients = consolidateTotalData.activeClients;
-            totalsCollectionExcess = consolidateTotalData.excess;
+            // totalsCollectionExcess = consolidateTotalData.excess;
             totalActiveBorrowers = consolidateTotalData.activeBorrowers;
         }
 
@@ -771,7 +771,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 loanReleaseAmount: 0,
                 activeLoanReleasePerson: totalActiveBorrowers,
                 activeLoanReleaseAmount: totalsLoanRelease,
-                collectionAdvancePayment: totalsCollectionExcess,
+                collectionAdvancePayment: 0,
                 collectionActual: totalsCollectionActual,
                 pastDuePerson: 0,
                 pastDueAmount: 0,
