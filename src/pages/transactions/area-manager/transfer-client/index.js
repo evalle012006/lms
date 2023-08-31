@@ -444,7 +444,7 @@ const TransferClientPage = () => {
     }, [currentUser]);
 
     return (
-        <Layout actionButtons={(currentUser.role.rep <= 2 && !isWeekend && !isHoliday) && actionButtons}>
+        <Layout actionButtons={(currentUser.role.rep <= 2 && !isWeekend && !isHoliday && currentDate === lastMonthDate) && actionButtons}>
             <div className="pb-4">
                 { loading ? (
                     <div className="absolute top-1/2 left-1/2">
