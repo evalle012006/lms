@@ -1124,7 +1124,6 @@ const BranchManagerSummary = () => {
             totalTransfer += wt.transfer;
             totalNewMember += wt.newMember;
             totalMcbuActual += wt.mcbuActual ? wt.mcbuActual : 0;
-            totalMcbuActual += wt.mcbuActual;
             totalMcbuWithdrawal += wt.mcbuWithdrawal;
             totalMcbuInterest += wt.mcbuInterest;
             totalNoMcbuReturn += wt.noMcbuReturn;
