@@ -1079,16 +1079,13 @@ const CashCollectionDetailsPage = () => {
             
                     const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save', cashCollection);
                     if (response.success) {
+                        setAllowOffsetTransaction(false);
+                        setLoading(false);
+                        toast.success('Payment collection successfully submitted. Reloading page please wait.');
+            
                         setTimeout(() => {
-                            setLoading(false);
-                            toast.success('Payment collection successfully submitted. Reloading page please wait.');
-                
-                            setTimeout(() => {
-                                getCashCollections();
-                                setAllowOffsetTransaction(false);
-                                // window.location.reload();
-                            }, 1200);
-                        }, 800);
+                            getCashCollections();
+                        }, 1000);
                     }
                 } else {
                     toast.warning('No active data to be saved.');

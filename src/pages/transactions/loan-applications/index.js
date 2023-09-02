@@ -6,7 +6,6 @@ import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { useDispatch, useSelector } from "react-redux";
 import Spinner from "@/components/Spinner";
 import toast from 'react-hot-toast';
-import { useRouter } from "node_modules/next/router";
 import { setBranchList } from "@/redux/actions/branchActions";
 import Dialog from "@/lib/ui/Dialog";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
@@ -87,7 +86,7 @@ const LoanApplicationPage = () => {
           } else if (field === 'group') {
             searchResult = dataArr.filter(b => b.groupId === value);
           }
-          console.log(searchResult)
+
           dispatch(setFilteredLoanList(searchResult));
           setIsFiltering(true);
         } else {
@@ -487,10 +486,10 @@ const LoanApplicationPage = () => {
         setMode('add');
         setLoan({});
         getListLoan();
-        getListGroup();
+        getListGroup(currentUser._id, currentUser?.transactionType);
         setTimeout(() => {
-            window.location.reload();
-        }, 800);
+            setLoading(false);
+        }, 1000);
     }
 
     const handleMultiSelect = (mode, selectAll, row, rowIndex) => {
