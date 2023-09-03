@@ -40,7 +40,8 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
         designatedBranch: user.designatedBranch ? (user.roleId === 2 ? user.designatedBranch : user.designatedBranch) : 0,
         role: user.role ? user.roleId : '',
         loNo: user.loNo,
-        transactionType: user.transactionType
+        transactionType: user.transactionType,
+        branchManagerName: user?.branchManagerName
     }
 
     const validationSchema = yup.object().shape({
@@ -347,19 +348,31 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
                                         </div>
                                     )}
                                     {values.role >= 3 && (
-                                        <div className="mt-4">
-                                            <SelectDropdown
-                                                name="designatedBranch"
-                                                field="designatedBranch"
-                                                value={values.designatedBranch}
-                                                label="Designated Branch"
-                                                options={branches}
-                                                onChange={setFieldValue}
-                                                onBlur={setFieldTouched}
-                                                placeholder="Select Branch"
-                                                errors={touched.designatedBranch && errors.designatedBranch ? errors.designatedBranch : undefined}
-                                            />
-                                        </div>
+                                        <React.Fragment>
+                                            <div className="mt-4">
+                                                <InputText
+                                                    name="branchManagerName"
+                                                    value={values.branchManagerName}
+                                                    onChange={handleChange}
+                                                    label="Branch Manager Name"
+                                                    placeholder="Enter Branch Manager Name"
+                                                    setFieldValue={setFieldValue}
+                                                    errors={touched.branchManagerName && errors.branchManagerName ? errors.branchManagerName : undefined} />
+                                            </div>
+                                            <div className="mt-4">
+                                                <SelectDropdown
+                                                    name="designatedBranch"
+                                                    field="designatedBranch"
+                                                    value={values.designatedBranch}
+                                                    label="Designated Branch"
+                                                    options={branches}
+                                                    onChange={setFieldValue}
+                                                    onBlur={setFieldTouched}
+                                                    placeholder="Select Branch"
+                                                    errors={touched.designatedBranch && errors.designatedBranch ? errors.designatedBranch : undefined}
+                                                />
+                                            </div>
+                                        </React.Fragment>
                                     )}
                                     
                                     {values.role === 4 && (

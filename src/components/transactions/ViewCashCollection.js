@@ -109,6 +109,11 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         groupStatus = 'closed';
                     }
                 }
+
+                if (isWeekend || isHoliday) {
+                    groupStatus = 'closed';
+                }
+
                 if (!filter) {
                     if (cc.loans.length > 0) {
                         let loanTarget = 0;

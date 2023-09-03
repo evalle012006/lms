@@ -15,7 +15,7 @@ export default apiHandler({
 });
 
 async function save(req, res) {
-    const { email, firstName, lastName, number, position, designatedBranch, designatedBranchId, role, loNo, transactionType, currentDate } = req.body;
+    const { data } = req.body;
 
     const { db } = await connectToDatabase();
 
@@ -31,30 +31,34 @@ async function save(req, res) {
         response = {
             error: true,
             fields: ['email'],
-            message: `User with the email "${email}" already exists`
+            message: `User with the email "${data.email}" already exists`
         };
     } else {
-        let assignedBranch = designatedBranch;
-        let assignedBranchId = designatedBranchId;
+        let assignedBranch = data.designatedBranch;
+        let assignedBranchId = data.designatedBranchId;
         if (typeof assignedBranch !== "string") {
-            assignedBranch = JSON.parse(designatedBranch);
-            assignedBranchId = JSON.parse(designatedBranchId);
+            assignedBranch = JSON.parse(data.designatedBranch);
+            assignedBranchId = JSON.parse(data.designatedBranchId);
         }
 
-        const userData = {
-            firstName: firstName,
-            lastName: lastName,
-            email: email,
-            number: number,
-            position: position,
+        let userData = {
+            firstName: data.firstName,
+            lastName: data.lastName,
+            email: data.email,
+            number: data.number,
+            position: data.position,
             logged: false,
             lastLogin: null,
-            dateAdded: currentDate,
-            role: JSON.parse(role),
-            loNo: loNo,
+            dateAdded: data.currentDate,
+            role: JSON.parse(data.role),
+            loNo: data.loNo,
             designatedBranch: assignedBranch,
             designatedBranchId: assignedBranchId,
-            transactionType: transactionType
+            transactionType: data.transactionType
+        }
+
+        if (userData.role.rep === 3) {
+            userData.branchManagerName = data.branchManagerName;
         }
         
         const user = await db.collection('users').insertOne(userData);
@@ -65,7 +69,7 @@ async function save(req, res) {
         response = {
             success: true,
             user: user,
-            email: email
+            email: data.email
         }
     }
 

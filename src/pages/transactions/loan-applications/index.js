@@ -373,7 +373,7 @@ const LoanApplicationPage = () => {
                 toast.error(response.message);
             }
         } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
-            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, mode: occurence });
+            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let loanList = [];
@@ -524,6 +524,7 @@ const LoanApplicationPage = () => {
         let selectedLoanList = list && list.filter(loan => loan.selected === true);
         
         if (selectedLoanList.length > 0) {
+            const coMakerList = [];
             selectedLoanList = selectedLoanList.map(loan => {
                 let temp = {...loan};
                 const group = loan.group;
@@ -546,18 +547,41 @@ const LoanApplicationPage = () => {
                 temp.insertedBy = currentUser._id;
                 temp.currentDate = currentDate;
 
+                if (temp.coMaker) {
+                    coMakerList.push({ coMaker: temp.coMaker, slotNo: temp.slotNo });
+                }
+
                 return temp;
             });
 
-            const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/approved-reject-by-batch', selectedLoanList);
+            let pendingCoMaker = [];
+            const coMakerStatus = checkCoMakerLoanStatus(coMakerList);
+            if (coMakerStatus.length > 0) {
+                pendingCoMaker = coMakerStatus.filter(cm => cm.status !== 'active' );
+            }
 
-            if (response.success) {
-                setLoading(false);
-                toast.success('Selected loans successfully approved.');
-                setTimeout(() => {
-                    getListLoan();
-                    window.location.reload();
-                }, 1000);
+            if (pendingCoMaker.length > 0 ) {
+                let msg = 'Selected slot number co-maker have no approved loan: ';
+                pendingCoMaker.map((p, i) => {
+                    if (i !== pendingCoMaker.length - 1) {
+                        msg += p.slotNo + ', ';
+                    } else {
+                        msg += p.slotNo;
+                    }
+                });
+
+                toast.error(msg);
+            } else {
+                const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/approved-reject-by-batch', selectedLoanList);
+
+                if (response.success) {
+                    setLoading(false);
+                    toast.success('Selected loans successfully approved.');
+                    setTimeout(() => {
+                        getListLoan();
+                        window.location.reload();
+                    }, 1000);
+                }
             }
         } else {
             toast.error('No loan selected!');
@@ -590,7 +614,15 @@ const LoanApplicationPage = () => {
 
     const handleApprove = (row) => {
         if (row.original.allowApproved) {
-            updateClientStatus(row.original, 'active');
+            checkCoMakerLoanStatus([{ coMaker: row.original.coMaker, slotNo: row.original.slotNo }]).then(statusList => {
+                statusList.map(status => {
+                    if (status.status === 'active') {
+                        updateClientStatus(row.original, 'active');
+                    } else {
+                        toast.error('Co Maker latest loan is not yet approved.');
+                    }
+                });
+            });
         } else {
             toast.error("Group transaction is already closed for the day.");
         }
@@ -607,6 +639,16 @@ const LoanApplicationPage = () => {
     const handleShowNDSAction = (row) => {
         setLoan(row.original);
         window.open(`/transactions/loan-applications/${row.original._id}`, '_blank');
+    }
+
+    const checkCoMakerLoanStatus = async (coMakerList) => {
+        const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/get-comaker-loan-status', coMakerList);
+        let statusList = [];
+        if (response.success) {
+            statusList = response.data;
+        }
+
+        return statusList;
     }
 
     const [rowActionButtons, setRowActionButtons] = useState([]);

@@ -75,7 +75,6 @@ async function list(req, res) {
         clients = await db
             .collection('loans')
             .aggregate([
-                // { $match: { "groupId": groupId } },
                 { $match: {$expr: { $and: [
                     {$or: [{$eq: ['$status', 'completed']}, {$eq: ['$status', 'active']}, {$eq: ['$status', 'pending']}]}, {$eq: ['$groupId', groupId]}
                 ]}} },

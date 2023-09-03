@@ -46,25 +46,48 @@ async function updateUser(req, res) {
                 designatedBranch = JSON.parse(fields.designatedBranch);
             }
 
-            const userResponse = await db
-                .collection('users')
-                .updateOne(
-                    { email: fields.email },
-                    {
-                        $set: {
-                            firstName: fields.firstName,
-                            lastName: fields.lastName,
-                            number: fields.number,
-                            position: fields.position,
-                            profile: profile,
-                            role: role,
-                            designatedBranch: designatedBranch,
-                            loNo: fields.loNo,
-                            transactionType: fields.transactionType
-                        },
-                        $currentDate: { dateModified: true }
-                    }
-                );
+            if (role.rep === 3) {
+                await db
+                    .collection('users')
+                    .updateOne(
+                        { email: fields.email },
+                        {
+                            $set: {
+                                firstName: fields.firstName,
+                                lastName: fields.lastName,
+                                number: fields.number,
+                                position: fields.position,
+                                profile: profile,
+                                role: role,
+                                designatedBranch: designatedBranch,
+                                loNo: fields.loNo,
+                                transactionType: fields.transactionType,
+                                branchManagerName: fields.branchManagerName
+                            },
+                            $currentDate: { dateModified: true }
+                        }
+                    );
+            } else {
+                await db
+                    .collection('users')
+                    .updateOne(
+                        { email: fields.email },
+                        {
+                            $set: {
+                                firstName: fields.firstName,
+                                lastName: fields.lastName,
+                                number: fields.number,
+                                position: fields.position,
+                                profile: profile,
+                                role: role,
+                                designatedBranch: designatedBranch,
+                                loNo: fields.loNo,
+                                transactionType: fields.transactionType
+                            },
+                            $currentDate: { dateModified: true }
+                        }
+                    );
+            }
             // userData.profile = file ? file : userData.profile;
             delete userData._id;
             delete userData.password;

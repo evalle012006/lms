@@ -15,7 +15,7 @@ import SelectDropdown from "@/lib/ui/select";
 import SideBar from "@/lib/ui/SideBar";
 import RadioButton from "@/lib/ui/radio-button";
 import { setGroupList } from "@/redux/actions/groupActions";
-import { setClientList } from "@/redux/actions/clientActions";
+import { setClientList, setComakerList } from "@/redux/actions/clientActions";
 import { UppercaseFirstLetter } from "@/lib/utils";
 
 const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, onClose, type }) => {
@@ -27,6 +27,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     const branchList = useSelector(state => state.branch.list);
     const groupList = useSelector(state => state.group.list);
     const clientList = useSelector(state => state.client.list);
+    const comakerList = useSelector(state => state.client.comakerList);
     const [selectedGroup, setSelectedGroup] = useState();
     const [slotNo, setSlotNo] = useState();
     const [slotNumber, setSlotNumber] = useState([]);
@@ -35,6 +36,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     const [clientType, setClientType] = useState('pending');
     const currentDate = useSelector(state => state.systemSettings.currentDate);
     const [loanTerms, setLoanTerms] = useState(60);
+    const [selectedCoMaker, setSelectedCoMaker] = useState();
 
     const initialValues = {
         branchId: loan.branchId,
@@ -132,6 +134,15 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         setLoading(true);
         const form = formikRef.current;
         setSlotNo(value);
+        form.setFieldValue(field, value);
+        setLoading(false);
+    }
+
+    const handleCoMakerChange = (field, value) => {
+        setLoading(true);
+        const form = formikRef.current;
+        setSelectedCoMaker(value);
+        form.setFieldValue('groupId', selectedGroup);
         form.setFieldValue(field, value);
         setLoading(false);
     }
@@ -344,6 +355,30 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         }
     }
 
+    const getListCoMaker = async (groupId) => {
+        setLoading(true);
+        let url = process.env.NEXT_PUBLIC_API_URL + 'clients/list';
+        if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) {
+            url = url + '?' + new URLSearchParams({ mode: "view_by_group", groupId: groupId });
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                const clients = [];
+                await response.clients && response.clients.map(loan => {
+                    clients.push({
+                        value: loan.clientId,
+                        label: loan.slotNo
+                    });
+                });
+                clients.sort((a, b) => { return a.slotNo - b.slotNo })
+                dispatch(setComakerList(clients));
+                setLoading(false);
+            } else if (response.error) {
+                setLoading(false);
+                toast.error(response.message);
+            }
+        }
+    }
+
     const handleOccurenceChange = (value) => {
         setGroupOccurence(value);
         getListGroup(value);
@@ -395,11 +430,11 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         };
     }, [mode]);
 
-    // useEffect(() => {
-    //     if (selectedGroup) {
-    //         getListClient(clientType);
-    //     }
-    // }, [selectedGroup]);
+    useEffect(() => {
+        if (selectedGroup) {
+            getListCoMaker(selectedGroup);
+        }
+    }, [selectedGroup]);
 
     return (
         <React.Fragment>
@@ -592,6 +627,19 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                             errors={touched.pnNumber && errors.pnNumber ? errors.pnNumber : undefined} />
                                     </div>
                                     <div className="mt-4">
+                                        <SelectDropdown
+                                            name="coMaker"
+                                            field="coMaker"
+                                            value={selectedCoMaker}
+                                            label="Co Maker"
+                                            options={comakerList}
+                                            onChange={(field, value) => handleCoMakerChange(field, value)}
+                                            onBlur={setFieldTouched}
+                                            placeholder="Select Co Maker"
+                                            errors={touched.coMaker && errors.coMaker ? errors.coMaker : undefined}
+                                        />
+                                    </div>
+                                    {/* <div className="mt-4">
                                         <InputText
                                             name="coMaker"
                                             value={values.coMaker}
@@ -600,7 +648,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                             placeholder="Enter Co-Maker"
                                             setFieldValue={setFieldValue}
                                             errors={touched.coMaker && errors.coMaker ? errors.coMaker : undefined} />
-                                    </div>
+                                    </div> */}
                                     <div className="flex flex-row mt-5">
                                         <ButtonOutline label="Cancel" onClick={handleCancel} className="mr-3" />
                                         <ButtonSolid label="Submit" type="submit" isSubmitting={isValidating && isSubmitting} />
