@@ -38,6 +38,8 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     const [loanTerms, setLoanTerms] = useState(60);
     const [selectedCoMaker, setSelectedCoMaker] = useState();
 
+    const [tempSlotNo, setTempSlotNo] = useState([]);
+
     const initialValues = {
         branchId: loan.branchId,
         loId: loan.loId,
@@ -424,6 +426,13 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             setLoanTerms(loan.loanTerms);
         }
 
+        const ts = [];
+        for (let i = 1; i <= 30; i++) {
+            ts.push({ value: i, label: i });
+        }
+
+        setTempSlotNo(ts);
+
         mounted && setLoading(false);
 
         return () => {
@@ -633,7 +642,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                             field="coMaker"
                                             value={selectedCoMaker}
                                             label="Co Maker"
-                                            options={comakerList}
+                                            options={tempSlotNo}
                                             onChange={(field, value) => handleCoMakerChange(field, value)}
                                             onBlur={setFieldTouched}
                                             placeholder="Select Co Maker"
