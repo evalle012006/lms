@@ -15,13 +15,13 @@ export default apiHandler({
 });
 
 async function save(req, res) {
-    const { data } = req.body;
+    const data = req.body;
 
     const { db } = await connectToDatabase();
 
     const users = await db
         .collection('users')
-        .find({ email: email })
+        .find({ email: data.email })
         .toArray();
 
     let response = {};

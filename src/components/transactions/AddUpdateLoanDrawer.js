@@ -21,6 +21,7 @@ import { UppercaseFirstLetter } from "@/lib/utils";
 const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, onClose, type }) => {
     const formikRef = useRef();
     const dispatch = useDispatch();
+    const list = useSelector(state => state.loan.list);
     const currentUser = useSelector(state => state.user.data);
     const [loading, setLoading] = useState(false);
     const [title, setTitle] = useState('Add Loan');
@@ -37,7 +38,6 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     const currentDate = useSelector(state => state.systemSettings.currentDate);
     const [loanTerms, setLoanTerms] = useState(60);
     const [selectedCoMaker, setSelectedCoMaker] = useState();
-
     const [tempSlotNo, setTempSlotNo] = useState([]);
 
     const initialValues = {
@@ -231,6 +231,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                 setClientId();
                                 setSlotNo();
                                 setSlotNumber();
+                                setSelectedCoMaker();
                                 onClose();
                             }
                         }).catch(error => {
@@ -403,7 +404,19 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         setClientId();
         setSlotNo();
         setSlotNumber();
+        setSelectedCoMaker();
         onClose();
+    }
+
+    const getAllLoanPerGroup = async (groupId) => {
+        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/get-comaker-by-group?' + new URLSearchParams({ groupId: groupId }));
+
+        let slotNumbers = [];
+        if (response.success) {
+            slotNumbers = await response.data;
+        }
+
+        return slotNumbers;
     }
 
     useEffect(() => {
@@ -417,6 +430,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             setClientId(loan.clientId);
             setSelectedGroup(loan.groupId);
             setSlotNo(loan.slotNo);
+            setSelectedCoMaker(loan.coMaker);
 
             form.setFieldValue('clientId', loan.clientId);
             form.setFieldValue('groupId', loan.groupId);
@@ -425,13 +439,6 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             setTitle('Reloan');
             setLoanTerms(loan.loanTerms);
         }
-
-        const ts = [];
-        for (let i = 1; i <= 30; i++) {
-            ts.push({ value: i, label: i });
-        }
-
-        setTempSlotNo(ts);
 
         mounted && setLoading(false);
 
@@ -445,6 +452,24 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             getListCoMaker(selectedGroup);
         }
     }, [selectedGroup]);
+
+    useEffect(() => {
+        if (selectedGroup) {
+            const setSlotNumbers = async () => {
+                const existingSlotNumbers = await getAllLoanPerGroup(selectedGroup);
+                const ts = [];
+                for (let i = 1; i <= 30; i++) {
+                    if (existingSlotNumbers && !existingSlotNumbers.includes(i)) {
+                        ts.push({ value: i, label: i });
+                    }
+                }
+
+                setTempSlotNo(ts);
+            }
+
+            setSlotNumbers();
+        }
+    }, [list, selectedGroup]);
 
     return (
         <React.Fragment>
