@@ -89,9 +89,6 @@ async function list(req, res) {
                         from: "client",
                         localField: "clientIdObj",
                         foreignField: "_id",
-                        pipeline: [
-                            { $match: { "status": "active" } }
-                        ],
                         as: "client"
                     }
                 },

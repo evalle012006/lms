@@ -365,6 +365,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                 const clients = [];
                 await response.clients && response.clients.map(loan => {
                     clients.push({
+                        slotNo: loan.slotNo,
                         value: loan.clientId,
                         label: loan.slotNo
                     });

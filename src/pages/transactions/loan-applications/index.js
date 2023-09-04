@@ -554,24 +554,24 @@ const LoanApplicationPage = () => {
                 return temp;
             });
 
-            let pendingCoMaker = [];
-            const coMakerStatus = checkCoMakerLoanStatus(coMakerList);
-            if (coMakerStatus.length > 0) {
-                pendingCoMaker = coMakerStatus.filter(cm => cm.status !== 'active' );
-            }
+            // let pendingCoMaker = [];
+            // const coMakerStatus = checkCoMakerLoanStatus(coMakerList);
+            // if (coMakerStatus.length > 0) {
+            //     pendingCoMaker = coMakerStatus.filter(cm => cm.status !== 'active' );
+            // }
 
-            if (pendingCoMaker.length > 0 ) {
-                let msg = 'Selected slot number co-maker have no approved loan: ';
-                pendingCoMaker.map((p, i) => {
-                    if (i !== pendingCoMaker.length - 1) {
-                        msg += p.slotNo + ', ';
-                    } else {
-                        msg += p.slotNo;
-                    }
-                });
+            // if (pendingCoMaker.length > 0 ) {
+            //     let msg = 'Selected slot number co-maker have no approved loan: ';
+            //     pendingCoMaker.map((p, i) => {
+            //         if (i !== pendingCoMaker.length - 1) {
+            //             msg += p.slotNo + ', ';
+            //         } else {
+            //             msg += p.slotNo;
+            //         }
+            //     });
 
-                toast.error(msg);
-            } else {
+            //     toast.error(msg);
+            // } else {
                 const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/approved-reject-by-batch', selectedLoanList);
 
                 if (response.success) {
@@ -582,7 +582,7 @@ const LoanApplicationPage = () => {
                         window.location.reload();
                     }, 1000);
                 }
-            }
+            // }
         } else {
             toast.error('No loan selected!');
         }
@@ -614,15 +614,16 @@ const LoanApplicationPage = () => {
 
     const handleApprove = (row) => {
         if (row.original.allowApproved) {
-            checkCoMakerLoanStatus([{ coMaker: row.original.coMaker, slotNo: row.original.slotNo }]).then(statusList => {
-                statusList.map(status => {
-                    if (status.status === 'active') {
-                        updateClientStatus(row.original, 'active');
-                    } else {
-                        toast.error('Co Maker latest loan is not yet approved.');
-                    }
-                });
-            });
+            updateClientStatus(row.original, 'active');
+            // checkCoMakerLoanStatus([{ coMaker: row.original.coMaker, slotNo: row.original.slotNo }]).then(statusList => {
+            //     statusList.map(status => {
+            //         if (status.status === 'active') {
+            //             updateClientStatus(row.original, 'active');
+            //         } else {
+            //             toast.error('Co Maker latest loan is not yet approved.');
+            //         }
+            //     });
+            // });
         } else {
             toast.error("Group transaction is already closed for the day.");
         }
