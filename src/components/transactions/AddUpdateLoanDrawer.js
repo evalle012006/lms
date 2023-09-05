@@ -456,12 +456,12 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     useEffect(() => {
         if (selectedGroup) {
             const setSlotNumbers = async () => {
-                const existingSlotNumbers = await getAllLoanPerGroup(selectedGroup);
+                // const existingSlotNumbers = await getAllLoanPerGroup(selectedGroup);
                 const ts = [];
                 for (let i = 1; i <= 30; i++) {
-                    if (existingSlotNumbers && !existingSlotNumbers.includes(i)) {
+                    // if (existingSlotNumbers && !existingSlotNumbers.includes(i)) {
                         ts.push({ value: i, label: i });
-                    }
+                    // }
                 }
 
                 setTempSlotNo(ts);
