@@ -23,7 +23,7 @@ async function getAllLoansPerGroup(req, res) {
         if (areaManagerId) {
             const areaManager = await db.collection("users").find({ _id: new ObjectId(areaManagerId) }).toArray();
             if (areaManager.length > 0) {
-                const branchCodes = areaManager[0].designatedBranch;
+                const branchCodes = typeof areaManager[0].designatedBranch === 'string' ? JSON.parse(areaManager[0].designatedBranch) : areaManager[0].designatedBranch;
     
                 cashCollection = await db
                     .collection('branches')
@@ -702,8 +702,7 @@ async function getAllLoansPerGroup(req, res) {
         if (areaManagerId) {
             const areaManager = await db.collection("users").find({ _id: new ObjectId(areaManagerId) }).toArray();
             if (areaManager.length > 0) {
-                const branchCodes = areaManager[0].designatedBranch;
-    
+                const branchCodes = typeof areaManager[0].designatedBranch === 'string' ? JSON.parse(areaManager[0].designatedBranch) : areaManager[0].designatedBranch;
                 cashCollection = await db
                     .collection('branches')
                     .aggregate([
