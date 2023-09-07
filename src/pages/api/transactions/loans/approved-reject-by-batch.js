@@ -33,12 +33,12 @@ async function processData(req, res) {
             let noOfClients = groupData.noOfClients;
             const capacity = groupData.capacity;
 
-            if (status === 'full' || noOfClients >= capacity) {
-                errorMsg.push({
-                    error: true,
-                    message: `"${groupData.name}" is already full. Please select another group.`
-                });
-            } else {
+            // if (status === 'full' || noOfClients >= capacity) {
+            //     errorMsg.push({
+            //         error: true,
+            //         message: `"${groupData.name}" is already full. Please select another group.`
+            //     });
+            // } else {
                 if (loan.status === 'active') {
                     await updateClient(loan.clientId);
                     // await updateExistingLoan(loan.clientId);
@@ -64,7 +64,7 @@ async function processData(req, res) {
                     loan._id = loanId;
                     await saveCashCollection(loan, groupData, currentDate);
                 }
-            }
+            // }
         }
     });
 

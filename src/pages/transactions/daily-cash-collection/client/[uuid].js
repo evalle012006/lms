@@ -1142,7 +1142,8 @@ const CashCollectionDetailsPage = () => {
                                 temp.excessStr = formatPricePhp(temp.excess);
                                 temp.mispayment = false;
                                 temp.mispaymentStr = "No";
-                                temp.noOfPayments = temp.noOfPayments + 1;
+                                const noPayments = parseInt(payment) / parseInt(temp.activeLoan);
+                                temp.noOfPayments = temp.noOfPayments + noPayments;
 
                                 // compute excess mcbu collection here...
                                 const excessMcbu = temp.excess / temp.activeLoan;

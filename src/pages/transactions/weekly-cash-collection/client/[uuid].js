@@ -1190,7 +1190,9 @@ const CashCollectionDetailsPage = () => {
                                 temp.excessStr = formatPricePhp(temp.excess);
                                 temp.mispayment = false;
                                 temp.mispaymentStr = "No";
-                                temp.noOfPayments = temp.noOfPayments + 1;
+
+                                const noPayments = parseInt(payment) / parseInt(temp.activeLoan);
+                                temp.noOfPayments = temp.noOfPayments + noPayments;
                                 // temp.remarks = { label: 'Advance Payment', value: 'advance payment'};
                             } else if (parseFloat(payment) < parseFloat(temp.activeLoan)) {
                                 temp.excess =  0;

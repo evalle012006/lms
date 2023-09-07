@@ -26,16 +26,16 @@ async function updateLoan(req, res) {
     let groupData = await db.collection('groups').find({ _id: new ObjectId(loan.groupId) }).toArray();
     if (groupData.length > 0) {
         groupData = groupData[0];
-        let status = groupData.status;
-        let noOfClients = groupData.noOfClients;
-        const capacity = groupData.capacity;
+        // let status = groupData.status;
+        // let noOfClients = groupData.noOfClients;
+        // const capacity = groupData.capacity;
 
-        if (status === 'full' || noOfClients >= capacity) {
-            response = {
-                error: true,
-                message: `"${groupData.name}" is already full. Please select another group.`
-            };
-        } else {
+        // if (status === 'full' || noOfClients >= capacity) {
+        //     response = {
+        //         error: true,
+        //         message: `"${groupData.name}" is already full. Please select another group.`
+        //     };
+        // } else {
             if (loan.status === 'active') {
                 await updateClient(loan.clientId);
                 // await updateExistingLoan(loan.clientId);
@@ -64,7 +64,7 @@ async function updateLoan(req, res) {
                 
                 response = { success: true, loan: loanResp };   
             }
-        }
+        // }
     } else {
         response = { error: true, message: 'Group data not found.' };
     }
