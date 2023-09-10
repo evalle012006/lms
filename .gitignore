@@ -8,3 +8,6 @@ logs
 .env
 next.config.js
 src/pages/_app.js
+
+.github/workflows/CD.yml
+.github/workflows/CI.yml
