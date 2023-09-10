@@ -12,6 +12,8 @@ import { setBmSummary, setCashCollectionLo } from "@/redux/actions/cashCollectio
 
 const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
     const dispatch = useDispatch();
+    const isHoliday = useSelector(state => state.systemSettings.holiday);
+    const isWeekend = useSelector(state => state.systemSettings.weekend);
     const selectedBranchSubject = new BehaviorSubject(process.browser && localStorage.getItem('selectedBranch'));
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
@@ -115,6 +117,10 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                             groupStatus = 'close';
                         }   
                     }
+                }
+
+                if (isWeekend || isHoliday) {
+                    groupStatus = 'close';
                 }
 
                 if (!filter) {

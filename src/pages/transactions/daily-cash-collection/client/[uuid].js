@@ -120,11 +120,10 @@ const CashCollectionDetailsPage = () => {
                 }
             }
         });
-
-        
     }
 
     const getCashCollections = async (date) => {
+        setLoading(true);
         const type = date ? 'filter' : 'current';
         let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/get-loan-by-group-cash-collection?' 
             + new URLSearchParams({ date: date ? date : currentDate, mode: 'daily', groupId: uuid, type: type });
@@ -447,11 +446,13 @@ const CashCollectionDetailsPage = () => {
                             }
                         }
 
+                        let activeLoan = cc.activeLoan;
                         if (cc?.transfer && cc?.transferDate === currentDate) {
                             numMispayment = '';
                             noMispayment = 0;
                             mispaymentStr = '-';
                             noPaymentsStr = '-';
+                            activeLoan = 0;
                         }
     
                         collection = {
@@ -488,9 +489,9 @@ const CashCollectionDetailsPage = () => {
                             mcbuReturnAmtStr: '-',
                             mcbuInterest: cc.mcbuInterest ? cc.mcbuInterest : 0,
                             mcbuInterestStr: cc.mcbuInterest > 0 ? formatPricePhp(cc.mcbuInterest) : '-',
-                            activeLoan: cc.activeLoan,
-                            targetCollection: cc.activeLoan,
-                            targetCollectionStr: cc.activeLoan > 0 ? formatPricePhp(cc.activeLoan) : '-',
+                            activeLoan: activeLoan,
+                            targetCollection: activeLoan,
+                            targetCollectionStr: activeLoan > 0 ? formatPricePhp(activeLoan) : '-',
                             amountRelease: cc.amountRelease,
                             amountReleaseStr: cc.amountRelease > 0 ? formatPricePhp(cc.amountRelease) : '-',
                             loanBalance: cc.loanBalance,
@@ -755,7 +756,9 @@ const CashCollectionDetailsPage = () => {
             });
 
             dispatch(setCashCollectionGroup(cashCollection));
-            setLoading(false);
+            setTimeout(() => {
+                setLoading(false);
+            }, 1000);
         } else if (response.error){
             toast.error('Error retrieving cash collection list.');
             setTimeout(() => {
@@ -1026,16 +1029,12 @@ const CashCollectionDetailsPage = () => {
             
                     const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save', cashCollection);
                     if (response.success) {
+                        setLoading(false);
+                        toast.success('Payment collection successfully submitted. Reloading page please wait.');
+            
                         setTimeout(() => {
-                            setLoading(false);
-                            toast.success('Payment collection successfully submitted. Reloading page please wait.');
-                
-                            setTimeout(() => {
-                                setLoading(true);
-                                getCashCollections();
-                                // window.location.reload();
-                            }, 1000);
-                        }, 500);
+                            getCashCollections();
+                        }, 1000);
                     }
                 } else {
                     toast.error('No active data to be saved.');
@@ -1145,7 +1144,8 @@ const CashCollectionDetailsPage = () => {
                                 temp.excessStr = formatPricePhp(temp.excess);
                                 temp.mispayment = false;
                                 temp.mispaymentStr = "No";
-                                temp.noOfPayments = temp.noOfPayments + 1;
+                                const noPayments = parseInt(payment) / parseInt(temp.activeLoan);
+                                temp.noOfPayments = temp.noOfPayments + noPayments;
 
                                 // compute excess mcbu collection here...
                                 const excessMcbu = temp.excess / temp.activeLoan;
@@ -1647,8 +1647,6 @@ const CashCollectionDetailsPage = () => {
 
     useEffect(() => {
         let mounted = true;
-        setLoading(true);
-
         const getListBranch = async () => {
             let url = process.env.NEXT_PUBLIC_API_URL + 'branches/list';
 
@@ -1675,8 +1673,6 @@ const CashCollectionDetailsPage = () => {
             } else {
                 toast.error('Error retrieving branches list.');
             }
-    
-            setLoading(false);
         }
 
         const getCurrentGroup = async () => {
@@ -1688,7 +1684,6 @@ const CashCollectionDetailsPage = () => {
                     dispatch(setGroup(response.group));
                     setCurrentGroup(response.group);
                     setGroupFilter(uuid);
-                    setLoading(false);
                 } else {
                     toast.error('Error while loading data');
                 }
@@ -1727,7 +1722,6 @@ const CashCollectionDetailsPage = () => {
             } else if (response.error) {
                 toast.error(response.message);
             }
-            setLoading(false);
         }
 
         if (branchList.length > 0 && (selectedLOSubject.value && selectedLOSubject.value.length > 0)) {

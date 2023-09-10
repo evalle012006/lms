@@ -14,6 +14,7 @@ import Dialog from "@/lib/ui/Dialog";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 import { useRouter } from "node_modules/next/router";
+import { autoSyncLoans } from "@/lib/sync-jobs";
 
 const DailyCashCollectionPage = () => {
     const router = useRouter();
@@ -131,7 +132,14 @@ const DailyCashCollectionPage = () => {
     useEffect(() => {
         let mounted = true;
         
+        const syncLoans = async () => {
+            if (currentUser.role.rep === 4) {
+                await autoSyncLoans(currentUser._id);
+            }
+        }
+        
         mounted && getListBranch();
+        mounted && syncLoans();
 
         return () => {
             mounted = false;

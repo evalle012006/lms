@@ -16,18 +16,5 @@ module.exports = {
                 pathname: '/images/**',
             },
         ],
-    },
-    async headers() {
-        return [
-          {
-            source: '/:all*',
-            headers: [
-              {
-                key: 'Cache-Control',
-                value: 'public, s-maxage=10, stale-while-revalidate=59',
-              }
-            ],
-          },
-        ]
-      }
+    }
 }

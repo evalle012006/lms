@@ -29,29 +29,34 @@ async function processData(req, res) {
         let groupData = await checkGroupStatus(loan.groupId);
         if (groupData.length > 0) {
             groupData = groupData[0];
-            let status = groupData.status;
-            let noOfClients = groupData.noOfClients;
-            const capacity = groupData.capacity;
 
-            if (status === 'full' || noOfClients >= capacity) {
-                errorMsg.push({
-                    error: true,
-                    message: `"${groupData.name}" is already full. Please select another group.`
-                });
-            } else {
-                if (loan.status === 'active') {
-                    await updateClient(loan.clientId);
-                    // await updateExistingLoan(loan.clientId);
-                }  else if (loan.status === 'reject') {
-                    if (!groupData.availableSlots.includes(loan.slotNo)) {
-                        groupData.availableSlots.push(loan.slotNo);
-                        groupData.availableSlots.sort((a, b) => { return a - b; });
-                        groupData.noOfClients = groupData.noOfClients - 1;
-                        groupData.status = groupData.status === 'full' ? 'available' : groupData.status;
-                        await updateGroup(groupData);
+            if (loan.status === 'active') {
+                await updateClient(loan.clientId);
+                if (loan.coMaker) {
+                    if (typeof loan.coMaker === 'string') {
+                        loan.coMakerId = loan.coMaker;
+                        const coMakerResp = await getCoMakerInfo(loan.coMaker, loan.groupId);
+                        if (coMakerResp.success) {
+                            loan.coMaker = coMakerResp.client;
+                        }
+                    } else if (typeof loan.coMaker === 'number') {
+                        const coMakerResp = await getCoMakerInfo(loan.coMaker, loan.groupId);
+                        if (coMakerResp.success) {
+                            loan.coMakerId = coMakerResp.client;
+                        }
                     }
                 }
+            }  else if (loan.status === 'reject') {
+                if (!groupData.availableSlots.includes(loan.slotNo)) {
+                    groupData.availableSlots.push(loan.slotNo);
+                    groupData.availableSlots.sort((a, b) => { return a - b; });
+                    groupData.noOfClients = groupData.noOfClients - 1;
+                    groupData.status = groupData.status === 'full' ? 'available' : groupData.status;
+                    await updateGroup(groupData);
+                }
+            }
 
+            if (loan.status === 'active' || loan.status === 'reject') {
                 await db.collection('loans')
                     .updateOne(
                         { _id: new ObjectId(loanId) }, 
@@ -80,45 +85,6 @@ async function checkGroupStatus(groupId) {
     const groupData = await db.collection('groups').find({ _id: new ObjectId(groupId) }).toArray();
 
     return groupData;
-}
-
-async function updateExistingLoan(clientId) {
-    const { db } = await connectToDatabase();
-    const ObjectId = require('mongodb').ObjectId;
-    let response;
-
-    let activeLoan  = await db
-        .collection('loans')
-        .find({ clientId: clientId, status: 'active' })
-        .toArray();
-
-    if (activeLoan.length > 0) {
-        response = { error: true, message: 'Client has still existing active loan.' };
-    } else {
-        let existingLoan = await db
-            .collection('loans')
-            .find({ clientId: clientId, status: 'completed' })
-            .toArray();
-        
-        if (existingLoan.length > 0) {
-            existingLoan = existingLoan[0];
-            const loanId = existingLoan._id;
-            delete existingLoan._id;
-            existingLoan.status = 'closed';
-            await db
-                .collection('loans')
-                .updateOne(
-                    { _id: new ObjectId(loanId) },
-                    {
-                        $set: {...existingLoan}
-                    },
-                    { upsert: false }
-                );
-            response = {success: true};
-        }
-    }
-
-    return response;
 }
 
 async function updateGroup(group) {
@@ -160,6 +126,49 @@ async function updateClient(clientId) {
                     $set: { ...client }
                 }, 
                 { upsert: false });
+    }
+    
+    return {success: true, client}
+}
+
+async function getCoMakerInfo(coMaker, groupId) {
+    const { db } = await connectToDatabase();
+    const ObjectId = require('mongodb').ObjectId;
+
+    let client;
+    if (typeof coMaker === 'number') {
+        const loan = await db.collection('loans').aggregate([ 
+            {$match: 
+                { $and: [
+                    { $eq: ['$groupId', groupId] },
+                    { $or: [
+                        {$eq: ['$status', 'active']},
+                        {$eq: ['$status', 'pending']}
+                    ] },
+                    { $eq: ['$slotNo', coMaker] }
+                ] }
+            } 
+        ]).toArray();
+
+        if (loan) {
+            client = loan[0].clientId;
+        }
+    } else if (typeof coMaker === 'string') {
+        const loan = await db.collection('loans').aggregate([ 
+            {$match: 
+                { $and: [
+                    { $eq: ['$clientId', coMaker] },
+                    { $or: [
+                        {$eq: ['$status', 'active']},
+                        {$eq: ['$status', 'pending']}
+                    ] }
+                ] }
+            } 
+        ]).toArray();
+
+        if (loan) {
+            client = loan[0].slotNo;
+        }
     }
     
     return {success: true, client}

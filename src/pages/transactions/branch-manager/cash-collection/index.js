@@ -8,7 +8,6 @@ import { setBranchList } from "@/redux/actions/branchActions";
 import moment from 'moment';
 import DetailsHeader from "@/components/transactions/DetailsHeaderMain";
 import ViewByLoanOfficerPage from "@/components/transactions/ViewByLoanOfficer";
-import ViewCashCollectionPage from "@/components/transactions/ViewCashCollection";
 import ViewByBranchPage from "@/components/transactions/ViewByBranch";
 import Dialog from "@/lib/ui/Dialog";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
@@ -118,7 +117,7 @@ const BranchCashCollectionPage = () => {
 
     useEffect(() => {
         let mounted = true;
-        
+
         mounted && getListBranch();
 
         return () => {

@@ -15,18 +15,20 @@ import SelectDropdown from "@/lib/ui/select";
 import SideBar from "@/lib/ui/SideBar";
 import RadioButton from "@/lib/ui/radio-button";
 import { setGroupList } from "@/redux/actions/groupActions";
-import { setClientList } from "@/redux/actions/clientActions";
+import { setClientList, setComakerList } from "@/redux/actions/clientActions";
 import { UppercaseFirstLetter } from "@/lib/utils";
 
 const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, onClose, type }) => {
     const formikRef = useRef();
     const dispatch = useDispatch();
+    const list = useSelector(state => state.loan.list);
     const currentUser = useSelector(state => state.user.data);
     const [loading, setLoading] = useState(false);
     const [title, setTitle] = useState('Add Loan');
     const branchList = useSelector(state => state.branch.list);
     const groupList = useSelector(state => state.group.list);
     const clientList = useSelector(state => state.client.list);
+    const comakerList = useSelector(state => state.client.comakerList);
     const [selectedGroup, setSelectedGroup] = useState();
     const [slotNo, setSlotNo] = useState();
     const [slotNumber, setSlotNumber] = useState([]);
@@ -35,6 +37,8 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     const [clientType, setClientType] = useState('pending');
     const currentDate = useSelector(state => state.systemSettings.currentDate);
     const [loanTerms, setLoanTerms] = useState(60);
+    const [selectedCoMaker, setSelectedCoMaker] = useState();
+    const [tempSlotNo, setTempSlotNo] = useState([]);
 
     const initialValues = {
         branchId: loan.branchId,
@@ -54,6 +58,9 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         coMaker: loan.coMaker,
         loanCycle: mode !== 'reloan' ? mode === 'add' ? 1 : loan.loanCycle : loan.loanCycle + 1,
         pnNumber: loan.pnNumber,
+        guarantorFirstName: loan.guarantorFirstName,
+        guarantorMiddleName: loan.guarantorMiddleName,
+        guarantorLastName: loan.guarantorLastName,
         status: mode !== 'reloan' ? loan.status : 'pending',
     }
 
@@ -82,7 +89,13 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             .required('Please enter a loan cycle number'),
         pnNumber: yup
             .string()
-            .required('Please enter a promisory note number.')
+            .required('Please enter a promisory note number.'),
+        guarantorFirstName: yup
+            .string()
+            .required('Please enter guarantor first name'),
+        guarantorLastName: yup
+            .string()
+            .required('Please enter guarantor last name')
     });
 
     const handleGroupIdChange = (field, value) => {
@@ -132,6 +145,15 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         setLoading(true);
         const form = formikRef.current;
         setSlotNo(value);
+        form.setFieldValue(field, value);
+        setLoading(false);
+    }
+
+    const handleCoMakerChange = (field, value) => {
+        setLoading(true);
+        const form = formikRef.current;
+        setSelectedCoMaker(value);
+        form.setFieldValue('groupId', selectedGroup);
         form.setFieldValue(field, value);
         setLoading(false);
     }
@@ -218,6 +240,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                 setClientId();
                                 setSlotNo();
                                 setSlotNumber();
+                                setSelectedCoMaker();
                                 onClose();
                             }
                         }).catch(error => {
@@ -344,6 +367,31 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         }
     }
 
+    const getListCoMaker = async (groupId) => {
+        setLoading(true);
+        let url = process.env.NEXT_PUBLIC_API_URL + 'clients/list';
+        if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) {
+            url = url + '?' + new URLSearchParams({ mode: "view_by_group", groupId: groupId });
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                const clients = [];
+                await response.clients && response.clients.map(loan => {
+                    clients.push({
+                        slotNo: loan.slotNo,
+                        value: loan.clientId,
+                        label: loan.slotNo
+                    });
+                });
+                clients.sort((a, b) => { return a.slotNo - b.slotNo })
+                dispatch(setComakerList(clients));
+                setLoading(false);
+            } else if (response.error) {
+                setLoading(false);
+                toast.error(response.message);
+            }
+        }
+    }
+
     const handleOccurenceChange = (value) => {
         setGroupOccurence(value);
         getListGroup(value);
@@ -365,7 +413,19 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         setClientId();
         setSlotNo();
         setSlotNumber();
+        setSelectedCoMaker();
         onClose();
+    }
+
+    const getAllLoanPerGroup = async (groupId) => {
+        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/get-comaker-by-group?' + new URLSearchParams({ groupId: groupId }));
+
+        let slotNumbers = [];
+        if (response.success) {
+            slotNumbers = await response.data;
+        }
+
+        return slotNumbers;
     }
 
     useEffect(() => {
@@ -379,6 +439,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             setClientId(loan.clientId);
             setSelectedGroup(loan.groupId);
             setSlotNo(loan.slotNo);
+            setSelectedCoMaker(loan.coMaker);
 
             form.setFieldValue('clientId', loan.clientId);
             form.setFieldValue('groupId', loan.groupId);
@@ -395,11 +456,29 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         };
     }, [mode]);
 
-    // useEffect(() => {
-    //     if (selectedGroup) {
-    //         getListClient(clientType);
-    //     }
-    // }, [selectedGroup]);
+    useEffect(() => {
+        if (selectedGroup) {
+            getListCoMaker(selectedGroup);
+        }
+    }, [selectedGroup]);
+
+    useEffect(() => {
+        if (selectedGroup) {
+            const setSlotNumbers = async () => {
+                // const existingSlotNumbers = await getAllLoanPerGroup(selectedGroup);
+                const ts = [];
+                for (let i = 1; i <= 30; i++) {
+                    // if (existingSlotNumbers && !existingSlotNumbers.includes(i)) {
+                        ts.push({ value: i, label: i });
+                    // }
+                }
+
+                setTempSlotNo(ts);
+            }
+
+            setSlotNumbers();
+        }
+    }, [list, selectedGroup]);
 
     return (
         <React.Fragment>
@@ -409,7 +488,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                         <Spinner />
                     </div>
                 ) : (
-                    <div className="px-2">
+                    <div className="px-2 pb-4">
                         <Formik enableReinitialize={true}
                             onSubmit={handleSaveUpdate}
                             initialValues={initialValues}
@@ -592,6 +671,19 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                             errors={touched.pnNumber && errors.pnNumber ? errors.pnNumber : undefined} />
                                     </div>
                                     <div className="mt-4">
+                                        <SelectDropdown
+                                            name="coMaker"
+                                            field="coMaker"
+                                            value={selectedCoMaker}
+                                            label="Co Maker"
+                                            options={tempSlotNo}
+                                            onChange={(field, value) => handleCoMakerChange(field, value)}
+                                            onBlur={setFieldTouched}
+                                            placeholder="Select Co Maker"
+                                            errors={touched.coMaker && errors.coMaker ? errors.coMaker : undefined}
+                                        />
+                                    </div>
+                                    {/* <div className="mt-4">
                                         <InputText
                                             name="coMaker"
                                             value={values.coMaker}
@@ -600,6 +692,36 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                             placeholder="Enter Co-Maker"
                                             setFieldValue={setFieldValue}
                                             errors={touched.coMaker && errors.coMaker ? errors.coMaker : undefined} />
+                                    </div> */}
+                                    <div className="mt-4">
+                                        <InputText
+                                            name="guarantorFirstName"
+                                            value={values.guarantorFirstName}
+                                            onChange={handleChange}
+                                            label="Guarantor First Name"
+                                            placeholder="Enter Guarantor First Name"
+                                            setFieldValue={setFieldValue}
+                                            errors={touched.guarantorFirstName && errors.guarantorFirstName ? errors.guarantorFirstName : undefined} />
+                                    </div>
+                                    <div className="mt-4">
+                                        <InputText
+                                            name="guarantorMiddleName"
+                                            value={values.guarantorMiddleName}
+                                            onChange={handleChange}
+                                            label="Guarantor Middle Name"
+                                            placeholder="Enter Guarantor Middle Name"
+                                            setFieldValue={setFieldValue}
+                                            errors={touched.guarantorMiddleName && errors.guarantorMiddleName ? errors.guarantorMiddleName : undefined} />
+                                    </div>
+                                    <div className="mt-4">
+                                        <InputText
+                                            name="guarantorLastName"
+                                            value={values.guarantorLastName}
+                                            onChange={handleChange}
+                                            label="Guarantor Last Name"
+                                            placeholder="Enter Guarantor Last Name"
+                                            setFieldValue={setFieldValue}
+                                            errors={touched.guarantorLastName && errors.guarantorLastName ? errors.guarantorLastName : undefined} />
                                     </div>
                                     <div className="flex flex-row mt-5">
                                         <ButtonOutline label="Cancel" onClick={handleCancel} className="mr-3" />
