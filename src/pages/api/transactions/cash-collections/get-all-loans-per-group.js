@@ -622,6 +622,33 @@ async function getAllLoansPerGroup(req, res) {
                             as: "fullPayment"
                         }
                     },
+                    {
+                        $lookup: {
+                            from: "groups",
+                            localField: "loIdStr",
+                            foreignField: "loanOfficerId",
+                            pipeline: [
+                                { $match: { $expr: { $gt: ['$noOfClients', 0] } } },
+                                { $addFields: { groupIdStr: { $toString: "$_id" } } },
+                                {
+                                    $lookup: {
+                                        from: "cashCollections",
+                                        localField: "groupIdStr",
+                                        foreignField: "groupId",
+                                        pipeline: [
+                                            { $match: { dateAdded: date } },
+                                            { $group: {
+                                                _id: '$groupId',
+                                                count: { $sum: 1 }
+                                            } }
+                                        ],
+                                        as: "cashCollections"
+                                    }
+                                }
+                            ],
+                            as: "groupStatuses"
+                        }
+                    },
                     { $project: { password: 0, profile: 0, role: 0 } }
                 ])
                 .toArray();

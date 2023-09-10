@@ -407,7 +407,7 @@ const BranchManagerSummary = () => {
                         transferDailyGvr = {
                             transfer: noTransfer,
                             mcbuTarget: mcbuTarget,
-                            mcbuActual: mcbuActual,
+                            mcbuActual: (transferDailyGvr && transferDailyGvr.mcbuActual) ? transferDailyGvr.mcbuActual + mcbuActual : mcbuActual,
                             mcbuWithdrawal: mcbuWithdrawal,
                             mcbuInterest: mcbuInterest,
                             noMcbuReturn: noMcbuReturn,
@@ -451,7 +451,7 @@ const BranchManagerSummary = () => {
                         transferDailyRcv = {
                             transfer: noTransfer,
                             mcbuTarget: mcbuTarget,
-                            mcbuActual: mcbuActual,
+                            mcbuActual: (transferDailyRcv && transferDailyRcv.mcbuActual) ? transferDailyRcv.mcbuActual + mcbuActual : mcbuActual,
                             mcbuWithdrawal: mcbuWithdrawal,
                             mcbuInterest: mcbuInterest,
                             noMcbuReturn: noMcbuReturn,
@@ -495,7 +495,7 @@ const BranchManagerSummary = () => {
                         transferWeeklyGvr = {
                             transfer: noTransfer,
                             mcbuTarget: mcbuTarget,
-                            mcbuActual: mcbuActual,
+                            mcbuActual: (transferWeeklyGvr && transferWeeklyGvr.mcbuActual) ? transferWeeklyGvr.mcbuActual + mcbuActual : mcbuActual,
                             mcbuWithdrawal: mcbuWithdrawal,
                             mcbuInterest: mcbuInterest,
                             noMcbuReturn: noMcbuReturn,
@@ -539,7 +539,7 @@ const BranchManagerSummary = () => {
                         transferWeeklyRcv = {
                             transfer: noTransfer,
                             mcbuTarget: mcbuTarget,
-                            mcbuActual: mcbuActual,
+                            mcbuActual: (transferWeeklyRcv && transferWeeklyRcv.mcbuActual) ? transferWeeklyRcv.mcbuActual + mcbuActual : mcbuActual,
                             mcbuWithdrawal: mcbuWithdrawal,
                             mcbuInterest: mcbuInterest,
                             noMcbuReturn: noMcbuReturn,
@@ -580,7 +580,7 @@ const BranchManagerSummary = () => {
                     totalNoPastDue = transferDailyGvr?.pastDuePerson > 0 ? transferDailyGvr?.pastDuePerson : 0;
                     totalDailyCollectionAdvancePayment = transferDailyGvr?.excess;
                 }
-
+                // console.log('giver', totalMcbuActual)
                 if (transferDailyRcv) {
                     totalTransfer += transferDailyRcv?.transfer;
                     totalMcbuTarget += transferDailyRcv?.mcbuTarget;
@@ -598,7 +598,7 @@ const BranchManagerSummary = () => {
                     totalNoPastDue += transferDailyRcv?.pastDuePerson > 0 ? transferDailyRcv?.pastDuePerson : 0;
                     totalDailyCollectionAdvancePayment += transferDailyRcv?.excess;
                 }
-
+                // console.log('rcv', totalMcbuActual)
                 if (transferWeeklyGvr) {
                     totalTransfer += transferWeeklyGvr?.transfer;
                     totalMcbuTarget += transferDailyRcv?.mcbuTarget;

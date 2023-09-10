@@ -7,6 +7,7 @@ export default apiHandler({
 
 async function getComaker(req, res) {
     const { db } = await connectToDatabase();
+    const ObjectId = require('mongodb').ObjectId;
     const { groupId } = req.query;
     let statusCode = 200;
     let response = {};
@@ -21,7 +22,18 @@ async function getComaker(req, res) {
                     } })
                     .toArray();
 
-    const slotNumbers = data.map(d => d.slotNo);
+    const slotNumbers = data.map(async (d) => {
+        if (d.coMaker) {
+            if (typeof d.coMaker === 'number') {
+                return d.coMaker;
+            } else if (typeof d.coMaker === 'string') {
+                const client = await db.collection('client').find({ _id: new ObjectId(d.coMaker) }).toArray();
+                if (client) {
+                    
+                }
+            }
+        }
+    });
         
     response = { success: true, data: slotNumbers };
     res.status(statusCode)

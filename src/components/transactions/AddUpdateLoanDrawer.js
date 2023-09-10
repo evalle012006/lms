@@ -58,6 +58,9 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         coMaker: loan.coMaker,
         loanCycle: mode !== 'reloan' ? mode === 'add' ? 1 : loan.loanCycle : loan.loanCycle + 1,
         pnNumber: loan.pnNumber,
+        guarantorFirstName: loan.guarantorFirstName,
+        guarantorMiddleName: loan.guarantorMiddleName,
+        guarantorLastName: loan.guarantorLastName,
         status: mode !== 'reloan' ? loan.status : 'pending',
     }
 
@@ -86,7 +89,13 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             .required('Please enter a loan cycle number'),
         pnNumber: yup
             .string()
-            .required('Please enter a promisory note number.')
+            .required('Please enter a promisory note number.'),
+        guarantorFirstName: yup
+            .string()
+            .required('Please enter guarantor first name'),
+        guarantorLastName: yup
+            .string()
+            .required('Please enter guarantor last name')
     });
 
     const handleGroupIdChange = (field, value) => {
@@ -479,7 +488,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                         <Spinner />
                     </div>
                 ) : (
-                    <div className="px-2">
+                    <div className="px-2 pb-4">
                         <Formik enableReinitialize={true}
                             onSubmit={handleSaveUpdate}
                             initialValues={initialValues}
@@ -684,6 +693,36 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                             setFieldValue={setFieldValue}
                                             errors={touched.coMaker && errors.coMaker ? errors.coMaker : undefined} />
                                     </div> */}
+                                    <div className="mt-4">
+                                        <InputText
+                                            name="guarantorFirstName"
+                                            value={values.guarantorFirstName}
+                                            onChange={handleChange}
+                                            label="Guarantor First Name"
+                                            placeholder="Enter Guarantor First Name"
+                                            setFieldValue={setFieldValue}
+                                            errors={touched.guarantorFirstName && errors.guarantorFirstName ? errors.guarantorFirstName : undefined} />
+                                    </div>
+                                    <div className="mt-4">
+                                        <InputText
+                                            name="guarantorMiddleName"
+                                            value={values.guarantorMiddleName}
+                                            onChange={handleChange}
+                                            label="Guarantor Middle Name"
+                                            placeholder="Enter Guarantor Middle Name"
+                                            setFieldValue={setFieldValue}
+                                            errors={touched.guarantorMiddleName && errors.guarantorMiddleName ? errors.guarantorMiddleName : undefined} />
+                                    </div>
+                                    <div className="mt-4">
+                                        <InputText
+                                            name="guarantorLastName"
+                                            value={values.guarantorLastName}
+                                            onChange={handleChange}
+                                            label="Guarantor Last Name"
+                                            placeholder="Enter Guarantor Last Name"
+                                            setFieldValue={setFieldValue}
+                                            errors={touched.guarantorLastName && errors.guarantorLastName ? errors.guarantorLastName : undefined} />
+                                    </div>
                                     <div className="flex flex-row mt-5">
                                         <ButtonOutline label="Cancel" onClick={handleCancel} className="mr-3" />
                                         <ButtonSolid label="Submit" type="submit" isSubmitting={isValidating && isSubmitting} />

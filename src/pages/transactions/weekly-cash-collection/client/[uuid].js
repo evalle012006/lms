@@ -419,12 +419,14 @@ const CashCollectionDetailsPage = () => {
                             numMispayment = cc.noMispayment > 0 ? cc.noMispayment + ' / ' + maxDays : '-';
                         }
 
+                        let activeLoan = cc.activeLoan;
                         let mispaymentStr = (cc.status === "active" || (cc.status === "completed" && cc.fullPaymentDate === currentDate)) ? 'No' : '-';
                         if (cc?.transfer && cc?.transferDate === currentDate) {
                             numMispayment = '';
                             noMispayment = 0;
                             mispaymentStr = '-';
                             noPaymentsStr = '-';
+                            activeLoan = 0;
                         }
 
                         collection = {
@@ -460,9 +462,9 @@ const CashCollectionDetailsPage = () => {
                             mcbuReturnAmtStr: '-',
                             mcbuInterest: cc.mcbuInterest ? cc.mcbuInterest : 0,
                             mcbuInterestStr: cc.mcbuInterest > 0 ? formatPricePhp(cc.mcbuInterest) : '-',
-                            activeLoan: cc.activeLoan,
-                            targetCollection: cc.activeLoan,
-                            targetCollectionStr: cc.activeLoan > 0 ? formatPricePhp(cc.activeLoan) : '-',
+                            activeLoan: activeLoan,
+                            targetCollection: activeLoan,
+                            targetCollectionStr: activeLoan > 0 ? formatPricePhp(activeLoan) : '-',
                             amountRelease: cc.amountRelease,
                             amountReleaseStr: cc.amountRelease > 0 ? formatPricePhp(cc.amountRelease) : '-',
                             loanBalance: cc.loanBalance,

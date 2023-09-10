@@ -396,8 +396,8 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                     collectionReceived.push.apply(collectionReceived, cc.transferReceivedDetails);
                     transfer = transfer + cc.transferReceivedDetails.length;
 
-                    if (!filter) {
-                        cc.transferReceivedDetails.map(rcv => {
+                    cc.transferReceivedDetails.map(rcv => {
+                        if (!filter) {
                             collection.activeClients += 1;
                             collection.activeBorrowers += 1;
                             collection.mcbu += rcv.mcbu;
@@ -407,8 +407,13 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
 
                             totalsLoanRelease += rcv.amountRelease;
                             totalsLoanBalance += rcv.loanBalance;
-                        });
-                    }
+                        } else {
+                            collection.loanTarget -= rcv.targetCollection;
+                            collection.loanTargetStr = formatPricePhp(collection.loanTarget);
+    
+                            targetLoanCollection -= rcv.targetCollection;
+                        }
+                    });
                 }
 
                 if (cc.transferGiverDetails.length > 0 || cc.transferReceivedDetails.length > 0) {
@@ -732,6 +737,11 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 totalsLoanBalance += transferRcv.targetLoanCollection;
                 totalsLoanBalance += transferRcv.totalLoanBalance;
                 totalsLoanBalance += transferRcv.excess;
+            }
+
+            if (transferCurrentReleaseAmount === 0 && transferGvr.currentReleaseAmount > 0) {
+                // transferCurrentReleaseAmount = -Math.abs(transferRcv.currentReleaseAmount);
+                totalsLoanBalance -= transferRcv.targetLoanCollection;
             }
 
             if (transferCurrentReleaseAmount === 0 && transferRcv.currentReleaseAmount > 0) {

@@ -446,11 +446,13 @@ const CashCollectionDetailsPage = () => {
                             }
                         }
 
+                        let activeLoan = cc.activeLoan;
                         if (cc?.transfer && cc?.transferDate === currentDate) {
                             numMispayment = '';
                             noMispayment = 0;
                             mispaymentStr = '-';
                             noPaymentsStr = '-';
+                            activeLoan = 0;
                         }
     
                         collection = {
@@ -487,9 +489,9 @@ const CashCollectionDetailsPage = () => {
                             mcbuReturnAmtStr: '-',
                             mcbuInterest: cc.mcbuInterest ? cc.mcbuInterest : 0,
                             mcbuInterestStr: cc.mcbuInterest > 0 ? formatPricePhp(cc.mcbuInterest) : '-',
-                            activeLoan: cc.activeLoan,
-                            targetCollection: cc.activeLoan,
-                            targetCollectionStr: cc.activeLoan > 0 ? formatPricePhp(cc.activeLoan) : '-',
+                            activeLoan: activeLoan,
+                            targetCollection: activeLoan,
+                            targetCollectionStr: activeLoan > 0 ? formatPricePhp(activeLoan) : '-',
                             amountRelease: cc.amountRelease,
                             amountReleaseStr: cc.amountRelease > 0 ? formatPricePhp(cc.amountRelease) : '-',
                             loanBalance: cc.loanBalance,
