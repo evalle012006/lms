@@ -139,7 +139,7 @@ async function getCoMakerInfo(coMaker, groupId) {
             } } 
         ]).toArray();
 
-        if (loan) {
+        if (loan && loan.length > 0) {
             client = loan[0].clientId;
         }
     } else if (typeof coMaker === 'string') {
@@ -155,7 +155,7 @@ async function getCoMakerInfo(coMaker, groupId) {
             } } 
         ]).toArray();
 
-        if (loan) {
+        if (loan && loan.length > 0) {
             client = loan[0].slotNo;
         }
     }
