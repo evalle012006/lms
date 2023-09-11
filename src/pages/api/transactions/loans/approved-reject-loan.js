@@ -127,8 +127,8 @@ async function getCoMakerInfo(coMaker, groupId) {
     let client;
     if (typeof coMaker === 'number') {
         const loan = await db.collection('loans').aggregate([ 
-            {$match: 
-                { $and: [
+            { $match: {
+                $expr: { $and: [
                     { $eq: ['$groupId', groupId] },
                     { $or: [
                         {$eq: ['$status', 'active']},
@@ -136,7 +136,7 @@ async function getCoMakerInfo(coMaker, groupId) {
                     ] },
                     { $eq: ['$slotNo', coMaker] }
                 ] }
-            } 
+            } } 
         ]).toArray();
 
         if (loan) {
@@ -144,15 +144,15 @@ async function getCoMakerInfo(coMaker, groupId) {
         }
     } else if (typeof coMaker === 'string') {
         const loan = await db.collection('loans').aggregate([ 
-            {$match: 
-                { $and: [
+            { $match: {
+                $expr: { $and: [
                     { $eq: ['$clientId', coMaker] },
                     { $or: [
                         {$eq: ['$status', 'active']},
                         {$eq: ['$status', 'pending']}
                     ] }
                 ] }
-            } 
+            } } 
         ]).toArray();
 
         if (loan) {

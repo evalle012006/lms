@@ -539,7 +539,7 @@ const LoanApplicationPage = () => {
                 delete temp.mcbuStr;
                 delete temp.selected;
 
-                temp.dateGranted = moment(currentDate).format('YYYY-MM-DD');
+                temp.dateGranted = currentDate
                 temp.status = 'active';
                 temp.startDate = moment(currentDate).add(1, 'days').format('YYYY-MM-DD');
                 temp.endDate = getEndDate(temp.dateGranted, group.occurence === lo.transactionType ? 60 : 24 );
