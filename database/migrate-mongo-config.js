@@ -7,7 +7,7 @@ const config = {
     url: "mongodb+srv://amber-admin:amberlms@cluster0.gborljd.mongodb.net/?retryWrites=true&w=majority",
 
     // TODO Change this to your database name:
-    databaseName: "acloandb",
+    databaseName: "acloandb-staging",
 
     options: {
       useNewUrlParser: true, // removes a deprecation warning when connecting
