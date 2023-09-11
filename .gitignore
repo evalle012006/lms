@@ -4,10 +4,9 @@ next.config.js
 .next
 public
 logs
-.env
-.env
-next.config.js
 src/pages/_app.js
+
+.env
 
 .github/workflows/CD.yml
 .github/workflows/CI.yml
