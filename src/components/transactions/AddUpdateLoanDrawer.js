@@ -26,9 +26,11 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     const [loading, setLoading] = useState(false);
     const [title, setTitle] = useState('Add Loan');
     const branchList = useSelector(state => state.branch.list);
+    const userList = useSelector(state => state.user.list);
     const groupList = useSelector(state => state.group.list);
     const clientList = useSelector(state => state.client.list);
     const comakerList = useSelector(state => state.client.comakerList);
+    const [selectedLo, setSelectedLo] = useState();
     const [selectedGroup, setSelectedGroup] = useState();
     const [slotNo, setSlotNo] = useState();
     const [slotNumber, setSlotNumber] = useState([]);
@@ -98,6 +100,31 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             .required('Please enter guarantor last name')
     });
 
+    const handleLoIdChange = (field, value) => {
+        setLoading(true);
+        const form = formikRef.current;
+        setSelectedGroup(value);
+        const group = groupList.find(g => g._id === value);
+        if (group) {
+            let slotArr = [];
+            group.availableSlots.map(slot => {
+                if (slot <= group.capacity) {
+                    slotArr.push({
+                        value: slot,
+                        label: slot
+                    });
+                }
+            });
+
+            setSlotNumber(slotArr);
+            form.setFieldValue('loId', group.loanOfficerId);
+        }
+
+        form.setFieldValue(field, value);
+        getListClient(clientType, value);
+        setLoading(false);
+    }
+
     const handleGroupIdChange = (field, value) => {
         setLoading(true);
         const form = formikRef.current;
@@ -153,7 +180,9 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         setLoading(true);
         const form = formikRef.current;
         setSelectedCoMaker(value);
-        form.setFieldValue('groupId', selectedGroup);
+        if (mode !== 'reloan') {
+            form.setFieldValue('groupId', selectedGroup);
+        }
         form.setFieldValue(field, value);
         setLoading(false);
     }
@@ -186,6 +215,8 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                     values.oldLoanId = loan.loanId;
                     values.clientId = loan.clientId;
                     values.branchId = loan.branchId;
+                    values.prevLoanFullPaymentDate = loan.fullPaymentDate;
+                    values.prevLoanFullPaymentAmount = loan?.history.amountRelease;
                 }
 
                 values.slotNo = mode !== 'reloan' ? slotNo : loan.slotNo;
@@ -299,10 +330,14 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list-by-group-occurence'
         if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
             url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id, occurence: occurence });
+            processGroupList(url);
         } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
             url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, occurence: occurence });
+            processGroupList(url);
         }
+    }
 
+    const processGroupList = async (url) => {
         const response = await fetchWrapper.get(url);
         if (response.success) {
             let groups = [];
@@ -430,7 +465,6 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
 
     useEffect(() => {
         let mounted = true;
-
         if (mode === 'add') {
             setTitle('Add Loan');
         } else if (mode === 'edit') {
@@ -463,7 +497,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     }, [selectedGroup]);
 
     useEffect(() => {
-        if (selectedGroup) {
+        if (selectedGroup || mode === 'reloan') {
             const setSlotNumbers = async () => {
                 // const existingSlotNumbers = await getAllLoanPerGroup(selectedGroup);
                 const ts = [];
@@ -478,7 +512,13 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
 
             setSlotNumbers();
         }
-    }, [list, selectedGroup]);
+    }, [list, selectedGroup, mode]);
+
+    useEffect(() => {
+        if (type) {
+            getListGroup(type);
+        }
+    }, [type, mode, branchList]);
 
     return (
         <React.Fragment>
@@ -509,13 +549,12 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                 <form onSubmit={handleSubmit} autoComplete="off">
                                     {mode === 'add' ? (
                                         <React.Fragment>
-                                            {/* - hide the groupOccurence radio button
-                                            - if role.rep === 3 it should display the list of lo's under that branch
-                                            - based the groupOccurence with lo.transactionType */}
-                                            {/* <div className="mt-4 flex flex-row">
-                                                <RadioButton id={"radio_daily"} name="radio-group-occurence" label={"Daily"} checked={groupOccurence === 'daily'} value="daily" onChange={handleOccurenceChange} />
-                                                <RadioButton id={"radio_weekly"} name="radio-group-occurence" label={"Weekly"} checked={groupOccurence === 'weekly'} value="weekly" onChange={handleOccurenceChange} />
-                                            </div> */}
+                                            { currentUser.role.rep === 3 && (
+                                                <div className="mt-4 flex flex-row">
+                                                    <RadioButton id={"radio_daily"} name="radio-group-occurence" label={"Daily"} checked={groupOccurence === 'daily'} value="daily" onChange={handleOccurenceChange} />
+                                                    <RadioButton id={"radio_weekly"} name="radio-group-occurence" label={"Weekly"} checked={groupOccurence === 'weekly'} value="weekly" onChange={handleOccurenceChange} />
+                                                </div>
+                                            ) }
                                             <div className="mt-4">
                                                 <SelectDropdown
                                                     name="groupId"

@@ -476,7 +476,7 @@ const CashCollectionDetailsPage = () => {
                             currentReleaseAmountStr: cc.currentReleaseAmount ? formatPricePhp(cc.currentReleaseAmount) : '-',
                             fullPayment: cc.fullPaymentAmount ? cc.fullPaymentAmount : 0,
                             fullPaymentStr: cc.fullPaymentAmount > 0 ? formatPricePhp(cc.fullPaymentAmount) : '-',
-                            remarks: cc.remarks ? cc.remarks : '',
+                            remarks: cc.status === 'completed' ? cc.history.remarks : cc.remarks ? cc.remarks : '',
                             pastDue: cc.pastDue ? cc.pastDue : 0,
                             pastDueStr: cc.pastDue ? formatPricePhp(cc.pastDue) : '-',
                             clientStatus: cc.client.status ? cc.client.status : '-',
@@ -695,6 +695,7 @@ const CashCollectionDetailsPage = () => {
                         }
                     }
                 } else {
+                    const prevLoan = loan.prevLoans.length > 0 ? loan.prevLoans[loan.prevLoans.length - 1] : null;
                     let pendingTomorrow = {
                         _id: loan._id,
                         client: loan.client,
@@ -729,7 +730,7 @@ const CashCollectionDetailsPage = () => {
                         targetCollectionStr: '-',
                         excessStr: '-',
                         paymentCollectionStr: '-',
-                        remarks: '-',
+                        remarks: prevLoan ? prevLoan.history.remarks : '-',
                         pastDueStr: '-',
                         fullPaymentStr: '-',
                         status: loan.status === 'active' ? 'tomorrow' : 'pending',
@@ -2194,7 +2195,7 @@ const CashCollectionDetailsPage = () => {
                                                     <React.Fragment>
                                                         {(!isWeekend && !isHoliday && currentUser.role.rep > 2 &&  (cc.status === 'active' || cc.status === 'completed') && !groupSummaryIsClose && !cc.draft) && (
                                                             <div className='flex flex-row p-4'>
-                                                                {(cc.hasOwnProperty('_id')  && cc.status === 'active' && !filter && !cc.draft && cc?.origin !== 'pre-save') && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleRevert(e, cc, index)} />}
+                                                                {(currentUser.role.rep === 3 && cc.hasOwnProperty('_id')  && cc.status === 'active' && !filter && !cc.draft && cc?.origin !== 'pre-save') && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleRevert(e, cc, index)} />}
                                                                 {((cc.status === 'completed' && cc.remarks.value === 'reloaner') || (cc.status === 'completed' && !cc.remarks)) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
                                                                 {(!filter && cc.status === 'active') && <CurrencyDollarIcon className="w-5 h-5 mr-6" title="MCBU Withdrawal" onClick={(e) => handleMcbuWithdrawal(e, cc, index)} />}
                                                                 {(!filter && cc.status === 'active') && <StopCircleIcon className="w-5 h-5 mr-6" title="Offset" onClick={(e) => handleOffset(e, cc, index)} />}

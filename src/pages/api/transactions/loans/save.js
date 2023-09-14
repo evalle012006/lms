@@ -58,6 +58,11 @@ async function save(req, res) {
             if (finalData.occurence === 'weekly') {
                 finalData.mcbuTarget = 50;
             }
+
+            if (mode === 'reloan') {
+                finalData.modifiedDateTime = new Date();
+            }
+
             delete finalData.currentReleaseAmount;
             const loan = await db.collection('loans').insertOne({
                 ...finalData,
@@ -72,8 +77,7 @@ async function save(req, res) {
 
             if (mode === 'reloan') {
                 reloan = true;
-                finalData.modifiedDateTime = new Date();
-                await updateLoan(oldLoanId, finalData);
+                await updateLoan(oldLoanId, finalData, currentDate);
             } else {
                 await updateGroup(loanData);
             }
@@ -146,7 +150,7 @@ async function updateGroup(loan) {
     }
 }
 
-async function updateLoan(loanId, loanData) {
+async function updateLoan(loanId, loanData, currentDate) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
 
@@ -169,6 +173,13 @@ async function updateLoan(loanId, loanData) {
                     $set: { ...loan }
                 }, 
                 { upsert: false });
+
+        await db
+            .collection('cashCollections')
+            .updateOne(
+                { loanId: loanId, dateAdded: currentDate },
+                { $set: { status: 'closed' } }
+            );
     }
 }
 
