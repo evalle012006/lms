@@ -217,7 +217,17 @@ const LoanApplicationPage = () => {
                         selected: false
                     });
                 });
+                loanList.sort((a, b) => {
+                    if (a.pnNumber < b.pnNumber) {
+                        return -1;
+                    }
 
+                    if (b.pnNumber < b.pnNumber) {
+                        return 1;
+                    }
+
+                    return 0;
+                } );
                 dispatch(setLoanList(loanList));
                 setLoading(false);
             } else if (response.error) {
@@ -256,7 +266,17 @@ const LoanApplicationPage = () => {
                         selected: false
                     });
                 });
+                loanList.sort((a, b) => {
+                    if (a.pnNumber < b.pnNumber) {
+                        return -1;
+                    }
 
+                    if (b.pnNumber < b.pnNumber) {
+                        return 1;
+                    }
+
+                    return 0;
+                } );
                 dispatch(setLoanList(loanList));
                 setLoading(false);
             } else if (response.error) {
@@ -296,7 +316,17 @@ const LoanApplicationPage = () => {
                         selected: false
                     });
                 });
+                loanList.sort((a, b) => {
+                    if (a.pnNumber < b.pnNumber) {
+                        return -1;
+                    }
 
+                    if (b.pnNumber < b.pnNumber) {
+                        return 1;
+                    }
+
+                    return 0;
+                } );
                 dispatch(setLoanList(loanList));
                 setLoading(false);
             } else if (response.error) {
@@ -336,7 +366,17 @@ const LoanApplicationPage = () => {
                         selected: false
                     });
                 });
+                loanList.sort((a, b) => {
+                    if (a.pnNumber < b.pnNumber) {
+                        return -1;
+                    }
 
+                    if (b.pnNumber < b.pnNumber) {
+                        return 1;
+                    }
+
+                    return 0;
+                } );
                 dispatch(setLoanList(loanList));
                 setLoading(false);
             } else if (response.error) {
@@ -739,6 +779,10 @@ const LoanApplicationPage = () => {
                 {
                     Header: "Loan Balance",
                     accessor: 'loanBalanceStr'
+                },
+                {
+                    Header: "PN Number",
+                    accessor: 'pnNumber'
                 },
                 {
                     Header: "Status",

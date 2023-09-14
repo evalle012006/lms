@@ -40,7 +40,12 @@ const Index = () => {
         //     await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}transactions/cash-collection-summary/update-los-data`);
         // }
 
+        // const updateLoanCoMaker = async () => {
+        //     await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}transactions/loans/update-loan-comaker`);
+        // }
+
         mounted && getSystemSettings();
+        // mounted && updateLoanCoMaker();
         // mounted && getTransactionSettings();
         // mounted && getListHoliday();
         // mounted && updateGroupClients();

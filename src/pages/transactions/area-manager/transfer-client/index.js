@@ -220,10 +220,10 @@ const TransferClientPage = () => {
 
     const handleCloseAddDrawer = () => {
         setLoading(true);
-        // getTransferList();
+        getTransferList();
         setMode('add');
         setClient({});
-        window.location.reload();
+        // window.location.reload();
     }
 
     const handleMultiSelect = (mode, selectAll, row, rowIndex) => {

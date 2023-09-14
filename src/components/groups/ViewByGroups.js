@@ -107,7 +107,7 @@ const ViewByGroupsPage = () => {
     }
 
     const getListGroup = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list';
+        let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list-all';
         
         if (uuid && userList.length > 0 ) {
             const lo = userList.find(u => u._id === uuid);

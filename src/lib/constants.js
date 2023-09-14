@@ -33,6 +33,23 @@ export const LOR_WEEKLY_REMARKS = [
     { label: 'Excused - Death of Clients/Family Member', value: 'excused-death'}
 ];
 
+export const LOR_ONLY_DAILY_RELOAN_OFFSET_REMARKS = [
+    { label: 'Remarks', value: ''},
+    { label: 'Reloaner Cont/MCBU', value: 'reloaner-cont'},
+    { label: 'Reloaner WD/MCBU', value: 'reloaner-wd'},
+    { label: 'For Close/Offset - Good Client', value: 'offset-good'},
+    { label: 'For Close/Offset - Delinquent Client', value: 'offset-delinquent'},
+    { label: 'For Close/Offset - Unclaimed Amount', value: 'offset-unclaimed'}
+];
+
+export const LOR_ONLY_WEEKLY_RELOAN_OFFSET_REMARKS = [
+    { label: 'Remarks', value: ''},
+    { label: 'Reloaner', value: 'reloaner'},
+    { label: 'For Close/Offset - Good Client', value: 'offset-good'},
+    { label: 'For Close/Offset - Delinquent Client', value: 'offset-delinquent'},
+    { label: 'For Close/Offset - Unclaimed Amount', value: 'offset-unclaimed'}
+];
+
 export const LOR_ONLY_OFFSET_REMARKS = [
     { label: 'Remarks', value: ''},
     { label: 'For Close/Offset - Good Client', value: 'offset-good'},

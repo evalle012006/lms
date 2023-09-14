@@ -55,7 +55,7 @@ const CashCollectionDetailsPage = () => {
     const [showRemarksModal, setShowRemarksModal] = useState(false);
     const [closeAccountRemarks, setCloseAccountRemarks] = useState();
     const [closeLoan, setCloseLoan] = useState();
-    const remarksArr = LOR_DAILY_REMARKS;
+    const [remarksArr, setRemarksArr] = useState(LOR_DAILY_REMARKS);
     const [filter, setFilter] = useState(false);
     const maxDays = 60;
     const [groupFilter, setGroupFilter] = useState();
@@ -503,7 +503,7 @@ const CashCollectionDetailsPage = () => {
                             currentReleaseAmountStr: cc.currentReleaseAmount ? formatPricePhp(cc.currentReleaseAmount) : '-',
                             fullPayment: cc.fullPaymentAmount ? cc.fullPaymentAmount : 0,
                             fullPaymentStr: cc.fullPaymentAmount > 0 ? formatPricePhp(cc.fullPaymentAmount) : '-',
-                            remarks: cc.remarks ? cc.remarks : '',
+                            remarks: cc.status === 'completed' ? cc.history.remarks : cc.remarks ? cc.remarks : '',
                             pastDue: cc.pastDue ? cc.pastDue : 0,
                             pastDueStr: cc.pastDue ? formatPricePhp(cc.pastDue) : '-',
                             clientStatus: cc.client.status ? cc.client.status : '-',
@@ -699,7 +699,7 @@ const CashCollectionDetailsPage = () => {
                             mcbuReturnAmtStr: loan.mcbuReturnAmt > 0 ? formatPricePhp(loan.mcbuReturnAmt) : '-',
                             mcbuInterest: loan.mcbuInterest,
                             mcbuInterestStr: loan.mcbuInterest > 0 ? formatPricePhp(loan.mcbuInterest) : '-',
-                            remarks: '-',
+                            remarks: currentLoan?.status === 'completed' ? currentLoan.remarks : '-',
                             fullPaymentStr: '-',
                             loanTerms: loan.loanTerms,
                             status: loan.status === 'active' ? 'tomorrow' : 'pending',
@@ -710,6 +710,7 @@ const CashCollectionDetailsPage = () => {
                         }
                     }
                 } else {
+                    const prevLoan = loan.prevLoans.length > 0 ? loan.prevLoans[loan.prevLoans.length - 1] : null;
                     let pendingTomorrow = {
                         _id: loan._id,
                         client: loan.client,
@@ -744,7 +745,7 @@ const CashCollectionDetailsPage = () => {
                         mcbuReturnAmtStr: loan.mcbuReturnAmt > 0 ? formatPricePhp(loan.mcbuReturnAmt) : '-',
                         mcbuInterest: loan.mcbuInterest,
                         mcbuInterestStr: loan.mcbuInterest > 0 ? formatPricePhp(loan.mcbuInterest) : '-',
-                        remarks: '-',
+                        remarks: prevLoan ? prevLoan.history.remarks : '-',
                         pastDueStr: '-',
                         fullPaymentStr: '-',
                         loanTerms: loan.loanTerms,
@@ -1548,7 +1549,7 @@ const CashCollectionDetailsPage = () => {
 
     const handleReloan = (e, selected) => {
         e.stopPropagation();
-        
+
         if ((selected.remarks && (selected.remarks.value === "pending" || selected.remarks.value?.startsWith('reloaner'))) || (selected.status === 'completed' && !selected.remarks)) {
             setShowAddDrawer(true);
             selected.group = currentGroup;
@@ -1898,9 +1899,8 @@ const CashCollectionDetailsPage = () => {
                                                     <React.Fragment>
                                                         {(!isWeekend && !isHoliday && currentUser.role.rep > 2 &&  (cc.status === 'active' || cc.status === 'completed') && !groupSummaryIsClose && !cc.draft) && (
                                                             <div className='flex flex-row p-4'>
-                                                                {(cc.hasOwnProperty('_id') && cc.status === 'active' && !filter && !cc.draft) && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleRevert(e, cc, index)} />}
+                                                                {(currentUser.role.rep === 3 && cc.hasOwnProperty('_id') && cc.status === 'active' && !filter && !cc.draft) && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleRevert(e, cc, index)} />}
                                                                 {(cc.status === 'completed' && ((cc.remarks.value && cc.remarks.value?.startsWith('reloaner')) || (cc.status === 'completed' && !cc.remarks))) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
-                                                                {/* {(!filter && cc.status === 'active') && <CurrencyDollarIcon className="w-5 h-5 mr-6" title="MCBU Withdrawal" onClick={(e) => handleMcbuWithdrawal(e, cc, index)} />} */}
                                                                 {(!filter && !editMode && cc.status !== 'closed' && currentMonth === 11) && <CalculatorIcon className="w-5 h-5 mr-6" title="Calculate MCBU Interest" onClick={(e) => calculateInterest(e, cc, index)} />}
                                                             </div>
                                                         )}

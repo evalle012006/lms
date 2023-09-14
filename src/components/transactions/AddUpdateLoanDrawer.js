@@ -153,7 +153,9 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         setLoading(true);
         const form = formikRef.current;
         setSelectedCoMaker(value);
-        form.setFieldValue('groupId', selectedGroup);
+        if (mode !== 'reloan') {
+            form.setFieldValue('groupId', selectedGroup);
+        }
         form.setFieldValue(field, value);
         setLoading(false);
     }
@@ -186,6 +188,8 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                     values.oldLoanId = loan.loanId;
                     values.clientId = loan.clientId;
                     values.branchId = loan.branchId;
+                    values.prevLoanFullPaymentDate = loan.fullPaymentDate;
+                    values.prevLoanFullPaymentAmount = loan?.history.amountRelease;
                 }
 
                 values.slotNo = mode !== 'reloan' ? slotNo : loan.slotNo;
@@ -463,7 +467,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     }, [selectedGroup]);
 
     useEffect(() => {
-        if (selectedGroup) {
+        if (selectedGroup || mode === 'reloan') {
             const setSlotNumbers = async () => {
                 // const existingSlotNumbers = await getAllLoanPerGroup(selectedGroup);
                 const ts = [];
@@ -478,7 +482,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
 
             setSlotNumbers();
         }
-    }, [list, selectedGroup]);
+    }, [list, selectedGroup, mode]);
 
     return (
         <React.Fragment>

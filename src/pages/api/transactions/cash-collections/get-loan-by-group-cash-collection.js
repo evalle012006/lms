@@ -180,6 +180,17 @@ async function getLoanWithCashCollection(req, res) {
                 {
                     $unwind: "$client"
                 },
+                {
+                    $lookup: {
+                        from: "loans",
+                        localField: "clientId",
+                        foreignField: "clientId",
+                        pipeline: [
+                            { $match: { status: 'closed' } }
+                        ],
+                        as: "prevLoans"
+                    }
+                },
                 { $sort: { slotNo: 1 } },
                 { $project: { branchIdObj: 0, groupIdObj: 0, clientIdObj: 0 } }
             ])
