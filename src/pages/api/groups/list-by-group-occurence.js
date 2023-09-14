@@ -28,7 +28,7 @@ async function list(req, res) {
     } else if (branchId) {
         groups = await db
             .collection('groups')
-            .find({ branchId: branchId, status: 'available' })
+            .find({ branchId: branchId, status: 'available', occurence: occurence })
             .sort({ groupNo: 1 })
             .toArray();
     } else if (areaManagerId) {

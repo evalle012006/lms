@@ -56,7 +56,7 @@ const LoanApplicationPage = () => {
     const [selectedFilterBranch, setSelectedFilterBranch] = useState();
     const [selectedFilterUser, setSelectedFilterUser] = useState();
     const [selectedFilterGroup, setSelectedFilterGroup] = useState();
-    const [occurence, setOccurence] = useState();
+    const [occurence, setOccurence] = useState('daily');
 
     const handleBranchChange = (selected) => {
         setSelectedFilterBranch(selected.value);
@@ -630,7 +630,7 @@ const LoanApplicationPage = () => {
 
     const actionButtons = currentUser.role.rep < 4 ? [
         <ButtonOutline label="Approved Selected Loans" type="button" className="p-2 mr-3" onClick={handleMultiApprove} />,
-        // <ButtonSolid label="Add Loan" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
+        <ButtonSolid label="Add Loan" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
     ] : [
         <ButtonSolid label="Add Loan" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
     ];
@@ -644,6 +644,7 @@ const LoanApplicationPage = () => {
         client.value = client._id;
         clientListData.push(client);
         dispatch(setClientList(clientListData));
+        setOccurence(row.original.occurence);
         handleShowAddDrawer();
     }
 
