@@ -35,8 +35,6 @@ async function save(req, res) {
 
                 if (collection.hasOwnProperty('_id')) {
                     collection.modifiedDateTime = new Date();
-                    collection.collectionId = collection._id;
-                    delete collection._id;
                     existCC.push(collection);
                 } else {
                     collection.insertedDateTime = new Date();
@@ -78,12 +76,13 @@ async function updateCollection(collections) {
     const ObjectId = require('mongodb').ObjectId;
 
     collections.map(async collection => {
-
+        const collectionId = collection._id;
+        delete collection._id;
         if (collection?.origin === 'pre-save') {
             delete collection.origin;
             await db.collection('cashCollections')
                 .updateOne(
-                    { _id: new ObjectId(collection.collectionId)},
+                    { _id: new ObjectId(collectionId)},
                     {
                         $unset: { origin: 1 },
                         $set: {...collection}
@@ -93,7 +92,7 @@ async function updateCollection(collections) {
         } else {
             await db.collection('cashCollections')
                 .updateOne(
-                    { _id: new ObjectId(collection.collectionId)},
+                    { _id: new ObjectId(collectionId)},
                     {
                         $set: {...collection}
                     },
@@ -281,6 +280,8 @@ async function updateGroup(loan) {
                 group.noOfClients = group.noOfClients + 1;
             }
         }
+
+        // group.submitted = true;
 
         delete group._id;
         await db.collection('groups').updateOne(

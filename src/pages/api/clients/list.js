@@ -353,10 +353,9 @@ async function list(req, res) {
                     .toArray();
             }
         }
-    } else if (mode === 'view_all_by_group' && groupId) {
+    } else if (mode === 'view_all_by_group_for_transfer' && groupId) {
         clients = await db
             .collection('client')
-            // .find( { groupId: groupId } )
             .aggregate([
                 { $match: { groupId: groupId } },
                 { $addFields: { "clientIdStr": { $toString: "$_id" } } },

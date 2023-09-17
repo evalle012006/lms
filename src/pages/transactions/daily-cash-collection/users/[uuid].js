@@ -22,6 +22,7 @@ const CashCollectionDetailsPage = () => {
     const { uuid } = router.query;
     const currentDate = useSelector(state => state.systemSettings.currentDate);
     const [dateFilter, setDateFilter] = useState(dateFilterSubject.value ? dateFilterSubject.value : currentDate);
+    const [selectedLoGroup, setSelectedLoGroup] = useState('all');
 
     const handleBranchFilter = (selected) => {
         setCurrentBranch(selected);
@@ -79,6 +80,10 @@ const CashCollectionDetailsPage = () => {
         }
     }
 
+    const handleLoGroupChange = (value) => {
+        setSelectedLoGroup(value);
+    }
+
     useEffect(() => {
         let mounted = true;
 
@@ -119,6 +124,7 @@ const CashCollectionDetailsPage = () => {
                 {currentBranch && <DetailsHeader page={2} pageName="branch-view" mode={'daily'} currentDate={moment(currentDate).format('dddd, MMMM DD, YYYY')} 
                     selectedBranch={currentBranch} handleBranchFilter={handleBranchFilter} 
                     dateFilter={dateFilter} handleDateFilter={handleDateFilter}
+                    selectedLoGroup={selectedLoGroup} handleLoGroupChange={handleLoGroupChange}
                 />}
                 <div className='p-4 mt-[8rem]'>
                     <ViewByLoanOfficerPage pageNo={2} dateFilter={dateFilter} type={'daily'} />

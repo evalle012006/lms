@@ -28,9 +28,9 @@ const WeeklyCashCollectionPage = () => {
     const loCollectionList = useSelector(state => state.cashCollection.lo);
     const loSummary = useSelector(state => state.cashCollection.loSummary);
     const bmSummary = useSelector(state => state.cashCollection.bmSummary);
-    // const [weekend, setWeekend] = useState(false);
     const [showSubmitDialog, setShowSubmitDialog] = useState(false);
     const [filter, setFilter] = useState(false);
+    const [selectedLoGroup, setSelectedLoGroup] = useState('all');
 
     const handleDateFilter = (selected) => {
         const filteredDate = selected.target.value;
@@ -111,10 +111,6 @@ const WeeklyCashCollectionPage = () => {
                     }
                 );
             });
-
-            // if (currentUser.root !== true && (currentUser.role.rep === 3 || currentUser.role.rep === 4)) {
-            //     branches = [branches.find(b => b.code === currentUser.designatedBranch)];
-            // } 
             
             dispatch(setBranchList(branches));
         } else {
@@ -122,6 +118,10 @@ const WeeklyCashCollectionPage = () => {
         }
 
         setLoading(false);
+    }
+
+    const handleLoGroupChange = (value) => {
+        setSelectedLoGroup(value);
     }
 
     useEffect(() => {
@@ -159,10 +159,11 @@ const WeeklyCashCollectionPage = () => {
                         {branchList && <DetailsHeader pageTitle='Weekly Cash Collections' pageName={currentUser.role.rep === 1 ? "branch-view" : ""}
                             page={1} mode={'weekly'} currentDate={moment(currentDate).format('dddd, MMMM DD, YYYY')} weekend={isWeekend} holiday={isHoliday}
                             dateFilter={dateFilter} handleDateFilter={handleDateFilter} handleSubmit={handleShowSubmitDialog} filter={filter}
+                            selectedLoGroup={selectedLoGroup} handleLoGroupChange={handleLoGroupChange}
                         />}
                         <div className={`p-4 ${currentUser.role.rep < 4 ? 'mt-[8rem]' : 'mt-[6rem]'} `}>
                             {currentUser.role.rep < 3 && <ViewByBranchPage dateFilter={dateFilter} type={'weekly'} />}
-                            {currentUser.role.rep === 3 && <ViewByLoanOfficerPage pageNo={1} dateFilter={dateFilter} type={'weekly'} />}
+                            {currentUser.role.rep === 3 && <ViewByLoanOfficerPage pageNo={1} dateFilter={dateFilter} type={'weekly'} selectedLoGroup={selectedLoGroup} />}
                             {currentUser.role.rep === 4 && (
                                 <div className='p-4 mt-[2rem]'>
                                     <ViewCashCollectionPage pageNo={1} dateFilter={dateFilter} type={'weekly'} />

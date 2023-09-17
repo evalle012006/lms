@@ -29,6 +29,7 @@ const CashCollectionDetailsPage = () => {
     const isHoliday = useSelector(state => state.systemSettings.holiday);
     const isWeekend = useSelector(state => state.systemSettings.weekend);
     const loCashCollectionList = useSelector(state => state.cashCollection.lo);
+    const [selectedLoGroup, setSelectedLoGroup] = useState('all');
 
     const handleBranchFilter = (selected) => {
         setCurrentBranch(selected);
@@ -129,6 +130,10 @@ const CashCollectionDetailsPage = () => {
         }
     }
 
+    const handleLoGroupChange = (value) => {
+        setSelectedLoGroup(value);
+    }
+
     useEffect(() => {
         let mounted = true;
 
@@ -169,9 +174,10 @@ const CashCollectionDetailsPage = () => {
                 {currentBranch && <DetailsHeader page={2} pageName="branch-view" currentDate={moment(currentDate).format('dddd, MMMM DD, YYYY')} 
                     selectedBranch={currentBranch} handleBranchFilter={handleBranchFilter} handleSubmit={handleShowSubmitDialog}
                     dateFilter={dateFilter} handleDateFilter={handleDateFilter} holiday={isHoliday} weekend={isWeekend}
+                    selectedLoGroup={selectedLoGroup} handleLoGroupChange={handleLoGroupChange}
                 />}
                 <div className='p-4 mt-[8rem]'>
-                    <ViewByLoanOfficerPage pageNo={2} dateFilter={dateFilter} />
+                    <ViewByLoanOfficerPage pageNo={2} dateFilter={dateFilter} selectedLoGroup={selectedLoGroup} />
                 </div>
                 <Dialog show={showSubmitDialog}>
                     <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">

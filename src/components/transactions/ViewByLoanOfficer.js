@@ -10,7 +10,7 @@ import { toast } from 'react-hot-toast';
 import { BehaviorSubject } from 'rxjs';
 import { setBmSummary, setCashCollectionLo } from "@/redux/actions/cashCollectionActions";
 
-const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
+const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) => {
     const dispatch = useDispatch();
     const isHoliday = useSelector(state => state.systemSettings.holiday);
     const isWeekend = useSelector(state => state.systemSettings.weekend);
@@ -35,10 +35,10 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
         }
     };
 
-    const getGroupCashCollections = async (selectedBranch, date) => {
+    const getGroupCashCollections = async (selectedBranch, date, loGroup) => {
         setLoading(true);
         const filter = date ? true : false;
-        let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/get-all-loans-per-group?' + new URLSearchParams({ date: date ? date : currentDate, branchCode: selectedBranch, dayName: dayName, currentDate: currentDate });
+        let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/get-all-loans-per-group?' + new URLSearchParams({ date: date ? date : currentDate, branchCode: selectedBranch, dayName: dayName, currentDate: currentDate, loGroup: loGroup });
         
         const response = await fetchWrapper.get(url);
         if (response.success) {
@@ -350,8 +350,10 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                             totalTransferMcbu -= giver.mcbu;
 
                             const details = giver.data[0];
-                            totalTransferTargetCollection -= (details.targetCollection + details.excess);
-                            totalTransferActualCollection -= details.actualCollection;
+                            const detailsTargetCollection = details?.targetCollection ? details?.targetCollection : 0;
+                            const detailsExcess = details?.excess ? details?.excess : 0;
+                            totalTransferTargetCollection -= (detailsTargetCollection + detailsExcess);
+                            totalTransferActualCollection -= details?.actualCollection ? details?.actualCollection : 0;
                         });
                     }
 
@@ -369,8 +371,10 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                                 totalsLoanBalance += rcv.loanBalance;
 
                                 const details = rcv.data[0];
-                                totalTransferTargetCollection += (details.targetCollection + details.excess);
-                                totalTransferActualCollection += details.actualCollection;
+                                const detailsTargetCollection = details?.targetCollection ? details?.targetCollection : 0;
+                                const detailsExcess = details?.excess ? details?.excess : 0;
+                                totalTransferTargetCollection += (detailsTargetCollection + detailsExcess);
+                                totalTransferActualCollection += details?.actualCollection ? details?.actualCollection : 0;
                             });
                         }
                     }
@@ -388,8 +392,10 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                             totalTransferMcbu -= giver.mcbu;
 
                             const details = giver.data[0];
-                            totalTransferTargetCollection -= (details.targetCollection + details.excess);
-                            totalTransferActualCollection -= details.actualCollection;
+                            const detailsTargetCollection = details?.targetCollection ? details?.targetCollection : 0;
+                            const detailsExcess = details?.excess ? details?.excess : 0;
+                            totalTransferTargetCollection -= (detailsTargetCollection + detailsExcess);
+                            totalTransferActualCollection -= details?.actualCollection ? details?.actualCollection : 0;
                         });
                     }
                     
@@ -407,8 +413,10 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                                 totalsLoanBalance += rcv.loanBalance;
 
                                 const details = rcv.data[0];
-                                totalTransferTargetCollection += (details.targetCollection + details.excess);
-                                totalTransferActualCollection += details.actualCollection;
+                                const detailsTargetCollection = details?.targetCollection ? details?.targetCollection : 0;
+                                const detailsExcess = details?.excess ? details?.excess : 0;
+                                totalTransferTargetCollection += (detailsTargetCollection + detailsExcess);
+                                totalTransferActualCollection += details?.actualCollection ? details?.actualCollection : 0;
                             });
                         }
                     }
@@ -985,24 +993,19 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
             if (dateFilter && currentBranch) {
                 const date = moment(dateFilter).format('YYYY-MM-DD');
                 if (date !== currentDate) {
-                    mounted && getGroupCashCollections(currentBranch.code, date);
+                    mounted && getGroupCashCollections(currentBranch.code, date, selectedLoGroup);
                 } else {
-                    mounted && getGroupCashCollections(currentBranch.code);
+                    mounted && getGroupCashCollections(currentBranch.code, null, selectedLoGroup);
                 }
-                // if (currentBranch.code === 'B005' || currentBranch.code === 'B015') {
-                //     mounted && getGroupCashCollectionsForLos(currentBranch.code, '2022-12-29');
-                // } else {
-                //     mounted && getGroupCashCollectionsForLos(currentBranch.code, '2022-12-27');
-                // }
             } else {
-                mounted && getGroupCashCollections(currentBranch.code);
+                mounted && getGroupCashCollections(currentBranch.code, null, selectedLoGroup);
             }
         }
 
         return () => {
             mounted = false;
         };
-    }, [branchList, dateFilter]);
+    }, [branchList, dateFilter, selectedLoGroup]);
 
     useEffect(() => {
         let cols = [

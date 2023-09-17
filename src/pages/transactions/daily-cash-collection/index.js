@@ -33,6 +33,7 @@ const DailyCashCollectionPage = () => {
     const [showSubmitDialog, setShowSubmitDialog] = useState(false);
     const [filter, setFilter] = useState(false);
     const mode = "daily";
+    const [selectedLoGroup, setSelectedLoGroup] = useState('all');
 
     const handleDateFilter = (selected) => {
         const filteredDate = selected.target.value;
@@ -123,6 +124,10 @@ const DailyCashCollectionPage = () => {
         setLoading(false);
     }
 
+    const handleLoGroupChange = (value) => {
+        setSelectedLoGroup(value);
+    }
+
     useEffect(() => {
         if (currentUser.role.rep < 3) {
             router.push("/transactions/branch-manager/cash-collection");
@@ -163,11 +168,12 @@ const DailyCashCollectionPage = () => {
                     <div className="overflow-x-auto">
                         {branchList && <DetailsHeader pageTitle='Daily Cash Collections' pageName={currentUser.role.rep === 1 ? "branch-view" : ""}
                             page={1} mode={mode} currentDate={moment(currentDate).format('dddd, MMMM DD, YYYY')} weekend={isWeekend} holiday={isHoliday}
-                            dateFilter={dateFilter} handleDateFilter={handleDateFilter} handleSubmit={handleShowSubmitDialog} filter={filter}
+                            dateFilter={dateFilter} handleDateFilter={handleDateFilter} handleSubmit={handleShowSubmitDialog} filter={filter} 
+                            selectedLoGroup={selectedLoGroup} handleLoGroupChange={handleLoGroupChange}
                         />}
                         <div className={`p-4 ${currentUser.role.rep < 4 ? 'mt-[8rem]' : 'mt-[6rem]'} `}>
                             {currentUser.role.rep < 3 && <ViewByBranchPage dateFilter={dateFilter} type={mode} />}
-                            {currentUser.role.rep === 3 && <ViewByLoanOfficerPage pageNo={1} dateFilter={dateFilter} type={mode} />}
+                            {currentUser.role.rep === 3 && <ViewByLoanOfficerPage pageNo={1} dateFilter={dateFilter} type={mode} selectedLoGroup={selectedLoGroup} />}
                             {currentUser.role.rep === 4 && (
                                 <div className='p-4 mt-[2rem]'>
                                     <ViewCashCollectionPage pageNo={1} dateFilter={dateFilter} type={mode} />

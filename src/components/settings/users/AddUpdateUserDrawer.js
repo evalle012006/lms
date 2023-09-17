@@ -122,7 +122,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
             if (image.trim().length > 0) {
                 values.file = image;
             }
-            fetchWrapper.sendData('/api/users/', values)
+            fetchWrapper.sendData(process.env.NEXT_PUBLIC_API_URL + 'users/', values)
                 .then(response => {
                     setLoading(false);
                     setShowSidebar(false);

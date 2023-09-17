@@ -131,7 +131,7 @@ const ViewByBranchPage = ({dateFilter, type}) => {
                         let loMcbu = 0;
                         branch.groups.map(g => {
                             if (g.loanTarget.length > 0) {
-                                loLoanTarget += g.loanTarget[0].loanTarget;
+                                loLoanTarget += (g.loanTarget[0].loanTarget && g.loanTarget[0].loanTarget !== '-') ? g.loanTarget[0].loanTarget : 0;
                                 // loMcbu += g.loanTarget[0].mcbu;
                             }
                         });
@@ -147,7 +147,7 @@ const ViewByBranchPage = ({dateFilter, type}) => {
                     
                     if (branch.cashCollections.length > 0) {
                         const loanTarget = collection.loanTarget - branch.cashCollections[0].loanTarget;
-    
+
                         collection.loanTarget = loanTarget;
                         collection.loanTargetStr = loanTarget > 0 ? formatPricePhp(loanTarget) : '-';
                         collection.excessStr = branch.cashCollections[0].excess > 0 ? formatPricePhp(branch.cashCollections[0].excess) : '-';
@@ -271,7 +271,7 @@ const ViewByBranchPage = ({dateFilter, type}) => {
 
             collectionData.map(c => {
                 totalMcbu += c.mcbu ? c.mcbu : 0;
-                targetLoanCollection += c.loanTarget;
+                targetLoanCollection += (c.loanTarget && c.loanTarget !== '-') ? c.loanTarget : 0;
             });
 
             const branchTotals = {
