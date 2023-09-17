@@ -210,7 +210,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                     values.groupName = group.name;
                     const branch = branchList.find(b => b._id === group.branchId);
                     values.branchId = branch._id;
-                    values.brancName = branch.name;
+                    values.branchName = branch.name;
                     values.loId = group.loanOfficerId;
                 } else {
                     group = loan.group;

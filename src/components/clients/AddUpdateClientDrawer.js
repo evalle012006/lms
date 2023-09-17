@@ -95,7 +95,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
         values.addressProvince = values.addressProvince ? values.addressProvince : '';
         values.addressStreetNo = values.addressStreetNo ? values.addressStreetNo : '';
         values.addressZipCode = values.addressZipCode ? values.addressZipCode : '';
-        // values.birthdate = dateValue.toISOString();
+        values.birthdate = values.birthdate ? moment(values.birthdate).format("YYYY-MM-DD") : null;
         const group = groupList && groupList.find(g => g._id === values.groupId);
         values.groupName = group.name;
         if (currentUser.root !== true && (currentUser.role.rep === 4 || currentUser.role.rep === 3) && branchList.length > 0) {
