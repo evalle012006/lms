@@ -18,7 +18,8 @@ import {
     ChevronDownIcon,
     UserCircleIcon,
     ArrowRightOnRectangleIcon,
-    ArrowsRightLeftIcon
+    ArrowsRightLeftIcon,
+    CloudArrowUpIcon
 } from '@heroicons/react/24/solid';
 import { ExclamationTriangleIcon, AdjustmentsHorizontalIcon } from '@heroicons/react/24/outline';
 import Link from "next/link";
@@ -539,6 +540,20 @@ const MenuItems = [
             //     active: false,
             //     hasSub: false
             // },
+            {
+                label: "Migration",
+                url: "/settings/migration",
+                icon: {
+                    active: (
+                        <CloudArrowUpIcon className="text-gray-800 w-5 h-5" />
+                    ),
+                    notActive: (
+                        <CloudArrowUpIcon className="text-white w-5 h-5" />
+                    ),
+                },
+                active: false,
+                hasSub: false
+            },
             {
                 label: "Reset",
                 url: "/settings/reset",

@@ -525,6 +525,7 @@ const LoanApplicationPage = () => {
         setLoading(true);
         setMode('add');
         setLoan({});
+        setOccurence('daily');
         getListLoan();
         if (currentUser.role.rep === 4) {
             getListGroup(currentUser._id, currentUser?.transactionType);

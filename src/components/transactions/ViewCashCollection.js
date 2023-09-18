@@ -724,11 +724,11 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
         let totalsCollectionTarget = totals.targetLoanCollection;
         let totalsCollectionExcess = totals.excess;
         let totalsCollectionActual = totals.collection;
-        console.log(transferGvr , transferRcv)
+        // console.log(transferGvr , transferRcv)
         // console.log(transferGvr.currentReleaseAmount, transferGvrByGroup.currentReleaseAmount, transferRcv.currentReleaseAmount, transferRcvByGroup.currentReleaseAmount)
         if ((transferGvr?.currentReleaseAmount > 0 && transferGvr.currentReleaseAmount !== transferGvrByGroup.currentReleaseAmount) 
                 || (transferRcv?.currentReleaseAmount > 0 && transferRcv.currentReleaseAmount !== transferRcvByGroup.currentReleaseAmount)) {
-            console.log('here....')
+            // console.log('here....')
             let transferCurrentReleaseAmount = 0;
             if (transferGvr?.currentReleaseAmount > 0) {
                 transferCurrentReleaseAmount = transferGvr.currentReleaseAmount;
