@@ -16,8 +16,30 @@ async function list(req, res) {
     if (branchCode) {
         branches = await db
             .collection('branches')
-            .find({ code: branchCode })
-            .sort({ code: 1 })
+            // .find({ code: branchCode })
+            // .sort({ code: 1 })
+            .aggregate([
+                { $match: { code: branchCode } },
+                {
+                    $lookup: {
+                        from: "users",
+                        localField: "code",
+                        foreignField: "designatedBranch",
+                        pipeline: [
+                            { $match: { $expr: {$eq: ['$role.rep', 4]} } },
+                            { $group: {
+                                _id: null,
+                                count: { $sum: 1 }
+                            } }
+                        ],
+                        as: "noOfLO"
+                    }
+                },
+                { $unwind: '$noOfLO' },
+                {
+                    $sort: { code: 1 }
+                }
+            ])
             .toArray();
     } else if (branchCodes) {
         const codes = branchCodes.trim().split(",");

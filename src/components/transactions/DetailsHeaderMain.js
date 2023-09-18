@@ -12,10 +12,13 @@ import { useRouter } from 'next/router';
 import { ArrowLeftCircleIcon } from '@heroicons/react/24/solid';
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 import RadioButton from "@/lib/ui/radio-button";
+import { useDispatch } from "node_modules/react-redux/es/exports";
+import { setBranch } from "@/redux/actions/branchActions";
 
 const DetailsHeader = ({ pageTitle, page, pageName, currentDate, mode, selectedBranch, filter,
                             handleBranchFilter, selectedLO, handleLOFilter, dateFilter, handleDateFilter, weekend, holiday, handleSubmit, 
                             selectedLoGroup, handleLoGroupChange }) => {
+    const dispatch = useDispatch();
     const router = useRouter();
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
@@ -62,6 +65,11 @@ const DetailsHeader = ({ pageTitle, page, pageName, currentDate, mode, selectedB
         }
     }, [selectedLO]);
 
+    useEffect(() => {
+        if (Object.keys(currentBranch).length == 0 && branchList.length === 1) {
+            dispatch(setBranch(branchList[0]));
+        }
+    }, [branchList, currentBranch])
 
     return (
         <div className="bg-white px-7 py-2 fixed w-screen z-10">
