@@ -21,7 +21,7 @@
     "cors": "^2.8.5",
     "express-jwt": "^7.7.5",
     "format": "^0.2.2",
-    "formidable": "^3.5.1",
+    "formidable": "^2.0.1",
     "formik": "^2.2.9",
     "html2pdf.js": "^0.10.1",
     "imap": "^0.8.19",

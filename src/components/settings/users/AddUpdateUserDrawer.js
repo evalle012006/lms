@@ -119,9 +119,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
                 });
         } else if (mode === 'edit') {
             setLoading(false);
-            if (image.trim().length > 0) {
-                values.file = image;
-            }
+            values.file = image;
             fetchWrapper.sendData(process.env.NEXT_PUBLIC_API_URL + 'users/', values)
                 .then(response => {
                     setLoading(false);

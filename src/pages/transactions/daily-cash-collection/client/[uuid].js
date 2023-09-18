@@ -1368,7 +1368,7 @@ const CashCollectionDetailsPage = () => {
                                 temp.error = false;
                             } else {
                                 temp.error = true;
-                                toast.error('Invalid remarks');
+                                toast.error('Invalid remarks. You already hit 0 advance days.');
                             }
     
                             if (temp.loanBalance <= 0) {
@@ -1403,6 +1403,7 @@ const CashCollectionDetailsPage = () => {
                                 temp.advanceDays = temp.advanceDays - 1;
                                 temp.targetCollection = 0;
                                 temp.targetCollectionStr = '-';
+                                temp.activeLoan = 0;
                                 temp.paymentCollection = 0;
                                 temp.mispayment = false;
                                 temp.mispaymentStr = 'No';
