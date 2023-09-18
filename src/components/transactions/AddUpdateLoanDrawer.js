@@ -278,6 +278,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                 setSlotNo();
                                 setSlotNumber();
                                 setSelectedCoMaker();
+                                setGroupOccurence('daily');
                                 onClose();
                             }
                         }).catch(error => {
@@ -315,6 +316,8 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                     setClientId();
                                     setSlotNo();
                                     setSlotNumber();
+                                    setSelectedCoMaker();
+                                    setGroupOccurence('daily');
                                     onClose();
                                 }
                             } else if (response.error) {
@@ -675,16 +678,18 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                                 errors={touched.loanCycle && errors.loanCycle ? errors.loanCycle : undefined} />
                                         )}
                                     </div>
-                                    <div className="mt-4">
-                                        <InputNumber
-                                            name="mcbu"
-                                            value={values.mcbu}
-                                            onChange={handleChange}
-                                            label="MCBU"
-                                            placeholder="Enter MCBU"
-                                            setFieldValue={setFieldValue}
-                                            errors={touched.mcbu && errors.mcbu ? errors.mcbu : undefined} />
-                                    </div>
+                                    {(mode === 'reloan' || groupOccurence === 'weekly' || (groupOccurence === 'daily' && (mode !== 'add' && mode !== 'edit'))) && (
+                                        <div className="mt-4">
+                                            <InputNumber
+                                                name="mcbu"
+                                                value={values.mcbu}
+                                                onChange={handleChange}
+                                                label="MCBU"
+                                                placeholder="Enter MCBU"
+                                                setFieldValue={setFieldValue}
+                                                errors={touched.mcbu && errors.mcbu ? errors.mcbu : undefined} />
+                                        </div>
+                                    )}
                                     {(mode === 'reloan' && loan.occurence === 'daily') && (
                                         <div className="mt-4 flex flex-col">
                                             <span className="text-base text-zinc-600">Loan Terms</span>
@@ -728,16 +733,6 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                             errors={touched.coMaker && errors.coMaker ? errors.coMaker : undefined}
                                         />
                                     </div>
-                                    {/* <div className="mt-4">
-                                        <InputText
-                                            name="coMaker"
-                                            value={values.coMaker}
-                                            onChange={handleChange}
-                                            label="Co-Maker"
-                                            placeholder="Enter Co-Maker"
-                                            setFieldValue={setFieldValue}
-                                            errors={touched.coMaker && errors.coMaker ? errors.coMaker : undefined} />
-                                    </div> */}
                                     <div className="mt-4">
                                         <InputText
                                             name="guarantorFirstName"
