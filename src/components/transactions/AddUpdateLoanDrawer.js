@@ -29,6 +29,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     const userList = useSelector(state => state.user.list);
     const groupList = useSelector(state => state.group.list);
     const clientList = useSelector(state => state.client.list);
+    const currentBranch = useSelector(state => state.branch.data);
     const comakerList = useSelector(state => state.client.comakerList);
     const [selectedLo, setSelectedLo] = useState();
     const [selectedGroup, setSelectedGroup] = useState();
@@ -335,11 +336,9 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     }
 
     const handlePNNumber = async (e) => {
-        console.log('searching for PN number');
         const pnNumber = e.target.value;
-        console.log(pnNumber)
-        if (pnNumber && selectedGroup) {
-            const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/check-existing-pn-number-by-group?' + new URLSearchParams({ groupId: selectedGroup, pnNumber: pnNumber }));
+        if (pnNumber && currentBranch) {
+            const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/check-existing-pn-number-by-branch?' + new URLSearchParams({ branchId: currentBranch._id, pnNumber: pnNumber }));
             if (response.success) {
                 if (response.loans.length > 0) {
                     toast.error(response.message);

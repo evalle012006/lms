@@ -6,7 +6,7 @@ import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { useDispatch, useSelector } from "react-redux";
 import Spinner from "@/components/Spinner";
 import toast from 'react-hot-toast';
-import { setBranchList } from "@/redux/actions/branchActions";
+import { setBranch, setBranchList } from "@/redux/actions/branchActions";
 import Dialog from "@/lib/ui/Dialog";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
@@ -114,6 +114,10 @@ const LoanApplicationPage = () => {
                     }
                 );
             });
+
+            if (branches.length > 0 && (currentUser.role.rep === 3 || currentUser.role.rep === 4)) {
+                dispatch(setBranch(branches[0]));
+            }
             
             dispatch(setBranchList(branches));
         } else {
