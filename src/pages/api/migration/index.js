@@ -209,6 +209,7 @@ const processLOR = async (sheetData, branchId, loId) => {
                         mcbu: mcbu,
                         principalLoan: principalLoan,
                         activeLoan: activeLoan,
+                        amountRelease: amountRelease,
                         loanBalance: loanBalance,
                         noOfPayments: noOfPayments,
                         loanCycle: loanCycle,
