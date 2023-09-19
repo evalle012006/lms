@@ -234,6 +234,7 @@ const LoanOfficerSummary = () => {
                         losList[index] = {
                             ...los.data,
                             day: los.dateAdded,
+                            prevMcbuBalance: los.data.prevMcbuBalance,
                             mcbuTarget: type === 'daily' ? 0 : los.data.mcbuTarget,
                             mcbuTargetStr: type === 'daily' ? '-' : formatPricePhp(los.data.mcbuTarget),
                             mcbuActualStr: formatPricePhp(los.data.mcbuActual),
@@ -469,12 +470,21 @@ const LoanOfficerSummary = () => {
             let temp = {...los};
 
             if (index !== 0 && !los.weekTotal) {
+                const prevMcbuBalance = los.prevMcbuBalance;
                 const mcbuActual = los.mcbuActual !== '-' ? los.mcbuActual : 0;
                 const mcbuWithdrawal = los.mcbuWithdrawal !== '-' ? los.mcbuWithdrawal : 0;
                 const mcbuInterest = los.mcbuInterest !== '-' ? los.mcbuInterest : 0;
                 const mcbuReturnAmt = los.mcbuReturnAmt !== '-' ? los.mcbuReturnAmt : 0;
-                const fBalMcbuBalance = fBal.mcbuBalance !== '-' ? fBal.mcbuBalance : 0;
+                let fBalMcbuBalance = fBal.mcbuBalance !== '-' ? fBal.mcbuBalance : 0;
                 const mcbuTransfer = 0;
+
+                if (fBalMcbuBalance == 0) {
+                    fBalMcbuBalance = prevMcbuBalance ? prevMcbuBalance : 0;
+                }
+
+                if (prevLos && prevLos?.mcbuBalance == 0) {
+                    prevLos.mcbuBalance = prevMcbuBalance ? prevMcbuBalance : 0;
+                }
 
                 if (index === 1) {
                     temp.activeClients = temp.activeClients > 0 ? temp.activeClients : fBal.activeClients;

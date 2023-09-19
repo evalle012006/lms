@@ -112,19 +112,19 @@ const processLOR = async (sheetData, branchId, loId) => {
             // skip this only headers
         } else if (i === 4 || i === 38 || i === 72 || i === 106 || i === 140 || i === 174 || i === 208 || i === 242 || i === 276 || i === 310 || i === 344 || i === 378) {
             // first week index 28 - 37
-            collectionDate5 = parseDate(col[36]);
+            // collectionDate5 = parseDate(col[36]);
             // second week index 38 - 47
-            collectionDate6 = parseDate(col[38]);
-            collectionDate7 = parseDate(col[40]);
-            collectionDate8 = parseDate(col[42]);
-            collectionDate9 = parseDate(col[44]);
-            collectionDate10 = parseDate(col[46]);
+            // collectionDate6 = parseDate(col[38]);
+            // collectionDate7 = parseDate(col[40]);
+            // collectionDate8 = parseDate(col[42]);
+            // collectionDate9 = parseDate(col[44]);
+            // collectionDate10 = parseDate(col[46]);
             // third week index 48 - 57
-            collectionDate11 = parseDate(col[48]);
-            collectionDate12 = parseDate(col[50]);
-            collectionDate13 = parseDate(col[52]);
-            collectionDate14 = parseDate(col[54]);
-            collectionDate15 = parseDate(col[56]);
+            // collectionDate11 = parseDate(col[48]);
+            // collectionDate12 = parseDate(col[50]);
+            // collectionDate13 = parseDate(col[52]);
+            // collectionDate14 = parseDate(col[54]);
+            // collectionDate15 = parseDate(col[56]);
             // fourth week index 58 - 67
             // fifth week index 68 - 77
         } else if (i === 5) {
@@ -209,6 +209,7 @@ const processLOR = async (sheetData, branchId, loId) => {
                         mcbu: mcbu,
                         principalLoan: principalLoan,
                         activeLoan: activeLoan,
+                        amountRelease: amountRelease,
                         loanBalance: loanBalance,
                         noOfPayments: noOfPayments,
                         loanCycle: loanCycle,

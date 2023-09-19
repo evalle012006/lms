@@ -718,6 +718,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
         let totalsLoanBalance = totals.totalLoanBalance + totals.currentReleaseAmount;
         let totalActiveClients = totals.activeClients;
         let totalActiveBorrowers = totals.activeBorrowers;
+        let prevMcbuBalance = totals.mcbu > 0 ? totals.mcbu - totals.mcbuCol : 0;
         let totalsMcbuTransfer = 0;
         let totalsMcbuCol = totals.mcbuCol;
         let totalsCurrentReleaseAmount = totals.currentReleaseAmount;
@@ -784,6 +785,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 transfer: 0,
                 newMember: 0,
                 offsetPerson: 0,
+                prevMcbuBalance: prevMcbuBalance,
                 mcbuTransfer: totalsMcbuTransfer,
                 mcbuTarget: totals.mcbuTarget,
                 mcbuActual: totalsMcbuCol,
@@ -825,6 +827,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 day: selectedDate,
                 transfer: 0,
                 newMember: totals.noOfNewCurrentRelease,
+                prevMcbuBalance: prevMcbuBalance,
                 mcbuTransfer: totalsMcbuTransfer,
                 mcbuTarget: totals.mcbuTarget,
                 mcbuActual: totalsMcbuCol,
