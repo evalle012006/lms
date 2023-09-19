@@ -129,9 +129,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                 });
         } else if (mode === 'edit') {
             values._id = client._id;
-            if (image.trim().length > 0) {
-                values.file = image;
-            }
+            values.file = image;
             fetchWrapper.sendData(process.env.NEXT_PUBLIC_API_URL + 'clients/', values)
                 .then(response => {
                     setLoading(false);
