@@ -309,6 +309,7 @@ const BranchManagerSummary = () => {
                             ...los,
                             day: los._id.dateAdded,
                             transfer: los.transfer,
+                            prevMcbuBalance: los.prevMcbuBalance,
                             mcbuTargetStr: los.mcbuTarget > 0 ? formatPricePhp(los.mcbuTarget) : '-',
                             mcbuActualStr: los.mcbuActual > 0 ? formatPricePhp(los.mcbuActual) : '-',
                             mcbuWithdrawalStr: los.mcbuWithdrawal > 0 ? formatPricePhp(los.mcbuWithdrawal) : '-',
@@ -718,12 +719,21 @@ const BranchManagerSummary = () => {
             let temp = {...los};
 
             if (index !== 0 && !los.weekTotal) {
+                const prevMcbuBalance = los.prevMcbuBalance;
                 const mcbuActual = los.mcbuActual !== '-' ? los.mcbuActual : 0;
                 const mcbuWithdrawal = los.mcbuWithdrawal !== '-' ? los.mcbuWithdrawal : 0;
                 const mcbuInterest = los.mcbuInterest !== '-' ? los.mcbuInterest : 0;
                 const mcbuReturnAmt = los.mcbuReturnAmt !== '-' ? los.mcbuReturnAmt : 0;
-                const fBalMcbuBalance = fBal.mcbuBalance !== '-' ? fBal.mcbuBalance : 0;
+                let fBalMcbuBalance = fBal.mcbuBalance !== '-' ? fBal.mcbuBalance : 0;
                 const transferMCBU = los.transferMcbu ? los.transferMcbu : 0;
+
+                if (fBalMcbuBalance == 0) {
+                    fBalMcbuBalance = prevMcbuBalance ? prevMcbuBalance : 0;
+                }
+
+                if (prevLos && prevLos?.mcbuBalance == 0) {
+                    prevLos.mcbuBalance = prevMcbuBalance ? prevMcbuBalance : 0;
+                }
 
                 if (index === 1) {
                     temp.activeClients = temp.activeClients > 0 ? temp.activeClients : fBal.activeClients;
@@ -756,7 +766,6 @@ const BranchManagerSummary = () => {
 
     const calculateWeeklyTotals = (losList) => {
         const transferRow = processTransferDetails(losList);
-        console.log(transferRow)
         const weekTotals = losList.filter(los => los.weekTotal);
         const fBal = losList[0];
 

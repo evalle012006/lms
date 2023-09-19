@@ -341,6 +341,8 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/check-existing-pn-number-by-branch?' + new URLSearchParams({ branchId: currentBranch._id, pnNumber: pnNumber }));
             if (response.success) {
                 if (response.loans.length > 0) {
+                    const form = formikRef.current;
+                    form.setFieldValue('pnNumber', '');
                     toast.error(response.message);
                 }
             }

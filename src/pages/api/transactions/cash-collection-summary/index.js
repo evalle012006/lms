@@ -38,6 +38,7 @@ async function getSummary(req, res) {
                         _id: {branchId: '$branchId', dateAdded: '$dateAdded'},
                         transfer: { $sum: '$data.transfer' },
                         newMember: { $sum: '$data.newMember' },
+                        prevMcbuBalance: { $sum: "$data.prevMcbuBalance" },
                         mcbuTarget: { $sum: { $cond: {
                             if: { $eq: ['$occurence', 'weekly'] },
                             then: '$data.mcbuTarget',
