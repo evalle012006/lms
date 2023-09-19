@@ -173,7 +173,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
     
                         totalsLoanRelease += cc.loans[0].totalRelease ? cc.loans[0].totalRelease : 0;
                         totalsLoanBalance += cc.loans[0].totalLoanBalance ? cc.loans[0].totalLoanBalance : 0;
-                        targetLoanCollection += loanTarget;
+                        // targetLoanCollection += loanTarget;
                         totalPastDue += cc.loans[0].pastDue;
                         totalNoPastDue += cc.loans[0].noPastDue;
                         // totalMcbuTarget += cc.loans[0].mcbuTarget ? cc.loans[0].mcbuTarget : 0;
@@ -195,7 +195,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         let loanTarget = 0;
                         if ((cc.occurence === 'weekly' && cc.day === dayName) || cc.occurence === 'daily') {
                             loanTarget = collection.loanTarget - cc.cashCollections[0].loanTarget;
-                            targetLoanCollection = targetLoanCollection - cc.cashCollections[0].loanTarget;
+                            // targetLoanCollection = targetLoanCollection - cc.cashCollections[0].loanTarget;
                         }
 
                         collection = { ...collection,
@@ -361,7 +361,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         totalNoPastDue += cc.cashCollections[0].noPastDue;
                         totalsLoanRelease += cc.cashCollections[0].totalRelease;
                         totalsLoanBalance += cc.cashCollections[0].totalLoanBalance;
-                        targetLoanCollection += loanTarget;
+                        // targetLoanCollection += loanTarget;
                         fullPaymentAmount += cc.cashCollections[0].fullPaymentAmount;
                         noOfFullPayment += cc.cashCollections[0].noOfFullPayment;
                         // totalMcbu += cc.cashCollections[0].mcbu;
@@ -444,6 +444,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
             noOfClients = 0;
             noOfBorrowers = 0;
             collectionData.map(c => {
+                targetLoanCollection += (c.loanTarget && c.loanTarget !== '-') ? c.loanTarget : 0;
                 totalMcbu += c.mcbu ? c.mcbu : 0
                 noOfClients += c.activeClients !== '-' ? c.activeClients : 0;
                 noOfBorrowers += c.activeBorrowers !== '-' ? c.activeBorrowers : 0;
