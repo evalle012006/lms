@@ -113,7 +113,7 @@ async function updateLoan(collection, currentDate) {
         loan.loanBalance = collection.loanBalance;
         loan.modifiedDateTime = new Date();
 
-        if (collection.remarks && (!collection.remarks.value?.startsWith('excused-')  && collection.remarks.value !== 'delinquent')) {
+        if (collection.remarks && (!collection.remarks.value?.startsWith('excused')  && collection.remarks.value !== 'delinquent')) {
             loan.activeLoan = collection.activeLoan;
         }
         

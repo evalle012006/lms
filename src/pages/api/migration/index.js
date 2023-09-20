@@ -136,10 +136,10 @@ const processLOR = async (sheetData, branchId, loId) => {
                 // nothing to do...just skipping
             } else {
                 const slotNo = col[0] ? parseInt(col[0]) : null;
-                logger.debug({page: 'migrations', message: `Slot No: ${slotNo}`});
+                logger.debug({page: 'migrations', message: `Row: ${i} - Slot No: ${slotNo}`});
                 const clientName = extractName(col[1]);
                 if (clientName) {
-                    logger.debug({page: 'migrations', message: `Client Name: ${clientName.firstName} ${clientName.lastName}`});
+                    logger.debug({page: 'migrations', message: `Row: ${i} - Client Name: ${clientName.firstName} ${clientName.lastName}`});
                     const clientDOB = col[2] ? parseDate(col[2]) : null;
                     const coMaker = col[3] ? col[3] : null;
                     const admissionDate = col[4] ? parseDate(col[4]) : null;
@@ -232,9 +232,9 @@ const processLOR = async (sheetData, branchId, loId) => {
                         noPastDue: 0, // ADJUST IF THERE IS PASTDUE
                         pastDue: pastDue,
                         coMaker: coMaker,
-                        guarantorFirstName: guarantorName.firstName,
-                        guarantorMiddleName: guarantorName.middleName,
-                        guarantorLastName: guarantorName.lastName,
+                        guarantorFirstName: guarantorName?.firstName,
+                        guarantorMiddleName: guarantorName?.middleName,
+                        guarantorLastName: guarantorName?.lastName,
                         insertedBy: "migration",
                         insertedDateTime: new Date()
                     }
@@ -506,6 +506,8 @@ const processLOR = async (sheetData, branchId, loId) => {
                 }
             }
         });
+
+        logger.debug({page: 'migrations', message: `MIGRATION ENDS`});
     }
 }
 
@@ -563,24 +565,29 @@ const extractName = (name) => {
 
 const parseDate = (date) => {
     let parsedDate;
-
+    logger.debug({page: 'migrations', message: `Raw Date: ${date}`});
     if (date && date !== undefined) {
-        let arr = [];
-        if (date.includes('-')) {
-            arr = date.split('-');
-        } else if (date.includes('/')) {
-            arr = date.split('/');
-        }
-
-        logger.debug({page: 'migrations', message: `Raw Date: ${date}`});
-        if (arr.length === 3) {
-            const month = arr[0].length == 1 ? "0" + arr[0] : arr[0];
-            const day = arr[1].length == 1 ? "0" + arr[1] : arr[1];
-            const year = arr[2].length == 2 ? parseInt(arr[2]) !== 23 ? "19" + arr[2] : "20" + arr[2] : arr[2];
-
-            parsedDate = year + "-" + month + "-" + day;
+        if (typeof date == 'number') {
+            const convertedDate = new Date(Math.round((date - 25569)*86400*1000));
+            logger.error({page: 'migration', message: `Converted Date: ${convertedDate}`});
+            parsedDate = moment(date).format('YYYY-MM-DD');
         } else {
-            logger.error({page: 'migration', message: `Invalid Date: ${date} with ${arr.length}`});
+            let arr = [];
+            if (date.includes('-')) {
+                arr = date.split('-');
+            } else if (date.includes('/')) {
+                arr = date.split('/');
+            }
+
+            if (arr.length === 3) {
+                const month = arr[0].length == 1 ? "0" + arr[0] : arr[0];
+                const day = arr[1].length == 1 ? "0" + arr[1] : arr[1];
+                const year = arr[2].length == 2 ? parseInt(arr[2]) !== 23 ? "19" + arr[2] : "20" + arr[2] : arr[2];
+
+                parsedDate = year + "-" + month + "-" + day;
+            } else {
+                logger.error({page: 'migration', message: `Invalid Date: ${date} with ${arr.length}`});
+            }
         }
     }
 

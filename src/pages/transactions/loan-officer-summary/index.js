@@ -557,10 +557,13 @@ const LoanOfficerSummary = () => {
                 let totalActiveBorrowers = 0; // last row
                 let totalLoanBalance = 0; // last row
 
+                let lastActiveClients = 0;
                 let lastPastDueAmount = 0;
                 let lastPastDuePerson = 0;
                 let lastLoanBalance = 0;
                 let lastMcbuBalance = 0;
+                let lastActiveLoanReleasePerson = 0;
+                let lastActiveLoanReleaseAmount = 0;
 
                 let totalMcbuTarget = 0;
                 let totalMcbuActual = 0;
@@ -586,6 +589,11 @@ const LoanOfficerSummary = () => {
                     totalCollectionAdvancePayment += los.collectionAdvancePayment !== '-' ? los.collectionAdvancePayment : 0;
                     totalCollectionActual += los.collectionActual !== '-' ? los.collectionActual : 0;
                     totalMispaymentPerson += los.mispaymentPerson !== '-' ? los.mispaymentPerson : 0;
+
+                    if (los.activeClients > 0) {
+                        lastActiveClients = los.activeClients;
+                    }
+
                     if (los.pastDuePerson !== '-') {
                         lastPastDuePerson = los.pastDuePerson;
                     }
@@ -600,6 +608,14 @@ const LoanOfficerSummary = () => {
 
                     if (los.mcbuBalance > 0) {
                         lastMcbuBalance = los.mcbuBalance;
+                    }
+
+                    if (los.activeLoanReleasePerson > 0) {
+                        lastActiveLoanReleasePerson = los.activeLoanReleasePerson;
+                    }
+
+                    if (los.activeLoanReleaseAmount > 0) {
+                        lastActiveLoanReleaseAmount = los.activeLoanReleaseAmount;
                     }
 
                     totalFullPaymentPerson += los.fullPaymentPerson !== '-' ? los.fullPaymentPerson : 0;
@@ -622,11 +638,17 @@ const LoanOfficerSummary = () => {
                     totalActiveLoanReleaseAmount = prevWeek.activeLoanReleaseAmount + totalLoanReleaseAmount - totalFullPaymentAmount;
                 }
 
+                if (totalActiveClients == 0) {
+                    totalActiveClients = lastActiveClients;
+                }
+
                 totalMcbuBalance = lastMcbuBalance;
                 totalPastDuePerson = lastPastDuePerson;
                 totalPastDueAmount = lastPastDueAmount;
                 totalActiveBorrowers = losSlice[losSlice.length - 1].activeBorrowers;
                 totalLoanBalance =  lastLoanBalance;
+                totalActiveLoanReleasePerson = totalActiveLoanReleasePerson == 0 ? lastActiveLoanReleasePerson : totalActiveLoanReleasePerson;
+                totalActiveLoanReleaseAmount = totalActiveLoanReleaseAmount == 0 ? lastActiveLoanReleaseAmount : totalActiveLoanReleaseAmount;
 
                 // +/- with the transfer
                 // apply only to the last week total
@@ -783,6 +805,11 @@ const LoanOfficerSummary = () => {
         let totalFullPaymentAmount = 0;
         let totalActiveBorrowers = 0; // last row
         let totalLoanBalance = 0; // last row
+        let lastActiveClients = 0;
+        let lastActiveLoanReleasePerson = 0;
+        let lastActiveLoanReleaseAmount = 0;
+        let lastActiveBorrowers = 0;
+        let lastLoanBalance = 0;
 
         weeklyTotals.map(wt => {
             let noTransfer = wt.transfer;
@@ -810,14 +837,55 @@ const LoanOfficerSummary = () => {
             totalMispaymentPerson += wt.mispaymentPerson;
             totalFullPaymentPerson += wt.fullPaymentPerson;
             totalFullPaymentAmount += wt.fullPaymentAmount;
+
+            if (wt.activeClients > 0) {
+                lastActiveClients = wt.activeClients;
+            }
+
+            if (wt.activeLoanReleasePerson > 0) {
+                lastActiveLoanReleasePerson = wt.activeLoanReleasePerson;
+            }
+
+            if (wt.activeLoanReleaseAmount > 0) {
+                lastActiveLoanReleaseAmount = wt.activeLoanReleaseAmount;
+            }
+
+            if (wt.activeBorrowers > 0) {
+                lastActiveBorrowers = wt.activeBorrowers;
+            }
+
+            if (wt.loanBalance > 0) {
+                lastLoanBalance = wt.loanBalance;
+            }
         });
 
         totalMcbuBalance = fBal.mcbuBalance + totalMcbuActual - totalMcbuWithdrawal + totalMcbuInterest - totalMcbuReturnAmt;
         totalActiveClients = fBal.activeClients + totalTransfer + totalNewMember - totalNoMcbuReturn;
         totalActiveLoanReleasePerson = fBal.activeLoanReleasePerson + totalLoanReleasePerson - totalFullPaymentPerson;
         totalActiveLoanReleaseAmount = fBal.activeLoanReleaseAmount + totalLoanReleaseAmount - totalFullPaymentAmount;
+
+        if (totalActiveClients == 0) {
+            totalActiveClients = lastActiveClients;
+        }
+        
+        if (totalActiveLoanReleasePerson == 0) {
+            totalActiveLoanReleasePerson = lastActiveLoanReleasePerson;
+        }
+
+        if (totalActiveLoanReleaseAmount == 0) {
+            totalActiveLoanReleaseAmount = lastActiveLoanReleaseAmount;
+        }
+
         totalActiveBorrowers = fBal.activeBorrowers + totalLoanReleasePerson - totalFullPaymentPerson;
         totalLoanBalance = fBal.loanBalance + totalLoanReleaseAmount - totalCollectionActual;
+
+        if (totalActiveBorrowers == 0) {
+            totalActiveBorrowers = lastActiveBorrowers;
+        }
+
+        if (totalLoanBalance <= 0 && fBal.loanBalance == 0 && totalLoanReleaseAmount == 0 && totalCollectionActual > 0) {
+            totalLoanBalance = lastLoanBalance;
+        }
 
         monthlyTotal.transfer = totalTransfer < 0 ? `(${Math.abs(totalTransfer)})` : totalTransfer;
         monthlyTotal.newMember = totalNewMember;
@@ -967,6 +1035,10 @@ const LoanOfficerSummary = () => {
             totalFullPaymentAmount = fBal.fullPaymentAmount + monthly.fullPaymentAmount;
             totalActiveBorrowers = monthly.activeBorrowers;
             totalLoanBalance = totalActiveLoanReleaseAmount - totalCollectionActual;
+
+            if (monthly.loanReleaseAmount === 0 && fBal.loanReleaseAmount === 0) {
+                totalLoanBalance = monthly.loanBalance;
+            }
         }
 
         grandTotal.transfer = totalTransfer;
