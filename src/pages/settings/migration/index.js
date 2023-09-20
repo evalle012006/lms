@@ -56,6 +56,20 @@ const MigrationPage = () => {
         }
     }
 
+    const handleResetMigration = async () => {
+        if (selectedUser) {
+            setLoading(true);
+
+            const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'migration/reset-migration?' + new URLSearchParams({ loId: selectedUser._id }));
+            if (response.success) {
+                setLoading(false);
+                toast.success('Selected LO Migration Data resetted!');
+            }
+        } else {
+            toast.error('No LO selected.');
+        }
+    }
+
     useEffect(() => {
         if ((currentUser.role && currentUser.role.rep > 2)) {
             router.push('/');
@@ -96,7 +110,6 @@ const MigrationPage = () => {
 
     useEffect(() => {
         if (selectedBranch) {
-            console.log(selectedBranch)
             const getListUser = async () => {
                 let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
     
@@ -167,8 +180,9 @@ const MigrationPage = () => {
                                     <label className="block mb-2 text-sm font-medium text-gray-900 dark:text-white" htmlFor="file_input">Upload file: </label>
                                     <input ref={fileInput} onChange={(e) => handleFileChange(e)} className="block w-full text-sm text-gray-900 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400" id="file_input" type="file" />
                                 </div>
-                                <div className="flex flex-row mt-5 w-32">
+                                <div className="flex flex-row mt-5 w-64">
                                     <ButtonSolid label="Process" onClick={handleMigration} />
+                                    <ButtonSolid className='ml-6' label="Reset LO" onClick={handleResetMigration} />
                                 </div>
                             </div>
                         </div>
