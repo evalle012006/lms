@@ -66,7 +66,7 @@ const TeamPage = () => {
                 roleId: user.role.rep,
                 role: UppercaseFirstLetter(user.role.name),
                 loNo: user.loNo,
-                imgUrl: user.profile ? imgpath + '/images/clients/' + user.profile : '',
+                imgUrl: user.profile ? imgpath + '/images/profiles/' + user.profile : '',
                 lastActivity: user.lastLogin ? moment.utc(user.lastLogin).local().startOf('seconds').fromNow() : '-',
                 root: user.root ? user.root : false,
                 // hidden columns used for update

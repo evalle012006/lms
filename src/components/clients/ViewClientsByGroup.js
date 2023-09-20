@@ -40,7 +40,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                         ...loan.client,
                         ...loan,
                         middleName: loan.client.middleName ? loan.client.middleName : '',
-                        imgUrl: loan.client.profile ? imgpath + '/images/profiles/' + loan.client.profile : '',
+                        imgUrl: loan.client.profile ? imgpath + '/images/clients/' + loan.client.profile : '',
                         loanStatus: loan.status ? loan.status : '-',
                         activeLoanStr: loan.activeLoan ? formatPricePhp(loan.activeLoan) : '0.00',
                         loanBalanceStr: loan.loanBalance ? formatPricePhp(loan.loanBalance) : '0.00',
