@@ -24,6 +24,7 @@ import Modal from '@/lib/ui/Modal';
 import ClientDetailPage from '@/components/clients/ClientDetailPage';
 import { setClient } from '@/redux/actions/clientActions';
 import { LOR_DAILY_REMARKS } from '@/lib/constants';
+import { autoHealCashCollections } from '@/lib/sync-jobs';
 
 const CashCollectionDetailsPage = () => {
     const isHoliday = useSelector(state => state.systemSettings.holiday);
@@ -1033,8 +1034,11 @@ const CashCollectionDetailsPage = () => {
                         setLoading(false);
                         toast.success('Payment collection successfully submitted. Reloading page please wait.');
             
-                        setTimeout(() => {
+                        setTimeout(async () => {
                             getCashCollections();
+                            if (currentGroup) {
+                                await autoHealCashCollections(currentGroup._id, currentDate);
+                            }
                         }, 1000);
                     }
                 } else {

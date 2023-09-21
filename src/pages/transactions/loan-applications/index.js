@@ -831,16 +831,16 @@ const LoanApplicationPage = () => {
 
             if (currentUser.role.rep === 3) {
                 rowActionBtn = [
-                    { label: 'Approve', action: handleApprove},
-                    { label: 'Reject', action: handleReject},
+                    // { label: 'Approve', action: handleApprove},
                     { label: 'Edit Loan', action: handleEditAction},
-                    { label: 'Delete Loan', action: handleDeleteAction},
+                    { label: 'Reject', action: handleReject},
+                    // { label: 'Delete Loan', action: handleDeleteAction},
                     { label: 'NDS', action: handleShowNDSAction}
                 ];
             } else if (currentUser.role.rep === 4) {
                 rowActionBtn = [
                     { label: 'Edit Loan', action: handleEditAction},
-                    { label: 'Delete Loan', action: handleDeleteAction}
+                    // { label: 'Delete Loan', action: handleDeleteAction}
                 ];
             }
 
