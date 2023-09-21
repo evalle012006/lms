@@ -413,3 +413,11 @@ async function list(req, res) {
         .setHeader('Content-Type', 'application/json')
         .end(JSON.stringify(response));
 }
+
+export const config = {
+    api: {
+      bodyParser: {
+        sizeLimit: '20mb',
+      },
+    },
+}

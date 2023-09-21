@@ -36,9 +36,11 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
             if (response.success) {
                 let clients = [];
                 await response.clients && response.clients.map(loan => {
+                    const name = `${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName}`;
                     clients.push({
                         ...loan.client,
                         ...loan,
+                        name: name,
                         middleName: loan.client.middleName ? loan.client.middleName : '',
                         imgUrl: loan.client.profile ? imgpath + '/images/clients/' + loan.client.profile : '',
                         loanStatus: loan.status ? loan.status : '-',
@@ -63,10 +65,12 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                     if (response.success) {
                         let clients = [];
                         await response.clients && response.clients.map(client => {
+                            const name = `${client.lastName}, ${client.firstName} ${client.middleName}`;
                             clients.push({
                                 ...client,
+                                name: name,
                                 middleName: client.middleName ? client.middleName : '',
-                                imgUrl: client.profile ? imgpath + '/images/profiles/' + client.profile : '',
+                                imgUrl: client.profile ? imgpath + '/images/clients/' + client.profile : '',
                                 slotNo: client.loans.length > 0 ? client.loans[0].slotNo : '-',
                                 loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
                                 activeLoanStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].activeLoan) : '0.00',
@@ -87,10 +91,12 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                     if (response.success) {
                         let clients = [];
                         await response.clients && response.clients.map(client => {
+                            const name = `${client.lastName}, ${client.firstName} ${client.middleName}`;
                             clients.push({
                                 ...client,
+                                name: name,
                                 middleName: client.middleName ? client.middleName : '',
-                                imgUrl: client.profile ? imgpath + '/images/profiles/' + client.profile : '',
+                                imgUrl: client.profile ? imgpath + '/images/clients/' + client.profile : '',
                                 slotNo: client.loans.length > 0 ? client.loans[0].slotNo : '-',
                                 loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
                                 activeLoanStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].activeLoan) : '0.00',
@@ -113,10 +119,12 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                     let clients = [];
                     await response.clients && response.clients.map(branch => {
                         branch.clients.map(client => {
+                            const name = `${client.lastName}, ${client.firstName} ${client.middleName}`;
                             clients.push({
                                 ...client,
+                                name: name,
                                 middleName: client.middleName ? client.middleName : '',
-                                imgUrl: client.profile ? imgpath + '/images/profiles/' + client.profile : '',
+                                imgUrl: client.profile ? imgpath + '/images/clients/' + client.profile : '',
                                 slotNo: client.loans.length > 0 ? client.loans[0].slotNo : '-',
                                 loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
                                 activeLoanStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].activeLoan) : '0.00',
@@ -139,8 +147,10 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
             if (response.success) {
                 let clients = [];
                 await response.clients && response.clients.map(client => {
+                    const name = `${client.lastName}, ${client.firstName} ${client.middleName}`;
                     clients.push({
                         ...client,
+                        name: name,
                         middleName: client.middleName ? client.middleName : '',
                         imgUrl: client.profile ? imgpath + '/images/clients/' + client.profile : '',
                         groupName: client.groupName ? client.groupName : '-',
@@ -233,18 +243,10 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
         if (currentUser.role.rep === 4) {
             activeColumns = [
                 {
-                    Header: "Last Name",
-                    accessor: 'lastName',
+                    Header: "Name",
+                    accessor: 'name',
                     Cell: AvatarCell,
                     imgAccessor: "imgUrl"
-                },
-                {
-                    Header: "First Name",
-                    accessor: 'firstName'
-                },
-                {
-                    Header: "Middle Name",
-                    accessor: 'middleName'
                 },
                 {
                     Header: "Group",
@@ -292,18 +294,10 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
         } else if (currentUser.role.rep === 3) {
             activeColumns = [
                 {
-                    Header: "Last Name",
-                    accessor: 'lastName',
+                    Header: "Name",
+                    accessor: 'name',
                     Cell: AvatarCell,
-                    imgAccessor: "imgUrl",
-                },
-                {
-                    Header: "First Name",
-                    accessor: 'firstName'
-                },
-                {
-                    Header: "Middle Name",
-                    accessor: 'middleName'
+                    imgAccessor: "imgUrl"
                 },
                 {
                     Header: "Group",
@@ -357,18 +351,10 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
         } else {
             activeColumns = [
                 {
-                    Header: "Last Name",
-                    accessor: 'lastName',
+                    Header: "Name",
+                    accessor: 'name',
                     Cell: AvatarCell,
-                    imgAccessor: "imgUrl",
-                },
-                {
-                    Header: "First Name",
-                    accessor: 'firstName'
-                },
-                {
-                    Header: "Middle Name",
-                    accessor: 'middleName'
+                    imgAccessor: "imgUrl"
                 },
                 {
                     Header: "Branch",

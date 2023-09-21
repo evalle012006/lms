@@ -353,62 +353,62 @@ const ActionButton = ({ row, rowActionButtons }) => {
                 return (
                     <React.Fragment key={index}>
                       {item.label === 'Approve' && (
-                        <div className="px-1" onClick={() => item.action(row)} title="Approve">
+                        <div className="px-2" onClick={() => item.action(row)} title="Approve">
                           <CheckIcon className="cursor-pointer h-5" />
                         </div>
                       )}
                       {item.label === 'Reject' && (
-                        <div className="px-1" onClick={() => item.action(row)} title="Reject">
+                        <div className="px-2" onClick={() => item.action(row)} title="Reject">
                           <XMarkIcon className="cursor-pointer h-5" />
                         </div>
                       )}
                       {(item.label === 'Edit Loan' && status !== 'active') && (
-                        <div className="px-1" onClick={() => item.action(row)} title="Edit">
+                        <div className="px-2" onClick={() => item.action(row)} title="Edit">
                           <PencilIcon className="cursor-pointer h-5" />
                         </div>
                       )}
                       {(item.label === 'Delete Loan' && status !== 'active') && (
-                        <div className="px-1" onClick={() => item.action(row)} title="Delete">
+                        <div className="px-2" onClick={() => item.action(row)} title="Delete">
                           <TrashIcon className="cursor-pointer h-5" />
                         </div>
                       )}
                       {(item.label === 'NDS' && status !== 'active') && (
-                        <div className="px-1" onClick={() => item.action(row)} title="Show NDS">
+                        <div className="px-2" onClick={() => item.action(row)} title="Show NDS">
                           <DocumentIcon className="cursor-pointer h-5" />
                         </div>
                       )}
                       {(item.label === 'Edit') && (
-                        <div className="px-1" onClick={() => item.action(row)} title="Edit">
+                        <div className="px-2" onClick={() => item.action(row)} title="Edit">
                           <PencilIcon className="cursor-pointer h-5" />
                         </div>
                       )}
                       {(item.label === 'Delete') && (
-                        <div className="px-1" onClick={() => item.action(row)} title="Delete">
+                        <div className="px-2" onClick={() => item.action(row)} title="Delete">
                           <TrashIcon className="cursor-pointer h-5" />
                         </div>
                       )}
                       {(item.label === 'Open' && page === 'loan-officer-summary' && status === 'close') && (
-                        <div className="px-1" onClick={() => item.action(row)} title="Open Transaction">
+                        <div className="px-2" onClick={() => item.action(row)} title="Open Transaction">
                           <LockClosedIcon className="cursor-pointer h-5" />
                         </div>
                       )}
                       {(item.label === 'Close' && page === 'loan-officer-summary' && status === 'open') && (
-                        <div className="px-1" onClick={() => item.action(row)} title="Close Transaction">
+                        <div className="px-2" onClick={() => item.action(row)} title="Close Transaction">
                           <LockOpenIcon className="cursor-pointer h-5" />
                         </div>
                       )}
                       {(item.label === 'Reloan') && (
-                        <div className="px-1" onClick={() => item.action(row)} title="Reloan">
+                        <div className="px-2" onClick={() => item.action(row)} title="Reloan">
                           <ArrowPathIcon className="cursor-pointer h-5" />
                         </div>
                       )}
                       {(item.label === 'Close Account') && (
-                        <div className="px-1" onClick={() => item.action(row)} title="Close Account">
+                        <div className="px-2" onClick={() => item.action(row)} title="Close Account">
                           <XCircleIcon className="cursor-pointer h-5" />
                         </div>
                       )}
                       {item.label === 'Reset Password' && (
-                        <div className="px-1" onClick={() => item.action(row)} title="Reset Password">
+                        <div className="px-2" onClick={() => item.action(row)} title="Reset Password">
                           <KeyIcon className="cursor-pointer h-5" />
                         </div>
                       )}
