@@ -89,13 +89,17 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
         let error = false;
         setLoading(true);
         values.insertedBy = currentUser._id;
-        values.middleName = values.middleName ? values.middleName : '';
+        values.firstName = values.firstName.toUpperCase();
+        values.lastName = values.lastName.toUpperCase();
+        values.middleName = values.middleName ? values.middleName.toUpperCase() : '';
         values.addressBarangayDistrict = values.addressBarangayDistrict ? values.addressBarangayDistrict : '';
         values.addressMunicipalityCity = values.addressMunicipalityCity ? values.addressMunicipalityCity : '';
         values.addressProvince = values.addressProvince ? values.addressProvince : '';
         values.addressStreetNo = values.addressStreetNo ? values.addressStreetNo : '';
         values.addressZipCode = values.addressZipCode ? values.addressZipCode : '';
         values.birthdate = values.birthdate ? moment(values.birthdate).format("YYYY-MM-DD") : null;
+        values.fullName = values.firstName + ' ' + values.middleName + ' ' + values.lastName;
+        values.address = values.addressStreetNo + ' ' + values.addressBarangayDistrict + ' ' + values.addressMunicipalityCity + ' ' + values.addressProvince + ' ' + values.addressZipCode;
         const group = groupList && groupList.find(g => g._id === values.groupId);
         values.groupName = group.name;
         if (currentUser.root !== true && (currentUser.role.rep === 4 || currentUser.role.rep === 3) && branchList.length > 0) {

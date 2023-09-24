@@ -787,7 +787,7 @@ const NavComponent = () => {
                 {/** add click event to navigate to user profile **/}
                 <div id="profile" className="flex items-center border-b border-orange-darkest px-4 py-4">
                     <div id="img" className="w-1/4 mr-4">
-                        <Avatar name={userState.firstName + " " + userState.lastName} src={userState.profile ? '/images/profiles/' + userState.profile : ""} className={`${userState.profile ? 'py-8 px-6' : 'py-1.5 px-2'} `} />
+                        <Avatar name={userState.firstName + " " + userState.lastName} src={userState.profile ? '/images/profiles/' + userState.profile : ""} className={`${userState.profile ? 'p-8' : 'p-4'} `} />
                     </div>
                     <div id="welcome" className="text-white w-2/4 sm:ml-1 md:ml-4">
                         <p className="text-xs">Welcome,</p>

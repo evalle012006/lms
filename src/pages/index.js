@@ -48,7 +48,12 @@ const Index = () => {
         //     await fetchWrapper.get(`${process.env.NEXT_PUBLIC_API_URL}aahandy-scripts/get-all-loan-specific-data/`);
         // }
 
+        // const updateClients = async () => {
+        //     await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}aahandy-scripts/update-clients`, {});
+        // }
+
         mounted && getSystemSettings();
+        // mounted && updateClients();
         // mounted && getLoans();
         // mounted && updateLoanCoMaker();
         // mounted && getTransactionSettings();

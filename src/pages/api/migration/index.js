@@ -191,6 +191,7 @@ const processLOR = async (sheetData, branchId, loId) => {
                         middleName: clientName.middleName,
                         lastName: clientName.lastName,
                         birthdate: clientDOB,
+                        fullName: col[1],
                         address: clientAddress,
                         status: 'active',
                         deliquent: false,
