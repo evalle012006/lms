@@ -17,7 +17,7 @@ async function reset(req, res) {
     await db.collection('cashCollections').deleteMany({groupId: groupId});
     await db.collection('groupCashCollections').deleteMany({groupId: groupId});
     await db.collection('loans').deleteMany({groupId: groupId});
-    await db.collection('losTotals').deleteMany({groupId: groupId});
+    // await db.collection('losTotals').deleteMany({groupId: groupId});
 
 
     // reset tables

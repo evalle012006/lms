@@ -24,6 +24,7 @@ import Modal from '@/lib/ui/Modal';
 import ClientDetailPage from '@/components/clients/ClientDetailPage';
 import { setClient } from '@/redux/actions/clientActions';
 import { LOR_ONLY_OFFSET_REMARKS, LOR_WEEKLY_REMARKS } from '@/lib/constants';
+import { autoHealCashCollections } from '@/lib/sync-jobs';
 
 const CashCollectionDetailsPage = () => {
     const isHoliday = useSelector(state => state.systemSettings.holiday);
@@ -192,6 +193,7 @@ const CashCollectionDetailsPage = () => {
                     collection = {
                         ...cc,
                         group: cc.group,
+                        coMaker: (cc.coMaker && typeof cc.coMaker == 'number') ? cc.coMaker : '-',
                         loId: cc.loId,
                         loanId: cc.loanId,
                         branchId: cc.branchId,
@@ -264,6 +266,7 @@ const CashCollectionDetailsPage = () => {
                         collection = {
                             ...cc,
                             group: cc.group,
+                            coMaker: (cc.coMaker && typeof cc.coMaker == 'number') ? cc.coMaker : '-',
                             loanId: cc.loanId,
                             branchId: cc.branchId,
                             loId: cc.loId,
@@ -351,6 +354,7 @@ const CashCollectionDetailsPage = () => {
                         collection = {
                             ...cc,
                             group: cc.group,
+                            coMaker: (cc.coMaker && typeof cc.coMaker == 'number') ? cc.coMaker : '-',
                             loId: cc.loId,
                             loanId: cc.loanId,
                             branchId: cc.branchId,
@@ -431,6 +435,7 @@ const CashCollectionDetailsPage = () => {
 
                         collection = {
                             client: cc.client,
+                            coMaker: (cc.coMaker && typeof cc.coMaker == 'number') ? cc.coMaker : '-',
                             group: cc.group,
                             loanId: cc._id,
                             loId: cc.loId,
@@ -599,6 +604,7 @@ const CashCollectionDetailsPage = () => {
                     if ((currentLoan.fullPaymentDate === currentDate)) { // fullpayment with pending/tomorrow
                         cashCollection[index] = {
                             client: currentLoan.client,
+                            coMaker: (loan.coMaker && typeof loan.coMaker == 'number') ? loan.coMaker : '-',
                             slotNo: loan.slotNo,
                             loanId: loan._id,
                             groupId: loan.groupId,
@@ -654,6 +660,7 @@ const CashCollectionDetailsPage = () => {
                     } else if (currentLoan.status !== 'active') {
                         cashCollection[index] = {
                             client: currentLoan.client,
+                            coMaker: (loan.coMaker && typeof loan.coMaker == 'number') ? loan.coMaker : '-',
                             slotNo: loan.slotNo,
                             loanId: loan._id,
                             groupId: loan.groupId,
@@ -699,6 +706,7 @@ const CashCollectionDetailsPage = () => {
                     let pendingTomorrow = {
                         _id: loan._id,
                         client: loan.client,
+                        coMaker: (loan.coMaker && typeof loan.coMaker == 'number') ? loan.coMaker : '-',
                         slotNo: loan.slotNo,
                         loanId: loan._id,
                         groupId: loan.groupId,
@@ -1025,12 +1033,10 @@ const CashCollectionDetailsPage = () => {
                         temp.loanBalance = parseFloat(temp.loanBalance);
                         temp.amountRelease = parseFloat(temp.amountRelease);
 
-                        if (!temp.paymentCollection || temp.paymentCollection <= 0) {
-                            if (temp.remarks && temp.remarks.value !== "excused advance payment") {
-                                temp.paymentCollection = 0;
-                                temp.mispayment = true;
-                                temp.mispaymentStr = 'Yes';
-                            }
+                        if ((!temp.paymentCollection || temp.paymentCollection <= 0) && (temp.remarks && temp.remarks.value !== "excused advance payment")) {
+                            temp.paymentCollection = 0;
+                            temp.mispayment = true;
+                            temp.mispaymentStr = 'Yes';
                         }
     
                         if (temp.loanBalance <= 0) {
@@ -1088,6 +1094,11 @@ const CashCollectionDetailsPage = () => {
             
                         setTimeout(() => {
                             getCashCollections();
+                            setTimeout(async () => {
+                                if (currentGroup) {
+                                    await autoHealCashCollections(currentGroup._id, currentDate);
+                                }
+                            }, 2000);
                         }, 1000);
                     }
                 } else {

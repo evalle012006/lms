@@ -191,6 +191,7 @@ const processLOR = async (sheetData, branchId, loId) => {
                         middleName: clientName.middleName,
                         lastName: clientName.lastName,
                         birthdate: clientDOB,
+                        fullName: col[1],
                         address: clientAddress,
                         status: 'active',
                         deliquent: false,
@@ -535,11 +536,12 @@ async function updateGroup(loan, group) {
 }
 
 const extractName = (name) => {
-    if (name && name !== undefined) {
+    const _name = name && name !== undefined ? name.trim() : null;
+    if (_name) {
         let firstName;
         let middleName;
         let lastName;
-        const arg = name.split(' ');
+        const arg = _name.split(' ');
         if (arg.length == 2) {
             firstName = arg[0];
             lastName = arg[1];

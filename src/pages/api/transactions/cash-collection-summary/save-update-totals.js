@@ -134,14 +134,18 @@ async function saveUpdateCommulative(total) {
 
     if (losTotal.length > 0) {
         losTotal = losTotal[0];
-        await db.collection('losTotals').updateOne(
-            { _id: losTotal._id},
-            { $set: {
-                ...losTotal,
-                data: total.data,
-                dateModified: currentDateStr
-            } }
-        );
+        if (losTotal.hasOwnProperty('insertedBy') && losTotal.insertedBy === 'migration') {
+            // don't override...
+        } else {
+            await db.collection('losTotals').updateOne(
+                { _id: losTotal._id},
+                { $set: {
+                    ...losTotal,
+                    data: total.data,
+                    dateModified: currentDateStr
+                } }
+            );
+        }
     } else {
         const finalData = {...total};
         delete finalData.currentDate;

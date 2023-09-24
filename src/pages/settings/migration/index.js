@@ -9,8 +9,10 @@ import { setBranchList } from '@/redux/actions/branchActions';
 import Select from 'react-select';
 import { DropdownIndicator, borderStyles } from "@/styles/select";
 import { setUserList } from '@/redux/actions/userActions';
-import { UppercaseFirstLetter } from '@/lib/utils';
+import { UppercaseFirstLetter, getLastWeekdayOfTheMonth, getMonths, getYears } from '@/lib/utils';
 import ButtonSolid from '@/lib/ui/ButtonSolid';
+import InputNumber from '@/lib/ui/InputNumber';
+import moment from 'moment';
 
 const MigrationPage = () => {
     const dispatch = useDispatch();
@@ -24,7 +26,41 @@ const MigrationPage = () => {
     const [selectedBranch, setSelectedBranch] = useState();
     const [selectedUser, setSelectedUser] = useState();
     const [file, setFile] = useState();
-    const [firstCollectionIdx, setFirstCollectionIdx] = useState();
+    const [selectedMonth, setSelectedMonth] = useState();
+    const [selectedYear, setSelectedYear] = useState();
+    const [date, setDate] = useState();
+    const holidayList = useSelector(state => state.holidays.list);
+    const months = getMonths();
+    const years = getYears();
+    const [data, setData] = useState({
+        day: "Commulative",
+        transfer: 0,
+        newMember: 0,
+        mcbuTarget: 0,
+        mcbuActual: 0,
+        mcbuWithdrawal: 0,
+        mcbuInterest: 0,
+        noMcbuReturn: 0,
+        mcbuReturnAmt: 0,
+        mcbuBalance: 0,
+        offsetPerson: 0,
+        activeClients: 0,
+        loanReleasePerson: "-",
+        loanReleaseAmount: 0,
+        activeLoanReleasePerson: 0,
+        activeLoanReleaseAmount: 0,
+        collectionAdvancePayment: 0,
+        collectionActual: 0,
+        pastDuePerson: 0,
+        pastDueAmount: 0,
+        mispaymentPerson: 0,
+        fullPaymentPerson: 0,
+        fullPaymentAmount: 0,
+        activeBorrowers: 0,
+        loanBalance: 0,
+        grandTotal: true
+    });
+    
 
     const handleBranchChange = (selected) => {
         setSelectedBranch(selected);
@@ -42,18 +78,49 @@ const MigrationPage = () => {
     }
 
     const handleMigration = async () => {
-        setLoading(true);
-        const params = {
-            file: file,
-            branchId: selectedBranch._id,
-            loId: selectedUser._id
+        if (selectedBranch && selectedUser) {
+            setLoading(true);
+            if (file) {
+                const params = {
+                    file: file,
+                    branchId: selectedBranch._id,
+                    loId: selectedUser._id
+                }
+        
+                const response = await fetchWrapper.sendData(process.env.NEXT_PUBLIC_API_URL + 'migration/', params);
+                if (response.success) {
+                    const resp = await addForwardBalance();
+                    if (resp.success) {
+                        setLoading(false);
+                        toast.success('File is currently processing...please wait.');
+                    }
+                }
+            } else {
+                const resp = await addForwardBalance();
+                if (resp.success) {
+                    setLoading(false);
+                    toast.success(`Added forward balance for ${selectedUser.firstName} ${selectedUser.lastName}`);
+                }
+            }
+        } else {
+            toast.error('Please select Branch and/or Loan Officer');
         }
+    }
 
-        const response = await fetchWrapper.sendData(process.env.NEXT_PUBLIC_API_URL + 'migration/', params);
-        if (response.success) {
-            setLoading(false);
-            toast.success('File is currently processing...please wait.');
+    const addForwardBalance = async () => {
+        const fBal = {
+            userId: selectedUser._id,
+            branchId: selectedBranch._id,
+            month: selectedMonth,
+            year: selectedYear,
+            dateAdded: date,
+            insertedBy: 'migration',
+            insertedDate: currentDate,
+            data: data,
+            losType: "commulative",
+            occurence: selectedUser.transactionType
         }
+        return await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'migration/add-los-commulative-data', fBal);
     }
 
     const handleResetMigration = async () => {
@@ -68,6 +135,18 @@ const MigrationPage = () => {
         } else {
             toast.error('No LO selected.');
         }
+    }
+
+    const handleChange = (value, field) => {
+        let temp = {...data};
+        if (value && value.trim()) {
+            const input = parseFloat(value);
+            temp[field] = input;
+        } else {
+            temp[field] = value;
+        }
+
+        setData(temp);
     }
 
     useEffect(() => {
@@ -107,6 +186,20 @@ const MigrationPage = () => {
             mounted = false;
         })
     }, [currentUser]);
+
+    useEffect(() => {
+        if (currentDate) {
+            const month = moment(currentDate).month();
+            setSelectedMonth(month == 0 ? 1 : month);
+            setSelectedYear(moment(currentDate).year());
+        }
+    }, [currentDate]);
+
+    useEffect(() => {
+        if (selectedMonth && selectedYear) {
+            setDate(getLastWeekdayOfTheMonth(selectedYear, selectedMonth, holidayList));
+        }
+    }, [selectedMonth, selectedYear]);
 
     useEffect(() => {
         if (selectedBranch) {
@@ -178,7 +271,74 @@ const MigrationPage = () => {
                                 </div>
                                 <div style={{ width: '50%' }}>
                                     <label className="block mb-2 text-sm font-medium text-gray-900 dark:text-white" htmlFor="file_input">Upload file: </label>
-                                    <input ref={fileInput} onChange={(e) => handleFileChange(e)} className="block w-full text-sm text-gray-900 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400" id="file_input" type="file" />
+                                    <input ref={fileInput} onChange={(e) => handleFileChange(e)} className="block w-full text-sm text-gray-900 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none" id="file_input" type="file" />
+                                </div>
+                                <div className='flex flex-col justify-center mt-4 py-4'>
+                                    <span className='font-bold text-md'>Forward Balance Info:</span>
+                                    <div className='flex flex-row mb-4'>
+                                        <span>Month</span>
+                                        <div className="ml-4 flex">
+                                            <Select 
+                                                options={months}
+                                                value={selectedMonth && months.find(m => {
+                                                    return parseInt(m.value) === selectedMonth
+                                                })}
+                                                styles={borderStyles}
+                                                components={{ DropdownIndicator }}
+                                                onChange={(selected) => { setSelectedMonth(selected.value) }}
+                                                isSearchable={true}
+                                                closeMenuOnSelect={true}
+                                                placeholder={'Month'}/>
+                                        </div>
+                                    </div>
+                                    <div className='flex flex-row mb-4'>
+                                        <span>Year</span>
+                                        <div className="ml-4 flex">
+                                            <Select 
+                                                options={years}
+                                                value={selectedYear && years.find(y => {
+                                                    return y.value === selectedYear
+                                                })}
+                                                styles={borderStyles}
+                                                components={{ DropdownIndicator }}
+                                                onChange={(selected) => { setSelectedYear(selected.value) }}
+                                                isSearchable={true}
+                                                closeMenuOnSelect={true}
+                                                placeholder={'Year'}/>
+                                        </div>
+                                    </div>
+                                    <div className='flex flex-row mb-4'>
+                                        <span className='mr-4 mt-1'>Active Client</span>
+                                        <InputNumber className='w-12' value={data.activeClients} onChange={(e) => { handleChange(e.target.value, "activeClients") }} />
+                                    </div>
+                                    <div className='flex flex-row mb-4'>
+                                        <span className='mr-4 mt-1'>MCBU Balance</span>
+                                        <InputNumber value={data.mcbuBalance} onChange={(e) => { handleChange(e.target.value, "mcbuBalance") }} />
+                                    </div>
+                                    <div className='flex flex-row mb-4'>
+                                        <span className='mr-4 mt-1'>Active Borrowers</span>
+                                        <InputNumber className='w-12' value={data.activeBorrowers} onChange={(e) => { handleChange(e.target.value, "activeBorrowers") }} />
+                                    </div>
+                                    <div className='flex flex-row mb-4'>
+                                        <span className='mr-4 mt-1'>Active Loan</span>
+                                        <InputNumber value={data.activeLoanReleaseAmount} onChange={(e) => { handleChange(e.target.value, "activeLoanReleaseAmount") }} />
+                                    </div>
+                                    <div className='flex flex-row mb-4'>
+                                        <span className='mr-4 mt-1'>Loan Target</span>
+                                        <InputNumber value={data.collectionAdvancePayment} onChange={(e) => { handleChange(e.target.value, "collectionAdvancePayment") }} />
+                                    </div>
+                                    <div className='flex flex-row mb-4'>
+                                        <span className='mr-4 mt-1'>Loan Actual</span>
+                                        <InputNumber value={data.collectionActual} onChange={(e) => { handleChange(e.target.value, "collectionActual") }} />
+                                    </div>
+                                    <div className='flex flex-row mb-4'>
+                                        <span className='mr-4 mt-1'>Person</span>
+                                        <InputNumber className='w-12' value={data.activeLoanReleasePerson} onChange={(e) => { handleChange(e.target.value, "activeLoanReleasePerson") }} />
+                                    </div>
+                                    <div className='flex flex-row mb-4'>
+                                        <span className='mr-4 mt-1'>Loan Balance</span>
+                                        <InputNumber value={data.loanBalance} onChange={(e) => { handleChange(e.target.value, "loanBalance") }} />
+                                    </div>
                                 </div>
                                 <div className="flex flex-row mt-5 w-64">
                                     <ButtonSolid label="Process" onClick={handleMigration} />

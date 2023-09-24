@@ -15,7 +15,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
     const dispatch = useDispatch();
     const selectedLOSubject = new BehaviorSubject(process.browser && localStorage.getItem('selectedLO'));
     const currentUser = useSelector(state => state.user.data);
-    const branchList = useSelector(state => state.branch.list);
+    const currentBranch = useSelector(state => state.branch.data);
     const currentDate = useSelector(state => state.systemSettings.currentDate);
     const cashCollectionList = useSelector(state => state.cashCollection.main);
     const [loading, setLoading] = useState(true);
@@ -105,10 +105,16 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 selectedBranch = cc.branchId;
                 let noCurrentRelease = '0 / 0';
                 let groupStatus = 'pending';
+                let isDraft = false;
                 if (cc.cashCollections.length > 0) {
                     const transactionStatus = cc.cashCollections[0].groupStatusArr.filter(status => status === "closed");
                     if (transactionStatus.length > 0) {
                         groupStatus = 'closed';
+                    }
+
+                    const draft = !filter ? cc.cashCollections[0].hasDraftsArr.filter(d => d === true) : [];
+                    if (draft.length > 0) {
+                        isDraft = true;
                     }
                 }
 
@@ -168,6 +174,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                             transfer: 0,
                             transferStr: '-',
                             status: groupStatus,
+                            isDraft: isDraft,
                             page: 'collection'
                         };
     
@@ -346,6 +353,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                             transfer: 0,
                             transferStr: '-',
                             status: groupStatus,
+                            isDraft: false,
                             page: 'collection'
                         };
     
@@ -865,6 +873,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
         }
 
         return {
+            branchId: currentBranch,
             userId: selectedLO ? selectedLO : currentUser._id,
             userType: 'lo',
             branchId: selectedBranch,

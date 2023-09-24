@@ -2,6 +2,7 @@ export const SET_CASH_COLLECTION = 'SET_CASH_COLLECTION';
 export const SET_CASH_COLLECTION_LIST = 'SET_CASH_COLLECTION_LIST';
 export const SET_CASH_COLLECTION_GROUP = 'SET_CASH_COLLECTION_GROUP';
 export const SET_CASH_COLLECTION_LO = 'SET_CASH_COLLECTION_LO';
+export const SET_CASH_COLLECTION_BRANCH = 'SET_CASH_COLLECTION_BRANCH';
 export const SET_GROUP_SUMMARY_TOTALS = 'SET_GROUP_SUMMARY_TOTALS';
 export const SET_LO_SUMMARY = 'SET_LO_SUMMARY';
 export const SET_BM_SUMMARY = 'SET_BM_SUMMARY';
@@ -23,6 +24,11 @@ export const setCashCollectionGroup = (cashCollection) => ({
 
 export const setCashCollectionLo = (cashCollection) => ({
     type: SET_CASH_COLLECTION_LO,
+    payload: cashCollection
+});
+
+export const setCashCollectionBranch = (cashCollection) => ({
+    type: SET_CASH_COLLECTION_BRANCH,
     payload: cashCollection
 });
 
