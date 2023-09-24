@@ -54,7 +54,6 @@ const ClientSearchTool = () => {
     }
 
     const handleRowClick = (row) => {
-        console.log(row)
         setSelectedClient(row);
     }
 

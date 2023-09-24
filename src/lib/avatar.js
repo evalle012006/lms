@@ -92,7 +92,10 @@ const Avatar = ({
   className
 }) => {
 
-  if (!name) throw new Error('UserAvatar requires a name');
+  if (!name) {
+    console.error('User has no name!');
+    return;
+  }
 
   const abbr = getInitials(name);
   // size = addPx(size);
