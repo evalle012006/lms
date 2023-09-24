@@ -1721,7 +1721,7 @@ const CashCollectionDetailsPage = () => {
 
     useEffect(() => {
         const getListGroup = async (selectedLO) => {
-            let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list-by-group-occurence?' + new URLSearchParams({ branchId: branchList[0]._id, occurence: 'daily', loId: selectedLO });
+            let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list-by-group-occurence?' + new URLSearchParams({ mode: "filter", branchId: branchList[0]._id, occurence: 'daily', loId: selectedLO });
 
             const response = await fetchWrapper.get(url);
             if (response.success) {

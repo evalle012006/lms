@@ -10,35 +10,65 @@ async function list(req, res) {
     let statusCode = 200;
     let response = {};
 
-    const { areaManagerId, branchId, loId, occurence } = req.query;
+    const { areaManagerId, branchId, loId, occurence, mode } = req.query;
     let groups;
 
-    if (branchId && loId) {
-        groups = await db
-            .collection('groups')
-            .find({ branchId: branchId, status: 'available', loanOfficerId: loId,occurence: occurence })
-            .sort({ groupNo: 1 })
-            .toArray();
-    } else if (loId) {
-        groups = await db
-            .collection('groups')
-            .find({ status: 'available', loanOfficerId: loId, occurence: occurence })
-            .sort({ groupNo: 1 })
-            .toArray();
-    } else if (branchId) {
-        groups = await db
-            .collection('groups')
-            .find({ branchId: branchId, status: 'available', occurence: occurence })
-            .sort({ groupNo: 1 })
-            .toArray();
-    } else if (areaManagerId) {
-        // process for area manager
+    if (mode === 'filter') {
+        if (branchId && loId) {
+            groups = await db
+                .collection('groups')
+                .find({ branchId: branchId, loanOfficerId: loId,occurence: occurence })
+                .sort({ groupNo: 1 })
+                .toArray();
+        } else if (loId) {
+            groups = await db
+                .collection('groups')
+                .find({ loanOfficerId: loId, occurence: occurence })
+                .sort({ groupNo: 1 })
+                .toArray();
+        } else if (branchId) {
+            groups = await db
+                .collection('groups')
+                .find({ branchId: branchId, occurence: occurence })
+                .sort({ groupNo: 1 })
+                .toArray();
+        } else if (areaManagerId) {
+            // process for area manager
+        } else {
+            groups = await db
+                .collection('groups')
+                .find({ status: 'available' })
+                .sort({ groupNo: 1 })
+                .toArray();
+        }
     } else {
-        groups = await db
-            .collection('groups')
-            .find({ status: 'available' })
-            .sort({ groupNo: 1 })
-            .toArray();
+        if (branchId && loId) {
+            groups = await db
+                .collection('groups')
+                .find({ branchId: branchId, status: 'available', loanOfficerId: loId,occurence: occurence })
+                .sort({ groupNo: 1 })
+                .toArray();
+        } else if (loId) {
+            groups = await db
+                .collection('groups')
+                .find({ status: 'available', loanOfficerId: loId, occurence: occurence })
+                .sort({ groupNo: 1 })
+                .toArray();
+        } else if (branchId) {
+            groups = await db
+                .collection('groups')
+                .find({ branchId: branchId, status: 'available', occurence: occurence })
+                .sort({ groupNo: 1 })
+                .toArray();
+        } else if (areaManagerId) {
+            // process for area manager
+        } else {
+            groups = await db
+                .collection('groups')
+                .find({ status: 'available' })
+                .sort({ groupNo: 1 })
+                .toArray();
+        }
     }
     
     response = {
