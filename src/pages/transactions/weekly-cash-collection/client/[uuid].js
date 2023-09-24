@@ -193,6 +193,7 @@ const CashCollectionDetailsPage = () => {
                     collection = {
                         ...cc,
                         group: cc.group,
+                        coMaker: (cc.coMaker && typeof cc.coMaker == 'number') ? cc.coMaker : '-',
                         loId: cc.loId,
                         loanId: cc.loanId,
                         branchId: cc.branchId,
@@ -265,6 +266,7 @@ const CashCollectionDetailsPage = () => {
                         collection = {
                             ...cc,
                             group: cc.group,
+                            coMaker: (cc.coMaker && typeof cc.coMaker == 'number') ? cc.coMaker : '-',
                             loanId: cc.loanId,
                             branchId: cc.branchId,
                             loId: cc.loId,
@@ -352,6 +354,7 @@ const CashCollectionDetailsPage = () => {
                         collection = {
                             ...cc,
                             group: cc.group,
+                            coMaker: (cc.coMaker && typeof cc.coMaker == 'number') ? cc.coMaker : '-',
                             loId: cc.loId,
                             loanId: cc.loanId,
                             branchId: cc.branchId,
@@ -432,6 +435,7 @@ const CashCollectionDetailsPage = () => {
 
                         collection = {
                             client: cc.client,
+                            coMaker: (cc.coMaker && typeof cc.coMaker == 'number') ? cc.coMaker : '-',
                             group: cc.group,
                             loanId: cc._id,
                             loId: cc.loId,
@@ -600,6 +604,7 @@ const CashCollectionDetailsPage = () => {
                     if ((currentLoan.fullPaymentDate === currentDate)) { // fullpayment with pending/tomorrow
                         cashCollection[index] = {
                             client: currentLoan.client,
+                            coMaker: (loan.coMaker && typeof loan.coMaker == 'number') ? loan.coMaker : '-',
                             slotNo: loan.slotNo,
                             loanId: loan._id,
                             groupId: loan.groupId,
@@ -655,6 +660,7 @@ const CashCollectionDetailsPage = () => {
                     } else if (currentLoan.status !== 'active') {
                         cashCollection[index] = {
                             client: currentLoan.client,
+                            coMaker: (loan.coMaker && typeof loan.coMaker == 'number') ? loan.coMaker : '-',
                             slotNo: loan.slotNo,
                             loanId: loan._id,
                             groupId: loan.groupId,
@@ -700,6 +706,7 @@ const CashCollectionDetailsPage = () => {
                     let pendingTomorrow = {
                         _id: loan._id,
                         client: loan.client,
+                        coMaker: (loan.coMaker && typeof loan.coMaker == 'number') ? loan.coMaker : '-',
                         slotNo: loan.slotNo,
                         loanId: loan._id,
                         groupId: loan.groupId,

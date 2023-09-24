@@ -41,7 +41,7 @@ const Index = () => {
         // }
 
         // const updateLoanCoMaker = async () => {
-        //     await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}transactions/loans/update-loan-comaker`);
+        //     await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}aahandy-scripts/update-loan-comaker`);
         // }
 
         // const getLoans = async () => {
