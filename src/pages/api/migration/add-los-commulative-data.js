@@ -13,7 +13,18 @@ async function addLOSCommulative(req, res) {
 
     const data = req.body;
 
-    const result = await db.collection('losTotals').insertOne({...data});
+    const los = await db.collection('losTotals').find({ userId: data.userId, month: data.month, year: data.year }).toArray();
+
+    let result;
+    if (los.length > 0) {
+        let exist = los[0];
+        exist.data = data.data;
+        exist.modifiedDateTime = new Date();
+        delete exist._id;
+        result = await db.collection('losTotals').updateOne({ _id: los[0]._id }, { $set: { ...exist } });
+    } else {
+        result = await db.collection('losTotals').insertOne({...data});
+    }
 
     response = { success: true, result: result };
 

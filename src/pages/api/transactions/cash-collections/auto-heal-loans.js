@@ -16,9 +16,9 @@ async function autoHealLoans(req, res) {
     const { groupId, currentDate } = req.body;
 
     await removedDoubleCC(groupId, currentDate);
-    setTimeout(async () => {
-        await syncLoansCashCollections(groupId, currentDate);
-    }, 1000);
+    // setTimeout(async () => {
+    //     await syncLoansCashCollections(groupId, currentDate);
+    // }, 1000);
 
     response = { success: true };
 

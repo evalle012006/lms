@@ -13,20 +13,26 @@ export default apiHandler({
 async function syncLoans(req, res) {
     const { db } = await connectToDatabase();
 
-    const { clientId, coMaker } = req.body;
-    const currentLoan = await db.collection('loans').find({ status: 'available', clientId: clientId }).toArray();
-
-    if (currentLoan.length > 0) {
-        let loan = currentLoan[0];
-        loan.coMaker = coMaker;
-        loan.coMakerId = clientId;
-
-        delete loan._id;
-        const resp = await db.collection('loans').updateOne({ _id: currentLoan[0]._id }, { $set: { ...loan } });
-
-        response = { success: true, ...resp };
+    const { clientId, coMaker, groupId } = req.body;
+    const currentLoan = await db.collection('loans').find({ status: 'active', clientId: clientId }).toArray();
+    const coMakerLoan = await db.collection('loans').find({ status: 'active', slotNo: coMaker, groupId: groupId }).toArray();
+    
+    if (currentLoan.length === 0 ) {
+        response = { error: true, message: 'No Active Loan associated to this client.' };
+    } else if (coMakerLoan.length === 0) {
+        response = { error: true, message: 'Selected CoMaker does not exist.' };
     } else {
-        response = { error: true, message: 'No Loan associated to this client.' };
+        let loan = currentLoan[0];
+        const cmLoan = coMakerLoan[0];
+        loan.coMaker = coMaker;
+        loan.coMakerId = cmLoan.clientId;
+        console.log(loan, cmLoan)
+
+        const loanId = loan._id;
+        delete loan._id;
+        const resp = await db.collection('loans').updateOne({ _id: loanId }, { $set: { ...loan } });
+
+        response = { success: true, response: resp };
     }
 
     res.status(statusCode)

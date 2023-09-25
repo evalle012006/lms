@@ -412,6 +412,11 @@ const ActionButton = ({ row, rowActionButtons }) => {
                           <KeyIcon className="cursor-pointer h-5" />
                         </div>
                       )}
+                      {item.label === 'Update' && (
+                        <div className="px-2" onClick={() => item.action(row)} title={item.title}>
+                          <ArrowPathIcon className="cursor-pointer h-5" />
+                        </div>
+                      )}
                     </React.Fragment>
                 );
               })}
