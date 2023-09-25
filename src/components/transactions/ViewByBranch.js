@@ -127,9 +127,9 @@ const ViewByBranchPage = ({dateFilter, type}) => {
     
                         totalsLoanRelease += branch.loans[0].totalRelease;
                         totalsLoanBalance += branch.loans[0].totalLoanBalance;
-                        if (branch.groups.length === 0) {
-                            targetLoanCollection += branch.loans[0].loanTarget;
-                        }
+                        // if (branch.groups.length === 0) {
+                        //     targetLoanCollection += branch.loans[0].loanTarget;
+                        // }
                         totalPastDue += collection.pastDue;
                         totalNoPastDue += collection.noPastDue;
                         // totalMcbu += collection.mcbu;
