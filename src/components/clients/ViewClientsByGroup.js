@@ -12,7 +12,7 @@ import Modal from "@/lib/ui/Modal";
 import ClientDetailPage from "./ClientDetailPage";
 import { formatPricePhp } from "@/lib/utils";
 
-const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMode, handleShowAddDrawer}) => {
+const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMode, handleShowAddDrawer, handleShowCoMakerDrawer}) => {
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
@@ -49,7 +49,8 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                         missPayments: loan.missPayments ?  loan.missPayments : 0,
                         noOfPayment: loan.noOfPayment ? loan.noOfPayment : 0,
                         delinquent: loan.client.delinquent === true ? 'Yes' : 'No',
-                        loName: loan.lo.length > 0 ? `${loan.lo[0].lastName}, ${loan.lo[0].firstName}` : ''
+                        loName: loan.lo.length > 0 ? `${loan.lo[0].lastName}, ${loan.lo[0].firstName}` : '',
+                        coMaker: (loan.coMaker && typeof loan.coMaker === 'number') ? loan.coMaker : ''
                     });
                 });
                 dispatch(setClientList(clients));
@@ -78,7 +79,8 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                                 missPayments: client.loans.length > 0 ?  client.loans[0].missPayments : 0,
                                 noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
                                 delinquent: client.delinquent === true ? 'Yes' : 'No',
-                                loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : ''
+                                loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : '',
+                                coMaker: (client.loans[0].coMaker && typeof client.loans[0].coMaker === 'number') ? client.loans[0].coMaker : ''
                             });
                         });
                         dispatch(setClientList(clients));
@@ -104,7 +106,8 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                                 missPayments: client.loans.length > 0 ?  client.loans[0].missPayments : 0,
                                 noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
                                 delinquent: client.delinquent === true ? 'Yes' : 'No',
-                                loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : ''
+                                loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : '',
+                                coMaker: (client.loans[0].coMaker && typeof client.loans[0].coMaker === 'number') ? client.loans[0].coMaker : ''
                             });
                         });
                         dispatch(setClientList(clients));
@@ -133,7 +136,8 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                                 noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
                                 delinquent: client.delinquent === true ? 'Yes' : 'No',
                                 loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : '',
-                                branchName: branch.name
+                                branchName: branch.name,
+                                coMaker: (client.loans[0].coMaker && typeof client.loans[0].coMaker === 'number') ? client.loans[0].coMaker : ''
                             });
                         });
                     });
@@ -161,7 +165,8 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                         missPayments: client.loans.length > 0 ?  client.loans[0].missPayments : 0,
                         noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
                         delinquent: client.delinquent === true ? 'Yes' : 'No',
-                        loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : ''
+                        loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : '',
+                        coMaker: (client.loans.coMaker && typeof client.loans.coMaker === 'number') ? client.loans.coMaker : ''
                     });
                 });
                 dispatch(setClientList(clients));
@@ -180,6 +185,12 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
         let clientData = row.original.hasOwnProperty("client") ? row.original.client : row.original;
         setClientParent(clientData);
         handleShowAddDrawer();
+    }
+
+    const handleCoMakerAction = (row) => {
+        let clientData = row.original.hasOwnProperty("client") ? row.original.client : row.original;
+        setClientParent(clientData);
+        handleShowCoMakerDrawer();
     }
 
     const handleDeleteAction = (row) => {
@@ -203,10 +214,14 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
         setShowClientInfoModal(false);
     }
 
-    const rowActionButtons = [
+    const [rowActionButtons, setRowActionButtons] = useState(status !== 'active' ? [
         { label: 'Edit', action: handleEditAction },
         { label: 'Delete', action: handleDeleteAction }
-    ];
+    ] : [
+        { label: 'Edit', action: handleEditAction },
+        { label: 'Update', action: handleCoMakerAction, title: 'Update CoMaker' },
+        { label: 'Delete', action: handleDeleteAction }
+    ]);
 
     const handleDelete = () => {
         if (client) {

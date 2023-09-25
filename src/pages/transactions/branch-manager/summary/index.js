@@ -1486,10 +1486,12 @@ const BranchManagerSummary = () => {
         grandTotal.loanBalance = totalLoanBalance;
         grandTotal.loanBalanceStr = formatPricePhp(totalLoanBalance);
 
-        if (!filter) {
-            saveLosTotals(grandTotal);
-        } else {
-            saveLosTotals(grandTotal, true, date)
+        if (grandTotal.loanBalance > 0) {
+            if (!filter) {
+                saveLosTotals(grandTotal);
+            } else {
+                saveLosTotals(grandTotal, true, date)
+            }
         }
 
         return grandTotal;
