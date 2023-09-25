@@ -979,12 +979,10 @@ const CashCollectionDetailsPage = () => {
                         temp.loanBalance = parseFloat(temp.loanBalance);
                         temp.amountRelease = parseFloat(temp.amountRelease);
 
-                        if (!temp.paymentCollection || temp.paymentCollection <= 0) {
-                            if (temp.remarks && temp.remarks.value !== "excused advance payment") {
-                                temp.paymentCollection = 0;
-                                temp.mispayment = true;
-                                temp.mispaymentStr = 'Yes';
-                            }
+                        if ((!temp.paymentCollection || temp.paymentCollection <= 0) && (temp.remarks && temp.remarks.value !== "excused advance payment")) {
+                            temp.paymentCollection = 0;
+                            temp.mispayment = true;
+                            temp.mispaymentStr = 'Yes';
                         }
     
                         if (temp.loanBalance <= 0) {
@@ -1036,9 +1034,11 @@ const CashCollectionDetailsPage = () => {
             
                         setTimeout(async () => {
                             getCashCollections();
-                            if (currentGroup) {
-                                await autoHealCashCollections(currentGroup._id, currentDate);
-                            }
+                            setTimeout(async () => {
+                                if (currentGroup) {
+                                    await autoHealCashCollections(currentGroup._id, currentDate);
+                                }
+                            }, 2000);
                         }, 1000);
                     }
                 } else {

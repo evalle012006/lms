@@ -23,7 +23,7 @@ const ACLoanManagementApp = ({ Component, pageProps }) => {
                 <link rel="icon" href="/images/favicon.ico" type="image/x-icon" />
                 <link rel="shortcut icon" href="/images/favicon.ico" type="image/x-icon" />
             </Head>
-            <Script strategy="afterInteractive" src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_ID}`}/>
+            {/* <Script strategy="afterInteractive" src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_ID}`}/>
             <Script id='google-analytics' strategy="afterInteractive" 
                     dangerouslySetInnerHTML={{
                         __html: `window.dataLayer = window.dataLayer || [];
@@ -34,7 +34,7 @@ const ACLoanManagementApp = ({ Component, pageProps }) => {
                                 });
                             `,
                     }}
-            />
+            /> */}
             <RouteGuard>
                 <Toaster position="top-center" reverseOrder={false} hideProgressBar={false} closeOnClick />
                 <Component {...pageProps} />

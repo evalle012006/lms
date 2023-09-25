@@ -484,7 +484,8 @@ async function getAllLoansPerGroup(req, res) {
                                                 else: 0
                                             }
                                         } },
-                                        groupStatusArr: { $addToSet: '$groupStatus' }
+                                        groupStatusArr: { $addToSet: '$groupStatus' },
+                                        hasDraftsArr: { $addToSet: '$draft' }
                                     } 
                                 }
                             ],

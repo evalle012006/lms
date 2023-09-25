@@ -24,6 +24,7 @@ import Modal from '@/lib/ui/Modal';
 import ClientDetailPage from '@/components/clients/ClientDetailPage';
 import { setClient } from '@/redux/actions/clientActions';
 import { LOR_ONLY_OFFSET_REMARKS, LOR_WEEKLY_REMARKS } from '@/lib/constants';
+import { autoHealCashCollections } from '@/lib/sync-jobs';
 
 const CashCollectionDetailsPage = () => {
     const isHoliday = useSelector(state => state.systemSettings.holiday);
@@ -1025,12 +1026,10 @@ const CashCollectionDetailsPage = () => {
                         temp.loanBalance = parseFloat(temp.loanBalance);
                         temp.amountRelease = parseFloat(temp.amountRelease);
 
-                        if (!temp.paymentCollection || temp.paymentCollection <= 0) {
-                            if (temp.remarks && temp.remarks.value !== "excused advance payment") {
-                                temp.paymentCollection = 0;
-                                temp.mispayment = true;
-                                temp.mispaymentStr = 'Yes';
-                            }
+                        if ((!temp.paymentCollection || temp.paymentCollection <= 0) && (temp.remarks && temp.remarks.value !== "excused advance payment")) {
+                            temp.paymentCollection = 0;
+                            temp.mispayment = true;
+                            temp.mispaymentStr = 'Yes';
                         }
     
                         if (temp.loanBalance <= 0) {
@@ -1088,6 +1087,11 @@ const CashCollectionDetailsPage = () => {
             
                         setTimeout(() => {
                             getCashCollections();
+                            setTimeout(async () => {
+                                if (currentGroup) {
+                                    await autoHealCashCollections(currentGroup._id, currentDate);
+                                }
+                            }, 2000);
                         }, 1000);
                     }
                 } else {

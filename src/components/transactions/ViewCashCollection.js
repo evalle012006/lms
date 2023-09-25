@@ -105,10 +105,16 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 selectedBranch = cc.branchId;
                 let noCurrentRelease = '0 / 0';
                 let groupStatus = 'pending';
+                let isDraft = false;
                 if (cc.cashCollections.length > 0) {
                     const transactionStatus = cc.cashCollections[0].groupStatusArr.filter(status => status === "closed");
                     if (transactionStatus.length > 0) {
                         groupStatus = 'closed';
+                    }
+
+                    const draft = !filter ? cc.cashCollections[0].hasDraftsArr.filter(d => d === true) : [];
+                    if (draft.length > 0) {
+                        isDraft = true;
                     }
                 }
 
@@ -168,6 +174,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                             transfer: 0,
                             transferStr: '-',
                             status: groupStatus,
+                            isDraft: isDraft,
                             page: 'collection'
                         };
     
@@ -346,6 +353,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                             transfer: 0,
                             transferStr: '-',
                             status: groupStatus,
+                            isDraft: false,
                             page: 'collection'
                         };
     
