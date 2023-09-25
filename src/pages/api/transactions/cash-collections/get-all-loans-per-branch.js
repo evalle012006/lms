@@ -92,6 +92,7 @@ async function getAllLoansPerGroup(req, res) {
                                 pipeline: [
                                     { $match: { $expr: { $and: [
                                         { $eq: ['$dateAdded', date] },
+                                        { $ne: ['$status', 'pending'] },
                                         { $or: [
                                             { $ifNull: ['$draft', 'Unspecified'] },
                                             { $eq: ['$draft', false] }
@@ -428,6 +429,7 @@ async function getAllLoansPerGroup(req, res) {
                             pipeline: [
                                 { $match: { $expr: { $and: [
                                     { $eq: ['$dateAdded', date] },
+                                    { $ne: ['$status', 'pending'] },
                                     { $or: [
                                         { $ifNull: ['$draft', 'Unspecified'] },
                                         { $eq: ['$draft', false] }
