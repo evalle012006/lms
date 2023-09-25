@@ -26,10 +26,12 @@ async function getSummary(req, res) {
         const userId = user[0]._id + '';
 
         let fBalance = [];
+        let fBalanceMigration = [];
         let summary = [];
 
         if (user[0].role.rep === 3) {
             fBalance = await db.collection('losTotals').find({ userId: userId, month: lastMonth, year: lastYear, losType: 'commulative' }).toArray();
+            fBalanceMigration = await getFBalanceMigration(branchId, lastMonth, lastYear, userId);
             summary = await db.collection('losTotals').aggregate([
                 { $match: { branchId: branchId, month: currentMonth, year: currentYear, losType: 'daily', userType: 'lo' } },
                 { $sort: { dateAdded: 1 } },
@@ -193,6 +195,7 @@ async function getSummary(req, res) {
         
         data = {
             fBalance: fBalance.length > 0 ? fBalance : [],
+            fBalanceMigration: fBalanceMigration,
             current: summary
         }
     }
@@ -201,4 +204,177 @@ async function getSummary(req, res) {
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')
         .end(JSON.stringify(response));
+}
+
+const getFBalanceMigration = async (branchId, lastMonth, lastYear, userId) => {
+    const { db } = await connectToDatabase();
+    const existingMigratedFBalance = await db.collection('losTotals').find({ userId: userId, month: lastMonth, year: lastYear, losType: "commulative", insertedBy: "migration" }).toArray();
+    if (existingMigratedFBalance.length === 0) {
+        const migratedFBalance = await db.collection('losTotals').aggregate([
+            { $match: { branchId: branchId, month: lastMonth, year: lastYear, losType: 'commulative', insertedBy: "migration" } },
+            { $sort: { dateAdded: 1 } },
+            {
+                $group: {
+                    _id: {branchId: '$branchId', dateAdded: '$dateAdded'},
+                    transfer: { $sum: '$data.transfer' },
+                    newMember: { $sum: '$data.newMember' },
+                    prevMcbuBalance: { $sum: "$data.prevMcbuBalance" },
+                    mcbuTarget: { $sum: { $cond: {
+                        if: { $eq: ['$occurence', 'weekly'] },
+                        then: '$data.mcbuTarget',
+                        else: 0
+                    } } },
+                    transferMcbu: { $sum: '$data.transferMcbu' },
+                    mcbuActual: { $sum: '$data.mcbuActual' },
+                    mcbuWithdrawal: { $sum: '$data.mcbuWithdrawal' },
+                    mcbuInterest: { $sum: '$data.mcbuInterest' },
+                    noMcbuReturn: { $sum: '$data.noMcbuReturn' },
+                    mcbuReturnAmt: { $sum: '$data.mcbuReturnAmt' },
+                    mcbuBalance: { $sum: '$data.mcbuBalance' },
+                    offsetPerson: { $sum: '$data.offsetPerson' },
+                    activeClients: { $sum: '$data.activeClients' },
+                    loanReleaseDailyPerson: { $sum: {
+                        $cond: {
+                            if: { $eq: ['$occurence', 'daily'] },
+                            then: '$data.loanReleasePerson',
+                            else: 0
+                        }
+                    } },
+                    loanReleaseDailyAmount: { $sum: {
+                        $cond: {
+                            if: { $eq: ['$occurence', 'daily'] },
+                            then: '$data.loanReleaseAmount',
+                            else: 0
+                        }
+                    } },
+                    loanReleaseWeeklyPerson: { $sum: {
+                        $cond: {
+                            if: { $eq: ['$occurence', 'weekly'] },
+                            then: '$data.loanReleasePerson',
+                            else: 0
+                        }
+                    } },
+                    loanReleaseWeeklyAmount: { $sum: {
+                        $cond: {
+                            if: { $eq: ['$occurence', 'weekly'] },
+                            then: '$data.loanReleaseAmount',
+                            else: 0
+                        }
+                    } },
+                    consolidatedLoanReleasePerson: { $sum: '$data.loanReleasePerson' },
+                    consolidatedLoanReleaseAmount: { $sum: '$data.loanReleaseAmount' },
+                    activeLoanReleasePerson: { $sum: '$data.activeLoanReleasePerson' },
+                    activeLoanReleaseAmount: { $sum: '$data.activeLoanReleaseAmount' },
+                    collectionTargetDaily: { $sum: {
+                        $cond: {
+                            if: { $eq: ['$occurence', 'daily'] },
+                            then: '$data.collectionTarget',
+                            else: 0
+                        }
+                    } },
+                    collectionAdvancePaymentDaily: { $sum: {
+                        $cond: {
+                            if: { $eq: ['$occurence', 'daily'] },
+                            then: '$data.collectionAdvancePayment',
+                            else: 0
+                        }
+                    } },
+                    collectionActualDaily: { $sum: {
+                        $cond: {
+                            if: { $eq: ['$occurence', 'daily'] },
+                            then: '$data.collectionActual',
+                            else: 0
+                        }
+                    } },
+                    collectionTargetWeekly: { $sum: {
+                        $cond: {
+                            if: { $eq: ['$occurence', 'weekly'] },
+                            then: '$data.collectionTarget',
+                            else: 0
+                        }
+                    } },
+                    collectionAdvancePaymentWeekly: { $sum: {
+                        $cond: {
+                            if: { $eq: ['$occurence', 'weekly'] },
+                            then: '$data.collectionAdvancePayment',
+                            else: 0
+                        }
+                    } },
+                    collectionActualWeekly: { $sum: {
+                        $cond: {
+                            if: { $eq: ['$occurence', 'weekly'] },
+                            then: '$data.collectionActual',
+                            else: 0
+                        }
+                    } },
+                    consolidatedCollection: { $sum: '$data.collectionActual' },
+                    pastDuePerson: { $sum: '$data.pastDuePerson' },
+                    pastDueAmount: { $sum: '$data.pastDueAmount' },
+                    mispaymentPerson: { $sum: '$data.mispaymentPerson' },
+                    fullPaymentDailyPerson: { $sum: {
+                        $cond: {
+                            if: { $eq: ['$occurence', 'daily'] },
+                            then: '$data.fullPaymentPerson',
+                            else: 0
+                        }
+                    } },
+                    fullPaymentDailyAmount: { $sum: {
+                        $cond: {
+                            if: { $eq: ['$occurence', 'daily'] },
+                            then: '$data.fullPaymentAmount',
+                            else: 0
+                        }
+                    } },
+                    fullPaymentWeeklyPerson: { $sum: {
+                        $cond: {
+                            if: { $eq: ['$occurence', 'weekly'] },
+                            then: '$data.fullPaymentPerson',
+                            else: 0
+                        }
+                    } },
+                    fullPaymentWeeklyAmount: { $sum: {
+                        $cond: {
+                            if: { $eq: ['$occurence', 'weekly'] },
+                            then: '$data.fullPaymentAmount',
+                            else: 0
+                        }
+                    } },
+                    consolidatedFullPaymentPerson: { $sum: '$data.fullPaymentPerson' },
+                    consolidatedFullPaymentAmount: { $sum: '$data.fullPaymentAmount' },
+                    activeBorrowers: { $sum: '$data.activeBorrowers' },
+                    loanBalance: { $sum: '$data.loanBalance' }
+                }
+            }
+        ]).toArray();
+        // console.log(migratedFBalance)
+        if (migratedFBalance.length > 0) {
+            const monthStr = lastMonth < 10 ? "0" + lastMonth : lastMonth;
+            const dateAdded = lastYear + "-" + monthStr + "-30";
+            let temp = {...migratedFBalance[0]};
+    
+            temp.day = "Commulative";
+            temp.grandTotal = true;
+    
+            const bmsFwBalance = {
+                userId: userId,
+                month: lastMonth,
+                year: lastYear,
+                data: temp,
+                losType: "commulative",
+                insertedBy: "migration",
+                insertedDateTime: new Date(),
+                dateAdded: dateAdded
+            }
+    
+            // if (existingMigratedFBalance.length > 0) {
+            //     console.log('updating BMS fwbalance...')
+            //     await db.collection('losTotals').updateOne({ _id: existingMigratedFBalance[0]._id }, { $set: {...bmsFwBalance} });
+            // } else {
+                console.log('adding new commulative....BMS')
+                await db.collection('losTotals').insertOne({...bmsFwBalance});
+            // }
+        }
+    }
+
+    return migratedFBalance;
 }
