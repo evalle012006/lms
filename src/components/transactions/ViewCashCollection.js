@@ -15,7 +15,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
     const dispatch = useDispatch();
     const selectedLOSubject = new BehaviorSubject(process.browser && localStorage.getItem('selectedLO'));
     const currentUser = useSelector(state => state.user.data);
-    const branchList = useSelector(state => state.branch.list);
+    const currentBranch = useSelector(state => state.branch.data);
     const currentDate = useSelector(state => state.systemSettings.currentDate);
     const cashCollectionList = useSelector(state => state.cashCollection.main);
     const [loading, setLoading] = useState(true);
@@ -873,6 +873,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
         }
 
         return {
+            branchId: currentBranch,
             userId: selectedLO ? selectedLO : currentUser._id,
             userType: 'lo',
             branchId: selectedBranch,

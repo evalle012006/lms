@@ -16,6 +16,7 @@ async function resetLO(req, res) {
 
     await db.collection('loans').deleteMany({ insertedBy: "migration", loId: loId });
     await db.collection('client').deleteMany({ insertedBy: "migration", loId: loId });
+    await db.collection('losTotals').deleteMany({ insertedBy: "migration", userId: loId });
 
     response = {
         success: true

@@ -34,6 +34,7 @@ const InputNumber = ({ name, value=0, label, placeholder, disabled, onChange, se
                             ${errors && 'text-red-400'}
                             ${className}
                         `}
+                        min={0}
                         placeholder={placeholder}
                         disabled={disabled}
                         onChange={onChange}
