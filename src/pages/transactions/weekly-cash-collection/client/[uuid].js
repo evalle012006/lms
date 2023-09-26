@@ -1246,6 +1246,8 @@ const CashCollectionDetailsPage = () => {
                                     temp.error = true;
                                 }
                             }
+                        } else {
+                            temp.paymentCollection = 0;
                         }
                     } 
                 } 
@@ -1716,6 +1718,7 @@ const CashCollectionDetailsPage = () => {
             temp.clientStatus = "active";
             temp.delinquent = false;
             temp.status = 'active';
+            temp.reverted = true;
             delete temp.history;
             delete temp.fullPaymentDate;
 
