@@ -50,7 +50,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                         noOfPayment: loan.noOfPayment ? loan.noOfPayment : 0,
                         delinquent: loan.client.delinquent === true ? 'Yes' : 'No',
                         loName: loan.lo.length > 0 ? `${loan.lo[0].lastName}, ${loan.lo[0].firstName}` : '',
-                        coMaker: (loan.coMaker && typeof loan.coMaker === 'number') ? loan.coMaker : ''
+                        coMaker: (loan?.coMaker && typeof loan?.coMaker === 'number') ? loan.coMaker : ''
                     });
                 });
                 dispatch(setClientList(clients));
@@ -80,7 +80,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                                 noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
                                 delinquent: client.delinquent === true ? 'Yes' : 'No',
                                 loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : '',
-                                coMaker: (client.loans[0].coMaker && typeof client.loans[0].coMaker === 'number') ? client.loans[0].coMaker : ''
+                                coMaker: (client.loans[0]?.coMaker && typeof client.loans[0]?.coMaker === 'number') ? client.loans[0]?.coMaker : ''
                             });
                         });
                         dispatch(setClientList(clients));
@@ -107,7 +107,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                                 noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
                                 delinquent: client.delinquent === true ? 'Yes' : 'No',
                                 loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : '',
-                                coMaker: (client.loans[0].coMaker && typeof client.loans[0].coMaker === 'number') ? client.loans[0].coMaker : ''
+                                coMaker: (client.loans[0]?.coMaker && typeof client.loans[0]?.coMaker === 'number') ? client.loans[0]?.coMaker : ''
                             });
                         });
                         dispatch(setClientList(clients));
@@ -137,7 +137,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                                 delinquent: client.delinquent === true ? 'Yes' : 'No',
                                 loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : '',
                                 branchName: branch.name,
-                                coMaker: (client.loans[0].coMaker && typeof client.loans[0].coMaker === 'number') ? client.loans[0].coMaker : ''
+                                coMaker: (client.loans[0]?.coMaker && typeof client.loans[0]?.coMaker === 'number') ? client.loans[0]?.coMaker : ''
                             });
                         });
                     });
@@ -166,7 +166,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                         noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
                         delinquent: client.delinquent === true ? 'Yes' : 'No',
                         loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : '',
-                        coMaker: (client.loans.coMaker && typeof client.loans.coMaker === 'number') ? client.loans.coMaker : ''
+                        coMaker: (client.loans?.coMaker && typeof client?.loans.coMaker === 'number') ? client.loans.coMaker : ''
                     });
                 });
                 dispatch(setClientList(clients));
