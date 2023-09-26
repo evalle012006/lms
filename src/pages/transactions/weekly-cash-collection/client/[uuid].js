@@ -1246,6 +1246,8 @@ const CashCollectionDetailsPage = () => {
                                     temp.error = true;
                                 }
                             }
+                        } else {
+                            temp.paymentCollection = 0;
                         }
                     } 
                 } 

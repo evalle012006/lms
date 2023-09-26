@@ -1210,6 +1210,8 @@ const CashCollectionDetailsPage = () => {
                                     temp.error = true;
                                 }
                             }
+                        } else {
+                            temp.paymentCollection = 0;
                         }
                     } 
                 } 
@@ -1394,7 +1396,6 @@ const CashCollectionDetailsPage = () => {
                                 temp.targetCollectionStr = formatPricePhp(temp.activeLoan);
                                 temp.advanceDays = temp.advanceDays;
                             } else {
-                                console.log(temp.prevData)
                                 temp.prevData = {
                                     amountRelease: temp.amountRelease,
                                     paymentCollection: temp.paymentCollection,
