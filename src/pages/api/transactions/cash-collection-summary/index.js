@@ -30,8 +30,8 @@ async function getSummary(req, res) {
         let summary = [];
 
         if (user[0].role.rep === 3) {
+            await getFBalanceMigration(branchId, lastMonth, lastYear, userId);
             fBalance = await db.collection('losTotals').find({ userId: userId, month: lastMonth, year: lastYear, losType: 'commulative' }).toArray();
-            fBalanceMigration = await getFBalanceMigration(branchId, lastMonth, lastYear, userId);
             summary = await db.collection('losTotals').aggregate([
                 { $match: { branchId: branchId, month: currentMonth, year: currentYear, losType: 'daily', userType: 'lo' } },
                 { $sort: { dateAdded: 1 } },
@@ -370,11 +370,8 @@ const getFBalanceMigration = async (branchId, lastMonth, lastYear, userId) => {
             //     console.log('updating BMS fwbalance...')
             //     await db.collection('losTotals').updateOne({ _id: existingMigratedFBalance[0]._id }, { $set: {...bmsFwBalance} });
             // } else {
-                console.log('adding new commulative....BMS')
                 await db.collection('losTotals').insertOne({...bmsFwBalance});
             // }
         }
     }
-
-    return migratedFBalance;
 }
