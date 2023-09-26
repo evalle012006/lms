@@ -1718,6 +1718,7 @@ const CashCollectionDetailsPage = () => {
             temp.clientStatus = "active";
             temp.delinquent = false;
             temp.status = 'active';
+            temp.reverted = true;
             delete temp.history;
             delete temp.fullPaymentDate;
 

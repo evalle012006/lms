@@ -137,11 +137,11 @@ const TransferClientPage = () => {
         
         let transfer = {...data};
 
-        // const errorMsg = await checkGroupsStatus([transfer.sourceGroupId, transfer.targetGroupId]);
-        // if (errorMsg) {
-        //     setLoading(false);
-        //     toast.error(errorMsg);
-        // } else {
+        const errorMsg = await checkGroupsStatus([transfer.sourceGroupId, transfer.targetGroupId]);
+        if (errorMsg) {
+            setLoading(false);
+            toast.error(errorMsg);
+        } else {
             let msg = 'Selected client successfully transferred.';
             if (status === "approved") {
                 const clientData = transfer.client;
@@ -162,7 +162,7 @@ const TransferClientPage = () => {
                     getTransferList();
                 }, 500);
             }
-        // }
+        }
     }
 
     const handleEditAction = (row) => {
