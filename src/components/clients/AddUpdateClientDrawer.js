@@ -16,6 +16,7 @@ import moment from 'moment'
 import CheckBox from "@/lib/ui/checkbox";
 import placeholder from '/public/images/image-placeholder.png';
 import Image from 'next/image';
+import { checkFileSize } from "@/lib/utils";
 // add loan officer per client
 const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSidebar, onClose }) => {
     const hiddenInput = useRef(null);
@@ -184,8 +185,12 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
     }
 
     const handleFileChange = async e => {
-        if (e.target.value) {
-            const fileUploaded = e.target.files[0];
+        const fileUploaded = e.target.files[0];
+
+        const fileSizeMsg = checkFileSize(fileUploaded?.size);
+        if (fileSizeMsg) {
+            toast.error(fileSizeMsg);
+        } else {
             setPhoto(URL.createObjectURL(fileUploaded));
             setImage(fileUploaded);
         }
