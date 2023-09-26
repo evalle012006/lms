@@ -46,6 +46,18 @@ export const formatBytes = (bytes, decimals = 2) => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
+export const checkFileSize = (size) => {
+    let msg;
+
+    const fileSize = Math.round((size / 1024));
+    
+    if (fileSize > 1028) {
+        msg = 'File too big, please select a file less than 1mb';
+    }
+
+    return msg;
+}
+
 export const formatPricePhp = (num) => {
     if (num) {
         if (num < 0) {

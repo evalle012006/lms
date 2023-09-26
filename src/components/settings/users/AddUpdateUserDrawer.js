@@ -17,6 +17,7 @@ import { multiStyles, DropdownIndicator } from "@/styles/select";
 import Select from 'react-select';
 import { setUser } from "@/redux/actions/userActions";
 import RadioButton from "@/lib/ui/radio-button";
+import { checkFileSize } from "@/lib/utils";
 
 const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], showSidebar, setShowSidebar, onClose }) => {    
     const hiddenInput = useRef(null);
@@ -140,8 +141,12 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
     }
 
     const handleFileChange = async e => {
-        if (e.target.value) {
-            const fileUploaded = e.target.files[0];
+        const fileUploaded = e.target.files[0];
+
+        const fileSizeMsg = checkFileSize(fileUploaded?.size);
+        if (fileSizeMsg) {
+            toast.error(fileSizeMsg);
+        } else {
             setPhoto(URL.createObjectURL(fileUploaded));
             setImage(fileUploaded);
         }
