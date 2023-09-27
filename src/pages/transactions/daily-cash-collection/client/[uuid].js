@@ -558,6 +558,12 @@ const CashCollectionDetailsPage = () => {
                                     collection.noOfPayments = (collection.status === "active" || (collection.status === "completed" && collection.fullPaymentDate === currentDate)) ? current.noOfPayments : 0;
                                     collection.noOfPaymentStr = (collection.status === "active" || (collection.status === "completed" && collection.fullPaymentDate === currentDate)) ? current.noOfPayments + ' / ' + collection.loanTerms : '-';
                                     collection.total = current.total;
+                                    collection.fullPayment = current.fullPayment;
+                                    collection.fullPaymentStr = formatPricePhp(current.fullPayment);
+                                    collection.fullPaymentDate = current.fullPaymentDate;
+                                    collection.history = current.history;
+                                    collection.amountRelease = current.amountRelease;
+                                    collection.amountReleaseStr = formatPricePhp(current.amountRelease);
                                     setEditMode(true);
                                 } else {
                                     setEditMode(false);
@@ -1015,7 +1021,7 @@ const CashCollectionDetailsPage = () => {
                 
                     return temp;   
                 }).filter(cc => cc.status !== "totals");
-                // console.log(dataArr)
+                console.log(dataArr)
                 if (save) {
                     let cashCollection;
                     if (editMode) {
@@ -1212,6 +1218,9 @@ const CashCollectionDetailsPage = () => {
                             }
                         } else {
                             temp.paymentCollection = 0;
+                            temp.mispayment = false;
+                            temp.mispaymentStr = 'No';
+                            temp.remarks = "";
                         }
                     } 
                 } 
@@ -1466,7 +1475,7 @@ const CashCollectionDetailsPage = () => {
                             mcbu: temp.mcbu,
                             mcbuCol: temp.mcbuCol
                         }
-
+                        console.log(temp);
                         if (temp.hasOwnProperty('history')) {
                             temp.history = {
                                 ...temp.history,
