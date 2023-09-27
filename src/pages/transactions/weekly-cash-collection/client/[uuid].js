@@ -536,6 +536,12 @@ const CashCollectionDetailsPage = () => {
                                     collection.noOfPayments = (collection.status === "active" || (collection.status === "completed" && collection.fullPaymentDate === currentDate)) ? current.noOfPayments : 0;
                                     collection.noOfPaymentStr = (collection.status === "active" || (collection.status === "completed" && collection.fullPaymentDate === currentDate)) ? current.noOfPayments + ' / ' + maxDays : '-';
                                     collection.total = current.total;
+                                    collection.fullPayment = current.fullPayment;
+                                    collection.fullPaymentStr = formatPricePhp(current.fullPayment);
+                                    collection.fullPaymentDate = current.fullPaymentDate;
+                                    collection.history = current.history;
+                                    collection.amountRelease = current.amountRelease;
+                                    collection.amountReleaseStr = formatPricePhp(current.amountRelease);
                                     setEditMode(true);
                                 } else {
                                     setEditMode(false);
@@ -1248,6 +1254,9 @@ const CashCollectionDetailsPage = () => {
                             }
                         } else {
                             temp.paymentCollection = 0;
+                            temp.mispayment = false;
+                            temp.mispaymentStr = 'No';
+                            temp.remarks = "";
                         }
                     } 
                 } 
