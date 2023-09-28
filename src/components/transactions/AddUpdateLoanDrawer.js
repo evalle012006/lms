@@ -172,6 +172,9 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         setLoading(true);
         const form = formikRef.current;
         setSlotNo(value);
+        if (mode !== 'reloan') {
+            form.setFieldValue('groupId', selectedGroup);
+        }
         form.setFieldValue(field, value);
         setLoading(false);
     }

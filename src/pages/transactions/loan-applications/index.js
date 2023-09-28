@@ -526,7 +526,9 @@ const LoanApplicationPage = () => {
         setMode('add');
         setLoan({});
         getListLoan();
-        getListGroup(currentUser._id, currentUser?.transactionType);
+        if (currentUser.role.rep === 4) {
+            getListGroup(currentUser._id, currentUser?.transactionType);
+        }
         setTimeout(() => {
             setLoading(false);
         }, 1000);
