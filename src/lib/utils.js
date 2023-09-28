@@ -274,3 +274,7 @@ export const parseDate = (date) => {
 
     return parsedDate;
 }
+
+export const calculateAge = (dob) => {
+    return Math.round(moment().diff(dob, 'years', true));
+}
