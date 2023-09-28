@@ -52,7 +52,12 @@ const Index = () => {
         //     await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}aahandy-scripts/update-clients`, {});
         // }
 
+        // const updateGroupData = async () => {
+        //     await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}aahandy-scripts/update-group-data`, {});
+        // }
+
         mounted && getSystemSettings();
+        // mounted && updateGroupData();
         // mounted && updateClients();
         // mounted && getLoans();
         // mounted && updateLoanCoMaker();

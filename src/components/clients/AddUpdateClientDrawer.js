@@ -17,6 +17,7 @@ import CheckBox from "@/lib/ui/checkbox";
 import placeholder from '/public/images/image-placeholder.png';
 import Image from 'next/image';
 import { checkFileSize } from "@/lib/utils";
+import { useRouter } from "node_modules/next/router";
 // add loan officer per client
 const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSidebar, onClose }) => {
     const hiddenInput = useRef(null);
@@ -34,6 +35,10 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
     const [photoW, setPhotoW] = useState(200);
     const [photoH, setPhotoH] = useState(200);
     const [image, setImage] = useState('');
+    const [selectedGroup, setSelectedGroup] = useState();
+    const router = useRouter();
+
+    const { status } = router.query;
 
     const initialValues = {
         firstName: client.firstName,
@@ -101,8 +106,14 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
         values.birthdate = values.birthdate ? moment(values.birthdate).format("YYYY-MM-DD") : null;
         values.fullName = values.firstName + ' ' + values.middleName + ' ' + values.lastName;
         values.address = values.addressStreetNo + ' ' + values.addressBarangayDistrict + ' ' + values.addressMunicipalityCity + ' ' + values.addressProvince + ' ' + values.addressZipCode;
-        const group = groupList && groupList.find(g => g._id === values.groupId);
-        values.groupName = group.name;
+        
+        let groupData;
+        if (status === 'active') {
+            groupData = selectedGroup;
+        } else {
+            groupData = groupList && groupList.find(g => g._id === values.groupId);
+        }
+        values.groupName = groupData.name;
         if (currentUser.root !== true && (currentUser.role.rep === 4 || currentUser.role.rep === 3) && branchList.length > 0) {
             const branch = branchList.find(b => b.code === currentUser.designatedBranch);
             values.branchId = branch._id;
@@ -210,6 +221,10 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
         if (client.imgUrl) {
             mounted && setPhoto(`${client.imgUrl}`);
         }
+        console.log(client, status)
+        if (status == 'active' && client.group && client.group.length > 0) {
+            mounted && setSelectedGroup(client.group[0]);
+        }
 
         mounted && setLoading(false);
 
@@ -283,19 +298,33 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                             </div>
                                         </div>
                                     )}
-                                    <div className="mt-4">
-                                        <SelectDropdown
-                                            name="groupId"
-                                            field="groupId"
-                                            value={values.groupId}
-                                            label="Group"
-                                            options={groupList}
-                                            onChange={setFieldValue}
-                                            onBlur={setFieldTouched}
-                                            placeholder="Select Group"
-                                            errors={touched.groupId && errors.groupId ? errors.groupId : undefined}
-                                        />
-                                    </div>
+                                    { (mode === 'edit' && status === 'active' && selectedGroup) ? (
+                                        <div className="mt-4">
+                                            <div className={`flex flex-col border rounded-md px-4 py-2 bg-white border-main`}>
+                                                <div className="flex justify-between">
+                                                    <label htmlFor={'slotNo'} className={`font-proxima-bold text-xs font-bold text-main`}>
+                                                        Group
+                                                    </label>
+                                                </div>
+                                                {console.log(selectedGroup)}
+                                                <span className="text-gray-400">{ selectedGroup.name }</span>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="mt-4">
+                                            <SelectDropdown
+                                                name="groupId"
+                                                field="groupId"
+                                                value={values.groupId}
+                                                label="Group"
+                                                options={groupList}
+                                                onChange={setFieldValue}
+                                                onBlur={setFieldTouched}
+                                                placeholder="Select Group"
+                                                errors={touched.groupId && errors.groupId ? errors.groupId : undefined}
+                                            />
+                                        </div>
+                                    ) }
                                     <div className="mt-4">
                                         <InputText
                                             name="lastName"
