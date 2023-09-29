@@ -410,9 +410,9 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
                 form.setFieldValue("targetGroupId", null);
             } else if (targetGroup.status === 'available') {
                 setSelectedTargetGroup(selectedTargetGroup);
-                const availableSlots = targetGroup.availableSlots.map(s => {
+                const availableSlots = targetGroup.availableSlots.filter(s => s <= targetGroup.capacity).map(s => {
                     return { label: s, value: s };
-                })
+                });
                 setSlotNumbers(availableSlots);
                 form.setFieldValue("targetGroupId", selectedTargetGroup);
                 mode === "edit" && setSelectedSlotNo(client.selectedSlotNo);
