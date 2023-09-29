@@ -11,12 +11,15 @@ import moment from 'moment';
 import { useRouter } from 'next/router';
 import { ArrowLeftCircleIcon } from '@heroicons/react/24/solid';
 import ButtonSolid from "@/lib/ui/ButtonSolid";
+import RadioButton from "@/lib/ui/radio-button";
 
 const DetailsHeader = ({ pageTitle, page, pageName, currentDate, mode, selectedBranch, filter,
-                            handleBranchFilter, selectedLO, handleLOFilter, dateFilter, handleDateFilter, weekend, holiday, handleSubmit }) => {
+                            handleBranchFilter, selectedLO, handleLOFilter, dateFilter, handleDateFilter, weekend, holiday, handleSubmit, 
+                            selectedLoGroup, handleLoGroupChange }) => {
     const router = useRouter();
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
+    const currentBranch = useSelector(state => state.branch.data);
     const groupList = useSelector(state => state.group.list);
     const userList = useSelector(state => state.user.list);
     const [showCalendar, setShowCalendar] = useState(false);
@@ -117,6 +120,13 @@ const DetailsHeader = ({ pageTitle, page, pageName, currentDate, mode, selectedB
                                 <DatePicker name="dateFilter" value={moment(dateFilter).format('YYYY-MM-DD')} maxDate={moment(new Date()).format('YYYY-MM-DD')} onChange={handleDateFilter} />
                             </div>
                         </div>
+                        { currentBranch?.noOfLO?.count > 10 && (
+                            <div className="flex flex-row ml-4">
+                                <RadioButton id={"radio_all"} name="radio-lo" label={"All"} checked={selectedLoGroup === 'all'} value="all" onChange={handleLoGroupChange} />
+                                <RadioButton id={"radio_main"} name="radio-lo" label={"Main"} checked={selectedLoGroup === 'main'} value="main" onChange={handleLoGroupChange} />
+                                <RadioButton id={"radio_ext"} name="radio-lo" label={"Extension"} checked={selectedLoGroup === 'ext'} value="ext" onChange={handleLoGroupChange} />
+                            </div>
+                        ) }
                     </div>
                 </div>
             )}
@@ -186,6 +196,13 @@ const DetailsHeader = ({ pageTitle, page, pageName, currentDate, mode, selectedB
                                                     <DatePicker name="dateFilter" value={moment(dateFilter).format('YYYY-MM-DD')} maxDate={moment(new Date()).format('YYYY-MM-DD')} onChange={handleDateFilter} />
                                                 </div>
                                             </div>
+                                            { currentBranch?.noOfLO?.count > 10 && (
+                                                <div className="flex flex-row ml-4">
+                                                    <RadioButton id={"radio_all"} name="radio-lo" label={"All"} checked={selectedLoGroup === 'all'} value="all" onChange={handleLoGroupChange} />
+                                                    <RadioButton id={"radio_main"} name="radio-lo" label={"Main"} checked={selectedLoGroup === 'main'} value="main" onChange={handleLoGroupChange} />
+                                                    <RadioButton id={"radio_ext"} name="radio-lo" label={"Extension"} checked={selectedLoGroup === 'ext'} value="ext" onChange={handleLoGroupChange} />
+                                                </div>
+                                            ) }
                                         </div>
                                     </div>
                                 </div>
@@ -253,6 +270,13 @@ const DetailsHeader = ({ pageTitle, page, pageName, currentDate, mode, selectedB
                                                     <DatePicker name="dateFilter" value={moment(dateFilter).format('YYYY-MM-DD')} maxDate={moment(new Date()).format('YYYY-MM-DD')} onChange={handleDateFilter} />
                                                 </div>
                                             </div>
+                                            { currentBranch?.noOfLO?.count > 10 && (
+                                                <div className="flex flex-row ml-4">
+                                                    <RadioButton id={"radio_all"} name="radio-lo" label={"All"} checked={selectedLoGroup === 'all'} value="all" onChange={handleLoGroupChange} />
+                                                    <RadioButton id={"radio_main"} name="radio-lo" label={"Main"} checked={selectedLoGroup === 'main'} value="main" onChange={handleLoGroupChange} />
+                                                    <RadioButton id={"radio_ext"} name="radio-lo" label={"Extension"} checked={selectedLoGroup === 'ext'} value="ext" onChange={handleLoGroupChange} />
+                                                </div>
+                                            ) }
                                         </div>
                                     </div>
                                 </div>
