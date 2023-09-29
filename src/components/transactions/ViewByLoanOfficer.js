@@ -350,8 +350,10 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                             totalTransferMcbu -= giver.mcbu;
 
                             const details = giver.data[0];
-                            totalTransferTargetCollection -= (details.targetCollection + details.excess);
-                            totalTransferActualCollection -= details.actualCollection;
+                            const detailsTargetCollection = details?.targetCollection ? details?.targetCollection : 0;
+                            const detailsExcess = details?.excess ? details?.excess : 0;
+                            totalTransferTargetCollection -= (detailsTargetCollection + detailsExcess);
+                            totalTransferActualCollection -= details?.actualCollection ? details?.actualCollection : 0;
                         });
                     }
 
@@ -369,8 +371,10 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                                 totalsLoanBalance += rcv.loanBalance;
 
                                 const details = rcv.data[0];
-                                totalTransferTargetCollection += (details.targetCollection + details.excess);
-                                totalTransferActualCollection += details.actualCollection;
+                                const detailsTargetCollection = details?.targetCollection ? details?.targetCollection : 0;
+                                const detailsExcess = details?.excess ? details?.excess : 0;
+                                totalTransferTargetCollection += (detailsTargetCollection + detailsExcess);
+                                totalTransferActualCollection += details?.actualCollection ? details?.actualCollection : 0;
                             });
                         }
                     }
@@ -388,8 +392,10 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                             totalTransferMcbu -= giver.mcbu;
 
                             const details = giver.data[0];
-                            totalTransferTargetCollection -= (details.targetCollection + details.excess);
-                            totalTransferActualCollection -= details.actualCollection;
+                            const detailsTargetCollection = details?.targetCollection ? details?.targetCollection : 0;
+                            const detailsExcess = details?.excess ? details?.excess : 0;
+                            totalTransferTargetCollection -= (detailsTargetCollection + detailsExcess);
+                            totalTransferActualCollection -= details?.actualCollection ? details?.actualCollection : 0;
                         });
                     }
                     
@@ -407,8 +413,10 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type }) => {
                                 totalsLoanBalance += rcv.loanBalance;
 
                                 const details = rcv.data[0];
-                                totalTransferTargetCollection += (details.targetCollection + details.excess);
-                                totalTransferActualCollection += details.actualCollection;
+                                const detailsTargetCollection = details?.targetCollection ? details?.targetCollection : 0;
+                                const detailsExcess = details?.excess ? details?.excess : 0;
+                                totalTransferTargetCollection += (detailsTargetCollection + detailsExcess);
+                                totalTransferActualCollection += details?.actualCollection ? details?.actualCollection : 0;
                             });
                         }
                     }
