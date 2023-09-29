@@ -16,7 +16,7 @@ import SideBar from "@/lib/ui/SideBar";
 import RadioButton from "@/lib/ui/radio-button";
 import { setGroupList } from "@/redux/actions/groupActions";
 import { setClientList, setComakerList } from "@/redux/actions/clientActions";
-import { UppercaseFirstLetter } from "@/lib/utils";
+import { UppercaseFirstLetter, formatPricePhp } from "@/lib/utils";
 
 const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, onClose, type }) => {
     const formikRef = useRef();
@@ -78,6 +78,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             .integer()
             .positive()
             .moreThan(4999, 'Princal loan should be 5000 or greater')
+            .max(20000, 'Principal loan should not be greater than 20000')
             .required('Please enter principal loan'),
         slotNo: yup
             .number()
@@ -191,7 +192,9 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     }
 
     const handleSaveUpdate = (values, action) => {
-        if (values.principalLoan % 1000 === 0) {
+        if (values.principalLoan > 20000) {
+            toast.error(`Invalid Principal Loan. Maximum loanable amount is up to ${formatPricePhp(20000)} only.`);
+        } else if (values.principalLoan % 1000 === 0) {
             if (type === 'weekly' && (!values.mcbu || parseFloat(values.mcbu) < 50)) {
                 toast.error('Invalid MCBU amount. Please enter at least 50.');
             } else if (loanTerms === 100 && values.principalLoan < 10000) {
