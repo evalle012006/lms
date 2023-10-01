@@ -11,6 +11,8 @@ import Select from 'react-select';
 import { styles, DropdownIndicator, borderStyles } from "@/styles/select";
 import TableComponent, { AvatarCell, SelectCell } from "@/lib/table";
 
+
+// unused
 const TransferClientTransactionPage = ({ mode = "group", setLoading }) => {
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
@@ -52,7 +54,8 @@ const TransferClientTransactionPage = ({ mode = "group", setLoading }) => {
                 toast.error(response.message);
             }
         } else if (currentUser.role.rep === 2) {
-            url = url + '?' + new URLSearchParams({ branchCodes: currentUser.designatedBranch });
+            const branchCodes = typeof currentUser.designatedBranch === 'string' ? JSON.parse(currentUser.designatedBranch) : currentUser.designatedBranch;
+            url = url + '?' + new URLSearchParams({ branchCodes: branchCodes });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let branches = [];
@@ -151,7 +154,7 @@ const TransferClientTransactionPage = ({ mode = "group", setLoading }) => {
 
     const getListClient = async (groupId) => {
         setLoading(true);
-        let url = process.env.NEXT_PUBLIC_API_URL + 'clients/list?' + new URLSearchParams({ mode: "view_all_by_group", groupId: groupId });;
+        let url = process.env.NEXT_PUBLIC_API_URL + 'clients/list?' + new URLSearchParams({ mode: "view_all_by_group_for_transfer", groupId: groupId });;
 
         const response = await fetchWrapper.get(url);
         if (response.success) {

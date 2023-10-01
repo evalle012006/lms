@@ -7,13 +7,17 @@ import toast from 'react-hot-toast';
 import { useRouter } from "node_modules/next/router";
 import moment from 'moment';
 import { formatPricePhp, getTotal } from "@/lib/utils";
+import { setCashCollectionBranch } from "@/redux/actions/cashCollectionActions";
 
 const ViewByBranchPage = ({dateFilter, type}) => {
+    const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
     const [loading, setLoading] = useState(true);
-    const [branchCollectionData, setBranchCollectionData] = useState([]);
+    const branchCollectionData = useSelector(state => state.cashCollection.branch);
     const currentDate = useSelector(state => state.systemSettings.currentDate);
     const dayName = moment(dateFilter ? dateFilter : currentDate).format('dddd').toLowerCase();
+    const isHoliday = useSelector(state => state.systemSettings.holiday);
+    const isWeekend = useSelector(state => state.systemSettings.weekend);
 
     const router = useRouter();
     // check group status if there is pending change row color to orange/yellow else white
@@ -83,10 +87,15 @@ const ViewByBranchPage = ({dateFilter, type}) => {
 
                 let groupStatus = 'open';
                 if (branch.cashCollections.length > 0) {
-                    const transactionStatus = branch.cashCollections[0].groupStatusArr.filter(status => status === "closed");
-                    if (transactionStatus.length > 0) {
+                    const transactionStatus = branch.cashCollections[0].groupStatusArr.filter(status => status === "pending");
+                    const draft = !filter ? branch.cashCollections[0].hasDraftsArr.filter(d => d === true) : [];
+                    if (transactionStatus.length == 0 && draft.length == 0) {
                         groupStatus = 'close';
                     }
+                }
+
+                if (isWeekend || isHoliday) {
+                    groupStatus = 'close';
                 }
 
                 if (!filter) {
@@ -118,9 +127,9 @@ const ViewByBranchPage = ({dateFilter, type}) => {
     
                         totalsLoanRelease += branch.loans[0].totalRelease;
                         totalsLoanBalance += branch.loans[0].totalLoanBalance;
-                        if (branch.groups.length === 0) {
-                            targetLoanCollection += branch.loans[0].loanTarget;
-                        }
+                        // if (branch.groups.length === 0) {
+                        //     targetLoanCollection += branch.loans[0].loanTarget;
+                        // }
                         totalPastDue += collection.pastDue;
                         totalNoPastDue += collection.noPastDue;
                         // totalMcbu += collection.mcbu;
@@ -131,7 +140,7 @@ const ViewByBranchPage = ({dateFilter, type}) => {
                         let loMcbu = 0;
                         branch.groups.map(g => {
                             if (g.loanTarget.length > 0) {
-                                loLoanTarget += g.loanTarget[0].loanTarget;
+                                loLoanTarget += (g.loanTarget[0].loanTarget && g.loanTarget[0].loanTarget !== '-') ? g.loanTarget[0].loanTarget : 0;
                                 // loMcbu += g.loanTarget[0].mcbu;
                             }
                         });
@@ -147,7 +156,7 @@ const ViewByBranchPage = ({dateFilter, type}) => {
                     
                     if (branch.cashCollections.length > 0) {
                         const loanTarget = collection.loanTarget - branch.cashCollections[0].loanTarget;
-    
+
                         collection.loanTarget = loanTarget;
                         collection.loanTargetStr = loanTarget > 0 ? formatPricePhp(loanTarget) : '-';
                         collection.excessStr = branch.cashCollections[0].excess > 0 ? formatPricePhp(branch.cashCollections[0].excess) : '-';
@@ -271,7 +280,7 @@ const ViewByBranchPage = ({dateFilter, type}) => {
 
             collectionData.map(c => {
                 totalMcbu += c.mcbu ? c.mcbu : 0;
-                targetLoanCollection += c.loanTarget;
+                targetLoanCollection += (c.loanTarget && c.loanTarget !== '-') ? c.loanTarget : 0;
             });
 
             const branchTotals = {
@@ -305,7 +314,7 @@ const ViewByBranchPage = ({dateFilter, type}) => {
 
             collectionData.push(branchTotals);
             
-            setBranchCollectionData(collectionData);
+            dispatch(setCashCollectionBranch(collectionData));
             setLoading(false);
         } else {
             setLoading(false);

@@ -15,6 +15,7 @@ import { UppercaseFirstLetter, formatPricePhp } from "@/lib/utils";
 import Spinner from "@/components/Spinner";
 
 const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setShowSidebar, onClose }) => {
+    const transferList = useSelector(state => state.client.transferList);
     const formikRef = useRef();
     const dispatch = useDispatch();
     const currentDate = useSelector(state => state.systemSettings.currentDate);
@@ -153,18 +154,21 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
     const getListClient = async (groupId) => {
         setLoading(true);
         if (groupId) {
-            let url = process.env.NEXT_PUBLIC_API_URL + 'clients/list?' + new URLSearchParams({ mode: "view_all_by_group", groupId: groupId });;
+            let url = process.env.NEXT_PUBLIC_API_URL + 'clients/list?' + new URLSearchParams({ mode: "view_all_by_group_for_transfer", groupId: groupId });;
 
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let clients = [];
                 await response.clients && response.clients.map(client => {
-                    clients.push({
-                        ...client,
-                        slotNo: client.loans.length > 0 ? client.loans[0].slotNo : 100, // for sorting purposes
-                        label: UppercaseFirstLetter(`${client.lastName}, ${client.firstName}`),
-                        value: client._id
-                    });   
+                    const hasTransfer = transferList.find(t => t.selectedClientId === client._id);
+                    if (!hasTransfer) {
+                        clients.push({
+                            ...client,
+                            slotNo: client.loans.length > 0 ? client.loans[0].slotNo : 100, // for sorting purposes
+                            label: UppercaseFirstLetter(`${client.lastName}, ${client.firstName}`),
+                            value: client._id
+                        }); 
+                    }  
                 });
                 clients.sort((a, b) => { return a.slotNo - b.slotNo });
                 setClientList(clients);
@@ -410,9 +414,12 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
                 form.setFieldValue("targetGroupId", null);
             } else if (targetGroup.status === 'available') {
                 setSelectedTargetGroup(selectedTargetGroup);
-                const availableSlots = targetGroup.availableSlots.map(s => {
+                const availableSlots = targetGroup.availableSlots.filter(s => s <= targetGroup.capacity).filter(s => {
+                    const hasTransfer = transferList.filter(t => t.targetGroupId === targetGroup._id).find(t => t.selectedSlotNo === s);
+                    return !hasTransfer && s;
+                }).map(s => {
                     return { label: s, value: s };
-                })
+                });
                 setSlotNumbers(availableSlots);
                 form.setFieldValue("targetGroupId", selectedTargetGroup);
                 mode === "edit" && setSelectedSlotNo(client.selectedSlotNo);

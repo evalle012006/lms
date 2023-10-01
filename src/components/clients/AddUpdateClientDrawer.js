@@ -16,6 +16,8 @@ import moment from 'moment'
 import CheckBox from "@/lib/ui/checkbox";
 import placeholder from '/public/images/image-placeholder.png';
 import Image from 'next/image';
+import { calculateAge, checkFileSize } from "@/lib/utils";
+import { useRouter } from "node_modules/next/router";
 // add loan officer per client
 const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSidebar, onClose }) => {
     const hiddenInput = useRef(null);
@@ -33,6 +35,10 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
     const [photoW, setPhotoW] = useState(200);
     const [photoH, setPhotoH] = useState(200);
     const [image, setImage] = useState('');
+    const [selectedGroup, setSelectedGroup] = useState();
+    const router = useRouter();
+
+    const { status } = router.query;
 
     const initialValues = {
         firstName: client.firstName,
@@ -87,87 +93,82 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
 
     const handleSaveUpdate = (values, action) => {
         let error = false;
-        setLoading(true);
-        values.insertedBy = currentUser._id;
-        values.middleName = values.middleName ? values.middleName : '';
-        values.addressBarangayDistrict = values.addressBarangayDistrict ? values.addressBarangayDistrict : '';
-        values.addressMunicipalityCity = values.addressMunicipalityCity ? values.addressMunicipalityCity : '';
-        values.addressProvince = values.addressProvince ? values.addressProvince : '';
-        values.addressStreetNo = values.addressStreetNo ? values.addressStreetNo : '';
-        values.addressZipCode = values.addressZipCode ? values.addressZipCode : '';
-        // values.birthdate = dateValue.toISOString();
-        const group = groupList && groupList.find(g => g._id === values.groupId);
-        values.groupName = group.name;
-        if (currentUser.root !== true && (currentUser.role.rep === 4 || currentUser.role.rep === 3) && branchList.length > 0) {
-            const branch = branchList.find(b => b.code === currentUser.designatedBranch);
-            values.branchId = branch._id;
-            values.branchName = branch.name;
-        } // if area manager it should be able to select a branch where this client is
-        
-        if (mode === 'add') {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'clients/save/';
+        if (values.birthdate) {
+            const age = calculateAge(values.birthdate);
+            if (age > 65) {
+                error = true;
+                toast.error('Client age is over 65 years old.');
+            }
+        }
 
-            values.status = 'pending';
-            values.delinquent = false;
+        if (!error) {
+            setLoading(true);
+            values.insertedBy = currentUser._id;
+            values.firstName = values.firstName.toUpperCase();
+            values.lastName = values.lastName.toUpperCase();
+            values.middleName = values.middleName ? values.middleName.toUpperCase() : '';
+            values.addressBarangayDistrict = values.addressBarangayDistrict ? values.addressBarangayDistrict : '';
+            values.addressMunicipalityCity = values.addressMunicipalityCity ? values.addressMunicipalityCity : '';
+            values.addressProvince = values.addressProvince ? values.addressProvince : '';
+            values.addressStreetNo = values.addressStreetNo ? values.addressStreetNo : '';
+            values.addressZipCode = values.addressZipCode ? values.addressZipCode : '';
+            values.birthdate = values.birthdate ? moment(values.birthdate).format("YYYY-MM-DD") : null;
+            values.fullName = values.firstName + ' ' + values.middleName + ' ' + values.lastName;
+            values.address = values.addressStreetNo + ' ' + values.addressBarangayDistrict + ' ' + values.addressMunicipalityCity + ' ' + values.addressProvince + ' ' + values.addressZipCode;
+            
+            let groupData;
+            if (status === 'active') {
+                groupData = selectedGroup;
+            } else {
+                groupData = groupList && groupList.find(g => g._id === values.groupId);
+            }
+            values.groupName = groupData.name;
+            if (currentUser.root !== true && (currentUser.role.rep === 4 || currentUser.role.rep === 3) && branchList.length > 0) {
+                const branch = branchList.find(b => b.code === currentUser.designatedBranch);
+                values.branchId = branch._id;
+                values.branchName = branch.name;
+            } // if area manager it should be able to select a branch where this client is
+            
+            if (mode === 'add') {
+                const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'clients/save/';
 
-            fetchWrapper.post(apiUrl, values)
-                .then(response => {
-                    if (response.error) {
-                        toast.error(response.message);
-                        error = true;
-                    } else if (response.success) {
+                values.status = 'pending';
+                values.delinquent = false;
+
+                fetchWrapper.post(apiUrl, values)
+                    .then(response => {
+                        if (response.error) {
+                            toast.error(response.message);
+                            error = true;
+                        } else if (response.success) {
+                            setLoading(false);
+                            setShowSidebar(false);
+                            action.setSubmitting = false;
+                            action.resetForm();
+                            setDateValue(new Date());
+                            onClose();
+                            toast.success('Client successfully added.');
+                        }
+                    }).catch(error => {
+                        console.log(error)
+                    });
+            } else if (mode === 'edit') {
+                values._id = client._id;
+                values.file = image;
+                fetchWrapper.sendData(process.env.NEXT_PUBLIC_API_URL + 'clients/', values)
+                    .then(response => {
                         setLoading(false);
                         setShowSidebar(false);
                         action.setSubmitting = false;
                         action.resetForm();
                         setDateValue(new Date());
                         onClose();
-                        toast.success('Client successfully added.');
-                    }
-                }).catch(error => {
-                    console.log(error)
-                });
-        } else if (mode === 'edit') {
-            values._id = client._id;
-            if (image.trim().length > 0) {
-                values.file = image;
+                        toast.success('Client successfully updated.');
+                    }).catch(error => {
+                        console.log(error);
+                    });
             }
-            fetchWrapper.sendData(process.env.NEXT_PUBLIC_API_URL + 'clients/', values)
-                .then(response => {
-                    setLoading(false);
-                    setShowSidebar(false);
-                    action.setSubmitting = false;
-                    action.resetForm();
-                    setDateValue(new Date());
-                    onClose();
-                    toast.success('Client successfully updated.');
-                }).catch(error => {
-                    console.log(error);
-                });
         }
-
-        // if (error !== true) {
-        //     // update group slot no and status
-        //     let params = { groupId: values.groupId };
-
-        //     if (values.groupId !== client.groupId) {
-        //         params.oldGroupId = client.groupId;
-        //     }
-            
-        //     fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'groups/list', params)
-        //         .then(response => {
-        //             if (response.error) {
-        //                 toast.error(response.message);
-        //             } else {
-                        // setLoading(false);
-                        // setShowSidebar(false);
-                        // action.setSubmitting = false;
-                        // action.resetForm();
-                        // setDateValue(new Date());
-                        // onClose();
-        //             }
-        //     });
-        // }
     }
 
     const handleCancel = () => {
@@ -182,8 +183,12 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
     }
 
     const handleFileChange = async e => {
-        if (e.target.value) {
-            const fileUploaded = e.target.files[0];
+        const fileUploaded = e.target.files[0];
+
+        const fileSizeMsg = checkFileSize(fileUploaded?.size);
+        if (fileSizeMsg) {
+            toast.error(fileSizeMsg);
+        } else {
             setPhoto(URL.createObjectURL(fileUploaded));
             setImage(fileUploaded);
         }
@@ -197,11 +202,21 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
         }
     }
 
+    const handleChangeBirthdate = (field, value) => {
+        const form = formikRef.current;
+        console.log(field, value)
+        form.setFieldValue(field, value);
+    }
+
     useEffect(() => {
         let mounted = true;
 
         if (client.imgUrl) {
             mounted && setPhoto(`${client.imgUrl}`);
+        }
+
+        if (status == 'active' && client.group && client.group.length > 0) {
+            mounted && setSelectedGroup(client.group[0]);
         }
 
         mounted && setLoading(false);
@@ -276,19 +291,33 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                             </div>
                                         </div>
                                     )}
-                                    <div className="mt-4">
-                                        <SelectDropdown
-                                            name="groupId"
-                                            field="groupId"
-                                            value={values.groupId}
-                                            label="Group"
-                                            options={groupList}
-                                            onChange={setFieldValue}
-                                            onBlur={setFieldTouched}
-                                            placeholder="Select Group"
-                                            errors={touched.groupId && errors.groupId ? errors.groupId : undefined}
-                                        />
-                                    </div>
+                                    { (mode === 'edit' && status === 'active' && selectedGroup) ? (
+                                        <div className="mt-4">
+                                            <div className={`flex flex-col border rounded-md px-4 py-2 bg-white border-main`}>
+                                                <div className="flex justify-between">
+                                                    <label htmlFor={'slotNo'} className={`font-proxima-bold text-xs font-bold text-main`}>
+                                                        Group
+                                                    </label>
+                                                </div>
+                                                {console.log(selectedGroup)}
+                                                <span className="text-gray-400">{ selectedGroup.name }</span>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="mt-4">
+                                            <SelectDropdown
+                                                name="groupId"
+                                                field="groupId"
+                                                value={values.groupId}
+                                                label="Group"
+                                                options={groupList}
+                                                onChange={setFieldValue}
+                                                onBlur={setFieldTouched}
+                                                placeholder="Select Group"
+                                                errors={touched.groupId && errors.groupId ? errors.groupId : undefined}
+                                            />
+                                        </div>
+                                    ) }
                                     <div className="mt-4">
                                         <InputText
                                             name="lastName"

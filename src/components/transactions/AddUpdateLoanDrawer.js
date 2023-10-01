@@ -16,7 +16,7 @@ import SideBar from "@/lib/ui/SideBar";
 import RadioButton from "@/lib/ui/radio-button";
 import { setGroupList } from "@/redux/actions/groupActions";
 import { setClientList, setComakerList } from "@/redux/actions/clientActions";
-import { UppercaseFirstLetter } from "@/lib/utils";
+import { UppercaseFirstLetter, formatPricePhp } from "@/lib/utils";
 
 const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, onClose, type }) => {
     const formikRef = useRef();
@@ -26,9 +26,12 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     const [loading, setLoading] = useState(false);
     const [title, setTitle] = useState('Add Loan');
     const branchList = useSelector(state => state.branch.list);
+    const userList = useSelector(state => state.user.list);
     const groupList = useSelector(state => state.group.list);
     const clientList = useSelector(state => state.client.list);
+    const currentBranch = useSelector(state => state.branch.data);
     const comakerList = useSelector(state => state.client.comakerList);
+    const [selectedLo, setSelectedLo] = useState();
     const [selectedGroup, setSelectedGroup] = useState();
     const [slotNo, setSlotNo] = useState();
     const [slotNumber, setSlotNumber] = useState([]);
@@ -76,6 +79,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             .integer()
             .positive()
             .moreThan(4999, 'Princal loan should be 5000 or greater')
+            .max(20000, 'Principal loan should not be greater than 20000')
             .required('Please enter principal loan'),
         slotNo: yup
             .number()
@@ -97,6 +101,31 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             .string()
             .required('Please enter guarantor last name')
     });
+
+    const handleLoIdChange = (field, value) => {
+        setLoading(true);
+        const form = formikRef.current;
+        setSelectedGroup(value);
+        const group = groupList.find(g => g._id === value);
+        if (group) {
+            let slotArr = [];
+            group.availableSlots.map(slot => {
+                if (slot <= group.capacity) {
+                    slotArr.push({
+                        value: slot,
+                        label: slot
+                    });
+                }
+            });
+
+            setSlotNumber(slotArr);
+            form.setFieldValue('loId', group.loanOfficerId);
+        }
+
+        form.setFieldValue(field, value);
+        getListClient(clientType, value);
+        setLoading(false);
+    }
 
     const handleGroupIdChange = (field, value) => {
         setLoading(true);
@@ -145,6 +174,9 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         setLoading(true);
         const form = formikRef.current;
         setSlotNo(value);
+        if (mode !== 'reloan') {
+            form.setFieldValue('groupId', selectedGroup);
+        }
         form.setFieldValue(field, value);
         setLoading(false);
     }
@@ -153,13 +185,17 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         setLoading(true);
         const form = formikRef.current;
         setSelectedCoMaker(value);
-        form.setFieldValue('groupId', selectedGroup);
+        if (mode !== 'reloan') {
+            form.setFieldValue('groupId', selectedGroup);
+        }
         form.setFieldValue(field, value);
         setLoading(false);
     }
 
     const handleSaveUpdate = (values, action) => {
-        if (values.principalLoan % 1000 === 0) {
+        if (values.principalLoan > 20000) {
+            toast.error(`Invalid Principal Loan. Maximum loanable amount is up to ${formatPricePhp(20000)} only.`);
+        } else if (values.principalLoan % 1000 === 0) {
             if (type === 'weekly' && (!values.mcbu || parseFloat(values.mcbu) < 50)) {
                 toast.error('Invalid MCBU amount. Please enter at least 50.');
             } else if (loanTerms === 100 && values.principalLoan < 10000) {
@@ -175,7 +211,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                     values.groupName = group.name;
                     const branch = branchList.find(b => b._id === group.branchId);
                     values.branchId = branch._id;
-                    values.brancName = branch.name;
+                    values.branchName = branch.name;
                     values.loId = group.loanOfficerId;
                 } else {
                     group = loan.group;
@@ -186,6 +222,8 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                     values.oldLoanId = loan.loanId;
                     values.clientId = loan.clientId;
                     values.branchId = loan.branchId;
+                    values.prevLoanFullPaymentDate = loan.fullPaymentDate;
+                    values.prevLoanFullPaymentAmount = loan?.history.amountRelease;
                 }
 
                 values.slotNo = mode !== 'reloan' ? slotNo : loan.slotNo;
@@ -241,6 +279,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                 setSlotNo();
                                 setSlotNumber();
                                 setSelectedCoMaker();
+                                setGroupOccurence('daily');
                                 onClose();
                             }
                         }).catch(error => {
@@ -278,6 +317,8 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                     setClientId();
                                     setSlotNo();
                                     setSlotNumber();
+                                    setSelectedCoMaker();
+                                    setGroupOccurence('daily');
                                     onClose();
                                 }
                             } else if (response.error) {
@@ -294,15 +335,33 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         }
     }
 
+    const handlePNNumber = async (e) => {
+        const pnNumber = e.target.value;
+        if (pnNumber && currentBranch) {
+            const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/check-existing-pn-number-by-branch?' + new URLSearchParams({ branchId: currentBranch._id, pnNumber: pnNumber }));
+            if (response.success) {
+                if (response.loans.length > 0) {
+                    const form = formikRef.current;
+                    form.setFieldValue('pnNumber', '');
+                    toast.error(response.message);
+                }
+            }
+        }
+    }
+
     const getListGroup = async (occurence) => {
         setLoading(true);
-        let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list-by-group-occurence'
+        let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list-by-group-occurence';
         if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
             url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id, occurence: occurence });
+            processGroupList(url);
         } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
             url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, occurence: occurence });
+            processGroupList(url);
         }
+    }
 
+    const processGroupList = async (url) => {
         const response = await fetchWrapper.get(url);
         if (response.success) {
             let groups = [];
@@ -430,7 +489,6 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
 
     useEffect(() => {
         let mounted = true;
-
         if (mode === 'add') {
             setTitle('Add Loan');
         } else if (mode === 'edit') {
@@ -463,7 +521,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     }, [selectedGroup]);
 
     useEffect(() => {
-        if (selectedGroup) {
+        if (selectedGroup || mode === 'reloan') {
             const setSlotNumbers = async () => {
                 // const existingSlotNumbers = await getAllLoanPerGroup(selectedGroup);
                 const ts = [];
@@ -478,7 +536,13 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
 
             setSlotNumbers();
         }
-    }, [list, selectedGroup]);
+    }, [list, selectedGroup, mode]);
+
+    useEffect(() => {
+        if (type) {
+            getListGroup(type);
+        }
+    }, [type, mode, branchList]);
 
     return (
         <React.Fragment>
@@ -509,13 +573,12 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                 <form onSubmit={handleSubmit} autoComplete="off">
                                     {mode === 'add' ? (
                                         <React.Fragment>
-                                            {/* - hide the groupOccurence radio button
-                                            - if role.rep === 3 it should display the list of lo's under that branch
-                                            - based the groupOccurence with lo.transactionType */}
-                                            {/* <div className="mt-4 flex flex-row">
-                                                <RadioButton id={"radio_daily"} name="radio-group-occurence" label={"Daily"} checked={groupOccurence === 'daily'} value="daily" onChange={handleOccurenceChange} />
-                                                <RadioButton id={"radio_weekly"} name="radio-group-occurence" label={"Weekly"} checked={groupOccurence === 'weekly'} value="weekly" onChange={handleOccurenceChange} />
-                                            </div> */}
+                                            { currentUser.role.rep === 3 && (
+                                                <div className="mt-4 flex flex-row">
+                                                    <RadioButton id={"radio_daily"} name="radio-group-occurence" label={"Daily"} checked={groupOccurence === 'daily'} value="daily" onChange={handleOccurenceChange} />
+                                                    <RadioButton id={"radio_weekly"} name="radio-group-occurence" label={"Weekly"} checked={groupOccurence === 'weekly'} value="weekly" onChange={handleOccurenceChange} />
+                                                </div>
+                                            ) }
                                             <div className="mt-4">
                                                 <SelectDropdown
                                                     name="groupId"
@@ -630,16 +693,18 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                                 errors={touched.loanCycle && errors.loanCycle ? errors.loanCycle : undefined} />
                                         )}
                                     </div>
-                                    <div className="mt-4">
-                                        <InputNumber
-                                            name="mcbu"
-                                            value={values.mcbu}
-                                            onChange={handleChange}
-                                            label="MCBU"
-                                            placeholder="Enter MCBU"
-                                            setFieldValue={setFieldValue}
-                                            errors={touched.mcbu && errors.mcbu ? errors.mcbu : undefined} />
-                                    </div>
+                                    {(mode === 'reloan' || groupOccurence === 'weekly' || (groupOccurence === 'daily' && (mode !== 'add' && mode !== 'edit'))) && (
+                                        <div className="mt-4">
+                                            <InputNumber
+                                                name="mcbu"
+                                                value={values.mcbu}
+                                                onChange={handleChange}
+                                                label="MCBU"
+                                                placeholder="Enter MCBU"
+                                                setFieldValue={setFieldValue}
+                                                errors={touched.mcbu && errors.mcbu ? errors.mcbu : undefined} />
+                                        </div>
+                                    )}
                                     {(mode === 'reloan' && loan.occurence === 'daily') && (
                                         <div className="mt-4 flex flex-col">
                                             <span className="text-base text-zinc-600">Loan Terms</span>
@@ -665,6 +730,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                             name="pnNumber"
                                             value={values.pnNumber}
                                             onChange={handleChange}
+                                            onBlur={handlePNNumber}
                                             label="Promisory Note Number"
                                             placeholder="Enter PN Number"
                                             setFieldValue={setFieldValue}
@@ -683,16 +749,6 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                             errors={touched.coMaker && errors.coMaker ? errors.coMaker : undefined}
                                         />
                                     </div>
-                                    {/* <div className="mt-4">
-                                        <InputText
-                                            name="coMaker"
-                                            value={values.coMaker}
-                                            onChange={handleChange}
-                                            label="Co-Maker"
-                                            placeholder="Enter Co-Maker"
-                                            setFieldValue={setFieldValue}
-                                            errors={touched.coMaker && errors.coMaker ? errors.coMaker : undefined} />
-                                    </div> */}
                                     <div className="mt-4">
                                         <InputText
                                             name="guarantorFirstName"

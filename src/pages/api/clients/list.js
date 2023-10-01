@@ -130,7 +130,8 @@ async function list(req, res) {
                 {
                     $addFields: {
                         "clientId": { $toString: "$_id" },
-                        "loIdObj": {$toObjectId: "$loId"}
+                        "loIdObj": {$toObjectId: "$loId"},
+                        "groupIdObj": {$toObjectId: "$groupId"}
                     }
                 },
                 {
@@ -139,6 +140,14 @@ async function list(req, res) {
                         localField: "loIdObj",
                         foreignField: "_id",
                         as: "lo"
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "groups",
+                        localField: "groupIdObj",
+                        foreignField: "_id",
+                        as: "group"
                     }
                 },
                 {
@@ -152,7 +161,7 @@ async function list(req, res) {
                         as: "loans"
                     }
                 },
-                { $project: { clientId: 0, loIdObj: 0 } }
+                { $project: { clientId: 0, loIdObj: 0, groupIdObj: 0 } }
             ])
             .toArray();
     } else if (mode === 'view_all_by_branch' && branchId) {
@@ -163,7 +172,8 @@ async function list(req, res) {
                 {
                     $addFields: {
                         "clientId": { $toString: "$_id" },
-                        "loIdObj": {$toObjectId: "$loId"}
+                        "loIdObj": {$toObjectId: "$loId"},
+                        "groupIdObj": {$toObjectId: "$groupId"}
                     }
                 },
                 {
@@ -172,6 +182,14 @@ async function list(req, res) {
                         localField: "loIdObj",
                         foreignField: "_id",
                         as: "lo"
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "groups",
+                        localField: "groupIdObj",
+                        foreignField: "_id",
+                        as: "group"
                     }
                 },
                 {
@@ -185,7 +203,7 @@ async function list(req, res) {
                         as: "loans"
                     }
                 },
-                { $project: { clientId: 0, loIdObj: 0 } }
+                { $project: { clientId: 0, loIdObj: 0, groupIdObj: 0 } }
             ])
             .toArray();
     } else if (mode === 'view_all_by_branch_codes' && branchCodes) {
@@ -210,7 +228,8 @@ async function list(req, res) {
                             {
                                 $addFields: {
                                     "clientId": { $toString: "$_id" },
-                                    "loIdObj": {$toObjectId: "$loId"}
+                                    "loIdObj": {$toObjectId: "$loId"},
+                                    "groupIdObj": {$toObjectId: "$groupId"}
                                 }
                             },
                             {
@@ -223,13 +242,21 @@ async function list(req, res) {
                             },
                             {
                                 $lookup: {
+                                    from: "groups",
+                                    localField: "groupIdObj",
+                                    foreignField: "_id",
+                                    as: "group"
+                                }
+                            },
+                            {
+                                $lookup: {
                                     from: "loans",
                                     localField: "clientId",
                                     foreignField: "clientId",
                                     as: "loans"
                                 }
                             },
-                            { $project: { clientId: 0, loIdObj: 0 } }
+                            { $project: { clientId: 0, loIdObj: 0, groupIdObj: 0 } }
                         ],
                         as: "clients"
                     }
@@ -287,7 +314,8 @@ async function list(req, res) {
                         {
                             $addFields: {
                                 "clientId": { $toString: "$_id" },
-                                "loIdObj": {$toObjectId: "$loId"}
+                                "loIdObj": {$toObjectId: "$loId"},
+                                "groupIdObj": {$toObjectId: "$groupId"}
                             }
                         },
                         {
@@ -296,6 +324,14 @@ async function list(req, res) {
                                 localField: "loIdObj",
                                 foreignField: "_id",
                                 as: "lo"
+                            }
+                        },
+                        {
+                            $lookup: {
+                                from: "groups",
+                                localField: "groupIdObj",
+                                foreignField: "_id",
+                                as: "group"
                             }
                         },
                         {
@@ -312,7 +348,7 @@ async function list(req, res) {
                         {
                             "$match": { "loans.0": { "$exists": false } }
                         },
-                        { $project: { clientId: 0, loIdObj: 0 } }
+                        { $project: { clientId: 0, loIdObj: 0, groupIdObj: 0 } }
                     ])
                     .toArray();
             } else if (branchId) {
@@ -323,7 +359,8 @@ async function list(req, res) {
                         {
                             $addFields: {
                                 "clientId": { $toString: "$_id" },
-                                "loIdObj": {$toObjectId: "$loId"}
+                                "loIdObj": {$toObjectId: "$loId"},
+                                "groupIdObj": {$toObjectId: "$groupId"}
                             }
                         },
                         {
@@ -332,6 +369,14 @@ async function list(req, res) {
                                 localField: "loIdObj",
                                 foreignField: "_id",
                                 as: "lo"
+                            }
+                        },
+                        {
+                            $lookup: {
+                                from: "groups",
+                                localField: "groupIdObj",
+                                foreignField: "_id",
+                                as: "group"
                             }
                         },
                         {
@@ -348,15 +393,14 @@ async function list(req, res) {
                         {
                             "$match": { "loans.0": { "$exists": false } }
                         },
-                        { $project: { clientId: 0, loIdObj: 0 } }
+                        { $project: { clientId: 0, loIdObj: 0, groupIdObj: 0 } }
                     ])
                     .toArray();
             }
         }
-    } else if (mode === 'view_all_by_group' && groupId) {
+    } else if (mode === 'view_all_by_group_for_transfer' && groupId) {
         clients = await db
             .collection('client')
-            // .find( { groupId: groupId } )
             .aggregate([
                 { $match: { groupId: groupId } },
                 { $addFields: { "clientIdStr": { $toString: "$_id" } } },
@@ -413,4 +457,12 @@ async function list(req, res) {
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')
         .end(JSON.stringify(response));
+}
+
+export const config = {
+    api: {
+      bodyParser: {
+        sizeLimit: '20mb',
+      },
+    },
 }

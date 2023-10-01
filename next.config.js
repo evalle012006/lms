@@ -12,8 +12,8 @@ module.exports = {
             {
                 protocol: 'https',
                 hostname: process.env.NEXT_PUBLIC_IMAGE_HOST,
-                port: '',
-                pathname: '/images/**',
+                // port: '',
+                pathname: '/public/images/**',
             },
         ],
     }

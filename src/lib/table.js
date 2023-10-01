@@ -24,7 +24,8 @@ import {
   XCircleIcon,
   ArrowPathIcon,
   KeyIcon,
-  DocumentIcon
+  DocumentIcon,
+  ArrowUturnLeftIcon
 } from '@heroicons/react/24/solid';
 import CheckBox from "./ui/checkbox";
 import { useEffect } from "react";
@@ -109,7 +110,7 @@ export function StatusPill({ value }) {
           status.startsWith("active") || status.startsWith("open") ? "status-pill-active" : null,
           status.startsWith("pending") ? "status-pill-pending" : null,
           status.startsWith("inactive") ? "status-pill-inactive" : null,
-          status.startsWith("rejected") || status.startsWith("close") || status.startsWith("offset") ? "status-pill-rejected" : null
+          status.startsWith("reject") || status.startsWith("close") || status.startsWith("offset") ? "status-pill-rejected" : null
         )}
       >
         {status}
@@ -353,63 +354,73 @@ const ActionButton = ({ row, rowActionButtons }) => {
                 return (
                     <React.Fragment key={index}>
                       {item.label === 'Approve' && (
-                        <div className="px-1" onClick={() => item.action(row)} title="Approve">
+                        <div className="px-2" onClick={() => item.action(row)} title="Approve">
                           <CheckIcon className="cursor-pointer h-5" />
                         </div>
                       )}
                       {item.label === 'Reject' && (
-                        <div className="px-1" onClick={() => item.action(row)} title="Reject">
+                        <div className="px-2" onClick={() => item.action(row)} title="Reject">
                           <XMarkIcon className="cursor-pointer h-5" />
                         </div>
                       )}
                       {(item.label === 'Edit Loan' && status !== 'active') && (
-                        <div className="px-1" onClick={() => item.action(row)} title="Edit">
+                        <div className="px-2" onClick={() => item.action(row)} title="Edit">
                           <PencilIcon className="cursor-pointer h-5" />
                         </div>
                       )}
                       {(item.label === 'Delete Loan' && status !== 'active') && (
-                        <div className="px-1" onClick={() => item.action(row)} title="Delete">
+                        <div className="px-2" onClick={() => item.action(row)} title="Delete">
                           <TrashIcon className="cursor-pointer h-5" />
                         </div>
                       )}
                       {(item.label === 'NDS' && status !== 'active') && (
-                        <div className="px-1" onClick={() => item.action(row)} title="Show NDS">
+                        <div className="px-2" onClick={() => item.action(row)} title="Show NDS">
                           <DocumentIcon className="cursor-pointer h-5" />
                         </div>
                       )}
                       {(item.label === 'Edit') && (
-                        <div className="px-1" onClick={() => item.action(row)} title="Edit">
+                        <div className="px-2" onClick={() => item.action(row)} title="Edit">
                           <PencilIcon className="cursor-pointer h-5" />
                         </div>
                       )}
                       {(item.label === 'Delete') && (
-                        <div className="px-1" onClick={() => item.action(row)} title="Delete">
+                        <div className="px-2" onClick={() => item.action(row)} title="Delete">
                           <TrashIcon className="cursor-pointer h-5" />
                         </div>
                       )}
                       {(item.label === 'Open' && page === 'loan-officer-summary' && status === 'close') && (
-                        <div className="px-1" onClick={() => item.action(row)} title="Open Transaction">
+                        <div className="px-2" onClick={() => item.action(row)} title="Open Transaction">
                           <LockClosedIcon className="cursor-pointer h-5" />
                         </div>
                       )}
                       {(item.label === 'Close' && page === 'loan-officer-summary' && status === 'open') && (
-                        <div className="px-1" onClick={() => item.action(row)} title="Close Transaction">
+                        <div className="px-2" onClick={() => item.action(row)} title="Close Transaction">
                           <LockOpenIcon className="cursor-pointer h-5" />
                         </div>
                       )}
                       {(item.label === 'Reloan') && (
-                        <div className="px-1" onClick={() => item.action(row)} title="Reloan">
+                        <div className="px-2" onClick={() => item.action(row)} title="Reloan">
                           <ArrowPathIcon className="cursor-pointer h-5" />
                         </div>
                       )}
                       {(item.label === 'Close Account') && (
-                        <div className="px-1" onClick={() => item.action(row)} title="Close Account">
+                        <div className="px-2" onClick={() => item.action(row)} title="Close Account">
                           <XCircleIcon className="cursor-pointer h-5" />
                         </div>
                       )}
                       {item.label === 'Reset Password' && (
-                        <div className="px-1" onClick={() => item.action(row)} title="Reset Password">
+                        <div className="px-2" onClick={() => item.action(row)} title="Reset Password">
                           <KeyIcon className="cursor-pointer h-5" />
+                        </div>
+                      )}
+                      {item.label === 'Update' && (
+                        <div className="px-2" onClick={() => item.action(row)} title={item.title}>
+                          <ArrowPathIcon className="cursor-pointer h-5" />
+                        </div>
+                      )}
+                      {item.label === 'Revert' && (
+                        <div className="px-2" onClick={() => item.action(row)} title={item.title}>
+                          <ArrowUturnLeftIcon className="cursor-pointer h-5" />
                         </div>
                       )}
                     </React.Fragment>
@@ -610,69 +621,140 @@ const TableComponent = ({
                                 const selected = row.original.hasOwnProperty('selected') ? row.original.selected : false;
                                 const allowApproved = row.original.hasOwnProperty('allowApproved') ? row.original.allowApproved : true;
                                 const status = row.original.hasOwnProperty('status') && row.original.status;
+                                const draft = row.original.hasOwnProperty('isDraft') && row.original.isDraft;
                                 const pageName = row.original.hasOwnProperty('page') && row.original.page;
                                 // const error = row.original.error ? row.original.error : false;
 
                                 let bg = 'even:bg-gray-100';
-
                                 if (delinquent === 'Yes') {
                                   bg = 'bg-red-100';
-                                } else if (pageName === 'branch-summary' && status === 'open') {
+                                } else if (status === 'open') {
                                   bg = 'bg-blue-200';
-                                } 
-                                // else if (error) {
-                                //   bg = 'bg-red-100';
-                                // }
-
-                                let fontColor = 'text-gray-500';
-                                if (totalData || (row.original.name?.toLowerCase().includes('totals'))) {
-                                  fontColor = '!text-red-400';
                                 }
 
-                                return (
-                                <tr {...row.getRowProps()} className={`hover:bg-slate-200 ${bg}`}>
-                                    {multiSelect && (
-                                      <td className="py-4-custom whitespace-nowrap-custom" role="cell">
-                                        <CheckBox name={`select-${i}`}
-                                            value={selected} 
-                                            onChange={() => handleSelectRow(row.original, i)}
-                                            size={"md"}
-                                            disabled={!allowApproved}
-                                        />
-                                      </td>
-                                    )}
-                                    {row.cells.map((cell) => {
-                                    return (
+                                if (draft) {
+                                  return (
+                                    <tr {...row.getRowProps()} className={`hover:bg-slate-200`} style={{ backgroundColor: "#F9DFB3" }}>
+                                        {multiSelect && (
+                                          <td className="py-4-custom whitespace-nowrap-custom" role="cell">
+                                            <CheckBox name={`select-${i}`}
+                                                value={selected} 
+                                                onChange={() => handleSelectRow(row.original, i)}
+                                                size={"md"}
+                                                disabled={!allowApproved}
+                                            />
+                                          </td>
+                                        )}
+                                        {row.cells.map((cell) => {
+                                        return (
+                                            <td
+                                              {...cell.getCellProps()}
+                                              className={`px-4 py-3 whitespace-nowrap-custom ${rowClick && 'cursor-pointer'} ${totalData && 'font-bold'}`}
+                                              role="cell"
+                                              onClick={() => rowClick && rowClick(row.original)}
+                                            >
+                                              <React.Fragment>
+                                                {totalData ? (
+                                                  <React.Fragment>
+                                                    {cell.column.Cell.name === "defaultRenderer" ? (
+                                                      <div className={`text-sm !text-red-400`}>
+                                                        {cell.render("Cell")}
+                                                      </div>  
+                                                    ) : (
+                                                        cell.render("Cell")
+                                                    )}
+                                                  </React.Fragment>
+                                                ) : (
+                                                  <React.Fragment>
+                                                    {cell.column.Cell.name === "defaultRenderer" ? (
+                                                      <div className={`text-sm text-gray-500`}>
+                                                        {cell.render("Cell")}
+                                                      </div>  
+                                                    ) : (
+                                                        cell.render("Cell")
+                                                    )}
+                                                  </React.Fragment>
+                                                )}
+                                              </React.Fragment>
+                                            </td>
+                                        );
+                                        })}
+                                        {/* ACTION BUTTON */}
+                                        {(hasActionButtons && !root && !row.original.system) && (
                                         <td
-                                          {...cell.getCellProps()}
-                                          className={`px-4 py-3 whitespace-nowrap-custom ${rowClick && 'cursor-pointer'} ${totalData && 'font-bold'}`}
-                                          role="cell"
-                                          onClick={() => rowClick && rowClick(row.original)}
+                                            className="py-4-custom whitespace-nowrap-custom"
+                                            role="cell"
                                         >
-                                          {cell.column.Cell.name === "defaultRenderer" ? (
-                                              <div className={`text-sm ${fontColor} `}>
-                                                {cell.render("Cell")}
-                                              </div>
-                                          ) : (
-                                              cell.render("Cell")
-                                          )}
+                                            <ActionButton
+                                              row={row}
+                                              rowActionButtons={rowActionButtons}
+                                            />
                                         </td>
-                                    );
-                                    })}
-                                    {/* ACTION BUTTON */}
-                                    {(hasActionButtons && !root && !row.original.system) && (
-                                    <td
-                                        className="py-4-custom whitespace-nowrap-custom"
-                                        role="cell"
-                                    >
-                                        <ActionButton
-                                          row={row}
-                                          rowActionButtons={rowActionButtons}
-                                        />
-                                    </td>
-                                    )}
-                                </tr>
-                                );
+                                        )}
+                                    </tr>
+                                  );
+                                } else {
+                                  return (
+                                    <tr {...row.getRowProps()} className={`${bg} hover:bg-slate-200`}>
+                                        {multiSelect && (
+                                          <td className="py-4-custom whitespace-nowrap-custom" role="cell">
+                                            <CheckBox name={`select-${i}`}
+                                                value={selected} 
+                                                onChange={() => handleSelectRow(row.original, i)}
+                                                size={"md"}
+                                                disabled={!allowApproved}
+                                            />
+                                          </td>
+                                        )}
+                                        {row.cells.map((cell) => {
+                                        return (
+                                            <td
+                                              {...cell.getCellProps()}
+                                              className={`px-4 py-3 whitespace-nowrap-custom ${rowClick && 'cursor-pointer'} ${totalData && 'font-bold'}`}
+                                              role="cell"
+                                              onClick={() => rowClick && rowClick(row.original)}
+                                            >
+                                              <React.Fragment>
+                                                {totalData ? (
+                                                  <React.Fragment>
+                                                    {cell.column.Cell.name === "defaultRenderer" ? (
+                                                      <div className={`text-sm !text-red-400`}>
+                                                        {cell.render("Cell")}
+                                                      </div>  
+                                                    ) : (
+                                                        cell.render("Cell")
+                                                    )}
+                                                  </React.Fragment>
+                                                ) : (
+                                                  <React.Fragment>
+                                                    {cell.column.Cell.name === "defaultRenderer" ? (
+                                                      <div className={`text-sm text-gray-500`}>
+                                                        {cell.render("Cell")}
+                                                      </div>  
+                                                    ) : (
+                                                        cell.render("Cell")
+                                                    )}
+                                                  </React.Fragment>
+                                                )}
+                                              </React.Fragment>
+                                            </td>
+                                        );
+                                        })}
+                                        {/* ACTION BUTTON */}
+                                        {(hasActionButtons && !root && !row.original.system) && (
+                                        <td
+                                            className="py-4-custom whitespace-nowrap-custom"
+                                            role="cell"
+                                        >
+                                            <ActionButton
+                                              row={row}
+                                              rowActionButtons={rowActionButtons}
+                                            />
+                                        </td>
+                                        )}
+                                    </tr>
+                                  );
+                                }
                             })}
                         </>
                     )}

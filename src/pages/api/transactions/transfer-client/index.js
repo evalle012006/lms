@@ -42,7 +42,7 @@ async function getList(req, res) {
     if (_id) {
         const areaManager = await db.collection("users").find({ _id: new ObjectId(_id) }).toArray();
         if (areaManager.length > 0) {
-            const branchCodes = areaManager[0].designatedBranch;
+            const branchCodes = typeof areaManager[0].designatedBranch === 'string' ? JSON.parse(areaManager[0].designatedBranch) : areaManager[0].designatedBranch;
             const branches = await db.collection("branches").find({ $expr: { $in: ['$code', branchCodes] } }).toArray();
             if (branches.length > 0) {
                 const branchIds = branches.map(b => b._id + '');

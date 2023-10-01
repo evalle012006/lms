@@ -13,6 +13,7 @@ import { setBranchList } from "@/redux/actions/branchActions";
 import { setGroupList } from "@/redux/actions/groupActions";
 import { setUserList } from "@/redux/actions/userActions";
 import Spinner from "@/components/Spinner";
+import AddUpdateClientCoMaker from "@/components/transactions/AddUpdateClientCoMakerDrawer";
 
 const ClientsProspectPage = () => {
     const router = useRouter();
@@ -20,6 +21,7 @@ const ClientsProspectPage = () => {
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
+    const [showCoMakerModal, setShowCoMakerModal] = useState(false);
     const [loading, setLoading] = useState(true);
 
     const [showAddDrawer, setShowAddDrawer] = useState(false);
@@ -43,7 +45,8 @@ const ClientsProspectPage = () => {
             if (currentUser.root !== true && (currentUser.role.rep === 3 || currentUser.role.rep === 4)) {
                 branches = [branches.find(b => b.code === currentUser.designatedBranch)];
             } else if (currentUser.role.rep === 2) {
-                branches = branches.filter(b => currentUser.designatedBranch.includes(b.code));
+                const branchCodes = typeof currentUser.designatedBranch === 'string' ? JSON.parse(currentUser.designatedBranch) : currentUser.designatedBranch;
+                branches = branches.filter(b => branchCodes.includes(b.code));
             }
 
             dispatch(setBranchList(branches));
@@ -234,6 +237,15 @@ const ClientsProspectPage = () => {
         window.location.reload();
     }
 
+    const handleShowCoMakerDrawer = () => {
+        setShowCoMakerModal(true);
+    }
+
+    const handleCloseCoMakerDrawer = () => {
+        setClient({});
+    }
+
+
     const actionButtons = [
         <ButtonSolid label="Add Client" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
     ];
@@ -270,8 +282,9 @@ const ClientsProspectPage = () => {
                 </div>
             ) : (
                 <React.Fragment>
-                    <ViewClientsByGroupPage status={status} client={client} setClientParent={setClient} setMode={setMode} handleShowAddDrawer={handleShowAddDrawer} />
+                    <ViewClientsByGroupPage status={status} client={client} setClientParent={setClient} setMode={setMode} handleShowAddDrawer={handleShowAddDrawer} handleShowCoMakerDrawer={handleShowCoMakerDrawer} />
                     <AddUpdateClient mode={mode} client={client} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
+                    <AddUpdateClientCoMaker client={client} showSidebar={showCoMakerModal} setShowSidebar={setShowCoMakerModal} onClose={handleCloseCoMakerDrawer} />
                 </React.Fragment>
             )}
         </Layout>

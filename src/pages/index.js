@@ -40,7 +40,27 @@ const Index = () => {
         //     await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}transactions/cash-collection-summary/update-los-data`);
         // }
 
+        // const updateLoanCoMaker = async () => {
+        //     await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}aahandy-scripts/update-loan-comaker`);
+        // }
+
+        // const getLoans = async () => {
+        //     await fetchWrapper.get(`${process.env.NEXT_PUBLIC_API_URL}aahandy-scripts/get-all-loan-specific-data/`);
+        // }
+
+        // const updateClients = async () => {
+        //     await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}aahandy-scripts/update-clients`, {});
+        // }
+
+        // const updateGroupData = async () => {
+        //     await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}aahandy-scripts/update-group-data`, {});
+        // }
+
         mounted && getSystemSettings();
+        // mounted && updateGroupData();
+        // mounted && updateClients();
+        // mounted && getLoans();
+        // mounted && updateLoanCoMaker();
         // mounted && getTransactionSettings();
         // mounted && getListHoliday();
         // mounted && updateGroupClients();

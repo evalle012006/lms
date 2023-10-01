@@ -29,6 +29,7 @@ const CashCollectionDetailsPage = () => {
     const isHoliday = useSelector(state => state.systemSettings.holiday);
     const isWeekend = useSelector(state => state.systemSettings.weekend);
     const loCashCollectionList = useSelector(state => state.cashCollection.lo);
+    const [selectedLoGroup, setSelectedLoGroup] = useState('all');
 
     const handleBranchFilter = (selected) => {
         setCurrentBranch(selected);
@@ -52,12 +53,18 @@ const CashCollectionDetailsPage = () => {
             const pending = loCashCollectionList.filter(cc => cc.status === 'open');
             const draft = loCashCollectionList.filter(cc => cc.draft);
 
+            const loIds = loCashCollectionList.filter(cc => {
+                if (cc.activeClients > 0) {
+                    return cc._id;
+                }
+            }).map(lo => lo._id);
+
             if (pending.length > 0) {
                 setLoading(false);
-                toast.error("One or more group/s transaction is not yet closed.");
+                toast.error("One or more Loan Officer transaction is not yet closed.");
             } else if (draft.length > 0) {
                 setLoading(false);
-                toast.error("One or more group/s transaction has a draft data.");
+                toast.error("One or more Loan Officer transaction has a draft data.");
             } else {
                 let date = currentDate;
                 if (dateFilter) {
@@ -66,6 +73,7 @@ const CashCollectionDetailsPage = () => {
                 
                 const data = {
                     branchId: branch._id,
+                    loIds: loIds,
                     currentDate: date
                 }
 
@@ -76,7 +84,7 @@ const CashCollectionDetailsPage = () => {
                     toast.success('Today transactions are now available in BMS.');
                 } else if (resp.error) {
                     setLoading(false);
-                    toast.error(resp.message);
+                    toast.error(resp.message, { autoClose: 5000, hideProgressBar: false });
                 }
             }
         }
@@ -107,7 +115,8 @@ const CashCollectionDetailsPage = () => {
                 toast.error(response.message);
             }
         } else if (currentUser.role.rep === 2) {
-            url = url + '?' + new URLSearchParams({ branchCodes: currentUser.designatedBranch });
+            const branchCodes = typeof currentUser.designatedBranch === 'string' ? JSON.parse(currentUser.designatedBranch) : currentUser.designatedBranch;
+            url = url + '?' + new URLSearchParams({ branchCodes: branchCodes });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let branches = [];
@@ -127,6 +136,10 @@ const CashCollectionDetailsPage = () => {
                 toast.error(response.message);
             }
         }
+    }
+
+    const handleLoGroupChange = (value) => {
+        setSelectedLoGroup(value);
     }
 
     useEffect(() => {
@@ -169,9 +182,10 @@ const CashCollectionDetailsPage = () => {
                 {currentBranch && <DetailsHeader page={2} pageName="branch-view" currentDate={moment(currentDate).format('dddd, MMMM DD, YYYY')} 
                     selectedBranch={currentBranch} handleBranchFilter={handleBranchFilter} handleSubmit={handleShowSubmitDialog}
                     dateFilter={dateFilter} handleDateFilter={handleDateFilter} holiday={isHoliday} weekend={isWeekend}
+                    selectedLoGroup={selectedLoGroup} handleLoGroupChange={handleLoGroupChange}
                 />}
                 <div className='p-4 mt-[8rem]'>
-                    <ViewByLoanOfficerPage pageNo={2} dateFilter={dateFilter} />
+                    <ViewByLoanOfficerPage pageNo={2} dateFilter={dateFilter} selectedLoGroup={selectedLoGroup} />
                 </div>
                 <Dialog show={showSubmitDialog}>
                     <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">

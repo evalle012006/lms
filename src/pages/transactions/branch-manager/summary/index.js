@@ -309,6 +309,7 @@ const BranchManagerSummary = () => {
                             ...los,
                             day: los._id.dateAdded,
                             transfer: los.transfer,
+                            prevMcbuBalance: los.prevMcbuBalance,
                             mcbuTargetStr: los.mcbuTarget > 0 ? formatPricePhp(los.mcbuTarget) : '-',
                             mcbuActualStr: los.mcbuActual > 0 ? formatPricePhp(los.mcbuActual) : '-',
                             mcbuWithdrawalStr: los.mcbuWithdrawal > 0 ? formatPricePhp(los.mcbuWithdrawal) : '-',
@@ -718,12 +719,21 @@ const BranchManagerSummary = () => {
             let temp = {...los};
 
             if (index !== 0 && !los.weekTotal) {
+                // const prevMcbuBalance = los.prevMcbuBalance;
                 const mcbuActual = los.mcbuActual !== '-' ? los.mcbuActual : 0;
                 const mcbuWithdrawal = los.mcbuWithdrawal !== '-' ? los.mcbuWithdrawal : 0;
                 const mcbuInterest = los.mcbuInterest !== '-' ? los.mcbuInterest : 0;
                 const mcbuReturnAmt = los.mcbuReturnAmt !== '-' ? los.mcbuReturnAmt : 0;
                 const fBalMcbuBalance = fBal.mcbuBalance !== '-' ? fBal.mcbuBalance : 0;
                 const transferMCBU = los.transferMcbu ? los.transferMcbu : 0;
+
+                // if (fBalMcbuBalance == 0) {
+                //     fBalMcbuBalance = prevMcbuBalance ? prevMcbuBalance : 0;
+                // }
+
+                // if (prevLos && prevLos?.mcbuBalance == 0) {
+                //     prevLos.mcbuBalance = prevMcbuBalance ? prevMcbuBalance : 0;
+                // }
 
                 if (index === 1) {
                     temp.activeClients = temp.activeClients > 0 ? temp.activeClients : fBal.activeClients;
@@ -756,7 +766,6 @@ const BranchManagerSummary = () => {
 
     const calculateWeeklyTotals = (losList) => {
         const transferRow = processTransferDetails(losList);
-        console.log(transferRow)
         const weekTotals = losList.filter(los => los.weekTotal);
         const fBal = losList[0];
 
@@ -808,11 +817,13 @@ const BranchManagerSummary = () => {
                 let totalActiveBorrowers = 0; // last row
                 let totalLoanBalance = 0; // last row
 
+                // let lastActiveClients = 0;
                 let lastPastDueAmount = 0;
                 let lastPastDuePerson = 0;
                 let lastLoanBalance = 0;
                 let lastMcbuBalance = 0;
-                // let lastMispaymentPerson = 0;
+                // let lastActiveLoanReleasePerson = 0;
+                // let lastActiveLoanReleaseAmount = 0;
 
                 let totalMcbuTarget = 0;
                 let totalMcbuActual = 0;
@@ -847,6 +858,11 @@ const BranchManagerSummary = () => {
                     totalCollectionActualWeekly += los.collectionActualWeekly !== '-' ? los.collectionActualWeekly : 0;
                     totalConsolidatedCollection += los.consolidatedCollection !== '-' ? los.consolidatedCollection : 0;
                     totalMispaymentPerson += los.mispaymentPerson !== '-' ? los.mispaymentPerson : 0;
+                    
+                    // if (los.activeClients > 0) {
+                    //     lastActiveClients = los.activeClients;
+                    // }
+
                     if (los.pastDuePerson !== '-') {
                         lastPastDuePerson = los.pastDuePerson;
                     }
@@ -862,6 +878,14 @@ const BranchManagerSummary = () => {
                     if (los.mcbuBalance > 0) {
                         lastMcbuBalance = los.mcbuBalance;
                     }
+
+                    // if (los.activeLoanReleasePerson > 0) {
+                    //     lastActiveLoanReleasePerson = los.activeLoanReleasePerson;
+                    // }
+
+                    // if (los.activeLoanReleaseAmount > 0) {
+                    //     lastActiveLoanReleaseAmount = los.activeLoanReleaseAmount;
+                    // }
 
                     totalFullPaymentDailyPerson += los.fullPaymentDailyPerson !== '-' ? los.fullPaymentDailyPerson : 0;
                     totalFullPaymentDailyAmount += los.fullPaymentDailyAmount !== '-' ? los.fullPaymentDailyAmount : 0;
@@ -887,12 +911,18 @@ const BranchManagerSummary = () => {
                     totalActiveLoanReleasePerson = prevWeek.activeLoanReleasePerson + totalConsolidatedLoanReleasePerson - totalConsolidatedFullPaymentPerson;
                     totalActiveLoanReleaseAmount = prevWeek.activeLoanReleaseAmount + totalConsolidatedLoanReleaseAmount - totalConsolidatedFullPaymentAmount;
                 }
+                
+                // if (totalActiveClients == 0) {
+                //     totalActiveClients = lastActiveClients;
+                // }
 
                 totalMcbuBalance = lastMcbuBalance;
                 totalPastDuePerson = lastPastDuePerson;
                 totalPastDueAmount = lastPastDueAmount;
                 totalActiveBorrowers = losSlice[losSlice.length - 1].activeBorrowers;
                 totalLoanBalance =  lastLoanBalance;
+                // totalActiveLoanReleasePerson = totalActiveLoanReleasePerson == 0 ? lastActiveLoanReleasePerson : totalActiveLoanReleasePerson;
+                // totalActiveLoanReleaseAmount = totalActiveLoanReleaseAmount == 0 ? lastActiveLoanReleaseAmount : totalActiveLoanReleaseAmount;
 
                 // +/- with the transfer
                 // apply only to the last week total
@@ -1119,6 +1149,11 @@ const BranchManagerSummary = () => {
         let totalConsolidatedFullPaymentAmount = 0;
         let totalActiveBorrowers = 0; // last row
         let totalLoanBalance = 0; // last row
+        // let lastActiveClients = 0;
+        // let lastActiveLoanReleasePerson = 0;
+        // let lastActiveLoanReleaseAmount = 0;
+        // let lastActiveBorrowers = 0;
+        // let lastLoanBalance = 0;
 
         weeklyTotals.map(wt => {
             totalTransfer += wt.transfer;
@@ -1151,14 +1186,55 @@ const BranchManagerSummary = () => {
             totalFullPaymentWeeklyAmount += wt.fullPaymentWeeklyAmount;
             totalConsolidatedFullPaymentPerson += wt.consolidatedFullPaymentPerson;
             totalConsolidatedFullPaymentAmount += wt.consolidatedFullPaymentAmount;
+
+            // if (wt.activeClients > 0) {
+            //     lastActiveClients = wt.activeClients;
+            // }
+
+            // if (wt.activeLoanReleasePerson > 0) {
+            //     lastActiveLoanReleasePerson = wt.activeLoanReleasePerson;
+            // }
+
+            // if (wt.activeLoanReleaseAmount > 0) {
+            //     lastActiveLoanReleaseAmount = wt.activeLoanReleaseAmount;
+            // }
+
+            // if (wt.activeBorrowers > 0) {
+            //     lastActiveBorrowers = wt.activeBorrowers;
+            // }
+
+            // if (wt.loanBalance > 0) {
+            //     lastLoanBalance = wt.loanBalance;
+            // }
         });
 
         totalMcbuBalance = fBal.mcbuBalance + totalMcbuActual - totalMcbuWithdrawal + totalMcbuInterest - totalMcbuReturnAmt;
         totalActiveClients = fBal.activeClients + totalTransfer + totalNewMember - totalNoMcbuReturn;
         totalActiveLoanReleasePerson = fBal.activeLoanReleasePerson + totalConsolidatedLoanReleasePerson - totalConsolidatedFullPaymentPerson;
         totalActiveLoanReleaseAmount = fBal.activeLoanReleaseAmount + totalConsolidatedLoanReleaseAmount - totalConsolidatedFullPaymentAmount;
+
+        // if (totalActiveClients == 0) {
+        //     totalActiveClients = lastActiveClients;
+        // }
+        
+        // if (totalActiveLoanReleasePerson == 0) {
+        //     totalActiveLoanReleasePerson = lastActiveLoanReleasePerson;
+        // }
+
+        // if (totalActiveLoanReleaseAmount == 0) {
+        //     totalActiveLoanReleaseAmount = lastActiveLoanReleaseAmount;
+        // }
+
         totalActiveBorrowers = fBal.activeBorrowers + totalConsolidatedLoanReleasePerson - totalConsolidatedFullPaymentPerson;
         totalLoanBalance = fBal.loanBalance + totalConsolidatedLoanReleaseAmount - totalConsolidatedCollection;
+
+        // if (totalActiveBorrowers == 0) {
+        //     totalActiveBorrowers = lastActiveBorrowers;
+        // }
+
+        // if (totalLoanBalance <= 0 && fBal.loanBalance == 0 && ((totalLoanReleaseDailyAmount == 0 && totalCollectionActualDaily > 0) || (totalLoanReleaseWeeklyAmount == 0 && totalCollectionActualWeekly > 0))) {
+        //     totalLoanBalance = lastLoanBalance;
+        // }
 
         monthlyTotal.transfer = totalTransfer;
         monthlyTotal.newMember = totalNewMember;
@@ -1347,6 +1423,11 @@ const BranchManagerSummary = () => {
             totalConsolidatedFullPaymentAmount = fBal.consolidatedFullPaymentAmount + monthly.consolidatedFullPaymentAmount;
             totalActiveBorrowers = monthly.activeBorrowers;
             totalLoanBalance = totalActiveLoanReleaseAmount - totalConsolidatedCollection;
+
+
+            // if (monthly.loanReleaseAmount === 0 && fBal.loanReleaseAmount === 0) {
+            //     totalLoanBalance = monthly.loanBalance;
+            // }
         }
 
         grandTotal.transfer = totalTransfer;
@@ -1405,10 +1486,12 @@ const BranchManagerSummary = () => {
         grandTotal.loanBalance = totalLoanBalance;
         grandTotal.loanBalanceStr = formatPricePhp(totalLoanBalance);
 
-        if (!filter) {
-            saveLosTotals(grandTotal);
-        } else {
-            saveLosTotals(grandTotal, true, date)
+        if (grandTotal.loanBalance > 0) {
+            if (!filter) {
+                saveLosTotals(grandTotal);
+            } else {
+                saveLosTotals(grandTotal, true, date)
+            }
         }
 
         return grandTotal;

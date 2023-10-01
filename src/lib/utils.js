@@ -46,6 +46,18 @@ export const formatBytes = (bytes, decimals = 2) => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
+export const checkFileSize = (size) => {
+    let msg;
+
+    const fileSize = Math.round((size / 1024));
+    
+    if (fileSize > 1028) {
+        msg = 'File too big, please select a file less than 1mb';
+    }
+
+    return msg;
+}
+
 export const formatPricePhp = (num) => {
     if (num) {
         if (num < 0) {
@@ -204,4 +216,65 @@ export const getYears = () => {
         { label: 2034, value: 2034 },
         { label: 2035, value: 2035 }
     ];
+}
+
+export const extractName = (name) => {
+    const _name = name && name !== undefined ? name.trim() : null;
+    if (_name) {
+        let firstName;
+        let middleName;
+        let lastName;
+        const arg = _name.split(' ');
+        if (arg.length == 2) {
+            firstName = arg[0];
+            lastName = arg[1];
+        } else if (arg.length === 3) {
+            firstName = arg[0]; 
+            middleName = arg[1]; 
+            lastName = arg[2];
+        } else if (arg.length === 4) {
+            firstName = arg[0] + ' ' + arg[1];
+            middleName = arg[2];
+            lastName = arg[3];
+        } else if (arg.length === 5) {
+            firstName = arg[0] + ' ' + arg[1] + ' ' + arg[1];
+            middleName = arg[3]; 
+            lastName = arg[4];
+        }
+
+        return { firstName, middleName, lastName };
+    } else {
+        return null;
+    }
+}
+
+export const parseDate = (date) => {
+    let parsedDate;
+    if (date && date !== undefined) {
+        if (typeof date == 'number') {
+            const convertedDate = new Date(Math.round((date - 25569)*86400*1000));
+            parsedDate = moment(convertedDate).format('YYYY-MM-DD');
+        } else {
+            let arr = [];
+            if (date.includes('-')) {
+                arr = date.split('-');
+            } else if (date.includes('/')) {
+                arr = date.split('/');
+            }
+
+            if (arr.length === 3) {
+                const month = arr[0].length == 1 ? "0" + arr[0] : arr[0];
+                const day = arr[1].length == 1 ? "0" + arr[1] : arr[1];
+                const year = arr[2].length == 2 ? parseInt(arr[2]) !== 23 ? "19" + arr[2] : "20" + arr[2] : arr[2];
+
+                parsedDate = year + "-" + month + "-" + day;
+            }
+        }
+    }
+
+    return parsedDate;
+}
+
+export const calculateAge = (dob) => {
+    return Math.round(moment().diff(dob, 'years', true));
 }

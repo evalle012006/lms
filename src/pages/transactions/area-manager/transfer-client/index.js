@@ -18,6 +18,7 @@ import { formatPricePhp } from "@/lib/utils";
 import { TabPanel, useTabs } from "react-headless-tabs";
 import { TabSelector } from "@/lib/ui/tabSelector";
 import TransferHistoryLOToLOPage from "@/components/transactions/transfer/TransferHistoryLOToLO";
+import RevertTransferPage from "@/components/transactions/transfer/RevertTransfer";
 
 const TransferClientPage = () => {
     const lastMonthDate = useSelector(state => state.systemSettings.lastDay);
@@ -38,7 +39,8 @@ const TransferClientPage = () => {
     const [selectedTab, setSelectedTab] = useTabs([
         'transfer',
         'history-branch',
-        'history-lo'
+        'history-lo',
+        'history-revert-transfer'
     ]);
 
     const handleShowAddDrawer = () => {
@@ -137,20 +139,20 @@ const TransferClientPage = () => {
         
         let transfer = {...data};
 
-        // const errorMsg = await checkGroupsStatus([transfer.sourceGroupId, transfer.targetGroupId]);
-        // if (errorMsg) {
-        //     setLoading(false);
-        //     toast.error(errorMsg);
-        // } else {
+        const errorMsg = await checkGroupsStatus([transfer.sourceGroupId, transfer.targetGroupId]);
+        if (errorMsg) {
+            setLoading(false);
+            toast.error(errorMsg);
+        } else {
             let msg = 'Selected client successfully transferred.';
             if (status === "approved") {
                 const clientData = transfer.client;
 
                 transfer = processTransfer(transfer, clientData);
             } else {
-                transfer.status = "rejected";
+                transfer.status = "reject";
                 transfer.dateAdded = currentDate;
-                msg = 'Selected transfer was rejected.';
+                msg = 'Selected transfer was reject.';
             }
 
             const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/transfer-client/approve-reject', [transfer]);
@@ -162,7 +164,7 @@ const TransferClientPage = () => {
                     getTransferList();
                 }, 500);
             }
-        // }
+        }
     }
 
     const handleEditAction = (row) => {
@@ -220,10 +222,10 @@ const TransferClientPage = () => {
 
     const handleCloseAddDrawer = () => {
         setLoading(true);
-        // getTransferList();
+        getTransferList();
         setMode('add');
         setClient({});
-        window.location.reload();
+        // window.location.reload();
     }
 
     const handleMultiSelect = (mode, selectAll, row, rowIndex) => {
@@ -415,7 +417,8 @@ const TransferClientPage = () => {
                     toast.error(response.message);
                 }
             } else if (currentUser.role.rep === 2) {
-                url = url + '?' + new URLSearchParams({ branchCodes: currentUser.designatedBranch });
+                const branchCodes = typeof currentUser.designatedBranch === 'string' ? JSON.parse(currentUser.designatedBranch) : currentUser.designatedBranch;
+                url = url + '?' + new URLSearchParams({ branchCodes: branchCodes });
                 const response = await fetchWrapper.get(url);
                 if (response.success) {
                     let branches = [];
@@ -468,6 +471,11 @@ const TransferClientPage = () => {
                                 onClick={() => setSelectedTab("history-lo")}>
                                 History LO to LO
                             </TabSelector>
+                            <TabSelector
+                                isActive={selectedTab === "history-revert-transfer"}
+                                onClick={() => setSelectedTab("history-revert-transfer")}>
+                                Revert Transfer
+                            </TabSelector>
                         </nav>
                         <React.Fragment>
                             <TabPanel hidden={selectedTab !== "transfer"}>
@@ -478,6 +486,9 @@ const TransferClientPage = () => {
                             </TabPanel>
                             <TabPanel className="px-4" hidden={selectedTab !== "history-lo"}>
                                 <TransferHistoryLOToLOPage />
+                            </TabPanel>
+                            <TabPanel className="px-4" hidden={selectedTab !== "history-revert-transfer"}>
+                                <RevertTransferPage />
                             </TabPanel>
                         </React.Fragment> 
                         <AddUpdateTransferClient mode={mode} client={client} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />

@@ -6,7 +6,7 @@ import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { useDispatch, useSelector } from "react-redux";
 import Spinner from "@/components/Spinner";
 import toast from 'react-hot-toast';
-import { setBranchList } from "@/redux/actions/branchActions";
+import { setBranch, setBranchList } from "@/redux/actions/branchActions";
 import Dialog from "@/lib/ui/Dialog";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
@@ -56,7 +56,7 @@ const LoanApplicationPage = () => {
     const [selectedFilterBranch, setSelectedFilterBranch] = useState();
     const [selectedFilterUser, setSelectedFilterUser] = useState();
     const [selectedFilterGroup, setSelectedFilterGroup] = useState();
-    const [occurence, setOccurence] = useState();
+    const [occurence, setOccurence] = useState('daily');
 
     const handleBranchChange = (selected) => {
         setSelectedFilterBranch(selected.value);
@@ -114,6 +114,10 @@ const LoanApplicationPage = () => {
                     }
                 );
             });
+
+            if (branches.length > 0 && (currentUser.role.rep === 3 || currentUser.role.rep === 4)) {
+                dispatch(setBranch(branches[0]));
+            }
             
             dispatch(setBranchList(branches));
         } else {
@@ -217,7 +221,17 @@ const LoanApplicationPage = () => {
                         selected: false
                     });
                 });
+                loanList.sort((a, b) => {
+                    if (a.pnNumber < b.pnNumber) {
+                        return -1;
+                    }
 
+                    if (b.pnNumber < b.pnNumber) {
+                        return 1;
+                    }
+
+                    return 0;
+                } );
                 dispatch(setLoanList(loanList));
                 setLoading(false);
             } else if (response.error) {
@@ -256,7 +270,17 @@ const LoanApplicationPage = () => {
                         selected: false
                     });
                 });
+                loanList.sort((a, b) => {
+                    if (a.pnNumber < b.pnNumber) {
+                        return -1;
+                    }
 
+                    if (b.pnNumber < b.pnNumber) {
+                        return 1;
+                    }
+
+                    return 0;
+                } );
                 dispatch(setLoanList(loanList));
                 setLoading(false);
             } else if (response.error) {
@@ -296,7 +320,17 @@ const LoanApplicationPage = () => {
                         selected: false
                     });
                 });
+                loanList.sort((a, b) => {
+                    if (a.pnNumber < b.pnNumber) {
+                        return -1;
+                    }
 
+                    if (b.pnNumber < b.pnNumber) {
+                        return 1;
+                    }
+
+                    return 0;
+                } );
                 dispatch(setLoanList(loanList));
                 setLoading(false);
             } else if (response.error) {
@@ -336,7 +370,17 @@ const LoanApplicationPage = () => {
                         selected: false
                     });
                 });
+                loanList.sort((a, b) => {
+                    if (a.pnNumber < b.pnNumber) {
+                        return -1;
+                    }
 
+                    if (b.pnNumber < b.pnNumber) {
+                        return 1;
+                    }
+
+                    return 0;
+                } );
                 dispatch(setLoanList(loanList));
                 setLoading(false);
             } else if (response.error) {
@@ -485,8 +529,11 @@ const LoanApplicationPage = () => {
         setLoading(true);
         setMode('add');
         setLoan({});
+        setOccurence('daily');
         getListLoan();
-        getListGroup(currentUser._id, currentUser?.transactionType);
+        if (currentUser.role.rep === 4) {
+            getListGroup(currentUser._id, currentUser?.transactionType);
+        }
         setTimeout(() => {
             setLoading(false);
         }, 1000);
@@ -590,7 +637,7 @@ const LoanApplicationPage = () => {
 
     const actionButtons = currentUser.role.rep < 4 ? [
         <ButtonOutline label="Approved Selected Loans" type="button" className="p-2 mr-3" onClick={handleMultiApprove} />,
-        // <ButtonSolid label="Add Loan" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
+        <ButtonSolid label="Add Loan" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
     ] : [
         <ButtonSolid label="Add Loan" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
     ];
@@ -604,6 +651,7 @@ const LoanApplicationPage = () => {
         client.value = client._id;
         clientListData.push(client);
         dispatch(setClientList(clientListData));
+        setOccurence(row.original.occurence);
         handleShowAddDrawer();
     }
 
@@ -741,6 +789,10 @@ const LoanApplicationPage = () => {
                     accessor: 'loanBalanceStr'
                 },
                 {
+                    Header: "PN Number",
+                    accessor: 'pnNumber'
+                },
+                {
                     Header: "Status",
                     accessor: 'status',
                     Cell: StatusPill,
@@ -779,16 +831,16 @@ const LoanApplicationPage = () => {
 
             if (currentUser.role.rep === 3) {
                 rowActionBtn = [
-                    { label: 'Approve', action: handleApprove},
-                    { label: 'Reject', action: handleReject},
+                    // { label: 'Approve', action: handleApprove},
                     { label: 'Edit Loan', action: handleEditAction},
-                    { label: 'Delete Loan', action: handleDeleteAction},
+                    { label: 'Reject', action: handleReject},
+                    // { label: 'Delete Loan', action: handleDeleteAction},
                     { label: 'NDS', action: handleShowNDSAction}
                 ];
             } else if (currentUser.role.rep === 4) {
                 rowActionBtn = [
                     { label: 'Edit Loan', action: handleEditAction},
-                    { label: 'Delete Loan', action: handleDeleteAction}
+                    // { label: 'Delete Loan', action: handleDeleteAction}
                 ];
             }
 

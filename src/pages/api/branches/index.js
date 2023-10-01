@@ -19,7 +19,6 @@ async function getBranch(req, res) {
 
     if (_id) {
         branch = await db.collection('branches')
-            // .find({ _id: new ObjectId(_id)})
             .aggregate([
                 { $match: { _id: new ObjectId(_id) } },
                 {
@@ -33,7 +32,23 @@ async function getBranch(req, res) {
                         as: "branchManager"
                     }
                 },
-                { $unwind: '$branchManager' }
+                { $unwind: '$branchManager' },
+                {
+                    $lookup: {
+                        from: "users",
+                        localField: "code",
+                        foreignField: "designatedBranch",
+                        pipeline: [
+                            { $match: { $expr: {$eq: ['$role.rep', 4]} } },
+                            { $group: {
+                                _id: null,
+                                count: { $sum: 1 }
+                            } }
+                        ],
+                        as: "noOfLO"
+                    }
+                },
+                { $unwind: '$noOfLO' }
             ])
             .toArray();
     } else if (code) {
@@ -51,7 +66,23 @@ async function getBranch(req, res) {
                         as: "branchManager"
                     }
                 },
-                { $unwind: '$branchManager' }
+                { $unwind: '$branchManager' },
+                {
+                    $lookup: {
+                        from: "users",
+                        localField: "code",
+                        foreignField: "designatedBranch",
+                        pipeline: [
+                            { $match: { $expr: {$eq: ['$role.rep', 4]} } },
+                            { $group: {
+                                _id: null,
+                                count: { $sum: 1 }
+                            } }
+                        ],
+                        as: "noOfLO"
+                    }
+                },
+                { $unwind: '$noOfLO' }
             ])
             .toArray();
     }

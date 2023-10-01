@@ -12,7 +12,7 @@ function Tag(props) {
         color = "#F3BB92"; 
         bg = "#FDF7F4";
         break;
-      case "rejected":
+      case "reject":
         color = "#E03145"; 
         bg = "#FCEAEC";
         break;

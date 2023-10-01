@@ -12,7 +12,7 @@ import Modal from "@/lib/ui/Modal";
 import ClientDetailPage from "./ClientDetailPage";
 import { formatPricePhp } from "@/lib/utils";
 
-const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMode, handleShowAddDrawer}) => {
+const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMode, handleShowAddDrawer, handleShowCoMakerDrawer}) => {
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
@@ -36,18 +36,21 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
             if (response.success) {
                 let clients = [];
                 await response.clients && response.clients.map(loan => {
+                    const name = `${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName}`;
                     clients.push({
                         ...loan.client,
                         ...loan,
+                        name: name,
                         middleName: loan.client.middleName ? loan.client.middleName : '',
-                        imgUrl: loan.client.profile ? imgpath + '/images/profiles/' + loan.client.profile : '',
+                        imgUrl: loan.client.profile ? imgpath + '/images/clients/' + loan.client.profile : '',
                         loanStatus: loan.status ? loan.status : '-',
                         activeLoanStr: loan.activeLoan ? formatPricePhp(loan.activeLoan) : '0.00',
                         loanBalanceStr: loan.loanBalance ? formatPricePhp(loan.loanBalance) : '0.00',
                         missPayments: loan.missPayments ?  loan.missPayments : 0,
                         noOfPayment: loan.noOfPayment ? loan.noOfPayment : 0,
                         delinquent: loan.client.delinquent === true ? 'Yes' : 'No',
-                        loName: loan.lo.length > 0 ? `${loan.lo[0].lastName}, ${loan.lo[0].firstName}` : ''
+                        loName: loan.lo.length > 0 ? `${loan.lo[0].lastName}, ${loan.lo[0].firstName}` : '',
+                        coMaker: (loan?.coMaker && typeof loan?.coMaker === 'number') ? loan.coMaker : ''
                     });
                 });
                 dispatch(setClientList(clients));
@@ -63,10 +66,12 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                     if (response.success) {
                         let clients = [];
                         await response.clients && response.clients.map(client => {
+                            const name = `${client.lastName}, ${client.firstName} ${client.middleName}`;
                             clients.push({
                                 ...client,
+                                name: name,
                                 middleName: client.middleName ? client.middleName : '',
-                                imgUrl: client.profile ? imgpath + '/images/profiles/' + client.profile : '',
+                                imgUrl: client.profile ? imgpath + '/images/clients/' + client.profile : '',
                                 slotNo: client.loans.length > 0 ? client.loans[0].slotNo : '-',
                                 loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
                                 activeLoanStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].activeLoan) : '0.00',
@@ -74,7 +79,8 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                                 missPayments: client.loans.length > 0 ?  client.loans[0].missPayments : 0,
                                 noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
                                 delinquent: client.delinquent === true ? 'Yes' : 'No',
-                                loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : ''
+                                loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : '',
+                                coMaker: (client.loans[0]?.coMaker && typeof client.loans[0]?.coMaker === 'number') ? client.loans[0]?.coMaker : ''
                             });
                         });
                         dispatch(setClientList(clients));
@@ -87,10 +93,12 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                     if (response.success) {
                         let clients = [];
                         await response.clients && response.clients.map(client => {
+                            const name = `${client.lastName}, ${client.firstName} ${client.middleName}`;
                             clients.push({
                                 ...client,
+                                name: name,
                                 middleName: client.middleName ? client.middleName : '',
-                                imgUrl: client.profile ? imgpath + '/images/profiles/' + client.profile : '',
+                                imgUrl: client.profile ? imgpath + '/images/clients/' + client.profile : '',
                                 slotNo: client.loans.length > 0 ? client.loans[0].slotNo : '-',
                                 loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
                                 activeLoanStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].activeLoan) : '0.00',
@@ -98,7 +106,8 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                                 missPayments: client.loans.length > 0 ?  client.loans[0].missPayments : 0,
                                 noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
                                 delinquent: client.delinquent === true ? 'Yes' : 'No',
-                                loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : ''
+                                loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : '',
+                                coMaker: (client.loans[0]?.coMaker && typeof client.loans[0]?.coMaker === 'number') ? client.loans[0]?.coMaker : ''
                             });
                         });
                         dispatch(setClientList(clients));
@@ -113,10 +122,12 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                     let clients = [];
                     await response.clients && response.clients.map(branch => {
                         branch.clients.map(client => {
+                            const name = `${client.lastName}, ${client.firstName} ${client.middleName}`;
                             clients.push({
                                 ...client,
+                                name: name,
                                 middleName: client.middleName ? client.middleName : '',
-                                imgUrl: client.profile ? imgpath + '/images/profiles/' + client.profile : '',
+                                imgUrl: client.profile ? imgpath + '/images/clients/' + client.profile : '',
                                 slotNo: client.loans.length > 0 ? client.loans[0].slotNo : '-',
                                 loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
                                 activeLoanStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].activeLoan) : '0.00',
@@ -125,7 +136,8 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                                 noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
                                 delinquent: client.delinquent === true ? 'Yes' : 'No',
                                 loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : '',
-                                branchName: branch.name
+                                branchName: branch.name,
+                                coMaker: (client.loans[0]?.coMaker && typeof client.loans[0]?.coMaker === 'number') ? client.loans[0]?.coMaker : ''
                             });
                         });
                     });
@@ -139,8 +151,10 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
             if (response.success) {
                 let clients = [];
                 await response.clients && response.clients.map(client => {
+                    const name = `${client.lastName}, ${client.firstName} ${client.middleName}`;
                     clients.push({
                         ...client,
+                        name: name,
                         middleName: client.middleName ? client.middleName : '',
                         imgUrl: client.profile ? imgpath + '/images/clients/' + client.profile : '',
                         groupName: client.groupName ? client.groupName : '-',
@@ -151,7 +165,8 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                         missPayments: client.loans.length > 0 ?  client.loans[0].missPayments : 0,
                         noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
                         delinquent: client.delinquent === true ? 'Yes' : 'No',
-                        loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : ''
+                        loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : '',
+                        coMaker: (client.loans?.coMaker && typeof client?.loans.coMaker === 'number') ? client.loans.coMaker : ''
                     });
                 });
                 dispatch(setClientList(clients));
@@ -170,6 +185,12 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
         let clientData = row.original.hasOwnProperty("client") ? row.original.client : row.original;
         setClientParent(clientData);
         handleShowAddDrawer();
+    }
+
+    const handleCoMakerAction = (row) => {
+        let clientData = row.original.hasOwnProperty("client") ? row.original.client : row.original;
+        setClientParent(clientData);
+        handleShowCoMakerDrawer();
     }
 
     const handleDeleteAction = (row) => {
@@ -193,10 +214,14 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
         setShowClientInfoModal(false);
     }
 
-    const rowActionButtons = [
+    const [rowActionButtons, setRowActionButtons] = useState(status !== 'active' ? [
         { label: 'Edit', action: handleEditAction },
         { label: 'Delete', action: handleDeleteAction }
-    ];
+    ] : [
+        { label: 'Edit', action: handleEditAction },
+        { label: 'Update', action: handleCoMakerAction, title: 'Update CoMaker' },
+        { label: 'Delete', action: handleDeleteAction }
+    ]);
 
     const handleDelete = () => {
         if (client) {
@@ -233,18 +258,10 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
         if (currentUser.role.rep === 4) {
             activeColumns = [
                 {
-                    Header: "Last Name",
-                    accessor: 'lastName',
+                    Header: "Name",
+                    accessor: 'name',
                     Cell: AvatarCell,
                     imgAccessor: "imgUrl"
-                },
-                {
-                    Header: "First Name",
-                    accessor: 'firstName'
-                },
-                {
-                    Header: "Middle Name",
-                    accessor: 'middleName'
                 },
                 {
                     Header: "Group",
@@ -292,18 +309,10 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
         } else if (currentUser.role.rep === 3) {
             activeColumns = [
                 {
-                    Header: "Last Name",
-                    accessor: 'lastName',
+                    Header: "Name",
+                    accessor: 'name',
                     Cell: AvatarCell,
-                    imgAccessor: "imgUrl",
-                },
-                {
-                    Header: "First Name",
-                    accessor: 'firstName'
-                },
-                {
-                    Header: "Middle Name",
-                    accessor: 'middleName'
+                    imgAccessor: "imgUrl"
                 },
                 {
                     Header: "Group",
@@ -357,18 +366,10 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
         } else {
             activeColumns = [
                 {
-                    Header: "Last Name",
-                    accessor: 'lastName',
+                    Header: "Name",
+                    accessor: 'name',
                     Cell: AvatarCell,
-                    imgAccessor: "imgUrl",
-                },
-                {
-                    Header: "First Name",
-                    accessor: 'firstName'
-                },
-                {
-                    Header: "Middle Name",
-                    accessor: 'middleName'
+                    imgAccessor: "imgUrl"
                 },
                 {
                     Header: "Branch",

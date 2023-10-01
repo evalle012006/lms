@@ -92,7 +92,10 @@ const Avatar = ({
   className
 }) => {
 
-  if (!name) throw new Error('UserAvatar requires a name');
+  if (!name) {
+    console.error('User has no name!');
+    return;
+  }
 
   const abbr = getInitials(name);
   // size = addPx(size);
@@ -118,7 +121,7 @@ const Avatar = ({
   let inner, classes = ['UserAvatar'];
   if (src || srcset) {
     innerStyle.backgroundImage = `url(${src || srcset})`;
-    innerStyle.backgroundSize = "contain";
+    innerStyle.backgroundSize = "cover";
     innerStyle.backgroundRepeat = "no-repeat";
   } else {
     let background;

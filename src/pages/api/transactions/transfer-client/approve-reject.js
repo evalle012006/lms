@@ -77,6 +77,7 @@ async function approveReject(req, res) {
                         if (newLoan.acknowledged) {
                             loan.status = "closed"
                             loan.transferred = true;
+                            loan.transferId = transfer._id;
                             loan.endDate = transfer.dateAdded;
                             loan.modifiedDateTime = new Date();
                             await db.collection('loans').updateOne({ _id: new ObjectId(loanId) }, { $set: { ...loan } });
@@ -110,7 +111,7 @@ async function approveReject(req, res) {
                 response = { success: true };
             }
         } else {
-            await db.collection('transferClients').updateOne({_id: new ObjectId(transfer._id)}, { $set: {status: "rejected", modifiedDateTime: new Date()} });
+            await db.collection('transferClients').updateOne({_id: new ObjectId(transfer._id)}, { $set: {status: "reject", modifiedDateTime: new Date()} });
         }
     });
 

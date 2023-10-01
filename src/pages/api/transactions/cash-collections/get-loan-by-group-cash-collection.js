@@ -128,7 +128,7 @@ async function getLoanWithCashCollection(req, res) {
             .collection('loans')
             .aggregate([
                 { $match: {$expr: { $and: [
-                    {$ne: ['$status', 'closed']}, {$ne: ['$status', 'rejected']}, {$ne: ['$status', 'completed']}, 
+                    {$ne: ['$status', 'closed']}, {$ne: ['$status', 'reject']}, {$ne: ['$status', 'completed']}, 
                     {$or: [{$eq: ['$dateGranted', date]}, {$eq: ['$status', 'pending']}]}, {$eq: ['$groupId', groupId]}
                 ]}} },
                 {
@@ -179,6 +179,17 @@ async function getLoanWithCashCollection(req, res) {
                 },
                 {
                     $unwind: "$client"
+                },
+                {
+                    $lookup: {
+                        from: "loans",
+                        localField: "clientId",
+                        foreignField: "clientId",
+                        pipeline: [
+                            { $match: { status: 'closed' } }
+                        ],
+                        as: "prevLoans"
+                    }
                 },
                 { $sort: { slotNo: 1 } },
                 { $project: { branchIdObj: 0, groupIdObj: 0, clientIdObj: 0 } }
