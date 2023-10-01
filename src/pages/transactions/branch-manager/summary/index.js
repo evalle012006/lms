@@ -961,8 +961,8 @@ const BranchManagerSummary = () => {
                     totalLoanReleaseWeeklyAmount += transferRow.loanReleaseWeeklyAmount;
                     totalConsolidatedLoanReleasePerson += noConsolidatedTransfer;
                     totalConsolidatedLoanReleaseAmount += transferRow.consolidatedLoanReleaseAmount;
-                    totalActiveLoanReleasePerson = transferRow.activeLoanReleasePerson;
-                    totalActiveLoanReleaseAmount = transferRow.activeLoanReleaseAmount;
+                    totalActiveLoanReleasePerson = transferRow.activeLoanReleasePerson > 0 ? transferRow.activeLoanReleasePerson : totalActiveLoanReleasePerson;
+                    totalActiveLoanReleaseAmount = transferRow.activeLoanReleaseAmount > 0 ? transferRow.activeLoanReleaseAmount : totalActiveLoanReleaseAmount;
                     totalCollectionTargetDaily += transferRow.collectionTargetDaily ? transferRow.collectionTargetDaily : 0;
                     totalCollectionActualDaily += transferRow.collectionActualDaily;
                     totalCollectionTargetWeekly += transferRow.collectionTargetWeekly ? transferRow.collectionTargetWeekly : 0;
@@ -970,8 +970,8 @@ const BranchManagerSummary = () => {
                     totalConsolidatedCollection += transferRow.consolidatedCollection;
                     totalPastDuePerson += transferRow.pastDuePerson;
                     totalPastDueAmount += transferRow.pastDueAmount;
-                    totalActiveBorrowers = transferRow.activeBorrowers;
-                    totalLoanBalance = transferRow.loanBalance;
+                    totalActiveBorrowers = transferRow.activeBorrowers > 0 ? transferRow.activeBorrowers : totalActiveBorrowers;
+                    totalLoanBalance = transferRow.loanBalance > 0 ? transferRow.loanBalance : totalLoanBalance;
                 }
 
                 losList[index] = {
