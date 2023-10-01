@@ -1044,6 +1044,14 @@ const CashCollectionDetailsPage = () => {
                             temp.mispayment = true;
                             temp.mispaymentStr = 'Yes';
                         }
+
+                        if (temp.remarks && temp.remarks.value === 'excused advance payment') {
+                            temp.activeLoan = 0;
+                            temp.targetCollection = 0;
+                            temp.targetCollectionStr = '-';
+                            temp.mispayment = false;
+                            temp.mispaymentStr = 'No';
+                        }
     
                         if (temp.loanBalance <= 0) {
                             temp.status = 'completed';
@@ -1098,14 +1106,9 @@ const CashCollectionDetailsPage = () => {
                         setLoading(false);
                         toast.success('Payment collection successfully submitted. Reloading page please wait.');
             
-                        setTimeout(() => {
-                            getCashCollections();
-                            setTimeout(async () => {
-                                if (currentGroup) {
-                                    await autoHealCashCollections(currentGroup._id, currentDate);
-                                }
-                            }, 2000);
-                        }, 1000);
+                        setTimeout(async () => {
+                            window.location.reload();
+                        }, 1200);
                     }
                 } else {
                     toast.warning('No active data to be saved.');

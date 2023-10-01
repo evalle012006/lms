@@ -16,7 +16,7 @@ import moment from 'moment'
 import CheckBox from "@/lib/ui/checkbox";
 import placeholder from '/public/images/image-placeholder.png';
 import Image from 'next/image';
-import { checkFileSize } from "@/lib/utils";
+import { calculateAge, checkFileSize } from "@/lib/utils";
 import { useRouter } from "node_modules/next/router";
 // add loan officer per client
 const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSidebar, onClose }) => {
@@ -93,95 +93,82 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
 
     const handleSaveUpdate = (values, action) => {
         let error = false;
-        setLoading(true);
-        values.insertedBy = currentUser._id;
-        values.firstName = values.firstName.toUpperCase();
-        values.lastName = values.lastName.toUpperCase();
-        values.middleName = values.middleName ? values.middleName.toUpperCase() : '';
-        values.addressBarangayDistrict = values.addressBarangayDistrict ? values.addressBarangayDistrict : '';
-        values.addressMunicipalityCity = values.addressMunicipalityCity ? values.addressMunicipalityCity : '';
-        values.addressProvince = values.addressProvince ? values.addressProvince : '';
-        values.addressStreetNo = values.addressStreetNo ? values.addressStreetNo : '';
-        values.addressZipCode = values.addressZipCode ? values.addressZipCode : '';
-        values.birthdate = values.birthdate ? moment(values.birthdate).format("YYYY-MM-DD") : null;
-        values.fullName = values.firstName + ' ' + values.middleName + ' ' + values.lastName;
-        values.address = values.addressStreetNo + ' ' + values.addressBarangayDistrict + ' ' + values.addressMunicipalityCity + ' ' + values.addressProvince + ' ' + values.addressZipCode;
-        
-        let groupData;
-        if (status === 'active') {
-            groupData = selectedGroup;
-        } else {
-            groupData = groupList && groupList.find(g => g._id === values.groupId);
+        if (values.birthdate) {
+            const age = calculateAge(values.birthdate);
+            if (age > 65) {
+                error = true;
+                toast.error('Client age is over 65 years old.');
+            }
         }
-        values.groupName = groupData.name;
-        if (currentUser.root !== true && (currentUser.role.rep === 4 || currentUser.role.rep === 3) && branchList.length > 0) {
-            const branch = branchList.find(b => b.code === currentUser.designatedBranch);
-            values.branchId = branch._id;
-            values.branchName = branch.name;
-        } // if area manager it should be able to select a branch where this client is
-        
-        if (mode === 'add') {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'clients/save/';
 
-            values.status = 'pending';
-            values.delinquent = false;
+        if (!error) {
+            setLoading(true);
+            values.insertedBy = currentUser._id;
+            values.firstName = values.firstName.toUpperCase();
+            values.lastName = values.lastName.toUpperCase();
+            values.middleName = values.middleName ? values.middleName.toUpperCase() : '';
+            values.addressBarangayDistrict = values.addressBarangayDistrict ? values.addressBarangayDistrict : '';
+            values.addressMunicipalityCity = values.addressMunicipalityCity ? values.addressMunicipalityCity : '';
+            values.addressProvince = values.addressProvince ? values.addressProvince : '';
+            values.addressStreetNo = values.addressStreetNo ? values.addressStreetNo : '';
+            values.addressZipCode = values.addressZipCode ? values.addressZipCode : '';
+            values.birthdate = values.birthdate ? moment(values.birthdate).format("YYYY-MM-DD") : null;
+            values.fullName = values.firstName + ' ' + values.middleName + ' ' + values.lastName;
+            values.address = values.addressStreetNo + ' ' + values.addressBarangayDistrict + ' ' + values.addressMunicipalityCity + ' ' + values.addressProvince + ' ' + values.addressZipCode;
+            
+            let groupData;
+            if (status === 'active') {
+                groupData = selectedGroup;
+            } else {
+                groupData = groupList && groupList.find(g => g._id === values.groupId);
+            }
+            values.groupName = groupData.name;
+            if (currentUser.root !== true && (currentUser.role.rep === 4 || currentUser.role.rep === 3) && branchList.length > 0) {
+                const branch = branchList.find(b => b.code === currentUser.designatedBranch);
+                values.branchId = branch._id;
+                values.branchName = branch.name;
+            } // if area manager it should be able to select a branch where this client is
+            
+            if (mode === 'add') {
+                const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'clients/save/';
 
-            fetchWrapper.post(apiUrl, values)
-                .then(response => {
-                    if (response.error) {
-                        toast.error(response.message);
-                        error = true;
-                    } else if (response.success) {
+                values.status = 'pending';
+                values.delinquent = false;
+
+                fetchWrapper.post(apiUrl, values)
+                    .then(response => {
+                        if (response.error) {
+                            toast.error(response.message);
+                            error = true;
+                        } else if (response.success) {
+                            setLoading(false);
+                            setShowSidebar(false);
+                            action.setSubmitting = false;
+                            action.resetForm();
+                            setDateValue(new Date());
+                            onClose();
+                            toast.success('Client successfully added.');
+                        }
+                    }).catch(error => {
+                        console.log(error)
+                    });
+            } else if (mode === 'edit') {
+                values._id = client._id;
+                values.file = image;
+                fetchWrapper.sendData(process.env.NEXT_PUBLIC_API_URL + 'clients/', values)
+                    .then(response => {
                         setLoading(false);
                         setShowSidebar(false);
                         action.setSubmitting = false;
                         action.resetForm();
                         setDateValue(new Date());
                         onClose();
-                        toast.success('Client successfully added.');
-                    }
-                }).catch(error => {
-                    console.log(error)
-                });
-        } else if (mode === 'edit') {
-            values._id = client._id;
-            values.file = image;
-            fetchWrapper.sendData(process.env.NEXT_PUBLIC_API_URL + 'clients/', values)
-                .then(response => {
-                    setLoading(false);
-                    setShowSidebar(false);
-                    action.setSubmitting = false;
-                    action.resetForm();
-                    setDateValue(new Date());
-                    onClose();
-                    toast.success('Client successfully updated.');
-                }).catch(error => {
-                    console.log(error);
-                });
+                        toast.success('Client successfully updated.');
+                    }).catch(error => {
+                        console.log(error);
+                    });
+            }
         }
-
-        // if (error !== true) {
-        //     // update group slot no and status
-        //     let params = { groupId: values.groupId };
-
-        //     if (values.groupId !== client.groupId) {
-        //         params.oldGroupId = client.groupId;
-        //     }
-            
-        //     fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'groups/list', params)
-        //         .then(response => {
-        //             if (response.error) {
-        //                 toast.error(response.message);
-        //             } else {
-                        // setLoading(false);
-                        // setShowSidebar(false);
-                        // action.setSubmitting = false;
-                        // action.resetForm();
-                        // setDateValue(new Date());
-                        // onClose();
-        //             }
-        //     });
-        // }
     }
 
     const handleCancel = () => {
@@ -215,13 +202,19 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
         }
     }
 
+    const handleChangeBirthdate = (field, value) => {
+        const form = formikRef.current;
+        console.log(field, value)
+        form.setFieldValue(field, value);
+    }
+
     useEffect(() => {
         let mounted = true;
 
         if (client.imgUrl) {
             mounted && setPhoto(`${client.imgUrl}`);
         }
-        console.log(client, status)
+
         if (status == 'active' && client.group && client.group.length > 0) {
             mounted && setSelectedGroup(client.group[0]);
         }

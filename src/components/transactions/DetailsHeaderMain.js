@@ -204,7 +204,7 @@ const DetailsHeader = ({ pageTitle, page, pageName, currentDate, mode, selectedB
                                                     <DatePicker name="dateFilter" value={moment(dateFilter).format('YYYY-MM-DD')} maxDate={moment(new Date()).format('YYYY-MM-DD')} onChange={handleDateFilter} />
                                                 </div>
                                             </div>
-                                            { currentBranch?.noOfLO?.count > 10 && (
+                                            { (currentBranch?.noOfLO?.count > 10 && pageName !== 'lo-view') && (
                                                 <div className="flex flex-row ml-4">
                                                     <RadioButton id={"radio_all"} name="radio-lo" label={"All"} checked={selectedLoGroup === 'all'} value="all" onChange={handleLoGroupChange} />
                                                     <RadioButton id={"radio_main"} name="radio-lo" label={"Main"} checked={selectedLoGroup === 'main'} value="main" onChange={handleLoGroupChange} />
@@ -278,7 +278,7 @@ const DetailsHeader = ({ pageTitle, page, pageName, currentDate, mode, selectedB
                                                     <DatePicker name="dateFilter" value={moment(dateFilter).format('YYYY-MM-DD')} maxDate={moment(new Date()).format('YYYY-MM-DD')} onChange={handleDateFilter} />
                                                 </div>
                                             </div>
-                                            { currentBranch?.noOfLO?.count > 10 && (
+                                            { (currentBranch?.noOfLO?.count > 10 && pageName !== 'lo-view') && (
                                                 <div className="flex flex-row ml-4">
                                                     <RadioButton id={"radio_all"} name="radio-lo" label={"All"} checked={selectedLoGroup === 'all'} value="all" onChange={handleLoGroupChange} />
                                                     <RadioButton id={"radio_main"} name="radio-lo" label={"Main"} checked={selectedLoGroup === 'main'} value="main" onChange={handleLoGroupChange} />

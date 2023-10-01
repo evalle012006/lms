@@ -53,12 +53,18 @@ const CashCollectionDetailsPage = () => {
             const pending = loCashCollectionList.filter(cc => cc.status === 'open');
             const draft = loCashCollectionList.filter(cc => cc.draft);
 
+            const loIds = loCashCollectionList.filter(cc => {
+                if (cc.activeClients > 0) {
+                    return cc._id;
+                }
+            }).map(lo => lo._id);
+
             if (pending.length > 0) {
                 setLoading(false);
-                toast.error("One or more group/s transaction is not yet closed.");
+                toast.error("One or more Loan Officer transaction is not yet closed.");
             } else if (draft.length > 0) {
                 setLoading(false);
-                toast.error("One or more group/s transaction has a draft data.");
+                toast.error("One or more Loan Officer transaction has a draft data.");
             } else {
                 let date = currentDate;
                 if (dateFilter) {
@@ -67,6 +73,7 @@ const CashCollectionDetailsPage = () => {
                 
                 const data = {
                     branchId: branch._id,
+                    loIds: loIds,
                     currentDate: date
                 }
 
@@ -77,7 +84,7 @@ const CashCollectionDetailsPage = () => {
                     toast.success('Today transactions are now available in BMS.');
                 } else if (resp.error) {
                     setLoading(false);
-                    toast.error(resp.message);
+                    toast.error(resp.message, { autoClose: 5000, hideProgressBar: false });
                 }
             }
         }
