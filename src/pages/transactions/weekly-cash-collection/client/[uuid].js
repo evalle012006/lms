@@ -1300,24 +1300,23 @@ const CashCollectionDetailsPage = () => {
                             };
                         }
 
-                        if (mcbuCol < 50) {
-                            temp.mcbuError = true;
-                        // } else if (parseFloat(mcbuCol) > 50 && (cc.remarks && (cc.remarks.value === 'advance payment' || cc.remarks.value === 'reloaner'))) {
-                        //     const excessMcbu = cc.excess / cc.activeLoan;
-                        //     const finalMcbu = (excessMcbu * 50) + 50;
-                        //     temp.mcbuCol = finalMcbu;
-                        //     temp.mcbuError = false;
-                        //     temp.mcbuColStr = formatPricePhp(finalMcbu);
-                        //     temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + finalMcbu : 0 + finalMcbu;
-                        //     temp.mcbuStr = formatPricePhp(temp.mcbu);
-                        //     temp.prevData.mcbuCol = finalMcbu;
-                        } else {
-                            temp.mcbuError = false;
+                        if (temp?.dcmc) {
                             temp.mcbuCol = mcbuCol;
                             temp.mcbuColStr = formatPricePhp(mcbuCol);
                             temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + mcbuCol : 0 + mcbuCol;
                             temp.mcbuStr = formatPricePhp(temp.mcbu);
                             temp.prevData.mcbuCol = mcbuCol;
+                        } else {
+                            if (mcbuCol < 50) {
+                                temp.mcbuError = true;
+                            } else {
+                                temp.mcbuError = false;
+                                temp.mcbuCol = mcbuCol;
+                                temp.mcbuColStr = formatPricePhp(mcbuCol);
+                                temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + mcbuCol : 0 + mcbuCol;
+                                temp.mcbuStr = formatPricePhp(temp.mcbu);
+                                temp.prevData.mcbuCol = mcbuCol;
+                            }
                         }
                     }
 
@@ -1434,19 +1433,6 @@ const CashCollectionDetailsPage = () => {
                         temp.mcbuReturnAmtStr = '-';
                         temp.mcbuWithdrawal = 0;
                         temp.mcbuWithdrawalStr = '-';
-
-                        // if (temp.hasOwnProperty('mcbuHistory') && temp.mcbuHistory) {
-                        //     temp.mcbu = temp.mcbuHistory.mcbu;
-                        //     temp.mcbuStr = temp.mcbu > 0 ? formatPricePhp(temp.mcbu) : '-';
-                        //     temp.mcbuCol = temp.mcbuHistory.mcbuCol;
-                        //     temp.mcbuColStr = temp.mcbuCol > 0 ? formatPricePhp(temp.mcbuCol) : '-';
-                        // } else {
-                        //     temp.mcbuHistory = {
-                        //         mcbu: temp.mcbu,
-                        //         mcbuCol: temp.mcbuCol
-                        //     }
-                        // }
-
                         temp.targetCollection = temp.activeLoan;
                         temp.targetCollectionStr = formatPricePhp(temp.targetCollection);
                         temp.excused = false;
@@ -1523,22 +1509,33 @@ const CashCollectionDetailsPage = () => {
                                 temp.excused = true;
                             }
 
-                            if (temp.remarks.value === 'delinquent-offset') {
-                                temp.mispayment = false;
-                                temp.mispaymentStr = 'No';
+                            if (remarks.value === 'delinquent-mcbu') {
+                                temp.dcmc = true;
+                                if (temp.mcbuCol > 0) {
+                                    temp.mcbu = temp.mcbu > 0 ? temp.mcbu - temp.mcbuCol : 0;
+                                    temp.mcbuStr = formatPricePhp(temp.mcbu);
+                                    temp.mcbuCol = 0;
+                                    temp.mcbuColStr = '-';
+                                }
+                                temp.paymentCollection = 0;
+                                temp.paymentCollectionStr = '-';
                             } else {
-                                if (temp.paymentCollection > temp.activeLoan) {
-                                    temp.error = true;
-                                    toast.error("Error occured. Remarks is not valid due to the amount in Actual Collection.");
+                                if (temp.remarks.value === 'delinquent-offset') {
+                                    temp.mispayment = false;
+                                    temp.mispaymentStr = 'No';
                                 } else {
-                                    temp.targetCollection = 0;
-                                    temp.activeLoan = 0;
-                                    temp.targetCollectionStr = '-';
-                                    temp.mispayment = true;
-                                    temp.mispaymentStr = 'Yes';
+                                    if (temp.paymentCollection > temp.activeLoan) {
+                                        temp.error = true;
+                                        toast.error("Error occured. Remarks is not valid due to the amount in Actual Collection.");
+                                    } else {
+                                        temp.targetCollection = 0;
+                                        temp.activeLoan = 0;
+                                        temp.targetCollectionStr = '-';
+                                        temp.mispayment = true;
+                                        temp.mispaymentStr = 'Yes';
+                                    }
                                 }
                             }
-
                         } else if (remarks.value === "past due collection") {
                             // if payment > targetCollection, then put subtract it on the past due amount not on excess
                             if (temp.pastDue > 0 && temp.paymentCollection > temp.activeLoan) {
@@ -2137,7 +2134,7 @@ const CashCollectionDetailsPage = () => {
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
                                                     { (!isWeekend && !isHoliday && currentUser.role.rep > 2 && cc.status === 'active' && editMode 
                                                             && ((cc?.origin && (cc?.origin === 'pre-save' || cc?.origin === 'automation-trf')) || revertMode || cc.draft) 
-                                                            || (cc.offsetTransFlag && cc.otherDay)) ? (
+                                                            || (cc.offsetTransFlag && cc.otherDay) || cc?.dcmc) ? (
                                                         <React.Fragment>
                                                             <input type="number" name={`${cc.clientId}-mcbuCol`} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'mcbuCol')}
                                                                 onClick={(e) => e.stopPropagation()} onBlur={(e) => handlePaymentValidation(e, cc, index, 'mcbuCol')} defaultValue={cc.mcbuCol ? cc.mcbuCol : 0} tabIndex={index + 1}
@@ -2155,7 +2152,7 @@ const CashCollectionDetailsPage = () => {
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
                                                     { (!isWeekend && !isHoliday && currentUser.role.rep > 2 && cc.status === 'active' 
                                                         && editMode && ((cc?.origin && (cc?.origin === 'pre-save' || cc?.origin === 'automation-trf')) || revertMode || cc.draft)
-                                                        || (cc.offsetTransFlag && cc.otherDay)) ? (
+                                                        || (cc.offsetTransFlag && cc.otherDay) && !cc?.dcmc) ? (
                                                         <React.Fragment>
                                                             <input type="number" name={cc.clientId} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'amount', cc.activeLoan)}
                                                                 onClick={(e) => e.stopPropagation()} defaultValue={cc.paymentCollection} tabIndex={index + 2}
