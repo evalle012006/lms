@@ -517,7 +517,9 @@ const CashCollectionDetailsPage = () => {
                             history: cc.hasOwnProperty('history') ? cc.history : null,
                             status: cc.status,
                             loanTerms: cc.loanTerms,
-                            transferred: cc.transferred
+                            transferred: cc.transferred,
+                            startDate: cc.startDate,
+                            endDate: cc.endDate
                         }
     
                         delete cc._id;
@@ -549,6 +551,7 @@ const CashCollectionDetailsPage = () => {
                                 collection.advanceDays = current.advanceDays;
                                 collection.draft = current.draft;
                                 collection.dcmc = (current.hasOwnProperty('dcmc') && current.dcmc) ? current.dcmc : false;
+                                collection.excused = (current.hasOwnProperty('excused') && current.excused) ? current.excused : false;
     
                                 if (current.draft) {
                                     collection.mcbu = current.mcbu;
@@ -878,7 +881,8 @@ const CashCollectionDetailsPage = () => {
                 } else if (parseFloat(cc.paymentCollection) === 0 && !cc.remarks) {
                     errorMsg.add('Error occured. Please select a remarks for 0 or no payment Actual Collection.');
                 } else if ((parseFloat(cc.paymentCollection) === 0 || (parseFloat(cc.paymentCollection) > 0 && parseFloat(cc.paymentCollection) < parseFloat(cc.activeLoan))) 
-                        && (!cc.remarks || (cc.remarks && (!cc.remarks.value?.startsWith('delinquent') && cc.remarks.value !== "past due" && !cc.remarks.value?.startsWith('excused')))) ) {
+                        && (!cc.remarks || (cc.remarks && (!cc.remarks.value?.startsWith('delinquent') && cc.remarks.value !== "past due" && !cc.remarks.value?.startsWith('excused')
+                                                            && cc.remarks.value !== 'matured-past due'))) ) {
                     errorMsg.add("Error occured. 0 payment should be mark either PAST DUE, DELINQUENT OR EXCUSED in remarks.");
                 } else if ((cc.remarks && cc.remarks.value === "past due") && parseFloat(cc.pastDue) < parseFloat(cc.targetCollection)) {
                     errorMsg.add("Error occured. Past due is less than the target collection.");
@@ -889,7 +893,8 @@ const CashCollectionDetailsPage = () => {
                 } else if (parseFloat(cc.paymentCollection) > 0 && parseFloat(cc.paymentCollection) < cc.activeLoan) {
                     errorMsg.add("Actual collection is below the target collection.");
                 } else if (parseFloat(cc.paymentCollection) % parseFloat(cc.activeLoan) !== 0 && cc.loanBalance !== 0) {
-                    if (cc.remarks && (cc.remarks.value !== "past due" && !cc.remarks.value?.startsWith('excused') && !cc.remarks.value?.startsWith('delinquent') && !cc.remarks.value?.startsWith('collection-')) ) {
+                    if (cc.remarks && (cc.remarks.value !== "past due" && !cc.remarks.value?.startsWith('excused') && !cc.remarks.value?.startsWith('delinquent') 
+                        && !cc.remarks.value?.startsWith('collection-') && cc.remarks.value !== 'matured-past due') ) {
                         errorMsg.add(`Actual collection should be divisible by ${cc.activeLoan}.`);
                     }
                 } else if (cc.loanBalance > 0 && parseFloat(cc.paymentCollection) === (cc.activeLoan * 2) && (!cc.remarks || cc.remarks && cc.remarks.value !== "advance payment" && cc.remarks.value !== "past due collection")) {
@@ -1288,6 +1293,7 @@ const CashCollectionDetailsPage = () => {
                         toast.error("Error occured. Invalid remarks. Should only choose a offset remarks.");
                     } else {
                         // always reset these fields
+                        temp.error = false;
                         if (temp.hasOwnProperty('prevData') && temp.prevData) {
                             temp.targetCollection = temp.prevData.activeLoan;
                             temp.activeLoan = temp.prevData.activeLoan;
@@ -1579,6 +1585,38 @@ const CashCollectionDetailsPage = () => {
                             } else {
                                 temp.error = true;
                                 toast.error("Invalid remarks. No Overstated / Understated in loan balance.");
+                            }
+                        } else if (remarks.value === 'matured-past due') {
+                            const today = moment(currentDate);
+                            const endDate = moment(temp.endDate);
+
+                            if (today.diff(endDate, 'days') > 0) {
+                                const paymentCollection = parseFloat(temp.paymentCollection);
+                                let loanBalance = parseFloat(temp.loanBalance);
+
+                                if (paymentCollection > 0) {
+                                    loanBalance += paymentCollection;
+                                    temp.paymentCollection = 0;
+                                    temp.paymentCollectionStr = '-';
+                                }
+
+                                temp.loanBalance = loanBalance;
+                                temp.loanBalanceStr = loanBalance > 0 ? formatPricePhp(loanBalance) : '-';
+                                temp.pastDue = loanBalance;
+                                temp.pastDueStr = formatPricePhp(temp.pastDue);
+
+                                temp.excused = true;
+                                temp.mcbuError = false;
+                                if (temp.mcbuCol && temp.mcbuCol > 0) {
+                                    temp.mcbu = temp.mcbu - temp.mcbuCol;
+                                    temp.mcbuStr = temp.mcbu > 0 ? formatPricePhp(temp.mcbu) : '-';
+                                }
+
+                                temp.mcbuCol = 0;
+                                temp.mcbuColStr = '-';
+                            } else {
+                                temp.error = true;
+                                toast.error(`Invalid remarks. Loan is not yet past ${temp.loanTerms} days.`);
                             }
                         } else {
                             if (remarks.value === 'reloaner-cont' && (temp.history && (temp?.history?.remarks?.value === "reloaner-wd" || temp?.history?.remarks?.value?.startsWith('offset')))) {
@@ -1998,7 +2036,7 @@ const CashCollectionDetailsPage = () => {
                                                             && (cc.dcmc || (cc.draft && cc.dcmc)) ) ? (
                                                         <React.Fragment>
                                                             <input type="number" name={`${cc.clientId}-mcbuCol`} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'mcbuCol')}
-                                                                onClick={(e) => e.stopPropagation()} defaultValue={cc.mcbuCol ? cc.mcbuCol : 0} tabIndex={index + 1}
+                                                                onClick={(e) => e.stopPropagation()} value={cc.mcbuCol ? cc.mcbuCol : 0} tabIndex={index + 1}
                                                                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg 
                                                                             focus:ring-main focus:border-main block p-2.5" style={{ width: '100px' }}/>
                                                         </React.Fragment>
@@ -2014,7 +2052,7 @@ const CashCollectionDetailsPage = () => {
                                                     { (!isWeekend && !isHoliday && currentUser.role.rep > 2 && cc.status === 'active' && editMode && (!cc.hasOwnProperty('_id') || (cc?.origin && cc?.origin === 'automation-trf') || revertMode || cc.draft) && !cc?.dcmc) ? (
                                                         <React.Fragment>
                                                             <input type="number" name={cc.clientId} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'amount', cc.activeLoan)}
-                                                                onClick={(e) => e.stopPropagation()} defaultValue={cc.paymentCollection} tabIndex={index + 1}
+                                                                onClick={(e) => e.stopPropagation()} value={cc.paymentCollection} tabIndex={index + 1}
                                                                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg 
                                                                             focus:ring-main focus:border-main block p-2.5" style={{ width: '100px' }}/>
                                                         </React.Fragment>
