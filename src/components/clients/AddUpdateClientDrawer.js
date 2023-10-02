@@ -215,7 +215,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
             mounted && setPhoto(`${client.imgUrl}`);
         }
 
-        if (status == 'active' && client.group && client.group.length > 0) {
+        if (mode === "edit" && client.group && client.group.length > 0) {
             mounted && setSelectedGroup(client.group[0]);
         }
 
@@ -291,7 +291,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                             </div>
                                         </div>
                                     )}
-                                    { (mode === 'edit' && status === 'active' && selectedGroup) ? (
+                                    { (mode === 'edit' && selectedGroup) ? (
                                         <div className="mt-4">
                                             <div className={`flex flex-col border rounded-md px-4 py-2 bg-white border-main`}>
                                                 <div className="flex justify-between">

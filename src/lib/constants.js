@@ -8,12 +8,16 @@ export const LOR_DAILY_REMARKS = [
     { label: 'For Close/Offset - Unclaimed Amount', value: 'offset-unclaimed'},
     { label: 'Past Due', value: 'past due'},
     { label: 'Past Due Collection', value: 'past due collection'},
+    { label: 'Mastured Past Due', value: 'matured-past due'},
     { label: 'Delinquent', value: 'delinquent'},
     { label: 'Delinquent Client for Offset', value: 'delinquent-offset'},
+    { label: 'Delinquent Client for MCBU', value: 'delinquent-mcbu'},
     { label: 'Good Excused due to Advance Payment', value: 'excused advance payment'},
     { label: 'Excused Due to Calamity', value: 'excused-calamity'},
     { label: 'Excused - Hospitalization', value: 'excused-hospital'},
-    { label: 'Excused - Death of Clients/Family Member', value: 'excused-death'}
+    { label: 'Excused - Death of Clients/Family Member', value: 'excused-death'},
+    { label: 'Overstated Collection', value: 'collection-overstated'},
+    { label: 'Understated Collection', value: 'collection-understated'}
 ];
 
 export const LOR_WEEKLY_REMARKS = [
@@ -25,12 +29,16 @@ export const LOR_WEEKLY_REMARKS = [
     { label: 'For Close/Offset - Unclaimed Amount', value: 'offset-unclaimed'},
     { label: 'Past Due', value: 'past due'},
     { label: 'Past Due Collection', value: 'past due collection'},
+    { label: 'Mastured Past Due', value: 'matured-past due'},
     { label: 'Delinquent', value: 'delinquent'},
     { label: 'Delinquent Client for Offset', value: 'delinquent-offset'},
+    { label: 'Delinquent Client for MCBU', value: 'delinquent-mcbu'},
     { label: 'Good Excused due to Advance Payment', value: 'excused advance payment'},
     { label: 'Excused Due to Calamity', value: 'excused-calamity'},
     { label: 'Excused - Hospitalization', value: 'excused-hospital'},
-    { label: 'Excused - Death of Clients/Family Member', value: 'excused-death'}
+    { label: 'Excused - Death of Clients/Family Member', value: 'excused-death'},
+    { label: 'Overstated Collection', value: 'collection-overstated'},
+    { label: 'Understated Collection', value: 'collection-understated'}
 ];
 
 export const LOR_ONLY_DAILY_RELOAN_OFFSET_REMARKS = [
