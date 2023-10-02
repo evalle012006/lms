@@ -548,6 +548,7 @@ const CashCollectionDetailsPage = () => {
                                 collection.mcbuInterestStr = current.mcbuInterest > 0 ? formatPricePhp(current.mcbuInterest) : '-',
                                 collection.advanceDays = current.advanceDays;
                                 collection.draft = current.draft;
+                                collection.dcmc = (current.hasOwnProperty('dcmc') && current.dcmc) ? current.dcmc : false;
     
                                 if (current.draft) {
                                     collection.mcbu = current.mcbu;
@@ -991,13 +992,12 @@ const CashCollectionDetailsPage = () => {
                         temp.loanBalance = parseFloat(temp.loanBalance);
                         temp.amountRelease = parseFloat(temp.amountRelease);
 
-                        if ((!temp.paymentCollection || temp.paymentCollection <= 0) && (temp.remarks && temp.remarks.value !== "excused advance payment")) {
-                            // temp.paymentCollection = 0;
+                        if (!temp.paymentCollection || temp.paymentCollection <= 0) {
                             temp.mispayment = true;
                             temp.mispaymentStr = 'Yes';
                         }
 
-                        if (temp.remarks && temp.remarks.value === 'excused advance payment') {
+                        if (temp.remarks && (temp.remarks.value === 'excused advance payment' || temp.remarks.value === 'delinquent-mcbu')) {
                             temp.activeLoan = 0;
                             temp.targetCollection = 0;
                             temp.targetCollectionStr = '-';
@@ -1385,6 +1385,11 @@ const CashCollectionDetailsPage = () => {
 
                             if (remarks.value === 'delinquent-mcbu') {
                                 temp.dcmc = true;
+                                temp.mispayment = false;
+                                temp.mispaymentStr = 'No';
+                                temp.activeLoan = 0;
+                                temp.targetCollection = 0;
+                                temp.targetCollectionStr = '-';
                                 if (temp.mcbuCol > 0) {
                                     temp.mcbu = temp.mcbu > 0 ? temp.mcbu - temp.mcbuCol : 0;
                                     temp.mcbuStr = formatPricePhp(temp.mcbu);
@@ -1579,6 +1584,7 @@ const CashCollectionDetailsPage = () => {
         let origList = [...data];
         let temp = {...selected};
         temp.mcbuWithdrawFlag = false;
+        temp.dcmc = false;
         let allow = true;
         if (temp.status === 'completed') {
             allow = temp.fullPaymentDate === currentDate;
@@ -1921,9 +1927,8 @@ const CashCollectionDetailsPage = () => {
                                                     { cc.mcbuColStr }
                                                 </td> */}
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
-                                                    { (!isWeekend && !isHoliday && currentUser.role.rep > 2 && cc.status === 'active' && editMode 
-                                                            && ((cc?.origin && cc?.origin === 'automation-trf') || revertMode || cc.draft) 
-                                                            || cc?.dcmc) ? (
+                                                    { (!isWeekend && !isHoliday && currentUser.role.rep > 2 && cc.status === 'active' && editMode
+                                                            && (cc.dcmc || (cc.draft && cc.dcmc)) ) ? (
                                                         <React.Fragment>
                                                             <input type="number" name={`${cc.clientId}-mcbuCol`} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'mcbuCol')}
                                                                 onClick={(e) => e.stopPropagation()} defaultValue={cc.mcbuCol ? cc.mcbuCol : 0} tabIndex={index + 1}
