@@ -552,6 +552,9 @@ const CashCollectionDetailsPage = () => {
                                 collection.draft = current.draft;
                                 collection.dcmc = (current.hasOwnProperty('dcmc') && current.dcmc) ? current.dcmc : false;
                                 collection.excused = (current.hasOwnProperty('excused') && current.excused) ? current.excused : false;
+                                if (current.draft) {
+                                    collection.error = current.error;
+                                }
     
                                 if (current.draft) {
                                     collection.mcbu = current.mcbu;
@@ -959,7 +962,9 @@ const CashCollectionDetailsPage = () => {
                     delete temp.fullPaymentStr;
                     delete temp.paymentCollectionStr;
                     delete temp.noOfPaymentStr;
-                    delete temp.error;
+                    if (!draft) {
+                        delete temp.error;
+                    }
                     delete temp.dirty;
                     delete temp.group;
                     delete temp.pastDueStr;
@@ -2036,7 +2041,7 @@ const CashCollectionDetailsPage = () => {
                                                             && (cc.dcmc || (cc.draft && cc.dcmc)) ) ? (
                                                         <React.Fragment>
                                                             <input type="number" name={`${cc.clientId}-mcbuCol`} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'mcbuCol')}
-                                                                onClick={(e) => e.stopPropagation()} value={cc.mcbuCol ? cc.mcbuCol : 0} tabIndex={index + 1}
+                                                                onClick={(e) => e.stopPropagation()} value={cc.mcbuCol ? cc.mcbuCol : 0} tabIndex={index + 1} onWheel={(e) => e.target.blur()}
                                                                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg 
                                                                             focus:ring-main focus:border-main block p-2.5" style={{ width: '100px' }}/>
                                                         </React.Fragment>
@@ -2052,7 +2057,7 @@ const CashCollectionDetailsPage = () => {
                                                     { (!isWeekend && !isHoliday && currentUser.role.rep > 2 && cc.status === 'active' && editMode && (!cc.hasOwnProperty('_id') || (cc?.origin && cc?.origin === 'automation-trf') || revertMode || cc.draft) && !cc?.dcmc) ? (
                                                         <React.Fragment>
                                                             <input type="number" name={cc.clientId} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'amount', cc.activeLoan)}
-                                                                onClick={(e) => e.stopPropagation()} value={cc.paymentCollection} tabIndex={index + 1}
+                                                                onClick={(e) => e.stopPropagation()} value={cc.paymentCollection} tabIndex={index + 1} onWheel={(e) => e.target.blur()}
                                                                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg 
                                                                             focus:ring-main focus:border-main block p-2.5" style={{ width: '100px' }}/>
                                                         </React.Fragment>

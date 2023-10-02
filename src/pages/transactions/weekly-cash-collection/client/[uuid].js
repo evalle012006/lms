@@ -526,6 +526,9 @@ const CashCollectionDetailsPage = () => {
                                 collection.draft = current.draft;
                                 collection.dcmc = current.dcmc;
                                 collection.excused = (current.hasOwnProperty('excused') && current.excused) ? current.excused : false;
+                                if (current.draft) {
+                                    collection.error = current.error;
+                                }
     
                                 if (current?.origin) {
                                     collection.origin = current.origin;
@@ -1008,7 +1011,9 @@ const CashCollectionDetailsPage = () => {
                     delete temp.fullPaymentStr;
                     delete temp.paymentCollectionStr;
                     delete temp.noOfPaymentStr;
-                    delete temp.error;
+                    if (!draft) {
+                        delete temp.error;
+                    }
                     delete temp.dirty;
                     delete temp.group;
                     delete temp.pastDueStr;
@@ -2237,7 +2242,7 @@ const CashCollectionDetailsPage = () => {
                                                         <React.Fragment>
                                                             <input type="number" name={`${cc.clientId}-mcbuCol`} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'mcbuCol')}
                                                                 onClick={(e) => e.stopPropagation()} onBlur={(e) => handlePaymentValidation(e, cc, index, 'mcbuCol')} defaultValue={cc.mcbuCol ? cc.mcbuCol : 0} tabIndex={index + 1}
-                                                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg 
+                                                                onWheel={(e) => e.target.blur()} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg 
                                                                             focus:ring-main focus:border-main block p-2.5" style={{ width: '100px' }}/>
                                                         </React.Fragment>
                                                         ): 
@@ -2254,7 +2259,7 @@ const CashCollectionDetailsPage = () => {
                                                         || (cc.offsetTransFlag && cc.otherDay) && !cc?.dcmc) ? (
                                                         <React.Fragment>
                                                             <input type="number" name={cc.clientId} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'amount', cc.activeLoan)}
-                                                                onClick={(e) => e.stopPropagation()} value={cc.paymentCollection} tabIndex={index + 2}
+                                                                onClick={(e) => e.stopPropagation()} value={cc.paymentCollection} tabIndex={index + 2} onWheel={(e) => e.target.blur()}
                                                                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg 
                                                                             focus:ring-main focus:border-main block p-2.5" style={{ width: '100px' }}/>
                                                         </React.Fragment>
@@ -2269,7 +2274,7 @@ const CashCollectionDetailsPage = () => {
                                                         <React.Fragment>
                                                             <input type="number" name={`${cc.clientId}-mcbuWithdrawal`} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'mcbuWithdrawal')}
                                                                 onClick={(e) => e.stopPropagation()} onBlur={(e) => handlePaymentValidation(e, cc, index, 'mcbuWithdrawal')} defaultValue={cc.mcbuWithdrawal ? cc.mcbuWithdrawal : 0} tabIndex={index + 3}
-                                                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg 
+                                                                onWheel={(e) => e.target.blur()} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg 
                                                                             focus:ring-main focus:border-main block p-2.5" style={{ width: '100px' }}/>
                                                         </React.Fragment>
                                                         ): 
