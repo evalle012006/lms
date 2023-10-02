@@ -889,7 +889,7 @@ const CashCollectionDetailsPage = () => {
                 } else if (parseFloat(cc.paymentCollection) > 0 && parseFloat(cc.paymentCollection) < cc.activeLoan) {
                     errorMsg.add("Actual collection is below the target collection.");
                 } else if (parseFloat(cc.paymentCollection) % parseFloat(cc.activeLoan) !== 0 && cc.loanBalance !== 0) {
-                    if (cc.remarks && (cc.remarks.value !== "past due" && !cc.remarks.value?.startsWith('excused') && !cc.remarks.value?.startsWith('delinquent')) ) {
+                    if (cc.remarks && (cc.remarks.value !== "past due" && !cc.remarks.value?.startsWith('excused') && !cc.remarks.value?.startsWith('delinquent') && !cc.remarks.value?.startsWith('collection-')) ) {
                         errorMsg.add(`Actual collection should be divisible by ${cc.activeLoan}.`);
                     }
                 } else if (cc.loanBalance > 0 && parseFloat(cc.paymentCollection) === (cc.activeLoan * 2) && (!cc.remarks || cc.remarks && cc.remarks.value !== "advance payment" && cc.remarks.value !== "past due collection")) {
@@ -989,6 +989,7 @@ const CashCollectionDetailsPage = () => {
 
                         delete temp.originalMcbu;
     
+                        temp.paymentCollection = parseFloat(temp.paymentCollection);
                         temp.loanBalance = parseFloat(temp.loanBalance);
                         temp.amountRelease = parseFloat(temp.amountRelease);
 
@@ -1068,7 +1069,7 @@ const CashCollectionDetailsPage = () => {
     const handlePaymentCollectionChange = (e, index, type, targetCollection) => {
         const totalObj = data.find(o => o.status === 'totals');
         const totalIdx = data.indexOf(totalObj);    
-        
+
         if (type === 'amount') {
             const value = e.target.value;
             let payment = value ? value : 0;
@@ -1513,6 +1514,72 @@ const CashCollectionDetailsPage = () => {
                             temp.mcbu = 0;
                             temp.mcbuStr = '-';
                             temp.mcbuWithdrawalStr = temp.mcbuWithdrawal > 0 ? formatPricePhp(temp.mcbuWithdrawal) : '-';
+                        } else if (remarks.value.startsWith('collection-')) {
+                            temp.error = false;
+
+                            const payment = temp.paymentCollection;
+                            const loanBalance = temp.mispayment ? temp.history.loanBalance : temp.loanBalance;
+                            const overUnder = loanBalance % temp.activeLoan;
+
+                            if (overUnder > 0 && payment > 0) {
+                                const paymentOverUnder = payment % temp.activeLoan;
+                                
+                                if (overUnder === paymentOverUnder || overUnder === payment) {
+                                    const newPayment = payment - overUnder;
+                                    const noOfPayments = newPayment / temp.activeLoan;
+                                    
+                                    if (parseFloat(newPayment) > parseFloat(temp.activeLoan)) {
+                                        temp.excess = parseFloat(newPayment) - parseFloat(temp.activeLoan);
+                                        temp.excessStr = formatPricePhp(temp.excess);
+                                        temp.noOfPayments = parseInt(temp.noOfPayments) + noOfPayments;
+                                        const excessMcbu = temp.excess / temp.activeLoan;
+                                        const finalMcbu = (excessMcbu * 10) + 10;
+                                        temp.mcbuCol = finalMcbu;
+                                        temp.mcbuColStr = formatPricePhp(temp.mcbuCol);
+                                        temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + temp.mcbuCol : 0 + temp.mcbuCol;
+                                        temp.mcbuStr = formatPricePhp(temp.mcbu);
+                                    } else if (parseFloat(payment) < parseFloat(temp.activeLoan)) {
+                                        temp.excess =  0;
+                                        temp.excessStr = '-';
+                                        temp.mcbuCol = 0;
+                                        temp.mcbuColStr = temp.mcbuCol > 0 ? formatPricePhp(temp.mcbuCol) : '-';
+                                        temp.noOfPayments = parseInt(temp.noOfPayments);
+                                    } else {
+                                        temp.noOfPayments = parseInt(temp.noOfPayments) + 1;
+                                        temp.mcbuCol = 10;
+                                        temp.mcbuColStr = formatPricePhp(temp.mcbuCol);
+                                        temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + temp.mcbuCol : 0 + temp.mcbuCol;
+                                        temp.mcbuStr = formatPricePhp(temp.mcbu);
+                                    }
+
+                                    temp.mispayment = false;
+                                    temp.mispaymentStr = "No";
+                                    if (overUnder !== payment) {
+                                        temp.loanBalance -= payment;
+                                        temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
+                                    }
+                                    temp.noOfPaymentStr = temp.noOfPayments + ' / ' + temp.loanTerms;
+        
+                                    temp = setHistory(temp);
+        
+                                    if (temp.loanBalance <= 0) {
+                                        temp.fullPayment = temp.amountRelease;
+                                        temp.fullPaymentStr = formatPricePhp(temp.fullPayment);
+                                        temp.loanBalanceStr = 0;
+                                        temp.amountRelease = 0;
+                                        temp.amountReleaseStr = 0;
+                                    }
+                                } else if (overUnder > paymentOverUnder) {
+                                    temp.error = true;
+                                    toast.error("Invalid remarks. Wrong Overstated/Understated amount added in payment collection.");
+                                } else {
+                                    temp.error = true;
+                                    toast.error("Invalid remarks. No Overstated/Understated added in payment collection.");
+                                }
+                            } else {
+                                temp.error = true;
+                                toast.error("Invalid remarks. No Overstated / Understated in loan balance.");
+                            }
                         } else {
                             if (remarks.value === 'reloaner-cont' && (temp.history && (temp?.history?.remarks?.value === "reloaner-wd" || temp?.history?.remarks?.value?.startsWith('offset')))) {
                                 temp.mcbu = temp.prevData.mcbu;

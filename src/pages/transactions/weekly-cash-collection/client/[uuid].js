@@ -877,7 +877,7 @@ const CashCollectionDetailsPage = () => {
                     } else if (parseFloat(cc.paymentCollection) > 0 && parseFloat(cc.paymentCollection) < cc.activeLoan) {
                         errorMsg.add("Actual collection is below the target collection.");
                     } else if (parseFloat(cc.paymentCollection) % parseFloat(cc.activeLoan) !== 0 && cc.loanBalance !== 0) {
-                        if (cc.remarks && (cc.remarks.value !== "past due" && !cc.remarks.value?.startsWith('excused') && !cc.remarks.value?.startsWith('delinquent')) ) {
+                        if (cc.remarks && (cc.remarks.value !== "past due" && !cc.remarks.value?.startsWith('excused') && !cc.remarks.value?.startsWith('delinquent') && !cc.remarks.value?.startsWith('collection-')) ) {
                             errorMsg.add(`Actual collection should be divisible by ${cc.activeLoan}.`);
                         }
                     } else if (cc.loanBalance > 0 && parseFloat(cc.paymentCollection) === (cc.activeLoan * 2) && (!cc.remarks || cc.remarks && cc.remarks.value !== "advance payment" && cc.remarks.value !== "past due collection")) {
@@ -1037,6 +1037,7 @@ const CashCollectionDetailsPage = () => {
                             temp.loId = currentGroup && currentGroup.loanOfficerId;
                         }
     
+                        temp.paymentCollection = parseFloat(temp.paymentCollection);
                         temp.loanBalance = parseFloat(temp.loanBalance);
                         temp.amountRelease = parseFloat(temp.amountRelease);
 
@@ -1615,6 +1616,60 @@ const CashCollectionDetailsPage = () => {
                             } else {
                                 temp.error = true;
                                 toast.error('Error occured. Yesterday transaction is not an Advanced payment');
+                            }
+                        } else if (remarks.value.startsWith('collection-')) {
+                            temp.error = false;
+
+                            const payment = temp.paymentCollection;
+                            const loanBalance = temp.mispayment ? temp.history.loanBalance : temp.loanBalance;
+                            const overUnder = loanBalance % temp.activeLoan;
+
+                            if (overUnder > 0 && payment > 0) {
+                                const paymentOverUnder = payment % temp.activeLoan;
+                                
+                                if (overUnder === paymentOverUnder || overUnder === payment) {
+                                    const newPayment = payment - overUnder;
+                                    const noOfPayments = newPayment / temp.activeLoan;
+                                    
+                                    if (parseFloat(newPayment) > parseFloat(temp.activeLoan)) {
+                                        temp.excess = parseFloat(newPayment) - parseFloat(temp.activeLoan);
+                                        temp.excessStr = formatPricePhp(temp.excess);
+                                        temp.noOfPayments = parseInt(temp.noOfPayments) + noOfPayments;
+                                    } else if (parseFloat(payment) < parseFloat(temp.activeLoan)) {
+                                        temp.excess =  0;
+                                        temp.excessStr = '-';
+                                        temp.noOfPayments = parseInt(temp.noOfPayments);
+                                    } else {
+                                        temp.noOfPayments = parseInt(temp.noOfPayments) + 1;
+                                    }
+
+                                    temp.mispayment = false;
+                                    temp.mispaymentStr = "No";
+                                    if (overUnder !== payment) {
+                                        temp.loanBalance -= payment;
+                                        temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
+                                    }
+                                    temp.noOfPaymentStr = temp.noOfPayments + ' / ' + temp.loanTerms;
+        
+                                    temp = setHistory(temp);
+        
+                                    if (temp.loanBalance <= 0) {
+                                        temp.fullPayment = temp.amountRelease;
+                                        temp.fullPaymentStr = formatPricePhp(temp.fullPayment);
+                                        temp.loanBalanceStr = 0;
+                                        temp.amountRelease = 0;
+                                        temp.amountReleaseStr = 0;
+                                    }
+                                } else if (overUnder > paymentOverUnder) {
+                                    temp.error = true;
+                                    toast.error("Invalid remarks. Wrong Overstated/Understated amount added in payment collection.");
+                                } else {
+                                    temp.error = true;
+                                    toast.error("Invalid remarks. No Overstated/Understated added in payment collection.");
+                                }
+                            } else {
+                                temp.error = true;
+                                toast.error("Invalid remarks. No Overstated / Understated in loan balance.");
                             }
                         } else {
                             if (remarks.value === 'reloaner' && (temp.history && (temp?.history?.remarks?.value === "reloaner" || temp?.history?.remarks?.value?.startsWith('offset')))) {

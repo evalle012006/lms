@@ -14,7 +14,9 @@ export const LOR_DAILY_REMARKS = [
     { label: 'Good Excused due to Advance Payment', value: 'excused advance payment'},
     { label: 'Excused Due to Calamity', value: 'excused-calamity'},
     { label: 'Excused - Hospitalization', value: 'excused-hospital'},
-    { label: 'Excused - Death of Clients/Family Member', value: 'excused-death'}
+    { label: 'Excused - Death of Clients/Family Member', value: 'excused-death'},
+    { label: 'Overstated Collection', value: 'collection-overstated'},
+    { label: 'Understated Collection', value: 'collection-understated'}
 ];
 
 export const LOR_WEEKLY_REMARKS = [
@@ -32,7 +34,9 @@ export const LOR_WEEKLY_REMARKS = [
     { label: 'Good Excused due to Advance Payment', value: 'excused advance payment'},
     { label: 'Excused Due to Calamity', value: 'excused-calamity'},
     { label: 'Excused - Hospitalization', value: 'excused-hospital'},
-    { label: 'Excused - Death of Clients/Family Member', value: 'excused-death'}
+    { label: 'Excused - Death of Clients/Family Member', value: 'excused-death'},
+    { label: 'Overstated Collection', value: 'collection-overstated'},
+    { label: 'Understated Collection', value: 'collection-understated'}
 ];
 
 export const LOR_ONLY_DAILY_RELOAN_OFFSET_REMARKS = [
