@@ -572,10 +572,23 @@ const LoanApplicationPage = () => {
         
         if (selectedLoanList.length > 0) {
             const coMakerList = [];
+            let errorMsg = '';
             selectedLoanList = selectedLoanList.map(loan => {
                 let temp = {...loan};
+
+                const client = loan.client;
                 const group = loan.group;
                 const lo = loan.loanOfficer;
+
+                if (!client.firstName || !client.lastName) {
+                    errorMsg += `First and/or Last Name of slot no ${loan.slotNo} from group ${group.name} is missing! \n`;
+                }
+                if (!client.fullName && (client.fullName && !client.fullName.length === 0)) {
+                    errorMsg += `There are missing info for slot no ${loan.slotNo} from group ${group.name}! \n`;
+                }
+                if (!client.hasOwnProperty('profile') && !client.profile) {
+                    errorMsg += `Slot no ${loan.slotNo} from group ${group.name} don't have photo uploaded! \n`;
+                }
 
                 delete temp.group;
                 delete temp.client;
@@ -619,15 +632,20 @@ const LoanApplicationPage = () => {
 
             //     toast.error(msg);
             // } else {
-                const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/approved-reject-by-batch', selectedLoanList);
+                if (errorMsg.length > 0) {
+                    errorMsg += "\nPlease go to clients page to update each missing info. Don't forget to click the UPDATE button.";
+                    toast.error(errorMsg, { autoClose: 10000 });
+                } else {
+                    const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/approved-reject-by-batch', selectedLoanList);
 
-                if (response.success) {
-                    setLoading(false);
-                    toast.success('Selected loans successfully approved.');
-                    setTimeout(() => {
-                        getListLoan();
-                        window.location.reload();
-                    }, 1000);
+                    if (response.success) {
+                        setLoading(false);
+                        toast.success('Selected loans successfully approved.');
+                        setTimeout(() => {
+                            getListLoan();
+                            window.location.reload();
+                        }, 1000);
+                    }
                 }
             // }
         } else {

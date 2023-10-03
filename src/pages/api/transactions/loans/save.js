@@ -64,6 +64,7 @@ async function save(req, res) {
             }
 
             delete finalData.currentReleaseAmount;
+            delete finalData.currentDate;
             const loan = await db.collection('loans').insertOne({
                 ...finalData,
                 dateGranted: currentDate,
