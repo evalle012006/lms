@@ -117,7 +117,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
             values.address = values.addressStreetNo + ' ' + values.addressBarangayDistrict + ' ' + values.addressMunicipalityCity + ' ' + values.addressProvince + ' ' + values.addressZipCode;
             
             let groupData;
-            if (status === 'active') {
+            if (status === 'active' || mode === 'edit') {
                 groupData = selectedGroup;
             } else {
                 groupData = groupList && groupList.find(g => g._id === values.groupId);
