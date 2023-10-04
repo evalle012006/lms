@@ -12,7 +12,7 @@ import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 import { setFilteredLoanList, setLoanList } from "@/redux/actions/loanActions";
 import { setGroupList } from "@/redux/actions/groupActions";
-import { setClientList } from "@/redux/actions/clientActions";
+import { setClient, setClientList } from "@/redux/actions/clientActions";
 import { formatPricePhp, getEndDate, getTotal, UppercaseFirstLetter } from "@/lib/utils";
 import AddUpdateLoan from "@/components/transactions/AddUpdateLoanDrawer";
 import moment from 'moment';
@@ -21,6 +21,8 @@ import { TabSelector } from "@/lib/ui/tabSelector";
 import { setUserList } from "@/redux/actions/userActions";
 import Select from 'react-select';
 import { DropdownIndicator, borderStyles, borderStylesDynamic } from "@/styles/select";
+import Modal from "@/lib/ui/Modal";
+import ClientDetailPage from "@/components/clients/ClientDetailPage";
 
 const LoanApplicationPage = () => {
     const isHoliday = useSelector(state => state.systemSettings.holiday);
@@ -43,6 +45,7 @@ const LoanApplicationPage = () => {
     const currentDate = useSelector(state => state.systemSettings.currentDate);
 
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [showClientInfoModal, setShowClientInfoModal] = useState(false);
 
     const [historyList, setHistoryList] = useState([]);
     const [selectedTab, setSelectedTab] = useTabs([
@@ -741,6 +744,18 @@ const LoanApplicationPage = () => {
         }
     }
 
+    const handleShowClientInfoModal = (row) => {
+        const imgpath = process.env.NEXT_PUBLIC_LOCAL_HOST !== 'local' && process.env.NEXT_PUBLIC_LOCAL_HOST;
+        const selected = row;
+        const selectedClient = {...selected.client, imgUrl: selected.client.profile ? imgpath + '/images/clients/' + selected.client.profile : ''};
+        dispatch(setClient(selectedClient));
+        setShowClientInfoModal(true);
+    }
+
+    const handleCloseClientInfoModal = () => {
+        setShowClientInfoModal(false);
+    }
+
     useEffect(() => {
         let mounted = true;
         mounted && getListBranch();
@@ -946,7 +961,17 @@ const LoanApplicationPage = () => {
                                                 placeholder={'Group Filter'}/>
                                         </div>
                                     </div>
-                                    <TableComponent columns={columns} data={data} pageSize={50} hasActionButtons={(currentUser.role.rep > 2 && !isWeekend && !isHoliday) ? true : false} rowActionButtons={!isWeekend && !isHoliday && rowActionButtons} showFilters={false} multiSelect={currentUser.role.rep === 3 ? true : false} multiSelectActionFn={handleMultiSelect} />
+                                    <TableComponent 
+                                        columns={columns} 
+                                        data={data} 
+                                        pageSize={50} 
+                                        hasActionButtons={(currentUser.role.rep > 2 && !isWeekend && !isHoliday) ? true : false} 
+                                        rowActionButtons={!isWeekend && !isHoliday && rowActionButtons} 
+                                        showFilters={false} 
+                                        multiSelect={currentUser.role.rep === 3 ? true : false} 
+                                        multiSelectActionFn={handleMultiSelect} 
+                                        rowClick={handleShowClientInfoModal}
+                                    />
                                     <footer className="pl-64 text-md font-bold text-center fixed inset-x-0 bottom-0 text-red-400">
                                         <div className="flex flex-row justify-center bg-white px-4 py-2 shadow-inner border-t-4 border-zinc-200">
                                             <div className="flex flex-row">
@@ -969,6 +994,9 @@ const LoanApplicationPage = () => {
                 } 
             </div>
             {occurence && <AddUpdateLoan mode={mode} loan={loan} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} type={occurence} />}
+            <Modal title="Client Detail Info" show={showClientInfoModal} onClose={handleCloseClientInfoModal} width="60rem">
+                <ClientDetailPage />
+            </Modal>
             <Dialog show={showDeleteDialog}>
                 <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                     <div className="sm:flex sm:items-start justify-center">

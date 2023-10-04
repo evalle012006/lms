@@ -97,6 +97,25 @@ async function updateClient(req, res) {
 
             const profile = file ? file : clientData.profile;
 
+            clientData = { ...clientData, 
+                firstName: fields.firstName,
+                middleName: fields.middleName,
+                lastName: fields.lastName,
+                birthdate: fields.birthdate,
+                addressStreetNo: fields.addressStreetNo,
+                addressBarangayDistrict: fields.addressBarangayDistrict,
+                addressMunicipalityCity: fields.addressMunicipalityCity,
+                addressProvince: fields.addressProvince,
+                addressZipCode: fields.addressZipCode,
+                contactNumber: fields.contactNumber,
+                branchId: fields.branchId,
+                status: fields.status,
+                delinquent: fields.delinquent,
+                loId: fields.loId,
+                groupId: fields.groupId,
+                profile: profile
+            };
+
             const clientResponse = await db
                 .collection('client')
                 .updateOne(
@@ -123,8 +142,7 @@ async function updateClient(req, res) {
                         $currentDate: { dateModified: true }
                     }
                 );
-            // clientData.profile = file ? file : clientData.profile;
-            delete clientData._id;
+
             resolve({ success: true, client: clientData });
         });
     });
