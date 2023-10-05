@@ -216,11 +216,11 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
 
     const [rowActionButtons, setRowActionButtons] = useState(status !== 'active' ? [
         { label: 'Edit', action: handleEditAction },
-        { label: 'Delete', action: handleDeleteAction }
+        // { label: 'Delete', action: handleDeleteAction }
     ] : [
         { label: 'Edit', action: handleEditAction },
         { label: 'Update', action: handleCoMakerAction, title: 'Update CoMaker' },
-        { label: 'Delete', action: handleDeleteAction }
+        // { label: 'Delete', action: handleDeleteAction }
     ]);
 
     const handleDelete = () => {

@@ -31,6 +31,8 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
     const [selectedBranches, setSelectedBranches] = useState([]);
     const [occurence, setOccurence] = useState('daily');
     const currentDate = useSelector(state => state.systemSettings.currentDate);
+    const [role, setRole] = useState(user.roleId);
+    const [rep, setRep] = useState();
 
     const initialValues = {
         firstName: user.firstName,
@@ -72,6 +74,12 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
         setSelectedBranches(selectedBranch);
     }
 
+    const handleRoleChange = (field, value) => {
+        const form = formikRef.current;
+        setRole(value);
+        form.setFieldValue(field, value);
+    }
+
     const handleSaveUpdate = (values, action) => {
         setLoading(true);
         let selectedBranchesCode = [];
@@ -80,8 +88,9 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
             selectedBranchesId.push(branch._id);
             selectedBranchesCode.push(branch.code);
         });
-
-        const selectedRole = roles.find(role => role.rep == values.role);
+        const roleArr = values.role.split('-'); 
+        const roleRep = roleArr[0];
+        const selectedRole = roles.find(role => role.rep == roleRep);
         values.role = JSON.stringify(selectedRole);
         let designatedBranch = '';
         let designatedBranchId = '';
@@ -212,6 +221,13 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
         };
     }, [user]);
 
+    useEffect(() => {
+        if (role) {
+            const roleArr = role.split('-'); 
+            setRep(parseInt(roleArr[0]));
+        }
+    }, [role]);
+
     return (
         <React.Fragment>
             <SideBar title={mode === 'add' ? 'Add Team Member' : 'Edit Profile'} showSidebar={showSidebar} setShowSidebar={setShowSidebar} hasCloseButton={false}>
@@ -321,13 +337,13 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
                                             value={values.role}
                                             label="Role"
                                             options={roles}
-                                            onChange={setFieldValue}
+                                            onChange={(field, value) => handleRoleChange(field, value)}
                                             onBlur={setFieldTouched}
                                             placeholder="Select Role"
                                             errors={touched.role && errors.role ? errors.role : undefined}
                                         />
                                     </div>
-                                    {values.role === 2 && (
+                                    {rep == 2 && (
                                         <div className="mt-4">
                                             <div className={`flex flex-col border rounded-md px-4 py-2 bg-white ${selectedBranches.length > 0 ? 'border-main' : 'border-slate-400'}`}>
                                                 <div className="flex justify-between">
@@ -350,7 +366,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
                                             </div>
                                         </div>
                                     )}
-                                    {values.role >= 3 && (
+                                    {rep >= 3 && (
                                         <React.Fragment>
                                             <div className="mt-4">
                                                 <InputText
@@ -378,7 +394,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
                                         </React.Fragment>
                                     )}
                                     
-                                    {values.role === 4 && (
+                                    {rep === 4 && (
                                         <React.Fragment>
                                             <div className="mt-4">
                                                 <SelectDropdown
