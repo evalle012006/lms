@@ -2,7 +2,7 @@ export const LOR_DAILY_REMARKS = [
     { label: 'Remarks', value: ''},
     { label: 'Advance Payment', value: 'advance payment'},
     { label: 'Reloaner Cont/MCBU', value: 'reloaner-cont'},
-    { label: 'Reloaner WD/MCBU', value: 'reloaner-wd'},
+    { label: 'Reloaner RF/MCBU', value: 'reloaner-wd'},
     { label: 'For Close/Offset - Good Client', value: 'offset-good'},
     { label: 'For Close/Offset - Delinquent Client', value: 'offset-delinquent'},
     { label: 'For Close/Offset - Unclaimed Amount', value: 'offset-unclaimed'},

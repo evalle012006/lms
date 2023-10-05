@@ -3,7 +3,7 @@ import * as yup from 'yup';
 import React, { useEffect, useRef, useState } from 'react';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { useSelector, useDispatch } from 'react-redux';
-import toast from 'react-hot-toast';
+import { toast } from "react-toastify";
 import Layout from '@/components/Layout';
 import Spinner from '@/components/Spinner';
 import { TabSelector } from '@/lib/ui/tabSelector';

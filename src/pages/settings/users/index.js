@@ -6,7 +6,7 @@ import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { useDispatch, useSelector } from "react-redux";
 import { setFilteredData, setIsFiltering, setUser, setUserList } from "@/redux/actions/userActions";
 import Spinner from "@/components/Spinner";
-import toast from 'react-hot-toast';
+import { toast } from "react-toastify";
 import { UppercaseFirstLetter } from "@/lib/utils";
 import moment from 'moment';
 import { useRouter } from "node_modules/next/router";

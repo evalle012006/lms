@@ -1,6 +1,6 @@
 import React,  { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
-import toast from 'react-hot-toast';
+import { toast } from "react-toastify";
 import Layout from "@/components/Layout";
 import Spinner from "@/components/Spinner";
 import { useRouter } from "node_modules/next/router";
@@ -9,6 +9,13 @@ const DailyCollectionSheetPage = () => {
     const router = useRouter();
     const [loading, setLoading] = useState(true);
     const currentUser = useSelector(state => state.user.data);
+
+    const fetchData = () => {
+        let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collection-summary';
+        if (currentUser?.role.rep === 3) {
+            
+        }
+    }
 
     useEffect(() => {
         if ((currentUser?.role?.rep < 3)) {

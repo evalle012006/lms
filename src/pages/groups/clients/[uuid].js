@@ -4,7 +4,7 @@ import Layout from '@/components/Layout';
 import Spinner from '@/components/Spinner';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
-import { toast } from 'react-hot-toast';
+import { toast } from "react-toastify";
 import DetailsHeader from '@/components/groups/DetailsHeader';
 import { setGroup } from '@/redux/actions/groupActions';
 import ViewClientsByGroupPage from '@/components/clients/ViewClientsByGroup';

@@ -3,7 +3,7 @@ import Layout from "@/components/Layout";
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { useDispatch, useSelector } from "react-redux";
 import Spinner from "@/components/Spinner";
-import toast from 'react-hot-toast';
+import { toast } from "react-toastify";
 import { setBranchList } from "@/redux/actions/branchActions";
 import moment from 'moment';
 import DetailsHeader from "@/components/transactions/DetailsHeaderMain";

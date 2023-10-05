@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import Layout from '@/components/Layout';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
-import { toast } from 'react-hot-toast';
+import { toast } from "react-toastify";
 import React from 'react';
 import moment from 'moment';
 import DetailsHeader from '@/components/transactions/DetailsHeaderMain';

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { useSelector, useDispatch } from 'react-redux';
-import toast from 'react-hot-toast';
+import { toast } from "react-toastify";
 import Spinner from '@/components/Spinner';
 import ButtonSolid from '@/lib/ui/ButtonSolid';
 import { PlusIcon } from '@heroicons/react/24/solid';

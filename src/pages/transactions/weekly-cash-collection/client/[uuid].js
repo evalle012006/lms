@@ -4,7 +4,7 @@ import Layout from '@/components/Layout';
 import Spinner from '@/components/Spinner';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
-import { toast } from 'react-hot-toast';
+import { toast } from "react-toastify";
 import React from 'react';
 import { setCashCollectionGroup } from '@/redux/actions/cashCollectionActions';
 import { setGroup, setGroupList } from '@/redux/actions/groupActions';
@@ -24,7 +24,6 @@ import Modal from '@/lib/ui/Modal';
 import ClientDetailPage from '@/components/clients/ClientDetailPage';
 import { setClient } from '@/redux/actions/clientActions';
 import { LOR_ONLY_OFFSET_REMARKS, LOR_WEEKLY_REMARKS } from '@/lib/constants';
-import { autoHealCashCollections } from '@/lib/sync-jobs';
 
 const CashCollectionDetailsPage = () => {
     const isHoliday = useSelector(state => state.systemSettings.holiday);
@@ -1119,7 +1118,7 @@ const CashCollectionDetailsPage = () => {
             
                         setTimeout(async () => {
                             window.location.reload();
-                        }, 1200);
+                        }, 2000);
                     }
                 } else {
                     toast.warning('No active data to be saved.');
@@ -2187,7 +2186,7 @@ const CashCollectionDetailsPage = () => {
                                         <th className="p-2 text-center">Target Collection</th>
                                         <th className="p-2 text-center">Excess</th>
                                         <th className="p-2 text-center">Actual Collection</th>
-                                        <th className="p-2 text-center">MCBU Withdrawals</th>
+                                        <th className="p-2 text-center">MCBU Refund</th>
                                         <th className="p-2 text-center">MCBU Interest</th>
                                         <th className="p-2 text-center">MCBU Return Amt</th>
                                         <th className="p-2 text-center">Full Payment</th>
@@ -2327,7 +2326,7 @@ const CashCollectionDetailsPage = () => {
                                                             <div className='flex flex-row p-4'>
                                                                 {(currentUser.role.rep === 3 && cc.hasOwnProperty('_id')  && cc.status === 'active' && !filter && !cc.draft && cc?.origin !== 'pre-save') && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleRevert(e, cc, index)} />}
                                                                 {((cc.status === 'completed' && (cc.remarks && cc.remarks.value === 'reloaner')) || (cc.status === 'completed' && !cc.remarks)) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
-                                                                {(!filter && cc.status === 'active') && <CurrencyDollarIcon className="w-5 h-5 mr-6" title="MCBU Withdrawal" onClick={(e) => handleMcbuWithdrawal(e, cc, index)} />}
+                                                                {(!filter && cc.status === 'active') && <CurrencyDollarIcon className="w-5 h-5 mr-6" title="MCBU Refund" onClick={(e) => handleMcbuWithdrawal(e, cc, index)} />}
                                                                 {(!filter && cc.status === 'active') && <StopCircleIcon className="w-5 h-5 mr-6" title="Offset" onClick={(e) => handleOffset(e, cc, index)} />}
                                                                 {(!filter && !editMode && cc.status !== 'closed' && currentMonth === 11) && <CalculatorIcon className="w-5 h-5 mr-6" title="Calculate MCBU Interest" onClick={(e) => calculateInterest(e, cc, index)} />}
                                                             </div>

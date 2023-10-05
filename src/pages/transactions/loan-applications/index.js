@@ -5,7 +5,7 @@ import TableComponent, { AvatarCell, SelectCell, SelectColumnFilter, StatusPill 
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { useDispatch, useSelector } from "react-redux";
 import Spinner from "@/components/Spinner";
-import toast from 'react-hot-toast';
+import { toast } from "react-toastify";
 import { setBranch, setBranchList } from "@/redux/actions/branchActions";
 import Dialog from "@/lib/ui/Dialog";
 import ButtonOutline from "@/lib/ui/ButtonOutline";

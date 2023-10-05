@@ -3,7 +3,7 @@ import TableComponent, { AvatarCell, SelectColumnFilter, StatusPill } from '@/li
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { useDispatch, useSelector } from "react-redux";
 import Spinner from "@/components/Spinner";
-import toast from 'react-hot-toast';
+import { toast } from "react-toastify";
 import Dialog from "@/lib/ui/Dialog";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";

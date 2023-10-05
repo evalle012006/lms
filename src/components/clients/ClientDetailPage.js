@@ -9,7 +9,7 @@ import placeholder from '/public/images/image-placeholder.png';
 import TableComponent, { SelectColumnFilter, StatusPill } from "@/lib/table";
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { useRef } from "react";
-import toast from 'react-hot-toast';
+import { toast } from "react-toastify";
 import { setClient } from "@/redux/actions/clientActions";
 
 const ClientDetailPage = () => {

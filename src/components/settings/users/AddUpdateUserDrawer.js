@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Formik } from 'formik';
 import * as yup from 'yup';
 import { fetchWrapper } from "@/lib/fetch-wrapper";
-import toast from 'react-hot-toast';
+import { toast } from "react-toastify";
 import { useDispatch, useSelector } from "react-redux";
 import SelectDropdown from "@/lib/ui/select";
 import InputText from "@/lib/ui/InputText";

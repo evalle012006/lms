@@ -1,10 +1,11 @@
 import Head from 'next/head';
-import { Toaster } from 'react-hot-toast';
 import { RouteGuard } from '@/components/RouteGuard';
 import { wrapper } from '@/redux/store';
 import Script from 'next/script';
+import { ToastContainer } from 'react-toastify';
 
 import 'tailwindcss/tailwind.css';
+import 'react-toastify/dist/ReactToastify.css';
 import 'react-phone-number-input/style.css';
 import '@/styles/globals.css';
 import '@/styles/login.css';
@@ -36,8 +37,18 @@ const ACLoanManagementApp = ({ Component, pageProps }) => {
                     }}
             />
             <RouteGuard>
-                <Toaster position="top-center" reverseOrder={false} hideProgressBar={false} closeOnClick />
                 <Component {...pageProps} />
+                <ToastContainer
+                  position="top-center"
+                  autoClose={5000}
+                  hideProgressBar={false}
+                  newestOnTop={false}
+                  closeOnClick
+                  rtl={false}
+                  pauseOnFocusLoss={false}
+                  draggable={false}
+                  pauseOnHover
+                  theme="light" />
             </RouteGuard>
         </>
     );
