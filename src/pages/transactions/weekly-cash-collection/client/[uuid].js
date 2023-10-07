@@ -1140,6 +1140,8 @@ const CashCollectionDetailsPage = () => {
                 let temp = {...cc};
                 if (temp.status !== 'open') {
                     if (idx === index) {
+                        temp.error = false;
+                        temp.dcmc = false;
                         if (temp.hasOwnProperty('prevData') && temp.prevData) {
                             temp.loanBalance = temp.prevData.loanBalance;
                             temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
@@ -1189,7 +1191,7 @@ const CashCollectionDetailsPage = () => {
                             temp.mcbuStr = temp.mcbu > 0 ? formatPricePhp(temp.mcbu) : '-';
                         }
 
-                        if (value && parseInt(value) !== 0) {
+                        if (value && parseInt(value) != 0) {
                             if (containsAnyLetters(value)) {
                                 toast.error("Invalid amount in actual collection. Please input numeric only.");
                                 temp.error = true;
@@ -1215,7 +1217,7 @@ const CashCollectionDetailsPage = () => {
         
                                 temp.excess =  0;
                                 temp.excessStr = '-';
-                                if (parseFloat(payment) === 0) {
+                                if (parseFloat(payment) == 0) {
                                     temp.noOfPayments = temp.noOfPayments <= 0 ? 0 : temp.noOfPayments - 1;
                                     temp.mispayment = true;
                                     temp.mispaymentStr = 'Yes';
@@ -1420,6 +1422,7 @@ const CashCollectionDetailsPage = () => {
                     } else {
                         // always reset these fields
                         temp.error = false;
+                        temp.dcmc = false;
                         if (temp.hasOwnProperty('prevData') && temp.prevData) {
                             temp.targetCollection = temp.prevData.activeLoan;
                             temp.activeLoan = temp.prevData.activeLoan;
