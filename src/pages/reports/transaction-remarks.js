@@ -3,7 +3,7 @@ import RadioButton from '@/lib/ui/radio-button';
 import React, { useEffect } from 'react';
 import { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import toast from 'react-hot-toast';
+import { toast } from "react-toastify";
 import moment from 'moment';
 import Select from 'react-select';
 import { DropdownIndicator, borderStyles, borderStylesDynamic } from "@/styles/select";
@@ -408,7 +408,7 @@ const TransactionRemarksPage = () => {
             case 'reloaner-wd':
                 updateCols.push.apply(updateCols, [
                     {
-                        Header: "MCBU Withdraw Amount",
+                        Header: "MCBU Refund Amount",
                         accessor: 'mcbuWithdrawalStr'
                     }
                 ]);

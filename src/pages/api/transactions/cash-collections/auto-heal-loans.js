@@ -13,9 +13,14 @@ export default apiHandler({
 async function autoHealLoans(req, res) {
     const { db } = await connectToDatabase();
 
-    const { groupId, currentDate } = req.body;
+    const { loId, currentDate } = req.body;
 
-    await removedDoubleCC(groupId, currentDate);
+    const groups = await db.collection('groups').find({ $expr: { $and: [ {$eq: ['$loanOfficerId', loId]}, {$gt: ['$noOfClients', 0]} ] } }).toArray();
+
+    groups.map(async group => {
+        const groupIdStr = group._id + '';
+        await removedDoubleCC(groupIdStr, currentDate);
+    });
     // setTimeout(async () => {
     //     await syncLoansCashCollections(groupId, currentDate);
     // }, 1000);

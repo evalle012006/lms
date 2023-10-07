@@ -6,7 +6,7 @@ import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { useDispatch, useSelector } from "react-redux";
 import { setFilteredData, setIsFiltering, setUser, setUserList } from "@/redux/actions/userActions";
 import Spinner from "@/components/Spinner";
-import toast from 'react-hot-toast';
+import { toast } from "react-toastify";
 import { UppercaseFirstLetter } from "@/lib/utils";
 import moment from 'moment';
 import { useRouter } from "node_modules/next/router";
@@ -63,7 +63,7 @@ const TeamPage = () => {
                 number: user.number,
                 position: user.position,
                 designatedBranch: designatedBranch,
-                roleId: user.role.rep,
+                roleId: user.role.rep + "-" + user.role.shortCode,
                 role: UppercaseFirstLetter(user.role.name),
                 loNo: user.loNo,
                 imgUrl: user.profile ? imgpath + '/images/profiles/' + user.profile : '',
@@ -131,7 +131,7 @@ const TeamPage = () => {
                 roles.push(
                     {
                         ...role,
-                        value: role.rep,
+                        value: role.rep + '-' + role.shortCode,
                         label: UppercaseFirstLetter(role.name)
                     }
                 );
@@ -195,10 +195,10 @@ const TeamPage = () => {
         {
             Header: "Platform Role",
             accessor: 'role',
-            Cell: SelectCell,
-            Options: platformRoles,
-            valueIdAccessor: 'roleId',
-            selectOnChange: updateUser,
+            // Cell: SelectCell,
+            // Options: platformRoles,
+            // valueIdAccessor: 'roleId',
+            // selectOnChange: updateUser,
             Filter: SelectColumnFilter,
             filter: 'includes',
         },
@@ -355,28 +355,28 @@ const TeamPage = () => {
         setRowActionButtons(rowActionBtn);
     }, [currentUser]);
 
-    useEffect(() => {
-        // to set user permissions
-        let updatedColumns = [];
-        columns.map(col => {
-            let temp = {...col}; 
-            if ((currentUser.role && currentUser.role.rep !== 1)) {        
-                if (col.accessor === 'role') {
-                    delete temp.Cell;
-                }
-            } else {
-                // need to set the Options again since it was blank after checking for permissions
-                if (col.accessor === 'role') {
-                    temp.Options = platformRoles;
-                    temp.selectOnChange = updateUser;
-                }
-            }
+    // useEffect(() => {
+    //     // to set user permissions
+    //     let updatedColumns = [];
+    //     columns.map(col => {
+    //         let temp = {...col}; 
+    //         if ((currentUser.role && currentUser.role.rep !== 1)) {        
+    //             if (col.accessor === 'role') {
+    //                 delete temp.Cell;
+    //             }
+    //         } else {
+    //             // need to set the Options again since it was blank after checking for permissions
+    //             if (col.accessor === 'role') {
+    //                 temp.Options = platformRoles;
+    //                 temp.selectOnChange = updateUser;
+    //             }
+    //         }
 
-            updatedColumns.push(temp);
-        });
+    //         updatedColumns.push(temp);
+    //     });
 
-        setColumns(updatedColumns);
-    }, [platformRoles]);
+    //     setColumns(updatedColumns);
+    // }, [platformRoles]);
 
     return (
         <Layout actionButtons={rootUser || (currentUser.role && currentUser.role.rep < 4) ? actionButtons : []}>

@@ -1,5 +1,5 @@
 import React from 'react';
-import toast from 'react-hot-toast';
+import { toast } from "react-toastify";
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { useDispatch, useSelector } from 'node_modules/react-redux/es/exports';
 import { useState } from 'react';

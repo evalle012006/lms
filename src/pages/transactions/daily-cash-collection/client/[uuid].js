@@ -4,7 +4,7 @@ import Layout from '@/components/Layout';
 import Spinner from '@/components/Spinner';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
-import { toast } from 'react-hot-toast';
+import { toast } from "react-toastify";
 import React from 'react';
 import { setCashCollectionGroup } from '@/redux/actions/cashCollectionActions';
 import { setGroup, setGroupList } from '@/redux/actions/groupActions';
@@ -1066,7 +1066,7 @@ const CashCollectionDetailsPage = () => {
                         setTimeout(async () => {
                             // getCashCollections();
                             window.location.reload();
-                        }, 1200);
+                        }, 2000);
                     }
                 } else {
                     toast.error('No active data to be saved.');
@@ -1984,7 +1984,7 @@ const CashCollectionDetailsPage = () => {
                                         <th className="p-2 text-center">Target Collection</th>
                                         <th className="p-2 text-center">Excess</th>
                                         <th className="p-2 text-center">Actual Collection</th>
-                                        <th className="p-2 text-center">MCBU Withdrawals</th>
+                                        <th className="p-2 text-center">MCBU Refund</th>
                                         <th className="p-2 text-center">MCBU Interest</th>
                                         <th className="p-2 text-center">MCBU Return Amt</th>
                                         <th className="p-2 text-center">Full Payment</th>

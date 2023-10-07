@@ -6,7 +6,7 @@ import TableComponent, { SelectColumnFilter, StatusPill } from "@/lib/table";
 import moment from 'moment';
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { formatPricePhp } from "@/lib/utils";
-import { toast } from 'react-hot-toast';
+import { toast } from "react-toastify";
 import { BehaviorSubject } from 'rxjs';
 import { setBmSummary, setCashCollectionLo } from "@/redux/actions/cashCollectionActions";
 
@@ -1088,7 +1088,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
                 filter: 'includes'
             },
             {
-                Header: "MCBU Withdrawal",
+                Header: "MCBU Refund",
                 accessor: 'mcbuWithdrawalStr',
                 Filter: SelectColumnFilter,
                 filter: 'includes'

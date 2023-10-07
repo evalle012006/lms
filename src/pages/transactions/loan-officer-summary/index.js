@@ -7,7 +7,7 @@ import { useDispatch, useSelector } from "node_modules/react-redux/es/exports";
 import { setLosList } from "@/redux/actions/losActions";
 import moment from 'moment';
 import { fetchWrapper } from "@/lib/fetch-wrapper";
-import { toast } from 'react-hot-toast';
+import { toast } from "react-toastify";
 import LOSHeader from "@/components/transactions/los/Header";
 import { formatPricePhp, getDaysOfMonth } from "@/lib/utils";
 import { useRouter } from "node_modules/next/router";

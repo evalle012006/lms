@@ -5,7 +5,7 @@ import { useRouter } from 'next/router';
 import { Formik } from 'formik'
 import * as yup from 'yup';
 import { userService } from '@/services/user-service';
-import toast from 'react-hot-toast';
+import { toast } from "react-toastify";
 import { useDispatch } from 'react-redux';
 import { setUser } from '@/redux/actions/userActions';
 import InputEmail from '@/lib/ui/InputEmail';

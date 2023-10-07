@@ -43,6 +43,48 @@ async function updateLoan(req, res) {
                 }
             }
         }  else if (loan.status === 'reject') {
+            // if reloan cashCollections:
+            // status to completed
+            // currentReleaseAmount to 0
+            // in loans, change back the previous loan to completed status and the current one change the loanCycle to 0
+            // client status to pending
+            loan.loanCycle = 0;
+            if (loan.loanCycle > 1) {
+                let loans = await db.collection('loans').find({ clientId: loan.clientId, loanCycle: loan.loanCycle - 1 }).toArray();
+                if (loans) {
+                    let cashCollection = await db.collection('cashCollections')
+                                            .aggregate([
+                                                { $match: { $expr: { $and: [
+                                                    { $eq: ['$clientId', loan.clientId] },
+                                                    { $eq: ['$dateAdded', loans[0].fullPaymentDate] },
+                                                ] } } }
+                                            ])
+                                            .toArray();
+
+                    if (cashCollection) {
+                        cashCollection = cashCollection[0];
+                        cashCollection.status = 'completed';
+                        cashCollection.currentReleaseAmount = 0;
+                        const ccId = cashCollection._id;
+                        delete cashCollection._id;
+                        await db.collection('cashCollections').updateOne({ _id: ccId }, { $set: { ...cashCollection } });
+                    }
+
+                    let tempLoan = {...loans[0]};
+                    delete tempLoan._id;
+                    tempLoan.status = 'completed';
+                }
+            }
+
+            let client = await db.collection('client').find({ _id: new ObjectId(loan.clientId) }).toArray();
+            if (client) {
+                client = client[0];
+                client.status = 'pending';
+
+                delete client._id;
+                await db.collection('client').updateOne({ _id: new ObjectId(loan.clientId) }, { $set: { ...client } });
+            }
+
             if (!groupData.availableSlots.includes(loan.slotNo)) {
                 groupData.availableSlots.push(loan.slotNo);
                 groupData.availableSlots.sort((a, b) => { return a - b; });

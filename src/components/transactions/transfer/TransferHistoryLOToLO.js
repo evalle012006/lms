@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import toast from 'react-hot-toast';
+import { toast } from "react-toastify";
 import Select from 'react-select';
 import { DropdownIndicator, borderStyles } from "@/styles/select";
 import { formatPricePhp, getDaysOfMonth, getLastWeekdayOfTheMonth, getMonths, getYears } from "@/lib/utils";

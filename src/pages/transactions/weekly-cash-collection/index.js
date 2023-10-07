@@ -3,7 +3,7 @@ import Layout from "@/components/Layout";
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { useDispatch, useSelector } from "react-redux";
 import Spinner from "@/components/Spinner";
-import toast from 'react-hot-toast';
+import { toast } from "react-toastify";
 import { setBranchList } from "@/redux/actions/branchActions";
 import moment from 'moment';
 import DetailsHeader from "@/components/transactions/DetailsHeaderMain";
@@ -13,7 +13,7 @@ import ViewByBranchPage from "@/components/transactions/ViewByBranch";
 import Dialog from "@/lib/ui/Dialog";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
-import { autoSyncLoans } from "@/lib/sync-jobs";
+import { autoHealCashCollections, autoSyncLoans } from "@/lib/sync-jobs";
 
 const WeeklyCashCollectionPage = () => {
     const isHoliday = useSelector(state => state.systemSettings.holiday);
@@ -130,6 +130,9 @@ const WeeklyCashCollectionPage = () => {
         const syncLoans = async () => {
             if (currentUser.role.rep === 4) {
                 await autoSyncLoans(currentUser._id);
+                setTimeout(async () => {
+                    await autoHealCashCollections(currentUser._id);
+                }, 2000);
             }
         }
         

@@ -2,7 +2,7 @@ import React from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { useEffect, useState } from "react";
-import toast from 'react-hot-toast';
+import { toast } from "react-toastify";
 import { setBranchList } from "@/redux/actions/branchActions";
 import { setUserList } from "@/redux/actions/userActions";
 import { UppercaseFirstLetter } from "@/lib/utils";

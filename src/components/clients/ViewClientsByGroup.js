@@ -3,7 +3,7 @@ import TableComponent, { AvatarCell, SelectColumnFilter, StatusPill } from '@/li
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { useDispatch, useSelector } from "react-redux";
 import Spinner from "@/components/Spinner";
-import toast from 'react-hot-toast';
+import { toast } from "react-toastify";
 import Dialog from "@/lib/ui/Dialog";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
@@ -216,11 +216,11 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
 
     const [rowActionButtons, setRowActionButtons] = useState(status !== 'active' ? [
         { label: 'Edit', action: handleEditAction },
-        { label: 'Delete', action: handleDeleteAction }
+        // { label: 'Delete', action: handleDeleteAction }
     ] : [
         { label: 'Edit', action: handleEditAction },
         { label: 'Update', action: handleCoMakerAction, title: 'Update CoMaker' },
-        { label: 'Delete', action: handleDeleteAction }
+        // { label: 'Delete', action: handleDeleteAction }
     ]);
 
     const handleDelete = () => {

@@ -74,7 +74,7 @@ For testing, run the following:
 
 ### **Toast**
 
-The project uses react-hot-toast. For documentation, refer to this link https://react-hot-toast.com/docs/toast
+The project uses react-toastify. For documentation, refer to this link https://fkhadra.github.io/react-toastify/introduction
 
 ### **MongoDB Connection**
 

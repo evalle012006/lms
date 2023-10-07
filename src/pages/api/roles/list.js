@@ -13,6 +13,7 @@ async function list(req, res) {
     const roles = await db
         .collection('roles')
         .find({})
+        .sort({ order: 1 })
         .toArray();
 
     response = {

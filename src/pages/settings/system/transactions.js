@@ -3,7 +3,7 @@ import * as yup from 'yup';
 import React, { useEffect, useRef, useState } from 'react';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { useSelector, useDispatch } from 'react-redux';
-import toast from 'react-hot-toast';
+import { toast } from "react-toastify";
 import InputText from '@/lib/ui/InputText';
 import Spinner from '@/components/Spinner';
 import { setTransactionSettings } from '@/redux/actions/transactionsActions';

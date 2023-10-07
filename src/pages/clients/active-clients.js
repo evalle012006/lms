@@ -3,7 +3,7 @@ import Layout from "@/components/Layout";
 import { PlusIcon } from '@heroicons/react/24/solid';
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { useDispatch, useSelector } from "react-redux";
-import toast from 'react-hot-toast';
+import { toast } from "react-toastify";
 import { useRouter } from "node_modules/next/router";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 import { UppercaseFirstLetter } from "@/lib/utils";

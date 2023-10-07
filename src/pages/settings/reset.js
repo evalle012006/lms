@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
-import toast from 'react-hot-toast';
+import { toast } from "react-toastify";
 import Layout from '@/components/Layout';
 import Spinner from '@/components/Spinner';
 import ButtonSolid from '@/lib/ui/ButtonSolid';

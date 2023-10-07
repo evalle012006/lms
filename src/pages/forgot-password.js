@@ -6,7 +6,7 @@ import * as yup from 'yup';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { useRouter } from 'next/router';
 import Spinner from '@/components/Spinner';
-import toast from 'react-hot-toast';
+import { toast } from "react-toastify";
 import InputEmail from '@/lib/ui/InputEmail';
 import ButtonSolid from '@/lib/ui/ButtonSolid';
 import InputPassword from '@/lib/ui/InputPassword';

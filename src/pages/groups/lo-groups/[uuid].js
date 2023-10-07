@@ -4,7 +4,7 @@ import Layout from '@/components/Layout';
 import Spinner from '@/components/Spinner';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
-import { toast } from 'react-hot-toast';
+import { toast } from "react-toastify";
 import DetailsHeaderGroupMain from '@/components/groups/DetailsHeaderMain';
 import { setSelectedLO } from '@/redux/actions/userActions';
 import ViewByGroupsPage from '@/components/groups/ViewByGroups';
