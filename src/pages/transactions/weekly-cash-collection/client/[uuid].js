@@ -1140,6 +1140,8 @@ const CashCollectionDetailsPage = () => {
                 let temp = {...cc};
                 if (temp.status !== 'open') {
                     if (idx === index) {
+                        temp.error = false;
+                        temp.dcmc = false;
                         if (temp.hasOwnProperty('prevData') && temp.prevData) {
                             temp.loanBalance = temp.prevData.loanBalance;
                             temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
@@ -1420,6 +1422,7 @@ const CashCollectionDetailsPage = () => {
                     } else {
                         // always reset these fields
                         temp.error = false;
+                        temp.dcmc = false;
                         if (temp.hasOwnProperty('prevData') && temp.prevData) {
                             temp.targetCollection = temp.prevData.activeLoan;
                             temp.activeLoan = temp.prevData.activeLoan;
