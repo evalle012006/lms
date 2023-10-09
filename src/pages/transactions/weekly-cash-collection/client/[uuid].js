@@ -64,6 +64,41 @@ const CashCollectionDetailsPage = () => {
     const dayName = moment(dateFilter ? dateFilter : currentDate).format('dddd').toLowerCase();
     const [mcbuRate, setMcbuRate] = useState(transactionSettings.mcbu || 8);
 
+    const [selectedSlot, setSelectedSlot] = useState();
+    const [showWaningDialog, setShowWarningDialog] = useState(false);
+
+    const handleShowWarningDialog = (e, selected) => {
+        e.stopPropagation();
+
+        if (selected.status !== 'totals') {
+            let temp = {...selected};
+            delete temp.targetCollectionStr;
+            delete temp.amountReleaseStr;
+            delete temp.loanBalanceStr;
+            delete temp.excessStr;
+            delete temp.totalStr;
+            delete temp.currentReleaseAmountStr;
+            delete temp.fullPaymentStr;
+            delete temp.paymentCollectionStr;
+            delete temp.noOfPaymentStr;
+            delete temp.error;
+            delete temp.dirty;
+            delete temp.pastDueStr;
+            delete temp.groupCashCollections;
+            delete temp.loanOfficer;
+            delete temp.noMispaymentStr;
+            delete temp.mcbuStr;
+            delete temp.mcbuColStr;
+            delete temp.mcbuWithdrawalStr;
+            delete temp.mcbuReturnAmtStr;
+            delete temp.mcbuInterestStr;
+            delete temp.mcbuError;
+            delete temp.transferStr;
+            setSelectedSlot(temp);
+            setShowWarningDialog(true);
+        }
+    }
+
     const handleShowClientInfoModal = (selected) => {
         if (selected.status !== 'totals') {
             const selectedClient = selected.client;
@@ -355,7 +390,7 @@ const CashCollectionDetailsPage = () => {
                             group: cc.group,
                             coMaker: (cc.coMaker && typeof cc.coMaker == 'number') ? cc.coMaker : '-',
                             loId: cc.loId,
-                            loanId: cc.loanId,
+                            loanId: cc?.current?.length > 0 ? cc.current[0].loanId : cc.loanId,
                             branchId: cc.branchId,
                             groupId: cc.groupId,
                             groupName: cc.groupName,
@@ -491,7 +526,8 @@ const CashCollectionDetailsPage = () => {
                             status: cc.status,
                             loanTerms: cc.loanTerms,
                             startDate: cc.startDate,
-                            endDate: cc.endDate
+                            endDate: cc.endDate,
+                            reverted: cc.hasOwnProperty('reverted') ? cc.reverted : false
                         }
     
                         delete cc._id;
@@ -619,6 +655,7 @@ const CashCollectionDetailsPage = () => {
                             coMaker: (loan.coMaker && typeof loan.coMaker == 'number') ? loan.coMaker : '-',
                             slotNo: loan.slotNo,
                             loanId: loan._id,
+                            prevLoanId: currentLoan.loanId ? currentLoan.loanId : currentLoan._id,
                             groupId: loan.groupId,
                             branchId: loan.branchId,
                             loId: loan.loId,
@@ -664,10 +701,16 @@ const CashCollectionDetailsPage = () => {
                             status: loan.status === "active" ? "tomorrow" : loan.status,
                             pending: loan.status === 'pending' ? true : false,
                             tomorrow: loan.status === 'active' ? true : false,
-                            loanTerms: loan.loanTerms
+                            loanTerms: loan.loanTerms,
+                            reverted: currentLoan.reverted,
+                            history: currentLoan.history
                         };
-                        if (loan.current.length > 0) {
+                        if (currentLoan.current.length > 0) {
+                            cashCollection[index]._id = currentLoan.current[0]._id;
+                            cashCollection[index].prevData = currentLoan.current[0].prevData;
+                        } else if (loan.current.length > 0) {
                             cashCollection[index]._id = loan.current[0]._id;
+                            cashCollection[index].prevData = loan.current[0].prevData;
                         }
                     } else if (currentLoan.status !== 'active') {
                         cashCollection[index] = {
@@ -675,6 +718,7 @@ const CashCollectionDetailsPage = () => {
                             coMaker: (loan.coMaker && typeof loan.coMaker == 'number') ? loan.coMaker : '-',
                             slotNo: loan.slotNo,
                             loanId: loan._id,
+                            prevLoanId: currentLoan.loanId ? currentLoan.loanId : currentLoan._id,
                             groupId: loan.groupId,
                             loId: loan.loId,
                             branchId: loan.branchId,
@@ -706,11 +750,19 @@ const CashCollectionDetailsPage = () => {
                             remarks: '-',
                             fullPaymentStr: '-',
                             status: loan.status === 'active' ? 'tomorrow' : 'pending',
-                            loanTerms: loan.loanTerms
+                            loanTerms: loan.loanTerms,
+                            pending: loan.status === 'pending' ? true : false,
+                            tomorrow: loan.status === 'active' ? true : false,
+                            reverted: currentLoan.reverted,
+                            history: currentLoan.history
                         };
 
-                        if (loan.current.length > 0) {
+                        if (currentLoan.current.length > 0) {
+                            cashCollection[index]._id = currentLoan.current[0]._id;
+                            cashCollection[index].prevData = currentLoan.current[0].prevData;
+                        } else if (loan.current.length > 0) {
                             cashCollection[index]._id = loan.current[0]._id;
+                            cashCollection[index].prevData = loan.current[0].prevData;
                         }
                     }
                 } else {
@@ -760,6 +812,12 @@ const CashCollectionDetailsPage = () => {
                     cashCollection.push(pendingTomorrow);
                 }
             });
+
+            const haveReverted = cashCollection.filter(cc => cc.reverted);
+            if (haveReverted.length > 0) {
+                setEditMode(true);
+                setRevertMode(true);
+            }
 
             dispatch(setCashCollectionGroup(cashCollection));
             setTimeout(() => {
@@ -999,6 +1057,11 @@ const CashCollectionDetailsPage = () => {
                     let temp = {...cc};
                     if (cc.status !== 'totals') {
                         temp.groupDay = temp.group.day;
+                    }
+
+                    if (temp.reverted) {
+                        delete temp.reverted;
+                        temp.revertedDate = currentDate;
                     }
     
                     delete temp.targetCollectionStr;
@@ -1845,6 +1908,25 @@ const CashCollectionDetailsPage = () => {
         }
     }
 
+    const handleNewRevert = async () => {
+        setShowWarningDialog(false);
+        if (selectedSlot) {
+            setLoading(true);
+            const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/revert-transaction', selectedSlot);
+            if (response.success) {
+                setTimeout(() => {
+                    setLoading(false);
+                    toast.success(`Slot No ${selectedSlot.slotNo} was successfuly reverted! Please wait reloading data.`);
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                }, 1000);
+            }
+        } else {
+            toast.error('No slot selected!');
+        }
+    }
+
     const handleReloan = (e, selected) => {
         e.stopPropagation();
         
@@ -2154,11 +2236,11 @@ const CashCollectionDetailsPage = () => {
         }
     }, [currentGroup]);
 
-    useEffect(() => {
-        if (!editMode && revertMode) {
-            setEditMode(true);
-        }
-    }, [revertMode]);
+    // useEffect(() => {
+    //     if (!editMode && revertMode) {
+    //         setEditMode(true);
+    //     }
+    // }, [revertMode]);
 
     return (
         <Layout header={false} noPad={true}>
@@ -2170,7 +2252,7 @@ const CashCollectionDetailsPage = () => {
                 <div className="overflow-x-auto">
                     {data && <DetailsHeader page={'transaction'} showSaveButton={currentUser.role.rep > 2 ? (isWeekend || isHoliday) ? false : editMode : false}
                         handleSaveUpdate={handleSaveUpdate} data={allData} setData={setFilteredData} allowMcbuWithdrawal={allowMcbuWithdrawal} allowOffsetTransaction={allowOffsetTransaction}
-                        dateFilter={dateFilter} setDateFilter={setDateFilter} handleDateFilter={handleDateFilter} currentGroup={uuid} 
+                        dateFilter={dateFilter} setDateFilter={setDateFilter} handleDateFilter={handleDateFilter} currentGroup={uuid} revertMode={revertMode}
                         groupFilter={groupFilter} handleGroupFilter={handleGroupFilter} groupTransactionStatus={groupSummaryIsClose ? 'close' : 'open'} />}
                     <div className="p-4 mt-[12rem] mb-[4rem]">
                         <div className="bg-white flex flex-col rounded-md p-6 overflow-auto">
@@ -2239,7 +2321,7 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.noOfPaymentStr }</td>
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
                                                     { (!isWeekend && !isHoliday && currentUser.role.rep > 2 && cc.status === 'active' && editMode 
-                                                            && ((cc?.origin && (cc?.origin === 'pre-save' || cc?.origin === 'automation-trf')) || revertMode || cc.draft) 
+                                                            && ((cc?.origin && (cc?.origin === 'pre-save' || cc?.origin === 'automation-trf')) || cc.reverted || cc.draft) 
                                                             || (cc.offsetTransFlag && cc.otherDay)) ? (
                                                         <React.Fragment>
                                                             <input type="number" name={`${cc.clientId}-mcbuCol`} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'mcbuCol')}
@@ -2249,7 +2331,7 @@ const CashCollectionDetailsPage = () => {
                                                         </React.Fragment>
                                                         ): 
                                                             <React.Fragment>
-                                                                {(!editMode || filter || !revertMode || cc.status === 'completed' || cc.status === 'pending' || cc.status === 'totals' || cc.status === 'closed') ? cc.mcbuColStr : '-'}
+                                                                {(!editMode || filter || !cc.reverted || cc.status === 'completed' || cc.status === 'pending' || cc.status === 'totals' || cc.status === 'closed') ? cc.mcbuColStr : '-'}
                                                             </React.Fragment>
                                                     }
                                                 </td>
@@ -2257,7 +2339,7 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.excessStr }</td>
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
                                                     { (!isWeekend && !isHoliday && currentUser.role.rep > 2 && cc.status === 'active' 
-                                                        && editMode && ((cc?.origin && (cc?.origin === 'pre-save' || cc?.origin === 'automation-trf')) || revertMode || cc.draft)
+                                                        && editMode && ((cc?.origin && (cc?.origin === 'pre-save' || cc?.origin === 'automation-trf')) || cc?.reverted || cc.draft)
                                                         || (cc.offsetTransFlag && cc.otherDay) && !cc?.dcmc) ? (
                                                         <React.Fragment>
                                                             <input type="number" name={cc.clientId} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'amount', cc.activeLoan)}
@@ -2267,7 +2349,7 @@ const CashCollectionDetailsPage = () => {
                                                         </React.Fragment>
                                                         ): 
                                                             <React.Fragment>
-                                                                {(!editMode || filter || !revertMode || cc.status === 'completed' || cc.status === 'pending' || cc.status === 'totals' || cc.status === 'closed') ? cc.paymentCollectionStr : '-'}
+                                                                {(!editMode || filter || !cc.reverted || cc.status === 'completed' || cc.status === 'pending' || cc.status === 'totals' || cc.status === 'closed') ? cc.paymentCollectionStr : '-'}
                                                             </React.Fragment>
                                                     }
                                                 </td>
@@ -2281,7 +2363,7 @@ const CashCollectionDetailsPage = () => {
                                                         </React.Fragment>
                                                         ): 
                                                             <React.Fragment>
-                                                                {(!editMode || filter || !revertMode || cc.status === 'completed' || cc.status === 'pending' || cc.status === 'totals' || cc.status === 'closed') ? cc.mcbuWithdrawalStr : '-'}
+                                                                {(!editMode || filter || !cc.reverted || cc.status === 'completed' || cc.status === 'pending' || cc.status === 'totals' || cc.status === 'closed') ? cc.mcbuWithdrawalStr : '-'}
                                                             </React.Fragment>
                                                     }
                                                 </td>
@@ -2292,7 +2374,7 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.noMispaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.pastDueStr }</td>
                                                 { (!isWeekend && !isHoliday && (currentUser.role.rep > 2 && (cc.status === 'active' || cc.status === 'completed') && (editMode && !groupSummaryIsClose) 
-                                                    && ((cc?.origin && (cc?.origin === 'pre-save' || cc?.origin === 'automation-trf')) || revertMode) && !filter) || ((cc.remarks && cc.remarks.value === "reloaner" && cc.status !== "tomorrow") && !groupSummaryIsClose)
+                                                    && ((cc?.origin && (cc?.origin === 'pre-save' || cc?.origin === 'automation-trf')) || cc.reverted) && !filter) || ((cc.remarks && cc.remarks.value === "reloaner" && cc.status !== "tomorrow") && !groupSummaryIsClose)
                                                     && (cc.remarks && cc.remarks.value === "reloaner" && cc.fullPaymentDate !== currentDate) && cc.status !== 'pending' || cc.draft || (cc.offsetTransFlag && cc.otherDay)) ? (
                                                         <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">
                                                             { cc.remarks !== '-' ? (
@@ -2325,9 +2407,9 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.transferStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">
                                                     <React.Fragment>
-                                                        {(!isWeekend && !isHoliday && currentUser.role.rep > 2 &&  (cc.status === 'active' || cc.status === 'completed') && !groupSummaryIsClose && !cc.draft) && (
-                                                            <div className='flex flex-row p-4'>
-                                                                {(currentUser.role.rep === 3 && cc.hasOwnProperty('_id')  && cc.status === 'active' && !filter && !cc.draft && cc?.origin !== 'pre-save') && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleRevert(e, cc, index)} />}
+                                                        {(!isWeekend && !isHoliday && currentUser.role.rep > 2 && !groupSummaryIsClose && !cc.draft) && (
+                                                            <div className='flex flex-row p-2'>
+                                                                {(currentUser.role.rep === 3 && cc.hasOwnProperty('_id')  && cc.status === 'active' && !filter && !cc.draft && cc?.origin !== 'pre-save' && !cc.reverted) && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleShowWarningDialog(e, cc)} />}
                                                                 {((cc.status === 'completed' && (cc.remarks && cc.remarks.value === 'reloaner')) || (cc.status === 'completed' && !cc.remarks)) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
                                                                 {(!filter && cc.status === 'active') && <CurrencyDollarIcon className="w-5 h-5 mr-6" title="MCBU Refund" onClick={(e) => handleMcbuWithdrawal(e, cc, index)} />}
                                                                 {(!filter && cc.status === 'active') && <StopCircleIcon className="w-5 h-5 mr-6" title="Offset" onClick={(e) => handleOffset(e, cc, index)} />}
@@ -2366,6 +2448,21 @@ const CashCollectionDetailsPage = () => {
                                 <ButtonOutline label="Cancel" type="button" className="p-2 mr-3" onClick={() => setShowRemarksModal(false)} />
                                 <ButtonSolid label="Submit" type="button" className="p-2 mr-3" onClick={handleSetCloseAccountRemarks} />
                             </div>
+                        </div>
+                    </Dialog>
+                    <Dialog show={showWaningDialog}>
+                        <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                            <div className="sm:flex sm:items-start justify-center">
+                                <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-center">
+                                    <div className="mt-2">
+                                        <p className="text-2xl font-normal text-dark-color">Are you sure you want to revert today's transaction?</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex flex-row justify-center text-center px-4 py-3 sm:px-6 sm:flex">
+                            <ButtonOutline label="Cancel" type="button" className="p-2 mr-3" onClick={() => setShowWarningDialog(false)} />
+                            <ButtonSolid label="Yes, revert" type="button" className="p-2" onClick={handleNewRevert} />
                         </div>
                     </Dialog>
                 </div>
