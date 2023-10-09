@@ -40,7 +40,10 @@ async function getAllLoansPerGroup(req, res) {
                             localField: "loIdStr",
                             foreignField: "loanOfficerId",
                             pipeline: [
-                                { $match: { day: currentDay } },
+                                { $match: { $expr: { $and: [
+                                    { $eq: ['$day', currentDay] },
+                                    { $gt: ['$noOfClients', 0] }
+                                ] } } },
                                 {
                                     $addFields: {
                                         "groupIdStr": { $toString: "$_id" }
@@ -682,7 +685,10 @@ async function getAllLoansPerGroup(req, res) {
                             localField: "loIdStr",
                             foreignField: "loanOfficerId",
                             pipeline: [
-                                { $match: { day: currentDay } },
+                                { $match: { $expr: { $and: [
+                                    { $eq: ['$day', currentDay] },
+                                    { $gt: ['$noOfClients', 0] }
+                                ] } } },
                                 {
                                     $addFields: {
                                         "groupIdStr": { $toString: "$_id" }
@@ -1318,7 +1324,10 @@ async function getAllLoansPerGroup(req, res) {
                             localField: "loIdStr",
                             foreignField: "loanOfficerId",
                             pipeline: [
-                                { $match: { day: currentDay } },
+                                { $match: { $expr: { $and: [
+                                    { $eq: ['$day', currentDay] },
+                                    { $gt: ['$noOfClients', 0] }
+                                ] } } },
                                 {
                                     $addFields: {
                                         "groupIdStr": { $toString: "$_id" }
@@ -1943,7 +1952,11 @@ async function getAllLoansPerGroup(req, res) {
             cashCollection = await db
                 .collection('groups')
                 .aggregate([
-                    { $match: { loanOfficerId: loId, occurence: mode } },
+                    { $match: { $expr: { $and: [
+                        { $eq: ['$loanOfficerId', loId] },
+                        { $eq: ['$occurence', mode] },
+                        { $gt: ['$noOfClients', 0] }
+                    ] } } },
                     {
                         $addFields: {
                             "groupIdStr": { $toString: "$_id" }
@@ -4012,7 +4025,11 @@ async function getAllLoansPerGroup(req, res) {
             cashCollection = await db
                 .collection('groups')
                 .aggregate([
-                    { $match: { loanOfficerId: loId, occurence: mode } },
+                    { $match: { $expr: { $and: [
+                        { $eq: ['$loanOfficerId', loId] },
+                        { $eq: ['$occurence', mode] },
+                        { $gt: ['$noOfClients', 0] }
+                    ] } } },
                     {
                         $addFields: {
                             "groupIdStr": { $toString: "$_id" }

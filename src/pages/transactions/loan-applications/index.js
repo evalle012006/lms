@@ -637,7 +637,7 @@ const LoanApplicationPage = () => {
             //     toast.error(msg);
             // } else {
                 if (errorMsg.length > 0) {
-                    errorMsg += "\nPlease go to clients page to update each missing info. Don't forget to click the UPDATE button.";
+                    errorMsg += "\n\nPlease update each missing info by clicking the row.";
                     toast.error(errorMsg, { autoClose: 10000 });
                 } else {
                     const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/approved-reject-by-batch', selectedLoanList);
@@ -759,6 +759,7 @@ const LoanApplicationPage = () => {
 
     const handleCloseClientInfoModal = () => {
         setShowClientInfoModal(false);
+        getListLoan();
     }
     
     const handleShowWarningModal = (row) => {

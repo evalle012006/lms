@@ -11,7 +11,7 @@ import { useRouter } from 'next/router';
 import { ArrowLeftCircleIcon } from '@heroicons/react/24/solid';
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 
-const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, dateFilter, setDateFilter, handleDateFilter, 
+const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, dateFilter, setDateFilter, handleDateFilter, revertMode = false,
                             groupFilter, handleGroupFilter, groupTransactionStatus, allowMcbuWithdrawal, allowOffsetTransaction }) => {
     const router = useRouter();
     const groupList = useSelector(state => state.group.list);
@@ -128,8 +128,8 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
                         </div>
                     </div>
                     {(showSaveButton || allowMcbuWithdrawal || allowOffsetTransaction) && (
-                        <div className="flex items-center w-96">
-                            <ButtonOutline label="Save Draft" type="button" className="p-2 mr-3" onClick={() => handleSaveUpdate(true)} />
+                        <div className={`flex items-center ${revertMode ? 'w-40' : 'w-96'}`}>
+                            {!revertMode && <ButtonOutline label="Save Draft" type="button" className="p-2 mr-3" onClick={() => handleSaveUpdate(true)} />}
                             <ButtonSolid label="Submit Collection" onClick={() => handleSaveUpdate(false)} />
                         </div>
                     )}

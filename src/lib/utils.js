@@ -278,3 +278,19 @@ export const parseDate = (date) => {
 export const calculateAge = (dob) => {
     return Math.round(moment().diff(dob, 'years', true));
 }
+
+export const getPrevousWorkday = () => {
+    // Based on the current day, handle accordingly
+    const today = moment().day();
+    switch(today) {
+        // If it is Monday (1),Saturday(6), or Sunday (0), Get the previous Friday (5)
+        // and ensure we are on the previous week
+        case 0:
+        case 1:
+        case 6:
+            return moment().subtract(6,'days').day(5);
+        // If it any other weekend, just return the previous day
+        default:
+            return moment().day(today - 1);
+    }
+}

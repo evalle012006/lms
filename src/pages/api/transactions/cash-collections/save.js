@@ -20,6 +20,7 @@ async function save(req, res) {
             if (cc.status !== "totals") {
                 // let collection = {...cc, groupCollectionId: groupHeaderId};
                 let collection = {...cc};
+                delete collection.reverted;
 
                 if (cc.occurence === "weekly") {
                     if (collection.remarks && (collection.remarks.value?.startsWith('excused-') || collection.remarks.value === 'delinquent')) {
@@ -84,7 +85,7 @@ async function updateCollection(collections) {
                 .updateOne(
                     { _id: new ObjectId(collectionId)},
                     {
-                        $unset: { origin: 1 },
+                        $unset: { origin: 1, reverted: 1 },
                         $set: {...collection}
                     },
                     { upsert: false }
@@ -94,6 +95,7 @@ async function updateCollection(collections) {
                 .updateOne(
                     { _id: new ObjectId(collectionId)},
                     {
+                        $unset: { origin: 1, reverted: 1 },
                         $set: {...collection}
                     },
                     { upsert: false }
@@ -112,6 +114,10 @@ async function updateLoan(collection, currentDate) {
         delete loan.groupStatus;
         loan.loanBalance = collection.loanBalance;
         loan.modifiedDateTime = new Date();
+
+        if (collection?.revertedDate) {
+            loan.revertedDate = collection.revertedDate;
+        }
 
         if (collection.remarks && (!collection.remarks.value?.startsWith('excused')  && collection.remarks.value !== 'delinquent')) {
             loan.activeLoan = collection.activeLoan;
@@ -142,6 +148,7 @@ async function updateLoan(collection, currentDate) {
         delete loan.groupCashCollections;
         delete loan.loanOfficer;
         delete loan.loanReleaseStr;
+        delete loan.reverted;
         
         if (collection.mispayment) {
             loan.mispayment = loan.mispayment + 1;
@@ -151,6 +158,9 @@ async function updateLoan(collection, currentDate) {
 
         if (collection.loanBalance <= 0) {
             loan.status = 'completed';
+            if (collection.status === 'closed') {
+                loan.status = collection.status;
+            }
             loan.fullPaymentDate = collection.fullPaymentDate;
             loan.activeLoan = 0;
             loan.amountRelease = 0;
@@ -164,7 +174,8 @@ async function updateLoan(collection, currentDate) {
         await db.collection('loans').updateOne(
             { _id: new ObjectId(collection.loanId) }, 
             {
-                $set: { ...loan }
+                $set: { ...loan },
+                $unset: { reverted: 1 }
             }
         );
 
