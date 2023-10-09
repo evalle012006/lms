@@ -1142,7 +1142,7 @@ const CashCollectionDetailsPage = () => {
                         //     temp.prevData.mcbu = temp.mcbuHistory.mcbu;
                         // }
 
-                        if (value && parseInt(value) !== 0) {
+                        if (value && parseInt(value) != 0) {
                             if (containsAnyLetters(value)) {
                                 toast.error("Invalid amount in actual collection. Please input numeric only.");
                                 temp.error = true;
@@ -1168,7 +1168,7 @@ const CashCollectionDetailsPage = () => {
         
                                 temp.excess =  0;
                                 temp.excessStr = '-';
-                                if (parseFloat(payment) === 0) {
+                                if (parseFloat(payment) == 0) {
                                     temp.noOfPayments = temp.noOfPayments <= 0 ? 0 : temp.noOfPayments - 1;
                                     temp.mispayment = true;
                                     temp.mispaymentStr = 'Yes';

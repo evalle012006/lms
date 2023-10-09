@@ -48,7 +48,6 @@ async function updateLoan(req, res) {
             // currentReleaseAmount to 0
             // in loans, change back the previous loan to completed status and the current one change the loanCycle to 0
             // client status to pending
-            loan.loanCycle = 0;
             if (loan.loanCycle > 1) {
                 let loans = await db.collection('loans').find({ clientId: loan.clientId, loanCycle: loan.loanCycle - 1 }).toArray();
                 if (loans) {
@@ -71,8 +70,10 @@ async function updateLoan(req, res) {
                     }
 
                     let tempLoan = {...loans[0]};
+                    const prevLoanId = tempLoan._id;
                     delete tempLoan._id;
                     tempLoan.status = 'completed';
+                    await db.collection('loans').updateOne({ _id: prevLoanId }, {$set: { ...tempLoan }});
                 }
             }
 
@@ -84,6 +85,8 @@ async function updateLoan(req, res) {
                 delete client._id;
                 await db.collection('client').updateOne({ _id: new ObjectId(loan.clientId) }, { $set: { ...client } });
             }
+
+            loan.loanCycle = 0;
 
             if (!groupData.availableSlots.includes(loan.slotNo)) {
                 groupData.availableSlots.push(loan.slotNo);

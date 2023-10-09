@@ -45,6 +45,7 @@ const LoanApplicationPage = () => {
     const currentDate = useSelector(state => state.systemSettings.currentDate);
 
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [showWaningDialog, setShowWarningDialog] = useState(false);
     const [showClientInfoModal, setShowClientInfoModal] = useState(false);
 
     const [historyList, setHistoryList] = useState([]);
@@ -698,11 +699,15 @@ const LoanApplicationPage = () => {
         }
     }
 
-    const handleReject = (row) => {
-        if (row.original.allowApproved) {
-            updateClientStatus(row.original, 'reject');
-        } else {
-            toast.error("Group transaction is already closed for the day.");
+    const handleReject = () => {
+        // if (row.original.allowApproved) {
+        //     updateClientStatus(row.original, 'reject');
+        // } else {
+        //     toast.error("Group transaction is already closed for the day.");
+        // }
+        if (loan) {
+            updateClientStatus(loan, 'reject');
+            setShowWarningDialog(false);
         }
     }
 
@@ -754,6 +759,15 @@ const LoanApplicationPage = () => {
 
     const handleCloseClientInfoModal = () => {
         setShowClientInfoModal(false);
+    }
+    
+    const handleShowWarningModal = (row) => {
+        if (row.original.allowApproved) {
+            setLoan(row.original);
+            setShowWarningDialog(true);
+        } else {
+            toast.error("Group transaction is already closed for the day.");
+        }
     }
 
     useEffect(() => {
@@ -866,7 +880,7 @@ const LoanApplicationPage = () => {
                 rowActionBtn = [
                     // { label: 'Approve', action: handleApprove},
                     { label: 'Edit Loan', action: handleEditAction},
-                    { label: 'Reject', action: handleReject},
+                    { label: 'Reject', action: handleShowWarningModal},
                     // { label: 'Delete Loan', action: handleDeleteAction},
                     { label: 'NDS', action: handleShowNDSAction}
                 ];
@@ -997,6 +1011,21 @@ const LoanApplicationPage = () => {
             <Modal title="Client Detail Info" show={showClientInfoModal} onClose={handleCloseClientInfoModal} width="60rem">
                 <ClientDetailPage />
             </Modal>
+            <Dialog show={showWaningDialog}>
+                <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <div className="sm:flex sm:items-start justify-center">
+                        <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-center">
+                            <div className="mt-2">
+                                <p className="text-2xl font-normal text-dark-color">Are you sure you want to <span className="font-bold text-red-400">reject</span> this loan?</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div className="flex flex-row justify-center text-center px-4 py-3 sm:px-6 sm:flex">
+                    <ButtonOutline label="Cancel" type="button" className="p-2 mr-3" onClick={() => setShowWarningDialog(false)} />
+                    <ButtonSolid label="Yes, reject" type="button" className="p-2" onClick={handleReject} />
+                </div>
+            </Dialog>
             <Dialog show={showDeleteDialog}>
                 <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                     <div className="sm:flex sm:items-start justify-center">
