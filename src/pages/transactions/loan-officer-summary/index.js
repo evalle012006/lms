@@ -806,11 +806,6 @@ const LoanOfficerSummary = () => {
         let totalFullPaymentAmount = 0;
         let totalActiveBorrowers = 0; // last row
         let totalLoanBalance = 0; // last row
-        // let lastActiveClients = 0;
-        // let lastActiveLoanReleasePerson = 0;
-        // let lastActiveLoanReleaseAmount = 0;
-        // let lastActiveBorrowers = 0;
-        // let lastLoanBalance = 0;
 
         weeklyTotals.map(wt => {
             let noTransfer = wt.transfer;
@@ -838,55 +833,14 @@ const LoanOfficerSummary = () => {
             totalMispaymentPerson += wt.mispaymentPerson;
             totalFullPaymentPerson += wt.fullPaymentPerson;
             totalFullPaymentAmount += wt.fullPaymentAmount;
-
-            // if (wt.activeClients > 0) {
-            //     lastActiveClients = wt.activeClients;
-            // }
-
-            // if (wt.activeLoanReleasePerson > 0) {
-            //     lastActiveLoanReleasePerson = wt.activeLoanReleasePerson;
-            // }
-
-            // if (wt.activeLoanReleaseAmount > 0) {
-            //     lastActiveLoanReleaseAmount = wt.activeLoanReleaseAmount;
-            // }
-
-            // if (wt.activeBorrowers > 0) {
-            //     lastActiveBorrowers = wt.activeBorrowers;
-            // }
-
-            // if (wt.loanBalance > 0) {
-            //     lastLoanBalance = wt.loanBalance;
-            // }
         });
 
         totalMcbuBalance = fBal.mcbuBalance + totalMcbuActual - totalMcbuWithdrawal + totalMcbuInterest - totalMcbuReturnAmt;
         totalActiveClients = fBal.activeClients + totalTransfer + totalNewMember - totalNoMcbuReturn;
         totalActiveLoanReleasePerson = fBal.activeLoanReleasePerson + totalLoanReleasePerson - totalFullPaymentPerson;
         totalActiveLoanReleaseAmount = fBal.activeLoanReleaseAmount + totalLoanReleaseAmount - totalFullPaymentAmount;
-
-        // if (totalActiveClients == 0) {
-        //     totalActiveClients = lastActiveClients;
-        // }
-        
-        // if (totalActiveLoanReleasePerson == 0) {
-        //     totalActiveLoanReleasePerson = lastActiveLoanReleasePerson;
-        // }
-
-        // if (totalActiveLoanReleaseAmount == 0) {
-        //     totalActiveLoanReleaseAmount = lastActiveLoanReleaseAmount;
-        // }
-
         totalActiveBorrowers = fBal.activeBorrowers + totalLoanReleasePerson - totalFullPaymentPerson;
         totalLoanBalance = fBal.loanBalance + totalLoanReleaseAmount - totalCollectionActual;
-
-        // if (totalActiveBorrowers == 0) {
-        //     totalActiveBorrowers = lastActiveBorrowers;
-        // }
-
-        // if (totalLoanBalance <= 0 && fBal.loanBalance == 0 && totalLoanReleaseAmount == 0 && totalCollectionActual > 0) {
-        //     totalLoanBalance = lastLoanBalance;
-        // }
 
         monthlyTotal.transfer = totalTransfer < 0 ? `(${Math.abs(totalTransfer)})` : totalTransfer;
         monthlyTotal.newMember = totalNewMember;

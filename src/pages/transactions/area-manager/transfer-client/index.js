@@ -291,17 +291,8 @@ const TransferClientPage = () => {
         }
     }
 
-    const actionButtons = [
-        <ButtonOutline label="Approved Selected Transfer" type="button" className="p-2 mr-3" onClick={handleMultiApprove} />,
-        <ButtonSolid label="Add Transfer" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
-    ];
-
-    const rowActionButtons = [
-        { label: 'Approve', action: handleApprove},
-        { label: 'Reject', action: handleReject},
-        // { label: 'Edit', action: handleEditAction},
-        { label: 'Delete', action: handleDeleteAction}
-    ];
+    const [actionButtons, setActionButtons] = useState();
+    const [rowActionButtons, setRowActionButtons] = useState();
 
     const getTransferList = async () => {
         // determined all the closed loans it should be highlited with red and option to delete only...
@@ -446,8 +437,30 @@ const TransferClientPage = () => {
         })
     }, [currentUser]);
 
+    useEffect(() => {
+        if (currentDate === lastMonthDate) {
+            setActionButtons([
+                <ButtonOutline label="Approved Selected Transfer" type="button" className="p-2 mr-3" onClick={handleMultiApprove} />,
+                <ButtonSolid label="Add Transfer" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
+            ]);
+            setRowActionButtons([
+                { label: 'Approve', action: handleApprove},
+                { label: 'Reject', action: handleReject}
+                // { label: 'Delete', action: handleDeleteAction}
+            ]);
+        } else {
+            setActionButtons([
+                <ButtonSolid label="Add Transfer" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
+            ]);
+            setRowActionButtons([
+                { label: 'Reject', action: handleReject}
+                // { label: 'Delete', action: handleDeleteAction}
+            ]);
+        }
+    }, [currentDate, lastMonthDate]);
+
     return (
-        <Layout actionButtons={(currentUser.role.rep <= 2 && !isWeekend && !isHoliday && currentDate === lastMonthDate) && actionButtons}>
+        <Layout actionButtons={(currentUser.role.rep <= 2 && !isWeekend && !isHoliday) && actionButtons}>
             <div className="pb-4">
                 { loading ? (
                     <div className="absolute top-1/2 left-1/2">
