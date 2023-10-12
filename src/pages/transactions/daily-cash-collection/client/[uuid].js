@@ -171,9 +171,9 @@ const CashCollectionDetailsPage = () => {
             let transactionStatus;
             if (type === 'filter') {
                 dataCollection = dataCollection.filter(cc => cc.hasOwnProperty('loanId') && cc.loanId !== null );
-                transactionStatus = dataCollection.filter(cc => cc.groupStatus === 'closed');
+                transactionStatus = dataCollection.filter(cc => cc.status !== 'pending').filter(cc => cc.groupStatus === 'closed');
             } else {
-                transactionStatus = dataCollection.filter(cc => cc?.current[0]?.groupStatus === 'closed');   
+                transactionStatus = dataCollection.filter(cc => cc.status !== 'pending').filter(cc => cc?.current[0]?.groupStatus === 'closed');
             }
 
             if (transactionStatus.length === 0 && (!date || currentDate === date)) {
@@ -717,10 +717,10 @@ const CashCollectionDetailsPage = () => {
                             history: currentLoan.history
                         };
 
-                        if (currentLoan.current.length > 0) {
+                        if (currentLoan?.current?.length > 0) {
                             cashCollection[index]._id = currentLoan.current[0]._id;
                             cashCollection[index].prevData = currentLoan.current[0].prevData;
-                        } else if (loan.current.length > 0) {
+                        } else if (loan?.current?.length > 0) {
                             cashCollection[index]._id = loan.current[0]._id;
                             cashCollection[index].prevData = loan.current[0].prevData;
                         }
@@ -768,10 +768,10 @@ const CashCollectionDetailsPage = () => {
                             reverted: currentLoan.reverted,
                             history: currentLoan.history
                         };
-                        if (currentLoan.current.length > 0) {
+                        if (currentLoan?.current?.length > 0) {
                             cashCollection[index]._id = currentLoan.current[0]._id;
                             cashCollection[index].prevData = currentLoan.current[0].prevData;
-                        } else if (loan.current.length > 0) {
+                        } else if (loan?.current?.length > 0) {
                             cashCollection[index]._id = loan.current[0]._id;
                             cashCollection[index].prevData = loan.current[0].prevData;
                         }

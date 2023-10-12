@@ -157,8 +157,9 @@ async function updateLoan(collection, currentDate) {
         loan.history = collection.history;
 
         if (collection.loanBalance <= 0) {
-            loan.status = 'completed';
-            if (collection.status === 'closed') {
+            if (collection.status === 'tomorrow') {
+                loan.status = 'active';
+            } else {
                 loan.status = collection.status;
             }
             loan.fullPaymentDate = collection.fullPaymentDate;

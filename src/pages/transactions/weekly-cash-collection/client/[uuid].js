@@ -149,9 +149,9 @@ const CashCollectionDetailsPage = () => {
             let transactionStatus;
             if (type === 'filter') {
                 dataCollection = dataCollection.filter(cc => cc.hasOwnProperty('loanId') && cc.loanId !== null );
-                transactionStatus = dataCollection.filter(cc => cc.groupStatus === 'closed');
+                transactionStatus = dataCollection.filter(cc => cc.status !== 'pending').filter(cc => cc.groupStatus === 'closed');
             } else {
-                transactionStatus = dataCollection.filter(cc => cc?.current[0]?.groupStatus === 'closed');   
+                transactionStatus = dataCollection.filter(cc => cc.status !== 'pending').filter(cc => cc?.current[0]?.groupStatus === 'closed');   
             }
 
             if (transactionStatus.length === 0 && (!date || currentDate === date)) {

@@ -168,7 +168,7 @@ const ViewByBranchPage = ({dateFilter, type}) => {
                         collection.mcbuColStr = collection.mcbuCol > 0 ? formatPricePhp(collection.mcbuCol) : '-';
                         collection.mcbuWithdrawal = branch.cashCollections[0].mcbuWithdrawal;
                         collection.mcbuWithdrawalStr = collection.mcbuWithdrawal ? formatPricePhp(collection.mcbuWithdrawal) : '-';
-                        collection.noMcbuReturn = branch.cashCollections[0].noMcbuReturn;
+                        collection.noMcbuReturn = branch.cashCollections[0].mcbuReturnNo;
                         collection.mcbuReturnAmt = branch.cashCollections[0].mcbuReturnAmt;
                         collection.mcbuReturnAmtStr = collection.mcbuReturnAmt ? formatPricePhp(collection.mcbuReturnAmt) : '-';
                         collection.transfer = branch.cashCollections[0].transfer;

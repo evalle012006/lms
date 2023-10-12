@@ -455,7 +455,13 @@ async function getAllLoansPerGroup(req, res) {
                                                 else: 0
                                             }
                                         } },
-                                        groupStatusArr: { $addToSet: '$groupStatus' }
+                                        groupStatusArr: { $addToSet: {
+                                            $cond: {
+                                                if: { $ne: ['$status', 'pending'] },
+                                                then: '$groupStatus',
+                                                else: "$$REMOVE"
+                                            }
+                                        } }
                                     } 
                                 }
                             ],
@@ -1100,7 +1106,13 @@ async function getAllLoansPerGroup(req, res) {
                                                 else: 0
                                             }
                                         } },
-                                        groupStatusArr: { $addToSet: '$groupStatus' }
+                                        groupStatusArr: { $addToSet: {
+                                            $cond: {
+                                                if: { $ne: ['$status', 'pending'] },
+                                                then: '$groupStatus',
+                                                else: "$$REMOVE"
+                                            }
+                                        } }
                                     } 
                                 }
                             ],
@@ -1739,7 +1751,13 @@ async function getAllLoansPerGroup(req, res) {
                                                 else: 0
                                             }
                                         } },
-                                        groupStatusArr: { $addToSet: '$groupStatus' }
+                                        groupStatusArr: { $addToSet: {
+                                            $cond: {
+                                                if: { $ne: ['$status', 'pending'] },
+                                                then: '$groupStatus',
+                                                else: "$$REMOVE"
+                                            }
+                                        } }
                                     } 
                                 }
                             ],
@@ -1954,8 +1972,7 @@ async function getAllLoansPerGroup(req, res) {
                 .aggregate([
                     { $match: { $expr: { $and: [
                         { $eq: ['$loanOfficerId', loId] },
-                        { $eq: ['$occurence', mode] },
-                        { $gt: ['$noOfClients', 0] }
+                        { $eq: ['$occurence', mode] }
                     ] } } },
                     {
                         $addFields: {
@@ -2207,7 +2224,13 @@ async function getAllLoansPerGroup(req, res) {
                                                 else: 0
                                             }
                                         } },
-                                        groupStatusArr: { $addToSet: '$groupStatus' },
+                                        groupStatusArr: { $addToSet: {
+                                            $cond: {
+                                                if: { $ne: ['$status', 'pending'] },
+                                                then: '$groupStatus',
+                                                else: "$$REMOVE"
+                                            }
+                                        } },
                                         hasDraftsArr: { $addToSet: '$draft' }
                                     } 
                                 }
@@ -2930,7 +2953,13 @@ async function getAllLoansPerGroup(req, res) {
                                                 else: 0
                                             }
                                         } },
-                                        groupStatusArr: { $addToSet: '$groupStatus' }
+                                        groupStatusArr: { $addToSet: {
+                                            $cond: {
+                                                if: { $ne: ['$status', 'pending'] },
+                                                then: '$groupStatus',
+                                                else: "$$REMOVE"
+                                            }
+                                        } }
                                     } 
                                 }
                             ],
@@ -3473,7 +3502,13 @@ async function getAllLoansPerGroup(req, res) {
                                                 else: 0
                                             }
                                         } },
-                                        groupStatusArr: { $addToSet: '$groupStatus' }
+                                        groupStatusArr: { $addToSet: {
+                                            $cond: {
+                                                if: { $ne: ['$status', 'pending'] },
+                                                then: '$groupStatus',
+                                                else: "$$REMOVE"
+                                            }
+                                        } }
                                     } 
                                 }
                             ],
@@ -4010,7 +4045,13 @@ async function getAllLoansPerGroup(req, res) {
                                                 else: 0
                                             }
                                         } },
-                                        groupStatusArr: { $addToSet: '$groupStatus' }
+                                        groupStatusArr: { $addToSet: {
+                                            $cond: {
+                                                if: { $ne: ['$status', 'pending'] },
+                                                then: '$groupStatus',
+                                                else: "$$REMOVE"
+                                            }
+                                        } }
                                     } 
                                 }
                             ],
@@ -4027,8 +4068,7 @@ async function getAllLoansPerGroup(req, res) {
                 .aggregate([
                     { $match: { $expr: { $and: [
                         { $eq: ['$loanOfficerId', loId] },
-                        { $eq: ['$occurence', mode] },
-                        { $gt: ['$noOfClients', 0] }
+                        { $eq: ['$occurence', mode] }
                     ] } } },
                     {
                         $addFields: {
@@ -4414,7 +4454,13 @@ async function getAllLoansPerGroup(req, res) {
                                                 else: 0
                                             }
                                         } },
-                                        groupStatusArr: { $addToSet: '$groupStatus' }
+                                        groupStatusArr: { $addToSet: {
+                                            $cond: {
+                                                if: { $ne: ['$status', 'pending'] },
+                                                then: '$groupStatus',
+                                                else: "$$REMOVE"
+                                            }
+                                        } }
                                     } 
                                 }
                             ],

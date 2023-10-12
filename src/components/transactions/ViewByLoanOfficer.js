@@ -201,7 +201,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
                         collection.mcbuColStr = collection.mcbuCol > 0 ? formatPricePhp(collection.mcbuCol) : '-';
                         collection.mcbuWithdrawal = lo.cashCollections[0].mcbuWithdrawal;
                         collection.mcbuWithdrawalStr = collection.mcbuWithdrawal ? formatPricePhp(collection.mcbuWithdrawal) : '-';
-                        collection.noMcbuReturn = lo.cashCollections[0].noMcbuReturn;
+                        collection.noMcbuReturn = lo.cashCollections[0].mcbuReturnNo;
                         collection.mcbuReturnAmt = lo.cashCollections[0].mcbuReturnAmt;
                         collection.mcbuReturnAmtStr = collection.mcbuReturnAmt ? formatPricePhp(collection.mcbuReturnAmt) : '-';
                         collection.mcbuInterest = lo.cashCollections[0].mcbuInterest;
