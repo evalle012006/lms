@@ -105,22 +105,22 @@ async function updateUser(req, res) {
 const saveFile = async (file, uid) => {
     if (file) {
         const data = fs.readFileSync(file.filepath);
-
+        const fileName = 'profile-00.' + file.originalFilename.split('.').pop();
         if (!fs.existsSync(`./public/images/profiles/`)) {
             fs.mkdirSync(`./public/images/profiles/`, { recursive: true });
         }
 
         if (fs.existsSync(`./public/images/profiles/${uid}/`)) {
             // check if file exists 
-            fs.existsSync(`./public/images/profiles/${uid}/${file.originalFilename}`) && fs.unlinkSync(`./public/images/profiles/${uid}/${file.originalFilename}`);
+            fs.existsSync(`./public/images/profiles/${uid}/${fileName}`) && fs.unlinkSync(`./public/images/profiles/${uid}/${fileName}`);
         } else {
             fs.mkdirSync(`./public/images/profiles/${uid}/`);
         }
 
-        fs.writeFileSync(`./public/images/profiles/${uid}/${file.originalFilename}`, data);
+        fs.writeFileSync(`./public/images/profiles/${uid}/${fileName}`, data);
         await fs.unlinkSync(file.filepath);
 
-        return uid + '/' + file.originalFilename;
+        return uid + '/' + fileName;
     } else {
         return false;
     }

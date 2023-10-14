@@ -83,7 +83,7 @@ async function save(req, res) {
                 await updateGroup(loanData);
             }
 
-            await saveCashCollection(loanData, currentReleaseAmount, reloan, group, loanId, currentDate);
+            await saveCashCollection(loanData, currentReleaseAmount, reloan, group, loanId, currentDate, mode);
 
             await updateUser(loanData);
 
@@ -184,7 +184,7 @@ async function updateLoan(loanId, loanData, currentDate) {
     }
 }
 
-async function saveCashCollection(loan, currentReleaseAmount, reloan, group, loanId, currentDate) {
+async function saveCashCollection(loan, currentReleaseAmount, reloan, group, loanId, currentDate, mode) {
     const { db } = await connectToDatabase();
 
     const cashCollection = await db.collection('cashCollections').find({ clientId: loan.clientId, dateAdded: currentDate }).toArray();
@@ -220,7 +220,7 @@ async function saveCashCollection(loan, currentReleaseAmount, reloan, group, loa
             status: loan.status,
             dateAdded: currentDate,
             insertedDateTime: new Date(),
-            groupStatus: 'pending',
+            groupStatus: (mode === 'add' && loan.status === 'pending') ? 'closed' : 'pending',
             origin: 'automation-loan'
         };
 

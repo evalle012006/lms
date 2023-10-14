@@ -32,7 +32,7 @@ async function startMigration(req, res) {
             logger.debug({page: 'migrations', message: `File Directory: ${file}`});
             let fileProcessComplete = false;
             if (file) {
-                fileProcessComplete = await processExcel(file, fields.branchId, fields.loId);
+                fileProcessComplete = await processExcel(file, fields.branchId, fields.loId, fields.occurence);
             }
 
             if (err) {
@@ -49,14 +49,14 @@ async function startMigration(req, res) {
         .end(JSON.stringify(response));
 }
 
-const processExcel = async (file, branchId, loId) => {
+const processExcel = async (file, branchId, loId, occurence) => {
     let complete = false;
 
     const data = excelReader('./public/migrations/' + file);
 
     data.map((sheet, sheetIdx) => {
         if (sheetIdx == 0) {
-            processLOR(sheet.data, branchId, loId);
+            processLOR(sheet.data, branchId, loId, occurence);
         } else if (sheetIdx == 1) {
             // LOS
         } else if (sheetIdx == 2) {
@@ -67,7 +67,7 @@ const processExcel = async (file, branchId, loId) => {
     return complete;
 }
 
-const processLOR = async (sheetData, branchId, loId) => {
+const processLOR = async (sheetData, branchId, loId, occurence) => {
     logger.debug({page: 'migrations', message: "Processing LOR Sheet"});
     const { db } = await connectToDatabase();
     const cashCollections = [];
@@ -135,13 +135,14 @@ const processLOR = async (sheetData, branchId, loId) => {
             if (i === 37 || i === 71 || i === 105 || i === 139 || i === 173 || i === 207 || i === 241 || i === 275 || i === 309 || i === 343 || i === 377) {
                 // nothing to do...just skipping
             } else {
+                logger.debug({row: col})
                 const slotNo = col[0] ? parseInt(col[0]) : null;
                 logger.debug({page: 'migrations', message: `Row: ${i} - Slot No: ${slotNo}`});
                 const clientName = extractName(col[1]);
                 if (clientName) {
                     logger.debug({page: 'migrations', message: `Row: ${i} - Client Name: ${clientName.firstName} ${clientName.lastName}`});
                     const clientDOB = col[2] ? parseDate(col[2]) : null;
-                    const coMaker = col[3] ? col[3] : null;
+                    const coMaker = col[3] ? parseInt(col[3]) : null;
                     const admissionDate = col[4] ? parseDate(col[4]) : null;
                     const guarantorName = extractName(col[5]);
                     const clientAddress = col[6];
@@ -151,7 +152,8 @@ const processLOR = async (sheetData, branchId, loId) => {
                     const dateGranted = col[12] ? parseDate(col[12]) : null;
                     const amountRelease = col[13] ? parseFloat(col[13]) : 0;
                     const principalLoan = amountRelease / 1.20;
-                    const activeLoan = (principalLoan * 1.20) / 60; // IF TRANSACTION IS DAILY!!!! ADJUST
+                    const loanTerms = occurence === 'daily' ? 60 : 24;
+                    const activeLoan = (principalLoan * 1.20) / loanTerms;
                     // skip col[14] another loanCycle
                     // skip col[15 - 20] no data
                     // skip col[21] another slotNo
@@ -172,14 +174,22 @@ const processLOR = async (sheetData, branchId, loId) => {
                     const fullPaymentAmount = col[84];
                     const fullPaymentDate = '';
                     // skip 84 - 85
-                    const mcbu = col[86] ? parseFloat(col[86]) : 0;
-                    // skip col[87] after amount release
-                    const loanBalance = col[88] ? parseFloat(col[88]) : 0;
+                    let mcbu = 0;
+                    let loanBalance = 0;
+                    if (occurence === 'daily') {
+                        mcbu = col[86] ? parseFloat(col[86]) : 0;
+                        // skip col[87] after amount release
+                        loanBalance = col[88] ? parseFloat(col[88]) : 0;
+                    } else {
+                        mcbu = col[46] ? parseFloat(col[46]) : 0;
+                        // skip col[87] after amount release
+                        loanBalance = col[48] ? parseFloat(col[48]) : 0;
+                    }
                     const noOfPayments = (amountRelease - loanBalance) / activeLoan;
                     const pastDue = col[89] ? parseFloat(col[89]) : 0;
 
                     const startDate = moment(dateGranted).add(1, 'days').format('YYYY-MM-DD');
-                    const endDate = getEndDate(dateGranted, 60 ); // ADJUST IF WEEKLY
+                    const endDate = getEndDate(dateGranted, loanTerms ); // ADJUST IF WEEKLY
                     
                     // ADJUST THIS FOR NEW MONTH!!!!
                     const client = {
@@ -216,8 +226,8 @@ const processLOR = async (sheetData, branchId, loId) => {
                         loanCycle: loanCycle,
                         pnNumber: '',
                         status: 'active',
-                        occurence: 'daily', // ADJUST IF WEEKLY
-                        loanTerms: 60, // ADJUST IF WEEKLY
+                        occurence: occurence,
+                        loanTerms: loanTerms,
                         loanRelease: amountRelease,
                         mispayment: 0,
                         dateGranted: dateGranted,
@@ -225,7 +235,12 @@ const processLOR = async (sheetData, branchId, loId) => {
                         endDate: endDate,
                         advanceDays: 0,
                         fullPaymentDate: null,
-                        history: {},
+                        history: {
+                            amountRelease: amountRelease,
+                            activeLoan: activeLoan,
+                            loanBalance: loanBalance,
+                            loanCycle: loanCycle
+                        },
                         mcbuCollection: mcbu,
                         mcbuIntereset: mcbuInterestAmount,
                         mcbuTarget: null, // ADJUST IF WEEKLY
@@ -488,6 +503,9 @@ const processLOR = async (sheetData, branchId, loId) => {
                     if (loan) {
                         loan.clientId = client._id;
                         loan.groupId = groupId;
+                        if (occurence === 'weekly') {
+                            loan.groupDay = group.day;
+                        }
                         const loanResp = await db.collection('loans').insertOne({...loan});
                         if (loanResp.acknowledged) {
                             loan._id = loanResp.insertedId + '';

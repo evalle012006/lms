@@ -455,7 +455,13 @@ async function getAllLoansPerGroup(req, res) {
                                                 else: 0
                                             }
                                         } },
-                                        groupStatusArr: { $addToSet: '$groupStatus' }
+                                        groupStatusArr: { $addToSet: {
+                                            $cond: {
+                                                if: { $ne: ['$status', 'pending'] },
+                                                then: '$groupStatus',
+                                                else: "$$REMOVE"
+                                            }
+                                        } }
                                     } 
                                 }
                             ],
@@ -474,6 +480,7 @@ async function getAllLoansPerGroup(req, res) {
                                             {$ne: ['$status', 'reject']},
                                             { $or: [
                                                 { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}] },
+                                                { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$closedDate', date]}] },
                                                 { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$transferred', true]}, {$eq: ['$endDate', date]}] },
                                                 { $eq: ['$status', 'active'] }, { $eq: ['$status', 'pending'] }, { $eq: ['$status', 'completed'] }
                                             ] }
@@ -529,6 +536,7 @@ async function getAllLoansPerGroup(req, res) {
                                             {$and: [
                                                 { $or: [
                                                     { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}] },
+                                                    { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$closedDate', date]}] },
                                                     { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$transferred', true]}, {$eq: ['$endDate', date]}] }
                                                 ] }
                                             ]}
@@ -1100,7 +1108,13 @@ async function getAllLoansPerGroup(req, res) {
                                                 else: 0
                                             }
                                         } },
-                                        groupStatusArr: { $addToSet: '$groupStatus' }
+                                        groupStatusArr: { $addToSet: {
+                                            $cond: {
+                                                if: { $ne: ['$status', 'pending'] },
+                                                then: '$groupStatus',
+                                                else: "$$REMOVE"
+                                            }
+                                        } }
                                     } 
                                 }
                             ],
@@ -1739,7 +1753,13 @@ async function getAllLoansPerGroup(req, res) {
                                                 else: 0
                                             }
                                         } },
-                                        groupStatusArr: { $addToSet: '$groupStatus' }
+                                        groupStatusArr: { $addToSet: {
+                                            $cond: {
+                                                if: { $ne: ['$status', 'pending'] },
+                                                then: '$groupStatus',
+                                                else: "$$REMOVE"
+                                            }
+                                        } }
                                     } 
                                 }
                             ],
@@ -1954,8 +1974,7 @@ async function getAllLoansPerGroup(req, res) {
                 .aggregate([
                     { $match: { $expr: { $and: [
                         { $eq: ['$loanOfficerId', loId] },
-                        { $eq: ['$occurence', mode] },
-                        { $gt: ['$noOfClients', 0] }
+                        { $eq: ['$occurence', mode] }
                     ] } } },
                     {
                         $addFields: {
@@ -2207,7 +2226,13 @@ async function getAllLoansPerGroup(req, res) {
                                                 else: 0
                                             }
                                         } },
-                                        groupStatusArr: { $addToSet: '$groupStatus' },
+                                        groupStatusArr: { $addToSet: {
+                                            $cond: {
+                                                if: { $ne: ['$status', 'pending'] },
+                                                then: '$groupStatus',
+                                                else: "$$REMOVE"
+                                            }
+                                        } },
                                         hasDraftsArr: { $addToSet: '$draft' }
                                     } 
                                 }
@@ -2229,6 +2254,7 @@ async function getAllLoansPerGroup(req, res) {
                                             { $or: [
                                                 { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}] },
                                                 { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$transferred', true]}, {$eq: ['$endDate', date]}] },
+                                                { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$closedDate', date]}] },
                                                 { $eq: ['$status', 'active'] }, { $eq: ['$status', 'pending'] }, { $eq: ['$status', 'completed'] }
                                             ] }
                                         ]
@@ -2284,6 +2310,7 @@ async function getAllLoansPerGroup(req, res) {
                                             {$and: [
                                                 { $or: [
                                                     { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}] },
+                                                    { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$closedDate', date]}] },
                                                     { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$transferred', true]}, {$eq: ['$endDate', date]}] }
                                                 ] }
                                             ]}
@@ -2930,7 +2957,13 @@ async function getAllLoansPerGroup(req, res) {
                                                 else: 0
                                             }
                                         } },
-                                        groupStatusArr: { $addToSet: '$groupStatus' }
+                                        groupStatusArr: { $addToSet: {
+                                            $cond: {
+                                                if: { $ne: ['$status', 'pending'] },
+                                                then: '$groupStatus',
+                                                else: "$$REMOVE"
+                                            }
+                                        } }
                                     } 
                                 }
                             ],
@@ -3473,7 +3506,13 @@ async function getAllLoansPerGroup(req, res) {
                                                 else: 0
                                             }
                                         } },
-                                        groupStatusArr: { $addToSet: '$groupStatus' }
+                                        groupStatusArr: { $addToSet: {
+                                            $cond: {
+                                                if: { $ne: ['$status', 'pending'] },
+                                                then: '$groupStatus',
+                                                else: "$$REMOVE"
+                                            }
+                                        } }
                                     } 
                                 }
                             ],
@@ -4010,7 +4049,13 @@ async function getAllLoansPerGroup(req, res) {
                                                 else: 0
                                             }
                                         } },
-                                        groupStatusArr: { $addToSet: '$groupStatus' }
+                                        groupStatusArr: { $addToSet: {
+                                            $cond: {
+                                                if: { $ne: ['$status', 'pending'] },
+                                                then: '$groupStatus',
+                                                else: "$$REMOVE"
+                                            }
+                                        } }
                                     } 
                                 }
                             ],
@@ -4027,8 +4072,7 @@ async function getAllLoansPerGroup(req, res) {
                 .aggregate([
                     { $match: { $expr: { $and: [
                         { $eq: ['$loanOfficerId', loId] },
-                        { $eq: ['$occurence', mode] },
-                        { $gt: ['$noOfClients', 0] }
+                        { $eq: ['$occurence', mode] }
                     ] } } },
                     {
                         $addFields: {
@@ -4414,7 +4458,13 @@ async function getAllLoansPerGroup(req, res) {
                                                 else: 0
                                             }
                                         } },
-                                        groupStatusArr: { $addToSet: '$groupStatus' }
+                                        groupStatusArr: { $addToSet: {
+                                            $cond: {
+                                                if: { $ne: ['$status', 'pending'] },
+                                                then: '$groupStatus',
+                                                else: "$$REMOVE"
+                                            }
+                                        } }
                                     } 
                                 }
                             ],

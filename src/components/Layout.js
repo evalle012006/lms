@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
-import { setCurrentDate, setHoliday, setLastDayOfTheMonth, setWeekend } from '@/redux/actions/systemActions';
+import { setCurrentDate, setCurrentTime, setHoliday, setLastDayOfTheMonth, setWeekend } from '@/redux/actions/systemActions';
 import NavComponent from "./Nav";
 import { setTransactionSettings } from "@/redux/actions/transactionsActions";
 import { setHolidayList } from "@/redux/actions/holidayActions";
@@ -20,6 +20,7 @@ const Layout = ({ children, bgwhite = false, header = true, noPad = false, actio
         const response = await fetchWrapper.get(apiURL);
         if (response.success) {
             dispatch(setCurrentDate(response.currentDate));
+            dispatch(setCurrentTime(response.currentTime));
         }
     }
 

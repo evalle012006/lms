@@ -9,10 +9,12 @@ async function getSystemCurrentDate(req, res) {
     let statusCode = 200;
     let response = {};
     let currentDate = new Date().toLocaleDateString({}, { timeZone: 'Asia/Manila' });
+    let currentTime = new Date().toLocaleTimeString({}, { timeZone: 'Asia/Manila' });
 
     response = {
         success: true,
-        currentDate: moment(currentDate).format('YYYY-MM-DD')
+        currentDate: moment(currentDate).format('YYYY-MM-DD'),
+        currentTime: currentTime
     }
 
     res.status(statusCode)
