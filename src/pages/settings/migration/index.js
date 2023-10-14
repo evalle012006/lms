@@ -64,6 +64,7 @@ const MigrationPage = () => {
 
     const handleBranchChange = (selected) => {
         setSelectedBranch(selected);
+        dispatch(setUserList([]));
     }
 
     const handleUserChange = (selected) => {
@@ -84,7 +85,8 @@ const MigrationPage = () => {
                 const params = {
                     file: file,
                     branchId: selectedBranch._id,
-                    loId: selectedUser._id
+                    loId: selectedUser._id,
+                    occurence: selectedUser.transactionType
                 }
         
                 const response = await fetchWrapper.sendData(process.env.NEXT_PUBLIC_API_URL + 'migration/', params);

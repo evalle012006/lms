@@ -157,22 +157,22 @@ async function updateClient(req, res) {
 const saveFile = async (file, uid) => {
     if (file) {
         const data = fs.readFileSync(file.filepath);
-
+        const fileName = 'profile-00.' + file.originalFilename.split('.').pop();
         if (!fs.existsSync(`./public/images/clients/`)) {
             fs.mkdirSync(`./public/images/clients/`, { recursive: true });
         }
 
         if (fs.existsSync(`./public/images/clients/${uid}/`)) {
             // check if file exists 
-            fs.existsSync(`./public/images/clients/${uid}/${file.originalFilename}`) && fs.unlinkSync(`./public/images/clients/${uid}/${file.originalFilename}`);
+            fs.existsSync(`./public/images/clients/${uid}/${fileName}`) && fs.unlinkSync(`./public/images/clients/${uid}/${fileName}`);
         } else {
             fs.mkdirSync(`./public/images/clients/${uid}/`);
         }
 
-        fs.writeFileSync(`./public/images/clients/${uid}/${file.originalFilename}`, data);
+        fs.writeFileSync(`./public/images/clients/${uid}/${fileName}`, data);
         await fs.unlinkSync(file.filepath);
 
-        return uid + '/' + file.originalFilename;
+        return uid + '/' + fileName;
     } else {
         return false;
     }
