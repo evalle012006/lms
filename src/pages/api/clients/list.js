@@ -16,7 +16,40 @@ async function list(req, res) {
     let clients;
 
 
-    if (mode === 'view_active_by_group' && groupId) {
+    if (mode === 'view_offset' && status === 'offset') {
+        clients = await db
+            .collection('client')
+            .aggregate([
+                { $match: { status: status } },
+                {
+                    $addFields: {
+                        "clientId": { $toString: "$_id" },
+                        "loIdObj": {$toObjectId: "$loId"}
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "users",
+                        localField: "loIdObj",
+                        foreignField: "_id",
+                        as: "lo"
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "loans",
+                        localField: "clientId",
+                        foreignField: "clientId",
+                        // pipeline: [
+                        //     { $match: { "status": "active" } }
+                        // ],
+                        as: "loans"
+                    }
+                },
+                { $project: { clientId: 0, loIdObj: 0, groupIdObj: 0 } }
+            ])
+            .toArray();
+    } else if (mode === 'view_active_by_group' && groupId) {
         clients = await db
             .collection('loans')
             .aggregate([
