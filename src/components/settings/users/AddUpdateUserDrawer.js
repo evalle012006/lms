@@ -42,7 +42,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
         position: user.position,
         designatedBranch: user.designatedBranch ? (user.roleId === 2 ? user.designatedBranch : user.designatedBranch) : 0,
         role: user.role ? user.roleId : '',
-        loNo: user.loNo,
+        loNo: user.loNo ? parseInt(user.loNo) : null,
         transactionType: user.transactionType,
         branchManagerName: user?.branchManagerName
     }
@@ -194,6 +194,10 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
         if (user.imgUrl) {
             // setPhoto(`${imgpath}/${user.imgUrl}`);
             mounted && setPhoto(`${user.imgUrl}`);
+        }
+
+        if (user.roleId) {
+            setRole(user.roleId);
         }
 
         if (user.hasOwnProperty('transactionType') && user.transactionType) {
@@ -393,7 +397,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
                                             </div>
                                         </React.Fragment>
                                     )}
-                                    
+                                    {console.log(rep)}
                                     {rep === 4 && (
                                         <React.Fragment>
                                             <div className="mt-4">
