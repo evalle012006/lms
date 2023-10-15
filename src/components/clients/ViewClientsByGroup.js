@@ -60,8 +60,8 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
         } else if (!currentUser.root) {
             if (currentUser.role.rep > 2) {
                 const currentUserBranch = branchList.find(b => b.code === currentUser.designatedBranch);
-                if (currentUser.role.rep === 4 && branchList.length > 0) {
-                    url = url + '?' + new URLSearchParams({ mode: "view_by_lo", loId: currentUser._id, status: status });
+                if (status === 'offset') {
+                    url = url + '?' + new URLSearchParams({ mode: "view_offset", status: status });
                     const response = await fetchWrapper.get(url);
                     if (response.success) {
                         let clients = [];
@@ -87,32 +87,61 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                     } else if (response.error) {
                         toast.error(response.message);
                     }
-                } else if (currentUser.role.rep === 3 && branchList.length > 0 && currentUserBranch) {
-                    url = url + '?' + new URLSearchParams({ mode: "view_all_by_branch", branchId: currentUserBranch._id, status: status });
-                    const response = await fetchWrapper.get(url);
-                    if (response.success) {
-                        let clients = [];
-                        await response.clients && response.clients.map(client => {
-                            const name = `${client.lastName}, ${client.firstName} ${client.middleName}`;
-                            clients.push({
-                                ...client,
-                                name: name,
-                                middleName: client.middleName ? client.middleName : '',
-                                imgUrl: client.profile ? imgpath + '/images/clients/' + client.profile : '',
-                                slotNo: client.loans.length > 0 ? client.loans[0].slotNo : '-',
-                                loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
-                                activeLoanStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].activeLoan) : '0.00',
-                                loanBalanceStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].loanBalance) : '0.00',
-                                missPayments: client.loans.length > 0 ?  client.loans[0].missPayments : 0,
-                                noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
-                                delinquent: client.delinquent === true ? 'Yes' : 'No',
-                                loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : '',
-                                coMaker: (client.loans[0]?.coMaker && typeof client.loans[0]?.coMaker === 'number') ? client.loans[0]?.coMaker : ''
+                } else {
+                    if (currentUser.role.rep === 4 && branchList.length > 0) {
+                        url = url + '?' + new URLSearchParams({ mode: "view_by_lo", loId: currentUser._id, status: status });
+                        const response = await fetchWrapper.get(url);
+                        if (response.success) {
+                            let clients = [];
+                            await response.clients && response.clients.map(client => {
+                                const name = `${client.lastName}, ${client.firstName} ${client.middleName}`;
+                                clients.push({
+                                    ...client,
+                                    name: name,
+                                    middleName: client.middleName ? client.middleName : '',
+                                    imgUrl: client.profile ? imgpath + '/images/clients/' + client.profile : '',
+                                    slotNo: client.loans.length > 0 ? client.loans[0].slotNo : '-',
+                                    loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
+                                    activeLoanStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].activeLoan) : '0.00',
+                                    loanBalanceStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].loanBalance) : '0.00',
+                                    missPayments: client.loans.length > 0 ?  client.loans[0].missPayments : 0,
+                                    noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
+                                    delinquent: client.delinquent === true ? 'Yes' : 'No',
+                                    loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : '',
+                                    coMaker: (client.loans[0]?.coMaker && typeof client.loans[0]?.coMaker === 'number') ? client.loans[0]?.coMaker : ''
+                                });
                             });
-                        });
-                        dispatch(setClientList(clients));
-                    } else if (response.error) {
-                        toast.error(response.message);
+                            dispatch(setClientList(clients));
+                        } else if (response.error) {
+                            toast.error(response.message);
+                        }
+                    } else if (currentUser.role.rep === 3 && branchList.length > 0 && currentUserBranch) {
+                        url = url + '?' + new URLSearchParams({ mode: "view_all_by_branch", branchId: currentUserBranch._id, status: status });
+                        const response = await fetchWrapper.get(url);
+                        if (response.success) {
+                            let clients = [];
+                            await response.clients && response.clients.map(client => {
+                                const name = `${client.lastName}, ${client.firstName} ${client.middleName}`;
+                                clients.push({
+                                    ...client,
+                                    name: name,
+                                    middleName: client.middleName ? client.middleName : '',
+                                    imgUrl: client.profile ? imgpath + '/images/clients/' + client.profile : '',
+                                    slotNo: client.loans.length > 0 ? client.loans[0].slotNo : '-',
+                                    loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
+                                    activeLoanStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].activeLoan) : '0.00',
+                                    loanBalanceStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].loanBalance) : '0.00',
+                                    missPayments: client.loans.length > 0 ?  client.loans[0].missPayments : 0,
+                                    noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
+                                    delinquent: client.delinquent === true ? 'Yes' : 'No',
+                                    loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : '',
+                                    coMaker: (client.loans[0]?.coMaker && typeof client.loans[0]?.coMaker === 'number') ? client.loans[0]?.coMaker : ''
+                                });
+                            });
+                            dispatch(setClientList(clients));
+                        } else if (response.error) {
+                            toast.error(response.message);
+                        }
                     }
                 }
             } else if (branchList.length > 0) {

@@ -110,7 +110,7 @@ export function StatusPill({ value }) {
           status.startsWith("active") || status.startsWith("open") ? "status-pill-active" : null,
           status.startsWith("pending") ? "status-pill-pending" : null,
           status.startsWith("inactive") ? "status-pill-inactive" : null,
-          status.startsWith("reject") || status.startsWith("close") || status.startsWith("offset") ? "status-pill-rejected" : null
+          status.startsWith("reject") || status.startsWith("close") || status.startsWith("closed") || status.startsWith("offset") ? "status-pill-rejected" : null
         )}
       >
         {status}

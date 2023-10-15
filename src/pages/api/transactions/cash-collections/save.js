@@ -199,6 +199,13 @@ async function updateClient(loan, currentDate) {
 
         client.status = loan.clientStatus;
 
+        if (client.status === 'offset') {
+            client.oldLoId = client.loId;
+            client.oldGroupId = client.groupId;
+            client.groupId = null;
+            client.loId = null;
+        }
+
         let mcbuHistory = [];
         const currentMonth = moment(currentDate).month() + 1;
         const currentYear = moment(currentDate).year();

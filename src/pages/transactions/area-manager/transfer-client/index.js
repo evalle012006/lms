@@ -61,6 +61,7 @@ const TransferClientPage = () => {
         {
             Header: "Client Status",
             accessor: 'status',
+            Cell: StatusPill
         },
         {
             Header: "Amount Release",
@@ -85,6 +86,7 @@ const TransferClientPage = () => {
         {
             Header: "Loan Status",
             accessor: 'loanStatus',
+            Cell: StatusPill
         },
         // {
         //     Header: "Client Status",
@@ -231,20 +233,34 @@ const TransferClientPage = () => {
     const handleMultiSelect = (mode, selectAll, row, rowIndex) => {
         if (transferList) {
             if (mode === 'all') {
+                let errorMsg = "";
                 const tempList = transferList.map(loan => {
                     let temp = {...loan};
-
-                    temp.selected = selectAll;
+                    
+                    if (temp.loanStatus !== 'active') {
+                        errorMsg += `${temp.firstName} ${temp.lastName} loan is not active!\n`;
+                    } else {
+                        temp.selected = selectAll;
+                    }
                     
                     return temp;
                 });
+
+                if (errorMsg.length > 0) {
+                    toast.error(errorMsg);
+                }
+
                 dispatch(setTransferClientList(tempList));
             } else if (mode === 'row') {
                 const tempList = transferList.map((loan, index) => {
                     let temp = {...loan};
-    
+                    
                     if (index === rowIndex) {
-                        temp.selected = !temp.selected;
+                        if (temp.loanStatus !== 'active') {
+                            toast.error('Selected client loan is not active. Please delete and add again.');
+                        } else {
+                            temp.selected = !temp.selected;
+                        }
                     }
     
                     return temp;
