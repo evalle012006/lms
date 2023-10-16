@@ -69,6 +69,7 @@ const CashCollectionDetailsPage = () => {
     const [showWaningDialog, setShowWarningDialog] = useState(false);
 
     const [mcbuRate, setMcbuRate] = useState(transactionSettings.mcbu || 8);
+    const [noMoreDraft, setNoMoreDraft] = useState(false);
 
     const handleShowWarningDialog = (e, selected) => {
         e.stopPropagation();
@@ -829,8 +830,9 @@ const CashCollectionDetailsPage = () => {
             const hasDraft = cashCollection.filter(cc => cc.draft);
             if (hasDraft.length > 0) {
                 setEditMode(true);
+                setNoMoreDraft(false);
             } else {
-                setEditMode(false);
+                setNoMoreDraft(true);
             }
 
             const haveReverted = cashCollection.filter(cc => cc.reverted);
@@ -2056,7 +2058,7 @@ const CashCollectionDetailsPage = () => {
             ) : (
                 <div className="overflow-x-auto">
                     {data && <DetailsHeader page={'transaction'} showSaveButton={currentUser.role.rep > 2 ? (isWeekend || isHoliday) ? false : editMode : false}
-                        handleSaveUpdate={handleSaveUpdate} data={allData} setData={setFilteredData} allowMcbuWithdrawal={allowMcbuWithdrawal}
+                        handleSaveUpdate={handleSaveUpdate} data={allData} setData={setFilteredData} allowMcbuWithdrawal={allowMcbuWithdrawal} noMoreDraft={noMoreDraft}
                         dateFilter={dateFilter} setDateFilter={setDateFilter} handleDateFilter={handleDateFilter} currentGroup={uuid} revertMode={revertMode}
                         groupFilter={groupFilter} handleGroupFilter={handleGroupFilter} groupTransactionStatus={groupSummaryIsClose ? 'close' : 'open'} />}
                     <div className="p-4 mt-[12rem] mb-[4rem]">

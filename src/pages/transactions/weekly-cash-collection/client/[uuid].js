@@ -820,8 +820,6 @@ const CashCollectionDetailsPage = () => {
             const hasDraft = cashCollection.filter(cc => cc.draft);
             if (hasDraft.length > 0) {
                 setEditMode(true);
-            } else {
-                setEditMode(false);
             }
 
             const haveReverted = cashCollection.filter(cc => cc.reverted);
