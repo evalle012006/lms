@@ -46,7 +46,7 @@ async function save(req, res) {
                     newCC.push(collection);
                 }
 
-                if (collection.status !== "pending" && !collection.draft) {
+                if (collection.status !== "tomorrow" && collection.status !== "pending" && !collection.draft) {
                     await updateLoan(collection, currentDate)
                     await updateClient(collection, currentDate);
                 }
@@ -161,11 +161,11 @@ async function updateLoan(collection, currentDate) {
         loan.history = collection.history;
 
         if (collection.loanBalance <= 0) {
+            loan.status = collection.status;
             if (collection.status === 'tomorrow') {
                 loan.status = 'active';
-            } else {
-                loan.status = collection.status;
             }
+            
             loan.fullPaymentDate = collection.fullPaymentDate;
             loan.activeLoan = 0;
             loan.amountRelease = 0;

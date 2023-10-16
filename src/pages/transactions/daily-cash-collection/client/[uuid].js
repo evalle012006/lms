@@ -389,6 +389,9 @@ const CashCollectionDetailsPage = () => {
                         let amountRelease = 0;
                         let loanBalance = 0;
                         let mispayment = false;
+                        let prevData = cc.prevData;
+                        let draft = false;
+                        let reverted = false;
                         if (cc.hasOwnProperty('current') && cc.current.length > 0) {
                             const current = cc.current.find(cur => !cur.hasOwnProperty('transfer'));
                             if (current) {
@@ -402,6 +405,9 @@ const CashCollectionDetailsPage = () => {
                                 mcbuCol = current.mcbuCol;
                                 mcbuWithdrawal = current.mcbuWithdrawal;
                                 mcbuReturnAmt = current.mcbuReturnAmt;
+                                prevData = current.prevData;
+                                draft = current.draft;
+                                reverted = current.reverted;
                             }
                         }
                         collection = {
@@ -459,9 +465,11 @@ const CashCollectionDetailsPage = () => {
                             delinquent: cc.client.delinquent,
                             fullPaymentDate: cc.fullPaymentDate ? cc.fullPaymentDate : null,
                             history: cc.hasOwnProperty('history') ? cc.history : null,
-                            prevData: cc.hasOwnProperty('prevData') ? cc.prevData : null,
+                            prevData: prevData,
                             loanTerms: cc.loanTerms,
-                            transferred: cc.transferred
+                            transferred: cc.transferred,
+                            draft: draft,
+                            reverted: reverted
                         }
     
                         if (loanBalance > 0) {
