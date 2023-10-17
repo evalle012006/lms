@@ -898,7 +898,7 @@ const CashCollectionDetailsPage = () => {
                 }
 
                 totalExcess += collection.excess ? collection.excess !== '-' ? collection.excess : 0 : 0;
-                totalLoanCollection += collection.paymentCollection ? collection.paymentCollection !== '-' ? collection.paymentCollection : 0 : 0;
+                totalLoanCollection += collection.paymentCollection ? collection.paymentCollection !== '-' ? parseFloat(collection.paymentCollection) : 0 : 0;
                 totalFullPayment += collection.fullPayment ? collection.fullPayment !== '-' ? collection.fullPayment : 0 : 0;
                 totalMispayment += collection.mispaymentStr === 'Yes' ? 1 : 0;
                 totalPastDue += (collection.pastDue && collection.pastDue !== '-') ? collection.pastDue : 0;
@@ -958,7 +958,7 @@ const CashCollectionDetailsPage = () => {
                     errorMsg.add('Error occured. Please select a remarks for 0 or no payment Actual Collection.');
                 } else if ((parseFloat(cc.paymentCollection) === 0 || (parseFloat(cc.paymentCollection) > 0 && parseFloat(cc.paymentCollection) < parseFloat(cc.activeLoan))) 
                         && (!cc.remarks || (cc.remarks && (!cc.remarks.value?.startsWith('delinquent') && cc.remarks.value !== "past due" && !cc.remarks.value?.startsWith('excused')
-                                                            && cc.remarks.value !== 'matured-past due'))) ) {
+                        && cc.remarks.value !== 'offset-unclaimed' && cc.remarks.value !== 'matured-past due' && !cc.remarks.value?.startsWith('collection-')))) ) {
                     errorMsg.add("Error occured. 0 payment should be mark either PAST DUE, DELINQUENT OR EXCUSED in remarks.");
                 } else if ((cc.remarks && cc.remarks.value === "past due") && parseFloat(cc.pastDue) < parseFloat(cc.targetCollection)) {
                     errorMsg.add("Error occured. Past due is less than the target collection.");
@@ -966,7 +966,7 @@ const CashCollectionDetailsPage = () => {
                     if (cc.paymentCollection > 0 && cc.paymentCollection % 10 !== 0) {
                         errorMsg.add("Error occured. Amount collection is not divisible by 10");
                     }
-                } else if (parseFloat(cc.paymentCollection) > 0 && parseFloat(cc.paymentCollection) < cc.activeLoan) {
+                } else if (parseFloat(cc.paymentCollection) > 0 && parseFloat(cc.paymentCollection) < cc.activeLoan && (!cc.remarks?.value.startsWith('collection-')) && cc.remarks?.value !== 'offset-unclaimed') {
                     errorMsg.add("Actual collection is below the target collection.");
                 } else if (parseFloat(cc.paymentCollection) % parseFloat(cc.activeLoan) !== 0 && cc.loanBalance !== 0) {
                     if (cc.remarks && (cc.remarks.value !== "past due" && !cc.remarks.value?.startsWith('excused') && !cc.remarks.value?.startsWith('delinquent') 
