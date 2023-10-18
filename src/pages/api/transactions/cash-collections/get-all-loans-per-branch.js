@@ -179,6 +179,7 @@ async function getAllLoansPerGroup(req, res) {
                                                 {$ne: ['$status', 'reject']},
                                                 { $or: [
                                                     { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}] },
+                                                    { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$closedDate', date]}] },
                                                     { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$transferred', true]}, {$eq: ['$endDate', date]}] },
                                                     { $eq: ['$status', 'active'] }, { $eq: ['$status', 'pending'] }, { $eq: ['$status', 'completed'] }
                                                 ] }
@@ -234,6 +235,7 @@ async function getAllLoansPerGroup(req, res) {
                                                 {$and: [
                                                     { $or: [
                                                         { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}] },
+                                                        { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$closedDate', date]}] },
                                                         { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$transferred', true]}, {$eq: ['$endDate', date]}] }
                                                     ] }
                                                 ]}
@@ -526,6 +528,7 @@ async function getAllLoansPerGroup(req, res) {
                                             {$ne: ['$status', 'reject']},
                                             { $or: [
                                                 { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}] },
+                                                { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$closedDate', date]}] },
                                                 { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$transferred', true]}, {$eq: ['$endDate', date]}] },
                                                 { $eq: ['$status', 'active'] }, { $eq: ['$status', 'pending'] }, { $eq: ['$status', 'completed'] }
                                             ] }
@@ -581,6 +584,7 @@ async function getAllLoansPerGroup(req, res) {
                                             {$and: [
                                                 { $or: [
                                                     { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}] },
+                                                    { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$closedDate', date]}] },
                                                     { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$transferred', true]}, {$eq: ['$endDate', date]}] }
                                                 ] }
                                             ]}

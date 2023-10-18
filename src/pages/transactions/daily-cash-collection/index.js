@@ -138,10 +138,10 @@ const DailyCashCollectionPage = () => {
         let mounted = true;
         
         const syncLoans = async () => {
-            if (currentUser.role.rep === 4) {
-                await autoSyncLoans(currentUser._id);
+            if (currentUser.role.rep === 3 || currentUser.role.rep === 4) {
+                // await autoSyncLoans(currentUser._id);
                 setTimeout(async () => {
-                    await autoHealCashCollections(currentUser._id);
+                    await autoHealCashCollections(currentUser._id, currentDate);
                 }, 2000);
             }
         }

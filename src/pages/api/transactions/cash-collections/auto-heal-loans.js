@@ -35,7 +35,7 @@ async function autoHealLoans(req, res) {
 async function removedDoubleCC(groupId, currentDate) {
     const { db } = await connectToDatabase();
     
-    const cashCollections = await db.collection('cashCollections').find({ groupId: groupId, dateAdded: currentDate, draft: false }).toArray();
+    const cashCollections = await db.collection('cashCollections').find({ groupId: groupId, dateAdded: currentDate }).toArray();
 
     const uniqueCC = [];
     cashCollections.map(async cc => {

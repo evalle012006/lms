@@ -11,16 +11,20 @@ async function save(req, res) {
     let statusCode = 200;
     let data = req.body;
     const currentDate = data.currentDate;
+    const currentTime = data.currentTime;
     data.collection = JSON.parse(data.collection);
     if (data.collection.length > 0) {
-        // const groupHeaderId = data._id;
         let existCC = [];
         let newCC = [];
         data.collection.map(async cc => {
             if (cc.status !== "totals") {
-                // let collection = {...cc, groupCollectionId: groupHeaderId};
                 let collection = {...cc};
                 delete collection.reverted;
+
+                const timeArgs = currentTime.split(" ");
+                // put this in the config settings should be by hour and minute?
+                collection.latePayment = (timeArgs[1] == 'PM' && timeArgs[0].startsWith('6')) ? true : false;
+                collection.timeAdded = currentTime;
 
                 if (cc.occurence === "weekly") {
                     if (collection.remarks && (collection.remarks.value?.startsWith('excused-') || collection.remarks.value === 'delinquent')) {
@@ -254,6 +258,7 @@ async function updateLoanClose(loanData, currentDate) {
         loan.loanCycle = 0;
         loan.remarks = loanData.closeRemarks;
         loan.status = 'closed';
+        loan.closedDate = currentDate;
         loan.dateModified = currentDate;
         delete loan._id;
         await db

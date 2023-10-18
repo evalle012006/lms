@@ -36,6 +36,7 @@ async function getLoanWithCashCollection(req, res) {
                                 {$eq: ['$status', 'active']},
                                 {$eq: ['$status', 'completed']},
                                 { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}] },
+                                { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$closedDate', date]}] },
                                 { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$transferred', true]}, {$eq: ['$endDate', date]}] }
                             ]}
                         ]

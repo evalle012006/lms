@@ -48,6 +48,7 @@ const CashCollectionDetailsPage = () => {
     const { uuid } = router.query;
     const [loading, setLoading] = useState(true);
     const currentDate = useSelector(state => state.systemSettings.currentDate);
+    const currentTime = useSelector(state => state.systemSettings.currentTime);
     const currentMonth = moment(currentDate).month();
     const [dateFilter, setDateFilter] = useState(currentDate);
     const [loan, setLoan] = useState();
@@ -555,7 +556,11 @@ const CashCollectionDetailsPage = () => {
                             transferred: cc.transferred,
                             startDate: cc.startDate,
                             endDate: cc.endDate,
-                            reverted: cc.hasOwnProperty('reverted') ? cc.reverted : false
+                            reverted: cc.hasOwnProperty('reverted') ? cc.reverted : false,
+                            pnNumber: cc.pnNumber,
+                            guarantorFirstName: cc.guarantorFirstName,
+                            guarantorMiddleName: cc.guarantorMiddleName,
+                            guarantorLastName: cc.guarantorLastName
                         }
     
                         delete cc._id;
@@ -588,11 +593,10 @@ const CashCollectionDetailsPage = () => {
                                 collection.draft = current.draft;
                                 collection.dcmc = (current.hasOwnProperty('dcmc') && current.dcmc) ? current.dcmc : false;
                                 collection.excused = (current.hasOwnProperty('excused') && current.excused) ? current.excused : false;
+                                collection.latePayment = (current.hasOwnProperty('latePayment') && current.latePayment) ? current.latePayment : false;
+
                                 if (current.draft) {
                                     collection.error = current.error;
-                                }
-    
-                                if (current.draft) {
                                     collection.mcbu = current.mcbu;
                                     collection.mcbuStr = current.mcbu > 0 ? formatPricePhp(current.mcbu) : '-',
                                     collection.loanBalance = current.loanBalance;
@@ -607,8 +611,6 @@ const CashCollectionDetailsPage = () => {
                                     collection.amountRelease = current.amountRelease;
                                     collection.amountReleaseStr = formatPricePhp(current.amountRelease);
                                     setEditMode(true);
-                                } else {
-                                    setEditMode(false);
                                 }
                             }
                         }
@@ -823,6 +825,13 @@ const CashCollectionDetailsPage = () => {
                     cashCollection.push(pendingTomorrow);
                 }
             });
+
+            const hasDraft = cashCollection.filter(cc => cc.draft);
+            if (hasDraft.length > 0) {
+                setEditMode(true);
+            } else {
+                setEditMode(false);
+            }
 
             const haveReverted = cashCollection.filter(cc => cc.reverted);
             if (haveReverted.length > 0) {
@@ -1088,14 +1097,14 @@ const CashCollectionDetailsPage = () => {
                             if (temp.remarks.value && temp.remarks.value?.startsWith('offset')) {
                                 temp.status = 'closed';
                                 temp.clientStatus = 'offset';
+                                temp.closedDate = currentDate;
                             } 
                         }
-
-                        temp.draft = draft
                     }
 
                     // if admin it should not override what it is currently saved
                     temp.groupStatus = 'pending';
+                    temp.draft = draft
                 
                     return temp;   
                 }).filter(cc => cc.status !== "totals");
@@ -1107,14 +1116,16 @@ const CashCollectionDetailsPage = () => {
                             dateModified: currentDate,
                             modifiedBy: currentUser._id,
                             collection: JSON.stringify(dataArr),
-                            currentDate: currentDate
+                            currentDate: currentDate,
+                            currentTime: currentTime
                         };
                     } else {
                         cashCollection = {
                             modifiedBy: currentUser._id,
                             collection: JSON.stringify(dataArr),
                             mode: 'daily',
-                            currentDate: currentDate
+                            currentDate: currentDate,
+                            currentTime: currentTime
                         };
                     }
             
@@ -1356,8 +1367,8 @@ const CashCollectionDetailsPage = () => {
                 let temp = {...cc};
                 
                 if (idx === index) {
-                    if (temp.status === "completed" && !(remarks.value && remarks.value?.startsWith('offset'))) {
-                        toast.error("Error occured. Invalid remarks. Should only choose a offset remarks.");
+                    if (temp.status === "completed" && !(remarks.value && (remarks.value?.startsWith('offset') || remarks.value?.startsWith('reloaner')))) {
+                        toast.error("Error occured. Invalid remarks. Should only choose a reloaner/offset remarks.");
                     } else {
                         // always reset these fields
                         temp.error = false;
@@ -2091,6 +2102,8 @@ const CashCollectionDetailsPage = () => {
                                             rowBg = 'bg-zinc-200';
                                         } else if (cc.excused) {
                                             rowBg = 'bg-orange-100';
+                                        } else if (cc.latePayment) {
+                                            rowBg = 'bg-pink-100';
                                         }
 
                                         if (cc?.transferred) {
@@ -2198,7 +2211,7 @@ const CashCollectionDetailsPage = () => {
                                                     <React.Fragment>
                                                         {(!isWeekend && !isHoliday && currentUser.role.rep > 2 && !groupSummaryIsClose && !cc.draft) && (
                                                             <div className='flex flex-row p-2'>
-                                                                {(currentUser.role.rep === 3 && cc.hasOwnProperty('_id') && !filter && !cc.draft && !cc.reverted) && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleShowWarningDialog(e, cc)} />}
+                                                                {(currentUser.role.rep === 3 && cc.hasOwnProperty('_id') && !filter && !cc.draft && !cc.reverted && cc?.prevData) && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleShowWarningDialog(e, cc)} />}
                                                                 {(cc.status === 'completed' && ((cc.remarks && cc.remarks.value?.startsWith('reloaner')) || (cc.status === 'completed' && !cc.remarks))) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
                                                                 {(!filter && !editMode && cc.status !== 'closed' && currentMonth === 11) && <CalculatorIcon className="w-5 h-5 mr-6" title="Calculate MCBU Interest" onClick={(e) => calculateInterest(e, cc, index)} />}
                                                                 {/* add new */}
