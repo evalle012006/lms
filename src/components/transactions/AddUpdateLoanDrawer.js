@@ -263,6 +263,9 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                     values.noOfPayments = 0;
                     values.insertedBy = currentUser._id;
                     values.currentReleaseAmount = values.amountRelease;
+                    values.mcbuWithdrawal = 0;
+                    values.mcbuInterest = 0;
+                    values.mcbuReturnAmt = 0;
 
                     fetchWrapper.post(apiUrl, values)
                         .then(response => {
