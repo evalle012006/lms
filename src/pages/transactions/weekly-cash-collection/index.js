@@ -142,7 +142,7 @@ const WeeklyCashCollectionPage = () => {
         return () => {
             mounted = false;
         };
-    }, [currentUser]);
+    }, [currentUser, currentDate]);
 
     useEffect(() => {
         if (dateFilter === null) {

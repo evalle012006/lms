@@ -107,7 +107,7 @@ const Breadcrumbs = () => {
                 return (
                     <React.Fragment key={index}>
                         {item.link ? (
-                            <Link href={item.link} passHref><a className="underline capitalize">{item.label}</a></Link>
+                            <Link href={item.link}><span className="underline capitalize">{item.label}</span></Link>
                         ) : (
                             <span className='pl-1'>{item.label}</span>
                         )}

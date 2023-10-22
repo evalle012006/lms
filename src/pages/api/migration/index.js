@@ -106,7 +106,7 @@ const processLOR = async (sheetData, branchId, loId, occurence) => {
         if (i === 1) {
             // col[6] groupNo
         } else if (i === 2 || i === 36 || i === 70 || i === 104 || i === 138 || i === 172 || i === 206 || i === 240 || i === 274 || i === 308 || i === 342 || i === 376) {
-            groupName = col[2]?.toUpperCase();
+            groupName = col[2]?.toUpperCase().trim();
             logger.debug({page: 'migrations', message: `Group Name: ${groupName}`});
         } else if (i === 3) {
             // skip this only headers
