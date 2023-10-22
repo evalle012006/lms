@@ -70,42 +70,42 @@ const processExcel = async (file, branchId, loId, occurence) => {
 const processLOR = async (sheetData, branchId, loId, occurence) => {
     logger.debug({page: 'migrations', message: "Processing LOR Sheet"});
     const { db } = await connectToDatabase();
-    const cashCollections = [];
+    // const cashCollections = [];
     const loans = [];
     const clients = [];
 
     let groupName;
-    let collectionDate1;
-    let collectionDate2;
-    let collectionDate3;
-    let collectionDate4;
-    let collectionDate5;
-    let collectionDate6;
-    let collectionDate7;
-    let collectionDate8;
-    let collectionDate9;
-    let collectionDate10;
-    let collectionDate11;
-    let collectionDate12;
-    let collectionDate13;
-    let collectionDate14;
-    let collectionDate15;
-    let collectionDate16;
-    let collectionDate17;
-    let collectionDate18;
-    let collectionDate19;
-    let collectionDate20;
-    let collectionDate21;
-    let collectionDate22;
-    let collectionDate23;
-    let collectionDate24;
-    let collectionDate25;
+    // let collectionDate1;
+    // let collectionDate2;
+    // let collectionDate3;
+    // let collectionDate4;
+    // let collectionDate5;
+    // let collectionDate6;
+    // let collectionDate7;
+    // let collectionDate8;
+    // let collectionDate9;
+    // let collectionDate10;
+    // let collectionDate11;
+    // let collectionDate12;
+    // let collectionDate13;
+    // let collectionDate14;
+    // let collectionDate15;
+    // let collectionDate16;
+    // let collectionDate17;
+    // let collectionDate18;
+    // let collectionDate19;
+    // let collectionDate20;
+    // let collectionDate21;
+    // let collectionDate22;
+    // let collectionDate23;
+    // let collectionDate24;
+    // let collectionDate25;
 
     sheetData.map((col, i) => {
         // get group no
         if (i === 1) {
             // col[6] groupNo
-        } else if (i === 2 || i === 36 || i === 70 || i === 104 || i === 138 || i === 172 || i === 206 || i === 240 || i === 274 || i === 308 || i === 342 || i === 376) {
+        } else if (i === 2 || i === 36 || i === 70 || i === 104 || i === 138 || i === 172 || i === 206 || i === 240 || i === 274 || i === 308 || i === 342 || i === 376 || i === 410 || i === 444 || i === 477) {
             groupName = col[2]?.toUpperCase().trim();
             logger.debug({page: 'migrations', message: `Group Name: ${groupName}`});
         } else if (i === 3) {
@@ -129,15 +129,15 @@ const processLOR = async (sheetData, branchId, loId, occurence) => {
             // fifth week index 68 - 77
         } else if (i === 5) {
             // another header
-        } else if (i > 5 && i < 406) { // DOUBLE CHECK ROW INDEXES
+        } else if (i > 5 && i < 506) { // DOUBLE CHECK ROW INDEXES
             // starts of transaction
             // skip rows
-            if (i === 37 || i === 71 || i === 105 || i === 139 || i === 173 || i === 207 || i === 241 || i === 275 || i === 309 || i === 343 || i === 377) {
+            if (i === 37 || i === 71 || i === 105 || i === 139 || i === 173 || i === 207 || i === 241 || i === 275 || i === 309 || i === 343 || i === 377 || i === 411 || i === 445 || i === 478) {
                 // nothing to do...just skipping
             } else {
-                logger.debug({row: col})
+                // logger.debug({row: col})
                 const slotNo = col[0] ? parseInt(col[0]) : null;
-                logger.debug({page: 'migrations', message: `Row: ${i} - Slot No: ${slotNo}`});
+                logger.debug({page: 'migrations', message: `Group: ${groupName} Row: ${i} - Slot No: ${slotNo}`});
                 const clientName = extractName(col[1]);
                 if (clientName) {
                     logger.debug({page: 'migrations', message: `Row: ${i} - Client Name: ${clientName.firstName} ${clientName.lastName}`});
