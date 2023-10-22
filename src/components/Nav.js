@@ -52,17 +52,17 @@ const SubNav = ({ item, index, activePath, inner=false, className }) => {
 
     if (item.url !== ("/logout")) {
         return (
-            <Link href={item.url} passHref>
+            <Link href={item.url}>
                 {item.hasSub ? (
                     <React.Fragment>
                         <li className={`${!inner ? index === 0 ? "mt-2" : "mt-5" : "mt-2"} ${activePath === item.url ? "text-gray-800 bg-teal-10" : "text-white"} ${className}`}>
-                            <a className="flex flex-row rounded-md p-2 cursor-pointer hover:opacity-70 text-sm items-center gap-x-4 mr-4 whitespace-nowrap transition duration-300 ease-in-out" onClick={() => {setSubMenuOpen(!subMenuOpen)}}>
+                            <div className="flex flex-row rounded-md p-2 cursor-pointer hover:opacity-70 text-sm items-center gap-x-4 mr-4 whitespace-nowrap transition duration-300 ease-in-out" onClick={() => {setSubMenuOpen(!subMenuOpen)}}>
                                 {activePath === item.url ? item.icon.active : item.icon.notActive}
                                 <span className={`origin-left duration-200`}>
                                     {item.label}
                                 </span>
                                 <ChevronDownIcon className={`ml-auto ${activePath === item.url ? 'text-gray-800 w-5 h-5' : 'text-white w-5 h-5'} ${subMenuOpen && 'rotate-180'}`} />
-                            </a>
+                            </div>
                             {subMenuOpen && (
                                 <ul className="relative">
                                     {item.subMenuItems.map((menu, idx) => {

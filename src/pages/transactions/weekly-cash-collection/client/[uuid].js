@@ -805,10 +805,10 @@ const CashCollectionDetailsPage = () => {
                         mcbuStr: loan.mcbu > 0 ? formatPricePhp(loan.mcbu) : '-',
                         mcbuCol: loan.mcbuCol,
                         mcbuColStr: loan.mcbuCol > 0 ? formatPricePhp(loan.mcbuCol) : '-',
-                        mcbuWithdrawal: loan.mcbuWithdrawal,
-                        mcbuWithdrawalStr: loan.mcbuWithdrawal > 0 ? formatPricePhp(loan.mcbuWithdrawal) : '-',
-                        mcbuReturnAmt: loan.mcbuReturnAmt,
-                        mcbuReturnAmtStr: loan.mcbuReturnAmt > 0 ? formatPricePhp(loan.mcbuReturnAmt) : '-',
+                        mcbuWithdrawal: prevLoan.mcbuWithdrawal,
+                        mcbuWithdrawalStr: prevLoan.mcbuWithdrawal > 0 ? formatPricePhp(prevLoan.mcbuWithdrawal) : '-',
+                        mcbuReturnAmt: prevLoan.mcbuReturnAmt,
+                        mcbuReturnAmtStr: prevLoan.mcbuReturnAmt > 0 ? formatPricePhp(prevLoan.mcbuReturnAmt) : '-',
                         mcbuInterest: loan.mcbuInterest,
                         mcbuInterestStr: loan.mcbuInterest > 0 ? formatPricePhp(loan.mcbuInterest) : '-',
                         targetCollectionStr: '-',
@@ -1344,9 +1344,12 @@ const CashCollectionDetailsPage = () => {
                             // } 
                             else if (parseFloat(payment) % parseFloat(temp.activeLoan) !== 0) {
                                 // toast.error("Actual collection should be divisible by 100.");
-                                temp.paymentCollection = payment;
-                                if (temp.remarks && (temp.remarks.value !== "past due" && !temp.remarks.value?.startsWith('excused') && !temp.remarks.value?.startsWith('delinquent')) ) {
-                                    temp.error = true;
+                                temp.paymentCollection = 0;
+                                temp.error = true;
+                                if (temp.remarks && (temp.remarks.value === "past due" || temp.remarks.value?.startsWith('excused-') || temp.remarks.value?.startsWith('delinquent')) ) {
+                                    temp.paymentCollection = parseFloat(payment);
+                                    temp.paymentCollectionStr = formatPricePhp(temp.paymentCollection);
+                                    temp.error = false;
                                 }
                             }
                         } else {
@@ -1629,6 +1632,10 @@ const CashCollectionDetailsPage = () => {
                                         temp.error = true;
                                         toast.error("Error occured. Remarks is not valid due to the amount in Actual Collection.");
                                     } else {
+                                        if (temp.remarks.value == 'delinquent') {
+                                            temp.paymentCollection = 0;
+                                            temp.paymentCollectionStr = '-';
+                                        }
                                         temp.targetCollection = 0;
                                         temp.activeLoan = 0;
                                         temp.targetCollectionStr = '-';
@@ -1770,7 +1777,7 @@ const CashCollectionDetailsPage = () => {
                             const today = moment(currentDate);
                             const endDate = moment(temp.endDate);
 
-                            if (today.diff(endDate, 'days') > 0) {
+                            // if (today.diff(endDate, 'days') > 0) {
                                 const paymentCollection = parseFloat(temp.paymentCollection);
                                 let loanBalance = parseFloat(temp.loanBalance);
 
@@ -1780,6 +1787,9 @@ const CashCollectionDetailsPage = () => {
                                     temp.paymentCollectionStr = '-';
                                 }
 
+                                temp.targetCollection = 0;
+                                temp.targetCollectionStr = '-';
+                                temp.activeLoan = 0;
                                 temp.loanBalance = loanBalance;
                                 temp.loanBalanceStr = loanBalance > 0 ? formatPricePhp(loanBalance) : '-';
                                 temp.pastDue = loanBalance;
@@ -1794,10 +1804,10 @@ const CashCollectionDetailsPage = () => {
 
                                 temp.mcbuCol = 0;
                                 temp.mcbuColStr = '-';
-                            } else {
-                                temp.error = true;
-                                toast.error(`Invalid remarks. Loan is not yet past ${temp.loanTerms} days.`);
-                            }
+                            // } else {
+                            //     temp.error = true;
+                            //     toast.error(`Invalid remarks. Loan is not yet past ${temp.loanTerms} days.`);
+                            // }
                         } else {
                             if (remarks.value === 'reloaner' && (temp.history && (temp?.history?.remarks?.value === "reloaner" || temp?.history?.remarks?.value?.startsWith('offset')))) {
                                 temp.mcbu = temp.prevData.mcbu;

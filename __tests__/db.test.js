@@ -8,8 +8,10 @@ describe('Mongo DB Connection', () => {
     let db;
 
     const options = {
-        useNewUrlParser: true,
-        useUnifiedTopology: true
+        // useNewUrlParser: true,
+        // useUnifiedTopology: true,
+        maxPoolSize: 50,
+        wtimeoutMS: 2500
     };
 
     beforeAll(async () => {

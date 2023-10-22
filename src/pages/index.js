@@ -33,7 +33,7 @@ const Index = () => {
         // }
 
         // const updateGroupClients = async () => {
-        //     await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}groups/update-group-clients`);
+        //     await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}aahandy-scripts/update-group-clients`);
         // }
 
         // const updateLOSData = async () => {
@@ -57,6 +57,7 @@ const Index = () => {
         // }
 
         mounted && getSystemSettings();
+        // mounted && updateGroupClients();
         // mounted && updateGroupData();
         // mounted && updateClients();
         // mounted && getLoans();

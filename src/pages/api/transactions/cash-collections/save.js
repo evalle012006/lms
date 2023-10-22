@@ -20,6 +20,7 @@ async function save(req, res) {
             if (cc.status !== "totals") {
                 let collection = {...cc};
                 delete collection.reverted;
+                delete collection.dcmc;
 
                 const timeArgs = currentTime.split(" ");
                 // put this in the config settings should be by hour and minute?
@@ -125,6 +126,10 @@ async function updateLoan(collection, currentDate) {
 
         if (collection.remarks && (!collection.remarks.value?.startsWith('excused')  && collection.remarks.value !== 'delinquent')) {
             loan.activeLoan = collection.activeLoan;
+        }
+
+        if (collection.remarks && collection.remarks.value === 'matured-past due') {
+            loan.activeLoan = 0;
         }
         
         loan.amountRelease = collection.amountRelease;

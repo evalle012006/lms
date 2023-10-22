@@ -152,7 +152,7 @@ const DailyCashCollectionPage = () => {
         return () => {
             mounted = false;
         };
-    }, [currentUser]);
+    }, [currentUser, currentDate]);
 
     useEffect(() => {
         if (dateFilter === null) {
