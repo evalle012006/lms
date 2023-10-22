@@ -779,9 +779,9 @@ const NavComponent = () => {
             <div className="items-center">
                 <header className="flex justify-center items-center border-b border-orange-darkest py-4">
                     <div id="logo">
-                        <a href="/" className="no-underline text-white md:text-2xl sm:text-4xl font-bold">
+                        <Link href="/" className="no-underline text-white md:text-2xl sm:text-4xl font-bold">
                             <img src={logo.src} className={`cursor-pointer duration-500`} />
-                        </a>
+                        </Link>
                     </div>
                 </header>
                 {/** add click event to navigate to user profile **/}

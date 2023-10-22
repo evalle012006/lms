@@ -186,7 +186,7 @@ const CashCollectionDetailsPage = () => {
                 setGroupSummaryIsClose(true);
             }
 
-            let hasNoCollections = dataCollection.filter(cc => cc.current.length > 0).length > 0 ? false : true;
+            let hasNoCollections = dataCollection.filter(cc => cc?.current?.length > 0).length > 0 ? false : true;
 
             dataCollection.map(cc => {
                 let collection;

@@ -64,6 +64,7 @@ const CashCollectionDetailsPage = () => {
     const [allowOffsetTransaction, setAllowOffsetTransaction] = useState(false);
     const dayName = moment(dateFilter ? dateFilter : currentDate).format('dddd').toLowerCase();
     const [mcbuRate, setMcbuRate] = useState(transactionSettings.mcbu || 8);
+    const [noMoreDraft, setNoMoreDraft] = useState(false);
 
     const [selectedSlot, setSelectedSlot] = useState();
     const [showWaningDialog, setShowWarningDialog] = useState(false);
@@ -166,6 +167,8 @@ const CashCollectionDetailsPage = () => {
                 setEditMode(false);
                 setGroupSummaryIsClose(true);
             }
+
+            let hasNoCollections = dataCollection.filter(cc => cc?.current?.length > 0).length > 0 ? false : true;
             
             dataCollection.map(cc => {
                 let collection;
@@ -288,7 +291,6 @@ const CashCollectionDetailsPage = () => {
                     if (cc?.transferred && loanBalance > 0) {
                         collection.transferred = true;
                     }
-                    console.log(activeLoan, collection)
                     // setEditMode(false);
                 } else {
                     if (cc.status === "tomorrow" || cc.status === "pending") {
@@ -826,8 +828,9 @@ const CashCollectionDetailsPage = () => {
             });
 
             const hasDraft = cashCollection.filter(cc => cc.draft);
-            if (hasDraft.length > 0) {
+            if (hasDraft.length > 0 && hasNoCollections) {
                 setEditMode(true);
+                setNoMoreDraft(false);
             }
 
             const haveReverted = cashCollection.filter(cc => cc.reverted);
@@ -2279,7 +2282,7 @@ const CashCollectionDetailsPage = () => {
                 </div>
             ) : (
                 <div className="overflow-x-auto">
-                    {data && <DetailsHeader page={'transaction'} showSaveButton={currentUser.role.rep > 2 ? (isWeekend || isHoliday) ? false : editMode : false}
+                    {data && <DetailsHeader page={'transaction'} showSaveButton={currentUser.role.rep > 2 ? (isWeekend || isHoliday) ? false : editMode : false}  noMoreDraft={noMoreDraft}
                         handleSaveUpdate={handleSaveUpdate} data={allData} setData={setFilteredData} allowMcbuWithdrawal={allowMcbuWithdrawal} allowOffsetTransaction={allowOffsetTransaction}
                         dateFilter={dateFilter} setDateFilter={setDateFilter} handleDateFilter={handleDateFilter} currentGroup={uuid} revertMode={revertMode}
                         groupFilter={groupFilter} handleGroupFilter={handleGroupFilter} groupTransactionStatus={groupSummaryIsClose ? 'close' : 'open'} />}
