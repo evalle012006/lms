@@ -1308,9 +1308,9 @@ const CashCollectionDetailsPage = () => {
                             // } 
                             else if (parseFloat(payment) % parseFloat(temp.activeLoan) !== 0) {
                                 // toast.error("Actual collection should be divisible by 100.");
-                                temp.paymentCollection = 0;
+                                temp.paymentCollection = parseFloat(payment);
                                 temp.error = true;
-                                if (temp.remarks && (temp.remarks.value === "past due" || temp.remarks.value?.startsWith('excused-') || temp.remarks.value?.startsWith('delinquent')) ) {
+                                if (temp.remarks && (temp.remarks.value === "past due" || temp.remarks.value?.startsWith('excused-') || temp.remarks.value?.startsWith('delinquent') || temp.remarks.value?.startsWith('collection-')) ) {
                                     temp.paymentCollection = parseFloat(payment);
                                     temp.paymentCollectionStr = formatPricePhp(temp.paymentCollection);
                                     temp.error = false;

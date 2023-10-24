@@ -1347,9 +1347,9 @@ const CashCollectionDetailsPage = () => {
                             // } 
                             else if (parseFloat(payment) % parseFloat(temp.activeLoan) !== 0) {
                                 // toast.error("Actual collection should be divisible by 100.");
-                                temp.paymentCollection = 0;
+                                temp.paymentCollection = parseFloat(payment);
                                 temp.error = true;
-                                if (temp.remarks && (temp.remarks.value === "past due" || temp.remarks.value?.startsWith('excused-') || temp.remarks.value?.startsWith('delinquent')) ) {
+                                if (temp.remarks && (temp.remarks.value === "past due" || temp.remarks.value?.startsWith('excused-') || temp.remarks.value?.startsWith('delinquent') || temp.remarks.value?.startsWith('collection-')) ) {
                                     temp.paymentCollection = parseFloat(payment);
                                     temp.paymentCollectionStr = formatPricePhp(temp.paymentCollection);
                                     temp.error = false;
@@ -2441,12 +2441,12 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.transferStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">
                                                     <React.Fragment>
-                                                        {(!isWeekend && !isHoliday && currentUser.role.rep > 2 && !groupSummaryIsClose && !cc.draft) && (
+                                                        {(!isWeekend && !isHoliday && currentUser.role.rep > 2 && !groupSummaryIsClose) && (
                                                             <div className='flex flex-row p-2'>
                                                                 {(currentUser.role.rep === 3 && cc.hasOwnProperty('_id')  && cc.status === 'active' && !filter && !cc.draft && cc?.origin !== 'pre-save' && !cc.reverted && cc?.prevData) && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleShowWarningDialog(e, cc)} />}
-                                                                {((cc.status === 'completed' && (cc.remarks && cc.remarks.value === 'reloaner')) || (cc.status === 'completed' && !cc.remarks)) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
+                                                                {((cc.status === 'completed' && (cc.remarks && cc.remarks.value === 'reloaner')) || (cc.status === 'completed' && !cc.remarks) && !cc.draft) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
                                                                 {(!filter && cc.status === 'active') && <CurrencyDollarIcon className="w-5 h-5 mr-6" title="MCBU Refund" onClick={(e) => handleMcbuWithdrawal(e, cc, index)} />}
-                                                                {(!filter && cc.status === 'active') && <StopCircleIcon className="w-5 h-5 mr-6" title="Offset" onClick={(e) => handleOffset(e, cc, index)} />}
+                                                                {(!filter && cc.status === 'active' && !cc.draft) && <StopCircleIcon className="w-5 h-5 mr-6" title="Offset" onClick={(e) => handleOffset(e, cc, index)} />}
                                                                 {(!filter && !editMode && cc.status !== 'closed' && currentMonth === 11) && <CalculatorIcon className="w-5 h-5 mr-6" title="Calculate MCBU Interest" onClick={(e) => calculateInterest(e, cc, index)} />}
                                                             </div>
                                                         )}
