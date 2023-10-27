@@ -1121,7 +1121,7 @@ module.exports = {
                     dateAdded: new Date()
                   },
                   {
-                    name: "CROTIA",
+                    name: "CROATIA",
                     branchId: branch._id + '',
                     branchName: branch.name,
                     day: "all",

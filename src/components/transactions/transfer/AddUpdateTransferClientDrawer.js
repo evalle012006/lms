@@ -114,7 +114,7 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
     }
 
     const getListGroup = async (selectedUser, type) => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list';
+        let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list-all';
         let selectedBranch = {};
         if (type === "source") {
             selectedBranch = branchList.find(b => b._id === selectedSourceBranch);

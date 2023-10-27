@@ -95,9 +95,9 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
         let error = false;
         if (values.birthdate) {
             const age = calculateAge(values.birthdate);
-            if (age > 65) {
+            if (age > 75) {
                 error = true;
-                toast.error('Client age is over 65 years old.');
+                toast.error('Client age is over 75 years old.');
             }
         }
 
