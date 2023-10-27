@@ -62,6 +62,9 @@ const LoanApplicationPage = () => {
     const [selectedFilterGroup, setSelectedFilterGroup] = useState();
     const [occurence, setOccurence] = useState('daily');
 
+    const [showRejectModal, setShowRejectModal] = useState(false);
+    const [rejectReason, setRejectReason] = useState();
+
     const handleBranchChange = (selected) => {
         setSelectedFilterBranch(selected.value);
         getListUser(selected.code);
@@ -470,7 +473,7 @@ const LoanApplicationPage = () => {
         }
     }
 
-    const updateClientStatus = async (data, updatedValue) => {
+    const updateClientStatus = async (data, updatedValue, rejectReason) => {
         setLoading(true);
         const group = data.group;
         const lo = data.loanOfficer;
@@ -507,7 +510,7 @@ const LoanApplicationPage = () => {
             }
         } else {
             loanData.status = updatedValue;
-            
+            loanData.rejectReason = rejectReason;
             const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/approved-reject-loan', loanData)
             if (response.success) {
                 setLoading(false);
@@ -705,9 +708,12 @@ const LoanApplicationPage = () => {
         // } else {
         //     toast.error("Group transaction is already closed for the day.");
         // }
-        if (loan) {
-            updateClientStatus(loan, 'reject');
-            setShowWarningDialog(false);
+        if (!rejectReason) {
+            toast.error("Reject reason is required!");
+        } else if (loan) {
+            updateClientStatus(loan, 'reject', rejectReason);
+            setShowRejectModal(false);
+            setRejectReason('');
         }
     }
 
@@ -765,7 +771,7 @@ const LoanApplicationPage = () => {
     const handleShowWarningModal = (row) => {
         if (row.original.allowApproved) {
             setLoan(row.original);
-            setShowWarningDialog(true);
+            setShowRejectModal(true);
         } else {
             toast.error("Group transaction is already closed for the day.");
         }
@@ -1012,19 +1018,25 @@ const LoanApplicationPage = () => {
             <Modal title="Client Detail Info" show={showClientInfoModal} onClose={handleCloseClientInfoModal} width="60rem">
                 <ClientDetailPage />
             </Modal>
-            <Dialog show={showWaningDialog}>
+            <Dialog show={showRejectModal}>
+                <h2>Reject Loan</h2>
                 <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                     <div className="sm:flex sm:items-start justify-center">
                         <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-center">
                             <div className="mt-2">
-                                <p className="text-2xl font-normal text-dark-color">Are you sure you want to <span className="font-bold text-red-400">reject</span> this loan?</p>
+                                <textarea rows="4" value={rejectReason} onChange={(e) => setRejectReason(e.target.value)}
+                                    className="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border 
+                                                border-gray-300 focus:ring-blue-500 focus:border-main" 
+                                    placeholder="Enter reject reason..."></textarea>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div className="flex flex-row justify-center text-center px-4 py-3 sm:px-6 sm:flex">
-                    <ButtonOutline label="Cancel" type="button" className="p-2 mr-3" onClick={() => setShowWarningDialog(false)} />
-                    <ButtonSolid label="Yes, reject" type="button" className="p-2" onClick={handleReject} />
+                <div className="flex flex-row justify-end text-center px-4 py-3 sm:px-6 sm:flex">
+                    <div className='flex flex-row'>
+                        <ButtonOutline label="Cancel" type="button" className="p-2 mr-3" onClick={() => setShowRejectModal(false)} />
+                        <ButtonSolid label="Continue" type="button" className="p-2 mr-3" onClick={handleReject} />
+                    </div>
                 </div>
             </Dialog>
             <Dialog show={showDeleteDialog}>

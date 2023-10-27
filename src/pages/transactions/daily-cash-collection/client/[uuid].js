@@ -571,7 +571,8 @@ const CashCollectionDetailsPage = () => {
                             pnNumber: cc.pnNumber,
                             guarantorFirstName: cc.guarantorFirstName,
                             guarantorMiddleName: cc.guarantorMiddleName,
-                            guarantorLastName: cc.guarantorLastName
+                            guarantorLastName: cc.guarantorLastName,
+                            loanRelease: cc.loanRelease
                         }
     
                         delete cc._id;
@@ -665,6 +666,15 @@ const CashCollectionDetailsPage = () => {
                 }
 
                 collection.mcbuWithdrawFlag = false;
+
+                if (collection.status === 'completed') {
+                    collection.noOfPayments = 60;
+                    collection.noOfPaymentStr = '60 / 60';
+                    if (collection.fullPaymentDate == currentDate) {
+                        collection.fullPayment = collection?.loanRelease;
+                        collection.fullPaymentStr = collection.fullPayment > 0 ? formatPricePhp(collection.fullPayment) : '-';
+                    }
+                }
 
                 cashCollection.push(collection);   
             });
@@ -1046,6 +1056,7 @@ const CashCollectionDetailsPage = () => {
                     delete temp.noOfPaymentStr;
                     if (!draft) {
                         delete temp.error;
+                        delete temp.dcmc;
                     }
                     delete temp.dirty;
                     delete temp.group;
@@ -1383,6 +1394,10 @@ const CashCollectionDetailsPage = () => {
                 let temp = {...cc};
                 
                 if (idx === index) {
+                    if (temp.status === 'completed' && (temp.remarks && temp.remarks?.value.startsWith('collection-')) && (remarks.value && (remarks.value?.startsWith('offset') || remarks.value?.startsWith('reloaner')))) {
+                        setEditMode(true);
+                    }
+
                     if (temp.status === "completed" && !(remarks.value && (remarks.value?.startsWith('offset') || remarks.value?.startsWith('reloaner')))) {
                         toast.error("Error occured. Invalid remarks. Should only choose a reloaner/offset remarks.");
                     } else {
@@ -1483,6 +1498,13 @@ const CashCollectionDetailsPage = () => {
     
                             if (remarks.value?.startsWith('excused-')) {
                                 temp.excused = true;
+                            }
+
+                            if (remarks?.value === "delinquent-offset" && temp.paymentCollection > 0) {
+                                temp.loanBalance += temp.paymentCollection;
+                                temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
+                                temp.noOfPayments -= 1;
+                                temp.noOfPaymentStr = temp.noOfPayments + ' / ' + temp.loanTerms;
                             }
 
                             if (remarks.value === 'delinquent-mcbu') {
@@ -1699,6 +1721,8 @@ const CashCollectionDetailsPage = () => {
                                     temp.paymentCollectionStr = '-';
                                 }
 
+                                temp.mispayment = false;
+                                temp.mispaymentStr = 'No';
                                 temp.targetCollection = 0;
                                 temp.targetCollectionStr = '-';
                                 temp.activeLoan = 0;
@@ -2200,7 +2224,8 @@ const CashCollectionDetailsPage = () => {
                                                 { (!isWeekend && !isHoliday && (currentUser.role.rep > 2 && (cc.status === 'active' || cc.status === 'completed') && (editMode && !groupSummaryIsClose) 
                                                     && (!cc.hasOwnProperty('_id') || (cc?.origin && cc?.origin === 'automation-trf') || cc?.reverted) && !filter) || 
                                                     (((cc.remarks && cc.remarks.value?.startsWith('reloaner') && cc.status !== "tomorrow") || (cc.status === 'completed') && !cc.remarks) && !groupSummaryIsClose)
-                                                    && (cc.remarks && cc.remarks.value?.startsWith('reloaner') && cc.fullPaymentDate !== currentDate) && cc.status !== 'pending' || cc.draft) ? (
+                                                    && (cc.remarks && cc.remarks.value?.startsWith('reloaner') && cc.fullPaymentDate !== currentDate) && cc.status !== 'pending' || cc.draft
+                                                    || (cc.remarks && cc.remarks.value?.startsWith('collection-'))) ? (
                                                         <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">
                                                             { cc.remarks !== '-' ? (
                                                                 <Select 

@@ -88,13 +88,13 @@ const ViewByBranchPage = ({dateFilter, type}) => {
                 let groupStatus = 'open';
                 if (branch.cashCollections.length > 0) {
                     const transactionStatus = branch.cashCollections[0].groupStatusArr.filter(status => status === "pending");
-                    const draft = !filter ? branch.cashCollections[0].hasDraftsArr.filter(d => d === true) : [];
+                    const draft = branch.cashCollections[0].hasDraftsArr.filter(d => d === true);
                     if (transactionStatus.length == 0 && draft.length == 0) {
                         groupStatus = 'close';
                     }
                 }
 
-                if (isWeekend || isHoliday) {
+                if (!filter && (isWeekend || isHoliday)) {
                     groupStatus = 'close';
                 }
 

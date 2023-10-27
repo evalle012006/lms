@@ -12,18 +12,18 @@ async function reset(req, res) {
     let statusCode = 200;
 
     const { groupId } = req.body;
-    console.log(groupId)
+
     // delete transactionals tables
     await db.collection('cashCollections').deleteMany({groupId: groupId});
     await db.collection('groupCashCollections').deleteMany({groupId: groupId});
     await db.collection('loans').deleteMany({groupId: groupId});
-    // await db.collection('losTotals').deleteMany({groupId: groupId});
+    await db.collection('client').deleteMany({groupId: groupId});
 
 
     // reset tables
-    await db.collection('client').updateMany({groupId: groupId}, {
-        $set: { status: 'pending', delinquent: false, mcbuHistory: [] }
-    });
+    // await db.collection('client').updateMany({groupId: groupId}, {
+    //     $set: { status: 'pending', delinquent: false, mcbuHistory: [] }
+    // });
 
     await db.collection('groups').updateMany({_id: new ObjectId(groupId)}, {
         $set: { 
