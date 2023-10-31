@@ -55,10 +55,19 @@ const BranchCashCollectionPage = () => {
         if (loCollectionList.length > 0) {
             if (currentUser.role.rep === 3) {
                 const pending = loCollectionList.filter(cc => cc.status === 'open');
+                const draft = loCollectionList.filter(cc => cc.draft);
+                const loIds = loCollectionList.filter(cc => {
+                    if (cc.activeClients > 0) {
+                        return cc._id;
+                    }
+                }).map(lo => lo._id);
 
                 if (pending.length > 0) {
                     setLoading(false);
-                    toast.error("One or more group/s transaction is not yet closed.");
+                    toast.error("One or more Loan Officer transaction is not yet closed.");
+                } else if (draft.length > 0) {
+                    setLoading(false);
+                    toast.error("One or more Loan Officer transaction has a draft data.");
                 } else {
                     let date = currentDate;
                     if (dateFilter) {
@@ -67,6 +76,7 @@ const BranchCashCollectionPage = () => {
                     
                     const data = {
                         branchId: branch._id,
+                        loIds: loIds,
                         currentDate: date
                     }
 
@@ -77,7 +87,7 @@ const BranchCashCollectionPage = () => {
                         toast.success('Today transactions are now available in BMS.');
                     } else if (resp.error) {
                         setLoading(false);
-                        toast.error(resp.message);
+                        toast.error(resp.message, { autoClose: 5000, hideProgressBar: false });
                     }
                 }
             }
@@ -134,25 +144,11 @@ const BranchCashCollectionPage = () => {
         }
     }, [currentDate]);
 
-    // useEffect(() => {
-    //     if (branchList.length > 0) {
-    //         localStorage.setItem('cashCollectionDateFilter', currentDate);
-    //         if (currentUser.role.rep < 4 && !isWeekend && !isHoliday) {
-    //             const initGroupCollectionSummary = async () => {
-    //                 if (currentUser.role.rep === 3) {
-    //                     const branchId = branchList[0]._id;
-    //                     const data = { currentUser: currentUser._id, branchId: branchId}
-    //                     await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary-by-branch', data);
-    //                 } else {
-    //                     const data = { currentUser: currentUser._id }
-    //                     await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save-groups-summary-by-branch', data);
-    //                 }
-    //             }
-        
-    //             initGroupCollectionSummary();
-    //         }
-    //     }
-    // }, [branchList, isWeekend, isHoliday]);
+    useEffect(() => {
+        if (branchList.length > 0) {
+            localStorage.setItem('cashCollectionDateFilter', currentDate);
+        }
+    }, [branchList, currentDate]);
 
     return (
         <Layout header={false} noPad={true}>

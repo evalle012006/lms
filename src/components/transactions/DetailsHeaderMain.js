@@ -79,7 +79,7 @@ const DetailsHeader = ({ pageTitle, page, pageName, currentDate, mode, selectedB
                         <div className="page-title">
                             {currentUser.role.rep === 4 ? pageTitle + ' - Group Summary' : pageTitle}
                         </div>
-                        {((currentUser.role.rep === 4) && !weekend && !holiday && !filter) && (
+                        {((currentUser.role.rep === 4 || currentUser.role.rep === 3) && !weekend && !holiday && !filter) && (
                             <div className="flex items-center w-32">
                                 <ButtonSolid label="Submit" onClick={handleSubmit} />
                             </div>
