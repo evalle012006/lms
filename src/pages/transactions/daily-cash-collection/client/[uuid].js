@@ -24,7 +24,6 @@ import Modal from '@/lib/ui/Modal';
 import ClientDetailPage from '@/components/clients/ClientDetailPage';
 import { setClient } from '@/redux/actions/clientActions';
 import { LOR_DAILY_REMARKS } from '@/lib/constants';
-import { autoHealCashCollections } from '@/lib/sync-jobs';
 
 const CashCollectionDetailsPage = () => {
     const isHoliday = useSelector(state => state.systemSettings.holiday);
@@ -993,9 +992,17 @@ const CashCollectionDetailsPage = () => {
                         temp.amountRelease = parseFloat(temp.amountRelease);
 
                         if ((!temp.paymentCollection || temp.paymentCollection <= 0) && (temp.remarks && temp.remarks.value !== "excused advance payment")) {
-                            temp.paymentCollection = 0;
+                            // temp.paymentCollection = 0;
                             temp.mispayment = true;
                             temp.mispaymentStr = 'Yes';
+                        }
+
+                        if (temp.remarks && temp.remarks.value === 'excused advance payment') {
+                            temp.activeLoan = 0;
+                            temp.targetCollection = 0;
+                            temp.targetCollectionStr = '-';
+                            temp.mispayment = false;
+                            temp.mispaymentStr = 'No';
                         }
     
                         if (temp.loanBalance <= 0) {
@@ -1021,7 +1028,7 @@ const CashCollectionDetailsPage = () => {
                 
                     return temp;   
                 }).filter(cc => cc.status !== "totals");
-                console.log(dataArr)
+                // console.log(dataArr)
                 if (save) {
                     let cashCollection;
                     if (editMode) {
@@ -1046,13 +1053,9 @@ const CashCollectionDetailsPage = () => {
                         toast.success('Payment collection successfully submitted. Reloading page please wait.');
             
                         setTimeout(async () => {
-                            getCashCollections();
-                            setTimeout(async () => {
-                                if (currentGroup) {
-                                    await autoHealCashCollections(currentGroup._id, currentDate);
-                                }
-                            }, 2000);
-                        }, 1000);
+                            // getCashCollections();
+                            window.location.reload();
+                        }, 1200);
                     }
                 } else {
                     toast.error('No active data to be saved.');

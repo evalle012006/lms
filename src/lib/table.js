@@ -24,7 +24,8 @@ import {
   XCircleIcon,
   ArrowPathIcon,
   KeyIcon,
-  DocumentIcon
+  DocumentIcon,
+  ArrowUturnLeftIcon
 } from '@heroicons/react/24/solid';
 import CheckBox from "./ui/checkbox";
 import { useEffect } from "react";
@@ -109,7 +110,7 @@ export function StatusPill({ value }) {
           status.startsWith("active") || status.startsWith("open") ? "status-pill-active" : null,
           status.startsWith("pending") ? "status-pill-pending" : null,
           status.startsWith("inactive") ? "status-pill-inactive" : null,
-          status.startsWith("rejected") || status.startsWith("close") || status.startsWith("offset") ? "status-pill-rejected" : null
+          status.startsWith("reject") || status.startsWith("close") || status.startsWith("offset") ? "status-pill-rejected" : null
         )}
       >
         {status}
@@ -415,6 +416,11 @@ const ActionButton = ({ row, rowActionButtons }) => {
                       {item.label === 'Update' && (
                         <div className="px-2" onClick={() => item.action(row)} title={item.title}>
                           <ArrowPathIcon className="cursor-pointer h-5" />
+                        </div>
+                      )}
+                      {item.label === 'Revert' && (
+                        <div className="px-2" onClick={() => item.action(row)} title={item.title}>
+                          <ArrowUturnLeftIcon className="cursor-pointer h-5" />
                         </div>
                       )}
                     </React.Fragment>

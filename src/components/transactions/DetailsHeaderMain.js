@@ -79,7 +79,7 @@ const DetailsHeader = ({ pageTitle, page, pageName, currentDate, mode, selectedB
                         <div className="page-title">
                             {currentUser.role.rep === 4 ? pageTitle + ' - Group Summary' : pageTitle}
                         </div>
-                        {((currentUser.role.rep === 4 || currentUser.role.rep === 3) && !weekend && !holiday && !filter) && (
+                        {((currentUser.role.rep === 4) && !weekend && !holiday && !filter) && (
                             <div className="flex items-center w-32">
                                 <ButtonSolid label="Submit" onClick={handleSubmit} />
                             </div>
@@ -204,7 +204,7 @@ const DetailsHeader = ({ pageTitle, page, pageName, currentDate, mode, selectedB
                                                     <DatePicker name="dateFilter" value={moment(dateFilter).format('YYYY-MM-DD')} maxDate={moment(new Date()).format('YYYY-MM-DD')} onChange={handleDateFilter} />
                                                 </div>
                                             </div>
-                                            { currentBranch?.noOfLO?.count > 10 && (
+                                            { (currentBranch?.noOfLO?.count > 10 && pageName !== 'lo-view') && (
                                                 <div className="flex flex-row ml-4">
                                                     <RadioButton id={"radio_all"} name="radio-lo" label={"All"} checked={selectedLoGroup === 'all'} value="all" onChange={handleLoGroupChange} />
                                                     <RadioButton id={"radio_main"} name="radio-lo" label={"Main"} checked={selectedLoGroup === 'main'} value="main" onChange={handleLoGroupChange} />
@@ -278,7 +278,7 @@ const DetailsHeader = ({ pageTitle, page, pageName, currentDate, mode, selectedB
                                                     <DatePicker name="dateFilter" value={moment(dateFilter).format('YYYY-MM-DD')} maxDate={moment(new Date()).format('YYYY-MM-DD')} onChange={handleDateFilter} />
                                                 </div>
                                             </div>
-                                            { currentBranch?.noOfLO?.count > 10 && (
+                                            { (currentBranch?.noOfLO?.count > 10 && pageName !== 'lo-view') && (
                                                 <div className="flex flex-row ml-4">
                                                     <RadioButton id={"radio_all"} name="radio-lo" label={"All"} checked={selectedLoGroup === 'all'} value="all" onChange={handleLoGroupChange} />
                                                     <RadioButton id={"radio_main"} name="radio-lo" label={"Main"} checked={selectedLoGroup === 'main'} value="main" onChange={handleLoGroupChange} />

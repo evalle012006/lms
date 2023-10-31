@@ -128,7 +128,7 @@ async function getLoanWithCashCollection(req, res) {
             .collection('loans')
             .aggregate([
                 { $match: {$expr: { $and: [
-                    {$ne: ['$status', 'closed']}, {$ne: ['$status', 'rejected']}, {$ne: ['$status', 'completed']}, 
+                    {$ne: ['$status', 'closed']}, {$ne: ['$status', 'reject']}, {$ne: ['$status', 'completed']}, 
                     {$or: [{$eq: ['$dateGranted', date]}, {$eq: ['$status', 'pending']}]}, {$eq: ['$groupId', groupId]}
                 ]}} },
                 {
