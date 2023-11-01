@@ -147,7 +147,7 @@ const processLOR = async (sheetData, branchId, loId, occurence) => {
                     const guarantorName = extractName(col[5]);
                     const clientAddress = col[6];
                     const clientPhoneNo = col[7];
-                    const loanCycle = col[8] ? parseInt(col[8]) : 0;
+                    let loanCycle = col[8] ? parseInt(col[8]) : 0;
                     const loanHistory = { date: col[9], amount: col[10], cycle: col[11] };
                     const dateGranted = col[12] ? parseDate(col[12]) : null;
                     const amountRelease = col[13] ? parseFloat(col[13]) : 0;
@@ -172,7 +172,7 @@ const processLOR = async (sheetData, branchId, loId, occurence) => {
                     // skip col[83] fullpayment count
                     // ADJUST HERE IF THERE IS A DATA
                     const fullPaymentAmount = col[84];
-                    const fullPaymentDate = '';
+                    let fullPaymentDate = null;
                     // skip 84 - 85
                     let mcbu = 0;
                     let loanBalance = 0;
@@ -185,7 +185,7 @@ const processLOR = async (sheetData, branchId, loId, occurence) => {
                         // skip col[87] after amount release
                         loanBalance = col[48] ? parseFloat(col[48]) : 0;
                     }
-                    const noOfPayments = (amountRelease - loanBalance) / activeLoan;
+                    let noOfPayments = (amountRelease - loanBalance) / activeLoan;
                     const pastDue = col[89] ? parseFloat(col[89]) : 0;
 
                     const startDate = moment(dateGranted).add(1, 'days').format('YYYY-MM-DD');
@@ -210,6 +210,53 @@ const processLOR = async (sheetData, branchId, loId, occurence) => {
                         dateAdded: new Date()
                     }
 
+                    if (!loanCycle || loanCycle <= 0) {
+                        loanCycle = 1;
+                    }
+
+                    let status = 'active';
+
+                    let history = {
+                        amountRelease: amountRelease,
+                        activeLoan: activeLoan,
+                        loanBalance: loanBalance,
+                        loanCycle: loanCycle
+                    }
+
+                    if (!loanBalance || loanBalance <= 0) {
+                        noOfPayments = 60;
+                        status = 'completed';
+                        fullPaymentDate = moment().format('YYYY-MM-DD');
+
+                        let completedHistory = {
+                            label: "Reloaner Cont/MCBU",
+                            value: "reloaner-cont"
+                        }
+
+                        if (!mcbu || mcbu == 0) {
+                            completedHistory = {
+                                label: "Reloaner RF/MCBU",
+                                value: "reloaner-wd"
+                            }
+                        }
+
+                        if (occurence == 'weekly') {
+                            noOfPayments = 24;
+                            completedHistory = {
+                                label: "Reloaner",
+                                value: "reloaner"
+                            }
+                        }
+
+                        history = {
+                            amountRelease: 0,
+                            activeLoan: 0,
+                            loanBalance: 0,
+                            loanCycle: 1,
+                            remarks: completedHistory
+                        }
+                    }
+
                     const loan = {
                         branchId: branchId,
                         loId: loId,
@@ -225,7 +272,7 @@ const processLOR = async (sheetData, branchId, loId, occurence) => {
                         noOfPayments: noOfPayments,
                         loanCycle: loanCycle,
                         pnNumber: '',
-                        status: 'active',
+                        status: status,
                         occurence: occurence,
                         loanTerms: loanTerms,
                         loanRelease: amountRelease,
@@ -234,13 +281,8 @@ const processLOR = async (sheetData, branchId, loId, occurence) => {
                         startDate: startDate,
                         endDate: endDate,
                         advanceDays: 0,
-                        fullPaymentDate: null,
-                        history: {
-                            amountRelease: amountRelease,
-                            activeLoan: activeLoan,
-                            loanBalance: loanBalance,
-                            loanCycle: loanCycle
-                        },
+                        fullPaymentDate: fullPaymentDate,
+                        history: history,
                         mcbuCollection: mcbu,
                         mcbuIntereset: mcbuInterestAmount,
                         mcbuTarget: null, // ADJUST IF WEEKLY
