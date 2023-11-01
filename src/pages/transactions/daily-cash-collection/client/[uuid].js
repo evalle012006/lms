@@ -164,7 +164,7 @@ const CashCollectionDetailsPage = () => {
         const type = date ? 'filter' : 'current';
         let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/get-loan-by-group-cash-collection?' 
             + new URLSearchParams({ date: date ? date : currentDate, mode: 'daily', groupId: uuid, type: type });
-        
+
         const response = await fetchWrapper.get(url);
         if (response.success) {
             let cashCollection = [];
@@ -579,6 +579,7 @@ const CashCollectionDetailsPage = () => {
                         if (cc.hasOwnProperty('current') && cc.current.length > 0) {
                             const current = cc.current.find(cur => !cur.hasOwnProperty('transferId'));
                             if (current) {
+                                setEditMode(false);
                                 collection.targetCollection = current.targetCollection;
                                 collection.targetCollectionStr = collection.targetCollection > 0 ? formatPricePhp(collection.targetCollection) : '-';
                                 collection.excess = current.excess;
