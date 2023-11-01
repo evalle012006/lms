@@ -20,7 +20,6 @@ async function save(req, res) {
             if (cc.status !== "totals") {
                 let collection = {...cc};
                 delete collection.reverted;
-                delete collection.dcmc;
 
                 const timeArgs = currentTime.split(" ");
                 // put this in the config settings should be by hour and minute?

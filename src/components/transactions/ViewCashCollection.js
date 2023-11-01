@@ -112,13 +112,14 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         groupStatus = 'closed';
                     }
 
-                    const draft = !filter ? cc.cashCollections[0].hasDraftsArr.filter(d => d === true) : [];
+                    const draft = cc.cashCollections[0].hasDraftsArr.filter(d => d === true);
+                    console.log(draft)
                     if (draft.length > 0) {
                         isDraft = true;
                     }
                 }
-
-                if (isWeekend || isHoliday) {
+                console.log(isDraft)
+                if (!filter && (isWeekend || isHoliday)) {
                     groupStatus = 'closed';
                 }
 
@@ -353,7 +354,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                             transfer: 0,
                             transferStr: '-',
                             status: groupStatus,
-                            isDraft: false,
+                            isDraft: isDraft,
                             page: 'collection'
                         };
     

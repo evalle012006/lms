@@ -461,7 +461,8 @@ async function getAllLoansPerGroup(req, res) {
                                                 then: '$groupStatus',
                                                 else: "$$REMOVE"
                                             }
-                                        } }
+                                        } },
+                                        hasDraftsArr: { $addToSet: '$draft' }
                                     } 
                                 }
                             ],
@@ -1114,7 +1115,8 @@ async function getAllLoansPerGroup(req, res) {
                                                 then: '$groupStatus',
                                                 else: "$$REMOVE"
                                             }
-                                        } }
+                                        } },
+                                        hasDraftsArr: { $addToSet: '$draft' }
                                     } 
                                 }
                             ],
@@ -1759,7 +1761,8 @@ async function getAllLoansPerGroup(req, res) {
                                                 then: '$groupStatus',
                                                 else: "$$REMOVE"
                                             }
-                                        } }
+                                        } },
+                                        hasDraftsArr: { $addToSet: '$draft' }
                                     } 
                                 }
                             ],
@@ -2963,7 +2966,8 @@ async function getAllLoansPerGroup(req, res) {
                                                 then: '$groupStatus',
                                                 else: "$$REMOVE"
                                             }
-                                        } }
+                                        } },
+                                        hasDraftsArr: { $addToSet: '$draft' }
                                     } 
                                 }
                             ],
@@ -3512,7 +3516,8 @@ async function getAllLoansPerGroup(req, res) {
                                                 then: '$groupStatus',
                                                 else: "$$REMOVE"
                                             }
-                                        } }
+                                        } },
+                                        hasDraftsArr: { $addToSet: '$draft' }
                                     } 
                                 }
                             ],
@@ -4055,7 +4060,8 @@ async function getAllLoansPerGroup(req, res) {
                                                 then: '$groupStatus',
                                                 else: "$$REMOVE"
                                             }
-                                        } }
+                                        } },
+                                        hasDraftsArr: { $addToSet: '$draft' }
                                     } 
                                 }
                             ],
@@ -4464,7 +4470,8 @@ async function getAllLoansPerGroup(req, res) {
                                                 then: '$groupStatus',
                                                 else: "$$REMOVE"
                                             }
-                                        } }
+                                        } },
+                                        hasDraftsArr: { $addToSet: '$draft' }
                                     } 
                                 }
                             ],

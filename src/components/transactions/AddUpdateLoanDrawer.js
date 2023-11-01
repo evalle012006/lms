@@ -58,7 +58,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         loanBalance: loan.loanBalance,
         amountRelease: loan.amountRelease,
         noOfPayments: mode !== 'reloan' ? loan.noOfPayments : 0,
-        coMaker: loan.coMaker,
+        coMaker: loan.coMaker ? typeof loan.coMaker == 'string' ? parseInt(loan.coMaker) : null : null,
         loanCycle: mode !== 'reloan' ? mode === 'add' ? 1 : loan.loanCycle : loan.loanCycle + 1,
         pnNumber: loan.pnNumber,
         guarantorFirstName: loan.guarantorFirstName,
@@ -105,7 +105,9 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     const handleLoIdChange = (field, value) => {
         setLoading(true);
         const form = formikRef.current;
-        setSelectedGroup(value);
+        const u = userList.find(u => u._id == value);
+        setSelectedLo(value);
+        setGroupOccurence(u?.transactionType);
         const group = groupList.find(g => g._id === value);
         if (group) {
             let slotArr = [];
@@ -122,8 +124,8 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             form.setFieldValue('loId', group.loanOfficerId);
         }
 
+        getListGroup(u?.transactionType, value);
         form.setFieldValue(field, value);
-        getListClient(clientType, value);
         setLoading(false);
     }
 
@@ -148,7 +150,9 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         }
 
         form.setFieldValue(field, value);
-        getListClient(clientType, value);
+        if (clientType !== 'offset') {
+            getListClient(clientType, value);
+        }
         setLoading(false);
     }
 
@@ -352,14 +356,14 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         }
     }
 
-    const getListGroup = async (occurence) => {
+    const getListGroup = async (occurence, loId) => {
         setLoading(true);
         let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list-by-group-occurence';
         if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
             url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id, occurence: occurence });
             processGroupList(url);
         } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
-            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, occurence: occurence });
+            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: loId, occurence: occurence });
             processGroupList(url);
         }
     }
@@ -389,12 +393,16 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) {
             if (status === 'active') {
                 url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", branchId: branchList[0]._id, groupId: groupId, status: status });
+            } else if (status === 'offset') {
+                url = url + '?' + new URLSearchParams({ mode: "view_offset", status: status });
             } else {
                 url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", loId: currentUser._id, groupId: groupId, status: status });
             }
         } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
             if (status === 'active') {
                 url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", branchId: branchList[0]._id, groupId: groupId, status: status });
+            } else if (status === 'offset') {
+                url = url + '?' + new URLSearchParams({ mode: "view_offset", status: status });
             } else {
                 url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", branchId: branchList[0]._id, groupId: groupId, status: status });
             }
@@ -541,11 +549,11 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         }
     }, [list, selectedGroup, mode]);
 
-    useEffect(() => {
-        if (type) {
-            getListGroup(type);
-        }
-    }, [type, mode, branchList]);
+    // useEffect(() => {
+    //     if (type) {
+    //         getListGroup(type);
+    //     }
+    // }, [type, mode, branchList]);
 
     return (
         <React.Fragment>
@@ -576,12 +584,31 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                 <form onSubmit={handleSubmit} autoComplete="off">
                                     {mode === 'add' ? (
                                         <React.Fragment>
+                                            { /** for offset change the arrangements...should be able to search for old branch and group **/ }
                                             { currentUser.role.rep === 3 && (
-                                                <div className="mt-4 flex flex-row">
-                                                    <RadioButton id={"radio_daily"} name="radio-group-occurence" label={"Daily"} checked={groupOccurence === 'daily'} value="daily" onChange={handleOccurenceChange} />
-                                                    <RadioButton id={"radio_weekly"} name="radio-group-occurence" label={"Weekly"} checked={groupOccurence === 'weekly'} value="weekly" onChange={handleOccurenceChange} />
+                                                // <div className="mt-4 flex flex-row">
+                                                //     <RadioButton id={"radio_daily"} name="radio-group-occurence" label={"Daily"} checked={groupOccurence === 'daily'} value="daily" onChange={handleOccurenceChange} />
+                                                //     <RadioButton id={"radio_weekly"} name="radio-group-occurence" label={"Weekly"} checked={groupOccurence === 'weekly'} value="weekly" onChange={handleOccurenceChange} />
+                                                // </div>
+                                                <div className="mt-4">
+                                                    <SelectDropdown
+                                                        name="loId"
+                                                        field="loId"
+                                                        value={selectedLo}
+                                                        label="Loan Officer"
+                                                        options={userList}
+                                                        onChange={(field, value) => handleLoIdChange(field, value)}
+                                                        onBlur={setFieldTouched}
+                                                        placeholder="Select Group"
+                                                        errors={touched.loId && errors.loId ? errors.loId : undefined}
+                                                    />
                                                 </div>
                                             ) }
+                                            <div className="mt-4 flex flex-row">
+                                                <RadioButton id={"radio_pending"} name="radio-client-type" label={"Prospect Clients"} checked={clientType === 'pending'} value="pending" onChange={handleClientTypeChange} />
+                                                <RadioButton id={"radio_active"} name="radio-client-type" label={"Active Clients"} checked={clientType === 'active'} value="active" onChange={handleClientTypeChange} />
+                                                <RadioButton id={"radio_offset"} name="radio-client-type" label={"Offset Clients"} checked={clientType === 'offset'} value="offset" onChange={handleClientTypeChange} />
+                                            </div>
                                             <div className="mt-4">
                                                 <SelectDropdown
                                                     name="groupId"
@@ -594,11 +621,6 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                                     placeholder="Select Group"
                                                     errors={touched.groupId && errors.groupId ? errors.groupId : undefined}
                                                 />
-                                            </div>
-                                            <div className="mt-4 flex flex-row">
-                                                <RadioButton id={"radio_pending"} name="radio-client-type" label={"Prospect Clients"} checked={clientType === 'pending'} value="pending" onChange={handleClientTypeChange} />
-                                                <RadioButton id={"radio_active"} name="radio-client-type" label={"Active Clients"} checked={clientType === 'active'} value="active" onChange={handleClientTypeChange} />
-                                                <RadioButton id={"radio_offset"} name="radio-client-type" label={"Offset Clients"} checked={clientType === 'offset'} value="offset" onChange={handleClientTypeChange} />
                                             </div>
                                             <div className="mt-4">
                                                 <SelectDropdown

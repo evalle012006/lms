@@ -17,12 +17,19 @@ async function reset(req, res) {
     await db.collection('groupCashCollections').deleteMany({branchId: branchId});
     await db.collection('loans').deleteMany({branchId: branchId});
     await db.collection('losTotals').deleteMany({branchId: branchId});
+    await db.collection('client').deleteMany({branchId: branchId});
+
+    const los = await db.collection('users').find({ "role.rep": 4, designatedBranchId: branchId }).toArray();
+    los.map(async lo => {
+        await db.collection('losTotals').deleteMany({ userId: lo._id + '' });
+    });
+
 
 
     // reset tables
-    await db.collection('client').updateMany({branchId: branchId}, {
-        $set: { status: 'pending', delinquent: false, mcbuHistory: [] }
-    });
+    // await db.collection('client').updateMany({branchId: branchId}, {
+    //     $set: { status: 'pending', delinquent: false, mcbuHistory: [] }
+    // });
 
     await db.collection('groups').updateMany({branchId: branchId}, {
         $set: { 
