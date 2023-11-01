@@ -18,7 +18,16 @@ async function reset(req, res) {
     await db.collection('groupCashCollections').deleteMany({loId: loId});
     await db.collection('loans').deleteMany({loId: loId});
     await db.collection('losTotals').deleteMany({userId: loId});
-    await db.collection('client').deleteMany({branchId: branchId});
+
+    const clients = await db.collection('client').find({ loId: loId }).toArray();
+    clients.map(async client => {
+        const uid = client._id + '';
+        if (fs.existsSync(`./public/images/clients/${uid}/`)) {
+            fs.rmSync(`./public/images/clients/${uid}/`, { recursive: true, force: true });
+        }
+    });
+
+    await db.collection('client').deleteMany({loId: loId});
 
 
     // reset tables
