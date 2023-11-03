@@ -226,7 +226,7 @@ const processLOR = async (sheetData, branchId, loId, occurence) => {
                     if (!loanBalance || loanBalance <= 0) {
                         noOfPayments = 60;
                         status = 'completed';
-                        fullPaymentDate = moment().format('YYYY-MM-DD');
+                        fullPaymentDate = moment().subtract(1, 'days').format('YYYY-MM-DD');
 
                         let completedHistory = {
                             label: "Reloaner Cont/MCBU",
