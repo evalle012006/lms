@@ -188,7 +188,13 @@ async function saveCashCollection(loan, currentReleaseAmount, reloan, group, loa
     const { db } = await connectToDatabase();
 
     const cashCollection = await db.collection('cashCollections').find({ clientId: loan.clientId, dateAdded: currentDate }).toArray();
-    if (cashCollection.length === 0) {
+    const groupCashCollections = await db.collection('cashCollections').find({ groupId: group._id, dateAdded: currentDate }).toArray();
+    if (groupCashCollections && cashCollection.length === 0) {
+        let groupStatus = 'pending';
+        if (groupCashCollections.length > 0) {
+            groupStatus = groupCashCollections[0].groupStatus;
+        }
+
         let data = {
             loanId: loanId,
             branchId: loan.branchId,
@@ -220,7 +226,7 @@ async function saveCashCollection(loan, currentReleaseAmount, reloan, group, loa
             status: loan.status,
             dateAdded: currentDate,
             insertedDateTime: new Date(),
-            groupStatus: loan.loanCycle === 1 ? 'closed' : 'pending',
+            groupStatus: groupStatus,
             origin: 'automation-loan'
         };
 
