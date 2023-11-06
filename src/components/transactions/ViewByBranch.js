@@ -127,32 +127,10 @@ const ViewByBranchPage = ({dateFilter, type}) => {
     
                         totalsLoanRelease += branch.loans[0].totalRelease;
                         totalsLoanBalance += branch.loans[0].totalLoanBalance;
-                        // if (branch.groups.length === 0) {
-                        //     targetLoanCollection += branch.loans[0].loanTarget;
-                        // }
                         totalPastDue += collection.pastDue;
                         totalNoPastDue += collection.noPastDue;
                         // totalMcbu += collection.mcbu;
                     }
-
-                    if (branch.groups.length > 0) {
-                        let loLoanTarget = 0;
-                        let loMcbu = 0;
-                        branch.groups.map(g => {
-                            if (g.loanTarget.length > 0) {
-                                loLoanTarget += (g.loanTarget[0].loanTarget && g.loanTarget[0].loanTarget !== '-') ? g.loanTarget[0].loanTarget : 0;
-                                // loMcbu += g.loanTarget[0].mcbu;
-                            }
-                        });
-
-                        collection.loanTarget += loLoanTarget;
-                        collection.loanTargetStr = collection.loanTarget > 0 ? formatPricePhp(collection.loanTarget) : '-';
-                        // targetLoanCollection += collection.loanTarget;
-                        // collection.mcbu = loMcbu;
-                        // collection.mcbuStr = loMcbu > 0 ? formatPricePhp(loMcbu) : '-';
-                    }
-
-                    // totalMcbu += collection.mcbu ? collection.mcbu : 0;
                     
                     if (branch.cashCollections.length > 0) {
                         const loanTarget = collection.loanTarget - branch.cashCollections[0].loanTarget;
@@ -325,8 +303,10 @@ const ViewByBranchPage = ({dateFilter, type}) => {
     const [columns, setColumns] = useState();
 
     const handleRowClick = (selected) => {
-        router.push(`/transactions/branch-manager/cash-collection/users/${selected._id}`);
-        localStorage.setItem('selectedBranch', selected._id);
+        if (!selected?.totalData) {
+            router.push(`/transactions/branch-manager/cash-collection/users/${selected._id}`);
+            localStorage.setItem('selectedBranch', selected._id);
+        }
     };
 
     useEffect(() => {

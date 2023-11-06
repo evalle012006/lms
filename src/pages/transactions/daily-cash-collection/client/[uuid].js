@@ -2096,7 +2096,7 @@ const CashCollectionDetailsPage = () => {
     // }, [revertMode]);
 
     return (
-        <Layout header={false} noPad={true}>
+        <Layout header={false} noPad={true} hScroll={false}>
             {loading ? (
                 <div className="absolute top-1/2 left-1/2">
                     <Spinner />
@@ -2107,11 +2107,11 @@ const CashCollectionDetailsPage = () => {
                         handleSaveUpdate={handleSaveUpdate} data={allData} setData={setFilteredData} allowMcbuWithdrawal={allowMcbuWithdrawal} noMoreDraft={noMoreDraft}
                         dateFilter={dateFilter} setDateFilter={setDateFilter} handleDateFilter={handleDateFilter} currentGroup={uuid} revertMode={revertMode}
                         groupFilter={groupFilter} handleGroupFilter={handleGroupFilter} groupTransactionStatus={groupSummaryIsClose ? 'close' : 'open'} />}
-                    <div className="p-4 mt-[12rem] mb-[4rem]">
-                        <div className="bg-white flex flex-col rounded-md p-6 overflow-auto">
+                    <div className="px-4 mt-[12rem] mb-[4rem] overflow-y-auto min-h-[55rem]">
+                        <div className="bg-white flex flex-col rounded-md pt-0 pb-2 px-6 overflow-auto h-[46rem]">
                             <table className="table-auto border-collapse text-sm">
                                 <thead className="border-b border-b-gray-300">
-                                    <tr className="column py-0 pr-0 pl-4 text-left text-gray-500 uppercase tracking-wider m-1">
+                                    <tr className="sticky top-0 column py-0 pr-0 pl-4 text-left text-gray-500 uppercase tracking-wider bg-white">
                                         <th className="p-2 text-center">Slot #</th>
                                         <th className="p-2 text-center">Client Name</th>
                                         <th className="p-2 text-center">Co-Maker</th>
