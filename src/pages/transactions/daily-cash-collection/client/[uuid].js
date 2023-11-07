@@ -504,6 +504,19 @@ const CashCollectionDetailsPage = () => {
                             noPaymentsStr = '-';
                             activeLoan = 0;
                         }
+
+                        let history = cc.hasOwnProperty('history') ? cc.history : null;
+                        if (cc.status == "completed" && cc.fullPaymentDate !== currentDate) {
+                            history = {
+                                amountRelease: history?.amountRelease,
+                                loanBalance: 0,
+                                activeLoan: 0,
+                                excess: 0,
+                                collection: 0,
+                                remarks: history?.remarks,
+                                advanceDays: 0
+                            }
+                        }
     
                         collection = {
                             client: cc.client,
@@ -561,7 +574,7 @@ const CashCollectionDetailsPage = () => {
                             delinquent: cc.client.delinquent,
                             fullPaymentDate: cc.fullPaymentDate ? cc.fullPaymentDate : null,
                             advanceDays: cc.advanceDays,
-                            history: cc.hasOwnProperty('history') ? cc.history : null,
+                            history: history,
                             status: cc.status,
                             loanTerms: cc.loanTerms,
                             transferred: cc.transferred,

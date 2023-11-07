@@ -478,6 +478,19 @@ const CashCollectionDetailsPage = () => {
                             activeLoan = 0;
                         }
 
+                        let history = cc.hasOwnProperty('history') ? cc.history : null;
+                        if (cc.status == "completed" && cc.fullPaymentDate !== currentDate) {
+                            history = {
+                                amountRelease: history?.amountRelease,
+                                loanBalance: 0,
+                                activeLoan: 0,
+                                excess: 0,
+                                collection: 0,
+                                remarks: history?.remarks,
+                                advanceDays: 0
+                            }
+                        }
+
                         collection = {
                             client: cc.client,
                             coMaker: (cc.coMaker && typeof cc.coMaker == 'number') ? cc.coMaker : '-',
