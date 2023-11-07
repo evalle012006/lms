@@ -1129,7 +1129,7 @@ const CashCollectionDetailsPage = () => {
 
                     // if admin it should not override what it is currently saved
                     temp.groupStatus = 'pending';
-                    temp.draft = draft
+                    temp.draft = temp.status == 'completed' ? false : draft;
                 
                     return temp;   
                 }).filter(cc => cc.status !== "totals");
@@ -2258,11 +2258,11 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.transferStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">
                                                     <React.Fragment>
-                                                        {(!isWeekend && !isHoliday && currentUser.role.rep > 2 && !groupSummaryIsClose && !cc.draft) && (
+                                                        {(!isWeekend && !isHoliday && currentUser.role.rep > 2 && !groupSummaryIsClose) && (
                                                             <div className='flex flex-row p-2'>
                                                                 {(currentUser.role.rep === 3 && cc.hasOwnProperty('_id') && !filter && !cc.draft && !cc.reverted && cc?.prevData) && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleShowWarningDialog(e, cc)} />}
                                                                 {(cc.status === 'completed' && ((cc.remarks && cc.remarks.value?.startsWith('reloaner')) || (cc.status === 'completed' && !cc.remarks))) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
-                                                                {(!filter && !editMode && cc.status !== 'closed' && currentMonth === 11) && <CalculatorIcon className="w-5 h-5 mr-6" title="Calculate MCBU Interest" onClick={(e) => calculateInterest(e, cc, index)} />}
+                                                                {(!filter && !editMode && cc.status !== 'closed' && currentMonth === 11 && !cc.draft) && <CalculatorIcon className="w-5 h-5 mr-6" title="Calculate MCBU Interest" onClick={(e) => calculateInterest(e, cc, index)} />}
                                                                 {/* add new */}
                                                             </div>
                                                         )}

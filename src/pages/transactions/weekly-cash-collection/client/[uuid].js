@@ -1179,7 +1179,7 @@ const CashCollectionDetailsPage = () => {
 
                     // if admin it should not override what it is currently saved
                     temp.groupStatus = 'pending';
-                    temp.draft = draft;
+                    temp.draft = temp.status == 'completed' ? false : draft;
                 
                     return temp;   
                 }).filter(cc => cc.status !== "totals");
@@ -2472,10 +2472,10 @@ const CashCollectionDetailsPage = () => {
                                                         {(!isWeekend && !isHoliday && currentUser.role.rep > 2 && !groupSummaryIsClose) && (
                                                             <div className='flex flex-row p-2'>
                                                                 {(currentUser.role.rep === 3 && cc.hasOwnProperty('_id')  && cc.status === 'active' && !filter && !cc.draft && cc?.origin !== 'pre-save' && !cc.reverted && cc?.prevData) && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleShowWarningDialog(e, cc)} />}
-                                                                {((cc.status === 'completed' && (cc.remarks && cc.remarks.value === 'reloaner')) || (cc.status === 'completed' && !cc.remarks) && !cc.draft) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
-                                                                {(!filter && cc.status === 'active') && <CurrencyDollarIcon className="w-5 h-5 mr-6" title="MCBU Refund" onClick={(e) => handleMcbuWithdrawal(e, cc, index)} />}
+                                                                {(cc.status === 'completed' && (cc.remarks && cc.remarks.value === 'reloaner')) || (cc.status === 'completed' && !cc.remarks) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
+                                                                {(!filter && cc.status === 'active' && !cc.draft) && <CurrencyDollarIcon className="w-5 h-5 mr-6" title="MCBU Refund" onClick={(e) => handleMcbuWithdrawal(e, cc, index)} />}
                                                                 {(!filter && cc.status === 'active' && !cc.draft) && <StopCircleIcon className="w-5 h-5 mr-6" title="Offset" onClick={(e) => handleOffset(e, cc, index)} />}
-                                                                {(!filter && !editMode && cc.status !== 'closed' && currentMonth === 11) && <CalculatorIcon className="w-5 h-5 mr-6" title="Calculate MCBU Interest" onClick={(e) => calculateInterest(e, cc, index)} />}
+                                                                {(!filter && !editMode && cc.status !== 'closed' && currentMonth === 11 && !cc.draft) && <CalculatorIcon className="w-5 h-5 mr-6" title="Calculate MCBU Interest" onClick={(e) => calculateInterest(e, cc, index)} />}
                                                             </div>
                                                         )}
                                                     </React.Fragment>
