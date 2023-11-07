@@ -25,7 +25,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
     const router = useRouter();
 
     const handleRowClick = (selected) => {
-        if (!selected.totalData) {
+        if (!selected?.totalData) {
             // if (selected && selected.hasData) {
                 localStorage.setItem('selectedLO', selected._id);
                 router.push(`/transactions/${selected.transactionType}-cash-collection/group/${selected._id}`);
