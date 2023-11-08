@@ -585,7 +585,7 @@ const processWeeklyLOR = async (sheetData, branchId, loId, occurence) => {
         // get group no
         if (i === 1) {
             // col[6] groupNo
-        } else if (i === 2 || i === 40 || i === 78 || i === 116 || i === 154 || i === 192 || i === 230 || i === 240 || i === 268 || i === 306 || i === 344 || i === 382 || i === 420 || i === 458 || i === 496 || i === 533) {
+        } else if (i === 2 || i === 40 || i === 78 || i === 116 || i === 154 || i === 192 || i === 230 || i === 268 || i === 306 || i === 344 || i === 382 || i === 420 || i === 458 || i === 496 || i === 533) {
             groupName = col[2]?.toUpperCase().trim();
             logger.debug({page: 'migrations', index: i, message: `Group Name: ${groupName}`});
         } else if (i === 3) {
@@ -876,11 +876,11 @@ const extractName = (name) => {
 
 const parseDate = (date) => {
     let parsedDate;
-    logger.debug({page: 'migrations', message: `Raw Date: ${date}`});
+    // logger.debug({page: 'migrations', message: `Raw Date: ${date}`});
     if (date && date !== undefined) {
         if (typeof date == 'number') {
             const convertedDate = new Date(Math.round((date - 25569)*86400*1000));
-            logger.error({page: 'migration', message: `Converted Date: ${convertedDate}`});
+            // logger.error({page: 'migration', message: `Converted Date: ${convertedDate}`});
             parsedDate = moment(date).format('YYYY-MM-DD');
         } else {
             let arr = [];

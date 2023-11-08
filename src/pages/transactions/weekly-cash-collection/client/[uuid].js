@@ -851,7 +851,7 @@ const CashCollectionDetailsPage = () => {
             });
 
             const hasDraft = cashCollection.filter(cc => cc.draft);
-            if (hasDraft.length > 0 && hasNoCollections) {
+            if (hasDraft.length > 0) {
                 setEditMode(true);
                 setNoMoreDraft(false);
             }
@@ -1192,7 +1192,7 @@ const CashCollectionDetailsPage = () => {
 
                     // if admin it should not override what it is currently saved
                     temp.groupStatus = 'pending';
-                    temp.draft = temp.status == 'completed' ? false : draft;
+                    temp.draft = temp.status != 'active' ? false : draft;
                 
                     return temp;   
                 }).filter(cc => cc.status !== "totals");
