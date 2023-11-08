@@ -504,6 +504,19 @@ const CashCollectionDetailsPage = () => {
                             noPaymentsStr = '-';
                             activeLoan = 0;
                         }
+
+                        let history = cc.hasOwnProperty('history') ? cc.history : null;
+                        if (cc.status == "completed" && cc.fullPaymentDate !== currentDate) {
+                            history = {
+                                amountRelease: history?.amountRelease,
+                                loanBalance: 0,
+                                activeLoan: 0,
+                                excess: 0,
+                                collection: 0,
+                                remarks: history?.remarks,
+                                advanceDays: 0
+                            }
+                        }
     
                         collection = {
                             client: cc.client,
@@ -561,7 +574,7 @@ const CashCollectionDetailsPage = () => {
                             delinquent: cc.client.delinquent,
                             fullPaymentDate: cc.fullPaymentDate ? cc.fullPaymentDate : null,
                             advanceDays: cc.advanceDays,
-                            history: cc.hasOwnProperty('history') ? cc.history : null,
+                            history: history,
                             status: cc.status,
                             loanTerms: cc.loanTerms,
                             transferred: cc.transferred,
@@ -849,7 +862,7 @@ const CashCollectionDetailsPage = () => {
             });
 
             const hasDraft = cashCollection.filter(cc => cc.draft);
-            if (hasDraft.length > 0 && hasNoCollections) {
+            if (hasDraft.length > 0) {
                 setEditMode(true);
                 setNoMoreDraft(false);
             }
@@ -1129,7 +1142,7 @@ const CashCollectionDetailsPage = () => {
 
                     // if admin it should not override what it is currently saved
                     temp.groupStatus = 'pending';
-                    temp.draft = temp.status == 'completed' ? false : draft;
+                    temp.draft = temp.status != 'active' ? false : draft;
                 
                     return temp;   
                 }).filter(cc => cc.status !== "totals");
@@ -2111,7 +2124,7 @@ const CashCollectionDetailsPage = () => {
                         <div className="bg-white flex flex-col rounded-md pt-0 pb-2 px-6 overflow-auto h-[46rem]">
                             <table className="table-auto border-collapse text-sm">
                                 <thead className="border-b border-b-gray-300">
-                                    <tr className="sticky top-0 column py-0 pr-0 pl-4 text-left text-gray-500 uppercase tracking-wider bg-white">
+                                    <tr className="sticky top-0 column py-0 pr-0 pl-4 text-left text-gray-500 uppercase tracking-wider bg-white z-20">
                                         <th className="p-2 text-center">Slot #</th>
                                         <th className="p-2 text-center">Client Name</th>
                                         <th className="p-2 text-center">Co-Maker</th>
@@ -2190,7 +2203,7 @@ const CashCollectionDetailsPage = () => {
                                                         </React.Fragment>
                                                         ): 
                                                             <React.Fragment>
-                                                                {(!editMode || filter || !cc.reverted || cc.status === 'completed' || cc.status === 'pending' || cc.status === 'totals' || cc.status === 'closed') ? cc.mcbuColStr : '-'}
+                                                                {(!editMode || filter || !cc.reverted || cc.reverted || cc.status === 'completed' || cc.status === 'pending' || cc.status === 'totals' || cc.status === 'closed') ? cc.mcbuColStr : '-'}
                                                             </React.Fragment>
                                                     }
                                                 </td>

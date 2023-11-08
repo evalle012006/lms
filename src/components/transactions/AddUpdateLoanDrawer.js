@@ -14,7 +14,7 @@ import moment from 'moment'
 import SelectDropdown from "@/lib/ui/select";
 import SideBar from "@/lib/ui/SideBar";
 import RadioButton from "@/lib/ui/radio-button";
-import { setGroupList } from "@/redux/actions/groupActions";
+import { setGroup, setGroupList } from "@/redux/actions/groupActions";
 import { setClientList, setComakerList } from "@/redux/actions/clientActions";
 import { UppercaseFirstLetter, formatPricePhp } from "@/lib/utils";
 
@@ -513,6 +513,8 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             form.setFieldValue('clientId', loan.clientId);
             form.setFieldValue('groupId', loan.groupId);
             form.setFieldValue('slotNo', loan.slotNo);
+
+            getListGroup(loan.occurence, loan.loId);
         } else if (mode === 'reloan') {
             setTitle('Reloan');
             setLoanTerms(loan.loanTerms);
@@ -526,10 +528,10 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     }, [mode]);
 
     useEffect(() => {
-        if (selectedGroup) {
+        if (mode !== 'edit' && selectedGroup) {
             getListCoMaker(selectedGroup);
         }
-    }, [selectedGroup]);
+    }, [selectedGroup, mode]);
 
     useEffect(() => {
         if (selectedGroup || mode === 'reloan') {
@@ -548,12 +550,6 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             setSlotNumbers();
         }
     }, [list, selectedGroup, mode]);
-
-    // useEffect(() => {
-    //     if (type) {
-    //         getListGroup(type);
-    //     }
-    // }, [type, mode, branchList]);
 
     return (
         <React.Fragment>
