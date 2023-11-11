@@ -11,7 +11,7 @@ async function getAllLoansPerGroup(req, res) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
 
-    const { date, mode, areaManagerId, dayName, currentDate } = req.query;
+    const { date, mode, areaManagerId, dayName, currentDate, selectedBranchGroup } = req.query;
 
     const currentDay = moment(date).format('dddd').toLowerCase();
 
@@ -20,7 +20,7 @@ async function getAllLoansPerGroup(req, res) {
     let cashCollection;
     
     if (currentDate === date) {
-        if (areaManagerId) {
+        if (areaManagerId && selectedBranchGroup == 'mine') {
             const areaManager = await db.collection("users").find({ _id: new ObjectId(areaManagerId) }).toArray();
             if (areaManager.length > 0) {
                 const branchCodes = typeof areaManager[0].designatedBranch === 'string' ? JSON.parse(areaManager[0].designatedBranch) : areaManager[0].designatedBranch;
