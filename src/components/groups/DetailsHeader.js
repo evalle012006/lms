@@ -105,7 +105,7 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
                 </div>
             )}
             {page === 'transaction' && (
-                <div className="flex justify-between w-10/12">
+                <div className="flex justify-between w-10/12 z-50">
                     <div className="flex flex-row w-11/12 text-gray-400 text-sm justify-start">
                         <span className="text-gray-400 text-sm mt-1">Filters:</span >
                         <div className="ml-4 flex w-40">
@@ -119,6 +119,7 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
                                 onChange={handleGroupFilter}
                                 isSearchable={true}
                                 closeMenuOnSelect={true}
+                                menuPortalTarget={document.body}
                                 placeholder={'Group Filter'}/>
                         </div>
                         <div className="ml-24 flex w-64">
