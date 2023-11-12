@@ -1409,7 +1409,7 @@ const CashCollectionDetailsPage = () => {
                 let temp = {...cc};
                 
                 if (idx === index) {
-                    if (temp.status === 'completed' && (temp.remarks && temp.remarks?.value.startsWith('collection-')) && (remarks.value && (remarks.value?.startsWith('offset') || remarks.value?.startsWith('reloaner')))) {
+                    if (temp.status === 'completed' && (remarks && remarks?.value.startsWith('collection-')) && (remarks.value && (remarks.value?.startsWith('offset') || remarks.value?.startsWith('reloaner')))) {
                         setEditMode(true);
                     }
 
@@ -1487,7 +1487,7 @@ const CashCollectionDetailsPage = () => {
     
                             temp.mispayment = false;
                             temp.mispaymentStr = 'No';
-                        } else if (temp.remarks.value === "past due") {
+                        } else if (remarks.value === "past due") {
                             temp.pastDue = temp.pastDue !== '-' ? temp.pastDue + temp.activeLoan : temp.activeLoan;
                             temp.pastDueStr = formatPricePhp(temp.pastDue);
                             temp.mispayment = true;
@@ -1507,7 +1507,7 @@ const CashCollectionDetailsPage = () => {
                             temp.error = false;
                             temp.mcbuError = false;
     
-                            if (temp.remarks.value?.startsWith('delinquent')) {
+                            if (remarks.value?.startsWith('delinquent')) {
                                 temp.delinquent = true;
                             }
     
@@ -1515,11 +1515,16 @@ const CashCollectionDetailsPage = () => {
                                 temp.excused = true;
                             }
 
-                            if (remarks?.value === "delinquent-offset" && temp.paymentCollection > 0) {
-                                temp.loanBalance += temp.paymentCollection;
-                                temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
-                                temp.noOfPayments -= 1;
-                                temp.noOfPaymentStr = temp.noOfPayments + ' / ' + temp.loanTerms;
+                            if (remarks?.value === "delinquent-offset") {
+                                if (temp.paymentCollection > 0) {
+                                    temp.loanBalance += temp.paymentCollection;
+                                    temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
+                                    temp.noOfPayments -= 1;
+                                    temp.noOfPaymentStr = temp.noOfPayments + ' / ' + temp.loanTerms;
+                                } else {
+                                    temp.error = true;
+                                    toast.error("Invalid remarks. Delinquent for Offset must not be 0.");
+                                }
                             }
 
                             if (remarks.value === 'delinquent-mcbu') {
@@ -1538,7 +1543,7 @@ const CashCollectionDetailsPage = () => {
                                 temp.paymentCollection = 0;
                                 temp.paymentCollectionStr = '-';
                             } else {
-                                if (temp.remarks.value == 'delinquent-offset') {
+                                if (remarks.value == 'delinquent-offset') {
                                     temp.mispayment = false;
                                     temp.mispaymentStr = 'No';
                                 } else {
@@ -1546,7 +1551,7 @@ const CashCollectionDetailsPage = () => {
                                         temp.error = true;
                                         toast.error("Error occured. Remarks is not valid due to the amount in Actual Collection.");
                                     } else {
-                                        if (temp.remarks.value == 'delinquent') {
+                                        if (remarks.value == 'delinquent') {
                                             temp.paymentCollection = 0;
                                             temp.paymentCollectionStr = '-';
                                         }
