@@ -140,6 +140,9 @@ async function updateLoan(collection, currentDate) {
 
         loan.mcbuTarget = collection.mcbuTarget;
         loan.mcbu = collection.mcbu;
+        if (!loan.mcbuCollection || loan.mcbuCollection < 0) {
+            loan.mcbuCollection = 0;
+        }
         loan.mcbuCollection = loan.mcbuCollection ? loan.mcbuCollection + parseFloat(collection.mcbuCol) : parseFloat(collection.mcbuCol);
         loan.mcbuWithdrawal = loan.mcbuWithdrawal ? loan.mcbuWithdrawal + parseFloat(collection.mcbuWithdrawal) : collection.mcbuWithdrawal ? parseFloat(collection.mcbuWithdrawal) : 0;
 

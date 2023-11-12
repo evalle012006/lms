@@ -12,7 +12,7 @@ import { ArrowLeftCircleIcon } from '@heroicons/react/24/solid';
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 
 const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, dateFilter, setDateFilter, handleDateFilter, revertMode = false,
-                            groupFilter, handleGroupFilter, groupTransactionStatus, allowMcbuWithdrawal, allowOffsetTransaction, noMoreDraft }) => {
+                            groupFilter, handleGroupFilter, groupTransactionStatus, allowMcbuWithdrawal, allowOffsetTransaction, hasDraft }) => {
     const router = useRouter();
     const groupList = useSelector(state => state.group.list);
     const group = useSelector(state => state.group.data);
@@ -129,9 +129,15 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
                         </div>
                     </div>
                     {(showSaveButton || allowMcbuWithdrawal || allowOffsetTransaction) && (
-                        <div className={`flex items-center ${(revertMode) ? 'w-40' : 'w-96'}`}>
-                            {!revertMode && <ButtonOutline label="Save Draft" type="button" className="p-2 mr-3" onClick={() => handleSaveUpdate(true)} />}
-                            <ButtonSolid label="Submit Collection" onClick={() => handleSaveUpdate(false)} />
+                        <div className={`flex items-center`}>
+                            {(!revertMode || hasDraft) && (
+                                <div className="w-40 mr-4">
+                                    <ButtonOutline label="Save Draft" type="button" className="p-2 mr-3" onClick={() => handleSaveUpdate(true)} />
+                                </div>
+                            )}
+                            <div className="w-40">
+                                <ButtonSolid label="Submit Collection" onClick={() => handleSaveUpdate(false)} />
+                            </div>
                         </div>
                     )}
                 </div>

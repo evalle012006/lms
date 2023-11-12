@@ -69,7 +69,7 @@ const CashCollectionDetailsPage = () => {
     const [showWaningDialog, setShowWarningDialog] = useState(false);
 
     const [mcbuRate, setMcbuRate] = useState(transactionSettings.mcbu || 8);
-    const [noMoreDraft, setNoMoreDraft] = useState(false);
+    const [hasDraft, setHasDraft] = useState(false);
 
     const handleShowWarningDialog = (e, selected) => {
         e.stopPropagation();
@@ -865,7 +865,7 @@ const CashCollectionDetailsPage = () => {
             const hasDraft = cashCollection.filter(cc => cc.draft);
             if (hasDraft.length > 0) {
                 setEditMode(true);
-                setNoMoreDraft(false);
+                setHasDraft(true);
             }
 
             const haveReverted = cashCollection.filter(cc => cc.reverted);
@@ -1424,6 +1424,7 @@ const CashCollectionDetailsPage = () => {
                             temp.activeLoan = temp.prevData.activeLoan;
                             temp.pastDue = temp.prevData.pastDue;
                             temp.pastDueStr = temp.pastDue > 0 ? formatPricePhp(temp.pastDue) : '-';
+                            temp.advanceDays = temp.prevData.advanceDays;
                         } else {
                             temp.prevData = {
                                 amountRelease: temp.amountRelease,
@@ -1448,7 +1449,6 @@ const CashCollectionDetailsPage = () => {
                         temp.targetCollectionStr = formatPricePhp(temp.targetCollection);
                         temp.excused = false;
                         temp.delinquent = false;
-                        temp.remarks = remarks;
                         
                         // for pending remarks - this slot no should still be able to change by the following day to change the remarks
                         // by tomorrow only reloaner and offsets...
@@ -1606,9 +1606,9 @@ const CashCollectionDetailsPage = () => {
                             }
                         } else if (remarks.value === "excused advance payment") {
                             if (temp.hasOwnProperty('prevData')) {
-                                temp.targetCollection = temp.activeLoan;
+                                temp.targetCollection = temp.prevData.activeLoan;
                                 temp.targetCollectionStr = formatPricePhp(temp.activeLoan);
-                                temp.advanceDays = temp.advanceDays;
+                                temp.advanceDays = temp.prevData.advanceDays;
                             } else {
                                 temp.prevData = {
                                     amountRelease: temp.amountRelease,
@@ -1642,7 +1642,7 @@ const CashCollectionDetailsPage = () => {
                                 toast.error('Error occured. Yesterday transaction is not an Advanced payment');
                             }
                         } else if (remarks.value === 'reloaner-wd') {
-                            if (temp.history && (temp.history?.remarks?.value?.startsWith('offset') || temp.history?.remarks?.value?.startsWith('reloaner'))) {
+                            if (temp.remarks && (temp.remarks?.value?.startsWith('offset') || temp.remarks?.value?.startsWith('reloaner-'))) {
                                 temp.mcbu = temp.prevData.mcbu;
                             }
                             
@@ -1760,13 +1760,17 @@ const CashCollectionDetailsPage = () => {
                             //     toast.error(`Invalid remarks. Loan is not yet past ${temp.loanTerms} days.`);
                             // }
                         } else {
-                            if (remarks.value === 'reloaner-cont' && (temp.history && (temp?.history?.remarks?.value === "reloaner-wd" || temp?.history?.remarks?.value?.startsWith('offset')))) {
+                            if (remarks.value === 'reloaner-cont' && (temp.remarks && (temp?.remarks?.value.startsWith("reloaner-") || temp?.remarks?.value?.startsWith('offset')))) {
                                 temp.mcbu = temp.prevData.mcbu;
-                                const excessMcbu = temp.excess / temp.activeLoan;
-                                const finalMcbu = (excessMcbu * 10) + 10;
-                                temp.mcbuCol = finalMcbu;
-                                temp.mcbuColStr = formatPricePhp(temp.mcbuCol);
-                                temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + temp.mcbuCol : 0 + temp.mcbuCol;
+                                temp.mcbuCol = 0;
+                                temp.mcbuColStr = '-';
+                                if (temp.excess && temp.excess > 0) {
+                                    const excessMcbu = temp.excess / temp.activeLoan;
+                                    const finalMcbu = (excessMcbu * 10) + 10;
+                                    temp.mcbuCol = finalMcbu;
+                                    temp.mcbuColStr = formatPricePhp(temp.mcbuCol);
+                                    temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + temp.mcbuCol : 0 + temp.mcbuCol;
+                                }
                                 temp.mcbuStr = formatPricePhp(temp.mcbu);
                             }
 
@@ -1792,6 +1796,8 @@ const CashCollectionDetailsPage = () => {
                         } else {
                             temp = setHistory(temp);
                         }
+
+                        temp.remarks = remarks;
                     }
                 }
 
@@ -2118,7 +2124,7 @@ const CashCollectionDetailsPage = () => {
             ) : (
                 <div className="overflow-x-auto">
                     {data && <DetailsHeader page={'transaction'} showSaveButton={currentUser.role.rep > 2 ? (isWeekend || isHoliday) ? false : editMode : false}
-                        handleSaveUpdate={handleSaveUpdate} data={allData} setData={setFilteredData} allowMcbuWithdrawal={allowMcbuWithdrawal} noMoreDraft={noMoreDraft}
+                        handleSaveUpdate={handleSaveUpdate} data={allData} setData={setFilteredData} allowMcbuWithdrawal={allowMcbuWithdrawal} hasDraft={hasDraft}
                         dateFilter={dateFilter} setDateFilter={setDateFilter} handleDateFilter={handleDateFilter} currentGroup={uuid} revertMode={revertMode}
                         groupFilter={groupFilter} handleGroupFilter={handleGroupFilter} groupTransactionStatus={groupSummaryIsClose ? 'close' : 'open'} />}
                     <div className="px-4 mt-[12rem] mb-[4rem] overflow-y-auto min-h-[55rem]">
@@ -2240,7 +2246,8 @@ const CashCollectionDetailsPage = () => {
                                                     && (!cc.hasOwnProperty('_id') || (cc?.origin && cc?.origin === 'automation-trf') || cc?.reverted) && !filter) || 
                                                     (((cc.remarks && cc.remarks.value?.startsWith('reloaner') && cc.status !== "tomorrow") || (cc.status === 'completed') && !cc.remarks) && !groupSummaryIsClose)
                                                     && (cc.remarks && cc.remarks.value?.startsWith('reloaner') && cc.fullPaymentDate !== currentDate) && cc.status !== 'pending' || cc.draft
-                                                    || (cc.remarks && cc.remarks.value?.startsWith('collection-'))) ? (
+                                                    || (cc.remarks && (cc.remarks.value?.startsWith('collection-') || cc.remarks.value?.startsWith('offset-')) 
+                                                    || (cc.status == 'completed' && cc.remarks == ''))) ? (
                                                         <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">
                                                             { cc.remarks !== '-' ? (
                                                                 <Select 

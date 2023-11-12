@@ -51,9 +51,9 @@ async function revert(req, res) {
                 currentLoan.noOfPayments = prevData.noOfPayments;
                 currentLoan.advanceDays = prevData.advanceDays;
                 currentLoan.mcbuCollection = data.mcbu - data.mcbuCol;
-                currentLoan.status = "active";
+                currentLoan.status = history.loanBalance > 0 ? "active" : 'completed';
                 currentLoan.mcbuWithdrawal = 0;
-                currentLoan.fullPaymentDate = null;
+                currentLoan.fullPaymentDate = history.loanBalance > 0 ? null : currentLoan.fullPaymentDate;
                 currentLoan.loanCycle = cashCollection.loanCycle;
                 currentLoan.history = cashCollection.history;
             }
@@ -62,7 +62,6 @@ async function revert(req, res) {
                 currentLoan.pastDue = currentLoan.pastDue + data.paymentCollection;
                 currentLoan.noPastDue = currentLoan.noPastDue + 1;
             } else if (cashCollection.pastDue > 0) {
-                console.log('here...')
                 currentLoan.pastDue = currentLoan.pastDue > 0 ? currentLoan.pastDue - data.pastDue : 0;
                 currentLoan.noPastDue = currentLoan.noPastDue > 0 ? currentLoan.noPastDue - 1 : 0;
             }
@@ -100,8 +99,8 @@ async function revert(req, res) {
             data.mcbuWithdrawal = 0;
             data.mcbuReturnAmt = 0;
             data.pastDue = 0;
-            data.status = "active";
-            data.fullPaymentDate = null;
+            data.status = data.loanBalance > 0 ? "active" : 'completed';
+            data.fullPaymentDate = data.loanBalance > 0 ? null : data.fullPaymentDate;
             data.fullPayment = 0;
             data.mispayment = false;
             data.remarks = '';

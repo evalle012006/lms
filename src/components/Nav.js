@@ -262,21 +262,21 @@ const MenuItems = [
                 hasSub: false,
                 hidden: false
             },
-            {
-                label: "Daily Collection Sheet",
-                url: "/transactions/daily-collection-sheet", 
-                icon: {
-                    active: (
-                        <ClipboardDocumentIcon className="text-gray-800 w-5 h-5" />
-                    ),
-                    notActive: (
-                        <ClipboardDocumentIcon className="text-white w-5 h-5" />
-                    ),
-                },
-                active: false,
-                hasSub: false,
-                hidden: false
-            }
+            // {
+            //     label: "Daily Collection Sheet",
+            //     url: "/transactions/daily-collection-sheet", 
+            //     icon: {
+            //         active: (
+            //             <ClipboardDocumentIcon className="text-gray-800 w-5 h-5" />
+            //         ),
+            //         notActive: (
+            //             <ClipboardDocumentIcon className="text-white w-5 h-5" />
+            //         ),
+            //     },
+            //     active: false,
+            //     hasSub: false,
+            //     hidden: false
+            // }
         ]
     },
     {
@@ -337,21 +337,21 @@ const MenuItems = [
                 hasSub: false,
                 hidden: false
             },
-            {
-                label: "Daily Collection Sheet",
-                url: "/transactions/daily-collection-sheet", 
-                icon: {
-                    active: (
-                        <ClipboardDocumentIcon className="text-gray-800 w-5 h-5" />
-                    ),
-                    notActive: (
-                        <ClipboardDocumentIcon className="text-white w-5 h-5" />
-                    ),
-                },
-                active: false,
-                hasSub: false,
-                hidden: false
-            }
+            // {
+            //     label: "Daily Collection Sheet",
+            //     url: "/transactions/daily-collection-sheet", 
+            //     icon: {
+            //         active: (
+            //             <ClipboardDocumentIcon className="text-gray-800 w-5 h-5" />
+            //         ),
+            //         notActive: (
+            //             <ClipboardDocumentIcon className="text-white w-5 h-5" />
+            //         ),
+            //     },
+            //     active: false,
+            //     hasSub: false,
+            //     hidden: false
+            // }
         ]
     },
     {
@@ -412,21 +412,21 @@ const MenuItems = [
                 hasSub: false,
                 hidden: false
             },
-            {
-                label: "Daily Collection Sheet",
-                url: "/transactions/daily-collection-sheet", 
-                icon: {
-                    active: (
-                        <ClipboardDocumentIcon className="text-gray-800 w-5 h-5" />
-                    ),
-                    notActive: (
-                        <ClipboardDocumentIcon className="text-white w-5 h-5" />
-                    ),
-                },
-                active: false,
-                hasSub: false,
-                hidden: false
-            },
+            // {
+            //     label: "Daily Collection Sheet",
+            //     url: "/transactions/daily-collection-sheet", 
+            //     icon: {
+            //         active: (
+            //             <ClipboardDocumentIcon className="text-gray-800 w-5 h-5" />
+            //         ),
+            //         notActive: (
+            //             <ClipboardDocumentIcon className="text-white w-5 h-5" />
+            //         ),
+            //     },
+            //     active: false,
+            //     hasSub: false,
+            //     hidden: false
+            // },
             {
                 label: "Transfer Client",
                 url: "/transactions/area-manager/transfer-client", 
