@@ -105,6 +105,10 @@ export const borderStyles = {
         ...base,
         padding: 0,
         alignItems: 'top'
+      }),
+      menuPortal: (base) => ({
+        ...base,
+        zIndex: 9999
       })
 };
 

@@ -12,7 +12,7 @@ import { ArrowLeftCircleIcon } from '@heroicons/react/24/solid';
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 
 const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, dateFilter, setDateFilter, handleDateFilter, revertMode = false,
-                            groupFilter, handleGroupFilter, groupTransactionStatus, allowMcbuWithdrawal, allowOffsetTransaction, noMoreDraft }) => {
+                            groupFilter, handleGroupFilter, groupTransactionStatus, allowMcbuWithdrawal, allowOffsetTransaction, hasDraft }) => {
     const router = useRouter();
     const groupList = useSelector(state => state.group.list);
     const group = useSelector(state => state.group.data);
@@ -105,7 +105,7 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
                 </div>
             )}
             {page === 'transaction' && (
-                <div className="flex justify-between w-10/12">
+                <div className="flex justify-between w-10/12 z-50">
                     <div className="flex flex-row w-11/12 text-gray-400 text-sm justify-start">
                         <span className="text-gray-400 text-sm mt-1">Filters:</span >
                         <div className="ml-4 flex w-40">
@@ -119,6 +119,7 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
                                 onChange={handleGroupFilter}
                                 isSearchable={true}
                                 closeMenuOnSelect={true}
+                                menuPortalTarget={document.body}
                                 placeholder={'Group Filter'}/>
                         </div>
                         <div className="ml-24 flex w-64">
@@ -128,9 +129,15 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
                         </div>
                     </div>
                     {(showSaveButton || allowMcbuWithdrawal || allowOffsetTransaction) && (
-                        <div className={`flex items-center ${(revertMode) ? 'w-40' : 'w-96'}`}>
-                            {!revertMode && <ButtonOutline label="Save Draft" type="button" className="p-2 mr-3" onClick={() => handleSaveUpdate(true)} />}
-                            <ButtonSolid label="Submit Collection" onClick={() => handleSaveUpdate(false)} />
+                        <div className={`flex items-center`}>
+                            {(!revertMode || hasDraft) && (
+                                <div className="w-40 mr-4">
+                                    <ButtonOutline label="Save Draft" type="button" className="p-2 mr-3" onClick={() => handleSaveUpdate(true)} />
+                                </div>
+                            )}
+                            <div className="w-40">
+                                <ButtonSolid label="Submit Collection" onClick={() => handleSaveUpdate(false)} />
+                            </div>
                         </div>
                     )}
                 </div>

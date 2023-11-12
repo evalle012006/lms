@@ -113,12 +113,11 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                     }
 
                     const draft = cc.cashCollections[0].hasDraftsArr.filter(d => d === true);
-                    console.log(draft)
                     if (draft.length > 0) {
                         isDraft = true;
                     }
                 }
-                console.log(isDraft)
+
                 if (!filter && (isWeekend || isHoliday)) {
                     groupStatus = 'closed';
                 }

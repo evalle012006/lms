@@ -89,8 +89,8 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
             selectedBranchesCode.push(branch.code);
         });
         const roleArr = values.role.split('-'); 
-        const roleRep = roleArr[0];
-        const selectedRole = roles.find(role => role.rep == roleRep);
+        const roleShortCode = roleArr[1];
+        const selectedRole = roles.find(role => role.shortCode == roleShortCode);
         values.role = JSON.stringify(selectedRole);
         let designatedBranch = '';
         let designatedBranchId = '';
@@ -122,6 +122,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
                         toast.success('User successfully added.');
                         action.setSubmitting = false;
                         action.resetForm();
+                        setSelectedBranches([]);
                         onClose();
                     }
                 }).catch(error => {
@@ -138,6 +139,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
                     toast.success('User successfully updated.');
                     action.setSubmitting = false;
                     action.resetForm();
+                    setSelectedBranches([]);
                     onClose();
                 }).catch(error => {
                     console.log(error);
@@ -185,6 +187,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
         setShowSidebar(false);
         formikRef.current.resetForm();
         handleRemoveImage();
+        setSelectedBranches([]);
         onClose();
     }
 
@@ -204,7 +207,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
             mounted && setOccurence(user.transactionType);
         }
 
-        if (user.roleId === 2) {
+        if (user?.roleId?.startsWith('2-')) {
             const branchesCode = user.designatedBranch;
             let selectedBranchesList = [];
             branches && branches.map(branch => {
@@ -216,6 +219,8 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
             });
 
             mounted && setSelectedBranches(selectedBranchesList);
+        } else {
+            setSelectedBranches([]);
         }
 
         setLoading(false);
@@ -349,9 +354,9 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
                                     </div>
                                     {rep == 2 && (
                                         <div className="mt-4">
-                                            <div className={`flex flex-col border rounded-md px-4 py-2 bg-white ${selectedBranches.length > 0 ? 'border-main' : 'border-slate-400'}`}>
+                                            <div className={`flex flex-col border rounded-md px-4 py-2 bg-white ${selectedBranches?.length > 0 ? 'border-main' : 'border-slate-400'}`}>
                                                 <div className="flex justify-between">
-                                                    <label htmlFor="designatedBranch" className={`font-proxima-bold text-xs font-bold  ${selectedBranches.length > 0 ? 'text-main' : 'text-gray-500'}`}>
+                                                    <label htmlFor="designatedBranch" className={`font-proxima-bold text-xs font-bold  ${selectedBranches?.length > 0 ? 'text-main' : 'text-gray-500'}`}>
                                                         Designated Branches
                                                     </label>
                                                 </div>
@@ -397,7 +402,6 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
                                             </div>
                                         </React.Fragment>
                                     )}
-                                    {console.log(rep)}
                                     {rep === 4 && (
                                         <React.Fragment>
                                             <div className="mt-4">

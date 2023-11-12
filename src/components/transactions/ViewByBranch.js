@@ -9,7 +9,7 @@ import moment from 'moment';
 import { formatPricePhp, getTotal } from "@/lib/utils";
 import { setCashCollectionBranch } from "@/redux/actions/cashCollectionActions";
 
-const ViewByBranchPage = ({dateFilter, type}) => {
+const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup}) => {
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
     const [loading, setLoading] = useState(true);
@@ -27,7 +27,11 @@ const ViewByBranchPage = ({dateFilter, type}) => {
         let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/get-all-loans-per-branch';
 
         if (currentUser.role.rep === 2) {
-            url = url + "?" + new URLSearchParams({ date: date ? date : currentDate, mode: type, areaManagerId: currentUser._id, dayName: dayName, currentDate: currentDate });
+            if (currentUser.role.shortCode !== 'area_admin') {
+                url = url + "?" + new URLSearchParams({ date: date ? date : currentDate, mode: type, areaManagerId: currentUser._id, dayName: dayName, currentDate: currentDate, selectedBranchGroup: selectedBranchGroup });
+            } else {
+                url = url + "?" + new URLSearchParams({ date: date ? date : currentDate, mode: type, areaManagerId: currentUser._id, dayName: dayName, currentDate: currentDate, selectedBranchGroup: 'mine' });
+            }
         } else {
             url = url + "?" + new URLSearchParams({ date: date ? date : currentDate, mode: type, dayName: dayName, currentDate: currentDate });
         }
@@ -545,7 +549,7 @@ const ViewByBranchPage = ({dateFilter, type}) => {
         return () => {
             mounted = false;
         };
-    }, [dateFilter]);
+    }, [dateFilter, selectedBranchGroup]);
     
 
     return (

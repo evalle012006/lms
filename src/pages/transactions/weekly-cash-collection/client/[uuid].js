@@ -64,7 +64,7 @@ const CashCollectionDetailsPage = () => {
     const [allowOffsetTransaction, setAllowOffsetTransaction] = useState(false);
     const dayName = moment(dateFilter ? dateFilter : currentDate).format('dddd').toLowerCase();
     const [mcbuRate, setMcbuRate] = useState(transactionSettings.mcbu || 8);
-    const [noMoreDraft, setNoMoreDraft] = useState(false);
+    const [hasDraft, setHasDraft] = useState(false);
 
     const [selectedSlot, setSelectedSlot] = useState();
     const [showWaningDialog, setShowWarningDialog] = useState(false);
@@ -519,10 +519,10 @@ const CashCollectionDetailsPage = () => {
                             mcbuStr: cc.mcbu > 0 ? formatPricePhp(cc.mcbu) : '-',
                             mcbuCol: cc.mcbuCol,
                             mcbuColStr: cc.mcbuCol > 0 ? formatPricePhp(cc.mcbuCol) : '-',
-                            mcbuWithdrawal: 0,
-                            mcbuWithdrawalStr: '-',
-                            mcbuReturnAmt: 0,
-                            mcbuReturnAmtStr: '-',
+                            mcbuWithdrawal: type == 'filter' ? cc.mcbuWithdrawal :  0,
+                            mcbuWithdrawalStr: type == 'filter' ? formatPricePhp(cc.mcbuWithdrawal) : '-',
+                            mcbuReturnAmt: type == 'filter' ? cc.mcbuReturnAmt : 0,
+                            mcbuReturnAmtStr: type == 'filter' ? formatPricePhp(cc.mcbuReturnAmt) : '-',
                             mcbuInterest: cc.mcbuInterest ? cc.mcbuInterest : 0,
                             mcbuInterestStr: cc.mcbuInterest > 0 ? formatPricePhp(cc.mcbuInterest) : '-',
                             activeLoan: activeLoan,
@@ -539,7 +539,7 @@ const CashCollectionDetailsPage = () => {
                             currentReleaseAmountStr: cc.currentReleaseAmount ? formatPricePhp(cc.currentReleaseAmount) : '-',
                             fullPayment: cc.fullPaymentAmount ? cc.fullPaymentAmount : 0,
                             fullPaymentStr: cc.fullPaymentAmount > 0 ? formatPricePhp(cc.fullPaymentAmount) : '-',
-                            remarks: cc.status === 'completed' ? cc?.history?.remarks : cc.remarks ? cc.remarks : '',
+                            remarks: cc.status === 'completed' ? "" : cc.remarks ? cc.remarks : '',
                             pastDue: cc.pastDue ? cc.pastDue : 0,
                             pastDueStr: cc.pastDue ? formatPricePhp(cc.pastDue) : '-',
                             clientStatus: cc.client.status ? cc.client.status : '-',
@@ -853,7 +853,7 @@ const CashCollectionDetailsPage = () => {
             const hasDraft = cashCollection.filter(cc => cc.draft);
             if (hasDraft.length > 0) {
                 setEditMode(true);
-                setNoMoreDraft(false);
+                setHasDraft(true);
             }
 
             const haveReverted = cashCollection.filter(cc => cc.reverted);
@@ -1547,6 +1547,7 @@ const CashCollectionDetailsPage = () => {
                             temp.activeLoan = temp.prevData.activeLoan;
                             temp.pastDue = temp.prevData.pastDue;
                             temp.pastDueStr = temp.pastDue > 0 ? formatPricePhp(temp.pastDue) : '-';
+                            temp.advanceDays = temp.prevData.advanceDays;
                         } else {
                             temp.prevData = {
                                 amountRelease: temp.amountRelease,
@@ -1725,9 +1726,9 @@ const CashCollectionDetailsPage = () => {
                             }
                         } else if (remarks.value === "excused advance payment") {
                             if (temp.hasOwnProperty('prevData')) {
-                                temp.targetCollection = temp.activeLoan;
+                                temp.targetCollection = temp.prevData.activeLoan;
                                 temp.targetCollectionStr = formatPricePhp(temp.activeLoan);
-                                temp.advanceDays = temp.advanceDays;
+                                temp.advanceDays = temp.prevData.advanceDays;
                             } else {
                                 temp.prevData = {
                                     amountRelease: temp.amountRelease,
@@ -2322,7 +2323,7 @@ const CashCollectionDetailsPage = () => {
                 </div>
             ) : (
                 <div className="overflow-x-auto">
-                    {data && <DetailsHeader page={'transaction'} showSaveButton={currentUser.role.rep > 2 ? (isWeekend || isHoliday) ? false : editMode : false}  noMoreDraft={noMoreDraft}
+                    {data && <DetailsHeader page={'transaction'} showSaveButton={currentUser.role.rep > 2 ? (isWeekend || isHoliday) ? false : editMode : false}  hasDraft={hasDraft}
                         handleSaveUpdate={handleSaveUpdate} data={allData} setData={setFilteredData} allowMcbuWithdrawal={allowMcbuWithdrawal} allowOffsetTransaction={allowOffsetTransaction}
                         dateFilter={dateFilter} setDateFilter={setDateFilter} handleDateFilter={handleDateFilter} currentGroup={uuid} revertMode={revertMode}
                         groupFilter={groupFilter} handleGroupFilter={handleGroupFilter} groupTransactionStatus={groupSummaryIsClose ? 'close' : 'open'} />}
@@ -2452,7 +2453,8 @@ const CashCollectionDetailsPage = () => {
                                                 { (!isWeekend && !isHoliday && (currentUser.role.rep > 2 && (cc.status === 'active' || cc.status === 'completed') && (editMode && !groupSummaryIsClose) 
                                                     && ((cc?.origin && (cc?.origin === 'pre-save' || cc?.origin === 'automation-trf')) || cc.reverted) && !filter) || ((cc.remarks && cc.remarks.value === "reloaner" && cc.status !== "tomorrow") && !groupSummaryIsClose)
                                                     && (cc.remarks && cc.remarks.value === "reloaner" && cc.fullPaymentDate !== currentDate) && cc.status !== 'pending' || cc.draft || (cc.offsetTransFlag && cc.otherDay)
-                                                    || (cc.remarks && cc.remarks.value?.startsWith('collection-'))) ? (
+                                                    || (cc.remarks && (cc.remarks.value?.startsWith('collection-') || cc.remarks.value?.startsWith('offset-'))
+                                                    || (cc.status == 'completed' && cc.remarks == ''))) ? (
                                                         <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">
                                                             { cc.remarks !== '-' ? (
                                                                 <Select 

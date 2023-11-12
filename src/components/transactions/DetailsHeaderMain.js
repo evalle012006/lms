@@ -17,7 +17,7 @@ import { setBranch } from "@/redux/actions/branchActions";
 
 const DetailsHeader = ({ pageTitle, page, pageName, currentDate, mode, selectedBranch, filter,
                             handleBranchFilter, selectedLO, handleLOFilter, dateFilter, handleDateFilter, weekend, holiday, handleSubmit, 
-                            selectedLoGroup, handleLoGroupChange }) => {
+                            selectedLoGroup, handleLoGroupChange, selectedBranchGroup, handleBranchGroup }) => {
     const dispatch = useDispatch();
     const router = useRouter();
     const currentUser = useSelector(state => state.user.data);
@@ -133,6 +133,13 @@ const DetailsHeader = ({ pageTitle, page, pageName, currentDate, mode, selectedB
                                 <RadioButton id={"radio_all"} name="radio-lo" label={"All"} checked={selectedLoGroup === 'all'} value="all" onChange={handleLoGroupChange} />
                                 <RadioButton id={"radio_main"} name="radio-lo" label={"Main"} checked={selectedLoGroup === 'main'} value="main" onChange={handleLoGroupChange} />
                                 <RadioButton id={"radio_ext"} name="radio-lo" label={"Extension"} checked={selectedLoGroup === 'ext'} value="ext" onChange={handleLoGroupChange} />
+                            </div>
+                        ) }
+
+                        { (currentUser.role.rep == 2 && currentUser.role.shortCode !== 'area_admin' && pageName == 'branch-view') && (
+                            <div className="flex flex-row ml-4">
+                                <RadioButton id={"radio_mine"} name="radio-lo" label={"My Branches"} checked={selectedBranchGroup === 'mine'} value="mine" onChange={handleBranchGroup} />
+                                <RadioButton id={"radio_all"} name="radio-lo" label={"All Branch"} checked={selectedBranchGroup === 'all'} value="all" onChange={handleBranchGroup} />
                             </div>
                         ) }
                     </div>

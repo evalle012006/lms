@@ -28,9 +28,14 @@ const BranchCashCollectionPage = () => {
     const [showSubmitDialog, setShowSubmitDialog] = useState(false);
     const [filter, setFilter] = useState(false);
     const [selectedLoGroup, setSelectedLoGroup] = useState('all');
+    const [selectedBranchGroup, setSelectedBranchGroup] = useState('mine');
 
     const handleLoGroupChange = (value) => {
         setSelectedLoGroup(value);
+    }
+
+    const handleBranchGroup = (value) => {
+        setSelectedBranchGroup(value);
     }
 
     const handleDateFilter = (selected) => {
@@ -163,9 +168,10 @@ const BranchCashCollectionPage = () => {
                             page={1} currentDate={moment(currentDate).format('dddd, MMMM DD, YYYY')} weekend={isWeekend} holiday={isHoliday}
                             dateFilter={dateFilter} handleDateFilter={handleDateFilter} handleSubmit={handleShowSubmitDialog} filter={filter}
                             selectedLoGroup={selectedLoGroup} handleLoGroupChange={handleLoGroupChange}
+                            selectedBranchGroup={selectedBranchGroup} handleBranchGroup={handleBranchGroup}
                         />}
                         <div className={`p-4 ${currentUser.role.rep < 4 ? 'mt-[8rem]' : 'mt-[6rem]'} `}>
-                            {currentUser.role.rep < 3 && <ViewByBranchPage dateFilter={dateFilter} />}
+                            {currentUser.role.rep < 3 && <ViewByBranchPage dateFilter={dateFilter} selectedBranchGroup={selectedBranchGroup} />}
                             {currentUser.role.rep === 3 && <ViewByLoanOfficerPage pageNo={1} dateFilter={dateFilter} selectedLoGroup={selectedLoGroup} />}
                         </div>
                     </div>
