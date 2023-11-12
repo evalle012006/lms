@@ -49,19 +49,10 @@ const TransferClientPage = () => {
 
     const [columns, setColumns] = useState([
         {
-            Header: "Last Name",
-            accessor: 'lastName',
+            Header: "Name",
+            accessor: 'fullName',
             Cell: AvatarCell,
             imgAccessor: "imgUrl",
-        },
-        {
-            Header: "First Name",
-            accessor: 'firstName'
-        },
-        {
-            Header: "Client Status",
-            accessor: 'status',
-            Cell: StatusPill
         },
         {
             Header: "Amount Release",
@@ -88,10 +79,30 @@ const TransferClientPage = () => {
             accessor: 'loanStatus',
             Cell: StatusPill
         },
-        // {
-        //     Header: "Client Status",
-        //     accessor: 'status',
-        // }
+        {
+            Header: "Source Branch",
+            accessor: 'sourceBranch'
+        },
+        {
+            Header: "Source LO",
+            accessor: 'sourceUser'
+        },
+        {
+            Header: "Source Group",
+            accessor: 'sourceGroup'
+        },
+        {
+            Header: "Target Branch",
+            accessor: 'targetBranch'
+        },
+        {
+            Header: "Target LO",
+            accessor: 'targetUser'
+        },
+        {
+            Header: "Target Group",
+            accessor: 'targetGroup'
+        }
     ]);
 
     const checkGroupsStatus = async (groupIds) => {
@@ -322,6 +333,7 @@ const TransferClientPage = () => {
                     const client = transfer.client;
                     const loan = transfer.loans.length > 0 ? transfer.loans[0] : [];
 
+                    temp.fullName = client.fullName;
                     temp.lastName = client.lastName;
                     temp.firstName = client.firstName;
                     temp.status = client.status;
@@ -338,6 +350,12 @@ const TransferClientPage = () => {
                         temp.totalMcbu = loan.mcbu;
                         temp.totalMcbuStr = temp.totalMcbu > 0 ? formatPricePhp(temp.totalMcbu) : '-';
                         temp.loanStatus = loan.status;
+                        temp.sourceBranch = transfer.sourceBranch.name;
+                        temp.sourceUser = `${transfer.sourceUser.firstName} ${transfer.sourceUser.lastName}`,
+                        temp.sourceGroup = transfer.sourceGroup.name;
+                        temp.targetBranch = transfer.targetBranch.name;
+                        temp.targetUser = `${transfer.targetUser.firstName} ${transfer.targetUser.lastName}`,
+                        temp.targetGroup = transfer.targetGroup.name;
 
                         if (temp.loanStatus === "closed") {
                             temp.delinquent = true;
@@ -362,6 +380,7 @@ const TransferClientPage = () => {
                     const client = transfer.client;
                     const loan = transfer.loans.length > 0 ? transfer.loans[0] : [];
 
+                    temp.fullName = client.fullName;
                     temp.lastName = client.lastName;
                     temp.firstName = client.firstName;
                     temp.status = client.status;
@@ -378,6 +397,12 @@ const TransferClientPage = () => {
                         temp.totalMcbu = loan.mcbu;
                         temp.totalMcbuStr = temp.totalMcbu > 0 ? formatPricePhp(temp.totalMcbu) : '-';
                         temp.loanStatus = loan.status;
+                        temp.sourceBranch = transfer.sourceBranch.name;
+                        temp.sourceUser = `${transfer.sourceUser.firstName} ${transfer.sourceUser.lastName}`,
+                        temp.sourceGroup = transfer.sourceGroup.name;
+                        temp.targetBranch = transfer.targetBranch.name;
+                        temp.targetUser = `${transfer.targetUser.firstName} ${transfer.targetUser.lastName}`,
+                        temp.targetGroup = transfer.targetGroup.name;
 
                         if (temp.loanStatus === "closed") {
                             temp.delinquent = true;

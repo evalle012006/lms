@@ -55,7 +55,12 @@ async function getList(req, res) {
                                 "clientIdObj": { $toObjectId: "$selectedClientId" },
                                 "loanIdObj": { $toObjectId: "$loanId" },
                                 "sourceGroupIdObj": { $toObjectId: "$sourceGroupId" },
-                                "targetGroupIdObj": { $toObjectId: "$targetGroupId" }
+                                "targetGroupIdObj": { $toObjectId: "$targetGroupId" },
+                                "sourceBranchIdObj": { $toObjectId: "$sourceBranchId" },
+                                "targetBranchIdObj": { $toObjectId: "$targetBranchId" },
+                                "sourceUserIdObj": { $toObjectId: "$sourceUserId" },
+                                "targetUserIdObj": { $toObjectId: "$targetUserId" }
+                                
                             }
                         },
                         {
@@ -99,7 +104,51 @@ async function getList(req, res) {
                         {
                             $unwind: "$targetGroup"
                         },
-                        { $project: { clientIdObj: 0, loanIdObj: 0, sourceGroupIdObj: 0, targetGroupIdObj: 0 } }
+                        {
+                            $lookup: {
+                                from: "branches",
+                                localField: 'sourceBranchIdObj',
+                                foreignField: '_id',
+                                as: 'sourceBranch'
+                            }
+                        },
+                        {
+                            $unwind: "$sourceBranch"
+                        },
+                        {
+                            $lookup: {
+                                from: "branches",
+                                localField: 'targetBranchIdObj',
+                                foreignField: '_id',
+                                as: 'targetBranch'
+                            }
+                        },
+                        {
+                            $unwind: "$targetBranch"
+                        },
+                        {
+                            $lookup: {
+                                from: "users",
+                                localField: 'sourceUserIdObj',
+                                foreignField: '_id',
+                                as: 'sourceUser'
+                            }
+                        },
+                        {
+                            $unwind: "$sourceUser"
+                        },
+                        {
+                            $lookup: {
+                                from: "users",
+                                localField: 'targetUserIdObj',
+                                foreignField: '_id',
+                                as: 'targetUser'
+                            }
+                        },
+                        {
+                            $unwind: "$targetUser"
+                        },
+                        { $project: { clientIdObj: 0, loanIdObj: 0, sourceGroupIdObj: 0, targetGroupIdObj: 0, sourceBranchIdObj: 0, targetBranchIdObj: 0, sourceUserIdObj: 0, targetUserIdObj: 0 } }
                     ])
                     .toArray();
 
@@ -120,7 +169,12 @@ async function getList(req, res) {
                         "clientIdObj": { $toObjectId: "$selectedClientId" },
                         "loanIdObj": { $toObjectId: "$loanId" },
                         "sourceGroupIdObj": { $toObjectId: "$sourceGroupId" },
-                        "targetGroupIdObj": { $toObjectId: "$targetGroupId" }
+                        "targetGroupIdObj": { $toObjectId: "$targetGroupId" },
+                        "sourceBranchIdObj": { $toObjectId: "$sourceBranchId" },
+                        "targetBranchIdObj": { $toObjectId: "$targetBranchId" },
+                        "sourceUserIdObj": { $toObjectId: "$sourceUserId" },
+                        "targetUserIdObj": { $toObjectId: "$targetUserId" }
+                        
                     }
                 },
                 {
@@ -164,7 +218,51 @@ async function getList(req, res) {
                 {
                     $unwind: "$targetGroup"
                 },
-                { $project: { clientIdObj: 0, loanIdObj: 0, sourceGroupIdObj: 0, targetGroupIdObj: 0 } }
+                {
+                    $lookup: {
+                        from: "branches",
+                        localField: 'sourceBranchIdObj',
+                        foreignField: '_id',
+                        as: 'sourceBranch'
+                    }
+                },
+                {
+                    $unwind: "$sourceBranch"
+                },
+                {
+                    $lookup: {
+                        from: "branches",
+                        localField: 'targetBranchIdObj',
+                        foreignField: '_id',
+                        as: 'targetBranch'
+                    }
+                },
+                {
+                    $unwind: "$targetBranch"
+                },
+                {
+                    $lookup: {
+                        from: "users",
+                        localField: 'sourceUserIdObj',
+                        foreignField: '_id',
+                        as: 'sourceUser'
+                    }
+                },
+                {
+                    $unwind: "$sourceUser"
+                },
+                {
+                    $lookup: {
+                        from: "users",
+                        localField: 'targetUserIdObj',
+                        foreignField: '_id',
+                        as: 'targetUser'
+                    }
+                },
+                {
+                    $unwind: "$targetUser"
+                },
+                { $project: { clientIdObj: 0, loanIdObj: 0, sourceGroupIdObj: 0, targetGroupIdObj: 0, sourceBranchIdObj: 0, targetBranchIdObj: 0, sourceUserIdObj: 0, targetUserIdObj: 0 } }
             ])
             .toArray();
 
