@@ -45,6 +45,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
             const collectionReceivedByGroup = [];
             let noOfClients = 0;
             let noOfBorrowers = 0;
+            let noOfPendings = 0;
             let totalsLoanRelease = 0;
             let totalsLoanBalance = 0;
             let noOfNewCurrentRelease = 0;
@@ -81,6 +82,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                     currentReleaseAmountStr: '-',
                     activeClients: '-',
                     activeBorrowers: '-',
+                    pendingClients: '-',
                     totalReleasesStr: '-',
                     totalLoanBalanceStr: '-',
                     loanTargetStr: '-',
@@ -139,6 +141,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                             currentReleaseAmountStr: 0,
                             activeClients: 0,
                             activeBorrowers: 0,
+                            pendingClients: 0,
                             mispayment: collection.mispayment,
                             loanTarget: loanTarget,
                             loanTargetStr: loanTarget > 0 ? formatPricePhp(loanTarget) : '-',
@@ -191,11 +194,13 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         collection = {
                             ...collection,
                             activeClients: cc.activeLoans[0].activeClients,
-                            activeBorrowers: cc.activeLoans[0].activeBorrowers
+                            activeBorrowers: cc.activeLoans[0].activeBorrowers,
+                            pendingClients: cc.activeLoans[0].pendingClients
                         }
     
                         noOfClients += cc.activeLoans[0].activeClients ? cc.activeLoans[0].activeClients : 0;
                         noOfBorrowers += cc.activeLoans[0].activeBorrowers ? cc.activeLoans[0].activeBorrowers : 0;
+                        noOfPendings += cc.activeLoans[0].pendingClients ? cc.activeLoans[0].pendingClients : 0;
                     }
                     
                     if (cc.cashCollections.length > 0) {
@@ -320,6 +325,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                             currentReleaseAmountStr: formatPricePhp(cc.cashCollections[0].currentReleaseAmount),
                             activeClients: cc.cashCollections[0].activeClients,
                             activeBorrowers: cc.cashCollections[0].activeBorrowers,
+                            pendingClients: cc.cashCollections[0].pendingClients,
                             mispayment: cc.cashCollections[0].mispayment,
                             collection: cc.cashCollections[0].collection,
                             collectionStr: formatPricePhp(cc.cashCollections[0].collection),
@@ -362,6 +368,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         currentReleaseAmount += cc.cashCollections[0].currentReleaseAmount;
                         noOfClients += cc.cashCollections[0].activeClients;
                         noOfBorrowers += cc.cashCollections[0].activeBorrowers;
+                        noOfPendings += cc.cashCollections[0].pendingClients;
                         excess += cc.cashCollections[0].excess;
                         totalLoanCollection += cc.cashCollections[0].collection;
                         mispayment += cc.cashCollections[0].mispayment;
@@ -477,6 +484,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                     currentReleaseAmountStr: currentReleaseAmount ? formatPricePhp(currentReleaseAmount) : 0,
                     activeClients: noOfClients,
                     activeBorrowers: noOfBorrowers,
+                    pendingClients: noOfPendings,
                     totalLoanRelease: totalsLoanRelease,
                     totalReleasesStr: totalsLoanRelease ? formatPricePhp(totalsLoanRelease) : 0,
                     totalLoanBalance: totalsLoanBalance,
@@ -1034,6 +1042,10 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
             {
                 Header: "PD Amount",
                 accessor: 'pastDueStr'
+            },
+            {
+                Header: "PND",
+                accessor: 'pendingClients'
             },
             {
                 Header: "TFR",

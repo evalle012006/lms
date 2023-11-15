@@ -66,7 +66,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         guarantorLastName: loan.guarantorLastName,
         status: mode !== 'reloan' ? loan.status : 'pending',
     }
-
+    console.log(loan)
     const validationSchema = yup.object().shape({
         groupId: yup
             .string()
@@ -212,7 +212,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                 if (mode !== 'reloan') {
                     values.groupId = selectedGroup;
                     group = groupList.find(g => g._id === values.groupId);
-                    values.groupName = group.name;
+                    values.groupName = group?.name;
                     const branch = branchList.find(b => b._id === group.branchId);
                     values.branchId = branch._id;
                     values.branchName = branch.name;
@@ -356,14 +356,22 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         }
     }
 
-    const getListGroup = async (occurence, loId) => {
+    const getListGroup = async (occurence, loId, mode) => {
         setLoading(true);
         let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list-by-group-occurence';
         if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
-            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id, occurence: occurence });
+            if (mode == 'filter') {
+                url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id, occurence: occurence, mode: 'filter' });
+            } else {
+                url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id, occurence: occurence });
+            }
             processGroupList(url);
         } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
-            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: loId, occurence: occurence });
+            if (mode == 'filter') {
+                url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: loId, occurence: occurence, mode: 'filter' });
+            } else {
+                url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: loId, occurence: occurence });
+            }
             processGroupList(url);
         }
     }
@@ -514,7 +522,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             form.setFieldValue('groupId', loan.groupId);
             form.setFieldValue('slotNo', loan.slotNo);
 
-            getListGroup(loan.occurence, loan.loId);
+            getListGroup(loan.occurence, loan.loId, 'filter');
         } else if (mode === 'reloan') {
             setTitle('Reloan');
             setLoanTerms(loan.loanTerms);

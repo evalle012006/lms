@@ -144,7 +144,16 @@ async function updateLoan(collection, currentDate) {
             loan.mcbuCollection = 0;
         }
         loan.mcbuCollection = loan.mcbuCollection ? loan.mcbuCollection + parseFloat(collection.mcbuCol) : parseFloat(collection.mcbuCol);
-        loan.mcbuWithdrawal = loan.mcbuWithdrawal ? loan.mcbuWithdrawal + parseFloat(collection.mcbuWithdrawal) : collection.mcbuWithdrawal ? parseFloat(collection.mcbuWithdrawal) : 0;
+
+        if (loan.occurence == 'daily' && collection.remarks) {
+            if (collection.remarks.value == 'reloaner-wd') {
+                loan.mcbuWithdrawal = collection.mcbuWithdrawal;
+            } else if (collection.remarks.value == 'reloaner-cont') {
+                loan.mcbuWithdrawal = 0;
+            }
+        } else {
+            loan.mcbuWithdrawal = loan.mcbuWithdrawal ? loan.mcbuWithdrawal + parseFloat(collection.mcbuWithdrawal) : collection.mcbuWithdrawal ? parseFloat(collection.mcbuWithdrawal) : 0;
+        }
 
         if (collection.hasOwnProperty('mcbuInterest')) {
             loan.mcbuInterest = loan.mcbuInterest ? loan.mcbuInterest + collection.mcbuInterest : collection.mcbuInterest !== '-' ? collection.mcbuInterest : 0;

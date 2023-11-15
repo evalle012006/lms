@@ -42,6 +42,7 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup}) => {
 
             let noOfClients = 0;
             let noOfBorrowers = 0;
+            let noOfPendings = 0;
             let totalsLoanRelease = 0;
             let totalsLoanBalance = 0;
             let noOfNewCurrentRelease = 0;
@@ -70,6 +71,7 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup}) => {
                     currentReleaseAmountStr: '-',
                     activeClients: '-',
                     activeBorrowers: '-',
+                    pendingClients: '-',
                     totalReleasesStr: '-',
                     totalLoanBalanceStr: '-',
                     loanTargetStr: '-',
@@ -106,8 +108,10 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup}) => {
                     if (branch.activeLoans.length > 0) {
                         collection.activeClients = branch.activeLoans[0].activeClients; 
                         collection.activeBorrowers = branch.activeLoans[0].activeBorrowers;
+                        collection.pendingClients = branch.activeLoans[0].pendingClients;
                         noOfClients += branch.activeLoans[0].activeClients;
                         noOfBorrowers += branch.activeLoans[0].activeBorrowers;
+                        noOfPendings = branch.activeLoans[0].pendingClients;
                     }
     
                     if (branch.loans.length > 0) {
@@ -194,6 +198,7 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup}) => {
                     if (branch.cashCollections.length > 0) {
                         collection.activeClients = branch.cashCollections[0].activeClients; 
                         collection.activeBorrowers = branch.cashCollections[0].activeBorrowers;
+                        collection.pendingClients = branch.cashCollections[0].pendingClients;
 
                         collection.totalReleasesStr = branch.cashCollections[0].totalRelease > 0 ? formatPricePhp(branch.cashCollections[0].totalRelease) : '-';
                         collection.totalLoanBalanceStr = branch.cashCollections[0].totalLoanBalance > 0 ? formatPricePhp(branch.cashCollections[0].totalLoanBalance) : '-';
@@ -235,6 +240,7 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup}) => {
     
                         noOfClients += branch.cashCollections[0].activeClients;
                         noOfBorrowers += branch.cashCollections[0].activeBorrowers;
+                        noOfPendings += branch.cashCollections[0].pendingClients;
                         totalsLoanRelease += branch.cashCollections[0].totalRelease;
                         totalsLoanBalance += branch.cashCollections[0].totalLoanBalance;
                         // targetLoanCollection += branch.cashCollections[0].loanTarget;
@@ -272,6 +278,7 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup}) => {
                 currentReleaseAmountStr: formatPricePhp(currentReleaseAmount),
                 activeClients: noOfClients,
                 activeBorrowers: noOfBorrowers,
+                pendingClients: noOfPendings,
                 totalReleasesStr: formatPricePhp(totalsLoanRelease),
                 totalLoanBalanceStr: formatPricePhp(totalsLoanBalance),
                 loanTargetStr: targetLoanCollection > 0 ? formatPricePhp(targetLoanCollection) : 0,
@@ -402,6 +409,10 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup}) => {
                 {
                     Header: "PD Amount",
                     accessor: 'pastDueStr'
+                },
+                {
+                    Header: "PND",
+                    accessor: 'pendingClients'
                 }
             ];
         } else {
@@ -521,6 +532,10 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup}) => {
                 {
                     Header: "PD Amount",
                     accessor: 'pastDueStr'
+                },
+                {
+                    Header: "PND",
+                    accessor: 'pendingClients'
                 },
                 {
                     Header: "TFR",

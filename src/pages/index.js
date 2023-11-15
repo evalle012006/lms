@@ -36,6 +36,10 @@ const Index = () => {
             await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}aahandy-scripts/update-group-clients`);
         }
 
+        const updateLOData = async () => {
+            await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}aahandy-scripts/update-lo-data`);
+        }
+
         // const updateLOSData = async () => {
         //     await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}transactions/cash-collection-summary/update-los-data`);
         // }
@@ -58,13 +62,13 @@ const Index = () => {
 
         mounted && getSystemSettings();
         // mounted && updateGroupClients();
+        // mounted && updateLOData();
         // mounted && updateGroupData();
         // mounted && updateClients();
         // mounted && getLoans();
         // mounted && updateLoanCoMaker();
         // mounted && getTransactionSettings();
         // mounted && getListHoliday();
-        // mounted && updateGroupClients();
         // mounted && updateLoanData();
         // mounted && updateCCData();
         // mounted && updateLOSData();

@@ -49,6 +49,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
             let collectionData = [];
             let noOfClients = 0;
             let noOfBorrowers = 0;
+            let noOfPendings = 0;
             let totalsLoanRelease = 0;
             let totalsLoanBalance = 0;
             let noOfNewCurrentRelease = 0;
@@ -84,6 +85,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
                     currentReleaseAmountStr: '-',
                     activeClients: '-',
                     activeBorrowers: '-',
+                    pendingClients: '-',
                     totalReleasesStr: '-',
                     totalLoanBalanceStr: '-',
                     loanTargetStr: '-',
@@ -127,8 +129,10 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
                     if (lo.activeLoans.length > 0) {
                         collection.activeClients = lo.activeLoans[0].activeClients; 
                         collection.activeBorrowers = lo.activeLoans[0].activeBorrowers;
+                        collection.pendingClients = lo.activeLoans[0].pendingClients;
                         noOfClients += lo.activeLoans[0].activeClients;
                         noOfBorrowers += lo.activeLoans[0].activeBorrowers;
+                        noOfPendings += lo.activeLoans[0].pendingClients;
                     }
     
                     if (lo.loans.length > 0) {
@@ -261,6 +265,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
                     if (lo.cashCollections.length > 0) {
                         collection.activeClients = lo.cashCollections[0].activeClients; 
                         collection.activeBorrowers = lo.cashCollections[0].activeBorrowers;
+                        collection.pendingClients = lo.cashCollections[0].pendingClients;
                         collection.totalLoanRelease = lo.cashCollections[0].totalRelease;
                         collection.totalReleasesStr = lo.cashCollections[0].totalRelease > 0 ? formatPricePhp(lo.cashCollections[0].totalRelease) : '-';
                         collection.totalLoanBalance = lo.cashCollections[0].totalLoanBalance;
@@ -307,6 +312,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
     
                         noOfClients += lo.cashCollections[0].activeClients;
                         noOfBorrowers += lo.cashCollections[0].activeBorrowers;
+                        noOfPendings += lo.cashCollections[0].pendingClients;
                         totalsLoanRelease += collection.totalLoanRelease;
                         totalsLoanBalance += lo.cashCollections[0].totalLoanBalance;
                         targetLoanCollection += lo.cashCollections[0].loanTarget;
@@ -474,6 +480,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
                 currentReleaseAmountStr: formatPricePhp(currentReleaseAmount),
                 activeClients: noOfClients,
                 activeBorrowers: noOfBorrowers,
+                pendingClients: noOfPendings,
                 totalLoanRelease: totalsLoanRelease,
                 totalReleasesStr: formatPricePhp(totalsLoanRelease),
                 totalLoanBalance: totalsLoanBalance,
@@ -1136,6 +1143,10 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
             {
                 Header: "PD Amount",
                 accessor: 'pastDueStr'
+            },
+            {
+                Header: "PND",
+                accessor: 'pendingClients'
             },
             {
                 Header: "TFR",
