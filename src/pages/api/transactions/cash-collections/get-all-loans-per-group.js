@@ -515,6 +515,13 @@ async function getAllLoansPerGroup(req, res) {
                                                 }, 
                                                 else: 0
                                             } 
+                                        } },
+                                        pendingClients: { $sum: { 
+                                            $cond: {
+                                                if: { $eq: ['$status', 'completed'] },
+                                                then: 1,
+                                                else: 0
+                                            } 
                                         } }
                                     } 
                                 }
@@ -1168,6 +1175,13 @@ async function getAllLoansPerGroup(req, res) {
                                                 }, 
                                                 else: 0
                                             } 
+                                        } },
+                                        pendingClients: { $sum: { 
+                                            $cond: {
+                                                if: { $eq: ['$status', 'completed'] },
+                                                then: 1,
+                                                else: 0
+                                            } 
                                         } }
                                     } 
                                 }
@@ -1812,6 +1826,13 @@ async function getAllLoansPerGroup(req, res) {
                                                         else: 0
                                                     }
                                                 }, 
+                                                else: 0
+                                            } 
+                                        } },
+                                        pendingClients: { $sum: { 
+                                            $cond: {
+                                                if: { $eq: ['$status', 'completed'] },
+                                                then: 1,
                                                 else: 0
                                             } 
                                         } }
@@ -2290,6 +2311,13 @@ async function getAllLoansPerGroup(req, res) {
                                                 }, 
                                                 else: 0
                                             } 
+                                        } },
+                                        pendingClients: { $sum: { 
+                                            $cond: {
+                                                if: { $eq: ['$status', 'completed'] },
+                                                then: 1,
+                                                else: 0
+                                            } 
                                         } }
                                     } 
                                 }
@@ -2733,6 +2761,13 @@ async function getAllLoansPerGroup(req, res) {
                                                         }
                                                     }
                                                 }, 
+                                                else: 0
+                                            } 
+                                        } },
+                                        pendingClients: { $sum: { 
+                                            $cond: {
+                                                if: { $eq: ['$status', 'completed'] },
+                                                then: 1,
                                                 else: 0
                                             } 
                                         } },
@@ -3286,6 +3321,13 @@ async function getAllLoansPerGroup(req, res) {
                                                 else: 0
                                             } 
                                         } },
+                                        pendingClients: { $sum: { 
+                                            $cond: {
+                                                if: { $eq: ['$status', 'completed'] },
+                                                then: 1,
+                                                else: 0
+                                            } 
+                                        } },
                                         totalRelease: { $sum: { $cond:{
                                             if: { $and: [{$ne: ['$status', 'pending']}, {$ne: ['$status', 'tomorrow']}] }, 
                                             then: '$amountRelease', 
@@ -3830,6 +3872,13 @@ async function getAllLoansPerGroup(req, res) {
                                                 else: 0
                                             } 
                                         } },
+                                        pendingClients: { $sum: { 
+                                            $cond: {
+                                                if: { $eq: ['$status', 'completed'] },
+                                                then: 1,
+                                                else: 0
+                                            } 
+                                        } },
                                         totalRelease: { $sum: { $cond:{
                                             if: { $and: [{$ne: ['$status', 'pending']}, {$ne: ['$status', 'tomorrow']}] }, 
                                             then: '$amountRelease', 
@@ -4250,6 +4299,13 @@ async function getAllLoansPerGroup(req, res) {
                                                         }
                                                     }
                                                 }, 
+                                                else: 0
+                                            } 
+                                        } },
+                                        pendingClients: { $sum: { 
+                                            $cond: {
+                                                if: { $eq: ['$status', 'completed'] },
+                                                then: 1,
                                                 else: 0
                                             } 
                                         } },

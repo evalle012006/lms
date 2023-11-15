@@ -36,57 +36,6 @@ async function getAllLoansPerGroup(req, res) {
                                 "branchIdstr": { $toString: "$_id" }
                             }
                         },
-                        // {
-                        //     $lookup: {
-                        //         from: "groups",
-                        //         localField: "branchIdstr",
-                        //         foreignField: "branchId",
-                        //         pipeline: [
-                        //             { $match: { $expr: { $and: [
-                        //                 { $eq: ['$day', currentDay] },
-                        //                 { $gt: ['$noOfClients', 0] }
-                        //             ] } } },
-                        //             {
-                        //                 $addFields: {
-                        //                     "groupIdStr": { $toString: "$_id" }
-                        //                 }
-                        //             },
-                        //             {
-                        //                 $lookup: {
-                        //                     from: "loans",
-                        //                     localField: "groupIdStr",
-                        //                     foreignField: 'groupId',
-                        //                     pipeline: [
-                        //                         { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
-                        //                         {
-                        //                             $group: {
-                        //                                 _id: '$groupId',
-                        //                                 loanTarget: { 
-                        //                                     $sum: { 
-                        //                                         $cond: {
-                        //                                             if: {$and: [{ $ne: ['$status', 'pending']}, {$lte: ['$startDateObj', '$currentDateObj']} ]}, 
-                        //                                             then: { 
-                        //                                                 $cond: {
-                        //                                                     if: { $and: [{$eq: ['$activeLoan', 0]}, {$eq: ['$fullPaymentDate', date]}] },
-                        //                                                     then: '$history.activeLoan',
-                        //                                                     else: '$activeLoan'
-                        //                                                 } 
-                        //                                             }, 
-                        //                                             else: 0
-                        //                                         } 
-                        //                                     }
-                        //                                 },
-                        //                                 mcbu: { $sum: '$mcbu' }
-                        //                             }
-                        //                         }
-                        //                     ],
-                        //                     as: "loanTarget"
-                        //                 }
-                        //             }
-                        //         ],
-                        //         as: 'groups'
-                        //     }
-                        // },
                         {
                             $lookup: {
                                 from: "cashCollections",
@@ -211,6 +160,13 @@ async function getAllLoansPerGroup(req, res) {
                                                             else: 0
                                                         }
                                                     }, 
+                                                    else: 0
+                                                } 
+                                            } },
+                                            pendingClients: { $sum: { 
+                                                $cond: {
+                                                    if: { $eq: ['$status', 'completed'] },
+                                                    then: 1,
                                                     else: 0
                                                 } 
                                             } }
@@ -384,58 +340,6 @@ async function getAllLoansPerGroup(req, res) {
                             "branchIdstr": { $toString: "$_id" }
                         }
                     },
-                    // {
-                    //     $lookup: {
-                    //         from: "groups",
-                    //         localField: "branchIdstr",
-                    //         foreignField: "branchId",
-                    //         pipeline: [
-                    //             { $match: { $expr: { $and: [
-                    //                 { $eq: ['$day', currentDay] },
-                    //                 { $eq: ['$occurence', 'weekly'] },
-                    //                 { $gt: ['$noOfClients', 0] }
-                    //             ] } } },
-                    //             {
-                    //                 $addFields: {
-                    //                     "groupIdStr": { $toString: "$_id" }
-                    //                 }
-                    //             },
-                    //             {
-                    //                 $lookup: {
-                    //                     from: "loans",
-                    //                     localField: "groupIdStr",
-                    //                     foreignField: 'groupId',
-                    //                     pipeline: [
-                    //                         { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
-                    //                         {
-                    //                             $group: {
-                    //                                 _id: '$groupId',
-                    //                                 loanTarget: { 
-                    //                                     $sum: { 
-                    //                                         $cond: {
-                    //                                             if: {$and: [{ $ne: ['$status', 'pending']}, {$lte: ['$startDateObj', '$currentDateObj']} ]}, 
-                    //                                             then: { 
-                    //                                                 $cond: {
-                    //                                                     if: { $and: [{$eq: ['$activeLoan', 0]}, {$eq: ['$fullPaymentDate', date]}] },
-                    //                                                     then: '$history.activeLoan',
-                    //                                                     else: '$activeLoan'
-                    //                                                 } 
-                    //                                             }, 
-                    //                                             else: 0
-                    //                                         } 
-                    //                                     }
-                    //                                 },
-                    //                                 mcbu: { $sum: '$mcbu' }
-                    //                             }
-                    //                         }
-                    //                     ],
-                    //                     as: "loanTarget"
-                    //                 }
-                    //             }
-                    //         ],
-                    //         as: 'groups'
-                    //     }
-                    // },
                     {
                         $lookup: {
                             from: "cashCollections",
@@ -560,6 +464,13 @@ async function getAllLoansPerGroup(req, res) {
                                                         else: 0
                                                     }
                                                 }, 
+                                                else: 0
+                                            } 
+                                        } },
+                                        pendingClients: { $sum: { 
+                                            $cond: {
+                                                if: { $eq: ['$status', 'completed'] },
+                                                then: 1,
                                                 else: 0
                                             } 
                                         } }
@@ -779,6 +690,13 @@ async function getAllLoansPerGroup(req, res) {
                                                             }
                                                         }
                                                     }, 
+                                                    else: 0
+                                                } 
+                                            } },
+                                            pendingClients: { $sum: { 
+                                                $cond: {
+                                                    if: { $eq: ['$status', 'completed'] },
+                                                    then: 1,
                                                     else: 0
                                                 } 
                                             } },
@@ -1036,6 +954,13 @@ async function getAllLoansPerGroup(req, res) {
                                                         }
                                                     }
                                                 }, 
+                                                else: 0
+                                            } 
+                                        } },
+                                        pendingClients: { $sum: { 
+                                            $cond: {
+                                                if: { $eq: ['$status', 'completed'] },
+                                                then: 1,
                                                 else: 0
                                             } 
                                         } },

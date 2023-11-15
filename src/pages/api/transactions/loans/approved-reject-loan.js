@@ -60,7 +60,7 @@ async function updateLoan(req, res) {
                                             ])
                                             .toArray();
 
-                    if (cashCollection) {
+                    if (cashCollection.length > 0) {
                         cashCollection = cashCollection[0];
                         cashCollection.status = 'completed';
                         cashCollection.currentReleaseAmount = 0;
