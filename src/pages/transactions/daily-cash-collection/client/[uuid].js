@@ -1558,6 +1558,10 @@ const CashCollectionDetailsPage = () => {
                                         toast.error("Error occured. Remarks is not valid due to the amount in Actual Collection.");
                                     } else {
                                         if (remarks.value == 'delinquent') {
+                                            if (temp.paymentCollection > 0) {
+                                                temp.loanBalance += temp.paymentCollection;
+                                                temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
+                                            }
                                             temp.paymentCollection = 0;
                                             temp.paymentCollectionStr = '-';
                                         }
