@@ -1561,6 +1561,8 @@ const CashCollectionDetailsPage = () => {
                                             if (temp.paymentCollection > 0) {
                                                 temp.loanBalance += temp.paymentCollection;
                                                 temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
+                                                temp.noOfPayments = temp.prevData?.noOfPayments;
+                                                temp.noOfPaymentStr = temp.noOfPayments + "/" + temp.loanTerms;
                                             }
                                             temp.paymentCollection = 0;
                                             temp.paymentCollectionStr = '-';
