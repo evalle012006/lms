@@ -962,11 +962,11 @@ const CashCollectionDetailsPage = () => {
         return totals;
     }
 
-    const validation = () => {
+    const validation = (draft) => {
         let errorMsg = new Set();
 
         groupClients && groupClients.map(cc => {
-            if (cc.status === 'active' && !cc.draft) {
+            if (cc.status === 'active' && !draft) {
                 if (cc.group.day === dayName) {
                     if (cc.error) {
                         errorMsg.add('Error occured. Please double check the Actual Collection column.');

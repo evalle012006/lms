@@ -973,11 +973,11 @@ const CashCollectionDetailsPage = () => {
         return totals;
     }
 
-    const validation = () => {
+    const validation = (draft) => {
         let errorMsg = new Set();
 
         groupClients && groupClients.map(cc => {
-            if (cc.status === 'active' && !cc.draft) {
+            if (cc.status === 'active' && !draft) {
                 if (cc.error) {
                     errorMsg.add('Error occured. Please double check the Actual Collection column.');
                 } else if (parseFloat(cc.paymentCollection) === 0 && !cc.remarks) {
@@ -1043,7 +1043,7 @@ const CashCollectionDetailsPage = () => {
         if (transactionStatus.length > 0) {
             toast.error('Updating this record is not allowed since the Group Summary is already closed by the Branch Manager.');
         } else {
-            const errorMsgArr = Array.from(validation());
+            const errorMsgArr = Array.from(validation(draft));
             if (errorMsgArr.length > 0) {
                 let errorMsg;
                 errorMsgArr.map(msg => {
