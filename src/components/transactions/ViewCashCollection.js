@@ -108,7 +108,18 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 let noCurrentRelease = '0 / 0';
                 let groupStatus = 'pending';
                 let isDraft = false;
-                if (cc.cashCollections.length > 0) {
+
+                if (cc?.draftCollections.length > 0) {
+                    const transactionStatus = cc.draftCollections[0].groupStatusArr.filter(status => status === "closed");
+                    if (transactionStatus.length > 0) {
+                        groupStatus = 'closed';
+                    }
+
+                    const draft = cc.draftCollections[0].hasDraftsArr.filter(d => d === true);
+                    if (draft.length > 0) {
+                        isDraft = true;
+                    }
+                } else if (cc.cashCollections.length > 0) {
                     const transactionStatus = cc.cashCollections[0].groupStatusArr.filter(status => status === "closed");
                     if (transactionStatus.length > 0) {
                         groupStatus = 'closed';
@@ -203,7 +214,71 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         noOfPendings += cc.activeLoans[0].pendingClients ? cc.activeLoans[0].pendingClients : 0;
                     }
                     
-                    if (cc.cashCollections.length > 0) {
+                    if (cc?.draftCollections.length > 0) {
+                        const draftCollection = cc.draftCollections[cc.draftCollections.length - 1];
+                        let loanTarget = 0;
+                        if ((cc.occurence === 'weekly' && cc.day === dayName) || cc.occurence === 'daily') {
+                            loanTarget = collection.loanTarget - draftCollection.loanTarget;
+                        }
+
+                        collection = { ...collection,
+                            mispayment: draftCollection.mispayment ? draftCollection.mispayment : 0,
+                            collection: draftCollection.collection && draftCollection.collection,
+                            collectionStr: draftCollection.collection ? formatPricePhp(draftCollection.collection) : '-',
+                            excess: draftCollection.excess && draftCollection.excess,
+                            excessStr: draftCollection.excess ? formatPricePhp(draftCollection.excess) : '-',
+                            loanTarget: loanTarget,
+                            loanTargetStr: loanTarget > 0 ? formatPricePhp(loanTarget) : 0,
+                            offsetPerson: draftCollection.offsetPerson ? draftCollection.offsetPerson : 0,
+                            mcbuCol: draftCollection.mcbuCol ? draftCollection.mcbuCol: 0,
+                            mcbuColStr: draftCollection.mcbuCol > 0 ? formatPricePhp(draftCollection.mcbuCol): '-',
+                            mcbuWithdrawal: draftCollection.mcbuWithdrawal ? draftCollection.mcbuWithdrawal: 0,
+                            mcbuWithdrawalStr: draftCollection.mcbuWithdrawal > 0 ? formatPricePhp(draftCollection.mcbuWithdrawal): '-',
+                            noMcbuReturn: draftCollection.mcbuReturnNo ? draftCollection.mcbuReturnNo: 0,
+                            mcbuReturnAmt: draftCollection.mcbuReturnAmt ? draftCollection.mcbuReturnAmt: 0,
+                            mcbuReturnAmtStr: draftCollection.mcbuReturnAmt > 0 ? formatPricePhp(draftCollection.mcbuReturnAmt): '-',
+                            transfer: 0,
+                            transferStr: '-',
+                        };
+                        
+                        if (draftCollection.mcbu > 0) {
+                            collection.mcbu = draftCollection.mcbu;
+                            collection.mcbuStr = collection.mcbu > 0 ? formatPricePhp(collection.mcbu): '-';
+                        }
+
+                        excess += draftCollection.excess ? draftCollection.excess : 0;
+                        totalLoanCollection += draftCollection.collection ? draftCollection.collection : 0;
+                        mispayment += draftCollection.mispayment ? draftCollection.mispayment : 0;
+                        offsetPerson += draftCollection.offsetPerson ? draftCollection.offsetPerson : 0;
+                        totalMcbuCol += draftCollection.mcbuCol ? draftCollection.mcbuCol: 0;
+                        totalMcbuWithdrawal += draftCollection.mcbuWithdrawal ? draftCollection.mcbuWithdrawal: 0;
+                        totalMcbuReturnNo += collection.noMcbuReturn;
+                        totalMcbuReturnAmt += draftCollection.mcbuReturnAmt ? draftCollection.mcbuReturnAmt: 0;
+                        totalTransfer += collection.transfer !== '-' ? collection.transfer : 0;
+                        totalMcbuTarget += draftCollection.mcbuTarget ? draftCollection.mcbuTarget : 0;
+
+                        if (draftCollection.transferredAmountRelease > 0) {
+                            totalsLoanRelease += draftCollection.transferredAmountRelease;
+                            collection.totalReleases += draftCollection.transferredAmountRelease;
+                            collection.totalReleasesStr = formatPricePhp(collection.totalReleases);
+                        }
+
+                        if (draftCollection.transferredLoanBalance > 0) {
+                            totalsLoanBalance += draftCollection.transferredLoanBalance;
+                            collection.totalLoanBalance += draftCollection.transferredLoanBalance;
+                            collection.totalLoanBalanceStr = formatPricePhp(collection.totalLoanBalance);
+                        }
+
+                        if (draftCollection.transferMCBU > 0) {
+                            collection.mcbu -= draftCollection.transferMCBU;
+                            collection.mcbuStr = formatPricePhp(collection.mcbu);
+                        }
+
+                        if (draftCollection.transfer > 0) {
+                            collection.activeBorrowers -= draftCollection.transfer;
+                            collection.activeClients -= draftCollection.transfer;
+                        }
+                    } else if (cc.cashCollections.length > 0) {
                         let loanTarget = 0;
                         if ((cc.occurence === 'weekly' && cc.day === dayName) || cc.occurence === 'daily') {
                             loanTarget = collection.loanTarget - cc.cashCollections[0].loanTarget;

@@ -92,7 +92,13 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup}) => {
                 };
 
                 let groupStatus = 'open';
-                if (branch.cashCollections.length > 0) {
+                if (branch?.draftCollections.length > 0) {
+                    const transactionStatus = branch.draftCollections[0].groupStatusArr.filter(status => status === "pending");
+                    const draft = branch.draftCollections[0].hasDraftsArr.filter(d => d === true);
+                    if (transactionStatus.length == 0 && draft.length == 0) {
+                        groupStatus = 'close';
+                    }
+                } else if (branch.cashCollections.length > 0) {
                     const transactionStatus = branch.cashCollections[0].groupStatusArr.filter(status => status === "pending");
                     const draft = branch.cashCollections[0].hasDraftsArr.filter(d => d === true);
                     if (transactionStatus.length == 0 && draft.length == 0) {
@@ -140,7 +146,42 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup}) => {
                         // totalMcbu += collection.mcbu;
                     }
                     
-                    if (branch.cashCollections.length > 0) {
+                    if (branch?.draftCollections.length > 0) {
+                        const draftCollection = branch.draftCollections[branch.draftCollections.length - 1];
+                        const loanTarget = collection.loanTarget - draftCollection.loanTarget;
+
+                        collection.loanTarget = loanTarget;
+                        collection.loanTargetStr = loanTarget > 0 ? formatPricePhp(loanTarget) : '-';
+                        collection.excessStr = draftCollection.excess > 0 ? formatPricePhp(draftCollection.excess) : '-';
+                        collection.totalStr = draftCollection.collection > 0 ? formatPricePhp(draftCollection.collection) : '-';
+                        collection.mispaymentStr = draftCollection.mispayment > 0 ? draftCollection.mispayment : '-';
+                        collection.mcbu = draftCollection.mcbu;
+                        collection.mcbuStr = collection.mcbu > 0 ? formatPricePhp(collection.mcbu) : '-';
+                        collection.mcbuCol = draftCollection.mcbuCol;
+                        collection.mcbuColStr = collection.mcbuCol > 0 ? formatPricePhp(collection.mcbuCol) : '-';
+                        collection.mcbuWithdrawal = draftCollection.mcbuWithdrawal;
+                        collection.mcbuWithdrawalStr = collection.mcbuWithdrawal ? formatPricePhp(collection.mcbuWithdrawal) : '-';
+                        collection.noMcbuReturn = draftCollection.mcbuReturnNo;
+                        collection.mcbuReturnAmt = draftCollection.mcbuReturnAmt;
+                        collection.mcbuReturnAmtStr = collection.mcbuReturnAmt ? formatPricePhp(collection.mcbuReturnAmt) : '-';
+                        collection.transfer = draftCollection.transfer;
+                        collection.transferred = draftCollection.transferred;
+
+                        if (collection.transferred > 0) {
+                            collection.transfer = collection.transfer - collection.transferred;
+                        }
+    
+                        excess += draftCollection.excess;
+                        totalLoanCollection += draftCollection.collection;
+                        mispayment += draftCollection.mispayment;
+                        // targetLoanCollection = targetLoanCollection - draftCollection.loanTarget;
+                        // totalMcbu += collection.mcbu;
+                        totalMcbuCol += collection.mcbuCol ? collection.mcbuCol : 0;
+                        totalMcbuWithdrawal += collection.mcbuWithdrawal ? collection.mcbuWithdrawal : 0;
+                        totalMcbuReturnNo += collection.noMcbuReturn ? collection.noMcbuReturn : 0;
+                        totalMcbuReturnAmt += collection.mcbuReturnAmt ? collection.mcbuReturnAmt : 0;
+                        totalTransfer += collection.transfer !== '-' ? collection.transfer : 0;
+                    } else if (branch.cashCollections.length > 0) {
                         const loanTarget = collection.loanTarget - branch.cashCollections[0].loanTarget;
 
                         collection.loanTarget = loanTarget;
