@@ -2704,8 +2704,8 @@ async function getAllLoansPerGroup(req, res) {
                     {
                         $lookup: {
                             from: "loans",
-                            localField: "loIdStr",
-                            foreignField: "loId",
+                            localField: "groupIdStr",
+                            foreignField: "groupId",
                             pipeline: [
                                 { $match: {
                                     $expr: {
@@ -2721,7 +2721,7 @@ async function getAllLoansPerGroup(req, res) {
                                     } } 
                                 },
                                 { $group: { 
-                                        _id: '$loId',
+                                        _id: '$groupId',
                                         activeClients: { $sum: {
                                             $cond: {
                                                 if: {$and: [{ $ne: ['$status', 'pending'] }, { $ne: ['$status', 'closed'] }]},
