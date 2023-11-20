@@ -1,7 +1,6 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
 import moment from 'moment';
-import { faL } from 'node_modules/@fortawesome/free-solid-svg-icons/index';
 
 export default apiHandler({
     get: getAllLoansPerGroup
