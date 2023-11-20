@@ -150,9 +150,9 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                             reCurrentRelease: 0,
                             currentReleaseAmount: 0,
                             currentReleaseAmountStr: 0,
-                            activeClients: 0,
-                            activeBorrowers: 0,
-                            pendingClients: 0,
+                            activeClients: cc.loans[0].activeClients,
+                            activeBorrowers: cc.loans[0].activeBorrowers,
+                            pendingClients: cc.loans[0].pendingClients,
                             mispayment: collection.mispayment,
                             loanTarget: loanTarget,
                             loanTargetStr: loanTarget > 0 ? formatPricePhp(loanTarget) : '-',
@@ -191,6 +191,10 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                             isDraft: isDraft,
                             page: 'collection'
                         };
+
+                        noOfClients += cc.loans[0].activeClients ? cc.loans[0].activeClients : 0;
+                        noOfBorrowers += cc.loans[0].activeBorrowers ? cc.loans[0].activeBorrowers : 0;
+                        noOfPendings += cc.loans[0].pendingClients ? cc.loans[0].pendingClients : 0;
     
                         totalsLoanRelease += cc.loans[0].totalRelease ? cc.loans[0].totalRelease : 0;
                         totalsLoanBalance += cc.loans[0].totalLoanBalance ? cc.loans[0].totalLoanBalance : 0;
@@ -199,19 +203,6 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         totalNoPastDue += cc.loans[0].noPastDue;
                         // totalMcbuTarget += cc.loans[0].mcbuTarget ? cc.loans[0].mcbuTarget : 0;
                         totalMcbuInterest += cc.loans[0].mcbuInterest;
-                    } 
-
-                    if (cc.activeLoans.length > 0) {
-                        collection = {
-                            ...collection,
-                            activeClients: cc.activeLoans[0].activeClients,
-                            activeBorrowers: cc.activeLoans[0].activeBorrowers,
-                            pendingClients: cc.activeLoans[0].pendingClients
-                        }
-    
-                        noOfClients += cc.activeLoans[0].activeClients ? cc.activeLoans[0].activeClients : 0;
-                        noOfBorrowers += cc.activeLoans[0].activeBorrowers ? cc.activeLoans[0].activeBorrowers : 0;
-                        noOfPendings += cc.activeLoans[0].pendingClients ? cc.activeLoans[0].pendingClients : 0;
                     }
                     
                     if (cc?.draftCollections?.length > 0) {

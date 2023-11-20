@@ -191,25 +191,57 @@ async function getAllLoansPerGroup(req, res) {
                         //         as: "draftCollections"
                         //     }
                         // },
+                        // {
+                        //     $lookup: {
+                        //         from: "loans",
+                        //         localField: "branchIdstr",
+                        //         foreignField: "branchId",
+                        //         pipeline: [
+                        //             { $match: {
+                        //                 $expr: {
+                        //                     $and: [
+                        //                         {$ne: ['$status', 'reject']},
+                        //                         { $or: [
+                        //                             { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}] },
+                        //                             { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$closedDate', date]}] },
+                        //                             { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$transferred', true]}, {$eq: ['$endDate', date]}] },
+                        //                             { $eq: ['$status', 'active'] }, { $eq: ['$status', 'pending'] }, { $eq: ['$status', 'completed'] }
+                        //                         ] }
+                        //                     ]
+                        //                 } } 
+                        //             },
+                        //             { $group: { 
+                        //                     _id: '$branchId',
+                                            
+                        //                 } 
+                        //             }
+                        //         ],
+                        //         as: "activeLoans"
+                        //     }
+                        // },
                         {
                             $lookup: {
                                 from: "loans",
                                 localField: "branchIdstr",
                                 foreignField: "branchId",
                                 pipeline: [
-                                    { $match: {
-                                        $expr: {
-                                            $and: [
-                                                {$ne: ['$status', 'reject']},
-                                                { $or: [
-                                                    { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}] },
-                                                    { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$closedDate', date]}] },
-                                                    { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$transferred', true]}, {$eq: ['$endDate', date]}] },
-                                                    { $eq: ['$status', 'active'] }, { $eq: ['$status', 'pending'] }, { $eq: ['$status', 'completed'] }
-                                                ] }
-                                            ]
-                                        } } 
-                                    },
+                                    { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
+                                    { $match: {$expr:  {
+                                        $and: [
+                                            {$or: [ 
+                                                {$eq: ['$status', 'active']}, 
+                                                {$eq: ['$status', 'completed']}, 
+                                                {$and: [
+                                                    { $or: [
+                                                        { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}] },
+                                                        { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$closedDate', date]}] },
+                                                        { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$transferred', true]}, {$eq: ['$endDate', date]}] }
+                                                    ] }
+                                                ]}
+                                            ]}, 
+                                            {$lte: ['$startDateObj', '$currentDateObj']}
+                                        ]
+                                    } } },
                                     { $group: { 
                                             _id: '$branchId',
                                             activeClients: { $sum: {
@@ -244,38 +276,7 @@ async function getAllLoansPerGroup(req, res) {
                                                     then: 1,
                                                     else: 0
                                                 } 
-                                            } }
-                                        } 
-                                    }
-                                ],
-                                as: "activeLoans"
-                            }
-                        },
-                        {
-                            $lookup: {
-                                from: "loans",
-                                localField: "branchIdstr",
-                                foreignField: "branchId",
-                                pipeline: [
-                                    { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
-                                    { $match: {$expr:  {
-                                        $and: [
-                                            {$or: [ 
-                                                {$eq: ['$status', 'active']}, 
-                                                {$eq: ['$status', 'completed']}, 
-                                                {$and: [
-                                                    { $or: [
-                                                        { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}] },
-                                                        { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$closedDate', date]}] },
-                                                        { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$transferred', true]}, {$eq: ['$endDate', date]}] }
-                                                    ] }
-                                                ]}
-                                            ]}, 
-                                            {$lte: ['$startDateObj', '$currentDateObj']}
-                                        ]
-                                    } } },
-                                    { $group: { 
-                                            _id: '$branchId',
+                                            } },
                                             mispayment: { $sum: { $cond:{
                                                 if: { $and: [{$ne: ['$status', 'pending']}, {$ne: ['$status', 'closed']}] }, 
                                                 then: '$mispayment',
@@ -577,19 +578,23 @@ async function getAllLoansPerGroup(req, res) {
                             localField: "branchIdstr",
                             foreignField: "branchId",
                             pipeline: [
-                                { $match: {
-                                    $expr: {
-                                        $and: [
-                                            {$ne: ['$status', 'reject']},
-                                            { $or: [
-                                                { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}] },
-                                                { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$closedDate', date]}] },
-                                                { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$transferred', true]}, {$eq: ['$endDate', date]}] },
-                                                { $eq: ['$status', 'active'] }, { $eq: ['$status', 'pending'] }, { $eq: ['$status', 'completed'] }
-                                            ] }
-                                        ]
-                                    } } 
-                                },
+                                { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
+                                { $match: {$expr:  {
+                                    $and: [
+                                        {$or: [ 
+                                            {$eq: ['$status', 'active']}, 
+                                            {$eq: ['$status', 'completed']}, 
+                                            {$and: [
+                                                { $or: [
+                                                    { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}] },
+                                                    { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$closedDate', date]}] },
+                                                    { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$transferred', true]}, {$eq: ['$endDate', date]}] }
+                                                ] }
+                                            ]}
+                                        ]}, 
+                                        {$lte: ['$startDateObj', '$currentDateObj']}
+                                    ]
+                                } } },
                                 { $group: { 
                                         _id: '$branchId',
                                         activeClients: { $sum: {
@@ -624,38 +629,7 @@ async function getAllLoansPerGroup(req, res) {
                                                 then: 1,
                                                 else: 0
                                             } 
-                                        } }
-                                    } 
-                                }
-                            ],
-                            as: "activeLoans"
-                        }
-                    },
-                    {
-                        $lookup: {
-                            from: "loans",
-                            localField: "branchIdstr",
-                            foreignField: "branchId",
-                            pipeline: [
-                                { $addFields: { 'startDateObj': {$dateFromString: { dateString: '$startDate', format:"%Y-%m-%d" }}, 'currentDateObj': {$dateFromString: { dateString: date, format:"%Y-%m-%d" }} } },
-                                { $match: {$expr:  {
-                                    $and: [
-                                        {$or: [ 
-                                            {$eq: ['$status', 'active']}, 
-                                            {$eq: ['$status', 'completed']}, 
-                                            {$and: [
-                                                { $or: [
-                                                    { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}] },
-                                                    { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$closedDate', date]}] },
-                                                    { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$transferred', true]}, {$eq: ['$endDate', date]}] }
-                                                ] }
-                                            ]}
-                                        ]}, 
-                                        {$lte: ['$startDateObj', '$currentDateObj']}
-                                    ]
-                                } } },
-                                { $group: { 
-                                        _id: '$branchId',
+                                        } },
                                         mispayment: { $sum: { $cond:{
                                             if: { $and: [{$ne: ['$status', 'pending']}, {$ne: ['$status', 'closed']}] }, 
                                             then: '$mispayment',

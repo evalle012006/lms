@@ -111,16 +111,10 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup}) => {
                 }
 
                 if (!filter) {
-                    if (branch.activeLoans.length > 0) {
-                        collection.activeClients = branch.activeLoans[0].activeClients; 
-                        collection.activeBorrowers = branch.activeLoans[0].activeBorrowers;
-                        collection.pendingClients = branch.activeLoans[0].pendingClients;
-                        noOfClients += branch.activeLoans[0].activeClients;
-                        noOfBorrowers += branch.activeLoans[0].activeBorrowers;
-                        noOfPendings = branch.activeLoans[0].pendingClients;
-                    }
-    
                     if (branch.loans.length > 0) {
+                        collection.activeClients = branch.loans[0].activeClients; 
+                        collection.activeBorrowers = branch.loans[0].activeBorrowers;
+                        collection.pendingClients = branch.loans[0].pendingClients;
                         collection.totalReleasesStr = branch.loans[0].totalRelease > 0 ? formatPricePhp(branch.loans[0].totalRelease) : '-';
                         collection.totalLoanBalanceStr = branch.loans[0].totalLoanBalance > 0 ? formatPricePhp(branch.loans[0].totalLoanBalance) : '-';
                         collection.loanTarget = branch.loans[0].loanTarget;
@@ -139,6 +133,9 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup}) => {
                         collection.mcbuReturnAmtStr = '-';
                         collection.status = groupStatus;
     
+                        noOfClients += branch.loans[0].activeClients;
+                        noOfBorrowers += branch.loans[0].activeBorrowers;
+                        noOfPendings += branch.loans[0].pendingClients;
                         totalsLoanRelease += branch.loans[0].totalRelease;
                         totalsLoanBalance += branch.loans[0].totalLoanBalance;
                         totalPastDue += collection.pastDue;
