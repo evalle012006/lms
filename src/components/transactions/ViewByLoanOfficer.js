@@ -134,16 +134,10 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
                 }
 
                 if (!filter) {
-                    if (lo.activeLoans.length > 0) {
-                        collection.activeClients = lo.activeLoans[0].activeClients; 
-                        collection.activeBorrowers = lo.activeLoans[0].activeBorrowers;
-                        collection.pendingClients = lo.activeLoans[0].pendingClients;
-                        noOfClients += lo.activeLoans[0].activeClients;
-                        noOfBorrowers += lo.activeLoans[0].activeBorrowers;
-                        noOfPendings += lo.activeLoans[0].pendingClients;
-                    }
-    
                     if (lo.loans.length > 0) {
+                        collection.activeClients = lo.loans[0].activeClients; 
+                        collection.activeBorrowers = lo.loans[0].activeBorrowers;
+                        collection.pendingClients = lo.loans[0].pendingClients;
                         collection.totalLoanRelease = lo.loans[0].totalRelease;
                         collection.totalReleasesStr = lo.loans[0].totalRelease > 0 ? formatPricePhp(lo.loans[0].totalRelease) : '-';
                         collection.totalLoanBalance = lo.loans[0].totalLoanBalance;
@@ -166,6 +160,9 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
                         collection.mcbuInterestStr = lo.loans[0].mcbuInterest > 0 ? lo.loans[0].mcbuInterest : '-';
                         collection.status = groupStatus;
     
+                        noOfClients += lo.loans[0].activeClients;
+                        noOfBorrowers += lo.loans[0].activeBorrowers;
+                        noOfPendings += lo.loans[0].pendingClients;
                         totalsLoanRelease += collection.totalLoanRelease ? collection.totalLoanRelease : 0;
                         totalsLoanBalance += collection.totalLoanBalance ? collection.totalLoanBalance : 0;
                         if (lo.transactionType === 'daily') {
