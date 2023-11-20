@@ -92,7 +92,7 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup}) => {
                 };
 
                 let groupStatus = 'open';
-                if (branch?.draftCollections.length > 0) {
+                if (branch?.draftCollections?.length > 0) {
                     const transactionStatus = branch.draftCollections[0].groupStatusArr.filter(status => status === "pending");
                     const draft = branch.draftCollections[0].hasDraftsArr.filter(d => d === true);
                     if (transactionStatus.length == 0 && draft.length == 0) {
@@ -146,7 +146,7 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup}) => {
                         // totalMcbu += collection.mcbu;
                     }
                     
-                    if (branch?.draftCollections.length > 0) {
+                    if (branch?.draftCollections?.length > 0) {
                         const draftCollection = branch.draftCollections[branch.draftCollections.length - 1];
                         const loanTarget = collection.loanTarget - draftCollection.loanTarget;
 
