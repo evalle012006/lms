@@ -109,7 +109,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 let groupStatus = 'pending';
                 let isDraft = false;
 
-                if (cc?.draftCollections.length > 0) {
+                if (cc?.draftCollections?.length > 0) {
                     const transactionStatus = cc.draftCollections[0].groupStatusArr.filter(status => status === "closed");
                     if (transactionStatus.length > 0) {
                         groupStatus = 'closed';
@@ -214,7 +214,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         noOfPendings += cc.activeLoans[0].pendingClients ? cc.activeLoans[0].pendingClients : 0;
                     }
                     
-                    if (cc?.draftCollections.length > 0) {
+                    if (cc?.draftCollections?.length > 0) {
                         const draftCollection = cc.draftCollections[cc.draftCollections.length - 1];
                         let loanTarget = 0;
                         if ((cc.occurence === 'weekly' && cc.day === dayName) || cc.occurence === 'daily') {

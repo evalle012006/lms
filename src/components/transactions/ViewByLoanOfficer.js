@@ -111,7 +111,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
                 };
 
                 let groupStatus = 'open';
-                if (lo?.draftCollections.length > 0) {
+                if (lo?.draftCollections?.length > 0) {
                     const groupStatusArr = lo.draftCollections[0].groupStatusArr;
                     if (groupStatusArr.length === 1) {
                         const transactionStatus = groupStatusArr.filter(status => status === "closed");
@@ -196,7 +196,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
                         // collection.mcbuStr = loMcbu > 0 ? formatPricePhp(loMcbu) : '-';
                     }
                     
-                    if (lo?.draftCollections.length > 0) {
+                    if (lo?.draftCollections?.length > 0) {
                         const draftCollection = lo.draftCollections[lo.draftCollections.length - 1];
                         const loanTarget = collection.loanTarget - draftCollection.loanTarget;
                         collection.loanTarget = loanTarget;
