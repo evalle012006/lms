@@ -33,7 +33,7 @@ export async function connectToDatabase() {
 
     const options = {
         minPoolSize: 10,
-        maxPoolSize: 100,
+        maxPoolSize: 150,
         wtimeoutMS: 2500
     };
 
