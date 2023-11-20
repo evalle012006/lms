@@ -1055,7 +1055,7 @@ const CashCollectionDetailsPage = () => {
         let errorMsg = new Set();
 
         data && data.map(cc => {
-            if (cc.status == 'active' && cc?.loanBalance > 0 && !draft) {
+            if (cc.status !== 'totals' && cc.status == 'active' && cc?.loanBalance > 0 && !draft) {
                 if (cc.group.day === dayName) {
                     if (cc.error) {
                         errorMsg.add('Error occured. Please double check the Actual Collection column.');
@@ -1126,7 +1126,7 @@ const CashCollectionDetailsPage = () => {
                         errorMsg.add('Error occured. Only offset transaction allowed.');
                     }
                 }
-            } else if ((cc.status === 'completed' || (cc?.status !== 'closed' && cc?.loanBalance <= 0)) && (!cc.remarks || (cc.remarks && (cc.remarks.value !== 'pending' && !cc.remarks.value?.startsWith('reloaner') && !cc.remarks.value?.startsWith('offset'))))) {
+            } else if (cc.status !== 'totals' && (cc.status === 'completed' || (cc?.status !== 'closed' && cc?.loanBalance <= 0)) && (!cc.remarks || (cc.remarks && (cc.remarks.value !== 'pending' && !cc.remarks.value?.startsWith('reloaner') && !cc.remarks.value?.startsWith('offset'))))) {
                 errorMsg.add("Invalid remarks. Fullpayment transaction has no remarks. Please set the remarks to RELOANER OR OFFSET.");
             }
         });
