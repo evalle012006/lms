@@ -1076,7 +1076,8 @@ const CashCollectionDetailsPage = () => {
                         errorMsg.add('Error occured. MCBU withdrawal amount is less than ₱10.');
                     }
                 }
-            } else if ((cc.status === 'completed' || (cc?.status !== 'closed' && cc?.loanBalance <= 0)) && (!cc.remarks || (cc.remarks && !(cc.remarks.value && (cc.remarks.value === 'pending' || cc.remarks.value?.startsWith('reloaner') || cc.remarks.value?.startsWith('offset')))))) {
+            } else if ((cc.status === 'completed' || (cc?.status !== 'closed' && cc?.loanBalance <= 0)) && (!cc.remarks || (cc.remarks && (cc.remarks.value !== 'pending' && !cc.remarks.value?.startsWith('reloaner') && !cc.remarks.value?.startsWith('offset'))))) {
+                console.log(cc)
                 errorMsg.add("Invalid remarks. Fullpayment transaction has no remarks. Please set the remarks to RELOANER OR OFFSET.");
             }
         });
