@@ -111,7 +111,15 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
                 };
 
                 let groupStatus = 'open';
-                if (lo.cashCollections.length > 0) {
+                if (lo?.draftCollections.length > 0) {
+                    const groupStatusArr = lo.draftCollections[0].groupStatusArr;
+                    if (groupStatusArr.length === 1) {
+                        const transactionStatus = groupStatusArr.filter(status => status === "closed");
+                        if (transactionStatus.length > 0) {
+                            groupStatus = 'close';
+                        }   
+                    }
+                } else if (lo.cashCollections.length > 0) {
                     const groupStatusArr = lo.cashCollections[0].groupStatusArr;
                     if (groupStatusArr.length === 1) {
                         const transactionStatus = groupStatusArr.filter(status => status === "closed");
@@ -188,7 +196,44 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
                         // collection.mcbuStr = loMcbu > 0 ? formatPricePhp(loMcbu) : '-';
                     }
                     
-                    if (lo.cashCollections.length > 0) {
+                    if (lo?.draftCollections.length > 0) {
+                        const draftCollection = lo.draftCollections[lo.draftCollections.length - 1];
+                        const loanTarget = collection.loanTarget - draftCollection.loanTarget;
+                        collection.loanTarget = loanTarget;
+                        collection.loanTargetStr = loanTarget > 0 ? formatPricePhp(loanTarget) : '-';
+                        collection.excess = draftCollection.excess;
+                        collection.excessStr = draftCollection.excess > 0 ? formatPricePhp(draftCollection.excess) : '-';
+                        collection.total = draftCollection.collection;
+                        collection.totalStr = draftCollection.collection > 0 ? formatPricePhp(draftCollection.collection) : '-';
+                        collection.mispayment = draftCollection.mispayment;
+                        collection.mispaymentStr = draftCollection.mispayment > 0 ? draftCollection.mispayment : '-';
+                        collection.offsetPerson = draftCollection.offsetPerson ? draftCollection.offsetPerson : 0;
+                        collection.mcbu = draftCollection.mcbu;
+                        collection.mcbuStr = collection.mcbu > 0 ? formatPricePhp(collection.mcbu) : '-';
+                        collection.mcbuCol = draftCollection.mcbuCol;
+                        collection.mcbuColStr = collection.mcbuCol > 0 ? formatPricePhp(collection.mcbuCol) : '-';
+                        collection.mcbuWithdrawal = draftCollection.mcbuWithdrawal;
+                        collection.mcbuWithdrawalStr = collection.mcbuWithdrawal ? formatPricePhp(collection.mcbuWithdrawal) : '-';
+                        collection.noMcbuReturn = draftCollection.mcbuReturnNo;
+                        collection.mcbuReturnAmt = draftCollection.mcbuReturnAmt;
+                        collection.mcbuReturnAmtStr = collection.mcbuReturnAmt ? formatPricePhp(collection.mcbuReturnAmt) : '-';
+                        collection.mcbuInterest = draftCollection.mcbuInterest;
+                        collection.mcbuInterestStr = draftCollection.mcbuInterest > 0 ? draftCollection.mcbuInterest : '-';
+                        collection.transfer = 0;
+                        collection.transferStr = '-';
+                        collection.status = groupStatus;
+    
+                        excess += draftCollection.excess;
+                        totalLoanCollection += draftCollection.collection;
+                        mispayment += draftCollection.mispayment;
+                        targetLoanCollection = targetLoanCollection - draftCollection.loanTarget;
+                        offsetPerson += collection.offsetPerson;
+                        totalMcbuCol += collection.mcbuCol ? collection.mcbuCol : 0;
+                        totalMcbuWithdrawal += collection.mcbuWithdrawal ? collection.mcbuWithdrawal : 0;
+                        totalMcbuReturnNo += collection.noMcbuReturn ? collection.noMcbuReturn : 0;
+                        totalMcbuReturnAmt += collection.mcbuReturnAmt ? collection.mcbuReturnAmt : 0;
+                        totalTransfer += collection.transfer !== '-' ? collection.transfer : 0;
+                    } else if (lo.cashCollections.length > 0) {
                         const loanTarget = collection.loanTarget - lo.cashCollections[0].loanTarget;
                         collection.loanTarget = loanTarget;
                         collection.loanTargetStr = loanTarget > 0 ? formatPricePhp(loanTarget) : '-';

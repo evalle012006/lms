@@ -16,6 +16,7 @@ async function save(req, res) {
     if (data.collection.length > 0) {
         let existCC = [];
         let newCC = [];
+        // let prevCommpleted = [];
         data.collection.map(async cc => {
             if (cc.status !== "totals") {
                 let collection = {...cc};
@@ -42,8 +43,12 @@ async function save(req, res) {
                     collection.modifiedDateTime = new Date();
                     existCC.push(collection);
                 } else {
-                    collection.insertedDateTime = new Date();
-                    newCC.push(collection);
+                    // if (collection.status === 'completed' && collection?.previousDraft) {
+                    //     prevCommpleted.push(collection);
+                    // } else {
+                        collection.insertedDateTime = new Date();
+                        newCC.push(collection);
+                    // }
                 }
 
                 if (collection.status !== "tomorrow" && collection.status !== "pending" && !collection.draft) {
@@ -60,6 +65,10 @@ async function save(req, res) {
         if (existCC.length > 0) {
             await updateCollection(existCC);
         }
+
+        // if (prevCommpleted.length > 0) {
+        //     await updateCompletedCollection(prevCommpleted);
+        // }
     }
 
     response = {success: true};
@@ -107,6 +116,25 @@ async function updateCollection(collections) {
         }
     });
 }
+
+// async function updateCompletedCollection(collections) {
+//     const { db } = await connectToDatabase();
+//     const ObjectId = require('mongodb').ObjectId;
+
+//     collections.map(async collection => {
+//         delete collection._id;
+        
+//         await db.collection('cashCollections')
+//             .updateOne(
+//                 { dateAdded: collection.prevLastUpdated, clientId: collection.clientId },
+//                 {
+//                     $unset: { origin: 1, reverted: 1 },
+//                     $set: {...collection}
+//                 },
+//                 { upsert: true }
+//             );
+//     });
+// }
 
 async function updateLoan(collection, currentDate) {
     const { db } = await connectToDatabase();

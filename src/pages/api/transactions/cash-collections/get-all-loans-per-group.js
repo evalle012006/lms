@@ -471,6 +471,134 @@ async function getAllLoansPerGroup(req, res) {
                     },
                     {
                         $lookup: {
+                            from: "cashCollections",
+                            localField: "loIdStr",
+                            foreignField: "loId",
+                            pipeline: [
+                                { $match: { $expr: { $and: [
+                                    { $eq: ['$draft', true] },
+                                    { $ne: ['$dateAdded', date] }
+                                ] } } },
+                                { $group: { 
+                                        _id: '$loId',
+                                        mispayment: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },
+                                        loanTarget: { $sum: {
+                                            $cond: {
+                                                if: { $or: [
+                                                    {$eq: ['$remarks.value', 'delinquent']},
+                                                    {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                                                ] },
+                                                then: '$prevData.activeLoan',
+                                                else: 0
+                                            }
+                                        } },
+                                        collection: { $sum: '$paymentCollection' },
+                                        excess: { $sum: '$excess' },
+                                        total: { $sum: '$total' },
+                                        offsetPerson: { $sum: {
+                                            $cond: {
+                                                if: {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
+                                                then: 1,
+                                                else: 0
+                                            }
+                                        } },
+                                        mcbu: { $sum: '$mcbu' },
+                                        mcbuTarget: { $sum: {
+                                            $cond: {
+                                                if: { $and: [{$eq: ['$occurence', 'weekly']}, {$eq: ['$groupDay', currentDay]}] },
+                                                then: {
+                                                    $cond: {
+                                                        if: { $or: [
+                                                            {$eq: ['$remarks.value', 'delinquent']},
+                                                            {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
+                                                            {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                                                        ] },
+                                                        then: 0,
+                                                        else: 50
+                                                    }
+                                                },
+                                                else: 0
+                                            }
+                                        } },
+                                        mcbuCol: { $sum: '$mcbuCol' },
+                                        mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
+                                        mcbuReturnNo: { $sum: {
+                                            $cond: {
+                                                if: { $or: [
+                                                    {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
+                                                    {$gt: ['$mcbuReturnAmt', 0]}
+                                                ] },
+                                                then: 1,
+                                                else: 0
+                                            }
+                                        } },
+                                        mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
+                                        mcbuInterest: { $sum: '$mcbuInterest' },
+                                        transfer: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: 1,
+                                                else: 0
+                                            }
+                                        } },
+                                        transferMCBU: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: '$mcbu',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferAmountRelease: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: '$amountRelease',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferLoanBalance: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: '$loanBalance',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferred: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transferred', true] },
+                                                then: 1,
+                                                else: 0
+                                            }
+                                        } },
+                                        transferredAmountRelease: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transferred', true] },
+                                                then: '$amountRelease',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferredLoanBalance: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transferred', true] },
+                                                then: '$loanBalance',
+                                                else: 0
+                                            }
+                                        } },
+                                        groupStatusArr: { $addToSet: {
+                                            $cond: {
+                                                if: { $ne: ['$status', 'pending'] },
+                                                then: '$groupStatus',
+                                                else: "$$REMOVE"
+                                            }
+                                        } },
+                                        hasDraftsArr: { $addToSet: '$draft' }
+                                    } 
+                                }
+                            ],
+                            as: "draftCollections"
+                        }
+                    },
+                    {
+                        $lookup: {
                             from: "loans",
                             localField: "loIdStr",
                             foreignField: "loId",
@@ -1132,6 +1260,134 @@ async function getAllLoansPerGroup(req, res) {
                     },
                     {
                         $lookup: {
+                            from: "cashCollections",
+                            localField: "loIdStr",
+                            foreignField: "loId",
+                            pipeline: [
+                                { $match: { $expr: { $and: [
+                                    { $eq: ['$draft', true] },
+                                    { $ne: ['$dateAdded', date] }
+                                ] } } },
+                                { $group: { 
+                                        _id: '$loId',
+                                        mispayment: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },
+                                        loanTarget: { $sum: {
+                                            $cond: {
+                                                if: { $or: [
+                                                    {$eq: ['$remarks.value', 'delinquent']},
+                                                    {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                                                ] },
+                                                then: '$prevData.activeLoan',
+                                                else: 0
+                                            }
+                                        } },
+                                        collection: { $sum: '$paymentCollection' },
+                                        excess: { $sum: '$excess' },
+                                        total: { $sum: '$total' },
+                                        offsetPerson: { $sum: {
+                                            $cond: {
+                                                if: {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
+                                                then: 1,
+                                                else: 0
+                                            }
+                                        } },
+                                        mcbu: { $sum: '$mcbu' },
+                                        mcbuTarget: { $sum: {
+                                            $cond: {
+                                                if: { $and: [{$eq: ['$occurence', 'weekly']}, {$eq: ['$groupDay', currentDay]}] },
+                                                then: {
+                                                    $cond: {
+                                                        if: { $or: [
+                                                            {$eq: ['$remarks.value', 'delinquent']},
+                                                            {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
+                                                            {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                                                        ] },
+                                                        then: 0,
+                                                        else: 50
+                                                    }
+                                                },
+                                                else: 0
+                                            }
+                                        } },
+                                        mcbuCol: { $sum: '$mcbuCol' },
+                                        mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
+                                        mcbuReturnNo: { $sum: {
+                                            $cond: {
+                                                if: { $or: [
+                                                    {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
+                                                    {$gt: ['$mcbuReturnAmt', 0]}
+                                                ] },
+                                                then: 1,
+                                                else: 0
+                                            }
+                                        } },
+                                        mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
+                                        mcbuInterest: { $sum: '$mcbuInterest' },
+                                        transfer: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: 1,
+                                                else: 0
+                                            }
+                                        } },
+                                        transferMCBU: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: '$mcbu',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferAmountRelease: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: '$amountRelease',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferLoanBalance: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: '$loanBalance',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferred: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transferred', true] },
+                                                then: 1,
+                                                else: 0
+                                            }
+                                        } },
+                                        transferredAmountRelease: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transferred', true] },
+                                                then: '$amountRelease',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferredLoanBalance: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transferred', true] },
+                                                then: '$loanBalance',
+                                                else: 0
+                                            }
+                                        } },
+                                        groupStatusArr: { $addToSet: {
+                                            $cond: {
+                                                if: { $ne: ['$status', 'pending'] },
+                                                then: '$groupStatus',
+                                                else: "$$REMOVE"
+                                            }
+                                        } },
+                                        hasDraftsArr: { $addToSet: '$draft' }
+                                    } 
+                                }
+                            ],
+                            as: "draftCollections"
+                        }
+                    },
+                    {
+                        $lookup: {
                             from: "loans",
                             localField: "loIdStr",
                             foreignField: "loId",
@@ -1785,6 +2041,134 @@ async function getAllLoansPerGroup(req, res) {
                     },
                     {
                         $lookup: {
+                            from: "cashCollections",
+                            localField: "loIdStr",
+                            foreignField: "loId",
+                            pipeline: [
+                                { $match: { $expr: { $and: [
+                                    { $eq: ['$draft', true] },
+                                    { $ne: ['$dateAdded', date] }
+                                ] } } },
+                                { $group: { 
+                                        _id: '$loId',
+                                        mispayment: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },
+                                        loanTarget: { $sum: {
+                                            $cond: {
+                                                if: { $or: [
+                                                    {$eq: ['$remarks.value', 'delinquent']},
+                                                    {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                                                ] },
+                                                then: '$prevData.activeLoan',
+                                                else: 0
+                                            }
+                                        } },
+                                        collection: { $sum: '$paymentCollection' },
+                                        excess: { $sum: '$excess' },
+                                        total: { $sum: '$total' },
+                                        offsetPerson: { $sum: {
+                                            $cond: {
+                                                if: {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
+                                                then: 1,
+                                                else: 0
+                                            }
+                                        } },
+                                        mcbu: { $sum: '$mcbu' },
+                                        mcbuTarget: { $sum: {
+                                            $cond: {
+                                                if: { $and: [{$eq: ['$occurence', 'weekly']}, {$eq: ['$groupDay', currentDay]}] },
+                                                then: {
+                                                    $cond: {
+                                                        if: { $or: [
+                                                            {$eq: ['$remarks.value', 'delinquent']},
+                                                            {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
+                                                            {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                                                        ] },
+                                                        then: 0,
+                                                        else: 50
+                                                    }
+                                                },
+                                                else: 0
+                                            }
+                                        } },
+                                        mcbuCol: { $sum: '$mcbuCol' },
+                                        mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
+                                        mcbuReturnNo: { $sum: {
+                                            $cond: {
+                                                if: { $or: [
+                                                    {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
+                                                    {$gt: ['$mcbuReturnAmt', 0]}
+                                                ] },
+                                                then: 1,
+                                                else: 0
+                                            }
+                                        } },
+                                        mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
+                                        mcbuInterest: { $sum: '$mcbuInterest' },
+                                        transfer: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: 1,
+                                                else: 0
+                                            }
+                                        } },
+                                        transferMCBU: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: '$mcbu',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferAmountRelease: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: '$amountRelease',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferLoanBalance: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: '$loanBalance',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferred: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transferred', true] },
+                                                then: 1,
+                                                else: 0
+                                            }
+                                        } },
+                                        transferredAmountRelease: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transferred', true] },
+                                                then: '$amountRelease',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferredLoanBalance: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transferred', true] },
+                                                then: '$loanBalance',
+                                                else: 0
+                                            }
+                                        } },
+                                        groupStatusArr: { $addToSet: {
+                                            $cond: {
+                                                if: { $ne: ['$status', 'pending'] },
+                                                then: '$groupStatus',
+                                                else: "$$REMOVE"
+                                            }
+                                        } },
+                                        hasDraftsArr: { $addToSet: '$draft' }
+                                    } 
+                                }
+                            ],
+                            as: "draftCollections"
+                        }
+                    },
+                    {
+                        $lookup: {
                             from: "loans",
                             localField: "loIdStr",
                             foreignField: "loId",
@@ -2262,6 +2646,135 @@ async function getAllLoansPerGroup(req, res) {
                                 }
                             ],
                             as: "cashCollections"
+                        }
+                    },
+                    {
+                        $lookup: {
+                            from: "cashCollections",
+                            let: { groupName: '$name' },
+                            localField: "groupIdStr",
+                            foreignField: "groupId",
+                            pipeline: [
+                                { $match: { $expr: { $and: [
+                                    { $eq: ['$draft', true] },
+                                    { $ne: ['$dateAdded', date] }
+                                ] } } },
+                                { $group: { 
+                                        _id: '$$groupName',
+                                        mispayment: { $sum: { $cond:{if: { $eq: ['$mispayment', true] }, then: 1, else: 0} } },
+                                        loanTarget: { $sum: {
+                                            $cond: {
+                                                if: { $or: [
+                                                    {$eq: ['$remarks.value', 'delinquent']},
+                                                    {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                                                ] },
+                                                then: '$prevData.activeLoan',
+                                                else: 0
+                                            }
+                                        } },
+                                        collection: { $sum: '$paymentCollection' },
+                                        excess: { $sum: '$excess' },
+                                        total: { $sum: '$total' },
+                                        offsetPerson: { $sum: {
+                                            $cond: {
+                                                if: {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
+                                                then: 1,
+                                                else: 0
+                                            }
+                                        } },
+                                        mcbu: { $sum: '$mcbu' },
+                                        mcbuTarget: { $sum: {
+                                            $cond: {
+                                                if: { $and: [{$eq: ['$occurence', 'weekly']}, {$eq: ['$groupDay', currentDay]}] },
+                                                then: {
+                                                    $cond: {
+                                                        if: { $or: [
+                                                            {$eq: ['$remarks.value', 'delinquent']},
+                                                            {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
+                                                            {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                                                        ] },
+                                                        then: 0,
+                                                        else: 50
+                                                    }
+                                                },
+                                                else: 0
+                                            }
+                                        } },
+                                        mcbuCol: { $sum: '$mcbuCol' },
+                                        mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
+                                        mcbuReturnNo: { $sum: {
+                                            $cond: {
+                                                if: { $or: [
+                                                    {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
+                                                    {$gt: ['$mcbuReturnAmt', 0]}
+                                                ] },
+                                                then: 1,
+                                                else: 0
+                                            }
+                                        } },
+                                        mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
+                                        mcbuInterest: { $sum: '$mcbuInterest' },
+                                        transfer: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: 1,
+                                                else: 0
+                                            }
+                                        } },
+                                        transferMCBU: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: '$mcbu',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferAmountRelease: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: '$amountRelease',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferLoanBalance: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transfer', true] },
+                                                then: '$loanBalance',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferred: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transferred', true] },
+                                                then: 1,
+                                                else: 0
+                                            }
+                                        } },
+                                        transferredAmountRelease: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transferred', true] },
+                                                then: '$amountRelease',
+                                                else: 0
+                                            }
+                                        } },
+                                        transferredLoanBalance: { $sum: {
+                                            $cond: {
+                                                if: { $eq: ['$transferred', true] },
+                                                then: '$loanBalance',
+                                                else: 0
+                                            }
+                                        } },
+                                        groupStatusArr: { $addToSet: {
+                                            $cond: {
+                                                if: { $ne: ['$status', 'pending'] },
+                                                then: '$groupStatus',
+                                                else: "$$REMOVE"
+                                            }
+                                        } },
+                                        hasDraftsArr: { $addToSet: '$draft' }
+                                    } 
+                                }
+                            ],
+                            as: "draftCollections"
                         }
                     },
                     {
