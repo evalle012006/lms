@@ -4,11 +4,12 @@ import { useDispatch, useSelector } from "react-redux";
 import Spinner from "@/components/Spinner";
 import { toast } from "react-toastify";
 import { useRouter } from "node_modules/next/router";
-import { formatPricePhp } from "@/lib/utils";
+import { UppercaseFirstLetter, formatPricePhp } from "@/lib/utils";
 import moment from 'moment';
 import { setCashCollectionList, setGroupSummaryTotals, setLoSummary } from "@/redux/actions/cashCollectionActions";
 import TableComponent, { SelectColumnFilter, StatusPill } from "@/lib/table";
 import { BehaviorSubject } from 'rxjs';
+import { setGroupList } from "@/redux/actions/groupActions";
 
 const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
     const router = useRouter();
@@ -22,16 +23,17 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
     const dayName = moment(dateFilter ? dateFilter : currentDate).format('dddd').toLowerCase();
     const isHoliday = useSelector(state => state.systemSettings.holiday);
     const isWeekend = useSelector(state => state.systemSettings.weekend);
+    const [selectedGroupIds, setSelectedGroupIds] = useState([]);
 
-    const getCashCollections = async (selectedLO, dateFilter) => {
+    const getCashCollections = async (dateFilter) => {
         setLoading(true);
         const filter = dateFilter ? true : false;
         let url = process.env.NEXT_PUBLIC_API_URL + 
-            'transactions/cash-collections/get-all-loans-per-group?' 
+            'transactions/cash-collections/get-all-loans-per-group-v2?' 
             + new URLSearchParams({ 
                     date: dateFilter ? dateFilter : currentDate,
                     mode: type, 
-                    loId: selectedLO ? selectedLO : currentUser._id,
+                    groupIds: JSON.stringify(selectedGroupIds),
                     dayName: dayName,
                     currentDate: currentDate
                 });
@@ -641,7 +643,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 }
                 collectionData.push(totals);
                 dispatch(setGroupSummaryTotals(totals));
-                const dailyLos = {...createLos(totals, selectedBranch, selectedLO, dateFilter, false, transferGvr, transferRcv, transferGvrByGroup, transferRcvByGroup, consolidateTotalData), losType: 'daily'};
+                const dailyLos = {...createLos(totals, selectedBranch, selectedLOSubject.value, dateFilter, false, transferGvr, transferRcv, transferGvrByGroup, transferRcvByGroup, consolidateTotalData), losType: 'daily'};
                 if ((collectionTransferred.length > 0 || collectionReceived.length > 0) && !filter && !isWeekend && !isHoliday) {
                     await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collection-summary/add-transfer-data-to-los', { userId: currentUser._id, date: currentDate, newLos: dailyLos });
                 }
@@ -1146,32 +1148,55 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
     }, []);
 
     useEffect(() => {
+        const getListGroup = async (loId) => {
+            let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list-by-group-occurence?' + new URLSearchParams({ mode: "filter", occurence: 'daily', loId: loId });
+
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                let groups = [];
+                await response.groups && response.groups.map(group => {
+                    groups.push({
+                        ...group,
+                        day: UppercaseFirstLetter(group.day),
+                        value: group._id,
+                        label: group.name
+                    });
+                });
+                setSelectedGroupIds(groups.map(group => group._id));
+                dispatch(setGroupList(groups));
+            } else if (response.error) {
+                toast.error(response.message);
+            }
+        }
+
+        if (currentUser.role.rep == 4) {
+            getListGroup(currentUser._id);
+        } else if (selectedLOSubject.value.length > 0) {
+            getListGroup(selectedLOSubject.value);
+        }
+    }, []);
+
+    useEffect(() => {
         let mounted = true;
         localStorage.removeItem('cashCollectionDateFilter');
-
-        if (dateFilter) {
-            const date = moment(dateFilter).format('YYYY-MM-DD');
-            if (date !== currentDate) {
-                if (currentUser.role.rep < 4 && selectedLOSubject.value.length > 0) {
-                    mounted && getCashCollections(selectedLOSubject.value, date);
-                } else {
-                    mounted && getCashCollections(null, date);
-                }
-            } else {
-                if (currentUser.role.rep < 4 && selectedLOSubject.value.length > 0) {
-                    mounted && getCashCollections(selectedLOSubject.value, null);
+        console.log(selectedGroupIds.length)
+        if (selectedGroupIds.length > 0) {
+            if (dateFilter) {
+                const date = moment(dateFilter).format('YYYY-MM-DD');
+                if (date !== currentDate) {
+                    mounted && getCashCollections(date);
                 } else {
                     mounted && getCashCollections();
                 }
+            } else {
+                getCashCollections();
             }
-        } else {
-            getCashCollections();
         }
 
         return () => {
             mounted = false;
         };
-    }, [dateFilter]);
+    }, [dateFilter, selectedGroupIds]);
 
     useEffect(() => {
         if (type === 'weekly' && !isHoliday && !isWeekend) {

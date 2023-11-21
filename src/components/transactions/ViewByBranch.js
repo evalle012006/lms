@@ -12,31 +12,22 @@ import { setCashCollectionBranch } from "@/redux/actions/cashCollectionActions";
 const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup}) => {
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
+    const branchList = useSelector(state => state.branch.list);
     const [loading, setLoading] = useState(true);
     const branchCollectionData = useSelector(state => state.cashCollection.branch);
     const currentDate = useSelector(state => state.systemSettings.currentDate);
     const dayName = moment(dateFilter ? dateFilter : currentDate).format('dddd').toLowerCase();
     const isHoliday = useSelector(state => state.systemSettings.holiday);
     const isWeekend = useSelector(state => state.systemSettings.weekend);
+    const [selectedBranches, setSelectedBranches] = useState([]);
 
     const router = useRouter();
     // check group status if there is pending change row color to orange/yellow else white
     const getBranchCashCollections = async (date) => {
         setLoading(true);
         const filter = date ? true : false;
-        let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/get-all-loans-per-branch';
 
-        if (currentUser.role.rep === 2) {
-            if (currentUser.role.shortCode !== 'area_admin') {
-                url = url + "?" + new URLSearchParams({ date: date ? date : currentDate, mode: type, areaManagerId: currentUser._id, dayName: dayName, currentDate: currentDate, selectedBranchGroup: selectedBranchGroup });
-            } else {
-                url = url + "?" + new URLSearchParams({ date: date ? date : currentDate, mode: type, areaManagerId: currentUser._id, dayName: dayName, currentDate: currentDate, selectedBranchGroup: 'mine' });
-            }
-        } else {
-            url = url + "?" + new URLSearchParams({ date: date ? date : currentDate, mode: type, dayName: dayName, currentDate: currentDate });
-        }
-        
-        const response = await fetchWrapper.get(url);
+        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/get-all-loans-per-branch-v2?' + new URLSearchParams({ date: date ? date : currentDate, branchIds: JSON.stringify(selectedBranches), dayName: dayName, currentDate: currentDate }));
         if (response.success) {
             let collectionData = [];
 
@@ -589,23 +580,37 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup}) => {
     }, []);
 
     useEffect(() => {
+        if (branchList) {
+            let branchIds = branchList.map(branch =>  branch._id );
+
+            if (currentUser.role.rep == 2 && selectedBranchGroup == 'mine') {
+                branchIds = branchList.filter(branch => currentUser.designatedBranch.includes(branch.code)).map(branch => branch._id);
+            }
+            
+            setSelectedBranches(branchIds);
+        }
+    }, [branchList, selectedBranchGroup]);
+
+    useEffect(() => {
         let mounted = true;
-        
-        if (dateFilter) {
-            const date = moment(dateFilter).format('YYYY-MM-DD');
-            if (date !== currentDate) {
-                mounted && getBranchCashCollections(date);
+
+        if (selectedBranches.length > 0) {
+            if (dateFilter) {
+                const date = moment(dateFilter).format('YYYY-MM-DD');
+                if (date !== currentDate) {
+                    mounted && getBranchCashCollections(date);
+                } else {
+                    mounted && getBranchCashCollections();
+                }
             } else {
                 mounted && getBranchCashCollections();
             }
-        } else {
-            mounted && getBranchCashCollections();
         }
 
         return () => {
             mounted = false;
         };
-    }, [dateFilter, selectedBranchGroup]);
+    }, [dateFilter, selectedBranches]);
     
 
     return (

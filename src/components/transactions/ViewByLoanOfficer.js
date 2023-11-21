@@ -9,18 +9,21 @@ import { formatPricePhp } from "@/lib/utils";
 import { toast } from "react-toastify";
 import { BehaviorSubject } from 'rxjs';
 import { setBmSummary, setCashCollectionLo } from "@/redux/actions/cashCollectionActions";
+import { setUserList } from "@/redux/actions/userActions";
 
 const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) => {
     const dispatch = useDispatch();
     const isHoliday = useSelector(state => state.systemSettings.holiday);
     const isWeekend = useSelector(state => state.systemSettings.weekend);
     const selectedBranchSubject = new BehaviorSubject(process.browser && localStorage.getItem('selectedBranch'));
+    const currentBranch = useSelector(state => state.branch.data);
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
     const [userLOList, setUserLOList] = useState([]);
     const [loading, setLoading] = useState(true);
     const currentDate = useSelector(state => state.systemSettings.currentDate);
     const dayName = moment(dateFilter ? dateFilter : currentDate).format('dddd').toLowerCase();
+    const [selectedLOIds, setSelectedLOIds] = useState([]);
    
     const router = useRouter();
 
@@ -35,10 +38,10 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
         }
     };
 
-    const getGroupCashCollections = async (selectedBranch, date, loGroup) => {
+    const getGroupCashCollections = async (date) => {
         setLoading(true);
         const filter = date ? true : false;
-        let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/get-all-loans-per-group?' + new URLSearchParams({ date: date ? date : currentDate, branchCode: selectedBranch, dayName: dayName, currentDate: currentDate, loGroup: loGroup });
+        let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/get-all-loans-per-lo-v2?' + new URLSearchParams({ date: date ? date : currentDate, loIds: JSON.stringify(selectedLOIds), dayName: dayName, currentDate: currentDate });
         
         const response = await fetchWrapper.get(url);
         if (response.success) {
@@ -1023,6 +1026,34 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
 
     const [columns, setColumns] = useState();
 
+    useEffect(() => {
+        const getListUser = async () => {
+            let url = process.env.NEXT_PUBLIC_API_URL + 'users/list?' + new URLSearchParams({ loOnly: true, branchCode: currentBranch.code, selectedLoGroup: selectedLoGroup });
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                let userList = [];
+                response.users && response.users.map(u => {
+                    const name = `${u.firstName} ${u.lastName}`;
+                    userList.push({
+                        ...u,
+                        name: name,
+                        label: name,
+                        value: u._id
+                    });
+                });
+                userList.sort((a, b) => { return a.loNo - b.loNo; });
+                setSelectedLOIds(userList.map(lo => lo._id));
+                dispatch(setUserList(userList));
+            } else {
+                toast.error('Error retrieving user list.');
+            }
+        }
+
+        if ((currentBranch && currentBranch.code) && selectedLoGroup) {
+            getListUser();
+        }
+    }, [selectedLoGroup, currentBranch]);
+
 
     useEffect(() => {
         let mounted = true;
@@ -1033,31 +1064,24 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
                 { label: 'Open', action: handleOpen}
             ]);
         }
-        if (branchList.length > 0) {
-            let currentBranch;
-            
-            if (currentUser.role.rep <= 2 && selectedBranchSubject.value) {
-                currentBranch = branchList.find(b => b._id === selectedBranchSubject.value);
-            } else {
-                currentBranch = branchList.find(b => b.code === currentUser.designatedBranch);
-            }
 
-            if (dateFilter && currentBranch) {
+        if (selectedLOIds.length > 0) {
+            if (dateFilter) {
                 const date = moment(dateFilter).format('YYYY-MM-DD');
                 if (date !== currentDate) {
-                    mounted && getGroupCashCollections(currentBranch.code, date, selectedLoGroup);
+                    mounted && getGroupCashCollections(date);
                 } else {
-                    mounted && getGroupCashCollections(currentBranch.code, null, selectedLoGroup);
+                    mounted && getGroupCashCollections();
                 }
             } else {
-                mounted && getGroupCashCollections(currentBranch.code, null, selectedLoGroup);
+                mounted && getGroupCashCollections();
             }
         }
 
         return () => {
             mounted = false;
         };
-    }, [branchList, dateFilter, selectedLoGroup]);
+    }, [dateFilter, selectedLOIds]);
 
     useEffect(() => {
         let cols = [

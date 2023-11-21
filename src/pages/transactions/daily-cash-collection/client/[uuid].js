@@ -36,6 +36,7 @@ const CashCollectionDetailsPage = () => {
     const router = useRouter();
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
+    const groupList = useSelector(state => state.group.list);
     const groupClients = useSelector(state => state.cashCollection.group);
     const [editMode, setEditMode] = useState(true);
     const [revertMode, setRevertMode] = useState(false);
@@ -2118,7 +2119,6 @@ const CashCollectionDetailsPage = () => {
     }
 
     useEffect(() => {
-        let mounted = true;
         const getListBranch = async () => {
             let url = process.env.NEXT_PUBLIC_API_URL + 'branches/list';
 
@@ -2147,6 +2147,14 @@ const CashCollectionDetailsPage = () => {
             }
         }
 
+        if (branchList && branchList.length == 0) {
+            getListBranch();
+        }
+    }, [branchList]);
+
+    useEffect(() => {
+        let mounted = true;
+
         const getCurrentGroup = async () => {
             if (uuid) {
                 const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}groups?`;
@@ -2164,7 +2172,6 @@ const CashCollectionDetailsPage = () => {
 
         mounted && uuid && getCurrentGroup();
         mounted && currentDate && getCashCollections();
-        mounted && getListBranch();
 
         if (dateFilter === null) {
             setDateFilter(currentDate);
@@ -2177,7 +2184,7 @@ const CashCollectionDetailsPage = () => {
 
     useEffect(() => {
         const getListGroup = async (selectedLO) => {
-            let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list-by-group-occurence?' + new URLSearchParams({ mode: "filter", branchId: branchList[0]._id, occurence: 'daily', loId: selectedLO });
+            let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list-by-group-occurence?' + new URLSearchParams({ mode: "filter", occurence: 'daily', loId: selectedLO });
 
             const response = await fetchWrapper.get(url);
             if (response.success) {
@@ -2196,12 +2203,14 @@ const CashCollectionDetailsPage = () => {
             }
         }
 
-        if (branchList.length > 0 && (selectedLOSubject.value && selectedLOSubject.value.length > 0)) {
-            getListGroup(selectedLOSubject.value);
-        } else if (branchList.length > 0 && currentUser.role.rep === 4) {
-            getListGroup(currentUser._id);
+        if (groupList && groupList.length == 0) {
+            if (selectedLOSubject.value && selectedLOSubject.value.length > 0) {
+                getListGroup(selectedLOSubject.value);
+            } else if (currentUser.role.rep === 4) {
+                getListGroup(currentUser._id);
+            }
         }
-    }, [branchList]);
+    }, [groupList]);
 
     useEffect(() => {
         let cashCollections = addBlankAndTotal(groupClients)
@@ -2219,12 +2228,6 @@ const CashCollectionDetailsPage = () => {
             }
         }
     }, [currentGroup]);
-
-    // useEffect(() => {
-    //     if (!editMode && revertMode) {
-    //         setEditMode(true);
-    //     }
-    // }, [revertMode]);
 
     return (
         <Layout header={false} noPad={true} hScroll={false}>

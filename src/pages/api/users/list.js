@@ -10,15 +10,40 @@ async function list(req, res) {
     let statusCode = 200;
     let response = {};
 
-    const { branchCode } = req.query;
+    const { branchCode, loOnly, selectedLoGroup } = req.query;
     let users;
 
     if (branchCode) {
-        users = await db
-            .collection('users')
-            .find({ 'root': { $ne: true }, designatedBranch: branchCode })
-            .project({ password: 0 })
-            .toArray();
+        if (selectedLoGroup && selectedLoGroup !== 'all') {
+            if (selectedLoGroup == 'main') {
+                users = await db
+                .collection('users')
+                .find({ 'root': { $ne: true }, "role.rep": 4, designatedBranch: branchCode, loNo: { $lt: 11 } } )
+                .project({ password: 0 })
+                .sort({ loNo: 1 })
+                .toArray();
+            } else if (selectedLoGroup == 'ext') {
+                users = await db
+                .collection('users')
+                .find({ 'root': { $ne: true }, "role.rep": 4, designatedBranch: branchCode, loNo: { $gt: 10 } } )
+                .project({ password: 0 })
+                .sort({ loNo: 1 })
+                .toArray();
+            }
+        } else if (loOnly) {
+            users = await db
+                .collection('users')
+                .find({ 'root': { $ne: true }, "role.rep": 4, designatedBranch: branchCode })
+                .project({ password: 0 })
+                .sort({ loNo: 1 })
+                .toArray();
+        } else {
+            users = await db
+                .collection('users')
+                .find({ 'root': { $ne: true }, designatedBranch: branchCode })
+                .project({ password: 0 })
+                .toArray();
+        }
     } else {
         users = await db
             .collection('users')

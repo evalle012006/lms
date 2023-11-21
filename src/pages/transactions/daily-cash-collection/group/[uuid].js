@@ -23,6 +23,7 @@ const CashCollectionDetailsPage = () => {
     const dispatch = useDispatch();
     const router = useRouter();
     const currentUser = useSelector(state => state.user.data);
+    const userList = useSelector(state => state.user.list);
     const branchList = useSelector(state => state.branch.list);
     const cashCollectionList = useSelector(state => state.cashCollection.main);
     const loCollectionList = useSelector(state => state.cashCollection.lo);
@@ -110,6 +111,43 @@ const CashCollectionDetailsPage = () => {
         }
     }
 
+    useEffect(() => {
+        if (branchList && branchList.length == 0) {
+            getListBranch();
+        }
+    }, [branchList]);
+
+    useEffect(() => {
+        const getListUser = async () => {
+            let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
+            if (branchList.length > 0 && branchList[0].code) {
+                url = url + '?' + new URLSearchParams({ loOnly: true, branchCode: branchList[0].code });
+                const response = await fetchWrapper.get(url);
+                if (response.success) {
+                    let userDataList = [];
+                    response.users && response.users.map(u => {
+                        const name = `${u.firstName} ${u.lastName}`;
+                        userDataList.push(
+                            {
+                                ...u,
+                                name: name,
+                                label: name,
+                                value: u._id
+                            }
+                        );
+                    });
+                    userDataList.sort((a, b) => { return a.loNo - b.loNo; });
+                    dispatch(setUserList(userDataList));
+                } else {
+                    toast.error('Error retrieving user list.');
+                }
+            }
+        }
+
+        if (branchList && userList.length == 0) {
+            getListUser();
+        }
+    }, [branchList, userList]);
 
     useEffect(() => {
         let mounted = true;
@@ -125,44 +163,14 @@ const CashCollectionDetailsPage = () => {
             }
         }
 
-        mounted && uuid && getCurrentLO() && getListBranch();
+        if (!currentLO && typeof currentLO == 'undefined') {
+            mounted && uuid && getCurrentLO();
+        }
 
         return () => {
             mounted = false;
         };
     }, [uuid]);
-
-    useEffect(() => {
-        const getListUser = async () => {
-            let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
-            if (branchList.length > 0) {
-                url = url + '?' + new URLSearchParams({ branchCode: branchList[0].code });
-                const response = await fetchWrapper.get(url);
-                if (response.success) {
-                    let userList = [];
-                    response.users && response.users.filter(u => u.role.rep === 4).map(u => {
-                        const name = `${u.firstName} ${u.lastName}`;
-                        userList.push(
-                            {
-                                ...u,
-                                name: name,
-                                label: name,
-                                value: u._id
-                            }
-                        );
-                    });
-                    userList.sort((a, b) => { return a.loNo - b.loNo; });
-                    dispatch(setUserList(userList));
-                } else {
-                    toast.error('Error retrieving user list.');
-                }
-            }
-        }
-
-        if (branchList) {
-            getListUser();
-        }
-    }, [branchList]);
 
     useEffect(() => {
         if (dateFilter === null) {
