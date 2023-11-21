@@ -136,9 +136,7 @@ const WeeklyCashCollectionPage = () => {
         //     }
         // }
 
-        if (branchList && branchList.length == 0) {
-            mounted && getListBranch();
-        }
+        mounted && getListBranch();
         
         // mounted && syncLoans();
 

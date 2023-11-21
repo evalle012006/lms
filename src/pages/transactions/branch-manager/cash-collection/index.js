@@ -136,14 +136,12 @@ const BranchCashCollectionPage = () => {
     useEffect(() => {
         let mounted = true;
 
-        if (branchList && branchList.length == 0) {
-            mounted && getListBranch();
-        }
+        mounted && getListBranch();
 
         return () => {
             mounted = false;
         };
-    }, [branchList]);
+    }, []);
 
     useEffect(() => {
         if (dateFilter === null) {
