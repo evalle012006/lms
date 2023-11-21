@@ -146,16 +146,14 @@ const DailyCashCollectionPage = () => {
         //     }
         // }
 
-        if (branchList && branchList.length == 0) {
-            mounted && getListBranch();
-        }
+        mounted && getListBranch();
         
         // mounted && syncLoans();
 
         return () => {
             mounted = false;
         };
-    }, [branchList]);
+    }, []);
 
     useEffect(() => {
         if (dateFilter === null) {
