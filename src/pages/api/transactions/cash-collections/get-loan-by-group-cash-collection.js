@@ -120,20 +120,20 @@ async function getLoanWithCashCollection(req, res) {
                         as: "fullPayment"
                     }
                 },
-                {
-                    $lookup: {
-                        from: "cashCollections",
-                        localField: "loanIdStr",
-                        foreignField: "loanId",
-                        pipeline: [
-                            { $match: { $expr: { $and: [
-                                { $eq: ['$draft', true] },
-                                { $ne: ['$dateAdded', date] }
-                            ] } } }
-                        ],
-                        as: "draftCollection"
-                    }
-                },
+                // {
+                //     $lookup: {
+                //         from: "cashCollections",
+                //         localField: "loanIdStr",
+                //         foreignField: "loanId",
+                //         pipeline: [
+                //             { $match: { $expr: { $and: [
+                //                 { $eq: ['$draft', true] },
+                //                 { $ne: ['$dateAdded', date] }
+                //             ] } } }
+                //         ],
+                //         as: "draftCollection"
+                //     }
+                // },
                 { $sort: { slotNo: 1 } },
                 { $project: { clientIdObj: 0, loanIdStr: 0, startDateObj: 0, groupIdObj: 0 } }
             ])
