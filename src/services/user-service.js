@@ -15,7 +15,7 @@ export const userService = {
     update
 }
 
-async function login(username, password) {
+function login(username, password) {
     const apiURL = process.env.NEXT_PUBLIC_API_URL + 'authenticate';
     return fetchWrapper.post(apiURL, { username, password })
         .then(data => {
