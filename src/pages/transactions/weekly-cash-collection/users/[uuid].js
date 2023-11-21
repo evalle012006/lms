@@ -18,10 +18,12 @@ const WeeklyCashCollectionDetailsPage = () => {
     const router = useRouter();
     const currentUser = useSelector(state => state.user.data);
     const branch = useSelector(state => state.branch.data);
+    const branchList = useSelector(state => state.branch.list);
     const [currentBranch, setCurrentBranch] = useState();
     const { uuid } = router.query;
     const currentDate = useSelector(state => state.systemSettings.currentDate);
     const [dateFilter, setDateFilter] = useState(dateFilterSubject.value ? dateFilterSubject.value : currentDate);
+    const [selectedLoGroup, setSelectedLoGroup] = useState('all');
 
     const handleBranchFilter = (selected) => {
         setCurrentBranch(selected);
@@ -80,6 +82,16 @@ const WeeklyCashCollectionDetailsPage = () => {
         }
     }
 
+    const handleLoGroupChange = (value) => {
+        setSelectedLoGroup(value);
+    }
+
+    useEffect(() => {
+        if (branchList && branchList.length == 0) {
+            getListBranch();
+        }
+    }, [branchList]);
+
     useEffect(() => {
         let mounted = true;
 
@@ -95,7 +107,7 @@ const WeeklyCashCollectionDetailsPage = () => {
             }
         }
 
-        mounted && uuid && getCurrentBranch() && getListBranch();
+        mounted && uuid && getCurrentBranch();
 
         return () => {
             mounted = false;
@@ -120,6 +132,7 @@ const WeeklyCashCollectionDetailsPage = () => {
                 {currentBranch && <DetailsHeader page={2} pageName="branch-view" mode={'weekly'} currentDate={moment(currentDate).format('dddd, MMMM DD, YYYY')} 
                     selectedBranch={currentBranch} handleBranchFilter={handleBranchFilter} 
                     dateFilter={dateFilter} handleDateFilter={handleDateFilter}
+                    selectedLoGroup={selectedLoGroup} handleLoGroupChange={handleLoGroupChange}
                 />}
                 <div className='p-4 mt-[8rem]'>
                     <ViewByLoanOfficerPage pageNo={2} dateFilter={dateFilter} type={'weekly'} />
