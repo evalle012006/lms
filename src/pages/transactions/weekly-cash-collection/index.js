@@ -127,22 +127,25 @@ const WeeklyCashCollectionPage = () => {
     useEffect(() => {
         let mounted = true;
         
-        const syncLoans = async () => {
-            if (currentUser.role.rep === 3 || currentUser.role.rep === 4) {
-                // await autoSyncLoans(currentUser._id);
-                setTimeout(async () => {
-                    await autoHealCashCollections(currentUser._id, currentDate);
-                }, 2000);
-            }
+        // const syncLoans = async () => {
+        //     if (currentUser.role.rep === 3 || currentUser.role.rep === 4) {
+        //         // await autoSyncLoans(currentUser._id);
+        //         setTimeout(async () => {
+        //             await autoHealCashCollections(currentUser._id, currentDate);
+        //         }, 2000);
+        //     }
+        // }
+
+        if (branchList && branchList.length == 0) {
+            mounted && getListBranch();
         }
         
-        mounted && getListBranch();
-        mounted && syncLoans();
+        // mounted && syncLoans();
 
         return () => {
             mounted = false;
         };
-    }, [currentUser, currentDate]);
+    }, [branchList]);
 
     useEffect(() => {
         if (dateFilter === null) {

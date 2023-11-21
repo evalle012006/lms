@@ -19,6 +19,7 @@ const CashCollectionDetailsPage = () => {
     const dateFilterSubject = new BehaviorSubject(process.browser && localStorage.getItem('cashCollectionDateFilter'));
     const dispatch = useDispatch();
     const router = useRouter();
+    const branchList = useSelector(state => state.branch.list);
     const currentUser = useSelector(state => state.user.data);
     const branch = useSelector(state => state.branch.data);
     const [currentBranch, setCurrentBranch] = useState();
@@ -143,6 +144,12 @@ const CashCollectionDetailsPage = () => {
     }
 
     useEffect(() => {
+        if (branchList && branchList.length == 0) {
+            getListBranch();
+        }
+    }, [branchList]);
+
+    useEffect(() => {
         let mounted = true;
 
         const getCurrentBranch = async () => {
@@ -157,7 +164,7 @@ const CashCollectionDetailsPage = () => {
             }
         }
 
-        mounted && uuid && getCurrentBranch() && getListBranch();
+        mounted && uuid && getCurrentBranch();
 
         return () => {
             mounted = false;

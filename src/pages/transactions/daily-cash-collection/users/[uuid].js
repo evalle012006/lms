@@ -17,6 +17,7 @@ const CashCollectionDetailsPage = () => {
     const dispatch = useDispatch();
     const router = useRouter();
     const currentUser = useSelector(state => state.user.data);
+    const branchList = useSelector(state => state.branch.list);
     const branch = useSelector(state => state.branch.data);
     const [currentBranch, setCurrentBranch] = useState();
     const { uuid } = router.query;
@@ -86,6 +87,12 @@ const CashCollectionDetailsPage = () => {
     }
 
     useEffect(() => {
+        if (branchList && branchList.length == 0) {
+            getListBranch();
+        }
+    }, [branchList]);
+
+    useEffect(() => {
         let mounted = true;
 
         const getCurrentBranch = async () => {
@@ -100,7 +107,7 @@ const CashCollectionDetailsPage = () => {
             }
         }
 
-        mounted && uuid && getCurrentBranch() && getListBranch();
+        mounted && uuid && getCurrentBranch();
 
         return () => {
             mounted = false;
