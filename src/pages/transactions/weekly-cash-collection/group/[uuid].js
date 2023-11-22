@@ -119,10 +119,29 @@ const WeeklyCashCollectionDetailsPage = () => {
     }
 
     useEffect(() => {
-        if (branchList && branchList.length == 0) {
-            getListBranch();
+        let mounted = true;
+
+        const getCurrentLO = async () => {
+            const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}users?`;
+            const params = { _id: uuid };
+            const response = await fetchWrapper.get(apiUrl + new URLSearchParams(params));
+            if (response.success) {
+                setCurrentLO(response.user);
+            } else {
+                toast.error('Error while loading data');
+            }
         }
-    }, [branchList]);
+
+        if (!currentLO && typeof currentLO == 'undefined') {
+            mounted && uuid && getCurrentLO();
+        }
+
+        mounted && getListBranch();
+
+        return () => {
+            mounted = false;
+        };
+    }, [uuid]);
 
     useEffect(() => {
         const getListUser = async () => {
@@ -151,33 +170,10 @@ const WeeklyCashCollectionDetailsPage = () => {
             }
         }
 
-        if (branchList && userList.length == 0) {
+        if (branchList) {
             getListUser();
         }
-    }, [branchList, userList]);
-
-    useEffect(() => {
-        let mounted = true;
-
-        const getCurrentLO = async () => {
-            const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}users?`;
-            const params = { _id: uuid };
-            const response = await fetchWrapper.get(apiUrl + new URLSearchParams(params));
-            if (response.success) {
-                setCurrentLO(response.user);
-            } else {
-                toast.error('Error while loading data');
-            }
-        }
-
-        if (!currentLO && typeof currentLO == 'undefined') {
-            mounted && uuid && getCurrentLO();
-        }
-
-        return () => {
-            mounted = false;
-        };
-    }, [uuid]);
+    }, [branchList]);
 
     useEffect(() => {
         if (dateFilter === null) {

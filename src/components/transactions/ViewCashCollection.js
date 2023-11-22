@@ -1149,7 +1149,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
 
     useEffect(() => {
         const getListGroup = async (loId) => {
-            let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list-by-group-occurence?' + new URLSearchParams({ mode: "filter", occurence: 'daily', loId: loId });
+            let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list-by-group-occurence?' + new URLSearchParams({ mode: "filter", occurence: type, loId: loId });
 
             const response = await fetchWrapper.get(url);
             if (response.success) {
@@ -1169,12 +1169,14 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
             }
         }
 
-        if (currentUser.role.rep == 4) {
-            getListGroup(currentUser._id);
-        } else if (selectedLOSubject.value.length > 0) {
-            getListGroup(selectedLOSubject.value);
+        if (type) {
+            if (currentUser.role.rep == 4) {
+                getListGroup(currentUser._id);
+            } else if (selectedLOSubject.value.length > 0) {
+                getListGroup(selectedLOSubject.value);
+            }
         }
-    }, []);
+    }, [type]);
 
     useEffect(() => {
         let mounted = true;

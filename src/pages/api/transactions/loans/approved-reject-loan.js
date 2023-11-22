@@ -50,7 +50,7 @@ async function updateLoan(req, res) {
             // client status to pending
             if (loan.loanCycle > 1) {
                 let loans = await db.collection('loans').find({ clientId: loan.clientId, loanCycle: loan.loanCycle - 1 }).toArray();
-                if (loans) {
+                if (loans && loans?.length > 0) {
                     let cashCollection = await db.collection('cashCollections')
                                             .aggregate([
                                                 { $match: { $expr: { $and: [
