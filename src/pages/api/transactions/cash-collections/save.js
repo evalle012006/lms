@@ -157,6 +157,8 @@ async function updateLoan(collection, currentDate) {
 
         if (collection.remarks && collection.remarks.value === 'matured-past due') {
             loan.activeLoan = 0;
+            loan.maturedPD = true;
+            loan.maturedPDDate = collection.dateAdded;
         }
         
         loan.amountRelease = collection.amountRelease;
