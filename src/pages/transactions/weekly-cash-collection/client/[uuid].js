@@ -503,6 +503,10 @@ const CashCollectionDetailsPage = () => {
                             }
                         }
 
+                        if (cc?.maturedPD) {
+                            remarks = cc.history.remarks;
+                        }
+                        
                         collection = {
                             client: cc.client,
                             coMaker: (cc.coMaker && typeof cc.coMaker == 'number') ? cc.coMaker : '-',
@@ -568,7 +572,8 @@ const CashCollectionDetailsPage = () => {
                             guarantorFirstName: cc.guarantorFirstName,
                             guarantorMiddleName: cc.guarantorMiddleName,
                             guarantorLastName: cc.guarantorLastName,
-                            loanRelease: cc.loanRelease
+                            loanRelease: cc.loanRelease,
+                            maturedPD: cc.hasOwnProperty('maturedPD') ? cc.maturedPD : false
                         }
     
                         delete cc._id;
@@ -604,6 +609,7 @@ const CashCollectionDetailsPage = () => {
                             collection.dcmc = draftCC.dcmc;
                             collection.excused = (draftCC.hasOwnProperty('excused') && draftCC.excused) ? draftCC.excused : false;
                             collection.latePayment = (draftCC.hasOwnProperty('latePayment') && draftCC.latePayment) ? draftCC.latePayment : false;
+                            collection.mpdc = (current.hasOwnProperty('mpdc') && current.mpdc) ? current.mpdc : false;
 
                             if (draftCC?.origin) {
                                 collection.origin = draftCC.origin;
@@ -1055,7 +1061,7 @@ const CashCollectionDetailsPage = () => {
         let errorMsg = new Set();
 
         data && data.map(cc => {
-            if (cc.status !== 'totals' && cc.status == 'active' && cc?.loanBalance > 0 && !draft) {
+            if (cc.status !== 'totals' && cc.status == 'active' && cc?.loanBalance > 0 && !draft && !cc?.maturedPD) {
                 if (cc.group.day === dayName) {
                     if (cc.error) {
                         errorMsg.add('Error occured. Please double check the Actual Collection column.');
@@ -1201,6 +1207,7 @@ const CashCollectionDetailsPage = () => {
                     if (!draft) {
                         delete temp.error;
                         delete temp.dcmc;
+                        delete temp.mpdc;
                     }
                     delete temp.dirty;
                     delete temp.group;
@@ -1355,6 +1362,7 @@ const CashCollectionDetailsPage = () => {
                     if (idx === index) {
                         temp.error = false;
                         temp.dcmc = false;
+                        temp.mpdc = false;
                         if (temp.hasOwnProperty('prevData') && temp.prevData) {
                             temp.loanBalance = temp.prevData.loanBalance;
                             temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
@@ -1528,7 +1536,7 @@ const CashCollectionDetailsPage = () => {
                             };
                         }
 
-                        if (temp?.dcmc) {
+                        if (temp?.dcmc || temp?.mpdc) {
                             temp.mcbuCol = mcbuCol;
                             temp.mcbuColStr = formatPricePhp(mcbuCol);
                             temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + mcbuCol : 0 + mcbuCol;
@@ -1647,6 +1655,7 @@ const CashCollectionDetailsPage = () => {
                             // always reset these fields
                             temp.error = false;
                             temp.dcmc = false;
+                            temp.mpdc = false;
                             if (temp.hasOwnProperty('prevData') && temp.prevData) {
                                 temp.targetCollection = temp.prevData.activeLoan;
                                 temp.activeLoan = temp.prevData.activeLoan;
@@ -1806,7 +1815,7 @@ const CashCollectionDetailsPage = () => {
                                 }
                             } else if (remarks.value === "past due collection") {
                                 // if payment > targetCollection, then put subtract it on the past due amount not on excess
-                                if (temp.pastDue > 0 && temp.paymentCollection > temp.activeLoan) {
+                                if (temp.pastDue > 0 && temp.paymentCollection > temp.activeLoan && !temp?.maturedPD) {
                                     const pastDueCol = temp.paymentCollection - temp.activeLoan;
                                     if (pastDueCol > temp.pastDue) {
                                         const excessPD = pastDueCol - temp.pastDue;
@@ -1957,7 +1966,7 @@ const CashCollectionDetailsPage = () => {
                                     const paymentCollection = parseFloat(temp.paymentCollection);
                                     let loanBalance = parseFloat(temp.loanBalance);
     
-                                    if (paymentCollection > 0) {
+                                    if (paymentCollection > 0 && temp.prevData.loanBalance != loanBalance) {
                                         loanBalance += paymentCollection;
                                         temp.paymentCollection = 0;
                                         temp.paymentCollectionStr = '-';
@@ -1986,6 +1995,26 @@ const CashCollectionDetailsPage = () => {
                                 //     temp.error = true;
                                 //     toast.error(`Invalid remarks. Loan is not yet past ${temp.loanTerms} days.`);
                                 // }
+                            } else if (remarks.value === 'matured_past_due_collection') {
+                                if (temp?.maturedPD) {
+                                    temp.mpdc = true;
+                                    temp.mispayment = false;
+                                    temp.mispaymentStr = 'No';
+                                    temp.activeLoan = 0;
+                                    temp.targetCollection = 0;
+                                    temp.targetCollectionStr = '-';
+                                    if (temp.mcbuCol > 0) {
+                                        temp.mcbu = temp.mcbu > 0 ? temp.mcbu - temp.mcbuCol : 0;
+                                        temp.mcbuStr = formatPricePhp(temp.mcbu);
+                                        temp.mcbuCol = 0;
+                                        temp.mcbuColStr = '-';
+                                    }
+                                    temp.paymentCollection = 0;
+                                    temp.paymentCollectionStr = '-';
+                                } else {
+                                    temp.error = true;
+                                    toast.error('Invalid remarks. Loan not declared as Matured Past Due.');
+                                }
                             } else {
                                 if (remarks.value === 'reloaner' && (temp.remarks && (temp?.remarks?.value.startsWith("reloaner") || temp?.remarks?.value?.startsWith('offset')))) {
                                     temp.mcbu = temp.prevData.mcbu;
@@ -2539,7 +2568,8 @@ const CashCollectionDetailsPage = () => {
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
                                                     { (!isWeekend && !isHoliday && currentUser.role.rep > 2 && cc.status === 'active' && editMode 
                                                             && ((cc?.origin && (cc?.origin === 'pre-save' || cc?.origin === 'automation-trf')) || cc.reverted || cc.draft) 
-                                                            || (cc.offsetTransFlag && cc.otherDay)) ? (
+                                                            || (cc.offsetTransFlag && cc.otherDay)
+                                                      ) ? (
                                                         <React.Fragment>
                                                             <input type="number" name={`${cc.clientId}-mcbuCol`} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'mcbuCol')}
                                                                 onClick={(e) => e.stopPropagation()} onBlur={(e) => handlePaymentValidation(e, cc, index, 'mcbuCol')} defaultValue={cc.mcbuCol ? cc.mcbuCol : 0} tabIndex={index + 1}
@@ -2557,7 +2587,7 @@ const CashCollectionDetailsPage = () => {
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
                                                     { (!isWeekend && !isHoliday && currentUser.role.rep > 2 && cc.status === 'active' 
                                                         && editMode && ((cc?.origin && (cc?.origin === 'pre-save' || cc?.origin === 'automation-trf')) || cc?.reverted || cc.draft)
-                                                        || (cc.offsetTransFlag && cc.otherDay) && !cc?.dcmc) ? (
+                                                        || (cc.offsetTransFlag && cc.otherDay) && !cc?.dcmc && !cc?.mpdc && !cc?.maturedPD) ? (
                                                         <React.Fragment>
                                                             <input type="number" name={cc.clientId} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'amount', cc.activeLoan)}
                                                                 onClick={(e) => e.stopPropagation()} value={cc.paymentCollection} tabIndex={index + 2} onWheel={(e) => e.target.blur()}
@@ -2590,11 +2620,20 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.mispaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.noMispaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.pastDueStr }</td>
-                                                { (!isWeekend && !isHoliday && !filter && (currentUser.role.rep > 2 && (cc.status === 'active' || cc.status === 'completed') && (editMode && !groupSummaryIsClose) 
-                                                    && ((cc?.origin && (cc?.origin === 'pre-save' || cc?.origin === 'automation-trf')) || cc.reverted)) || ((cc.remarks && cc.remarks.value === "reloaner" && cc.status !== "tomorrow") && !groupSummaryIsClose)
-                                                    && (cc.remarks && cc.remarks.value === "reloaner" && cc.fullPaymentDate !== currentDate) && cc.status !== 'pending' || cc.draft || (cc.offsetTransFlag && cc.otherDay)
-                                                    || (cc.remarks && (cc.remarks.value?.startsWith('collection-') || cc.remarks.value?.startsWith('offset-'))
-                                                    || (cc.status == 'completed' && cc.remarks == ''))) ? (
+                                                { ( !isWeekend && !isHoliday && !filter && currentUser.role.rep > 2 && (cc.status === 'active' || cc.status === 'completed') && !groupSummaryIsClose
+                                                    && (cc.draft || editMode
+                                                        || ((cc?.origin && (cc?.origin === 'pre-save' || cc?.origin === 'automation-trf')) || cc?.reverted) 
+                                                        || (cc.status !== "tomorrow" && cc.status == 'completed' && cc.remarks && (cc.remarks.value.startsWith('reloaner')))
+                                                        || (cc.remarks && (cc.remarks.value?.startsWith('collection-') || cc.remarks.value?.startsWith('offset-')))
+                                                        || (cc.status == 'completed' && cc.remarks == '')
+                                                        || (cc.offsetTransFlag && cc.otherDay)  
+                                                       )
+                                                    // !isWeekend && !isHoliday && !filter && (currentUser.role.rep > 2 && (cc.status === 'active' || cc.status === 'completed') && (editMode && !groupSummaryIsClose) 
+                                                    // && ((cc?.origin && (cc?.origin === 'pre-save' || cc?.origin === 'automation-trf')) || cc.reverted)) || ((cc.remarks && cc.remarks.value === "reloaner" && cc.status !== "tomorrow") && !groupSummaryIsClose)
+                                                    // && (cc.remarks && cc.remarks.value === "reloaner" && cc.fullPaymentDate !== currentDate) && cc.status !== 'pending' || cc.draft || (cc.offsetTransFlag && cc.otherDay)
+                                                    // || (cc.remarks && (cc.remarks.value?.startsWith('collection-') || cc.remarks.value?.startsWith('offset-'))
+                                                    // || (cc.status == 'completed' && cc.remarks == ''))
+                                                  ) ? (
                                                         <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">
                                                             { cc.remarks !== '-' ? (
                                                                 <Select 

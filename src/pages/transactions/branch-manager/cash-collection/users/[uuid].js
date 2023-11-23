@@ -144,12 +144,6 @@ const CashCollectionDetailsPage = () => {
     }
 
     useEffect(() => {
-        if (branchList && branchList.length == 0) {
-            getListBranch();
-        }
-    }, [branchList]);
-
-    useEffect(() => {
         let mounted = true;
 
         const getCurrentBranch = async () => {
@@ -164,7 +158,7 @@ const CashCollectionDetailsPage = () => {
             }
         }
 
-        mounted && uuid && getCurrentBranch();
+        mounted && uuid && getCurrentBranch() && getListBranch();
 
         return () => {
             mounted = false;
