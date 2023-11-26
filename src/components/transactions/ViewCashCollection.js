@@ -1181,7 +1181,6 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
     useEffect(() => {
         let mounted = true;
         localStorage.removeItem('cashCollectionDateFilter');
-        console.log(selectedGroupIds.length)
         if (selectedGroupIds.length > 0) {
             if (dateFilter) {
                 const date = moment(dateFilter).format('YYYY-MM-DD');

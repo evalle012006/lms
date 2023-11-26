@@ -56,6 +56,8 @@ async function revert(req, res) {
                 currentLoan.fullPaymentDate = history.loanBalance > 0 ? null : currentLoan.fullPaymentDate;
                 currentLoan.loanCycle = history.loanCycle;
                 currentLoan.history = cashCollection.history;
+                delete currentLoan.maturedPD;
+                delete currentLoan.maturedPDDate;
             }
 
             if (cashCollection.remarks && cashCollection.remarks.value == 'past due collection') {
@@ -73,7 +75,7 @@ async function revert(req, res) {
 
             currentLoan.reverted = true;
             logger.debug({page: 'LOR', message: 'Revert Transaction', _id: currentLoanId, currentLoan: currentLoan});
-            await db.collection('loans').updateOne({ _id: currentLoanId }, { $set: {...currentLoan} });
+            await db.collection('loans').updateOne({ _id: currentLoanId }, { $unset: {maturedPd: 1, maturedPDDate: 1}, $set: {...currentLoan} });
 
             // cashCollections
             if (!cashCollection.mispayment) {
@@ -106,8 +108,10 @@ async function revert(req, res) {
             data.remarks = '';
             data.mispaymentStr = "No";
             data.reverted = true;
+            delete data.maturedPD;
+            delete data.maturedPDDate;
             logger.debug({page: 'LOR', message: 'Revert Transaction', _id: cashCollectionId, currentCC: data});
-            await db.collection('cashCollections').updateOne({ _id: new ObjectId(cashCollectionId) }, {$set: { ...data }});
+            await db.collection('cashCollections').updateOne({ _id: new ObjectId(cashCollectionId) }, {$unset: {maturedPd: 1, maturedPDDate: 1}, $set: { ...data }});
         } else if (cashCollection.status == 'pending' || cashCollection.status == 'tomorrow') {
             history = previousCC?.history;
             const prevLoanId = cashCollection.prevLoanId;

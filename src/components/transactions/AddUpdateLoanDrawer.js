@@ -66,7 +66,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         guarantorLastName: loan.guarantorLastName,
         status: mode !== 'reloan' ? loan.status : 'pending',
     }
-    console.log(loan)
+
     const validationSchema = yup.object().shape({
         groupId: yup
             .string()
