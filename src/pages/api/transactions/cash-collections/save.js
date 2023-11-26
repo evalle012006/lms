@@ -41,12 +41,16 @@ async function save(req, res) {
 
                 if (collection.hasOwnProperty('_id')) {
                     collection.modifiedDateTime = new Date();
+                    const existCollection = {...collection};
+                    delete existCollection.mcbuHistory;
                     existCC.push(collection);
                 } else {
                     // if (collection.status === 'completed' && collection?.previousDraft) {
                     //     prevCommpleted.push(collection);
                     // } else {
                         collection.insertedDateTime = new Date();
+                        const newCollection = {...collection};
+                        delete newCollection.mcbuHistory;
                         newCC.push(collection);
                     // }
                 }
@@ -158,7 +162,7 @@ async function updateLoan(collection, currentDate) {
         if (collection.remarks && collection.remarks.value === 'matured-past due') {
             loan.activeLoan = 0;
             loan.maturedPD = true;
-            loan.maturedPDDate = collection.dateAdded;
+            loan.maturedPDDate = currentDate;
         }
         
         loan.amountRelease = collection.amountRelease;

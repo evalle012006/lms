@@ -33,8 +33,17 @@ import {
 import Avatar from "@/lib/avatar";
 import { userService } from "@/services/user-service";
 import { fetchWrapper } from "@/lib/fetch-wrapper";
+import { setTransfer, setTransferList } from "@/redux/actions/transferActions";
+import { setLosList } from "@/redux/actions/losActions";
+import { setCashCollectionList } from "@/redux/actions/cashCollectionActions";
+import { setUser, setUserList } from "@/redux/actions/userActions";
+import { setBranch, setBranchList } from "@/redux/actions/branchActions";
+import { setGroup, setGroupList } from "@/redux/actions/groupActions";
+import { setClient, setClientList } from "@/redux/actions/clientActions";
+import { setLoan, setLoanList } from "@/redux/actions/loanActions";
 
 const SubNav = ({ item, index, activePath, inner=false, className }) => {
+    const dispatch = useDispatch();
     const subMenu = useSelector(state => state.global.subMenus);
     const sub = subMenu.find(s => s.menu === item.label);
     const [subMenuOpen, setSubMenuOpen] = useState(sub && sub.open);
@@ -48,6 +57,23 @@ const SubNav = ({ item, index, activePath, inner=false, className }) => {
         const params = { user: user._id };
         const response = await fetchWrapper.get(url + new URLSearchParams(params));
         await response && response.success && response.query.acknowledged && userService.logout();
+        resetReduxState();
+    }
+
+    const resetReduxState = () => {
+        dispatch(setTransferList([]));
+        dispatch(setTransfer(null));
+        dispatch(setLosList([]));
+        dispatch(setCashCollectionList([]));
+        dispatch(setUserList([]));
+        dispatch(setBranch({}));
+        dispatch(setBranchList([]));
+        dispatch(setGroup({}));
+        dispatch(setGroupList([]));
+        dispatch(setClient(null));
+        dispatch(setClientList([]));
+        dispatch(setLoan(null));
+        dispatch(setLoanList([]));
     }
 
     if (item.url !== ("/logout")) {

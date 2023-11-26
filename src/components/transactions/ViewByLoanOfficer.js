@@ -1049,7 +1049,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
             }
         }
 
-        if ((currentBranch && currentBranch.code) && selectedLoGroup) {
+        if (currentBranch && selectedLoGroup) {
             getListUser();
         }
     }, [selectedLoGroup, currentBranch]);

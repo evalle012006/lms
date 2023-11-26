@@ -114,7 +114,9 @@ const BranchCashCollectionPage = () => {
             response.branches && response.branches.map(branch => {
                 branches.push(
                     {
-                        ...branch
+                        ...branch,
+                        value: branch._id,
+                        label: branch.name
                     }
                 );
             });
