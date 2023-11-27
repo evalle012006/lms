@@ -51,7 +51,7 @@ async function save(req, res) {
             lastLogin: null,
             dateAdded: data.currentDate,
             role: JSON.parse(data.role),
-            loNo: data.loNo,
+            loNo: typeof data.loNo == 'string' ? parseInt(data.loNo) : data.loNo,
             designatedBranch: assignedBranch,
             designatedBranchId: assignedBranchId,
             transactionType: data.transactionType
