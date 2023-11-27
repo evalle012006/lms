@@ -39,6 +39,14 @@ async function save(req, res) {
                     collection.pastDue = 0;
                 }
 
+                if (collection.loanBalance <= 0) {
+                    if (collection.occurence == 'daily') {
+                        collection.noOfPayments = 60;
+                    } else {
+                        collection.noOfPayments = 24;
+                    }
+                }
+
                 if (collection.hasOwnProperty('_id')) {
                     collection.modifiedDateTime = new Date();
                     const existCollection = {...collection};
