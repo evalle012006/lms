@@ -371,19 +371,19 @@ async function getAllLoanTransactionsByBranch(branchId, date, dayName, currentDa
                                     collection: { $sum: 0 },
                                     excess: { $sum: 0 },
                                     total: { $sum: 0 },
-                                    mcbu: { $sum: {
-                                        $cond: {
-                                            if: { $eq: ['$occurence', 'weekly'] },
-                                            then: {
-                                                $cond: {
-                                                    if: { $eq: ['$groupDay', dayName] },
-                                                    then: '$mcbu',
-                                                    else: 0
-                                                },
-                                            },
-                                            else: '$mcbu'
-                                        }
-                                    } },
+                                    mcbu: { $sum: '$mcbu'
+                                        // { $cond: {
+                                        //     if: { $eq: ['$occurence', 'weekly'] },
+                                        //     then: {
+                                        //         $cond: {
+                                        //             if: { $eq: ['$groupDay', dayName] },
+                                        //             then: '$mcbu',
+                                        //             else: 0
+                                        //         },
+                                        //     },
+                                        //     else: '$mcbu'
+                                        // }} 
+                                    },
                                     mcbuInterest: { $sum: '$mcbuInterest' }
                                 } 
                             }
@@ -625,19 +625,19 @@ async function getAllLoanTransactionsByBranch(branchId, date, dayName, currentDa
                                             }
                                         }
                                     },
-                                    mcbu: { $sum: {
-                                        $cond: {
-                                            if: { $eq: ['$occurence', 'weekly'] },
-                                            then: {
-                                                $cond: {
-                                                    if: { $eq: ['$groupDay', dayName] },
-                                                    then: '$mcbu',
-                                                    else: 0
-                                                },
-                                            },
-                                            else: '$mcbu'
-                                        }
-                                    } },
+                                    mcbu: { $sum: '$mcbu'
+                                        // { $cond: {
+                                        //     if: { $eq: ['$occurence', 'weekly'] },
+                                        //     then: {
+                                        //         $cond: {
+                                        //             if: { $eq: ['$groupDay', dayName] },
+                                        //             then: '$mcbu',
+                                        //             else: 0
+                                        //         },
+                                        //     },
+                                        //     else: '$mcbu'
+                                        // }} 
+                                    },
                                     mcbuCol: { $sum: '$mcbuCol' },
                                     mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
                                     mcbuReturnNo: { $sum: {

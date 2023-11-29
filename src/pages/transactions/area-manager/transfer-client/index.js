@@ -81,27 +81,27 @@ const TransferClientPage = () => {
         },
         {
             Header: "Source Branch",
-            accessor: 'sourceBranch'
+            accessor: 'sourceBranchName'
         },
         {
             Header: "Source LO",
-            accessor: 'sourceUser'
+            accessor: 'sourceUserName'
         },
         {
             Header: "Source Group",
-            accessor: 'sourceGroup'
+            accessor: 'sourceGroupName'
         },
         {
             Header: "Target Branch",
-            accessor: 'targetBranch'
+            accessor: 'targetBranchName'
         },
         {
             Header: "Target LO",
-            accessor: 'targetUser'
+            accessor: 'targetUserName'
         },
         {
             Header: "Target Group",
-            accessor: 'targetGroup'
+            accessor: 'targetGroupName'
         }
     ]);
 
@@ -350,12 +350,12 @@ const TransferClientPage = () => {
                         temp.totalMcbu = loan.mcbu;
                         temp.totalMcbuStr = temp.totalMcbu > 0 ? formatPricePhp(temp.totalMcbu) : '-';
                         temp.loanStatus = loan.status;
-                        temp.sourceBranch = transfer.sourceBranch.name;
-                        temp.sourceUser = `${transfer.sourceUser.firstName} ${transfer.sourceUser.lastName}`,
-                        temp.sourceGroup = transfer.sourceGroup.name;
-                        temp.targetBranch = transfer.targetBranch.name;
-                        temp.targetUser = `${transfer.targetUser.firstName} ${transfer.targetUser.lastName}`,
-                        temp.targetGroup = transfer.targetGroup.name;
+                        temp.sourceBranchName = transfer.sourceBranch.name;
+                        temp.sourceUserName = `${transfer.sourceUser.firstName} ${transfer.sourceUser.lastName}`,
+                        temp.sourceGroupName = transfer.sourceGroup.name;
+                        temp.targetBranchName = transfer.targetBranch.name;
+                        temp.targetUserName = `${transfer.targetUser.firstName} ${transfer.targetUser.lastName}`,
+                        temp.targetGroupName = transfer.targetGroup.name;
 
                         if (temp.loanStatus === "closed") {
                             temp.delinquent = true;
@@ -397,12 +397,12 @@ const TransferClientPage = () => {
                         temp.totalMcbu = loan.mcbu;
                         temp.totalMcbuStr = temp.totalMcbu > 0 ? formatPricePhp(temp.totalMcbu) : '-';
                         temp.loanStatus = loan.status;
-                        temp.sourceBranch = transfer.sourceBranch.name;
-                        temp.sourceUser = `${transfer.sourceUser.firstName} ${transfer.sourceUser.lastName}`,
-                        temp.sourceGroup = transfer.sourceGroup.name;
-                        temp.targetBranch = transfer.targetBranch.name;
-                        temp.targetUser = `${transfer.targetUser.firstName} ${transfer.targetUser.lastName}`,
-                        temp.targetGroup = transfer.targetGroup.name;
+                        temp.sourceBranchName = transfer.sourceBranch.name;
+                        temp.sourceUserName = `${transfer.sourceUser.firstName} ${transfer.sourceUser.lastName}`,
+                        temp.sourceGroupName = transfer.sourceGroup.name;
+                        temp.targetBranchName = transfer.targetBranch.name;
+                        temp.targetUserName = `${transfer.targetUser.firstName} ${transfer.targetUser.lastName}`,
+                        temp.targetGroupName = transfer.targetGroup.name;
 
                         if (temp.loanStatus === "closed") {
                             temp.delinquent = true;
