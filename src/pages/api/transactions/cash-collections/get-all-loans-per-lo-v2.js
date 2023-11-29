@@ -132,9 +132,9 @@ async function getAllLoansPerGroup(date, mode, loId, dayName, currentDate) {
                                                     }
                                                 } },
                                                 mcbuCol: { $sum: '$mcbuCol' },
-                                                targetCollection: { $sum: '$activeLoan' },
                                                 excess: { $sum: '$excess' },
-                                                actualCollection: { $sum: '$paymentCollection' },
+                                                amountRelease: { $last: '$amountRelease' },
+                                                loanBalance: { $last: '$loanBalance' },
                                                 mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
                                                 mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
                                                 mcbuNoReturn: { $sum: {
@@ -160,6 +160,11 @@ async function getAllLoansPerGroup(date, mode, loId, dayName, currentDate) {
                                                         else: 0
                                                     }
                                                 } }
+                                            }
+                                        },
+                                        {
+                                            $addFields: { 
+                                                actualCollection: { $subtract: ['$amountRelease', '$loanBalance'] }
                                             }
                                         }
                                     ],
@@ -195,9 +200,9 @@ async function getAllLoansPerGroup(date, mode, loId, dayName, currentDate) {
                                                     }
                                                 } },
                                                 mcbuCol: { $sum: '$mcbuCol' },
-                                                targetCollection: { $sum: '$activeLoan' },
                                                 excess: { $sum: '$excess' },
-                                                actualCollection: { $sum: '$paymentCollection' },
+                                                amountRelease: { $last: '$amountRelease' },
+                                                loanBalance: { $last: '$loanBalance' },
                                                 mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
                                                 mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
                                                 mcbuNoReturn: { $sum: {
@@ -223,6 +228,11 @@ async function getAllLoansPerGroup(date, mode, loId, dayName, currentDate) {
                                                         else: 0
                                                     }
                                                 } }
+                                            }
+                                        },
+                                        {
+                                            $addFields: { 
+                                                actualCollection: { $subtract: ['$amountRelease', '$loanBalance'] }
                                             }
                                         }
                                     ],
@@ -258,9 +268,9 @@ async function getAllLoansPerGroup(date, mode, loId, dayName, currentDate) {
                                                     }
                                                 } },
                                                 mcbuCol: { $sum: '$mcbuCol' },
-                                                targetCollection: { $sum: '$activeLoan' },
                                                 excess: { $sum: '$excess' },
-                                                actualCollection: { $sum: '$paymentCollection' },
+                                                amountRelease: { $last: '$amountRelease' },
+                                                loanBalance: { $last: '$loanBalance' },
                                                 mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
                                                 mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
                                                 mcbuNoReturn: { $sum: {
@@ -286,6 +296,11 @@ async function getAllLoansPerGroup(date, mode, loId, dayName, currentDate) {
                                                         else: 0
                                                     }
                                                 } }
+                                            }
+                                        },
+                                        {
+                                            $addFields: { 
+                                                actualCollection: { $subtract: ['$amountRelease', '$loanBalance'] }
                                             }
                                         }
                                     ],
@@ -321,9 +336,9 @@ async function getAllLoansPerGroup(date, mode, loId, dayName, currentDate) {
                                                     }
                                                 } },
                                                 mcbuCol: { $sum: '$mcbuCol' },
-                                                targetCollection: { $sum: '$activeLoan' },
                                                 excess: { $sum: '$excess' },
-                                                actualCollection: { $sum: '$paymentCollection' },
+                                                amountRelease: { $last: '$amountRelease' },
+                                                loanBalance: { $last: '$loanBalance' },
                                                 mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
                                                 mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
                                                 mcbuNoReturn: { $sum: {
@@ -349,6 +364,11 @@ async function getAllLoansPerGroup(date, mode, loId, dayName, currentDate) {
                                                         else: 0
                                                     }
                                                 } }
+                                            }
+                                        },
+                                        {
+                                            $addFields: { 
+                                                actualCollection: { $subtract: ['$amountRelease', '$loanBalance'] }
                                             }
                                         }
                                     ],
@@ -836,9 +856,9 @@ async function getAllLoansPerGroup(date, mode, loId, dayName, currentDate) {
                                                     }
                                                 } },
                                                 mcbuCol: { $sum: '$mcbuCol' },
-                                                targetCollection: { $sum: '$activeLoan' },
                                                 excess: { $sum: '$excess' },
-                                                actualCollection: { $sum: '$paymentCollection' },
+                                                amountRelease: { $last: '$amountRelease' },
+                                                loanBalance: { $last: '$loanBalance' },
                                                 mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
                                                 mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
                                                 mcbuNoReturn: { $sum: {
@@ -864,6 +884,11 @@ async function getAllLoansPerGroup(date, mode, loId, dayName, currentDate) {
                                                         else: 0
                                                     }
                                                 } }
+                                            }
+                                        },
+                                        {
+                                            $addFields: { 
+                                                actualCollection: { $subtract: ['$amountRelease', '$loanBalance'] }
                                             }
                                         }
                                     ],
@@ -899,9 +924,9 @@ async function getAllLoansPerGroup(date, mode, loId, dayName, currentDate) {
                                                     }
                                                 } },
                                                 mcbuCol: { $sum: '$mcbuCol' },
-                                                targetCollection: { $sum: '$activeLoan' },
                                                 excess: { $sum: '$excess' },
-                                                actualCollection: { $sum: '$paymentCollection' },
+                                                amountRelease: { $last: '$amountRelease' },
+                                                loanBalance: { $last: '$loanBalance' },
                                                 mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
                                                 mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
                                                 mcbuNoReturn: { $sum: {
@@ -927,6 +952,11 @@ async function getAllLoansPerGroup(date, mode, loId, dayName, currentDate) {
                                                         else: 0
                                                     }
                                                 } }
+                                            }
+                                        },
+                                        {
+                                            $addFields: { 
+                                                actualCollection: { $subtract: ['$amountRelease', '$loanBalance'] }
                                             }
                                         }
                                     ],
@@ -962,9 +992,9 @@ async function getAllLoansPerGroup(date, mode, loId, dayName, currentDate) {
                                                     }
                                                 } },
                                                 mcbuCol: { $sum: '$mcbuCol' },
-                                                targetCollection: { $sum: '$activeLoan' },
                                                 excess: { $sum: '$excess' },
-                                                actualCollection: { $sum: '$paymentCollection' },
+                                                amountRelease: { $last: '$amountRelease' },
+                                                loanBalance: { $last: '$loanBalance' },
                                                 mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
                                                 mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
                                                 mcbuNoReturn: { $sum: {
@@ -990,6 +1020,11 @@ async function getAllLoansPerGroup(date, mode, loId, dayName, currentDate) {
                                                         else: 0
                                                     }
                                                 } }
+                                            }
+                                        },
+                                        {
+                                            $addFields: { 
+                                                actualCollection: { $subtract: ['$amountRelease', '$loanBalance'] }
                                             }
                                         }
                                     ],
@@ -1025,9 +1060,9 @@ async function getAllLoansPerGroup(date, mode, loId, dayName, currentDate) {
                                                     }
                                                 } },
                                                 mcbuCol: { $sum: '$mcbuCol' },
-                                                targetCollection: { $sum: '$activeLoan' },
                                                 excess: { $sum: '$excess' },
-                                                actualCollection: { $sum: '$paymentCollection' },
+                                                amountRelease: { $last: '$amountRelease' },
+                                                loanBalance: { $last: '$loanBalance' },
                                                 mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
                                                 mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
                                                 mcbuNoReturn: { $sum: {
@@ -1053,6 +1088,11 @@ async function getAllLoansPerGroup(date, mode, loId, dayName, currentDate) {
                                                         else: 0
                                                     }
                                                 } }
+                                            }
+                                        },
+                                        {
+                                            $addFields: { 
+                                                actualCollection: { $subtract: ['$amountRelease', '$loanBalance'] }
                                             }
                                         }
                                     ],
