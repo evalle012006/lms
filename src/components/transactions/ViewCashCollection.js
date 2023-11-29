@@ -751,7 +751,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 totalMcbuReturnAmt += details.mcbuReturnAmt;
                 totalMcbuNoReturn += details.mcbuNoReturn;
                 totalMcbuInterest += details.mcbuInterest;
-                totalTargetCollection += details.targetCollection + details.excess;
+                totalTargetCollection += details.actualCollection;
                 // totalExcess += details.excess;
                 totalActualCollection += details.actualCollection;
                 totalPastDue += details.pastDue;
