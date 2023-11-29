@@ -483,11 +483,13 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         }
 
                         collection.mcbu -= giver.mcbu;
-                        collection.totalReleases -= giver.amountRelease;
-                        collection.totalLoanBalance -= giver.loanBalance;
+                        collection.totalReleases = collection.totalReleases ? collection.totalReleases : 0;
+                        collection.totalReleases -= giver.amountRelease ? giver.amountRelease : 0;
+                        collection.totalLoanBalance = collection.totalLoanBalance ? collection.totalLoanBalance : 0;
+                        collection.totalLoanBalance -= giver.loanBalance ? giver.loanBalance : 0;
 
-                        totalsLoanRelease -= giver.amountRelease;
-                        totalsLoanBalance -= giver.loanBalance;
+                        totalsLoanRelease -= giver.amountRelease ? giver.amountRelease : 0;
+                        totalsLoanBalance -= giver.loanBalance ? giver.loanBalance : 0;
                     });
                 }
 
@@ -503,13 +505,15 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         if (!filter) {
                             collection.activeClients += 1;
                             collection.activeBorrowers += 1;
-                            collection.mcbu += rcv.mcbu;
+                            collection.mcbu += rcv.mcbu ? rcv.mcbu : 0;
 
-                            collection.totalReleases += rcv.amountRelease;
-                            collection.totalLoanBalance += rcv.loanBalance;
+                            collection.totalReleases = collection.totalReleases ? collection.totalReleases : 0;
+                            collection.totalReleases += rcv.amountRelease ? rcv.amountRelease : 0;
+                            collection.totalLoanBalance = collection.totalLoanBalance ? collection.totalLoanBalance : 0;
+                            collection.totalLoanBalance += rcv.loanBalance ? rcv.loanBalance : 0;
 
-                            totalsLoanRelease += rcv.amountRelease;
-                            totalsLoanBalance += rcv.loanBalance;
+                            totalsLoanRelease += rcv.amountRelease ? rcv.amountRelease : 0;
+                            totalsLoanBalance += rcv.loanBalance ? rcv.loanBalance : 0;
                         } else {
                             collection.loanTarget -= rcv.targetCollection;
                             collection.loanTargetStr = formatPricePhp(collection.loanTarget);
