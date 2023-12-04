@@ -172,6 +172,11 @@ const CashCollectionDetailsPage = () => {
                 setEditMode(false);
                 setGroupSummaryIsClose(true);
             }
+
+            if (dataCollection.length === 0) {
+                setEditMode(false);
+                setGroupSummaryIsClose(true);
+            }
             
             dataCollection.map(cc => {
                 let collection;
@@ -1687,33 +1692,50 @@ const CashCollectionDetailsPage = () => {
                             temp.delinquent = false;
     
                             if (remarks.value && remarks.value?.startsWith('offset')) {
-                                if (parseFloat(temp.loanBalance) !== 0) {
+                                if (parseFloat(temp.loanBalance) !== 0 && !temp?.maturedPD) {
                                     toast.error("Please enter the full balance before closing the loan account.");
                                     temp.error = true;
                                 } else {
-                                    setShowRemarksModal(true);
-                                    setCloseLoan(cc);
-                                    temp.error = false;
-                                    setEditMode(true);
-    
-                                    if (temp.history && (temp.history?.remarks?.value?.startsWith('offset') || temp.history?.remarks?.value?.startsWith('reloaner'))) {
-                                        temp.mcbu = temp.prevData.mcbu;
-                                        temp.mcbuCol = temp.prevData.mcbuCol;
+                                    if (temp?.maturedPD && remarks.value !== 'offset-matured-pd') {
+                                        temp.error = true;
+                                        toast.error("Invalid remarks. Please use For Close/Offset - Matured PD Client remarks.");
+                                    } else {
+                                        setShowRemarksModal(true);
+                                        setCloseLoan(cc);
+                                        temp.error = false;
+                                        setEditMode(true);
+        
+                                        if (temp.history && (temp.history?.remarks?.value?.startsWith('offset') || temp.history?.remarks?.value?.startsWith('reloaner'))) {
+                                            temp.mcbu = temp.prevData.mcbu;
+                                        }
+                                        
+                                        if (temp.mcbu !== temp.prevData.mcbu && temp.mcbuCol && temp.mcbuCol > 0) {
+                                            temp.mcbu = temp.mcbu - temp.mcbuCol;
+                                        }
+        
+                                        temp.mcbuCol = 0;
+                                        temp.mcbuColStr = '-';    
+                                        
+                                        if (temp?.maturedPD) {
+                                            temp.loanBalance -= temp.mcbu;
+                                            temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
+                                            temp.pastDue = temp.loanBalance;
+                                            temp.pastDueStr = formatPricePhp(temp.pastDue);
+                                        } else {
+                                            temp.pastDue = 0;
+                                            temp.pastDueStr = '-';
+                                            temp.mcbuReturnAmt = parseFloat(temp.mcbu);
+                                            temp.mcbuReturnAmtStr = formatPricePhp(temp.mcbuReturnAmt);
+                                        }
+
+                                        temp.mcbu = 0;
+                                        temp.mcbuStr = formatPricePhp(temp.mcbu);
+                                        temp.mcbuError = false;
+        
+                                        if (temp.loanBalance === 0 && temp.paymentCollection === 0) {
+                                            temp.fullPayment = temp?.history?.amountRelease;
+                                        }
                                     }
-                                    
-                                    if (temp.mcbu !== temp.prevData.mcbu && temp.mcbuCol && temp.mcbuCol > 0) {
-                                        temp.mcbu = temp.mcbu - temp.mcbuCol;
-                                    }
-                                    
-                                    temp.mcbuCol = 0;
-                                    temp.mcbuColStr = '-';
-                                    temp.mcbuReturnAmt = parseFloat(temp.mcbu);
-                                    temp.mcbuReturnAmtStr = formatPricePhp(temp.mcbuReturnAmt);
-                                    temp.mcbu = 0;
-                                    temp.mcbuStr = formatPricePhp(temp.mcbu);
-                                    temp.mcbuError = false;
-                                    temp.pastDue = 0;
-                                    temp.pastDueStr = '-';
                                 }
     
                                 temp.mispayment = false;

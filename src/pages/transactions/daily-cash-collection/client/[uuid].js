@@ -163,6 +163,12 @@ const CashCollectionDetailsPage = () => {
                 setEditMode(false);
                 setGroupSummaryIsClose(true);
             }
+            
+            if (dataCollection.length === 0) {
+                setEditMode(false);
+                setGroupSummaryIsClose(true);
+            }
+            
 
             dataCollection.map(cc => {
                 let collection;
@@ -360,6 +366,8 @@ const CashCollectionDetailsPage = () => {
                         if (date) {
                             numMispayment = cc.noMispayment > 0 ? cc.noMispayment + ' / ' + cc.loanTerms : '-';
                         }
+                        let activeLoan = 0;
+                        let paymentCollection = 0;
                         let mcbuCol = 0;
                         let mcbu = cc.mcbu;
                         let mcbuWithdrawal = cc.mcbuWithdrawal;
@@ -373,6 +381,10 @@ const CashCollectionDetailsPage = () => {
                         if (cc.hasOwnProperty('current') && cc.current.length > 0) {
                             const current = cc.current.find(cur => !cur.hasOwnProperty('transfer'));
                             if (current) {
+                                if (cc?.maturedPD) {
+                                    loanBalance = current.loanBalance;
+                                }
+
                                 if (current?.transferred) {
                                     amountRelease = current.amountRelease;
                                     loanBalance = current.loanBalance;
@@ -388,6 +400,12 @@ const CashCollectionDetailsPage = () => {
                                 reverted = current.reverted;
                             }
                         }
+
+                        if (!cc?.maturedPD) {
+                            activeLoan = cc?.history?.activeLoan ? cc.history.activeLoan : cc.activeLoan;
+                            paymentCollection = cc?.history?.collection ? cc.history.collection : 0;
+                        }
+
                         collection = {
                             ...cc,
                             group: cc.group,
@@ -412,9 +430,9 @@ const CashCollectionDetailsPage = () => {
                             totalStr: '-',
                             noOfPayments: cc.noOfPayments,
                             noOfPaymentStr: cc.noOfPayments + ' / ' + cc.loanTerms,
-                            activeLoan: cc?.history?.activeLoan ? cc.history.activeLoan : cc.activeLoan,
-                            targetCollection: cc?.history?.activeLoan ? cc.history.activeLoan : cc.activeLoan,
-                            targetCollectionStr: cc?.history?.activeLoan > 0 ? formatPricePhp(cc.history.activeLoan) : '-',
+                            activeLoan: activeLoan,
+                            targetCollection: activeLoan,
+                            targetCollectionStr: activeLoan > 0 ? formatPricePhp(activeLoan) : '-',
                             mcbu: mcbu,
                             mcbuStr: mcbu > 0 ? formatPricePhp(mcbu) : '-',
                             mcbuCol: mcbuCol ,
@@ -429,8 +447,8 @@ const CashCollectionDetailsPage = () => {
                             amountReleaseStr: amountRelease > 0 ? formatPricePhp(amountRelease) : '-',
                             loanBalance: loanBalance,
                             loanBalanceStr: loanBalance > 0 ? formatPricePhp(loanBalance) : '-',
-                            paymentCollection: cc?.history?.collection ? cc.history.collection : 0,
-                            paymentCollectionStr: cc?.history?.collection > 0 ? formatPricePhp(cc.history.collection) : '-',
+                            paymentCollection: paymentCollection,
+                            paymentCollectionStr: paymentCollection > 0 ? formatPricePhp(paymentCollection) : '-',
                             occurence: cc.group.occurence,
                             currentReleaseAmount: 0,
                             currentReleaseAmountStr: '-',
@@ -450,7 +468,7 @@ const CashCollectionDetailsPage = () => {
                             reverted: reverted
                         }
     
-                        if (loanBalance > 0) {
+                        if (loanBalance > 0 && !cc?.maturedPD) {
                             collection.transferred = true;
                         }
     
@@ -1538,35 +1556,49 @@ const CashCollectionDetailsPage = () => {
                             // for pending remarks - this slot no should still be able to change by the following day to change the remarks
                             // by tomorrow only reloaner and offsets...
                             if (remarks.value && remarks.value?.startsWith('offset')) {
-                                if (parseFloat(temp.loanBalance) !== 0) {
+                                if (parseFloat(temp.loanBalance) !== 0 && !temp?.maturedPD) {
                                     toast.error("Please enter the full balance before closing the loan account.");
                                     temp.error = true;
                                 } else {
-                                    setShowRemarksModal(true);
-                                    setCloseLoan(cc);
-                                    temp.error = false;
-                                    setEditMode(true);
-    
-                                    if (temp.history && (temp.history?.remarks?.value?.startsWith('offset') || temp.history?.remarks?.value?.startsWith('reloaner'))) {
-                                        temp.mcbu = temp.prevData.mcbu;
-                                    }
-                                    
-                                    if (temp.mcbu !== temp.prevData.mcbu && temp.mcbuCol && temp.mcbuCol > 0) {
-                                        temp.mcbu = temp.mcbu - temp.mcbuCol;
-                                    }
-    
-                                    temp.mcbuCol = 0;
-                                    temp.mcbuColStr = '-';    
-                                    temp.mcbuReturnAmt = parseFloat(temp.mcbu);
-                                    temp.mcbuReturnAmtStr = formatPricePhp(temp.mcbuReturnAmt);
-                                    temp.mcbu = 0;
-                                    temp.mcbuStr = formatPricePhp(temp.mcbu);
-                                    temp.mcbuError = false;
-                                    temp.pastDue = 0;
-                                    temp.pastDueStr = '-';
-    
-                                    if (temp.loanBalance === 0 && temp.paymentCollection === 0) {
-                                        temp.fullPayment = temp?.history?.amountRelease;
+                                    if (temp?.maturedPD && remarks.value !== 'offset-matured-pd') {
+                                        temp.error = true;
+                                        toast.error("Invalid remarks. Please use For Close/Offset - Matured PD Client remarks.");
+                                    } else {
+                                        setShowRemarksModal(true);
+                                        setCloseLoan(cc);
+                                        temp.error = false;
+                                        setEditMode(true);
+        
+                                        if (temp.history && (temp.history?.remarks?.value?.startsWith('offset') || temp.history?.remarks?.value?.startsWith('reloaner'))) {
+                                            temp.mcbu = temp.prevData.mcbu;
+                                        }
+                                        
+                                        if (temp.mcbu !== temp.prevData.mcbu && temp.mcbuCol && temp.mcbuCol > 0) {
+                                            temp.mcbu = temp.mcbu - temp.mcbuCol;
+                                        }
+        
+                                        temp.mcbuCol = 0;
+                                        temp.mcbuColStr = '-';    
+                                        
+                                        if (temp?.maturedPD) {
+                                            temp.loanBalance -= temp.mcbu;
+                                            temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
+                                            temp.pastDue = temp.loanBalance;
+                                            temp.pastDueStr = formatPricePhp(temp.pastDue);
+                                        } else {
+                                            temp.pastDue = 0;
+                                            temp.pastDueStr = '-';
+                                            temp.mcbuReturnAmt = parseFloat(temp.mcbu);
+                                            temp.mcbuReturnAmtStr = formatPricePhp(temp.mcbuReturnAmt);
+                                        }
+
+                                        temp.mcbu = 0;
+                                        temp.mcbuStr = formatPricePhp(temp.mcbu);
+                                        temp.mcbuError = false;
+        
+                                        if (temp.loanBalance === 0 && temp.paymentCollection === 0) {
+                                            temp.fullPayment = temp?.history?.amountRelease;
+                                        }
                                     }
                                 }
         
