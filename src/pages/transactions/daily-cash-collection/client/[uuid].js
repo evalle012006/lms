@@ -809,7 +809,8 @@ const CashCollectionDetailsPage = () => {
                             pending: loan.status === 'pending' ? true : false,
                             tomorrow: loan.status === 'active' ? true : false,
                             reverted: currentLoan.reverted,
-                            history: currentLoan.history
+                            history: currentLoan.history,
+                            prevData: currentLoan?.prevData
                         };
 
                         if (currentLoan?.current?.length > 0) {
@@ -872,7 +873,6 @@ const CashCollectionDetailsPage = () => {
                         }
                     }
                 } else {
-                    const prevLoan = loan.prevLoans.length > 0 ? loan.prevLoans[loan.prevLoans.length - 1] : null;
                     let pendingTomorrow = {
                         _id: loan._id,
                         client: loan.client,
@@ -2320,7 +2320,7 @@ const CashCollectionDetailsPage = () => {
                                         <th className="p-2 text-center">Excess</th>
                                         <th className="p-2 text-center">Actual Collection</th>
                                         <th className="p-2 text-center">MCBU Refund</th>
-                                        <th className="p-2 text-center">MCBU Interest</th>
+                                        {/* <th className="p-2 text-center">MCBU Interest</th> */}
                                         <th className="p-2 text-center">MCBU Return Amt</th>
                                         <th className="p-2 text-center">Full Payment</th>
                                         <th className="p-2 text-center">Mispay</th>
@@ -2408,7 +2408,7 @@ const CashCollectionDetailsPage = () => {
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
                                                     { cc.mcbuWithdrawalStr }
                                                 </td>
-                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.mcbuInterestStr }</td>
+                                                {/* <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.mcbuInterestStr }</td> */}
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.mcbuReturnAmtStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.fullPaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.mispaymentStr }</td>
@@ -2463,7 +2463,7 @@ const CashCollectionDetailsPage = () => {
                                                             <div className='flex flex-row p-2'>
                                                                 {(currentUser.role.rep === 3 && cc.hasOwnProperty('_id') && !filter && !cc.draft && !cc.reverted && cc?.prevData) && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleShowWarningDialog(e, cc)} />}
                                                                 {(cc.status === 'completed' && !prevDraft && ((cc.remarks && cc.remarks.value?.startsWith('reloaner')) || (cc.status === 'completed' && !cc.remarks))) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
-                                                                {(!filter && !editMode && cc.status !== 'closed' && currentMonth === 11 && !cc.draft) && <CalculatorIcon className="w-5 h-5 mr-6" title="Calculate MCBU Interest" onClick={(e) => calculateInterest(e, cc, index)} />}
+                                                                {/* {(!filter && !editMode && cc.status !== 'closed' && currentMonth === 11 && !cc.draft) && <CalculatorIcon className="w-5 h-5 mr-6" title="Calculate MCBU Interest" onClick={(e) => calculateInterest(e, cc, index)} />} */}
                                                                 {/* add new */}
                                                             </div>
                                                         )}

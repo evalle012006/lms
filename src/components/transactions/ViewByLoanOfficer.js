@@ -405,8 +405,8 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
 
                             const details = giver.data[0];
                             const detailsTargetCollection = details?.targetCollection ? details?.targetCollection : 0;
-                            const detailsExcess = details?.excess ? details?.excess : 0;
-                            totalTransferTargetCollection -= (detailsTargetCollection + detailsExcess);
+                            // const detailsExcess = details?.excess ? details?.excess : 0;
+                            totalTransferTargetCollection -= detailsTargetCollection;
                             totalTransferActualCollection -= details?.actualCollection ? details?.actualCollection : 0;
                         });
                     }
@@ -426,8 +426,8 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
 
                                 const details = rcv.data[0];
                                 const detailsTargetCollection = details?.targetCollection ? details?.targetCollection : 0;
-                                const detailsExcess = details?.excess ? details?.excess : 0;
-                                totalTransferTargetCollection += (detailsTargetCollection + detailsExcess);
+                                // const detailsExcess = details?.excess ? details?.excess : 0;
+                                totalTransferTargetCollection += detailsTargetCollection;
                                 totalTransferActualCollection += details?.actualCollection ? details?.actualCollection : 0;
                             });
                         }
@@ -447,8 +447,8 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
 
                             const details = giver.data[0];
                             const detailsTargetCollection = details?.targetCollection ? details?.targetCollection : 0;
-                            const detailsExcess = details?.excess ? details?.excess : 0;
-                            totalTransferTargetCollection -= (detailsTargetCollection + detailsExcess);
+                            // const detailsExcess = details?.excess ? details?.excess : 0;
+                            totalTransferTargetCollection -= detailsTargetCollection;
                             totalTransferActualCollection -= details?.actualCollection ? details?.actualCollection : 0;
                         });
                     }
@@ -468,8 +468,8 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
 
                                 const details = rcv.data[0];
                                 const detailsTargetCollection = details?.targetCollection ? details?.targetCollection : 0;
-                                const detailsExcess = details?.excess ? details?.excess : 0;
-                                totalTransferTargetCollection += (detailsTargetCollection + detailsExcess);
+                                // const detailsExcess = details?.excess ? details?.excess : 0;
+                                totalTransferTargetCollection += detailsTargetCollection;
                                 totalTransferActualCollection += details?.actualCollection ? details?.actualCollection : 0;
                             });
                         }
@@ -485,6 +485,9 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
                         collection.loanTargetStr = formatPricePhp(collection.loanTarget);
                         collection.total += totalTransferActualCollection;
                         collection.totalStr = formatPricePhp(collection.total);
+
+                        collection.activeClients = collection.activeClients > -1 ? collection.activeClients : 0;
+                        collection.activeBorrowers = collection.activeBorrowers > -1 ? collection.activeBorrowers : 0;
                     }
                     
                     collection.transfer = transfer;
@@ -526,8 +529,8 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
                 noCurrentReleaseStr: noOfNewCurrentRelease + ' / ' + noOfReCurrentRelease,
                 currentReleaseAmount: currentReleaseAmount,
                 currentReleaseAmountStr: formatPricePhp(currentReleaseAmount),
-                activeClients: noOfClients,
-                activeBorrowers: noOfBorrowers,
+                activeClients: noOfClients >= 0 ? noOfClients : 0,
+                activeBorrowers: noOfBorrowers >= 0 ? noOfBorrowers : 0,
                 pendingClients: noOfPendings,
                 totalLoanRelease: totalsLoanRelease,
                 totalReleasesStr: formatPricePhp(totalsLoanRelease),
@@ -624,18 +627,18 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
 
             const details = transfer?.data[0];
             if (details) {
-                totalMcbuTarget += details.mcbuTarget;
-                totalMcbuCol += details.mcbuCol;
-                totalMcbuWithdrawal += details.mcbuWithdrawal;
-                totalMcbuReturnAmt += details.mcbuReturnAmt;
-                totalMcbuNoReturn += details.mcbuNoReturn;
-                totalMcbuInterest += details.mcbuInterest;
+                // totalMcbuTarget += details.mcbuTarget;
+                // totalMcbuCol += details.mcbuCol;
+                // totalMcbuWithdrawal += details.mcbuWithdrawal;
+                // totalMcbuReturnAmt += details.mcbuReturnAmt;
+                // totalMcbuNoReturn += details.mcbuNoReturn;
+                // totalMcbuInterest += details.mcbuInterest;
                 totalTargetCollection += details.actualCollection;
                 // totalExcess += details.excess;
                 totalActualCollection += details.actualCollection;
                 totalPastDue += details.pastDue;
                 totalNoPastDue += details.noPastDue;
-                totalMispay += details.mispay;
+                // totalMispay += details.mispay;
             }
         });
         
