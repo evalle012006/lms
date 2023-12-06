@@ -35,7 +35,7 @@ async function save(req, res) {
                     }
                 }
 
-                if (collection.status === 'completed' && collection.loanBalance <= 0) {
+                if (collection.status === 'completed' && collection.loanBalance <= 0 && collection?.remarks?.value !== 'offset-matured-pd') {
                     collection.pastDue = 0;
                 }
 
@@ -224,11 +224,13 @@ async function updateLoan(collection, currentDate) {
                 loan.status = 'active';
             }
             
-            loan.fullPaymentDate = collection.fullPaymentDate;
             loan.activeLoan = 0;
-            loan.amountRelease = 0;
-            loan.noPastDue = 0;
-            loan.pastDue = 0;
+            if (collection?.remarks?.value !== 'offset-matured-pd') {
+                loan.fullPaymentDate = collection.fullPaymentDate;
+                loan.amountRelease = 0;
+                loan.noPastDue = 0;
+                loan.pastDue = 0;
+            }
         }
 
         loan.lastUpdated = currentDate;

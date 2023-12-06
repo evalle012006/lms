@@ -373,6 +373,8 @@ const CashCollectionDetailsPage = () => {
                         if (date) {
                             numMispayment = cc.noMispayment > 0 ? cc.noMispayment + ' / ' + maxDays : '-';
                         }
+                        let activeLoan = 0;
+                        let paymentCollection = 0;
                         let mcbuCol = 0;
                         let mcbu = cc.mcbu;
                         let mcbuWithdrawal = cc.mcbuWithdrawal;
@@ -400,6 +402,15 @@ const CashCollectionDetailsPage = () => {
                                 draft = current.draft;
                                 reverted = current.reverted;
                             }
+                        }
+
+                        if (cc.maturedPD) {
+                            amountRelease = cc.amountRelease;
+                        }
+
+                        if (!cc?.maturedPD) {
+                            activeLoan = cc?.history?.activeLoan ? cc.history.activeLoan : cc.activeLoan;
+                            paymentCollection = cc?.history?.collection ? cc.history.collection : 0;
                         }
                         
                         collection = {
@@ -436,15 +447,15 @@ const CashCollectionDetailsPage = () => {
                             mcbuReturnAmtStr: mcbuReturnAmt > 0 ? formatPricePhp(mcbuReturnAmt) : '-',
                             mcbuInterest: cc.mcbuInterest ? cc.mcbuInterest : 0,
                             mcbuInterestStr: cc.mcbuInterest > 0 ? formatPricePhp(cc.mcbuInterest) : '-',
-                            activeLoan: cc.history?.activeLoan,
-                            targetCollection: cc.history?.activeLoan,
-                            targetCollectionStr: cc.history?.activeLoan > 0 ? formatPricePhp(cc.history?.activeLoan) : '-',
+                            activeLoan: activeLoan,
+                            targetCollection: activeLoan,
+                            targetCollectionStr: activeLoan > 0 ? formatPricePhp(activeLoan) : '-',
                             amountRelease: amountRelease,
                             amountReleaseStr: amountRelease > 0 ? formatPricePhp(amountRelease) : '-',
                             loanBalance: loanBalance,
                             loanBalanceStr: loanBalance > 0 ? formatPricePhp(loanBalance) : '-',
-                            paymentCollection: cc.history?.collection ? cc.history?.collection : 0,
-                            paymentCollectionStr: cc.history?.collection > 0 ? formatPricePhp(cc.history?.collection) : '-',
+                            paymentCollection: paymentCollection,
+                            paymentCollectionStr: paymentCollection > 0 ? formatPricePhp(paymentCollection) : '-',
                             occurence: cc.group.occurence,
                             currentReleaseAmount: 0,
                             currentReleaseAmountStr: '-',
@@ -1268,7 +1279,7 @@ const CashCollectionDetailsPage = () => {
                             temp.mispaymentStr = 'No';
                         }
     
-                        if (temp.loanBalance <= 0) {
+                        if (temp.loanBalance <= 0 && temp.remarks?.value !== 'offset-matured-pd') {
                             temp.status = 'completed';
                         }
     
@@ -1734,6 +1745,11 @@ const CashCollectionDetailsPage = () => {
         
                                         if (temp.loanBalance === 0 && temp.paymentCollection === 0) {
                                             temp.fullPayment = temp?.history?.amountRelease;
+                                        }
+
+                                        if (temp?.maturedPD && remarks.value == 'offset-matured-pd') {
+                                            temp.prevData.loanBalance = temp.loanBalance;
+                                            temp.loanBalance = 0;
                                         }
                                     }
                                 }

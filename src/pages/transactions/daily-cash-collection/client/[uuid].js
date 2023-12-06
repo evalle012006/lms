@@ -11,7 +11,7 @@ import { setGroup, setGroupList } from '@/redux/actions/groupActions';
 import DetailsHeader from '@/components/groups/DetailsHeader';
 import moment from 'moment';
 import { containsAnyLetters, formatPricePhp, UppercaseFirstLetter } from '@/lib/utils';
-import { ArrowPathIcon, ArrowUturnLeftIcon, CurrencyDollarIcon, CalculatorIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, ArrowUturnLeftIcon, CurrencyDollarIcon, CalculatorIcon, ArrowsRightLeftIcon } from '@heroicons/react/24/outline';
 import Select from 'react-select';
 import { DropdownIndicator, borderStyles } from "@/styles/select";
 import AddUpdateLoan from '@/components/transactions/AddUpdateLoanDrawer';
@@ -399,6 +399,10 @@ const CashCollectionDetailsPage = () => {
                                 draft = current.draft;
                                 reverted = current.reverted;
                             }
+                        }
+
+                        if (cc.maturedPD) {
+                            amountRelease = cc.amountRelease;
                         }
 
                         if (!cc?.maturedPD) {
@@ -1204,7 +1208,7 @@ const CashCollectionDetailsPage = () => {
                             // temp.mispaymentStr = 'No';
                         }
     
-                        if (temp.loanBalance <= 0) {
+                        if (temp.loanBalance <= 0 && temp.remarks?.value !== 'offset-matured-pd') {
                             temp.status = 'completed';
                         }
     
@@ -1598,6 +1602,11 @@ const CashCollectionDetailsPage = () => {
         
                                         if (temp.loanBalance === 0 && temp.paymentCollection === 0) {
                                             temp.fullPayment = temp?.history?.amountRelease;
+                                        }
+
+                                        if (temp?.maturedPD && remarks.value == 'offset-matured-pd') {
+                                            temp.prevData.loanBalance = temp.loanBalance;
+                                            temp.loanBalance = 0;
                                         }
                                     }
                                 }
@@ -1996,65 +2005,6 @@ const CashCollectionDetailsPage = () => {
         }
 
         return temp;
-    }
-
-    const handleRevert = (e, selected, index) => {
-        // remove next loans (approved or pending)
-        // target collection turn 0 (because of reloan)
-        e.stopPropagation();
-        let origList = [...data];
-        let temp = {...selected};
-        temp.mcbuWithdrawFlag = false;
-        temp.dcmc = false;
-        let allow = true;
-        if (temp.status === 'completed') {
-            allow = temp.fullPaymentDate === currentDate;
-        }
-
-        if (allow && temp.hasOwnProperty('prevData') && temp.prevData) {
-            temp.amountRelease = temp.prevData.amountRelease;
-            temp.amountReleaseStr = formatPricePhp(temp.prevData.amountRelease);
-            temp.paymentCollection = parseFloat(temp.prevData.paymentCollection);
-            temp.excess = temp.prevData.excess;
-            temp.excessStr = temp.prevData.excess > 0 ? formatPricePhp(temp.prevData.excess) : '-';
-            temp.mispayment = false;
-            temp.mispaymentStr = 'No';
-            temp.activeLoan = temp.prevData.activeLoan;
-            temp.loanBalance = temp.prevData.loanBalance;
-            temp.loanBalanceStr = formatPricePhp(temp.prevData.loanBalance);
-            temp.noOfPayments = temp.noOfPayments !== 0 ? temp.noOfPayments - 1 : temp.noOfPayments;
-            temp.noOfPaymentStr = temp.noOfPayments + ' / ' + temp.loanTerms;
-            temp.total = temp.prevData.total;
-            temp.totalStr = formatPricePhp(temp.prevData.total);
-            temp.targetCollection = temp.activeLoan === 0 ? temp.prevData.activeLoan : temp.activeLoan;
-            temp.targetCollectionStr = formatPricePhp(temp.targetCollection);   
-            temp.fullPayment = 0;
-            temp.fullPaymentStr = '-';
-            temp.fullPaymentDate = null;
-            temp.pastDue = 0;
-            temp.pastDueStr = '-'
-            temp.remarks = '';
-            temp.advanceDays = temp.prevData.advanceDays;
-            temp.mcbu = temp.prevData.mcbu;
-            temp.mcbuStr = formatPricePhp(temp.mcbu);
-            temp.mcbuCol = 0;
-            temp.mcbuColStr = formatPricePhp(temp.mcbuCol);
-            temp.mcbuWithdrawal = 0;
-            temp.mcbuWithdrawalStr = formatPricePhp(temp.mcbuWithdrawal);
-            temp.mcbuWithdrawFlag = false;
-            temp.clientStatus = "active";
-            temp.delinquent = false;
-            temp.status = 'active';
-            temp.reverted = true;
-            delete temp.history;
-            delete temp.fullPaymentDate;
-
-            origList[index] = temp;
-            dispatch(setCashCollectionGroup(origList));
-            setRevertMode(true);
-        } else {
-            toast.error("Data can't be reverted!");
-        }
     }
 
     const handleNewRevert = async () => {
@@ -2463,6 +2413,7 @@ const CashCollectionDetailsPage = () => {
                                                             <div className='flex flex-row p-2'>
                                                                 {(currentUser.role.rep === 3 && cc.hasOwnProperty('_id') && !filter && !cc.draft && !cc.reverted && cc?.prevData) && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleShowWarningDialog(e, cc)} />}
                                                                 {(cc.status === 'completed' && !prevDraft && ((cc.remarks && cc.remarks.value?.startsWith('reloaner')) || (cc.status === 'completed' && !cc.remarks))) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
+                                                                {/* {((cc.status === 'pending' || cc.status === 'tomorrow') && !filter && !cc.draft && !cc.reverted)} */}
                                                                 {/* {(!filter && !editMode && cc.status !== 'closed' && currentMonth === 11 && !cc.draft) && <CalculatorIcon className="w-5 h-5 mr-6" title="Calculate MCBU Interest" onClick={(e) => calculateInterest(e, cc, index)} />} */}
                                                                 {/* add new */}
                                                             </div>
