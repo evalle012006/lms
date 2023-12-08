@@ -485,7 +485,7 @@ const MenuItems = [
         hidden: false,
         subMenuItems: [
             {
-                label: "Collection of Bad Debts",
+                label: "Bad Debts",
                 url: "/other-transactions/baddebt-collection",
                 icon: {
                     active: (

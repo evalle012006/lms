@@ -1283,7 +1283,7 @@ const CashCollectionDetailsPage = () => {
                             temp.status = 'completed';
                         }
     
-                        if (temp.status === 'completed') {
+                        if (temp.status === 'completed' || (temp.maturedPD && temp.remarks?.value == 'offset-matured-pd')) {
                             temp.fullPaymentDate = temp.fullPaymentDate ? temp.fullPaymentDate : currentDate;
                             if (temp.previousDraft) {
                                 temp.fullPaymentDate = temp.dateAdded;
@@ -1740,16 +1740,17 @@ const CashCollectionDetailsPage = () => {
                                         }
 
                                         temp.mcbu = 0;
-                                        temp.mcbuStr = formatPricePhp(temp.mcbu);
+                                        temp.mcbuStr = '-';
                                         temp.mcbuError = false;
-        
-                                        if (temp.loanBalance === 0 && temp.paymentCollection === 0) {
-                                            temp.fullPayment = temp?.history?.amountRelease;
-                                        }
 
                                         if (temp?.maturedPD && remarks.value == 'offset-matured-pd') {
                                             temp.prevData.loanBalance = temp.loanBalance;
                                             temp.loanBalance = 0;
+                                            temp.loanBalanceStr = '-';
+                                        }
+
+                                        if (temp.loanBalance === 0 && temp.paymentCollection === 0) {
+                                            temp.fullPayment = temp?.history?.amountRelease;
                                         }
                                     }
                                 }

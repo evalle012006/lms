@@ -1,10 +1,11 @@
-import { SET_ADD_UPDATE_BADDEBT, SET_BADDEBT, SET_BADDEBT_LIST } from "../actions/badDebtCollectionActions";
+import { SET_ADD_UPDATE_BADDEBT, SET_BADDEBT, SET_BADDEBT_COLLECTION_LIST, SET_BADDEBT_LIST } from "../actions/badDebtCollectionActions";
 
 
 const initialState = {
     data: {},
     addUpdate: {},
-    list: []
+    list: [],
+    collectionList: []
 };
 
 const reducer = (state = initialState, action) => {
@@ -13,6 +14,8 @@ const reducer = (state = initialState, action) => {
             return { ...state, data: action.payload }
         case SET_BADDEBT_LIST:
             return { ...state, list: action.payload }
+        case SET_BADDEBT_COLLECTION_LIST:
+            return { ...state, collectionList: action.payload }
         case SET_ADD_UPDATE_BADDEBT:
             return { ...state, addUpdate: action.payload }
         default:
