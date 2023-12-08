@@ -21,7 +21,7 @@ async function save(req, res) {
     if (maturedLoan.length > 0) {
         let loan = maturedLoan[0];
         const collection = parseFloat(formData.paymentCollection);
-        loan.loanBalance -= collection;
+        // loan.loanBalance -= collection;
         loan.pastDue -= collection;
         if (loan.hasOwnProperty('noBadDebtPayment')) {
             loan.noBadDebtPayment += 1;

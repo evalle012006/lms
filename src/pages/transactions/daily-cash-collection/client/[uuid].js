@@ -13,7 +13,7 @@ import moment from 'moment';
 import { containsAnyLetters, formatPricePhp, UppercaseFirstLetter } from '@/lib/utils';
 import { ArrowPathIcon, ArrowUturnLeftIcon, CurrencyDollarIcon, CalculatorIcon, ArrowsRightLeftIcon } from '@heroicons/react/24/outline';
 import Select from 'react-select';
-import { DropdownIndicator, borderStyles } from "@/styles/select";
+import { DropdownIndicator, borderStyles, styles } from "@/styles/select";
 import AddUpdateLoan from '@/components/transactions/AddUpdateLoanDrawer';
 import Dialog from '@/lib/ui/Dialog';
 import ButtonSolid from '@/lib/ui/ButtonSolid';
@@ -65,11 +65,13 @@ const CashCollectionDetailsPage = () => {
 
     const [showClientInfoModal, setShowClientInfoModal] = useState(false);
     const [showWaningDialog, setShowWarningDialog] = useState(false);
+    const [showChangeRemarksDialog, setShowNewRemarksDialog] = useState(false);
 
     const [mcbuRate, setMcbuRate] = useState(transactionSettings.mcbu || 8);
     const [hasDraft, setHasDraft] = useState(false);
     const [changeRemarks, setChangeRemarks] = useState(false);
     const [prevDraft, setPrevDraft] = useState(false);
+    const [selectedNewRemarks, setSelectedNewRemarks] = useState();
 
     const handleShowWarningDialog = (e, selected) => {
         e.stopPropagation();
@@ -1134,12 +1136,11 @@ const CashCollectionDetailsPage = () => {
                 const dataArr = data.filter(cc => cc.status !== 'open').map(cc => {
                     let temp = {...cc};
 
-                    if (temp.reverted) {
-                        delete temp.reverted;
+                    if (temp.reverted && !draft) {
+                        temp.reverted = false;
                         temp.revertedDate = currentDate;
                     }
     
-                    delete temp.reverted;
                     delete temp.targetCollectionStr;
                     delete temp.amountReleaseStr;
                     delete temp.loanBalanceStr;
@@ -2060,6 +2061,69 @@ const CashCollectionDetailsPage = () => {
         setShowRemarksModal(false);
     }
 
+    const handleShowChangeRemarksDialog = (e, selected) => {
+        e.stopPropagation();
+
+        if (selected.status !== 'totals') {
+            let temp = {...selected};
+            delete temp.targetCollectionStr;
+            delete temp.amountReleaseStr;
+            delete temp.loanBalanceStr;
+            delete temp.excessStr;
+            delete temp.totalStr;
+            delete temp.currentReleaseAmountStr;
+            delete temp.fullPaymentStr;
+            delete temp.paymentCollectionStr;
+            delete temp.noOfPaymentStr;
+            delete temp.error;
+            delete temp.dirty;
+            delete temp.pastDueStr;
+            delete temp.groupCashCollections;
+            delete temp.loanOfficer;
+            delete temp.noMispaymentStr;
+            delete temp.mcbuStr;
+            delete temp.mcbuColStr;
+            delete temp.mcbuWithdrawalStr;
+            delete temp.mcbuReturnAmtStr;
+            delete temp.mcbuInterestStr;
+            delete temp.mcbuError;
+            delete temp.transferStr;
+            temp.currentDate = currentDate;
+            setSelectedSlot(temp);
+            setShowNewRemarksDialog(true);
+        }
+    }
+
+    const handleNewRemarks = async () => {
+        if (selectedNewRemarks && selectedSlot) {
+            if ((selectedNewRemarks && selectedNewRemarks.value !== selectedSlot.remarks.value)) {
+                setLoading(true);
+                const temp = {...selectedSlot, newRemarks: selectedNewRemarks}
+                const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/change-remarks', temp);
+                if (response.success) {
+                    setTimeout(() => {
+                        setLoading(false);
+                        toast.success(`Slot No ${selectedSlot.slotNo} has successfuly updated remarks! Please wait reloading data.`);
+                        setShowNewRemarksDialog(false);
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1000);
+                    }, 1000);
+                }
+            } else {
+                toast.error('Please select new remarks. Selected and old remarks are the same!');
+            }
+        } else {
+            toast.error('Please select a new remarks.');
+        }
+    }
+
+    const handleCloseNewRemarks = () => {
+        setSelectedNewRemarks(null);
+        setSelectedSlot(null);
+        setShowNewRemarksDialog(false);
+    }
+
     const calculateInterest = (e, selected, index) => {
         e.stopPropagation();
         if (parseFloat(selected.mcbu) > 499) {
@@ -2413,9 +2477,8 @@ const CashCollectionDetailsPage = () => {
                                                             <div className='flex flex-row p-2'>
                                                                 {(currentUser.role.rep === 3 && cc.hasOwnProperty('_id') && !filter && !cc.draft && !cc.reverted && cc?.prevData) && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleShowWarningDialog(e, cc)} />}
                                                                 {(cc.status === 'completed' && !prevDraft && ((cc.remarks && cc.remarks.value?.startsWith('reloaner')) || (cc.status === 'completed' && !cc.remarks))) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
-                                                                {/* {((cc.status === 'pending' || cc.status === 'tomorrow') && !filter && !cc.draft && !cc.reverted)} */}
+                                                                {((cc.status === 'pending' || cc.status === 'tomorrow') && !filter && !cc.draft && !cc.reverted) && <ArrowsRightLeftIcon className="w-5 h-5 mr-6" title="Change Remarks" onClick={(e) => handleShowChangeRemarksDialog(e, cc)} />}
                                                                 {/* {(!filter && !editMode && cc.status !== 'closed' && currentMonth === 11 && !cc.draft) && <CalculatorIcon className="w-5 h-5 mr-6" title="Calculate MCBU Interest" onClick={(e) => calculateInterest(e, cc, index)} />} */}
-                                                                {/* add new */}
                                                             </div>
                                                         )}
                                                     </React.Fragment>
@@ -2465,6 +2528,36 @@ const CashCollectionDetailsPage = () => {
                         <div className="flex flex-row justify-center text-center px-4 py-3 sm:px-6 sm:flex">
                             <ButtonOutline label="Cancel" type="button" className="p-2 mr-3" onClick={() => setShowWarningDialog(false)} />
                             <ButtonSolid label="Yes, revert" type="button" className="p-2" onClick={handleNewRevert} />
+                        </div>
+                    </Dialog>
+                    <Dialog show={showChangeRemarksDialog}>
+                        <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                            <div className="sm:flex sm:items-start justify-center">
+                                <div className="mt-3 sm:mt-0 sm:ml-4">
+                                    <div className="mt-2">
+                                        <p className="font-normal text-dark-color mb-2">Select a new Remarks:</p>
+                                        <div className='flex justify-center w-full'>
+                                            <Select 
+                                                options={[
+                                                    { label: 'Reloaner Cont/MCBU', value: 'reloaner-cont'},
+                                                    { label: 'Reloaner RF/MCBU', value: 'reloaner-wd'}
+                                                ]}
+                                                value={selectedNewRemarks}
+                                                styles={borderStyles}
+                                                components={{ DropdownIndicator }}
+                                                onChange={(val) => setSelectedNewRemarks(val) }
+                                                isSearchable={false}
+                                                closeMenuOnSelect={true}
+                                                tabIndex={-1}
+                                                placeholder={'New Remarks'}/>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex flex-row justify-center text-center px-4 py-3 sm:px-6 sm:flex">
+                            <ButtonOutline label="Cancel" type="button" className="p-2 mr-3" onClick={() => handleCloseNewRemarks()} />
+                            <ButtonSolid label="Submit" type="button" className="p-2" onClick={handleNewRemarks} />
                         </div>
                     </Dialog>
                 </div>
