@@ -1594,10 +1594,10 @@ const CashCollectionDetailsPage = () => {
                                         } else {
                                             temp.pastDue = 0;
                                             temp.pastDueStr = '-';
-                                            temp.mcbuReturnAmt = parseFloat(temp.mcbu);
-                                            temp.mcbuReturnAmtStr = formatPricePhp(temp.mcbuReturnAmt);
                                         }
-
+                                        temp.mcbuReturnAmt = parseFloat(temp.mcbu);
+                                        temp.mcbuReturnAmtStr = formatPricePhp(temp.mcbuReturnAmt);
+                                        
                                         temp.mcbu = 0;
                                         temp.mcbuStr = '-';
                                         temp.mcbuError = false;

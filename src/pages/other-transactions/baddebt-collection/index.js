@@ -51,7 +51,8 @@ export default function BadDebtCollectionPage() {
                         loName: bd.lo.length > 0 ? bd.lo[0].firstName + ' ' + bd.lo[0].lastName : '-',
                         branchName: bd.branch.length > 0 ? bd.branch[0].name : '-',
                         pastDueStr: bd.pastDue > 0 ? formatPricePhp(bd.pastDue) : '-',
-                        amountReleaseStr: bd.amountRelease > 0 ? formatPricePhp(bd.amountRelease) : '-'
+                        amountReleaseStr: bd.amountRelease > 0 ? formatPricePhp(bd.amountRelease) : '-',
+                        mcbuReturnAmtStr: bd.mcbuReturnAmt > 0 ? formatPricePhp(bd.mcbuReturnAmt) : '-'
                     })
                 });
                 dispatch(setBadDebtList(responseData));
@@ -75,7 +76,8 @@ export default function BadDebtCollectionPage() {
                         loName: bd.lo.length > 0 ? bd.lo[0].firstName + ' ' + bd.lo[0].lastName : '-',
                         branchName: bd.branch.length > 0 ? bd.branch[0].name : '-',
                         pastDueStr: bd.pastDue > 0 ? formatPricePhp(bd.pastDue) : '-',
-                        amountReleaseStr: bd.amountRelease > 0 ? formatPricePhp(bd.amountRelease) : '-'
+                        amountReleaseStr: bd.amountRelease > 0 ? formatPricePhp(bd.amountRelease) : '-',
+                        mcbuReturnAmtStr: bd.mcbuReturnAmt > 0 ? formatPricePhp(bd.mcbuReturnAmt) : '-'
                     })
                 });
                 dispatch(setBadDebtList(responseData));
@@ -97,7 +99,8 @@ export default function BadDebtCollectionPage() {
                         loName: bd.lo.length > 0 ? bd.lo[0].firstName + ' ' + bd.lo[0].lastName : '-',
                         branchName: bd.branch.length > 0 ? bd.branch[0].name : '-',
                         pastDueStr: bd.pastDue > 0 ? formatPricePhp(bd.pastDue) : '-',
-                        amountReleaseStr: bd.amountRelease > 0 ? formatPricePhp(bd.amountRelease) : '-'
+                        amountReleaseStr: bd.amountRelease > 0 ? formatPricePhp(bd.amountRelease) : '-',
+                        mcbuReturnAmtStr: bd.mcbuReturnAmt > 0 ? formatPricePhp(bd.mcbuReturnAmt) : '-'
                     })
                 });
                 dispatch(setBadDebtList(responseData));
@@ -119,7 +122,8 @@ export default function BadDebtCollectionPage() {
                         loName: bd.lo.length > 0 ? bd.lo[0].firstName + ' ' + bd.lo[0].lastName : '-',
                         branchName: bd.branch.length > 0 ? bd.branch[0].name : '-',
                         pastDueStr: bd.pastDue > 0 ? formatPricePhp(bd.pastDue) : '-',
-                        amountReleaseStr: bd.amountRelease > 0 ? formatPricePhp(bd.amountRelease) : '-'
+                        amountReleaseStr: bd.amountRelease > 0 ? formatPricePhp(bd.amountRelease) : '-',
+                        mcbuReturnAmtStr: bd.mcbuReturnAmt > 0 ? formatPricePhp(bd.mcbuReturnAmt) : '-'
                     })
                 });
                 dispatch(setBadDebtList(responseData));
@@ -311,7 +315,11 @@ export default function BadDebtCollectionPage() {
             accessor: 'amountReleaseStr'
         },
         {
-            Header: "Past Due",
+            Header: "MCBU",
+            accessor: 'mcbuReturnAmtStr'
+        },
+        {
+            Header: "Net Balance",
             accessor: 'pastDueStr'
         },
         {
