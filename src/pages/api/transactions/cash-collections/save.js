@@ -207,6 +207,16 @@ async function updateLoan(collection, currentDate) {
             loan.noPastDue = loan.noPastDue ? loan.noPastDue : 0;
         }
 
+        if (collection.mcbuInterest > 0) {
+            loan.mcbuInterest = collection.mcbuInterest;
+        }
+
+        if (collection.mcbuReturnAmt > 0) {
+            loan.mcbuReturnAmt = collection.mcbuReturnAmt;
+        } else {
+            loan.mcbuReturnAmt = 0;
+        }
+
         delete loan.groupCashCollections;
         delete loan.loanOfficer;
         delete loan.loanReleaseStr;
@@ -226,8 +236,8 @@ async function updateLoan(collection, currentDate) {
             
             loan.activeLoan = 0;
             loan.fullPaymentDate = collection.fullPaymentDate;
+            loan.amountRelease = 0;
             if (collection?.remarks?.value !== 'offset-matured-pd') {
-                loan.amountRelease = 0;
                 loan.noPastDue = 0;
                 loan.pastDue = 0;
             }

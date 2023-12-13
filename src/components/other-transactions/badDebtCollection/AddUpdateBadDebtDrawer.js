@@ -77,6 +77,11 @@ const AddUpdateDebtCollection = ({ mode = 'add', data = {}, showSidebar, setShow
                 values.branchId = currentBranch._id;
                 values.insertedBy = currentUser._id;
                 values.insertedDate = new Date();
+                const clientData = clientList.find(client => client._id == selectedClientId);
+                if (clientData) {
+                    values.loanRelease = clientData.loanRelease;
+                    values.pastDue = clientData.pastDue;
+                }
 
                 const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'other-transactions/badDebtCollection/save/';
     
@@ -198,7 +203,9 @@ const AddUpdateDebtCollection = ({ mode = 'add', data = {}, showSidebar, setShow
                     ...client,
                     loanId: loan._id,
                     label: client.name,
-                    value: client._id
+                    value: client._id,
+                    loanRelease: loan.loanRelease,
+                    pastDue: loan.pastDue
                 });
             });
             dispatch(setClientList(clients));
@@ -213,10 +220,10 @@ const AddUpdateDebtCollection = ({ mode = 'add', data = {}, showSidebar, setShow
         let mounted = true;
 
         if (currentUser.role.rep == 3) {
-            getListUser(currentBranch.code);
+            mounted && getListUser(currentBranch.code);
         } else if (currentUser.role.rep == 4) {
-            setSelectedLoId(currentUser._id);
-            setSelectedLoType(currentUser.transactionType);
+            mounted && setSelectedLoId(currentUser._id);
+            mounted && setSelectedLoType(currentUser.transactionType);
         }
 
         return () => {

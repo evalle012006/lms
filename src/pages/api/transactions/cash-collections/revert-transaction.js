@@ -53,6 +53,7 @@ async function revert(req, res) {
                 currentLoan.mcbuCollection = data.mcbu - data.mcbuCol;
                 currentLoan.status = history.loanBalance > 0 ? "active" : 'completed';
                 currentLoan.mcbuWithdrawal = 0;
+                currentLoan.mcbuInterest = currentLoan.mcbuInterest - cashCollection.mcbuInterest;
                 currentLoan.fullPaymentDate = history.loanBalance > 0 ? null : currentLoan.fullPaymentDate;
                 currentLoan.loanCycle = history.loanCycle;
                 currentLoan.history = cashCollection.history;
@@ -107,6 +108,7 @@ async function revert(req, res) {
             data.mispayment = false;
             data.remarks = '';
             data.mispaymentStr = "No";
+            data.mcbuInterest = 0;
             data.reverted = true;
             delete data.maturedPD;
             delete data.maturedPDDate;

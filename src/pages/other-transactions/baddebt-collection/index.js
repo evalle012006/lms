@@ -50,11 +50,18 @@ export default function BadDebtCollectionPage() {
                         fullName: bd.client.length > 0 ? bd.client[0].name : '-',
                         loName: bd.lo.length > 0 ? bd.lo[0].firstName + ' ' + bd.lo[0].lastName : '-',
                         branchName: bd.branch.length > 0 ? bd.branch[0].name : '-',
+                        pastDue: bd.pastDue,
                         pastDueStr: bd.pastDue > 0 ? formatPricePhp(bd.pastDue) : '-',
-                        amountReleaseStr: bd.amountRelease > 0 ? formatPricePhp(bd.amountRelease) : '-',
-                        mcbuReturnAmtStr: bd.mcbuReturnAmt > 0 ? formatPricePhp(bd.mcbuReturnAmt) : '-'
+                        amountRelease: bd.history.amountRelease,
+                        amountReleaseStr: bd.history.amountRelease > 0 ? formatPricePhp(bd.history.amountRelease) : '-',
+                        mcbuReturnAmt: bd.history.mcbu,
+                        mcbuReturnAmtStr: bd.history.mcbu > 0 ? formatPricePhp(bd.history.mcbu) : '-',
+                        loanBalance: bd.history.loanBalance,
+                        loanBalanceStr: bd.history.loanBalance > 0 ? formatPricePhp(bd.history.loanBalance) : '-',
+                        remarks: bd.pastDue <= 0 ? 'Fully Paid' : '-'
                     })
                 });
+                responseData.push(processListTotals(responseData));
                 dispatch(setBadDebtList(responseData));
                 setLoading(false);
             } else if (response.error) {
@@ -75,11 +82,18 @@ export default function BadDebtCollectionPage() {
                         fullName: bd.client.length > 0 ? bd.client[0].name : '-',
                         loName: bd.lo.length > 0 ? bd.lo[0].firstName + ' ' + bd.lo[0].lastName : '-',
                         branchName: bd.branch.length > 0 ? bd.branch[0].name : '-',
+                        pastDue: bd.pastDue,
                         pastDueStr: bd.pastDue > 0 ? formatPricePhp(bd.pastDue) : '-',
-                        amountReleaseStr: bd.amountRelease > 0 ? formatPricePhp(bd.amountRelease) : '-',
-                        mcbuReturnAmtStr: bd.mcbuReturnAmt > 0 ? formatPricePhp(bd.mcbuReturnAmt) : '-'
+                        amountRelease: bd.history.amountRelease,
+                        amountReleaseStr: bd.history.amountRelease > 0 ? formatPricePhp(bd.history.amountRelease) : '-',
+                        mcbuReturnAmt: bd.history.mcbu,
+                        mcbuReturnAmtStr: bd.history.mcbu > 0 ? formatPricePhp(bd.history.mcbu) : '-',
+                        loanBalance: bd.history.loanBalance,
+                        loanBalanceStr: bd.history.loanBalance > 0 ? formatPricePhp(bd.history.loanBalance) : '-',
+                        remarks: bd.pastDue <= 0 ? 'Fully Paid' : '-'
                     })
                 });
+                responseData.push(processListTotals(responseData));
                 dispatch(setBadDebtList(responseData));
                 setLoading(false);
             } else if (response.error) {
@@ -98,11 +112,18 @@ export default function BadDebtCollectionPage() {
                         fullName: bd.client.length > 0 ? bd.client[0].name : '-',
                         loName: bd.lo.length > 0 ? bd.lo[0].firstName + ' ' + bd.lo[0].lastName : '-',
                         branchName: bd.branch.length > 0 ? bd.branch[0].name : '-',
+                        pastDue: bd.pastDue,
                         pastDueStr: bd.pastDue > 0 ? formatPricePhp(bd.pastDue) : '-',
-                        amountReleaseStr: bd.amountRelease > 0 ? formatPricePhp(bd.amountRelease) : '-',
-                        mcbuReturnAmtStr: bd.mcbuReturnAmt > 0 ? formatPricePhp(bd.mcbuReturnAmt) : '-'
+                        amountRelease: bd.history.amountRelease,
+                        amountReleaseStr: bd.history.amountRelease > 0 ? formatPricePhp(bd.history.amountRelease) : '-',
+                        mcbuReturnAmt: bd.history.mcbu,
+                        mcbuReturnAmtStr: bd.history.mcbu > 0 ? formatPricePhp(bd.history.mcbu) : '-',
+                        loanBalance: bd.history.loanBalance,
+                        loanBalanceStr: bd.history.loanBalance > 0 ? formatPricePhp(bd.history.loanBalance) : '-',
+                        remarks: bd.pastDue <= 0 ? 'Fully Paid' : '-'
                     })
                 });
+                responseData.push(processListTotals(responseData));
                 dispatch(setBadDebtList(responseData));
                 setLoading(false);
             } else if (response.error) {
@@ -121,17 +142,54 @@ export default function BadDebtCollectionPage() {
                         fullName: bd.client.length > 0 ? bd.client[0].name : '-',
                         loName: bd.lo.length > 0 ? bd.lo[0].firstName + ' ' + bd.lo[0].lastName : '-',
                         branchName: bd.branch.length > 0 ? bd.branch[0].name : '-',
+                        pastDue: bd.pastDue,
                         pastDueStr: bd.pastDue > 0 ? formatPricePhp(bd.pastDue) : '-',
-                        amountReleaseStr: bd.amountRelease > 0 ? formatPricePhp(bd.amountRelease) : '-',
-                        mcbuReturnAmtStr: bd.mcbuReturnAmt > 0 ? formatPricePhp(bd.mcbuReturnAmt) : '-'
+                        amountRelease: bd.history.amountRelease,
+                        amountReleaseStr: bd.history.amountRelease > 0 ? formatPricePhp(bd.history.amountRelease) : '-',
+                        mcbuReturnAmt: bd.history.mcbu,
+                        mcbuReturnAmtStr: bd.history.mcbu > 0 ? formatPricePhp(bd.history.mcbu) : '-',
+                        loanBalance: bd.history.loanBalance,
+                        loanBalanceStr: bd.history.loanBalance > 0 ? formatPricePhp(bd.history.loanBalance) : '-',
+                        remarks: bd.pastDue <= 0 ? 'Fully Paid' : '-'
                     })
                 });
+                responseData.push(processListTotals(responseData));
                 dispatch(setBadDebtList(responseData));
                 setLoading(false);
             } else if (response.error) {
                 setLoading(false);
                 toast.error(response.message);
             }
+        }
+    }
+
+    const processListTotals = (responseData) => {
+        let totalAmountRelease = 0;
+        let totalLoanBalance = 0;
+        let totalMcbu = 0;
+        let totalPastDue = 0;
+
+        responseData.map(data => {
+            totalAmountRelease += data.amountRelease;
+            totalLoanBalance += data.loanBalance;
+            totalMcbu += data.mcbuReturnAmt;
+            totalPastDue += data.pastDue;
+        });
+
+        return {
+            groupName: '-',
+            fullName: 'TOTALS',
+            loName: '-',
+            branchName: '-',
+            pastDue: totalPastDue,
+            pastDueStr: totalPastDue > 0 ? formatPricePhp(totalPastDue) : '-',
+            loanBalance: totalLoanBalance,
+            loanBalanceStr: totalLoanBalance > 0 ? formatPricePhp(totalLoanBalance) : '-',
+            amountRelease: totalAmountRelease,
+            amountReleaseStr: totalAmountRelease > 0 ? formatPricePhp(totalAmountRelease) : '-',
+            mcbuReturnAmt: totalMcbu,
+            mcbuReturnAmtStr: totalMcbu > 0 ? formatPricePhp(totalMcbu) : '-',
+            totalData: true
         }
     }
 
@@ -150,11 +208,15 @@ export default function BadDebtCollectionPage() {
                         fullName: bd.client.length > 0 ? bd.client[0].name : '-',
                         loName: bd.lo.length > 0 ? bd.lo[0].firstName + ' ' + bd.lo[0].lastName : '-',
                         branchName: bd.branch.length > 0 ? bd.branch[0].name : '-',
+                        paymentCollection: bd.paymentCollection,
                         paymentCollectionStr: formatPricePhp(bd.paymentCollection),
-                        pastDueStr: bd.loan.length > 0 ? bd.loan[0].pastDue > 0 ? formatPricePhp(bd.loan[0].pastDue) : '-' : '-',
-                        amountReleaseStr: bd.loan.length > 0 ? bd.loan[0].amountRelease > 0 ? formatPricePhp(bd.loan[0].amountRelease) : '-' : '-'
+                        pastDue: bd.pastDue ? bd.pastDue : 0,
+                        pastDueStr: bd.pastDue > 0 ? formatPricePhp(bd.pastDue) : '-',
+                        amountRelease: bd.loanRelease ? bd.loanRelease : 0,
+                        amountReleaseStr: bd.loanRelease > 0 ? formatPricePhp(bd.loanRelease) : '-'
                     })
                 });
+                responseData.push(processCollectionListTotals(responseData));
                 dispatch(setBadDebtCollectionList(responseData));
                 setLoading(false);
             } else if (response.error) {
@@ -175,11 +237,15 @@ export default function BadDebtCollectionPage() {
                         fullName: bd.client.length > 0 ? bd.client[0].name : '-',
                         loName: bd.lo.length > 0 ? bd.lo[0].firstName + ' ' + bd.lo[0].lastName : '-',
                         branchName: bd.branch.length > 0 ? bd.branch[0].name : '-',
+                        paymentCollection: bd.paymentCollection,
                         paymentCollectionStr: formatPricePhp(bd.paymentCollection),
-                        pastDueStr: bd.loan.length > 0 ? bd.loan[0].pastDue > 0 ? formatPricePhp(bd.loan[0].pastDue) : '-' : '-',
-                        amountReleaseStr: bd.loan.length > 0 ? bd.loan[0].amountRelease > 0 ? formatPricePhp(bd.loan[0].amountRelease) : '-' : '-'
+                        pastDue: bd.pastDue ? bd.pastDue : 0,
+                        pastDueStr: bd.pastDue > 0 ? formatPricePhp(bd.pastDue) : '-',
+                        amountRelease: bd.loanRelease ? bd.loanRelease : 0,
+                        amountReleaseStr: bd.loanRelease > 0 ? formatPricePhp(bd.loanRelease) : '-'
                     })
                 });
+                responseData.push(processCollectionListTotals(responseData));
                 dispatch(setBadDebtCollectionList(responseData));
                 setLoading(false);
             } else if (response.error) {
@@ -198,11 +264,15 @@ export default function BadDebtCollectionPage() {
                         fullName: bd.client.length > 0 ? bd.client[0].name : '-',
                         loName: bd.lo.length > 0 ? bd.lo[0].firstName + ' ' + bd.lo[0].lastName : '-',
                         branchName: bd.branch.length > 0 ? bd.branch[0].name : '-',
+                        paymentCollection: bd.paymentCollection,
                         paymentCollectionStr: formatPricePhp(bd.paymentCollection),
-                        pastDueStr: bd.loan.length > 0 ? bd.loan[0].pastDue > 0 ? formatPricePhp(bd.loan[0].pastDue) : '-' : '-',
-                        amountReleaseStr: bd.loan.length > 0 ? bd.loan[0].amountRelease > 0 ? formatPricePhp(bd.loan[0].amountRelease) : '-' : '-'
+                        pastDue: bd.pastDue ? bd.pastDue : 0,
+                        pastDueStr: bd.pastDue > 0 ? formatPricePhp(bd.pastDue) : '-',
+                        amountRelease: bd.loanRelease ? bd.loanRelease : 0,
+                        amountReleaseStr: bd.loanRelease > 0 ? formatPricePhp(bd.loanRelease) : '-'
                     })
                 });
+                responseData.push(processCollectionListTotals(responseData));
                 dispatch(setBadDebtCollectionList(responseData));
                 setLoading(false);
             } else if (response.error) {
@@ -221,17 +291,57 @@ export default function BadDebtCollectionPage() {
                         fullName: bd.client.length > 0 ? bd.client[0].name : '-',
                         loName: bd.lo.length > 0 ? bd.lo[0].firstName + ' ' + bd.lo[0].lastName : '-',
                         branchName: bd.branch.length > 0 ? bd.branch[0].name : '-',
+                        paymentCollection: bd.paymentCollection,
                         paymentCollectionStr: formatPricePhp(bd.paymentCollection),
-                        pastDueStr: bd.loan.length > 0 ? bd.loan[0].pastDue > 0 ? formatPricePhp(bd.loan[0].pastDue) : '-' : '-',
-                        amountReleaseStr: bd.loan.length > 0 ? bd.loan[0].amountRelease > 0 ? formatPricePhp(bd.loan[0].amountRelease) : '-' : '-'
+                        pastDue: bd.pastDue ? bd.pastDue : 0,
+                        pastDueStr: bd.pastDue > 0 ? formatPricePhp(bd.pastDue) : '-',
+                        amountRelease: bd.loanRelease ? bd.loanRelease : 0,
+                        amountReleaseStr: bd.loanRelease > 0 ? formatPricePhp(bd.loanRelease) : '-'
                     })
                 });
+                responseData.push(processCollectionListTotals(responseData));
                 dispatch(setBadDebtCollectionList(responseData));
                 setLoading(false);
             } else if (response.error) {
                 setLoading(false);
                 toast.error(response.message);
             }
+        }
+    }
+
+    const processCollectionListTotals = (responseData) => {
+        let totalAmountRelease = 0;
+        let totalAmountCollected = 0;
+        let totalPastDue = 0;
+
+        const unique = [];
+        responseData.map(data => {
+            const existIdx = unique.findIndex(u => u.clientId == data.clientId);
+            if (existIdx == -1) {
+                unique.push(data);
+            } else {
+                unique[existIdx] = data;
+            }
+            totalAmountCollected += data.paymentCollection;
+        });
+
+        unique.map(data => {
+            totalPastDue += data.pastDue;
+            totalAmountRelease += data.amountRelease;
+        });
+
+        return {
+            groupName: '-',
+            fullName: 'TOTALS',
+            loName: '-',
+            branchName: '-',
+            pastDue: totalPastDue,
+            pastDueStr: totalPastDue > 0 ? formatPricePhp(totalPastDue) : '-',
+            paymentCollection: totalAmountCollected,
+            paymentCollectionStr: totalAmountCollected > 0 ? formatPricePhp(totalAmountCollected) : '-',
+            amountRelease: totalAmountRelease,
+            amountReleaseStr: totalAmountRelease > 0 ? formatPricePhp(totalAmountRelease) : '-',
+            totalData: true
         }
     }
 
@@ -315,6 +425,10 @@ export default function BadDebtCollectionPage() {
             accessor: 'amountReleaseStr'
         },
         {
+            Header: "Loan Balance",
+            accessor: 'loanBalanceStr'
+        },
+        {
             Header: "MCBU",
             accessor: 'mcbuReturnAmtStr'
         },
@@ -337,6 +451,10 @@ export default function BadDebtCollectionPage() {
         {
             Header: "Offset Date",
             accessor: 'fullPaymentDate'
+        },
+        {
+            Header: "Remarks",
+            accessor: 'remarks'
         }
     ]);
 

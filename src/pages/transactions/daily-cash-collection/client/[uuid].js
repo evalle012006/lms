@@ -11,7 +11,7 @@ import { setGroup, setGroupList } from '@/redux/actions/groupActions';
 import DetailsHeader from '@/components/groups/DetailsHeader';
 import moment from 'moment';
 import { containsAnyLetters, formatPricePhp, UppercaseFirstLetter } from '@/lib/utils';
-import { ArrowPathIcon, ArrowUturnLeftIcon, CurrencyDollarIcon, CalculatorIcon, ArrowsRightLeftIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, ArrowUturnLeftIcon, CurrencyDollarIcon, ReceiptPercentIcon, ArrowsRightLeftIcon } from '@heroicons/react/24/outline';
 import Select from 'react-select';
 import { DropdownIndicator, borderStyles, styles } from "@/styles/select";
 import AddUpdateLoan from '@/components/transactions/AddUpdateLoanDrawer';
@@ -72,6 +72,7 @@ const CashCollectionDetailsPage = () => {
     const [changeRemarks, setChangeRemarks] = useState(false);
     const [prevDraft, setPrevDraft] = useState(false);
     const [selectedNewRemarks, setSelectedNewRemarks] = useState();
+    const [addMcbuInterest, setAddMcbuInterest] = useState(false);
 
     const handleShowWarningDialog = (e, selected) => {
         e.stopPropagation();
@@ -684,6 +685,7 @@ const CashCollectionDetailsPage = () => {
                                 collection.excused = (current.hasOwnProperty('excused') && current.excused) ? current.excused : false;
                                 collection.latePayment = (current.hasOwnProperty('latePayment') && current.latePayment) ? current.latePayment : false;
                                 collection.mpdc = (current.hasOwnProperty('mpdc') && current.mpdc) ? current.mpdc : false;
+                                collection.mcbuInterestFlag = false;
 
                                 if (current.draft) {
                                     collection.error = current.error;
@@ -1506,6 +1508,50 @@ const CashCollectionDetailsPage = () => {
                 list.sort((a, b) => { return a.slotNo - b.slotNo; });
                 dispatch(setCashCollectionGroup(list));
             }
+        } else if (type === 'mcbuInterest') {
+            const value = e.target.value ? parseFloat(e.target.value) : 0;
+            if (value > 0) {
+                const mcbuInterest = value;
+                let list = data.map((cc, idx) => {
+                    let temp = {...cc};
+
+                    if (idx === index) {
+                        if (temp.hasOwnProperty('prevData') && temp.prevData) {
+                            temp.mcbu = temp.prevData.mcbu;
+                            temp.mcbuStr = formatPricePhp(temp.mcbu);
+                        } else {
+                            temp.prevData = {
+                                amountRelease: temp.amountRelease,
+                                paymentCollection: temp.paymentCollection,
+                                excess: temp.excess !== '-' ? temp.excess : 0,
+                                loanBalance: temp.loanBalance,
+                                activeLoan: temp.activeLoan,
+                                noOfPayments: temp.noOfPayments,
+                                total: temp.total,
+                                pastDue: temp.pastDue,
+                                mcbu: temp.mcbu
+                            };
+                        }
+
+                        if (temp.mcbuCol > 0) {
+                            temp.mcbu += temp.mcbuCol;
+                        }
+
+                        temp.mcbuInterest = mcbuInterest;
+                        temp.mcbuInterestStr = formatPricePhp(mcbuInterest);
+                        temp.mcbu = temp.mcbu + mcbuInterest;
+                        temp.mcbuStr = formatPricePhp(temp.mcbu);
+                    }
+
+                    return temp;
+                });
+
+                const totalsObj = calculateTotals(list);
+                list[totalIdx] = totalsObj;
+
+                list.sort((a, b) => { return a.slotNo - b.slotNo; });
+                dispatch(setCashCollectionGroup(list));
+            }
         } else if (type === 'remarks') {
             const remarks = e;
             let list = data.map((cc, idx) => {
@@ -1586,11 +1632,25 @@ const CashCollectionDetailsPage = () => {
                                         temp.mcbuColStr = '-';    
                                         
                                         if (temp?.maturedPD) {
+                                            temp.paymentCollection = temp.loanBalance;
+                                            temp.paymentCollectionStr = formatPricePhp(temp.paymentCollection);
                                             temp.loanBalance -= temp.mcbu;
+                                            if (temp.loanBalance < 0) {
+                                                temp.loanBalance = 0;
+                                            }
                                             temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
                                             temp.pastDue = temp.loanBalance;
+                                            if (temp.pastDue < 0) {
+                                                temp.pastDue = 0;
+                                            }
                                             temp.pastDueStr = formatPricePhp(temp.pastDue);
                                             temp.history.mcbu = temp.mcbu;
+                                            temp.fullPayment = temp.loanRelease;
+                                            temp.fullPaymentStr = formatPricePhp(temp.fullPayment);
+                                            temp.noOfPayments = 60;
+                                            temp.noOfPaymentStr = `60 / ${temp.loanTerms}`;
+                                            temp.amountRelease = 0;
+                                            temp.amountReleaseStr = '-';
                                         } else {
                                             temp.pastDue = 0;
                                             temp.pastDueStr = '-';
@@ -2126,20 +2186,20 @@ const CashCollectionDetailsPage = () => {
         setShowNewRemarksDialog(false);
     }
 
-    const calculateInterest = (e, selected, index) => {
+    const handleMCBUInterest = (e, selected, index) => {
         e.stopPropagation();
-        if (parseFloat(selected.mcbu) > 499) {
+        if (parseFloat(selected.mcbu) > 1000) {
+            setEditMode(true);
+            setAddMcbuInterest(true);
             let origList = [...data];
             let temp = {...selected};
 
-            const mcbuRateDecimal = mcbuRate / 100;
-
-            temp.mcbuInterest = selected.mcbu * mcbuRateDecimal;
+            temp.mcbuInterestFlag = true;
 
             origList[index] = temp;
             dispatch(setCashCollectionGroup(origList));
         } else {
-            toast.error('Client has not reached the minimum of 500 MCBU to accumulate interest.');
+            toast.error('Client has not reached the minimum of 1000 MCBU to accumulate interest.');
         }
     }
 
@@ -2316,7 +2376,7 @@ const CashCollectionDetailsPage = () => {
                         handleSaveUpdate={handleSaveUpdate} data={allData} setData={setFilteredData} allowMcbuWithdrawal={allowMcbuWithdrawal} hasDraft={hasDraft}
                         dateFilter={dateFilter} setDateFilter={setDateFilter} handleDateFilter={handleDateFilter} currentGroup={uuid} revertMode={revertMode}
                         groupFilter={groupFilter} handleGroupFilter={handleGroupFilter} groupTransactionStatus={groupSummaryIsClose ? 'close' : 'open'}
-                        changeRemarks={changeRemarks} />}
+                        changeRemarks={changeRemarks} addMcbuInterest={addMcbuInterest} />}
                     <div className="px-4 mt-[12rem] mb-[4rem] overflow-y-auto min-h-[55rem]">
                         <div className="bg-white flex flex-col rounded-md pt-0 pb-2 px-6 overflow-auto h-[46rem]">
                             <table className="table-auto border-collapse text-sm">
@@ -2336,7 +2396,7 @@ const CashCollectionDetailsPage = () => {
                                         <th className="p-2 text-center">Excess</th>
                                         <th className="p-2 text-center">Actual Collection</th>
                                         <th className="p-2 text-center">MCBU Refund</th>
-                                        {/* <th className="p-2 text-center">MCBU Interest</th> */}
+                                        {currentMonth === 11 && (<th className="p-2 text-center">MCBU Interest</th>)}
                                         <th className="p-2 text-center">MCBU Return Amt</th>
                                         <th className="p-2 text-center">Full Payment</th>
                                         <th className="p-2 text-center">Mispay</th>
@@ -2409,22 +2469,35 @@ const CashCollectionDetailsPage = () => {
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
                                                     { (!isWeekend && !isHoliday && currentUser.role.rep > 2 && cc.status === 'active' && editMode && (!cc.hasOwnProperty('_id') 
                                                         || (cc?.origin && cc?.origin === 'automation-trf') || cc?.reverted || cc.draft) && !cc?.dcmc && !cc?.mpdc && !cc?.maturedPD) ? (
-                                                        <React.Fragment>
-                                                            <input type="number" name={cc.clientId} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'amount', cc.activeLoan)}
-                                                                onClick={(e) => e.stopPropagation()} value={cc.paymentCollection} tabIndex={index + 1} onWheel={(e) => e.target.blur()}
-                                                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg 
-                                                                            focus:ring-main focus:border-main block p-2.5" style={{ width: '100px' }}/>
-                                                        </React.Fragment>
+                                                            <React.Fragment>
+                                                                <input type="number" name={cc.clientId} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'amount', cc.activeLoan)}
+                                                                    onClick={(e) => e.stopPropagation()} value={cc.paymentCollection} tabIndex={index + 1} onWheel={(e) => e.target.blur()}
+                                                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg 
+                                                                                focus:ring-main focus:border-main block p-2.5" style={{ width: '100px' }}/>
+                                                            </React.Fragment>
                                                         ): 
                                                             <React.Fragment>
-                                                                {(!editMode || filter || !cc.reverted  || cc.status === 'completed' || cc.status === 'pending' || cc.status === 'totals' || cc.status === 'closed') ? cc.paymentCollectionStr : '-'}
+                                                                {(!editMode || filter || !cc.reverted  || (cc.remarks && cc.remarks?.value == 'offset-matured-pd') || cc.status === 'completed' || cc.status === 'pending' || cc.status === 'totals' || cc.status === 'closed') ? cc.paymentCollectionStr : '-'}
                                                             </React.Fragment>
                                                     }
                                                 </td>
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
                                                     { cc.mcbuWithdrawalStr }
                                                 </td>
-                                                {/* <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.mcbuInterestStr }</td> */}
+                                                {currentMonth === 11 && (
+                                                    <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">
+                                                        { cc.mcbuInterestFlag ? (
+                                                            <React.Fragment>
+                                                                <input type="number" name={`${cc.clientId}-mcbuInterest`} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'mcbuInterest')}
+                                                                    onClick={(e) => e.stopPropagation()} value={cc.mcbuInterest ? cc.mcbuInterest : 0} tabIndex={index + 1} onWheel={(e) => e.target.blur()}
+                                                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg 
+                                                                                focus:ring-main focus:border-main block p-2.5" style={{ width: '100px' }}/>
+                                                            </React.Fragment>
+                                                        ) : (
+                                                            <React.Fragment>{ cc.mcbuInterestStr }</React.Fragment>
+                                                        ) }
+                                                    </td>
+                                                )}
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.mcbuReturnAmtStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.fullPaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.mispaymentStr }</td>
@@ -2477,10 +2550,10 @@ const CashCollectionDetailsPage = () => {
                                                     <React.Fragment>
                                                         {(!isWeekend && !isHoliday && currentUser.role.rep > 2 && !groupSummaryIsClose) && (
                                                             <div className='flex flex-row p-2'>
-                                                                {(currentUser.role.rep === 3 && cc.hasOwnProperty('_id') && !filter && !cc.draft && !cc.reverted && cc?.prevData) && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleShowWarningDialog(e, cc)} />}
+                                                                {(currentUser.role.rep === 3 && cc.hasOwnProperty('_id') && !filter && !cc.draft && !cc.reverted && cc?.prevData && !cc.mcbuInterestFlag) && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleShowWarningDialog(e, cc)} />}
                                                                 {(cc.status === 'completed' && !prevDraft && ((cc.remarks && cc.remarks.value?.startsWith('reloaner')) || (cc.status === 'completed' && !cc.remarks))) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
                                                                 {((cc.status === 'pending' || cc.status === 'tomorrow') && !filter && !cc.draft && !cc.reverted) && <ArrowsRightLeftIcon className="w-5 h-5 mr-6" title="Change Remarks" onClick={(e) => handleShowChangeRemarksDialog(e, cc)} />}
-                                                                {/* {(!filter && !editMode && cc.status !== 'closed' && currentMonth === 11 && !cc.draft) && <CalculatorIcon className="w-5 h-5 mr-6" title="Calculate MCBU Interest" onClick={(e) => calculateInterest(e, cc, index)} />} */}
+                                                                {(!filter && !editMode && cc.status !== 'closed' && currentMonth === 11 && !cc.draft) && <ReceiptPercentIcon className="w-5 h-5 mr-6" title="Calculate MCBU Interest" onClick={(e) => handleMCBUInterest(e, cc, index)} />}
                                                             </div>
                                                         )}
                                                     </React.Fragment>
