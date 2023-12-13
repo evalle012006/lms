@@ -44,28 +44,29 @@ export default function BadDebtCollectionPage() {
             if (response.success) {
                 const responseData = [];
                 response.data.map(bd => {
-                    let netBalance = bd.maturedPastDue - bd.history.mcbu;
+                    let netBalance = bd.maturedPastDue - bd.mcbuReturnAmt;
+                    let mcbu = bd.mcbuReturnAmt;
                     if (netBalance <= 0) {
                         netBalance = 0;
+                        mcbu = 0;
                     }
+
                     responseData.push({
                         ...bd,
                         groupName: bd.group.length > 0 ? bd.group[0].name : '-',
                         fullName: bd.client.length > 0 ? bd.client[0].name : '-',
                         loName: bd.lo.length > 0 ? bd.lo[0].firstName + ' ' + bd.lo[0].lastName : '-',
                         branchName: bd.branch.length > 0 ? bd.branch[0].name : '-',
-                        pastDue: bd.maturedPastDue,
-                        pastDueStr: bd.maturedPastDue > 0 ? formatPricePhp(bd.maturedPastDue) : '-',
                         amountRelease: bd.history.amountRelease,
                         amountReleaseStr: bd.history.amountRelease > 0 ? formatPricePhp(bd.history.amountRelease) : '-',
-                        mcbuReturnAmt: bd.history.mcbu,
-                        mcbuReturnAmtStr: bd.history.mcbu > 0 ? formatPricePhp(bd.history.mcbu) : '-',
+                        mcbuReturnAmt: mcbu,
+                        mcbuReturnAmtStr: mcbu > 0 ? formatPricePhp(mcbu) : '-',
                         loanBalance: bd.history.loanBalance,
                         loanBalanceStr: bd.history.loanBalance > 0 ? formatPricePhp(bd.history.loanBalance) : '-',
                         netBalance: netBalance,
                         netBalanceStr: netBalance > 0 ? formatPricePhp(netBalance) : '-',
-                        remarks: bd.maturedPastDue <= 0 ? 'Fully Paid' : '-'
-                    })
+                        remarks: netBalance <= 0 ? 'Fully Paid' : '-'
+                    });
                 });
                 responseData.push(processListTotals(responseData));
                 dispatch(setBadDebtList(responseData));
@@ -82,28 +83,29 @@ export default function BadDebtCollectionPage() {
             if (response.success) {
                 const responseData = [];
                 response.data.map(bd => {
-                    let netBalance = bd.maturedPastDue - bd.history.mcbu;
+                    let netBalance = bd.maturedPastDue - bd.mcbuReturnAmt;
+                    let mcbu = bd.mcbuReturnAmt
                     if (netBalance <= 0) {
                         netBalance = 0;
+                        mcbu = 0;
                     }
+
                     responseData.push({
                         ...bd,
                         groupName: bd.group.length > 0 ? bd.group[0].name : '-',
                         fullName: bd.client.length > 0 ? bd.client[0].name : '-',
                         loName: bd.lo.length > 0 ? bd.lo[0].firstName + ' ' + bd.lo[0].lastName : '-',
                         branchName: bd.branch.length > 0 ? bd.branch[0].name : '-',
-                        pastDue: bd.maturedPastDue,
-                        pastDueStr: bd.maturedPastDue > 0 ? formatPricePhp(bd.maturedPastDue) : '-',
                         amountRelease: bd.history.amountRelease,
                         amountReleaseStr: bd.history.amountRelease > 0 ? formatPricePhp(bd.history.amountRelease) : '-',
-                        mcbuReturnAmt: bd.history.mcbu,
-                        mcbuReturnAmtStr: bd.history.mcbu > 0 ? formatPricePhp(bd.history.mcbu) : '-',
+                        mcbuReturnAmt: mcbu,
+                        mcbuReturnAmtStr: mcbu > 0 ? formatPricePhp(mcbu) : '-',
                         loanBalance: bd.history.loanBalance,
                         loanBalanceStr: bd.history.loanBalance > 0 ? formatPricePhp(bd.history.loanBalance) : '-',
                         netBalance: netBalance,
                         netBalanceStr: netBalance > 0 ? formatPricePhp(netBalance) : '-',
-                        remarks: bd.maturedPastDue <= 0 ? 'Fully Paid' : '-'
-                    })
+                        remarks: netBalance <= 0 ? 'Fully Paid' : '-'
+                    });
                 });
                 responseData.push(processListTotals(responseData));
                 dispatch(setBadDebtList(responseData));
@@ -118,28 +120,29 @@ export default function BadDebtCollectionPage() {
             if (response.success) {
                 const responseData = [];
                 response.data.map(bd => {
-                    let netBalance = bd.maturedPastDue - bd.history.mcbu;
+                    let netBalance = bd.maturedPastDue - bd.mcbuReturnAmt;
+                    let mcbu = bd.mcbuReturnAmt
                     if (netBalance <= 0) {
                         netBalance = 0;
+                        mcbu = 0;
                     }
+
                     responseData.push({
                         ...bd,
                         groupName: bd.group.length > 0 ? bd.group[0].name : '-',
                         fullName: bd.client.length > 0 ? bd.client[0].name : '-',
                         loName: bd.lo.length > 0 ? bd.lo[0].firstName + ' ' + bd.lo[0].lastName : '-',
                         branchName: bd.branch.length > 0 ? bd.branch[0].name : '-',
-                        pastDue: bd.maturedPastDue,
-                        pastDueStr: bd.maturedPastDue > 0 ? formatPricePhp(bd.maturedPastDue) : '-',
                         amountRelease: bd.history.amountRelease,
                         amountReleaseStr: bd.history.amountRelease > 0 ? formatPricePhp(bd.history.amountRelease) : '-',
-                        mcbuReturnAmt: bd.history.mcbu,
-                        mcbuReturnAmtStr: bd.history.mcbu > 0 ? formatPricePhp(bd.history.mcbu) : '-',
+                        mcbuReturnAmt: mcbu,
+                        mcbuReturnAmtStr: mcbu > 0 ? formatPricePhp(mcbu) : '-',
                         loanBalance: bd.history.loanBalance,
                         loanBalanceStr: bd.history.loanBalance > 0 ? formatPricePhp(bd.history.loanBalance) : '-',
                         netBalance: netBalance,
                         netBalanceStr: netBalance > 0 ? formatPricePhp(netBalance) : '-',
-                        remarks: bd.maturedPastDue <= 0 ? 'Fully Paid' : '-'
-                    })
+                        remarks: netBalance <= 0 ? 'Fully Paid' : '-'
+                    });
                 });
                 responseData.push(processListTotals(responseData));
                 dispatch(setBadDebtList(responseData));
@@ -154,28 +157,29 @@ export default function BadDebtCollectionPage() {
             if (response.success) {
                 const responseData = [];
                 response.data.map(bd => {
-                    let netBalance = bd.maturedPastDue - bd.history.mcbu;
+                    let netBalance = bd.maturedPastDue - bd.mcbuReturnAmt;
+                    let mcbu = bd.mcbuReturnAmt
                     if (netBalance <= 0) {
                         netBalance = 0;
+                        mcbu = 0;
                     }
+
                     responseData.push({
                         ...bd,
                         groupName: bd.group.length > 0 ? bd.group[0].name : '-',
                         fullName: bd.client.length > 0 ? bd.client[0].name : '-',
                         loName: bd.lo.length > 0 ? bd.lo[0].firstName + ' ' + bd.lo[0].lastName : '-',
                         branchName: bd.branch.length > 0 ? bd.branch[0].name : '-',
-                        pastDue: bd.maturedPastDue,
-                        pastDueStr: bd.maturedPastDue > 0 ? formatPricePhp(bd.maturedPastDue) : '-',
                         amountRelease: bd.history.amountRelease,
                         amountReleaseStr: bd.history.amountRelease > 0 ? formatPricePhp(bd.history.amountRelease) : '-',
-                        mcbuReturnAmt: bd.history.mcbu,
-                        mcbuReturnAmtStr: bd.history.mcbu > 0 ? formatPricePhp(bd.history.mcbu) : '-',
+                        mcbuReturnAmt: mcbu,
+                        mcbuReturnAmtStr: mcbu > 0 ? formatPricePhp(mcbu) : '-',
                         loanBalance: bd.history.loanBalance,
                         loanBalanceStr: bd.history.loanBalance > 0 ? formatPricePhp(bd.history.loanBalance) : '-',
                         netBalance: netBalance,
                         netBalanceStr: netBalance > 0 ? formatPricePhp(netBalance) : '-',
-                        remarks: bd.maturedPastDue <= 0 ? 'Fully Paid' : '-'
-                    })
+                        remarks: netBalance <= 0 ? 'Fully Paid' : '-'
+                    });
                 });
                 responseData.push(processListTotals(responseData));
                 dispatch(setBadDebtList(responseData));
@@ -191,15 +195,13 @@ export default function BadDebtCollectionPage() {
         let totalAmountRelease = 0;
         let totalLoanBalance = 0;
         let totalMcbu = 0;
-        let totalPastDue = 0;
         let totalNetBalance = 0;
 
         responseData.map(data => {
-            totalNetBalance += data.netBalance;
-            totalAmountRelease += data.amountRelease;
-            totalLoanBalance += data.loanBalance;
-            totalMcbu += data.mcbuReturnAmt;
-            totalPastDue += data.maturedPastDue;
+            totalNetBalance += data.netBalance ? data.netBalance : 0;
+            totalAmountRelease += data.amountRelease ? data.amountRelease : 0;
+            totalLoanBalance += data.loanBalance ? data.loanBalance : 0;
+            totalMcbu += data.mcbuReturnAmt ? data.mcbuReturnAmt : 0;
         });
 
         return {
@@ -209,8 +211,6 @@ export default function BadDebtCollectionPage() {
             branchName: '-',
             netBalance: totalNetBalance,
             netBalanceStr: totalNetBalance > 0 ? formatPricePhp(totalNetBalance) : '-',
-            pastDue: totalPastDue,
-            pastDueStr: totalPastDue > 0 ? formatPricePhp(totalPastDue) : '-',
             loanBalance: totalLoanBalance,
             loanBalanceStr: totalLoanBalance > 0 ? formatPricePhp(totalLoanBalance) : '-',
             amountRelease: totalAmountRelease,
@@ -365,6 +365,7 @@ export default function BadDebtCollectionPage() {
         let totalAmountRelease = 0;
         let totalAmountCollected = 0;
         let totalPastDue = 0;
+        let totalNetBalance = 0;
 
         const unique = [];
         responseData.map(data => {
@@ -380,6 +381,7 @@ export default function BadDebtCollectionPage() {
         unique.map(data => {
             totalPastDue += data.maturedPastDue;
             totalAmountRelease += data.amountRelease;
+            totalNetBalance += data.netBalance;
         });
 
         return {
@@ -393,6 +395,8 @@ export default function BadDebtCollectionPage() {
             paymentCollectionStr: totalAmountCollected > 0 ? formatPricePhp(totalAmountCollected) : '-',
             amountRelease: totalAmountRelease,
             amountReleaseStr: totalAmountRelease > 0 ? formatPricePhp(totalAmountRelease) : '-',
+            netBalance: totalNetBalance,
+            netBalanceStr: totalNetBalance > 0 ? formatPricePhp(totalNetBalance) : '-',
             totalData: true
         }
     }
@@ -438,16 +442,16 @@ export default function BadDebtCollectionPage() {
             accessor: 'fullName'
         },
         {
-            Header: "Amount Collected",
-            accessor: 'paymentCollectionStr'
-        },
-        {
             Header: "Amount Release",
             accessor: 'amountReleaseStr'
         },
         {
-            Header: "Past Due",
+            Header: "Loan Balance",
             accessor: 'pastDueStr'
+        },
+        {
+            Header: "Amount Collected",
+            accessor: 'paymentCollectionStr'
         },
         {
             Header: "Net Balance",
@@ -487,10 +491,6 @@ export default function BadDebtCollectionPage() {
         {
             Header: "MCBU",
             accessor: 'mcbuReturnAmtStr'
-        },
-        {
-            Header: "Past Due",
-            accessor: 'pastDueStr'
         },
         {
             Header: "Net Balance",

@@ -532,7 +532,7 @@ const CashCollectionDetailsPage = () => {
                         if (cc?.maturedPD) {
                             remarks = cc.history.remarks;
                         }
-                        
+
                         collection = {
                             client: cc.client,
                             coMaker: (cc.coMaker && typeof cc.coMaker == 'number') ? cc.coMaker : '-',
@@ -603,7 +603,7 @@ const CashCollectionDetailsPage = () => {
                             loanRelease: cc.loanRelease,
                             maturedPD: cc.hasOwnProperty('maturedPD') ? cc.maturedPD : false
                         }
-    
+
                         delete cc._id;
 
                         if (type !== 'filter' && cc?.draftCollection?.length > 0) {

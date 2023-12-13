@@ -826,7 +826,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
         let totalsCollectionTarget = totals.targetLoanCollection;
         let totalsCollectionExcess = totals.excess;
         let totalsCollectionActual = totals.collection;
-        console.log('1', totalsLoanBalance)
+
         if ((transferGvr?.currentReleaseAmount > 0 && transferGvr.currentReleaseAmount !== transferGvrByGroup.currentReleaseAmount) 
                 || (transferRcv?.currentReleaseAmount > 0 && transferRcv.currentReleaseAmount !== transferRcvByGroup.currentReleaseAmount)) {
             let transferCurrentReleaseAmount = 0;
@@ -834,19 +834,16 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 transferCurrentReleaseAmount = transferGvr.currentReleaseAmount;
                 totalsLoanBalance -= transferGvr.targetLoanCollection;
                 totalsLoanBalance -= transferGvr.excess;
-                console.log('2', totalsLoanBalance, transferGvr.targetLoanCollection)
             }
             
             if (transferRcv?.currentReleaseAmount > 0) {
                 transferCurrentReleaseAmount -= transferRcv.currentReleaseAmount;
                 totalsLoanBalance += transferRcv.targetLoanCollection;
                 totalsLoanBalance += transferRcv.excess;
-                console.log('3', totalsLoanBalance, transferRcv.targetLoanCollection)
             }
 
             totalsLoanRelease += transferCurrentReleaseAmount;
             totalsLoanBalance += transferCurrentReleaseAmount;
-            console.log('4', totalsLoanBalance, transferCurrentReleaseAmount)
             totalsMcbuCol = consolidateTotalData.mcbuCol;
             totalsCollectionTarget = consolidateTotalData.targetLoanCollection;
             totalsCollectionActual = consolidateTotalData.collection;

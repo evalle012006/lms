@@ -22,11 +22,18 @@ async function save(req, res) {
         let loan = maturedLoan[0];
         const collection = parseFloat(formData.paymentCollection);
         // loan.loanBalance -= collection;
-        loan.pastDue -= collection;
+        loan.maturedPastDue -= collection;
         if (loan.hasOwnProperty('noBadDebtPayment')) {
             loan.noBadDebtPayment += 1;
         } else {
             loan.noBadDebtPayment = 1;
+        }
+
+        const netBalance = loan.maturedPastDue - loan.mcbu;
+        console.log(loan.maturedPastDue, loan.mcbu, netBalance)
+        if (netBalance <= 0) {
+            console.log('here...')
+            loan.maturedPastDue = 0;
         }
 
         delete loan._id;
