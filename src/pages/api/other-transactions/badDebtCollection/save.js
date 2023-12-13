@@ -30,9 +30,7 @@ async function save(req, res) {
         }
 
         const netBalance = loan.maturedPastDue - loan.mcbu;
-        console.log(loan.maturedPastDue, loan.mcbu, netBalance)
         if (netBalance <= 0) {
-            console.log('here...')
             loan.maturedPastDue = 0;
         }
 
