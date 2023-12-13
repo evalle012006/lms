@@ -71,18 +71,7 @@ async function list(req, res) {
                         as: "group"
                     }
                 },
-                {
-                    $lookup: {
-                        from: "loans",
-                        localField: "loanIdObj",
-                        foreignField: "_id",
-                        pipeline: [
-                            { $project: { pastDue: '$pastDue' } }
-                        ],
-                        as: "loan"
-                    }
-                },
-                { $project: { clientIdObj: 0, branchIdObj: 0, loIdObj: 0, groupIdObj: 0, loanIdObj: 0 } }
+                { $project: { clientIdObj: 0, branchIdObj: 0, loIdObj: 0, groupIdObj: 0 } }
             ])
             .toArray();
     } else {

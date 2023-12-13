@@ -14,7 +14,7 @@ async function list(req, res) {
     let response = {};
     const data = await db.collection('loans')
                         .aggregate([
-                            { $match: { groupId: groupId, maturedPD: true, status: 'closed', pastDue: { $gt: 0 } } },
+                            { $match: { groupId: groupId, maturedPD: true, status: 'closed', maturedPastDue: { $gt: 0 } } },
                             { $addFields: { clientIdObj: { $toObjectId: '$clientId' } } },
                             {
                                 $lookup: {

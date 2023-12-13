@@ -1634,21 +1634,16 @@ const CashCollectionDetailsPage = () => {
                                         if (temp?.maturedPD) {
                                             temp.paymentCollection = temp.loanBalance;
                                             temp.paymentCollectionStr = formatPricePhp(temp.paymentCollection);
-                                            temp.loanBalance -= temp.mcbu;
-                                            if (temp.loanBalance < 0) {
-                                                temp.loanBalance = 0;
-                                            }
-                                            temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
-                                            temp.pastDue = temp.loanBalance;
-                                            if (temp.pastDue < 0) {
-                                                temp.pastDue = 0;
-                                            }
-                                            temp.pastDueStr = formatPricePhp(temp.pastDue);
+                                            temp.maturedPastDue = temp.loanBalance;
+                                            temp.pastDue = 0;
+                                            temp.pastDueStr = '-';
                                             temp.history.mcbu = temp.mcbu;
                                             temp.fullPayment = temp.loanRelease;
                                             temp.fullPaymentStr = formatPricePhp(temp.fullPayment);
                                             temp.noOfPayments = 60;
                                             temp.noOfPaymentStr = `60 / ${temp.loanTerms}`;
+                                            temp.noMispayment = 0;
+                                            temp.noMispaymentStr = '-';
                                             temp.amountRelease = 0;
                                             temp.amountReleaseStr = '-';
                                         } else {

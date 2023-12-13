@@ -80,7 +80,8 @@ const AddUpdateDebtCollection = ({ mode = 'add', data = {}, showSidebar, setShow
                 const clientData = clientList.find(client => client._id == selectedClientId);
                 if (clientData) {
                     values.loanRelease = clientData.loanRelease;
-                    values.pastDue = clientData.pastDue;
+                    values.maturedPastDue = clientData.maturedPastDue;
+                    values.mcbu = clientData.mcbu;
                 }
 
                 const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'other-transactions/badDebtCollection/save/';
@@ -205,7 +206,8 @@ const AddUpdateDebtCollection = ({ mode = 'add', data = {}, showSidebar, setShow
                     label: client.name,
                     value: client._id,
                     loanRelease: loan.loanRelease,
-                    pastDue: loan.pastDue
+                    maturedPastDue: loan.maturedPastDue,
+                    mcbu: loan.history.mcbu
                 });
             });
             dispatch(setClientList(clients));
