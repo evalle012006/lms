@@ -211,10 +211,6 @@ async function updateLoan(collection, currentDate) {
             loan.mcbuInterest = collection.mcbuInterest;
         }
 
-        if (collection.hasOwnProperty('maturedPastDue')) {
-            loan.maturedPastDue = collection.maturedPastDue;
-        }
-
         if (collection.mcbuReturnAmt > 0) {
             loan.mcbuReturnAmt = collection.mcbuReturnAmt;
         } else {
@@ -228,6 +224,11 @@ async function updateLoan(collection, currentDate) {
         
         if (collection.mispayment) {
             loan.mispayment = loan.mispayment + 1;
+        }
+
+        if (collection.hasOwnProperty('maturedPastDue')) {
+            loan.maturedPastDue = collection.maturedPastDue;
+            loan.mispayment = 0;
         }
 
         loan.history = collection.history;

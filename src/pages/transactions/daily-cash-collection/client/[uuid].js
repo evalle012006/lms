@@ -406,6 +406,7 @@ const CashCollectionDetailsPage = () => {
 
                         if (cc.maturedPD) {
                             amountRelease = cc.amountRelease;
+                            paymentCollection = cc?.current?.length > 0 ? cc.current[0].paymentCollection : 0;
                         }
 
                         if (!cc?.maturedPD) {
@@ -1634,6 +1635,8 @@ const CashCollectionDetailsPage = () => {
                                         if (temp?.maturedPD) {
                                             temp.paymentCollection = temp.loanBalance;
                                             temp.paymentCollectionStr = formatPricePhp(temp.paymentCollection);
+                                            temp.prevData.paymentCollection = temp.loanBalance;
+                                            temp.history.paymentCollection = temp.loanBalance;
                                             temp.maturedPastDue = temp.loanBalance;
                                             temp.pastDue = 0;
                                             temp.pastDueStr = '-';
