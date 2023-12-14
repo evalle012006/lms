@@ -1777,11 +1777,11 @@ const CashCollectionDetailsPage = () => {
                                         if (temp?.maturedPD) {
                                             temp.paymentCollection = temp.loanBalance;
                                             temp.paymentCollectionStr = formatPricePhp(temp.paymentCollection);
-                                            temp.pastDue = temp.loanBalance;
-                                            if (temp.pastDue < 0) {
-                                                temp.pastDue = 0;
-                                            }
-                                            temp.pastDueStr = formatPricePhp(temp.pastDue);
+                                            temp.prevData.paymentCollection = temp.loanBalance;
+                                            temp.history.paymentCollection = temp.loanBalance;
+                                            temp.maturedPastDue = temp.loanBalance - temp.mcbu;
+                                            temp.pastDue = 0;
+                                            temp.pastDueStr = '-';
                                             temp.history.mcbu = temp.mcbu;
                                             temp.fullPayment = temp.loanRelease;
                                             temp.fullPaymentStr = formatPricePhp(temp.fullPayment);

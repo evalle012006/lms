@@ -80,7 +80,7 @@ const AddUpdateDebtCollection = ({ mode = 'add', data = {}, showSidebar, setShow
                 const clientData = clientList.find(client => client._id == selectedClientId);
                 if (clientData) {
                     values.loanRelease = clientData.loanRelease;
-                    values.maturedPastDue = clientData.maturedPastDue;
+                    values.maturedPastDue = clientData.maturedPastDue - parseFloat(values.paymentCollection);
                     values.mcbu = clientData.mcbu;
                 }
 
@@ -207,7 +207,7 @@ const AddUpdateDebtCollection = ({ mode = 'add', data = {}, showSidebar, setShow
                     value: client._id,
                     loanRelease: loan.loanRelease,
                     maturedPastDue: loan.maturedPastDue,
-                    mcbu: loan.history.mcbu
+                    mcbu: loan.mcbuReturnAmt
                 });
             });
             dispatch(setClientList(clients));

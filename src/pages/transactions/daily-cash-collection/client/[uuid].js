@@ -1637,7 +1637,7 @@ const CashCollectionDetailsPage = () => {
                                             temp.paymentCollectionStr = formatPricePhp(temp.paymentCollection);
                                             temp.prevData.paymentCollection = temp.loanBalance;
                                             temp.history.paymentCollection = temp.loanBalance;
-                                            temp.maturedPastDue = temp.loanBalance;
+                                            temp.maturedPastDue = temp.loanBalance - temp.mcbu;
                                             temp.pastDue = 0;
                                             temp.pastDueStr = '-';
                                             temp.history.mcbu = temp.mcbu;
