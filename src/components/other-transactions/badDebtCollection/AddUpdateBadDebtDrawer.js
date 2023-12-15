@@ -80,7 +80,7 @@ const AddUpdateDebtCollection = ({ mode = 'add', data = {}, showSidebar, setShow
                 const clientData = clientList.find(client => client._id == selectedClientId);
                 if (clientData) {
                     values.loanRelease = clientData.loanRelease;
-                    values.maturedPastDue = clientData.maturedPastDue - parseFloat(values.paymentCollection);
+                    values.maturedPastDue = clientData.maturedPastDue;
                     values.mcbu = clientData.mcbu;
                 }
 

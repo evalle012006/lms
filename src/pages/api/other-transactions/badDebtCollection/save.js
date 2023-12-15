@@ -20,7 +20,7 @@ async function save(req, res) {
 
     if (maturedLoan.length > 0) {
         let loan = maturedLoan[0];
-        const maturedPD = formData.maturedPastDue;
+        const maturedPD = formData.maturedPastDue - formData.paymentCollection;
         loan.maturedPastDue = maturedPD;
         if (loan.hasOwnProperty('noBadDebtPayment')) {
             loan.noBadDebtPayment += 1;
@@ -38,6 +38,7 @@ async function save(req, res) {
 
         const data = await db.collection('badDebtCollections').insertOne({
             ...formData,
+            maturedPastDue: maturedPD,
             dateAdded: moment(getCurrentDate()).format('YYYY-MM-DD')
         });
     

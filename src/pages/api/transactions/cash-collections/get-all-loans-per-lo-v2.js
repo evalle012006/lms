@@ -84,7 +84,7 @@ async function getAllLoansPerGroup(date, mode, loId, dayName, currentDate) {
                                                 loanTarget: { 
                                                     $sum: { 
                                                         $cond: {
-                                                            if: {$and: [{ $ne: ['$status', 'pending']}, {$lte: ['$startDateObj', '$currentDateObj']} ]}, 
+                                                            if: {$and: [{ $ne: ['$status', 'pending']}, { $ne: ['$status', 'reject']}, {$lte: ['$startDateObj', '$currentDateObj']} ]}, 
                                                             then: { 
                                                                 $cond: {
                                                                     if: { $and: [{$eq: ['$activeLoan', 0]}, {$eq: ['$fullPaymentDate', date]}] },

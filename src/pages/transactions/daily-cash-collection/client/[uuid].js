@@ -828,6 +828,8 @@ const CashCollectionDetailsPage = () => {
                         } else if (loan?.current?.length > 0) {
                             cashCollection[index]._id = loan.current[0]._id;
                             cashCollection[index].prevData = loan.current[0].prevData;
+                            cashCollection[index].mcbuCol = loan.current[0].mcbuCol;
+                            cashCollection[index].mcbuColStr = loan.current[0].mcbuCol > 0 ? formatPricePhp(loan.current[0].mcbuCol) : '-';
                         }
                     } else if (currentLoan.status !== 'active') {
                         cashCollection[index] = {
@@ -879,9 +881,12 @@ const CashCollectionDetailsPage = () => {
                         } else if (loan?.current?.length > 0) {
                             cashCollection[index]._id = loan.current[0]._id;
                             cashCollection[index].prevData = loan.current[0].prevData;
+                            cashCollection[index].mcbuCol = loan.current[0].mcbuCol;
+                            cashCollection[index].mcbuColStr = loan.current[0].mcbuCol > 0 ? formatPricePhp(loan.current[0].mcbuCol) : '-';
                         }
                     }
                 } else {
+                    const prevLoan = loan.prevLoans.length > 0 ? loan.prevLoans[loan.prevLoans.length - 1] : null;
                     let pendingTomorrow = {
                         _id: loan._id,
                         client: loan.client,
