@@ -35,7 +35,7 @@ async function save(req, res) {
                     }
                 }
 
-                if (collection.status === 'completed' && collection.loanBalance <= 0) {
+                if (collection.status === 'completed' && collection.loanBalance <= 0 && collection?.remarks?.value !== 'offset-matured-pd') {
                     collection.pastDue = 0;
                 }
 
@@ -207,6 +207,16 @@ async function updateLoan(collection, currentDate) {
             loan.noPastDue = loan.noPastDue ? loan.noPastDue : 0;
         }
 
+        if (collection.mcbuInterest > 0) {
+            loan.mcbuInterest = collection.mcbuInterest;
+        }
+
+        if (collection.mcbuReturnAmt > 0) {
+            loan.mcbuReturnAmt = collection.mcbuReturnAmt;
+        } else {
+            loan.mcbuReturnAmt = 0;
+        }
+
         delete loan.groupCashCollections;
         delete loan.loanOfficer;
         delete loan.loanReleaseStr;
@@ -214,6 +224,11 @@ async function updateLoan(collection, currentDate) {
         
         if (collection.mispayment) {
             loan.mispayment = loan.mispayment + 1;
+        }
+
+        if (collection.hasOwnProperty('maturedPastDue')) {
+            loan.maturedPastDue = collection.maturedPastDue;
+            loan.mispayment = 0;
         }
 
         loan.history = collection.history;
@@ -224,11 +239,13 @@ async function updateLoan(collection, currentDate) {
                 loan.status = 'active';
             }
             
-            loan.fullPaymentDate = collection.fullPaymentDate;
             loan.activeLoan = 0;
+            loan.fullPaymentDate = collection.fullPaymentDate;
             loan.amountRelease = 0;
-            loan.noPastDue = 0;
-            loan.pastDue = 0;
+            if (collection?.remarks?.value !== 'offset-matured-pd') {
+                loan.noPastDue = 0;
+                loan.pastDue = 0;
+            }
         }
 
         loan.lastUpdated = currentDate;

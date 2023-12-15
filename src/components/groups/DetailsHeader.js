@@ -12,7 +12,8 @@ import { ArrowLeftCircleIcon } from '@heroicons/react/24/solid';
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 
 const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, dateFilter, setDateFilter, handleDateFilter, revertMode = false,
-                            groupFilter, handleGroupFilter, groupTransactionStatus, allowMcbuWithdrawal, allowOffsetTransaction, hasDraft, changeRemarks }) => {
+                            groupFilter, handleGroupFilter, groupTransactionStatus, allowMcbuWithdrawal, allowOffsetTransaction, hasDraft, changeRemarks,
+                            addMcbuInterest }) => {
     const router = useRouter();
     const groupList = useSelector(state => state.group.list);
     const group = useSelector(state => state.group.data);
@@ -130,7 +131,7 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
                     </div>
                     {(showSaveButton || allowMcbuWithdrawal || allowOffsetTransaction) && (
                         <div className={`flex items-center`}>
-                            {(!revertMode || hasDraft || (hasDraft && !changeRemarks)) && (
+                            {((hasDraft && !revertMode) || hasDraft || (hasDraft && !changeRemarks) || !addMcbuInterest) && (
                                 <div className="w-40 mr-4">
                                     <ButtonOutline label="Save Draft" type="button" className="p-2 mr-3" onClick={() => handleSaveUpdate(true)} />
                                 </div>

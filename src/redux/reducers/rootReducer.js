@@ -12,8 +12,10 @@ import transactionsSettings from './transactionsReducer';
 import systemSettings from './systemReducer';
 import global from './globalReducer';
 import transfer from './transferReducer';
+import badDebtCollection from './badDebtCollectionReducer';
 
 const rootReducer = combineReducers({
+    badDebtCollection: badDebtCollection,
     transfer: transfer,
     los: los,
     cashCollection: cashCollection,

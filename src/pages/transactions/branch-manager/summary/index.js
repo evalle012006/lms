@@ -1177,8 +1177,6 @@ const BranchManagerSummary = () => {
             totalCollectionAdvancePaymentWeekly += wt.collectionAdvancePaymentWeekly;
             totalCollectionActualWeekly += wt.collectionActualWeekly;
             totalConsolidatedCollection += wt.consolidatedCollection;
-            totalPastDuePerson += wt.pastDuePerson;
-            totalPastDueAmount += wt.pastDueAmount;
             totalMispaymentPerson += wt.mispaymentPerson;
             totalFullPaymentDailyPerson += wt.fullPaymentDailyPerson;
             totalFullPaymentDailyAmount += wt.fullPaymentDailyAmount;
@@ -1186,6 +1184,11 @@ const BranchManagerSummary = () => {
             totalFullPaymentWeeklyAmount += wt.fullPaymentWeeklyAmount;
             totalConsolidatedFullPaymentPerson += wt.consolidatedFullPaymentPerson;
             totalConsolidatedFullPaymentAmount += wt.consolidatedFullPaymentAmount;
+
+            if (wt.pastDueAmount > 0) {
+                totalPastDuePerson = wt.pastDuePerson;
+                totalPastDueAmount = wt.pastDueAmount;
+            }
 
             // if (wt.activeClients > 0) {
             //     lastActiveClients = wt.activeClients;
@@ -1412,8 +1415,6 @@ const BranchManagerSummary = () => {
             totalCollectionAdvancePaymentWeekly = fBal.collectionAdvancePaymentWeekly + monthly.collectionTargetWeekly + monthly.collectionAdvancePaymentWeekly - monthly.fullPaymentWeeklyAmount;
             totalCollectionActualWeekly = fBal.collectionActualWeekly + monthly.collectionActualWeekly - monthly.fullPaymentWeeklyAmount;
             totalConsolidatedCollection = fBal.consolidatedCollection + monthly.consolidatedCollection - monthly.consolidatedFullPaymentAmount;
-            totalPastDuePerson = fBal.pastDuePerson + monthly.pastDuePerson;
-            totalPastDueAmount = fBal.pastDueAmount + monthly.pastDueAmount;
             totalMispaymentPerson = fBal.mispaymentPerson + monthly.mispaymentPerson;
             totalFullPaymentDailyPerson = fBal.fullPaymentDailyPerson + monthly.fullPaymentDailyPerson;
             totalFullPaymentDailyAmount = fBal.fullPaymentDailyAmount + monthly.fullPaymentDailyAmount;
@@ -1423,6 +1424,11 @@ const BranchManagerSummary = () => {
             totalConsolidatedFullPaymentAmount = fBal.consolidatedFullPaymentAmount + monthly.consolidatedFullPaymentAmount;
             totalActiveBorrowers = monthly.activeBorrowers;
             totalLoanBalance = totalActiveLoanReleaseAmount - totalConsolidatedCollection;
+
+            if (monthly.pastDueAmount > 0) {
+                totalPastDuePerson = monthly.pastDuePerson;
+                totalPastDueAmount = monthly.pastDueAmount;
+            }
 
 
             // if (monthly.loanReleaseAmount === 0 && fBal.loanReleaseAmount === 0) {

@@ -71,34 +71,34 @@ async function getAllLoansPerGroup(date, mode, groupId, dayName, currentDate) {
                                         {
                                             $group: {
                                                 _id: '$groupId',
-                                                mcbuTarget: { $sum: {
-                                                    $cond: {
-                                                        if: { $eq: ['$occurence', 'weekly'] },
-                                                        then: '$mcbuTarget',
-                                                        else: 0
-                                                    }
-                                                } },
-                                                mcbuCol: { $sum: '$mcbuCol' },
-                                                excess: { $sum: '$excess' },
+                                                // mcbuTarget: { $sum: {
+                                                //     $cond: {
+                                                //         if: { $eq: ['$occurence', 'weekly'] },
+                                                //         then: '$mcbuTarget',
+                                                //         else: 0
+                                                //     }
+                                                // } },
+                                                // mcbuCol: { $sum: '$mcbuCol' },
+                                                // excess: { $sum: '$excess' },
                                                 amountRelease: { $last: '$amountRelease' },
                                                 loanBalance: { $last: '$loanBalance' },
-                                                mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
-                                                mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
-                                                mcbuNoReturn: { $sum: {
-                                                    $cond: {
-                                                        if: { $gt: ['$mcbuReturnAmt', 0] },
-                                                        then: 1,
-                                                        else: 0
-                                                    }
-                                                } },
-                                                mcbuInterest: { $sum: '$mcbuInterest' },
-                                                mispay: { $sum: {
-                                                    $cond: {
-                                                        if: { $eq: ['$mispayment', true] },
-                                                        then: 1,
-                                                        else: 0
-                                                    }
-                                                } },
+                                                // mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
+                                                // mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
+                                                // mcbuNoReturn: { $sum: {
+                                                //     $cond: {
+                                                //         if: { $gt: ['$mcbuReturnAmt', 0] },
+                                                //         then: 1,
+                                                //         else: 0
+                                                //     }
+                                                // } },
+                                                // mcbuInterest: { $sum: '$mcbuInterest' },
+                                                // mispay: { $sum: {
+                                                //     $cond: {
+                                                //         if: { $eq: ['$mispayment', true] },
+                                                //         then: 1,
+                                                //         else: 0
+                                                //     }
+                                                // } },
                                                 pastDue: { $sum: '$pastDue' },
                                                 noPastDue: { $sum: {
                                                     $cond: {
@@ -139,34 +139,34 @@ async function getAllLoansPerGroup(date, mode, groupId, dayName, currentDate) {
                                         {
                                             $group: {
                                                 _id: '$groupId',
-                                                mcbuTarget: { $sum: {
-                                                    $cond: {
-                                                        if: { $eq: ['$occurence', 'weekly'] },
-                                                        then: '$mcbuTarget',
-                                                        else: 0
-                                                    }
-                                                } },
-                                                mcbuCol: { $sum: '$mcbuCol' },
-                                                excess: { $sum: '$excess' },
+                                                // mcbuTarget: { $sum: {
+                                                //     $cond: {
+                                                //         if: { $eq: ['$occurence', 'weekly'] },
+                                                //         then: '$mcbuTarget',
+                                                //         else: 0
+                                                //     }
+                                                // } },
+                                                // mcbuCol: { $sum: '$mcbuCol' },
+                                                // excess: { $sum: '$excess' },
                                                 amountRelease: { $last: '$amountRelease' },
                                                 loanBalance: { $last: '$loanBalance' },
-                                                mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
-                                                mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
-                                                mcbuNoReturn: { $sum: {
-                                                    $cond: {
-                                                        if: { $gt: ['$mcbuReturnAmt', 0] },
-                                                        then: 1,
-                                                        else: 0
-                                                    }
-                                                } },
-                                                mcbuInterest: { $sum: '$mcbuInterest' },
-                                                mispay: { $sum: {
-                                                    $cond: {
-                                                        if: { $eq: ['$mispayment', true] },
-                                                        then: 1,
-                                                        else: 0
-                                                    }
-                                                } },
+                                                // mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
+                                                // mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
+                                                // mcbuNoReturn: { $sum: {
+                                                //     $cond: {
+                                                //         if: { $gt: ['$mcbuReturnAmt', 0] },
+                                                //         then: 1,
+                                                //         else: 0
+                                                //     }
+                                                // } },
+                                                // mcbuInterest: { $sum: '$mcbuInterest' },
+                                                // mispay: { $sum: {
+                                                //     $cond: {
+                                                //         if: { $eq: ['$mispayment', true] },
+                                                //         then: 1,
+                                                //         else: 0
+                                                //     }
+                                                // } },
                                                 pastDue: { $sum: '$pastDue' },
                                                 noPastDue: { $sum: {
                                                     $cond: {
@@ -673,34 +673,34 @@ async function getAllLoansPerGroup(date, mode, groupId, dayName, currentDate) {
                                         {
                                             $group: {
                                                 _id: '$groupId',
-                                                mcbuTarget: { $sum: {
-                                                    $cond: {
-                                                        if: { $eq: ['$occurence', 'weekly'] },
-                                                        then: '$mcbuTarget',
-                                                        else: 0
-                                                    }
-                                                } },
-                                                mcbuCol: { $sum: '$mcbuCol' },
-                                                excess: { $sum: '$excess' },
+                                                // mcbuTarget: { $sum: {
+                                                //     $cond: {
+                                                //         if: { $eq: ['$occurence', 'weekly'] },
+                                                //         then: '$mcbuTarget',
+                                                //         else: 0
+                                                //     }
+                                                // } },
+                                                // mcbuCol: { $sum: '$mcbuCol' },
+                                                // excess: { $sum: '$excess' },
                                                 amountRelease: { $last: '$amountRelease' },
                                                 loanBalance: { $last: '$loanBalance' },
-                                                mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
-                                                mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
-                                                mcbuNoReturn: { $sum: {
-                                                    $cond: {
-                                                        if: { $gt: ['$mcbuReturnAmt', 0] },
-                                                        then: 1,
-                                                        else: 0
-                                                    }
-                                                } },
-                                                mcbuInterest: { $sum: '$mcbuInterest' },
-                                                mispay: { $sum: {
-                                                    $cond: {
-                                                        if: { $eq: ['$mispayment', true] },
-                                                        then: 1,
-                                                        else: 0
-                                                    }
-                                                } },
+                                                // mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
+                                                // mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
+                                                // mcbuNoReturn: { $sum: {
+                                                //     $cond: {
+                                                //         if: { $gt: ['$mcbuReturnAmt', 0] },
+                                                //         then: 1,
+                                                //         else: 0
+                                                //     }
+                                                // } },
+                                                // mcbuInterest: { $sum: '$mcbuInterest' },
+                                                // mispay: { $sum: {
+                                                //     $cond: {
+                                                //         if: { $eq: ['$mispayment', true] },
+                                                //         then: 1,
+                                                //         else: 0
+                                                //     }
+                                                // } },
                                                 pastDue: { $sum: '$pastDue' },
                                                 noPastDue: { $sum: {
                                                     $cond: {
@@ -741,34 +741,34 @@ async function getAllLoansPerGroup(date, mode, groupId, dayName, currentDate) {
                                         {
                                             $group: {
                                                 _id: '$groupId',
-                                                mcbuTarget: { $sum: {
-                                                    $cond: {
-                                                        if: { $eq: ['$occurence', 'weekly'] },
-                                                        then: '$mcbuTarget',
-                                                        else: 0
-                                                    }
-                                                } },
-                                                mcbuCol: { $sum: '$mcbuCol' },
-                                                excess: { $sum: '$excess' },
+                                                // mcbuTarget: { $sum: {
+                                                //     $cond: {
+                                                //         if: { $eq: ['$occurence', 'weekly'] },
+                                                //         then: '$mcbuTarget',
+                                                //         else: 0
+                                                //     }
+                                                // } },
+                                                // mcbuCol: { $sum: '$mcbuCol' },
+                                                // excess: { $sum: '$excess' },
                                                 amountRelease: { $last: '$amountRelease' },
                                                 loanBalance: { $last: '$loanBalance' },
-                                                mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
-                                                mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
-                                                mcbuNoReturn: { $sum: {
-                                                    $cond: {
-                                                        if: { $gt: ['$mcbuReturnAmt', 0] },
-                                                        then: 1,
-                                                        else: 0
-                                                    }
-                                                } },
-                                                mcbuInterest: { $sum: '$mcbuInterest' },
-                                                mispay: { $sum: {
-                                                    $cond: {
-                                                        if: { $eq: ['$mispayment', true] },
-                                                        then: 1,
-                                                        else: 0
-                                                    }
-                                                } },
+                                                // mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
+                                                // mcbuReturnAmt: { $sum: '$mcbuReturnAmt' },
+                                                // mcbuNoReturn: { $sum: {
+                                                //     $cond: {
+                                                //         if: { $gt: ['$mcbuReturnAmt', 0] },
+                                                //         then: 1,
+                                                //         else: 0
+                                                //     }
+                                                // } },
+                                                // mcbuInterest: { $sum: '$mcbuInterest' },
+                                                // mispay: { $sum: {
+                                                //     $cond: {
+                                                //         if: { $eq: ['$mispayment', true] },
+                                                //         then: 1,
+                                                //         else: 0
+                                                //     }
+                                                // } },
                                                 pastDue: { $sum: '$pastDue' },
                                                 noPastDue: { $sum: {
                                                     $cond: {

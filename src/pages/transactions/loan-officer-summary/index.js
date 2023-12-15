@@ -828,11 +828,14 @@ const LoanOfficerSummary = () => {
             totalCollectionTarget += wt.collectionTarget;
             totalCollectionAdvancePayment += wt.collectionAdvancePayment;
             totalCollectionActual += wt.collectionActual;
-            totalPastDuePerson += wt.pastDuePerson;
-            totalPastDueAmount += wt.pastDueAmount;
             totalMispaymentPerson += wt.mispaymentPerson;
             totalFullPaymentPerson += wt.fullPaymentPerson;
             totalFullPaymentAmount += wt.fullPaymentAmount;
+
+            if (wt.pastDueAmount > 0) {
+                totalPastDuePerson = wt.pastDuePerson;
+                totalPastDueAmount = wt.pastDueAmount;
+            }
         });
 
         totalMcbuBalance = fBal.mcbuBalance + totalMcbuActual - totalMcbuWithdrawal + totalMcbuInterest - totalMcbuReturnAmt;
@@ -990,6 +993,11 @@ const LoanOfficerSummary = () => {
             totalFullPaymentAmount = fBal.fullPaymentAmount + monthly.fullPaymentAmount;
             totalActiveBorrowers = monthly.activeBorrowers;
             totalLoanBalance = totalActiveLoanReleaseAmount - totalCollectionActual;
+
+            if (monthly.pastDueAmount > 0) {
+                totalPastDuePerson = monthly.pastDuePerson;
+                totalPastDueAmount = monthly.pastDueAmount;
+            }
 
             // if (monthly.loanReleaseAmount === 0 && fBal.loanReleaseAmount === 0) {
             //     totalLoanBalance = monthly.loanBalance;
