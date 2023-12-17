@@ -336,7 +336,8 @@ const BranchManagerSummary = () => {
                 });
 
                 losList = calculatePersons(losList);
-                losList = calculateWeeklyTotals(losList);
+                const transferRow = processTransferDetails(losList);
+                losList = calculateWeeklyTotals(losList, transferRow);
                 losList.push(calculateMonthlyTotals(losList[0], losList.filter(los => los.weekTotal)));
                 losList.push(calculateGrandTotals(losList.filter(los => !los.hasOwnProperty('flag')), filter, date));
                 dispatch(setLosList(losList));
@@ -382,11 +383,17 @@ const BranchManagerSummary = () => {
 
         losList.map((los, index) => {
             let temp = {...los};
-            let transferDailyGvr;
-            let transferDailyRcv;
-            let transferWeeklyGvr;
-            let transferWeeklyRcv;
+            let transferDailyGvr = [];
+            let transferDailyRcv = [];
+            let transferWeeklyGvr = [];
+            let transferWeeklyRcv = [];
 
+            activeClients = temp.activeClients;
+            activeBorrowers = temp.activeBorrowers;
+            activeLoanReleasePerson = temp.activeLoanReleasePerson;
+            activeLoanReleaseAmount = temp.activeLoanReleaseAmount !== '-' ? temp.activeLoanReleaseAmount : 0;
+            loanBalance = temp.loanBalance !== '-' ? temp.loanBalance : 0;
+            
             temp?.transferDailyGvr?.map(dailyGvr => {
                 if (dailyGvr) {
                     const data = {...dailyGvr};
@@ -405,7 +412,7 @@ const BranchManagerSummary = () => {
                         const mcbuReturnAmt = (data.mcbuReturnAmt && data.mcbuReturnAmt !== '-') ? -Math.abs(data.mcbuReturnAmt) : 0;
                         const excess = data.excess !== '-' ? data.excess > 0 ? -Math.abs(data.excess) : 0 : 0;
 
-                        transferDailyGvr = {
+                        transferDailyGvr.push({
                             transfer: noTransfer,
                             mcbuTarget: mcbuTarget,
                             mcbuActual: (transferDailyGvr && transferDailyGvr.mcbuActual) ? transferDailyGvr.mcbuActual + mcbuActual : mcbuActual,
@@ -419,14 +426,13 @@ const BranchManagerSummary = () => {
                             collectionActual: -Math.abs(data.collection),
                             pastDuePerson: (data?.noPastDue && data?.noPastDue !== '-') ? data?.noPastDue : 0,
                             pastDueAmount: (data?.pastDue && data?.pastDue !== '-') ? -Math.abs(data?.pastDue) : 0,
-                            // excess: excess
-                        }
+                        });
 
-                        activeClients = temp.activeClients + noTransfer;
-                        activeBorrowers = temp.activeBorrowers + noTransfer;
-                        activeLoanReleasePerson = temp.activeLoanReleasePerson + noTransfer;
-                        activeLoanReleaseAmount = temp.activeLoanReleaseAmount - data.totalLoanRelease - data.currentReleaseAmount;
-                        loanBalance = temp.loanBalance - (data.currentReleaseAmount - data.collection);
+                        activeClients += noTransfer;
+                        activeBorrowers += noTransfer;
+                        activeLoanReleasePerson += noTransfer;
+                        activeLoanReleaseAmount = activeLoanReleaseAmount - data.totalLoanRelease ? data.totalLoanRelease : 0 - data.currentReleaseAmount ? data.currentReleaseAmount : 0;
+                        loanBalance = loanBalance - (data.currentReleaseAmount - data.collection);
                     }
                 }
             });
@@ -449,7 +455,7 @@ const BranchManagerSummary = () => {
                         const mcbuReturnAmt = (data.mcbuReturnAmt && data.mcbuReturnAmt !== '-') ? data.mcbuReturnAmt : 0;
                         const excess = data.excess !== '-' ? data.excess : 0;
 
-                        transferDailyRcv = {
+                        transferDailyRcv.push({
                             transfer: noTransfer,
                             mcbuTarget: mcbuTarget,
                             mcbuActual: (transferDailyRcv && transferDailyRcv.mcbuActual) ? transferDailyRcv.mcbuActual + mcbuActual : mcbuActual,
@@ -463,13 +469,12 @@ const BranchManagerSummary = () => {
                             collectionActual: data.collection,
                             pastDuePerson: (data?.noPastDue && data?.noPastDue !== '-') ? data?.noPastDue : 0,
                             pastDueAmount: (data?.pastDue && data?.pastDue !== '-') ? -Math.abs(data?.pastDue) : 0,
-                            // excess: excess
-                        }
+                        });
 
                         activeClients += noTransfer;
                         activeBorrowers += noTransfer;
                         activeLoanReleasePerson += noTransfer;
-                        activeLoanReleaseAmount += data.totalLoanRelease + data.currentReleaseAmount;
+                        activeLoanReleaseAmount += data.totalLoanRelease ? data.totalLoanRelease : 0 + data.currentReleaseAmount ? data.currentReleaseAmount : 0;
                         loanBalance += (data.currentReleaseAmount - data.collection);
                     }
                 }
@@ -493,7 +498,7 @@ const BranchManagerSummary = () => {
                         const mcbuReturnAmt = (data.mcbuReturnAmt && data.mcbuReturnAmt !== '-') ? -Math.abs(data.mcbuReturnAmt) : 0;
                         const excess = data.excess !== '-' ? data.excess > 0 ? -Math.abs(data.excess) : 0 : 0;
 
-                        transferWeeklyGvr = {
+                        transferWeeklyGvr.push({
                             transfer: noTransfer,
                             mcbuTarget: mcbuTarget,
                             mcbuActual: (transferWeeklyGvr && transferWeeklyGvr.mcbuActual) ? transferWeeklyGvr.mcbuActual + mcbuActual : mcbuActual,
@@ -507,13 +512,12 @@ const BranchManagerSummary = () => {
                             collectionActual: -Math.abs(data.collection),
                             pastDuePerson: (data?.noPastDue && data?.noPastDue !== '-') ? data?.noPastDue : 0,
                             pastDueAmount: (data?.pastDue && data?.pastDue !== '-') ? -Math.abs(data?.pastDue) : 0,
-                            // excess: excess
-                        }
+                        });
 
-                        activeClients = temp.activeClients + noTransfer;
-                        activeBorrowers = temp.activeBorrowers + noTransfer;
-                        activeLoanReleasePerson = temp.activeLoanReleasePerson + noTransfer;
-                        activeLoanReleaseAmount = temp.activeLoanReleaseAmount - data.totalLoanRelease;
+                        activeClients += noTransfer;
+                        activeBorrowers += noTransfer;
+                        activeLoanReleasePerson += noTransfer;
+                        activeLoanReleaseAmount = activeLoanReleaseAmount - data.totalLoanRelease ? data.totalLoanRelease : 0 - data.currentReleaseAmount ? data.currentReleaseAmount : 0;
                         loanBalance = temp.loanBalance - data.totalLoanBalance;
                     }
                 }
@@ -537,7 +541,7 @@ const BranchManagerSummary = () => {
                         const mcbuReturnAmt = (data.mcbuReturnAmt && data.mcbuReturnAmt !== '-') ? data.mcbuReturnAmt : 0;
                         const excess = data.excess !== '-' ? data.excess : 0;
 
-                        transferWeeklyRcv = {
+                        transferWeeklyRcv.push({
                             transfer: noTransfer,
                             mcbuTarget: mcbuTarget,
                             mcbuActual: (transferWeeklyRcv && transferWeeklyRcv.mcbuActual) ? transferWeeklyRcv.mcbuActual + mcbuActual : mcbuActual,
@@ -551,90 +555,89 @@ const BranchManagerSummary = () => {
                             collectionActual: data.collection,
                             pastDuePerson: (data?.noPastDue && data?.noPastDue !== '-') ? data?.noPastDue : 0,
                             pastDueAmount: (data?.pastDue && data?.pastDue !== '-') ? -Math.abs(data?.pastDue) : 0,
-                            // excess: excess
-                        }
+                        });
 
                         activeClients += noTransfer;
                         activeBorrowers += noTransfer;
                         activeLoanReleasePerson += noTransfer;
-                        activeLoanReleaseAmount += data.totalLoanRelease;
-                        loanBalance += data.totalLoanBalance;
+                        activeLoanReleaseAmount += data.totalLoanRelease ? data.totalLoanRelease : 0 + data.currentReleaseAmount ? data.currentReleaseAmount : 0;
+                        loanBalance += (data.currentReleaseAmount - data.collection);
                     }
                 }
             });
 
-            if (transferDailyGvr || transferDailyRcv || transferWeeklyGvr || transferWeeklyRcv) {
-                if (transferDailyGvr) {
-                    totalTransfer = transferDailyGvr?.transfer;
-                    totalMcbuTarget = transferDailyGvr?.mcbuTarget;
-                    totalMcbuActual = transferDailyGvr?.mcbuActual;
-                    totalMcbuWithdrawal = transferDailyGvr?.mcbuWithdrawal;
-                    totalMcbuInterest = transferDailyGvr?.mcbuInterest;
-                    totalMcbuNoReturn = transferDailyGvr?.noMcbuReturn;
-                    totalMcbuReturnAmt = transferDailyGvr?.mcbuReturnAmt;
-                    totalMcbuBalance = transferDailyGvr?.mcbuBalance;
-                    totalDailyNoLoanRelease = transferDailyGvr?.transfer;
-                    totalDailyLoanRelease = transferDailyGvr?.loanReleaseAmount;
-                    totalDailyTargetCollection = transferDailyGvr?.collectionTarget;
-                    totalDailyActualCollection = transferDailyGvr?.collectionActual;
-                    totalPastDue = transferDailyGvr?.pastDueAmount > 0 ? transferDailyGvr?.pastDueAmount : 0;
-                    totalNoPastDue = transferDailyGvr?.pastDuePerson > 0 ? transferDailyGvr?.pastDuePerson : 0;
-                    totalDailyCollectionAdvancePayment = transferDailyGvr?.excess;
-                }
-                // console.log('giver', totalMcbuActual)
-                if (transferDailyRcv) {
-                    totalTransfer += transferDailyRcv?.transfer;
-                    totalMcbuTarget += transferDailyRcv?.mcbuTarget;
-                    totalMcbuActual += transferDailyRcv?.mcbuActual;
-                    totalMcbuWithdrawal += transferDailyRcv?.mcbuWithdrawal;
-                    totalMcbuInterest += transferDailyRcv?.mcbuInterest;
-                    totalMcbuNoReturn += transferDailyRcv?.noMcbuReturn;
+            if (transferDailyGvr.length > 0 || transferDailyRcv.length > 0 || transferWeeklyGvr.length > 0 || transferWeeklyRcv.length > 0) {
+                transferDailyGvr.map(dGvr => {
+                    totalTransfer += dGvr.transfer;
+                    totalMcbuTarget += dGvr.mcbuTarget;
+                    totalMcbuActual += dGvr.mcbuActual;
+                    totalMcbuWithdrawal += dGvr.mcbuWithdrawal;
+                    totalMcbuInterest += dGvr.mcbuInterest;
+                    totalMcbuNoReturn += dGvr.noMcbuReturn;
+                    totalMcbuReturnAmt += dGvr.mcbuReturnAmt;
+                    totalMcbuBalance += dGvr.mcbuBalance;
+                    totalDailyNoLoanRelease += dGvr.transfer;
+                    totalDailyLoanRelease += dGvr.loanReleaseAmount;
+                    totalDailyTargetCollection += dGvr.collectionTarget;
+                    totalDailyActualCollection += dGvr.collectionActual;
+                    totalPastDue += dGvr.pastDueAmount > 0 ? dGvr.pastDueAmount : 0;
+                    totalNoPastDue += dGvr.pastDuePerson > 0 ? dGvr.pastDuePerson : 0;
+                    totalDailyCollectionAdvancePayment += dGvr.excess;
+                });
+                
+                transferDailyRcv.map(dRcv => {
+                    totalTransfer += dRcv.transfer;
+                    totalMcbuTarget += dRcv.mcbuTarget;
+                    totalMcbuActual += dRcv.mcbuActual;
+                    totalMcbuWithdrawal += dRcv.mcbuWithdrawal;
+                    totalMcbuInterest += dRcv.mcbuInterest;
+                    totalMcbuNoReturn += dRcv.noMcbuReturn;
                     totalMcbuReturnAmt += transferDailyRcv.mcbuReturnAmt;
-                    totalMcbuBalance += transferDailyRcv?.mcbuBalance;
-                    totalDailyNoLoanRelease += transferDailyRcv?.transfer;
-                    totalDailyLoanRelease += transferDailyRcv?.loanReleaseAmount;
-                    totalDailyTargetCollection += transferDailyRcv?.collectionTarget;
-                    totalDailyActualCollection += transferDailyRcv?.collectionActual;
-                    totalPastDue += transferDailyRcv?.pastDueAmount > 0 ? transferDailyRcv?.pastDueAmount : 0;
-                    totalNoPastDue += transferDailyRcv?.pastDuePerson > 0 ? transferDailyRcv?.pastDuePerson : 0;
-                    totalDailyCollectionAdvancePayment += transferDailyRcv?.excess;
-                }
-                // console.log('rcv', totalMcbuActual)
-                if (transferWeeklyGvr) {
-                    totalTransfer += transferWeeklyGvr?.transfer;
-                    totalMcbuTarget += transferDailyRcv?.mcbuTarget;
-                    totalMcbuActual += transferWeeklyGvr?.mcbuActual;
-                    totalMcbuWithdrawal += transferWeeklyGvr?.mcbuWithdrawal;
-                    totalMcbuInterest += transferWeeklyGvr?.mcbuInterest;
-                    totalMcbuNoReturn += transferWeeklyGvr?.noMcbuReturn;
+                    totalMcbuBalance += dRcv.mcbuBalance;
+                    totalDailyNoLoanRelease += dRcv.transfer;
+                    totalDailyLoanRelease += dRcv.loanReleaseAmount;
+                    totalDailyTargetCollection += dRcv.collectionTarget;
+                    totalDailyActualCollection += dRcv.collectionActual;
+                    totalPastDue += dRcv.pastDueAmount > 0 ? dRcv.pastDueAmount : 0;
+                    totalNoPastDue += dRcv.pastDuePerson > 0 ? dRcv.pastDuePerson : 0;
+                    totalDailyCollectionAdvancePayment += dRcv.excess;
+                });
+                
+                transferWeeklyGvr.map(wGvr => {
+                    totalTransfer += wGvr.transfer;
+                    totalMcbuTarget += dRcv.mcbuTarget;
+                    totalMcbuActual += wGvr.mcbuActual;
+                    totalMcbuWithdrawal += wGvr.mcbuWithdrawal;
+                    totalMcbuInterest += wGvr.mcbuInterest;
+                    totalMcbuNoReturn += wGvr.noMcbuReturn;
                     totalMcbuReturnAmt += transferWeeklyGvr.mcbuReturnAmt;
-                    totalMcbuBalance += transferWeeklyGvr?.mcbuBalance;
-                    totalWeeklyNoLoanRelease = transferWeeklyGvr?.transfer;
-                    totalWeeklyLoanRelease += transferWeeklyGvr?.loanReleaseAmount;
-                    totalWeeklyTargetCollection += transferWeeklyGvr?.collectionTarget;
-                    totalWeeklyActualCollection += transferWeeklyGvr?.collectionActual;
-                    totalPastDue += transferWeeklyGvr?.pastDueAmount > 0 ? transferDailyRcv?.pastDueAmount : 0;
-                    totalNoPastDue += transferWeeklyGvr?.pastDuePerson > 0 ? transferWeeklyGvr?.pastDuePerson : 0;
-                    totalWeeklyCollectionAdvancePayment += transferWeeklyGvr?.excess;
-                }
-
-                if (transferWeeklyRcv) {
-                    totalTransfer += transferWeeklyRcv?.transfer;
-                    totalMcbuTarget += transferDailyRcv?.mcbuTarget;
-                    totalMcbuActual += transferWeeklyRcv?.mcbuActual;
-                    totalMcbuWithdrawal += transferWeeklyRcv?.mcbuWithdrawal;
-                    totalMcbuInterest += transferWeeklyRcv?.mcbuInterest;
-                    totalMcbuNoReturn += transferWeeklyRcv?.noMcbuReturn;
+                    totalMcbuBalance += wGvr.mcbuBalance;
+                    totalWeeklyNoLoanRelease = wGvr.transfer;
+                    totalWeeklyLoanRelease += wGvr.loanReleaseAmount;
+                    totalWeeklyTargetCollection += wGvr.collectionTarget;
+                    totalWeeklyActualCollection += wGvr.collectionActual;
+                    totalPastDue += wGvr.pastDueAmount > 0 ? dRcv.pastDueAmount : 0;
+                    totalNoPastDue += wGvr.pastDuePerson > 0 ? wGvr.pastDuePerson : 0;
+                    totalWeeklyCollectionAdvancePayment += wGvr.excess;
+                });
+                console.log(totalMcbuBalance)
+                transferWeeklyRcv.map(wRcv => {
+                    totalTransfer += wRcv.transfer;
+                    totalMcbuTarget += dRcv.mcbuTarget;
+                    totalMcbuActual += wRcv.mcbuActual;
+                    totalMcbuWithdrawal += wRcv.mcbuWithdrawal;
+                    totalMcbuInterest += wRcv.mcbuInterest;
+                    totalMcbuNoReturn += wRcv.noMcbuReturn;
                     totalMcbuReturnAmt += transferWeeklyRcv.mcbuReturnAmt;
-                    totalMcbuBalance += transferWeeklyRcv?.mcbuBalance;
+                    totalMcbuBalance += wRcv.mcbuBalance;
                     totalWeeklyNoLoanRelease += transferWtransferWeeklyRcveeklyGvr?.transfer;
-                    totalWeeklyTargetCollection += transferWeeklyRcv?.collectionTarget;
-                    totalWeeklyActualCollection += transferWeeklyRcv?.collectionActual;
-                    totalPastDue += transferWeeklyRcv?.pastDueAmount > 0 ? transferWeeklyRcv?.pastDueAmount : 0;
-                    totalNoPastDue += transferWeeklyRcv?.pastDuePerson > 0 ? transferWeeklyRcv?.pastDuePerson : 0;
-                    totalWeeklyCollectionAdvancePayment += transferWeeklyRcv?.excess;
-                }
-
+                    totalWeeklyTargetCollection += wRcv.collectionTarget;
+                    totalWeeklyActualCollection += wRcv.collectionActual;
+                    totalPastDue += wRcv.pastDueAmount > 0 ? wRcv.pastDueAmount : 0;
+                    totalNoPastDue += wRcv.pastDuePerson > 0 ? wRcv.pastDuePerson : 0;
+                    totalWeeklyCollectionAdvancePayment += wRcv.excess;
+                });
+                console.log(mcbuBalance, totalMcbuBalance)
                 if (totalMcbuBalance !== 0) {
                     mcbuBalance = temp.mcbuBalance ? temp.mcbuBalance : 0;
                 }
@@ -764,8 +767,7 @@ const BranchManagerSummary = () => {
         });
     }
 
-    const calculateWeeklyTotals = (losList) => {
-        const transferRow = processTransferDetails(losList);
+    const calculateWeeklyTotals = (losList, transferRow) => {
         const weekTotals = losList.filter(los => los.weekTotal);
         const fBal = losList[0];
 
@@ -948,10 +950,10 @@ const BranchManagerSummary = () => {
                     totalActiveClients += noConsolidatedTransfer;
                     totalMcbuTarget += transferRow.mcbuTarget ? transferRow.mcbuTarget : 0;
                     totalMcbuActual += transferRow.mcbuActual ? transferRow.mcbuActual : 0;
-                    totalMcbuWithdrawal += transferRow.mcbuWithdrawal;
-                    totalMcbuInterest += transferRow.mcbuInterest;
-                    totalNoMcbuReturn += transferRow.noMcbuReturn;
-                    totalMcbuReturnAmt += transferRow.mcbuReturnAmt;
+                    totalMcbuWithdrawal += transferRow.mcbuWithdrawal ? transferRow.mcbuWithdrawal : 0;
+                    totalMcbuInterest += transferRow.mcbuInterest ? transferRow.mcbuInterest : 0;
+                    totalNoMcbuReturn += transferRow.noMcbuReturn ? transferRow.noMcbuReturn : 0;
+                    totalMcbuReturnAmt += transferRow.noMcbuReturn ? transferRow.noMcbuReturn : 0;
                     if (transferRow.mcbuBalance > 0) {
                         totalMcbuBalance = transferRow.mcbuBalance;
                     }
@@ -1152,17 +1154,17 @@ const BranchManagerSummary = () => {
         // let lastActiveClients = 0;
         // let lastActiveLoanReleasePerson = 0;
         // let lastActiveLoanReleaseAmount = 0;
-        // let lastActiveBorrowers = 0;
-        // let lastLoanBalance = 0;
+        let lastActiveBorrowers = 0;
+        let lastLoanBalance = 0;
 
         weeklyTotals.map(wt => {
             totalTransfer += wt.transfer;
             totalNewMember += wt.newMember;
             totalMcbuActual += wt.mcbuActual ? wt.mcbuActual : 0;
-            totalMcbuWithdrawal += wt.mcbuWithdrawal;
-            totalMcbuInterest += wt.mcbuInterest;
-            totalNoMcbuReturn += wt.noMcbuReturn;
-            totalMcbuReturnAmt += wt.mcbuReturnAmt;
+            totalMcbuWithdrawal += wt.mcbuWithdrawal ? wt.mcbuWithdrawal : 0;
+            totalMcbuInterest += wt.mcbuInterest ? wt.mcbuInterest : 0;
+            totalNoMcbuReturn += wt.noMcbuReturn ? wt.noMcbuReturn : 0;
+            totalMcbuReturnAmt += wt.mcbuReturnAmt ? wt.mcbuReturnAmt : 0;
             totalOffsetperson += wt.offsetPerson;
             totalLoanReleaseDailyPerson += wt.loanReleaseDailyPerson;
             totalLoanReleaseDailyAmount += wt.loanReleaseDailyAmount;
@@ -1202,13 +1204,13 @@ const BranchManagerSummary = () => {
             //     lastActiveLoanReleaseAmount = wt.activeLoanReleaseAmount;
             // }
 
-            // if (wt.activeBorrowers > 0) {
-            //     lastActiveBorrowers = wt.activeBorrowers;
-            // }
+            if (wt.activeBorrowers > 0) {
+                lastActiveBorrowers = wt.activeBorrowers;
+            }
 
-            // if (wt.loanBalance > 0) {
-            //     lastLoanBalance = wt.loanBalance;
-            // }
+            if (wt.loanBalance > 0) {
+                lastLoanBalance = wt.loanBalance;
+            }
         });
 
         totalMcbuBalance = fBal.mcbuBalance + totalMcbuActual - totalMcbuWithdrawal + totalMcbuInterest - totalMcbuReturnAmt;
@@ -1228,16 +1230,11 @@ const BranchManagerSummary = () => {
         //     totalActiveLoanReleaseAmount = lastActiveLoanReleaseAmount;
         // }
 
-        totalActiveBorrowers = fBal.activeBorrowers + totalConsolidatedLoanReleasePerson - totalConsolidatedFullPaymentPerson;
-        totalLoanBalance = fBal.loanBalance + totalConsolidatedLoanReleaseAmount - totalConsolidatedCollection;
+        // totalActiveBorrowers = fBal.activeBorrowers + totalConsolidatedLoanReleasePerson - totalConsolidatedFullPaymentPerson;
+        // totalLoanBalance = fBal.loanBalance + totalConsolidatedLoanReleaseAmount - totalConsolidatedCollection;
 
-        // if (totalActiveBorrowers == 0) {
-        //     totalActiveBorrowers = lastActiveBorrowers;
-        // }
-
-        // if (totalLoanBalance <= 0 && fBal.loanBalance == 0 && ((totalLoanReleaseDailyAmount == 0 && totalCollectionActualDaily > 0) || (totalLoanReleaseWeeklyAmount == 0 && totalCollectionActualWeekly > 0))) {
-        //     totalLoanBalance = lastLoanBalance;
-        // }
+        totalActiveBorrowers = lastActiveBorrowers;
+        totalLoanBalance = lastLoanBalance;
 
         monthlyTotal.transfer = totalTransfer;
         monthlyTotal.newMember = totalNewMember;
