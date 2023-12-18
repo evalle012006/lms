@@ -406,7 +406,7 @@ const CashCollectionDetailsPage = () => {
 
                         if (cc.maturedPD) {
                             amountRelease = cc.amountRelease;
-                            paymentCollection = cc?.current?.length > 0 ? cc.current[0].paymentCollection : 0;
+                            paymentCollection = cc?.current?.length > 0 ? cc.current[0].paymentCollection : cc.paymentCollection;
                         }
 
                         if (!cc?.maturedPD) {
