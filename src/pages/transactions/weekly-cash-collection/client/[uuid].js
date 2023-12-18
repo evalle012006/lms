@@ -1023,9 +1023,7 @@ const CashCollectionDetailsPage = () => {
 
                 if ((collection.status === 'tomorrow' || (collection.hasOwnProperty('tomorrow') && collection.tomorrow) || collection?.transferred)) {
                     totalTargetLoanCollection += collection.history ? collection.history.activeLoan : 0;
-                }
-
-                if (!collection.remarks || (collection.remarks && collection.remarks?.value !== 'delinquent' && !collection.remarks.value?.startsWith("excused-")) || collection?.transferred) {
+                } else if (!collection.remarks || (collection.remarks && collection.remarks?.value !== 'delinquent' && !collection.remarks.value?.startsWith("excused-")) || collection?.transferred) {
                     totalTargetLoanCollection += collection.targetCollection  ? collection.targetCollection !== '-' ? collection.targetCollection : 0 : 0;
                 }
 
