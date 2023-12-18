@@ -535,7 +535,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 collection.transfer = transfer;
                 collection.transferStr = transfer >= 0 ? transfer : `(${transfer * -1})`;
                 totalTransfer += transfer;
-                console.log(targetLoanCollection)
+
                 collectionData.push(collection);
             });
 

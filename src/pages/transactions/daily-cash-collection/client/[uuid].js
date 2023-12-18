@@ -171,7 +171,6 @@ const CashCollectionDetailsPage = () => {
                 setEditMode(false);
                 setGroupSummaryIsClose(true);
             }
-            
 
             dataCollection.map(cc => {
                 let collection;
@@ -1005,9 +1004,7 @@ const CashCollectionDetailsPage = () => {
 
                 if (collection.fullPaymentDate === currentDate && collection.status === "completed") {
                     totalTargetLoanCollection += collection.history ? collection.history.activeLoan : 0;
-                }
-
-                if (!collection.remarks || (collection.remarks && collection.remarks?.value !== 'delinquent' && !collection.remarks.value?.startsWith('excused-')) || collection?.transferred) {
+                } else if (!collection.remarks || (collection.remarks && collection.remarks?.value !== 'delinquent' && !collection.remarks.value?.startsWith('excused-')) || collection?.transferred) {
                     totalTargetLoanCollection += collection.targetCollection  ? collection.targetCollection !== '-' ? collection.targetCollection : 0 : 0;
                 }
 
