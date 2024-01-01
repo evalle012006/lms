@@ -9,7 +9,7 @@ async function list(req, res) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
 
-    const {mode, groupId, branchId, loId, status, branchCodes} = req.query;
+    const {mode, groupId, branchId, loId, status, branchCodes, currentDate} = req.query;
 
     let statusCode = 200;
     let response = {};
@@ -447,9 +447,39 @@ async function list(req, res) {
                         ],
                         as: "loans"
                     }
+                }, 
+                {
+                    $lookup: {
+                        from: "cashCollections",
+                        localField: "clientIdStr",
+                        foreignField: "clientId",
+                        pipeline: [
+                            { $match: { $expr: { $and: [ {$eq: ['$dateAdded', currentDate]}, {$ne: ['$draft', true]} ] } } },
+                            { $project: { status: '$status' } }
+                        ],
+                        as: "cashCollections"
+                    }
                 }
             ])
             .toArray();
+        // clients = await db
+        //     .collection('client')
+        //     .aggregate([
+        //         { $match: { groupId: groupId } },
+        //         { $addFields: { "clientIdStr": { $toString: "$_id" } } },
+        //         {
+        //             $lookup: {
+        //                 from: "loans",
+        //                 localField: "clientIdStr",
+        //                 foreignField: "clientId",
+        //                 pipeline: [
+        //                     { $match: {$expr: {$or: [{$eq: ['$status', 'pending']}, {$eq: ['$status', 'active']}, {$eq: ['$status', 'completed']}]}} }
+        //                 ],
+        //                 as: "loans"
+        //             }
+        //         }
+        //     ])
+        //     .toArray();
     } else {
         clients = await db
             .collection('client')
