@@ -63,6 +63,12 @@ async function updateGroup(req, res) {
                 temp.availableSlots = availableSlots;
             }
 
+            if (temp.noOfClients == temp.capacity) {
+                temp.status = 'full';
+            } else {
+                temp.status = 'available';
+            }
+
 
             delete temp._id;
             await db.collection('groups').updateOne(

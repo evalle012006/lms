@@ -24,6 +24,10 @@ const Index = () => {
             }
         }
 
+        const updateGroupClients = async () => {
+            await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}groups/update-group-clients`);
+        }
+
         // const updateCCData = async () => {
         //     await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}transactions/cash-collections/update-cc-data`);
         // }
@@ -31,10 +35,6 @@ const Index = () => {
         // const updateLoanData = async () => {
         //     await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}transactions/loans/update-loan-data`);
         // }
-
-        const updateGroupClients = async () => {
-            await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}aahandy-scripts/update-group-clients`);
-        }
 
         const updateLOData = async () => {
             await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}aahandy-scripts/update-lo-data`);
@@ -65,7 +65,9 @@ const Index = () => {
         // }
 
         mounted && getSystemSettings();
-        // mounted && updateGroupClients();
+        if (currentUser?.root) {
+            mounted && updateGroupClients();
+        }
         // mounted && updateLOData();
         // mounted && updateGroupData();
         // mounted && updateClients();

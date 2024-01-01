@@ -836,6 +836,10 @@ const LoanOfficerSummary = () => {
                 totalPastDuePerson = wt.pastDuePerson;
                 totalPastDueAmount = wt.pastDueAmount;
             }
+
+            if (wt.loanBalance > 0) {
+                totalLoanBalance = wt.loanBalance;
+            }
         });
 
         totalMcbuBalance = fBal.mcbuBalance + totalMcbuActual - totalMcbuWithdrawal + totalMcbuInterest - totalMcbuReturnAmt;
@@ -843,7 +847,7 @@ const LoanOfficerSummary = () => {
         totalActiveLoanReleasePerson = fBal.activeLoanReleasePerson + totalLoanReleasePerson - totalFullPaymentPerson;
         totalActiveLoanReleaseAmount = fBal.activeLoanReleaseAmount + totalLoanReleaseAmount - totalFullPaymentAmount;
         totalActiveBorrowers = fBal.activeBorrowers + totalLoanReleasePerson - totalFullPaymentPerson;
-        totalLoanBalance = fBal.loanBalance + totalLoanReleaseAmount - totalCollectionActual;
+        // totalLoanBalance = fBal.loanBalance + totalLoanReleaseAmount - totalCollectionActual;
 
         monthlyTotal.transfer = totalTransfer < 0 ? `(${Math.abs(totalTransfer)})` : totalTransfer;
         monthlyTotal.newMember = totalNewMember;
@@ -953,7 +957,7 @@ const LoanOfficerSummary = () => {
         let totalFullPaymentPerson = 0;
         let totalFullPaymentAmount = 0;
         let totalActiveBorrowers = 0;
-        let totalLoanBalance = 0;
+        // let totalLoanBalance = 0;
 
         const fBal = losList.find(los => los.fBalance);
         const monthly = losList.find(los => los.monthTotal);
@@ -992,7 +996,7 @@ const LoanOfficerSummary = () => {
             totalFullPaymentPerson = fBal.fullPaymentPerson + monthly.fullPaymentPerson;
             totalFullPaymentAmount = fBal.fullPaymentAmount + monthly.fullPaymentAmount;
             totalActiveBorrowers = monthly.activeBorrowers;
-            totalLoanBalance = totalActiveLoanReleaseAmount - totalCollectionActual;
+            // totalLoanBalance = totalActiveLoanReleaseAmount - totalCollectionActual;
 
             if (monthly.pastDueAmount > 0) {
                 totalPastDuePerson = monthly.pastDuePerson;
@@ -1039,8 +1043,8 @@ const LoanOfficerSummary = () => {
         grandTotal.fullPaymentAmount = totalFullPaymentAmount;
         grandTotal.fullPaymentAmountStr = formatPricePhp(totalFullPaymentAmount);
         grandTotal.activeBorrowers = totalActiveBorrowers;
-        grandTotal.loanBalance = totalLoanBalance;
-        grandTotal.loanBalanceStr = formatPricePhp(totalLoanBalance);
+        grandTotal.loanBalance = monthly.loanBalance;
+        grandTotal.loanBalanceStr = formatPricePhp(monthly.loanBalance);
 
         if (grandTotal.loanBalance > 0) {
             if (!filter) {

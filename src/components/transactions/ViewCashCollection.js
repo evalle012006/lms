@@ -702,13 +702,20 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
             totalPastDue -= (transferRcv.pastDue && transferRcv.pastDue !== '-') ? transferRcv.pastDue : 0;
             totalNoPastDue -= (transferRcv.noPastDue && transferRcv.noPastDue !== '-') ? transferRcv.noPastDue : 0;
         }
+
+        const activeClients = totals.activeClients + totalTransfer;
+        const activeBorrowers = totals.activeBorrowers + totalTransfer;
+        totalTargetCollection = totalTargetCollection > 0 ? totalTargetCollection : 0;
+        totalPastDue = totalPastDue > 0 ? totalPastDue : 0;
+        totalNoPastDue = totalNoPastDue > 0 ? totalNoPastDue : 0;
+
         return {
             ...totals,
             group: 'TOTALS',
             transfer: 0,
             transferStr: "-",
-            activeClients: totals.activeClients + totalTransfer,
-            activeBorrowers: totals.activeBorrowers + totalTransfer,
+            activeClients: activeClients > 0 ? activeClients : 0,
+            activeBorrowers: activeBorrowers > 0 ? activeBorrowers : 0,
             totalLoanRelease: totalLoanRelease,
             totalReleasesStr: totalLoanRelease ? formatPricePhp(totalLoanRelease) : 0,
             totalLoanBalance: totalLoanBalance,

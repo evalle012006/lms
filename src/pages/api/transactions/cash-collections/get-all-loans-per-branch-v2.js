@@ -384,7 +384,8 @@ async function getAllLoanTransactionsByBranch(branchId, date, dayName, currentDa
                                         //     else: '$mcbu'
                                         // }} 
                                     },
-                                    mcbuInterest: { $sum: '$mcbuInterest' }
+                                    mcbuInterest: { $sum: '$mcbuInterest' },
+                                    loIds: { $addToSet: '$loId' }
                                 } 
                             }
                         ],

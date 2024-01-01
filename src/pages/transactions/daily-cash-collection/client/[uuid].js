@@ -2552,7 +2552,7 @@ const CashCollectionDetailsPage = () => {
                                                             <div className='flex flex-row p-2'>
                                                                 {(currentUser.role.rep === 3 && cc.hasOwnProperty('_id') && !filter && !cc.draft && !cc.reverted && cc?.prevData && !cc.mcbuInterestFlag) && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleShowWarningDialog(e, cc)} />}
                                                                 {(cc.status === 'completed' && !prevDraft && ((cc.remarks && cc.remarks.value?.startsWith('reloaner')) || (cc.status === 'completed' && !cc.remarks))) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
-                                                                {((cc.status === 'pending' || cc.status === 'tomorrow') && !filter && !cc.draft && !cc.reverted) && <ArrowsRightLeftIcon className="w-5 h-5 mr-6" title="Change Remarks" onClick={(e) => handleShowChangeRemarksDialog(e, cc)} />}
+                                                                {((cc.status === 'pending' || cc.status === 'tomorrow') && !filter && !cc.draft && !cc.reverted) && <ArrowsRightLeftIcon className="w-5 h-5 mr-6" title="Change Reloaner Remarks" onClick={(e) => handleShowChangeRemarksDialog(e, cc)} />}
                                                                 {(!filter && !editMode && cc.status !== 'closed' && currentMonth === 11 && !cc.draft) && <ReceiptPercentIcon className="w-5 h-5 mr-6" title="Calculate MCBU Interest" onClick={(e) => handleMCBUInterest(e, cc, index)} />}
                                                             </div>
                                                         )}

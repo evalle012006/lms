@@ -154,7 +154,7 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
     const getListClient = async (groupId) => {
         setLoading(true);
         if (groupId) {
-            let url = process.env.NEXT_PUBLIC_API_URL + 'clients/list?' + new URLSearchParams({ mode: "view_all_by_group_for_transfer", groupId: groupId });;
+            let url = process.env.NEXT_PUBLIC_API_URL + 'clients/list?' + new URLSearchParams({ mode: "view_all_by_group_for_transfer", groupId: groupId, currentDate: currentDate });;
 
             const response = await fetchWrapper.get(url);
             if (response.success) {
@@ -162,12 +162,18 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
                 await response.clients && response.clients.map(client => {
                     const hasTransfer = transferList.find(t => t.selectedClientId === client._id);
                     if (!hasTransfer) {
-                        clients.push({
-                            ...client,
-                            slotNo: client.loans.length > 0 ? client.loans[0].slotNo : 100, // for sorting purposes
-                            label: UppercaseFirstLetter(`${client.lastName}, ${client.firstName}`),
-                            value: client._id
-                        }); 
+                        const clientCollections = client.cashCollections.length > 0 ? client.cashCollections[0] : null;
+                        const clientLoans = client.loans.length > 0 ? client.loans[0] : null;
+                        if (clientCollections?.status == 'tomorrow' || clientCollections?.status == 'pending' || (clientCollections?.status == 'completed' && clientLoans?.fullPaymentDate == currentDate)) {
+                            // don't add...
+                        } else {
+                            clients.push({
+                                ...client,
+                                slotNo: client.loans.length > 0 ? client.loans[0].slotNo : 100, // for sorting purposes
+                                label: UppercaseFirstLetter(`${client.lastName}, ${client.firstName}`),
+                                value: client._id
+                            }); 
+                        }
                     }  
                 });
                 clients.sort((a, b) => { return a.slotNo - b.slotNo });

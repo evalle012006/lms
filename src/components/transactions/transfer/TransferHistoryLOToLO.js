@@ -374,12 +374,12 @@ const TransferHistoryDetails = ({ type }) => {
         let mounted = true;
         if (mounted && branchList) {
             const initBranch = branchList[0];
-            setSelectedFilterBranch(initBranch._id);
+            setSelectedFilterBranch(initBranch?._id);
 
             const getListUser = async () => {
                 let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
                 if (branchList.length > 0) {
-                    url = url + '?' + new URLSearchParams({ branchCode: initBranch.code });
+                    url = url + '?' + new URLSearchParams({ branchCode: initBranch?.code });
                     const response = await fetchWrapper.get(url);
                     if (response.success) {
                         let userList = [];
