@@ -1420,7 +1420,8 @@ const BranchManagerSummary = () => {
             totalConsolidatedFullPaymentPerson = fBal.consolidatedFullPaymentPerson + monthly.consolidatedFullPaymentPerson;
             totalConsolidatedFullPaymentAmount = fBal.consolidatedFullPaymentAmount + monthly.consolidatedFullPaymentAmount;
             totalActiveBorrowers = monthly.activeBorrowers;
-            totalLoanBalance = totalActiveLoanReleaseAmount - totalConsolidatedCollection;
+            // totalLoanBalance = totalActiveLoanReleaseAmount - totalConsolidatedCollection;
+            totalLoanBalance = monthly.loanBalance;
 
             if (monthly.pastDueAmount > 0) {
                 totalPastDuePerson = monthly.pastDuePerson;
