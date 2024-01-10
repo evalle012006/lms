@@ -520,11 +520,13 @@ const CashCollectionDetailsPage = () => {
                         }
 
                         let remarks = cc.remarks ? cc.remarks : "";
+                        let mcbuWithdrawal = cc.current?.length > 0 ? cc.current[0].mcbuWithdrawal : 0;
                         if (cc.status == "completed") {
                             if (type !== 'filter') {
                                 remarks = "";
                             } else {
                                 remarks = cc.history.remarks;
+                                mcbuWithdrawal = cc.mcbuWithdrawal;
                             }
                         }
 
@@ -561,8 +563,8 @@ const CashCollectionDetailsPage = () => {
                             mcbuStr: cc.mcbu > 0 ? formatPricePhp(cc.mcbu) : '-',
                             mcbuCol: cc.mcbuCol,
                             mcbuColStr: cc.mcbuCol > 0 ? formatPricePhp(cc.mcbuCol) : '-',
-                            mcbuWithdrawal: 0,
-                            mcbuWithdrawalStr: '-',
+                            mcbuWithdrawal: mcbuWithdrawal,
+                            mcbuWithdrawalStr: mcbuWithdrawal > 0 ? formatPricePhp(mcbuWithdrawal) : '-',
                             mcbuReturnAmt: 0,
                             mcbuReturnAmtStr: '-',
                             mcbuInterest: cc.mcbuInterest ? cc.mcbuInterest : 0,
