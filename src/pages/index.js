@@ -3,7 +3,6 @@ import { useSelector, useDispatch } from 'react-redux';
 import Layout from "@/components/Layout";
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { setSystemSettings } from '@/redux/actions/systemActions';
-import moment from 'moment';
 import { useState } from 'react';
 import DashboardPage from '@/components/dashboard/DashboardPage';
 

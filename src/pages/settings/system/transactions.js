@@ -15,7 +15,10 @@ const TransactionsSettingsPage = (props) => {
     const [loading, setLoading] = useState(false);
 
     const initialValues = {
-        mcbuRate: state.mcbuRate
+        _id: state._id,
+        mcbuRate: state.mcbuRate,
+        loanDailyLimit: state.loanDailyLimit,
+        loanWeeklyLimit: state.loanWeeklyLimit
     };
 
     const validationSchema = yup.object().shape({});
@@ -24,6 +27,8 @@ const TransactionsSettingsPage = (props) => {
         setLoading(true);
 
         values.mcbuRate = parseFloat(values.mcbuRate);
+        values.loanDailyLimit = parseFloat(values.loanDailyLimit);
+        values.loanWeeklyLimit = parseFloat(values.loanWeeklyLimit);
 
         const apiURL = `${process.env.NEXT_PUBLIC_API_URL}settings/transactions`;
         const response = await fetchWrapper.post(apiURL, values);
@@ -72,6 +77,26 @@ const TransactionsSettingsPage = (props) => {
                                             placeholder="Please type the MCBU Rate"
                                             setFieldValue={setFieldValue}
                                             errors={touched.mcbuRate && errors.mcbuRate ? errors.mcbuRate : undefined} />
+                                    </div>
+                                    <div className="mt-4">
+                                        <InputText
+                                            name="loanDailyLimit"
+                                            value={values.loanDailyLimit}
+                                            onChange={handleChange}
+                                            label="Loan Daily Limit"
+                                            placeholder="Please type the Loan Daily Limit"
+                                            setFieldValue={setFieldValue}
+                                            errors={touched.loanDailyLimit && errors.loanDailyLimit ? errors.loanDailyLimit : undefined} />
+                                    </div>
+                                    <div className="mt-4">
+                                        <InputText
+                                            name="loanWeeklyLimit"
+                                            value={values.loanWeeklyLimit}
+                                            onChange={handleChange}
+                                            label="Loan Weekly Limit"
+                                            placeholder="Please type the Loan Weekly Limit"
+                                            setFieldValue={setFieldValue}
+                                            errors={touched.loanWeeklyLimit && errors.loanWeeklyLimit ? errors.loanWeeklyLimit : undefined} />
                                     </div>
                                     <div className="mt-4 grid justify-items-end">
                                         <button type="submit" className="bg-main border border-main rounded-md text-sm text-white font-bold proxima-regular px-5 py-2">
