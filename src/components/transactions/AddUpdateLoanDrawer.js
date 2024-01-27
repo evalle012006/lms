@@ -23,6 +23,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     const dispatch = useDispatch();
     const list = useSelector(state => state.loan.list);
     const currentUser = useSelector(state => state.user.data);
+    const transactionSettings = useSelector(state => state.transactionsSettings.data);
     const [loading, setLoading] = useState(false);
     const [title, setTitle] = useState('Add Loan');
     const branchList = useSelector(state => state.branch.list);
@@ -79,7 +80,6 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             .integer()
             .positive()
             .moreThan(4999, 'Princal loan should be 5000 or greater')
-            .max(20000, 'Principal loan should not be greater than 20000')
             .required('Please enter principal loan'),
         slotNo: yup
             .number()
@@ -197,46 +197,48 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     }
 
     const handleSaveUpdate = (values, action) => {
-        if (values.principalLoan > 20000) {
-            toast.error(`Invalid Principal Loan. Maximum loanable amount is up to ${formatPricePhp(20000)} only.`);
+        setLoading(true);
+        let group;
+        values.currentDate = currentDate;
+        values.clientId = clientId;
+        if (mode !== 'reloan') {
+            values.groupId = selectedGroup;
+            group = groupList.find(g => g._id === values.groupId);
+            values.groupName = group?.name;
+            const branch = branchList.find(b => b._id === group.branchId);
+            values.branchId = branch._id;
+            values.branchName = branch.name;
+            values.loId = group.loanOfficerId;
+        } else {
+            group = loan.group;
+            values.loId = group.loanOfficerId;
+            values.groupId = loan.groupId;
+            values.groupName = loan.groupName;
+            values.mode = 'reloan';
+            values.oldLoanId = loan.loanId;
+            values.clientId = loan.clientId;
+            values.branchId = loan.branchId;
+            values.prevLoanFullPaymentDate = loan.fullPaymentDate;
+            values.prevLoanFullPaymentAmount = loan?.history.amountRelease;
+        }
+
+        values.slotNo = mode !== 'reloan' ? slotNo : loan.slotNo;
+        values.occurence = group.occurence;
+
+        if (values.occurence === 'weekly') {
+            values.groupDay = group.day;
+        }
+
+        const loanLimit = values.occurence == 'daily' ? transactionSettings.loanDailyLimit : transactionSettings.loanWeeklyLimit;
+        console.log(loanLimit, values.principalLoan)
+        if (values.principalLoan > loanLimit) {
+            toast.error(`Invalid Principal Loan. Maximum loanable amount is up to ${formatPricePhp(loanLimit)} only.`);
         } else if (values.principalLoan % 1000 === 0) {
             if (type === 'weekly' && (!values.mcbu || parseFloat(values.mcbu) < 50)) {
                 toast.error('Invalid MCBU amount. Please enter at least 50.');
             } else if (loanTerms === 100 && values.principalLoan < 10000) {
                 toast.error('For 100 days loan term, principal amount should be greater than or equal to 10,0000.');
             } else {
-                setLoading(true);
-                let group;
-                values.currentDate = currentDate;
-                values.clientId = clientId;
-                if (mode !== 'reloan') {
-                    values.groupId = selectedGroup;
-                    group = groupList.find(g => g._id === values.groupId);
-                    values.groupName = group?.name;
-                    const branch = branchList.find(b => b._id === group.branchId);
-                    values.branchId = branch._id;
-                    values.branchName = branch.name;
-                    values.loId = group.loanOfficerId;
-                } else {
-                    group = loan.group;
-                    values.loId = group.loanOfficerId;
-                    values.groupId = loan.groupId;
-                    values.groupName = loan.groupName;
-                    values.mode = 'reloan';
-                    values.oldLoanId = loan.loanId;
-                    values.clientId = loan.clientId;
-                    values.branchId = loan.branchId;
-                    values.prevLoanFullPaymentDate = loan.fullPaymentDate;
-                    values.prevLoanFullPaymentAmount = loan?.history.amountRelease;
-                }
-
-                values.slotNo = mode !== 'reloan' ? slotNo : loan.slotNo;
-                values.occurence = group.occurence;
-
-                if (values.occurence === 'weekly') {
-                    values.groupDay = group.day;
-                }
-
                 if (values.status !== 'active') {
                     if (group.occurence === 'weekly') {
                         values.activeLoan = (values.principalLoan * 1.20) / 24;

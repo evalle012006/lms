@@ -24,17 +24,17 @@ const Layout = ({ children, bgwhite = false, header = true, noPad = false, actio
         }
     }
 
-    // const getTransactionSettings = async () => {
-    //     const apiURL = `${process.env.NEXT_PUBLIC_API_URL}settings/transactions`;
-    //     const response = await fetchWrapper.get(apiURL);
-    //     if (response.success) {
-    //         dispatch(setTransactionSettings(response.transactions));
-    //     }
-    // }
+    const getTransactionSettings = async () => {
+        const apiURL = `${process.env.NEXT_PUBLIC_API_URL}settings/transactions`;
+        const response = await fetchWrapper.get(apiURL);
+        if (response.success) {
+            dispatch(setTransactionSettings(response.transactions));
+        }
+    }
 
     useEffect(() => {
         getCurrentDate();
-        // getTransactionSettings();
+        getTransactionSettings();
     }, []);
 
     useEffect(() => {
