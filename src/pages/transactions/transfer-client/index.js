@@ -417,11 +417,58 @@ const TransferClientPage = () => {
                 setLoading(false);
                 toast.error(response.message);
             }
+        }  else if (currentUser.role.rep === 3) {
+            url = url + '?' + new URLSearchParams({ branchId: currentUser.designatedBranchId });
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                const list = [];
+                response.data.map(transfer => {
+                    let temp = {...transfer};
+                    const client = transfer.client;
+                    const loan = transfer.loans.length > 0 ? transfer.loans[0] : [];
+
+                    temp.fullName = client.fullName;
+                    temp.lastName = client.lastName;
+                    temp.firstName = client.firstName;
+                    temp.status = client.status;
+
+                    if (transfer.loans.length > 0) {
+                        temp.amountRelease = loan.amountRelease;
+                        temp.amountReleaseStr = temp.amountRelease > 0 ? formatPricePhp(temp.amountRelease) : '-';
+                        temp.loanBalance = loan.loanBalance;
+                        temp.loanBalanceStr = temp.loanBalance > 0 ? formatPricePhp(temp.loanBalance) : '-';
+                        temp.targetCollection = loan.amountRelease - loan.loanBalance;
+                        temp.targetCollectionStr = temp.targetCollection > 0 ? formatPricePhp(temp.targetCollection) : '-';
+                        temp.actualCollection = loan.amountRelease - loan.loanBalance;
+                        temp.actualCollectionStr = temp.actualCollection > 0 ? formatPricePhp(temp.actualCollection) : '-';
+                        temp.totalMcbu = loan.mcbu;
+                        temp.totalMcbuStr = temp.totalMcbu > 0 ? formatPricePhp(temp.totalMcbu) : '-';
+                        temp.loanStatus = loan.status;
+                        temp.sourceBranchName = transfer.sourceBranch.name;
+                        temp.sourceUserName = `${transfer.sourceUser.firstName} ${transfer.sourceUser.lastName}`,
+                        temp.sourceGroupName = transfer.sourceGroup.name;
+                        temp.targetBranchName = transfer.targetBranch.name;
+                        temp.targetUserName = `${transfer.targetUser.firstName} ${transfer.targetUser.lastName}`,
+                        temp.targetGroupName = transfer.targetGroup.name;
+
+                        if (temp.loanStatus === "closed") {
+                            temp.delinquent = true;
+                        }
+                    }
+
+                    list.push(temp);
+                });
+                dispatch(setTransferClientList(list));
+                setLoading(false);
+            } else if (response.error) {
+                setLoading(false);
+                toast.error(response.message);
+            }
         }
     }
 
     useEffect(() => {
-        if ((currentUser?.role?.rep > 2)) {
+        if ((currentUser?.role?.rep > 3)) {
             router.push('/');
         }
     }, []);
@@ -467,6 +514,25 @@ const TransferClientPage = () => {
                     setLoading(false);
                     toast.error(response.message);
                 }
+            }  else if (currentUser.role.rep === 3) {
+                const branchCodes = currentUser.designatedBranch;
+                url = url + '?' + new URLSearchParams({ branchCodes: [branchCodes] });
+                const response = await fetchWrapper.get(url);
+                if (response.success) {
+                    let branches = [];
+                    response.branches.map(branch => {
+                        branches.push({
+                            ...branch,
+                            value: branch._id,
+                            label: branch.name
+                        });
+                    });
+                    dispatch(setBranchList(branches));
+                    setLoading(false);
+                } else if (response.error) {
+                    setLoading(false);
+                    toast.error(response.message);
+                }
             }
         }
 
@@ -479,7 +545,7 @@ const TransferClientPage = () => {
     }, [currentUser]);
 
     useEffect(() => {
-        if (currentDate === lastMonthDate) {
+        if (currentDate === lastMonthDate && currentUser.role.rep < 3) {
             setActionButtons([
                 <ButtonOutline label="Approved Selected Transfer" type="button" className="p-2 mr-3" onClick={handleMultiApprove} />,
                 <ButtonSolid label="Add Transfer" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
@@ -501,7 +567,7 @@ const TransferClientPage = () => {
     }, [currentDate, lastMonthDate]);
 
     return (
-        <Layout actionButtons={currentUser.role.rep <= 2 && actionButtons}>
+        <Layout actionButtons={currentUser.role.rep <= 3 && actionButtons}>
             <div className="pb-4">
                 { loading ? (
                     <div className="absolute top-1/2 left-1/2">

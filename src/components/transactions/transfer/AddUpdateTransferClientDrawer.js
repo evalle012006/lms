@@ -18,6 +18,7 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
     const transferList = useSelector(state => state.client.transferList);
     const formikRef = useRef();
     const dispatch = useDispatch();
+    const currentUser = useSelector(state => state.user.data);
     const currentDate = useSelector(state => state.systemSettings.currentDate);
     const [loading, setLoading] = useState(false);
     const [title, setTitle] = useState('Add Transfer Client');
@@ -40,6 +41,8 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
     const [selectedClient, setSelectedClient] = useState();
     const [slotNumbers, setSlotNumbers] = useState();
     const [selectedSlotNo, setSelectedSlotNo] = useState();
+
+    const [disableField, setDisableField] = useState(false);
 
     const initialValues = {
         sourceBranchId: client.sourceBranchId,
@@ -338,6 +341,10 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
     useEffect(() => {
         let mounted = true;
 
+        if (currentUser.role.rep == 3) {
+            setSelectedSourceBranch(branchList[0].value);
+        }
+
         if (mode === 'add') {
             setTitle('Add Transfer Client');
         } else if (mode === 'edit') {
@@ -473,6 +480,7 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
                                             options={branchList}
                                             onChange={(field, value) => handleChangeSourceBranch(field, value)}
                                             onBlur={setFieldTouched}
+                                            disabled={disableField}
                                             placeholder="Select Source Branch"
                                             errors={touched.sourceBranchId && errors.sourceBranchId ? errors.sourceBranchId : undefined}
                                         />

@@ -486,7 +486,7 @@ const MenuItems = [
             // },
             {
                 label: "Transfer Client",
-                url: "/transactions/area-manager/transfer-client", 
+                url: "/transactions/transfer-client", 
                 icon: {
                     active: (
                         <ArrowsRightLeftIcon className="text-gray-800 w-5 h-5" />
@@ -857,9 +857,9 @@ const NavComponent = () => {
                             sm.hidden = true;
                         }
 
-                        if (sm.label === 'Transfer Client') {
-                            sm.hidden = true;
-                        }
+                        // if (sm.label === 'Transfer Client') {
+                        //     sm.hidden = true;
+                        // }
                     }  else if (userState.role.rep === 4) {
                         if (sm.label === 'Transfer Client') {
                             sm.hidden = true;
