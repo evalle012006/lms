@@ -591,11 +591,13 @@ const TransferClientPage = () => {
                                 onClick={() => setSelectedTab("history-lo")}>
                                 History LO to LO
                             </TabSelector>
-                            <TabSelector
-                                isActive={selectedTab === "history-revert-transfer"}
-                                onClick={() => setSelectedTab("history-revert-transfer")}>
-                                Revert Transfer
-                            </TabSelector>
+                            {currentUser.role.rep < 3 && (
+                                <TabSelector
+                                    isActive={selectedTab === "history-revert-transfer"}
+                                    onClick={() => setSelectedTab("history-revert-transfer")}>
+                                    Revert Transfer
+                                </TabSelector>
+                            )}
                         </nav>
                         <React.Fragment>
                             <TabPanel hidden={selectedTab !== "transfer"}>
@@ -607,9 +609,11 @@ const TransferClientPage = () => {
                             <TabPanel className="px-4" hidden={selectedTab !== "history-lo"}>
                                 <TransferHistoryLOToLOPage />
                             </TabPanel>
-                            <TabPanel className="px-4" hidden={selectedTab !== "history-revert-transfer"}>
-                                <RevertTransferPage />
-                            </TabPanel>
+                            {currentUser.role.rep < 3 && (
+                                <TabPanel className="px-4" hidden={selectedTab !== "history-revert-transfer"}>
+                                    <RevertTransferPage />
+                                </TabPanel>
+                            )}
                         </React.Fragment> 
                         <AddUpdateTransferClient mode={mode} client={client} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
                         <Dialog show={showDeleteDialog}>
