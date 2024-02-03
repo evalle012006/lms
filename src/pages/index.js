@@ -10,6 +10,7 @@ const Index = () => {
     const dispatch = useDispatch();
     const [loading, setLoading] = useState(false);
     const currentDate = useSelector(state => state.systemSettings.currentDate);
+    const currentTime = useSelector(state => state.systemSettings.currentTime);
     const currentUser = useSelector(state => state.user.data);
 
     useEffect(() => {
@@ -64,8 +65,16 @@ const Index = () => {
         // }
 
         mounted && getSystemSettings();
-        if (currentUser?.root) {
-            mounted && updateGroupClients();
+
+        if (currentTime) {
+            const timeArgs = currentTime.split(" ");
+            const hourMinArgs = timeArgs[0].split(':');
+            if (currentUser?.root && 
+                ((timeArgs[1] == 'AM' && hourMinArgs[0] == '11' && hourMinArgs[1] == '00') 
+                    || (timeArgs[1] == 'PM' && hourMinArgs[0] == '3' && hourMinArgs[1] == '00')
+                    || (timeArgs[1] == 'PM' && hourMinArgs[0] == '9' && hourMinArgs[1] == '00'))) {
+                mounted && updateGroupClients();
+            }
         }
         // mounted && updateLOData();
         // mounted && updateGroupData();
@@ -82,7 +91,7 @@ const Index = () => {
         return () => {
             mounted = false;
         };
-    }, []);
+    }, [currentTime]);
 
     return (
         <Layout header={false} noPad={true}>

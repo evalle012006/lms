@@ -3,6 +3,7 @@ import React from 'react';
 import { useSelector } from 'react-redux';
 import { UserPlusIcon, WalletIcon, BanknotesIcon, ScaleIcon, ReceiptRefundIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline';
 import ClientSearchTool from './ClientSearchTool';
+import BranchNotCloseTool from './BranchNotCloseReport';
 
 const DashboardPage = () => {
     const currentUser = useSelector(state => state.user.data);
@@ -23,7 +24,8 @@ const DashboardPage = () => {
                         <h1 className="text-2xl font-semibold whitespace-nowrap">Welcome, {`${currentUser.firstName} ${currentUser.lastName}`}!</h1>
                     </div>
                     <ClientSearchTool />
-                    <div className="grid grid-cols-2 gap-4 mt-6 sm:grid-cols-2 lg:grid-cols-4">
+                    <BranchNotCloseTool />
+                    {/* <div className="grid grid-cols-2 gap-4 mt-6 sm:grid-cols-2 lg:grid-cols-4">
                         {cardData.map((cd, i) => {
                             return (
                                 <div key={i} className="p-4 transition-shadow border rounded-lg shadow-sm hover:shadow-lg">
@@ -37,7 +39,7 @@ const DashboardPage = () => {
                                 </div>
                             )
                         })}
-                    </div>
+                    </div> */}
                 </main>
             </div>
         </div>
