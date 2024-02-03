@@ -660,12 +660,14 @@ const LoanApplicationPage = () => {
         }
     }
 
-    const actionButtons = currentUser.role.rep < 4 ? [
-        <ButtonOutline label="Approved Selected Loans" type="button" className="p-2 mr-3" onClick={handleMultiApprove} />,
-        <ButtonSolid label="Add Loan" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
-    ] : [
-        <ButtonSolid label="Add Loan" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
-    ];
+    // const actionButtons = currentUser.role.rep < 4 ? [
+    //     <ButtonOutline label="Approved Selected Loans" type="button" className="p-2 mr-3" onClick={handleMultiApprove} />,
+    //     <ButtonSolid label="Add Loan" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
+    // ] : [
+    //     <ButtonSolid label="Add Loan" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
+    // ];
+
+    const [actionButtons, setActionButtons] = useState();
 
     const handleEditAction = (row) => {
         setMode("edit");
@@ -884,17 +886,25 @@ const LoanApplicationPage = () => {
             let rowActionBtn = [];
 
             if (currentUser.role.rep === 3) {
-                rowActionBtn = [
-                    // { label: 'Approve', action: handleApprove},
-                    { label: 'Edit Loan', action: handleEditAction},
-                    { label: 'Reject', action: handleShowWarningModal},
-                    // { label: 'Delete Loan', action: handleDeleteAction},
-                    { label: 'NDS', action: handleShowNDSAction}
-                ];
+                if (!isWeekend && !isHoliday) {
+                    rowActionBtn = [
+                        // { label: 'Approve', action: handleApprove},
+                        { label: 'Edit Loan', action: handleEditAction},
+                        { label: 'Reject', action: handleShowWarningModal},
+                        // { label: 'Delete Loan', action: handleDeleteAction},
+                        { label: 'NDS', action: handleShowNDSAction}
+                    ];
+                } else {
+                    rowActionBtn = [
+                        { label: 'Edit Loan', action: handleEditAction},
+                        { label: 'NDS', action: handleShowNDSAction}
+                    ];
+                }
             } else if (currentUser.role.rep === 4) {
                 rowActionBtn = [
                     { label: 'Edit Loan', action: handleEditAction},
                     // { label: 'Delete Loan', action: handleDeleteAction}
+                    { label: 'NDS', action: handleShowNDSAction}
                 ];
             }
 
@@ -919,6 +929,22 @@ const LoanApplicationPage = () => {
         setNoOfPendingLoans(data.length);
         setTotalAmountRelease(getTotal(data, 'principalLoan'));
     }, [data]);
+
+    useEffect(() => {
+        let actBtns = [ <ButtonSolid label="Add Loan" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} /> ];
+        if (currentUser.role.rep < 4) {
+            actBtns = [
+                <ButtonOutline label="Approved Selected Loans" type="button" className="p-2 mr-3" onClick={handleMultiApprove} />,
+                <ButtonSolid label="Add Loan" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
+            ];
+
+            if (selectedTab == 'history') {
+                actBtns.splice(0, 1);
+            }
+        }
+        
+        setActionButtons(actBtns);
+    }, [selectedTab]);
 
     return (
         <Layout actionButtons={(currentUser.role.rep > 2 && !isWeekend && !isHoliday) && actionButtons}>
@@ -986,8 +1012,8 @@ const LoanApplicationPage = () => {
                                         columns={columns} 
                                         data={data} 
                                         pageSize={50} 
-                                        hasActionButtons={(currentUser.role.rep > 2 && !isWeekend && !isHoliday) ? true : false} 
-                                        rowActionButtons={!isWeekend && !isHoliday && rowActionButtons} 
+                                        hasActionButtons={currentUser.role.rep > 2 ? true : false} 
+                                        rowActionButtons={rowActionButtons} 
                                         showFilters={false} 
                                         multiSelect={currentUser.role.rep === 3 ? true : false} 
                                         multiSelectActionFn={handleMultiSelect} 

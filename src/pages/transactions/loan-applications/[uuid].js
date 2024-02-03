@@ -10,7 +10,6 @@ import { useDispatch, useSelector } from 'react-redux';
 import { formatPricePhp } from '@/lib/utils';
 import { useRouter } from 'node_modules/next/router';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
-import { setCurrentDate } from '@/redux/actions/systemActions';
 
 const ClientNDSPage = () => {
     const dispatch = useDispatch();
@@ -34,15 +33,7 @@ const ClientNDSPage = () => {
             setLoading(false);
         }
 
-        const getCurrentDate = async () => {
-            const apiURL = `${process.env.NEXT_PUBLIC_API_URL}settings/current-date`;
-            const response = await fetchWrapper.get(apiURL);
-            if (response.success) {
-                dispatch(setCurrentDate(response.currentDate));
-            }
-        }
-
-        mounted && uuid && getLoan() && getCurrentDate();
+        mounted && uuid && getLoan();
 
         return (() => {
             mounted = false;
@@ -57,9 +48,9 @@ const ClientNDSPage = () => {
                 </div>
             ): (
                 <div className='flex flex-col w-full p-12'>
-                    <div className='flex justify-end'>
+                    <div className='flex justify-end mr-8'>
                         <ReactToPrint
-                            trigger={() => <ButtonSolid label="Print" icon={[<PrinterIcon className="w-5 h-5" />, 'left']} width='!w-2'/> }
+                            trigger={() => <ButtonSolid label="Print" icon={[<PrinterIcon className="w-5 h-5" />, 'left']} width='!w-20'/> }
                             content={() => ndsFormRef.current }
                         />
                     </div>
@@ -79,6 +70,15 @@ const NDSForm = React.forwardRef((props, ref) => {
     const [client, setClient] = useState();
     const [clientAddress, setClientAddress] = useState();
     const [amortization, setAmortization] = useState([]);
+
+    const marginTop = "30px";
+    const marginRight = "5px";
+    const marginBottom= "20px";
+    const marginLeft = "5px";
+
+    const getPageMargins = () => {
+        return `@page { margin: ${marginTop} ${marginRight} ${marginBottom} ${marginLeft} !important; }`;
+    };
 
     useEffect(() => {
         if (props.loan) {
@@ -139,17 +139,18 @@ const NDSForm = React.forwardRef((props, ref) => {
     }, [props]);
     return (
         <div ref={ref} className='min-h-screen w-full mt-4 p-8' style={{ fontSize: '9px' }}>
-            <div className='flex flex-row justify-center'>
+            <style>{getPageMargins()}</style>
+            <div className='flex flex-row justify-center leading-3'>
                 <div className='flex flex-col p-2' style={{ width: '50%' }}>
                     <div className='flex flex-row justify-between'>
-                        <Image src={logo} className="overflow-hidden mr-4" width='60' height='60' />
-                        <div className='flex flex-row text-center'>
+                        <Image src={logo} className="overflow-hidden mr-4" width='80' height='60' />
+                        <div className='flex flex-row text-center justify-between w-2/3'>
                             <div className='flex flex-col mr-4'>
                                 <span className='font-bold' style={{ fontSize: '14px' }}>AmberCash PH micro Lending Corp</span>
                                 <span>DISCLOSURE STATEMENT ON LOAN TRANSACTION</span>
                                 <span style={{ fontStyle: 'italic' }}>(As Required under R.A. 3765, Truth in Lending Act)</span>
                             </div>
-                            <span className='bg-zinc-800 font-bold'>BRANCH COPY</span>
+                            <span className='font-bold'>BRANCH COPY</span>
                         </div>
                     </div>
                     <div className='w-full mt-2'>
@@ -247,14 +248,14 @@ const NDSForm = React.forwardRef((props, ref) => {
                 </div>
                 <div className='flex flex-col p-2' style={{ width: '50%' }}>
                     <div className='flex flex-row justify-between'>
-                        <Image src={logo} className="overflow-hidden mr-4" width='60' height='60' />
-                        <div className='flex flex-row text-center'>
+                        <Image src={logo} className="overflow-hidden mr-4" width='80' height='60' />
+                        <div className='flex flex-row text-center justify-between w-2/3'>
                             <div className='flex flex-col mr-4'>
                                 <span className='font-bold' style={{ fontSize: '14px' }}>AmberCash PH micro Lending Corp</span>
                                 <span>DISCLOSURE STATEMENT ON LOAN TRANSACTION</span>
                                 <span style={{ fontStyle: 'italic' }}>(As Required under R.A. 3765, Truth in Lending Act)</span>
                             </div>
-                            <span className='bg-zinc-800 font-bold'>BORROWER'S COPY</span>
+                            <span className='font-bold'>BORROWER'S COPY</span>
                         </div>
                     </div>
                     <div className='w-full mt-2'>
