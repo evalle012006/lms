@@ -944,7 +944,7 @@ const LoanApplicationPage = () => {
         }
         
         setActionButtons(actBtns);
-    }, [selectedTab]);
+    }, [selectedTab, list]);
 
     return (
         <Layout actionButtons={(currentUser.role.rep > 2 && !isWeekend && !isHoliday) && actionButtons}>
