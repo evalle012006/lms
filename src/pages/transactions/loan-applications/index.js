@@ -667,7 +667,7 @@ const LoanApplicationPage = () => {
                     const tempList = pendingList.map(loan => {
                         let temp = {...loan};
     
-                        if (temp.allowApproved) {
+                        if (temp.allowApproved && temp.ldfApproved) {
                             temp.selected = selectAll;
                         }
                         
@@ -1048,9 +1048,9 @@ const LoanApplicationPage = () => {
     }, [groupList]);
 
     useEffect(() => {
-        if (currentUser.role.rep === 3 || currentUser.role.rep === 4 && branchList.length > 0) {
-            setSelectedFilterBranch(branchList[0]?.value);
-            getListUser(branchList[0]?.code);
+        if (currentUser.role.rep === 3 || currentUser.role.rep === 4) {
+            setSelectedFilterBranch(currentUser.designatedBranch);
+            getListUser(currentUser.designatedBranch);
         }
 
         if (currentUser.role.rep === 4) {
@@ -1074,7 +1074,8 @@ const LoanApplicationPage = () => {
             ];
 
             if (selectedTab == 'application') {
-                actBtns.splice(0, 1);
+                // actBtns.splice(0, 1);
+                actBtns.splice(0, 2);
                 actBtns.unshift(
                     <ButtonOutline label="Approved Selected Loans" type="button" className="p-2 mr-3" onClick={() => handleMultiApprove('application')} />,
                 );
@@ -1154,7 +1155,7 @@ const LoanApplicationPage = () => {
                                         </div>
                                         <div className='flex justify-end ml-4 h-10'>
                                             <ReactToPrint
-                                                trigger={() => <ButtonSolid label="Print" icon={[<PrinterIcon className="w-5 h-5" />, 'left']} width='!w-20'/> }
+                                                trigger={() => <ButtonSolid label="Print LDF" icon={[<PrinterIcon className="w-5 h-5" />, 'left']} width='!w-20'/> }
                                                 content={() => ndsFormRef.current }
                                             />
                                         </div>
@@ -1170,7 +1171,7 @@ const LoanApplicationPage = () => {
                                         multiSelectActionFn={handleMultiSelect} 
                                         rowClick={handleShowClientInfoModal}
                                     />
-                                    <LDFListPage ref={ndsFormRef} data={data} />
+                                    {currentUser.role.rep < 4 && <LDFListPage ref={ndsFormRef} data={data} />}
                                     <footer className="pl-64 text-md font-bold text-center fixed inset-x-0 bottom-0 text-red-400">
                                         <div className="flex flex-row justify-center bg-white px-4 py-2 shadow-inner border-t-4 border-zinc-200">
                                             <div className="flex flex-row">
