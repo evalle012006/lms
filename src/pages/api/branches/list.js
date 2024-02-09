@@ -43,12 +43,58 @@ async function list(req, res) {
             .toArray();
     } else if (branchCodes) {
         const codes = branchCodes.trim().split(",");
-        branches = await db.collection('branches').find({ $expr: {$in: ["$code", codes]} }).sort({ code: 1 }).toArray();
+        branches = await db.collection('branches')
+            // .find({ $expr: {$in: ["$code", codes]} })
+            // .sort({ code: 1 })
+            .aggregate([
+                { $match: { $expr: {$in: ["$code", codes]} } },
+                {
+                    $lookup: {
+                        from: "users",
+                        localField: "code",
+                        foreignField: "designatedBranch",
+                        pipeline: [
+                            { $match: { $expr: {$eq: ['$role.rep', 4]} } },
+                            { $group: {
+                                _id: null,
+                                count: { $sum: 1 }
+                            } }
+                        ],
+                        as: "noOfLO"
+                    }
+                },
+                { $unwind: '$noOfLO' },
+                {
+                    $sort: { code: 1 }
+                }
+            ])
+            .toArray();
     } else {
         branches = await db
             .collection('branches')
-            .find()
-            .sort({ code: 1 })
+            .aggregate([
+                {
+                    $lookup: {
+                        from: "users",
+                        localField: "code",
+                        foreignField: "designatedBranch",
+                        pipeline: [
+                            { $match: { $expr: {$eq: ['$role.rep', 4]} } },
+                            { $group: {
+                                _id: null,
+                                count: { $sum: 1 }
+                            } }
+                        ],
+                        as: "noOfLO"
+                    }
+                },
+                { $unwind: '$noOfLO' },
+                {
+                    $sort: { code: 1 }
+                }
+            ])
+            // .find()
+            // .sort({ code: 1 })
             .toArray();
 
     }

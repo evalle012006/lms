@@ -983,6 +983,14 @@ const CashCollectionDetailsPage = () => {
 
             dispatch(setCashCollectionGroup(cashCollection));
             setTimeout(() => {
+                if (currentTime) {
+                    const time24h = moment(currentTime, 'h:mm:ss A').format('HH:mm');
+                    const timeArr = time24h.split(':');
+                    const hour = parseInt(timeArr[0]);
+                    if (hour < 9) {
+                        setEditMode(false);
+                    }
+                }
                 setLoading(false);
             }, 1000);
         } else if (response.error){

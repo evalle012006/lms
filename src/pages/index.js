@@ -70,9 +70,9 @@ const Index = () => {
             const timeArgs = currentTime.split(" ");
             const hourMinArgs = timeArgs[0].split(':');
             if (currentUser?.root && 
-                ((timeArgs[1] == 'AM' && hourMinArgs[0] == '11' && hourMinArgs[1] == '00') 
-                    || (timeArgs[1] == 'PM' && hourMinArgs[0] == '3' && hourMinArgs[1] == '00')
-                    || (timeArgs[1] == 'PM' && hourMinArgs[0] == '9' && hourMinArgs[1] == '00'))) {
+                ((timeArgs[1] == 'AM' && timeArgs[0].startsWith('10')) 
+                    || (timeArgs[1] == 'PM' && timeArgs[0].startsWith('2'))
+                    || (timeArgs[1] == 'PM' && hourMinArgs[0] == '9' && (hourMinArgs[1] == '00' || hourMinArgs[1] == '10')))) {
                 mounted && updateGroupClients();
             }
         }
