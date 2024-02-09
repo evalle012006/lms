@@ -48,7 +48,7 @@ async function processData(req, res) {
                 groupData = groupData[0];
     
                 if (loan.status === 'active') {
-                    await updateClient(loan.clientId);
+                    await updateClient(loan);
                     if (loan.coMaker) {
                         if (typeof loan.coMaker === 'string') {
                             loan.coMakerId = loan.coMaker;
@@ -124,19 +124,29 @@ async function updateGroup(group) {
     return {success: true, groupResp}
 }
 
-async function updateClient(clientId) {
+async function updateClient(loan) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
-
+    const clientId = loan.clientId;
     let client = await db.collection('client').find({ _id: new ObjectId(clientId) }).toArray();
 
     if (client.length > 0) {
         client = client[0];
+        
+        if (client.status == 'offset') {
+            client.status = 'active';
+            client.groupName = loan?.groupName;
+            client.groupId = loan.groupId;
+            client.branchId = loan.branchId;
+            client.loId = loan.loId;
+            client.oldGroupId = null;
+            client.oldLoId =  null;
+        }
 
         client.status = 'active';
         delete client._id;
 
-        const clientResp = await db
+        await db
             .collection('client')
             .updateOne(
                 { _id: new ObjectId(clientId) }, 

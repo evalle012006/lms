@@ -172,7 +172,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             const currentSlotNo = currentClient && currentClient.loans[0].slotNo;
             const currentLoanCycle = currentClient && currentClient.loans[0].loanCycle;
             setSlotNo(currentSlotNo);
-            setLoanBalance(formatPricePhp(currentClient && currentClient.loans[0].loanBalance));
+            setLoanBalance(currentClient?.loans[0]?.loanBalance);
             form.setFieldValue('slotNo', currentSlotNo);
             form.setFieldValue('loanCycle', currentLoanCycle + 1);
         }
@@ -208,6 +208,9 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         let group;
         values.currentDate = currentDate;
         values.clientId = clientId;
+        // if (clientType == 'active' && values?.loanBalance > 0) {
+        //     values.mode = 
+        // }
         if (mode !== 'reloan') {
             values.groupId = selectedGroup;
             group = groupList.find(g => g._id === values.groupId);
@@ -392,21 +395,23 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         }
     }
 
-    const getListGroup = async (occurence, loId, mode) => {
+    const getListGroup = async (occurence, loId, mode, origin) => {
         setLoading(true);
         let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list-by-group-occurence';
         if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
+            let branchId = origin == 'old' ? selectedOldBranch : currentUser.designatedBranchId;
             if (mode == 'filter') {
-                url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id, occurence: occurence, mode: 'filter' });
+                url = url + '?' + new URLSearchParams({ branchId: branchId, loId: currentUser._id, occurence: occurence, mode: 'filter' });
             } else {
-                url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id, occurence: occurence });
+                url = url + '?' + new URLSearchParams({ branchId: branchId, loId: currentUser._id, occurence: occurence });
             }
             processGroupList(url);
         } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
+            let branchId = origin == 'old' ? selectedOldBranch : currentUser.designatedBranchId;
             if (mode == 'filter') {
-                url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: loId, occurence: occurence, mode: 'filter' });
+                url = url + '?' + new URLSearchParams({ branchId: branchId, loId: loId, occurence: occurence, mode: 'filter' });
             } else {
-                url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: loId, occurence: occurence });
+                url = url + '?' + new URLSearchParams({ branchId: branchId, loId: loId, occurence: occurence });
             }
             processGroupList(url);
         }
@@ -431,24 +436,24 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         }
     }
 
-    const getListClient = async (status, groupId) => {
+    const getListClient = async (status, groupId, origin) => {
         setLoading(true);
         let url = process.env.NEXT_PUBLIC_API_URL + 'clients/list';
         if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) {
             if (status === 'active') {
-                url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", branchId: branchList[0]._id, groupId: groupId, status: status });
+                url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", branchId: currentUser.designatedBranchId, groupId: groupId, status: status });
             } else if (status === 'offset') {
-                url = url + '?' + new URLSearchParams({ mode: "view_offset", status: status });
+                url = url + '?' + new URLSearchParams({ mode: "view_offset", status: status, branchId: selectedOldBranch, loId: selectedOldLO, groupId: groupId });
             } else {
                 url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", loId: currentUser._id, groupId: groupId, status: status });
             }
         } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
             if (status === 'active') {
-                url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", branchId: branchList[0]._id, groupId: groupId, status: status });
+                url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", branchId: currentUser.designatedBranchId, groupId: groupId, status: status });
             } else if (status === 'offset') {
-                url = url + '?' + new URLSearchParams({ mode: "view_offset", status: status });
+                url = url + '?' + new URLSearchParams({ mode: "view_offset", status: status, branchId: selectedOldBranch, loId: selectedOldLO, groupId: groupId });
             } else {
-                url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", branchId: branchList[0]._id, groupId: groupId, status: status });
+                url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", branchId: currentUser.designatedBranchId, groupId: groupId, status: status });
             }
         }
 
@@ -484,7 +489,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     const getListCoMaker = async (groupId) => {
         setLoading(true);
         let url = process.env.NEXT_PUBLIC_API_URL + 'clients/list';
-        if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) {
+        if (currentUser.role.rep == 3 || currentUser.role.rep === 4) {
             url = url + '?' + new URLSearchParams({ mode: "view_by_group", groupId: groupId });
             const response = await fetchWrapper.get(url);
             if (response.success) {
@@ -549,7 +554,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         const selectedLO = oldLOList.find(l => l._id == value);
         setSelectedOldLO(value);
         form.setFieldValue(field, value);
-        getListGroup(selectedLO.transactionType, value, 'filter');
+        getListGroup(selectedLO.transactionType, value, 'filter', 'old');
         setLoading(false);
     }
 
@@ -558,7 +563,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         const form = formikRef.current;
         setSelectedOldGroup(value);
         form.setFieldValue(field, value);
-        getListClient(clientType, value);
+        getListClient(clientType, value, 'old');
         setLoading(false);
     }
 
@@ -655,11 +660,10 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                 <form onSubmit={handleSubmit} autoComplete="off">
                                     {mode === 'add' ? (
                                         <React.Fragment>
-                                            { /** for offset change the arrangements...should be able to search for old branch and group **/ }
                                             <div className="mt-4 flex flex-row">
                                                 <RadioButton id={"radio_pending"} name="radio-client-type" label={"Prospect Clients"} checked={clientType === 'pending'} value="pending" onChange={handleClientTypeChange} />
                                                 <RadioButton id={"radio_active"} name="radio-client-type" label={"Active Clients"} checked={clientType === 'active'} value="active" onChange={handleClientTypeChange} />
-                                                <RadioButton id={"radio_offset"} name="radio-client-type" label={"Offset Clients"} checked={clientType === 'offset'} value="offset" onChange={handleClientTypeChange} />
+                                                <RadioButton id={"radio_offset"} name="radio-client-type" label={"Balik Clients"} checked={clientType === 'offset'} value="offset" onChange={handleClientTypeChange} />
                                             </div>
                                             {clientType == 'offset' && (
                                                 <div className="mt-4">

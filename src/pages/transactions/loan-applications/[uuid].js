@@ -201,7 +201,7 @@ const NDSForm = React.forwardRef((props, ref) => {
                         </div>
                         <div className='flex flex-row justify-between mt-4 text-center items-center font-bold border-b-4 border-gray-900'>
                             <div className='flex flex-col'>
-                                <span className='border-b border-gray-900 uppercase'>{ `${currentUser.firstName} ${currentUser.lastName}` }</span>
+                                <span className='border-b border-gray-900 uppercase'></span>
                                 <span style={{ fontStyle: 'italic' }}>Branch Manager</span>
                             </div>
                             <div className='flex flex-col'>
