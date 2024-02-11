@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { useRef } from "react";
 import { useState } from "react";
 
-const AutoComplete = ({ options, value, onChange }) => {
+const AutoComplete = ({ options, value, onChange, search = false }) => {
 
     const [showOptions, setShowOptions] = useState(false);
     const [cursor, setCursor] = useState(-1);
@@ -23,7 +23,7 @@ const AutoComplete = ({ options, value, onChange }) => {
         }
     }
 
-    const filteredOptions = options.filter(option => option.label.includes(value))
+    const filteredOptions = !search ? options.filter(option => option.label.includes(value)) : options;
 
     const moveCursorDown = () => {
         if(cursor < filteredOptions.length - 1) {

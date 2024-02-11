@@ -14,62 +14,80 @@ async function processData(req, res) {
 
     let loanData = req.body;
 
-    loanData.map(async loan => {
-        const loanId = loan._id;
-        const currentDate = loan.currentDate;
+    const origin = (loanData && loanData.length > 0) && loanData[0].origin;
 
-        delete loan._id;
-        delete loan.loanOfficer;
-        delete loan.groupCashCollections;
-        delete loan.loanReleaseStr;
-        delete loan.allowApproved;
-        delete loan.currentDate;
-        delete loan.groupStatus;
+    if (origin == 'ldf') {
+        loanData.map(async loan => {
+            const loanId = loan._id;
+    
+            delete loan._id;
+            delete loan.loanOfficer;
+            delete loan.groupCashCollections;
+            delete loan.loanReleaseStr;
+            delete loan.allowApproved;
+            delete loan.currentDate;
+            delete loan.groupStatus;
 
-        let groupData = await checkGroupStatus(loan.groupId);
-        if (groupData.length > 0) {
-            groupData = groupData[0];
-
-            if (loan.status === 'active') {
-                await updateClient(loan.clientId);
-                if (loan.coMaker) {
-                    if (typeof loan.coMaker === 'string') {
-                        loan.coMakerId = loan.coMaker;
-                        const coMakerResp = await getCoMakerInfo(loan.coMaker, loan.groupId);
-                        if (coMakerResp.success) {
-                            loan.coMaker = coMakerResp.client;
-                        }
-                    } else if (typeof loan.coMaker === 'number') {
-                        const coMakerResp = await getCoMakerInfo(loan.coMaker, loan.groupId);
-                        if (coMakerResp.success) {
-                            loan.coMakerId = coMakerResp.client;
+            await db.collection('loans').updateOne({ _id: new ObjectId(loanId) }, { $set: {...loan} });
+        });
+    } else {
+        loanData.map(async loan => {
+            const loanId = loan._id;
+            const currentDate = loan.currentDate;
+    
+            delete loan._id;
+            delete loan.loanOfficer;
+            delete loan.groupCashCollections;
+            delete loan.loanReleaseStr;
+            delete loan.allowApproved;
+            delete loan.currentDate;
+            delete loan.groupStatus;
+    
+            let groupData = await checkGroupStatus(loan.groupId);
+            if (groupData.length > 0) {
+                groupData = groupData[0];
+    
+                if (loan.status === 'active') {
+                    await updateClient(loan);
+                    if (loan.coMaker) {
+                        if (typeof loan.coMaker === 'string') {
+                            loan.coMakerId = loan.coMaker;
+                            const coMakerResp = await getCoMakerInfo(loan.coMaker, loan.groupId);
+                            if (coMakerResp.success) {
+                                loan.coMaker = coMakerResp.client;
+                            }
+                        } else if (typeof loan.coMaker === 'number') {
+                            const coMakerResp = await getCoMakerInfo(loan.coMaker, loan.groupId);
+                            if (coMakerResp.success) {
+                                loan.coMakerId = coMakerResp.client;
+                            }
                         }
                     }
+                }  else if (loan.status === 'reject') {
+                    if (!groupData.availableSlots.includes(loan.slotNo)) {
+                        groupData.availableSlots.push(loan.slotNo);
+                        groupData.availableSlots.sort((a, b) => { return a - b; });
+                        groupData.noOfClients = groupData.noOfClients - 1;
+                        groupData.status = groupData.status === 'full' ? 'available' : groupData.status;
+                        await updateGroup(groupData);
+                    }
                 }
-            }  else if (loan.status === 'reject') {
-                if (!groupData.availableSlots.includes(loan.slotNo)) {
-                    groupData.availableSlots.push(loan.slotNo);
-                    groupData.availableSlots.sort((a, b) => { return a - b; });
-                    groupData.noOfClients = groupData.noOfClients - 1;
-                    groupData.status = groupData.status === 'full' ? 'available' : groupData.status;
-                    await updateGroup(groupData);
+    
+                if (loan.status === 'active' || loan.status === 'reject') {
+                    await db.collection('loans')
+                        .updateOne(
+                            { _id: new ObjectId(loanId) }, 
+                            {
+                                $set: { ...loan }
+                            }, 
+                            { upsert: false });
+                    
+                    loan._id = loanId;
+                    await saveCashCollection(loan, groupData, currentDate);
                 }
             }
-
-            if (loan.status === 'active' || loan.status === 'reject') {
-                await db.collection('loans')
-                    .updateOne(
-                        { _id: new ObjectId(loanId) }, 
-                        {
-                            $set: { ...loan }
-                        }, 
-                        { upsert: false });
-                
-                loan._id = loanId;
-                await saveCashCollection(loan, groupData, currentDate);
-            }
-        }
-    });
+        });
+    }
 
     response = { success: true, error: errorMsg };
 
@@ -106,19 +124,29 @@ async function updateGroup(group) {
     return {success: true, groupResp}
 }
 
-async function updateClient(clientId) {
+async function updateClient(loan) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
-
+    const clientId = loan.clientId;
     let client = await db.collection('client').find({ _id: new ObjectId(clientId) }).toArray();
 
     if (client.length > 0) {
         client = client[0];
+        
+        if (client.status == 'offset') {
+            client.status = 'active';
+            client.groupName = loan?.groupName;
+            client.groupId = loan.groupId;
+            client.branchId = loan.branchId;
+            client.loId = loan.loId;
+            client.oldGroupId = null;
+            client.oldLoId =  null;
+        }
 
         client.status = 'active';
         delete client._id;
 
-        const clientResp = await db
+        await db
             .collection('client')
             .updateOne(
                 { _id: new ObjectId(clientId) }, 

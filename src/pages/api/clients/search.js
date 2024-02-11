@@ -11,170 +11,234 @@ async function list(req, res) {
     let response = {};
     let clients;
 
-    const { searchText } = req.query;
+    const { searchText, mode } = req.query;
 
     const strArr = searchText.split(' ');
-    if (strArr.length == 2) {
-        clients = await db
-            .collection('client')
-            .aggregate([
-                { $match: { $expr: {
-                    $and: [
-                        {$eq: ['$firstName', strArr[0]]},
-                        {$eq: ['$lastName', strArr[1]]}
-                    ]
-                }  } },
-                { $addFields: { 
-                    branchIdObj: { $toObjectId: '$branchId' },
-                    groupIdObj: { $toObjectId: '$groupId' },
-                } },
-                {
-                    $lookup: {
-                        from: 'groups',
-                        localField: 'groupIdObj',
-                        foreignField: '_id',
-                        pipeline: [
-                            {
-                                $project: {
-                                    name: '$name'
-                                }
-                            }
-                        ],
-                        as: 'group'
-                    }
-                },
-                { $unwind: '$group' },
-                {
-                    $lookup: {
-                        from: 'branches',
-                        localField: 'branchIdObj',
-                        foreignField: '_id',
-                        pipeline: [
-                            {
-                                $project: {
-                                    name: '$name'
-                                }
-                            }
-                        ],
-                        as: 'branch'
-                    }
-                },
-                { $unwind: '$branch' }
-            ])
-            .toArray();
-    } else if (strArr.length == 3) {
-        clients = await db
-            .collection('client')
-            .aggregate([
-                { $match: { $expr: {
-                    $and: [
-                        {$or: [
+    if (mode == 'offset') {
+        if (strArr.length == 2) {
+            clients = await db
+                .collection('client')
+                .aggregate([
+                    { $match: { $expr: {
+                        $and: [
                             {$eq: ['$firstName', strArr[0]]},
-                            {$eq: ['$firstName', `${strArr[1]} ${strArr[1]}`]},
-                        ]},
-                        {$eq: ['$middleName', strArr[1]]},
-                        {$eq: ['$lastName', strArr[2]]},
-                    ]
-                }  } },
-                { $addFields: { 
-                    branchIdObj: { $toObjectId: '$branchId' },
-                    groupIdObj: { $toObjectId: '$groupId' },
-                } },
-                {
-                    $lookup: {
-                        from: 'groups',
-                        localField: 'groupIdObj',
-                        foreignField: '_id',
-                        pipeline: [
+                            {$eq: ['$lastName', strArr[1]]},
+                            {$eq: ['$status', "offset"]}
+                        ]
+                    }  } }
+                ])
+                .toArray();
+        } else if (strArr.length == 3) {
+            clients = await db
+                .collection('client')
+                .aggregate([
+                    { $match: { $expr: {
+                        $and: [
+                            {$or: [
+                                {$eq: ['$firstName', strArr[0]]},
+                                {$eq: ['$firstName', `${strArr[1]} ${strArr[1]}`]},
+                            ]},
+                            {$eq: ['$middleName', strArr[1]]},
+                            {$eq: ['$lastName', strArr[2]]},
+                            {$eq: ['$status', "offset"]}
+                        ]
+                    }  } }
+                ])
+                .toArray();
+        } else {
+            clients = await db
+                .collection('client')
+                .aggregate([
+                    { $match: { $expr: {
+                        $and: [
                             {
-                                $project: {
-                                    name: '$name'
-                                }
-                            }
-                        ],
-                        as: 'group'
-                    }
-                },
-                { $unwind: '$group' },
-                {
-                    $lookup: {
-                        from: 'branches',
-                        localField: 'branchIdObj',
-                        foreignField: '_id',
-                        pipeline: [
-                            {
-                                $project: {
-                                    name: '$name'
-                                }
-                            }
-                        ],
-                        as: 'branch'
-                    }
-                },
-                { $unwind: '$branch' }
-            ])
-            .toArray();
+                                $or: [
+                                    {$regexMatch: {
+                                        input: '$fullName',
+                                        regex: `^${searchText}$`,
+                                        options: 'm'
+                                    }},
+                                    {$regexMatch: {
+                                        input: '$firstName',
+                                        regex: `^${searchText}$`,
+                                        options: 'm'
+                                    }},
+                                    {$regexMatch: {
+                                        input: '$lastName',
+                                        regex: `^${searchText}$`,
+                                        options: 'm'
+                                    }},
+                                ]
+                            },
+                            {$eq: ['$status', "offset"]}
+                        ]
+                    }  } }
+                ])
+                .toArray();
+        }
     } else {
-        clients = await db
-            .collection('client')
-            .aggregate([
-                { $match: { $expr: {
-                    $or: [
-                        {$regexMatch: {
-                            input: '$fullName',
-                            regex: `^${searchText}$`,
-                            options: 'm'
-                        }},
-                        {$regexMatch: {
-                            input: '$firstName',
-                            regex: `^${searchText}$`,
-                            options: 'm'
-                        }},
-                        {$regexMatch: {
-                            input: '$lastName',
-                            regex: `^${searchText}$`,
-                            options: 'm'
-                        }},
-                    ]
-                }  } },
-                { $addFields: { 
-                    branchIdObj: { $toObjectId: '$branchId' },
-                    groupIdObj: { $toObjectId: '$groupId' },
-                } },
-                {
-                    $lookup: {
-                        from: 'groups',
-                        localField: 'groupIdObj',
-                        foreignField: '_id',
-                        pipeline: [
-                            {
-                                $project: {
-                                    name: '$name'
+        if (strArr.length == 2) {
+            clients = await db
+                .collection('client')
+                .aggregate([
+                    { $match: { $expr: {
+                        $and: [
+                            {$eq: ['$firstName', strArr[0]]},
+                            {$eq: ['$lastName', strArr[1]]}
+                        ]
+                    }  } },
+                    { $addFields: { 
+                        branchIdObj: { $toObjectId: '$branchId' },
+                        groupIdObj: { $toObjectId: '$groupId' },
+                    } },
+                    {
+                        $lookup: {
+                            from: 'groups',
+                            localField: 'groupIdObj',
+                            foreignField: '_id',
+                            pipeline: [
+                                {
+                                    $project: {
+                                        name: '$name'
+                                    }
                                 }
-                            }
-                        ],
-                        as: 'group'
-                    }
-                },
-                { $unwind: '$group' },
-                {
-                    $lookup: {
-                        from: 'branches',
-                        localField: 'branchIdObj',
-                        foreignField: '_id',
-                        pipeline: [
-                            {
-                                $project: {
-                                    name: '$name'
+                            ],
+                            as: 'group'
+                        }
+                    },
+                    { $unwind: '$group' },
+                    {
+                        $lookup: {
+                            from: 'branches',
+                            localField: 'branchIdObj',
+                            foreignField: '_id',
+                            pipeline: [
+                                {
+                                    $project: {
+                                        name: '$name'
+                                    }
                                 }
-                            }
-                        ],
-                        as: 'branch'
-                    }
-                },
-                { $unwind: '$branch' }
-            ])
-            .toArray();
+                            ],
+                            as: 'branch'
+                        }
+                    },
+                    { $unwind: '$branch' }
+                ])
+                .toArray();
+        } else if (strArr.length == 3) {
+            clients = await db
+                .collection('client')
+                .aggregate([
+                    { $match: { $expr: {
+                        $and: [
+                            {$or: [
+                                {$eq: ['$firstName', strArr[0]]},
+                                {$eq: ['$firstName', `${strArr[1]} ${strArr[1]}`]},
+                            ]},
+                            {$eq: ['$middleName', strArr[1]]},
+                            {$eq: ['$lastName', strArr[2]]},
+                        ]
+                    }  } },
+                    { $addFields: { 
+                        branchIdObj: { $toObjectId: '$branchId' },
+                        groupIdObj: { $toObjectId: '$groupId' },
+                    } },
+                    {
+                        $lookup: {
+                            from: 'groups',
+                            localField: 'groupIdObj',
+                            foreignField: '_id',
+                            pipeline: [
+                                {
+                                    $project: {
+                                        name: '$name'
+                                    }
+                                }
+                            ],
+                            as: 'group'
+                        }
+                    },
+                    { $unwind: '$group' },
+                    {
+                        $lookup: {
+                            from: 'branches',
+                            localField: 'branchIdObj',
+                            foreignField: '_id',
+                            pipeline: [
+                                {
+                                    $project: {
+                                        name: '$name'
+                                    }
+                                }
+                            ],
+                            as: 'branch'
+                        }
+                    },
+                    { $unwind: '$branch' }
+                ])
+                .toArray();
+        } else {
+            clients = await db
+                .collection('client')
+                .aggregate([
+                    { $match: { $expr: {
+                        $or: [
+                            {$regexMatch: {
+                                input: '$fullName',
+                                regex: `^${searchText}$`,
+                                options: 'm'
+                            }},
+                            {$regexMatch: {
+                                input: '$firstName',
+                                regex: `^${searchText}$`,
+                                options: 'm'
+                            }},
+                            {$regexMatch: {
+                                input: '$lastName',
+                                regex: `^${searchText}$`,
+                                options: 'm'
+                            }},
+                        ]
+                    }  } },
+                    { $addFields: { 
+                        branchIdObj: { $toObjectId: '$branchId' },
+                        groupIdObj: { $toObjectId: '$groupId' },
+                    } },
+                    {
+                        $lookup: {
+                            from: 'groups',
+                            localField: 'groupIdObj',
+                            foreignField: '_id',
+                            pipeline: [
+                                {
+                                    $project: {
+                                        name: '$name'
+                                    }
+                                }
+                            ],
+                            as: 'group'
+                        }
+                    },
+                    { $unwind: '$group' },
+                    {
+                        $lookup: {
+                            from: 'branches',
+                            localField: 'branchIdObj',
+                            foreignField: '_id',
+                            pipeline: [
+                                {
+                                    $project: {
+                                        name: '$name'
+                                    }
+                                }
+                            ],
+                            as: 'branch'
+                        }
+                    },
+                    { $unwind: '$branch' }
+                ])
+                .toArray();
+        }
     }
     
     response = {

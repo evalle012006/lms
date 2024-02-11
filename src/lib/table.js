@@ -373,8 +373,8 @@ const ActionButton = ({ row, rowActionButtons }) => {
                           <TrashIcon className="cursor-pointer h-5" />
                         </div>
                       )}
-                      {(item.label === 'NDS' && status !== 'active') && (
-                        <div className="px-2" onClick={() => item.action(row)} title="Show NDS">
+                      {(item.label === 'View Disclosure' && status !== 'active') && (
+                        <div className="px-2" onClick={() => item.action(row)} title="View Disclosure">
                           <DocumentIcon className="cursor-pointer h-5" />
                         </div>
                       )}
@@ -623,6 +623,7 @@ const TableComponent = ({
                                 const status = row.original.hasOwnProperty('status') && row.original.status;
                                 const draft = row.original.hasOwnProperty('isDraft') && row.original.isDraft;
                                 const pageName = row.original.hasOwnProperty('page') && row.original.page;
+                                const ldfApproved = row.original.hasOwnProperty('ldfApproved') ? row.original.ldfApproved : false;
                                 // const error = row.original.error ? row.original.error : false;
 
                                 let bg = 'even:bg-gray-100';
@@ -630,6 +631,8 @@ const TableComponent = ({
                                   bg = 'bg-red-100';
                                 } else if (status === 'open') {
                                   bg = 'bg-blue-200';
+                                } else if (ldfApproved) {
+                                  bg = 'bg-green-100';
                                 }
 
                                 if (draft) {

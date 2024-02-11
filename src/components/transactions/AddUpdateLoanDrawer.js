@@ -43,6 +43,12 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     const [loanTerms, setLoanTerms] = useState(60);
     const [selectedCoMaker, setSelectedCoMaker] = useState();
     const [tempSlotNo, setTempSlotNo] = useState([]);
+    const [loanBalance, setLoanBalance] = useState();
+
+    const [selectedOldBranch, setSelectedOldBranch] = useState();
+    const [selectedOldLO, setSelectedOldLO] = useState();
+    const [selectedOldGroup, setSelectedOldGroup] = useState();
+    const [oldLOList, setOldLOList] = useState();
 
     const initialValues = {
         branchId: loan.branchId,
@@ -166,6 +172,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             const currentSlotNo = currentClient && currentClient.loans[0].slotNo;
             const currentLoanCycle = currentClient && currentClient.loans[0].loanCycle;
             setSlotNo(currentSlotNo);
+            setLoanBalance(currentClient?.loans[0]?.loanBalance);
             form.setFieldValue('slotNo', currentSlotNo);
             form.setFieldValue('loanCycle', currentLoanCycle + 1);
         }
@@ -201,6 +208,9 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         let group;
         values.currentDate = currentDate;
         values.clientId = clientId;
+        // if (clientType == 'active' && values?.loanBalance > 0) {
+        //     values.mode = 
+        // }
         if (mode !== 'reloan') {
             values.groupId = selectedGroup;
             group = groupList.find(g => g._id === values.groupId);
@@ -230,13 +240,15 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         }
 
         const loanLimit = values.occurence == 'daily' ? transactionSettings.loanDailyLimit : transactionSettings.loanWeeklyLimit;
-        console.log(loanLimit, values.principalLoan)
         if (values.principalLoan > loanLimit) {
+            setLoading(false);
             toast.error(`Invalid Principal Loan. Maximum loanable amount is up to ${formatPricePhp(loanLimit)} only.`);
         } else if (values.principalLoan % 1000 === 0) {
             if (type === 'weekly' && (!values.mcbu || parseFloat(values.mcbu) < 50)) {
+                setLoading(false);
                 toast.error('Invalid MCBU amount. Please enter at least 50.');
             } else if (loanTerms === 100 && values.principalLoan < 10000) {
+                setLoading(false);
                 toast.error('For 100 days loan term, principal amount should be greater than or equal to 10,0000.');
             } else {
                 if (values.status !== 'active') {
@@ -340,6 +352,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                 }
             }
         } else {
+            setLoading(false);
             toast.error('Principal Loan must be divisible by 1000');
         }
     }
@@ -358,21 +371,47 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         }
     }
 
-    const getListGroup = async (occurence, loId, mode) => {
+    const getListUser = async (branchCode) => {
+        let url = process.env.NEXT_PUBLIC_API_URL + 'users/list?' + new URLSearchParams({ branchCode: branchCode });
+        const response = await fetchWrapper.get(url);
+        if (response.success) {
+            let userList = [];
+            response.users && response.users.filter(u => u.role.rep === 4).map(u => {
+                const name = `${u.firstName} ${u.lastName}`;
+                userList.push(
+                    {
+                        ...u,
+                        name: name,
+                        label: name,
+                        value: u._id
+                    }
+                );
+            });
+            userList.sort((a, b) => { return a.loNo - b.loNo; });
+
+            setOldLOList(userList);
+        } else {
+            toast.error('Error retrieving user list.');
+        }
+    }
+
+    const getListGroup = async (occurence, loId, mode, origin) => {
         setLoading(true);
         let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list-by-group-occurence';
         if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
+            let branchId = origin == 'old' ? selectedOldBranch : currentUser.designatedBranchId;
             if (mode == 'filter') {
-                url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id, occurence: occurence, mode: 'filter' });
+                url = url + '?' + new URLSearchParams({ branchId: branchId, loId: currentUser._id, occurence: occurence, mode: 'filter' });
             } else {
-                url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id, occurence: occurence });
+                url = url + '?' + new URLSearchParams({ branchId: branchId, loId: currentUser._id, occurence: occurence });
             }
             processGroupList(url);
         } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
+            let branchId = origin == 'old' ? selectedOldBranch : currentUser.designatedBranchId;
             if (mode == 'filter') {
-                url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: loId, occurence: occurence, mode: 'filter' });
+                url = url + '?' + new URLSearchParams({ branchId: branchId, loId: loId, occurence: occurence, mode: 'filter' });
             } else {
-                url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: loId, occurence: occurence });
+                url = url + '?' + new URLSearchParams({ branchId: branchId, loId: loId, occurence: occurence });
             }
             processGroupList(url);
         }
@@ -397,24 +436,24 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         }
     }
 
-    const getListClient = async (status, groupId) => {
+    const getListClient = async (status, groupId, origin) => {
         setLoading(true);
         let url = process.env.NEXT_PUBLIC_API_URL + 'clients/list';
         if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) {
             if (status === 'active') {
-                url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", branchId: branchList[0]._id, groupId: groupId, status: status });
+                url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", branchId: currentUser.designatedBranchId, groupId: groupId, status: status });
             } else if (status === 'offset') {
-                url = url + '?' + new URLSearchParams({ mode: "view_offset", status: status });
+                url = url + '?' + new URLSearchParams({ mode: "view_offset", status: status, branchId: selectedOldBranch, loId: selectedOldLO, groupId: groupId });
             } else {
                 url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", loId: currentUser._id, groupId: groupId, status: status });
             }
         } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
             if (status === 'active') {
-                url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", branchId: branchList[0]._id, groupId: groupId, status: status });
+                url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", branchId: currentUser.designatedBranchId, groupId: groupId, status: status });
             } else if (status === 'offset') {
-                url = url + '?' + new URLSearchParams({ mode: "view_offset", status: status });
+                url = url + '?' + new URLSearchParams({ mode: "view_offset", status: status, branchId: selectedOldBranch, loId: selectedOldLO, groupId: groupId });
             } else {
-                url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", branchId: branchList[0]._id, groupId: groupId, status: status });
+                url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", branchId: currentUser.designatedBranchId, groupId: groupId, status: status });
             }
         }
 
@@ -450,7 +489,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     const getListCoMaker = async (groupId) => {
         setLoading(true);
         let url = process.env.NEXT_PUBLIC_API_URL + 'clients/list';
-        if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) {
+        if (currentUser.role.rep == 3 || currentUser.role.rep === 4) {
             url = url + '?' + new URLSearchParams({ mode: "view_by_group", groupId: groupId });
             const response = await fetchWrapper.get(url);
             if (response.success) {
@@ -479,7 +518,9 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
 
     const handleClientTypeChange = (value) => {
         setClientType(value);
-        getListClient(value, selectedGroup);
+        if (value !== 'offset') {
+            getListClient(value, selectedGroup);
+        }
     }
 
     const handleLoanTermsChange = (value) => {
@@ -495,6 +536,35 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         setSlotNumber();
         setSelectedCoMaker();
         onClose();
+    }
+
+    const handleOldBranchIdChange = (field, value) => {
+        setLoading(true);
+        const form = formikRef.current;
+        const selectedBranch = branchList.find(b => b._id == value);
+        setSelectedOldBranch(value);
+        form.setFieldValue(field, value);
+        getListUser(selectedBranch?.code);
+        setLoading(false);
+    }
+
+    const handleOldLoIdChange = (field, value) => {
+        setLoading(true);
+        const form = formikRef.current;
+        const selectedLO = oldLOList.find(l => l._id == value);
+        setSelectedOldLO(value);
+        form.setFieldValue(field, value);
+        getListGroup(selectedLO.transactionType, value, 'filter', 'old');
+        setLoading(false);
+    }
+
+    const handleOldGroupIdChange = (field, value) => {
+        setLoading(true);
+        const form = formikRef.current;
+        setSelectedOldGroup(value);
+        form.setFieldValue(field, value);
+        getListClient(clientType, value, 'old');
+        setLoading(false);
     }
 
     const getAllLoanPerGroup = async (groupId) => {
@@ -590,7 +660,68 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                 <form onSubmit={handleSubmit} autoComplete="off">
                                     {mode === 'add' ? (
                                         <React.Fragment>
-                                            { /** for offset change the arrangements...should be able to search for old branch and group **/ }
+                                            <div className="mt-4 flex flex-row">
+                                                <RadioButton id={"radio_pending"} name="radio-client-type" label={"Prospect Clients"} checked={clientType === 'pending'} value="pending" onChange={handleClientTypeChange} />
+                                                <RadioButton id={"radio_active"} name="radio-client-type" label={"Active Clients"} checked={clientType === 'active'} value="active" onChange={handleClientTypeChange} />
+                                                <RadioButton id={"radio_offset"} name="radio-client-type" label={"Balik Clients"} checked={clientType === 'offset'} value="offset" onChange={handleClientTypeChange} />
+                                            </div>
+                                            {clientType == 'offset' && (
+                                                <div className="mt-4">
+                                                    <span className="text-sm font-bold">Search Client</span>
+                                                    <div className="mt-4">
+                                                        <SelectDropdown
+                                                            name="oldBranchId"
+                                                            field="oldBranchId"
+                                                            value={selectedOldBranch}
+                                                            label="Previous Branch"
+                                                            options={branchList}
+                                                            onChange={(field, value) => handleOldBranchIdChange(field, value)}
+                                                            onBlur={setFieldTouched}
+                                                            placeholder="Select Previous Branch"
+                                                            errors={touched.oldBranchId && errors.oldBranchId ? errors.oldBranchId : undefined}
+                                                        />
+                                                    </div>
+                                                    <div className="mt-4">
+                                                        <SelectDropdown
+                                                            name="oldLOId"
+                                                            field="oldLOId"
+                                                            value={selectedOldLO}
+                                                            label="Previous Loan Officer"
+                                                            options={oldLOList}
+                                                            onChange={(field, value) => handleOldLoIdChange(field, value)}
+                                                            onBlur={setFieldTouched}
+                                                            placeholder="Select Previous Loan Officer"
+                                                            errors={touched.oldLOId && errors.oldLOId ? errors.oldLOId : undefined}
+                                                        />
+                                                    </div>
+                                                    <div className="mt-4">
+                                                        <SelectDropdown
+                                                            name="oldGroupId"
+                                                            field="oldGroupId"
+                                                            value={selectedOldGroup}
+                                                            label="Previous Group"
+                                                            options={groupList}
+                                                            onChange={(field, value) => handleOldGroupIdChange(field, value)}
+                                                            onBlur={setFieldTouched}
+                                                            placeholder="Select Prevoius Group"
+                                                            errors={touched.oldGroupId && errors.oldGroupId ? errors.oldGroupId : undefined}
+                                                        />
+                                                    </div>
+                                                    <div className="mt-4">
+                                                        <SelectDropdown
+                                                            name="clientId"
+                                                            field="clientId"
+                                                            value={clientId}
+                                                            label="Client"
+                                                            options={clientList}
+                                                            onChange={(field, value) => handleClientIdChange(field, value)}
+                                                            onBlur={setFieldTouched}
+                                                            placeholder="Select Client"
+                                                            errors={touched.clientId && errors.clientId ? errors.clientId : undefined}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
                                             { currentUser.role.rep === 3 && (
                                                 // <div className="mt-4 flex flex-row">
                                                 //     <RadioButton id={"radio_daily"} name="radio-group-occurence" label={"Daily"} checked={groupOccurence === 'daily'} value="daily" onChange={handleOccurenceChange} />
@@ -610,11 +741,6 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                                     />
                                                 </div>
                                             ) }
-                                            <div className="mt-4 flex flex-row">
-                                                <RadioButton id={"radio_pending"} name="radio-client-type" label={"Prospect Clients"} checked={clientType === 'pending'} value="pending" onChange={handleClientTypeChange} />
-                                                <RadioButton id={"radio_active"} name="radio-client-type" label={"Active Clients"} checked={clientType === 'active'} value="active" onChange={handleClientTypeChange} />
-                                                <RadioButton id={"radio_offset"} name="radio-client-type" label={"Offset Clients"} checked={clientType === 'offset'} value="offset" onChange={handleClientTypeChange} />
-                                            </div>
                                             <div className="mt-4">
                                                 <SelectDropdown
                                                     name="groupId"
@@ -628,30 +754,44 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                                     errors={touched.groupId && errors.groupId ? errors.groupId : undefined}
                                                 />
                                             </div>
-                                            <div className="mt-4">
-                                                <SelectDropdown
-                                                    name="clientId"
-                                                    field="clientId"
-                                                    value={clientId}
-                                                    label="Client"
-                                                    options={clientList}
-                                                    onChange={(field, value) => handleClientIdChange(field, value)}
-                                                    onBlur={setFieldTouched}
-                                                    placeholder="Select Client"
-                                                    errors={touched.clientId && errors.clientId ? errors.clientId : undefined}
-                                                />
-                                            </div>
-                                            {clientType === 'active' ? (
+                                            {clientType != 'offset' && (
                                                 <div className="mt-4">
-                                                    <div className={`flex flex-col border rounded-md px-4 py-2 bg-white border-main`}>
-                                                        <div className="flex justify-between">
-                                                            <label htmlFor={'slotNo'} className={`font-proxima-bold text-xs font-bold text-main`}>
-                                                                Slot Number
-                                                            </label>
-                                                        </div>
-                                                        <span className="text-gray-400">{ slotNo ? slotNo : '-' }</span>
-                                                    </div>
+                                                    <SelectDropdown
+                                                        name="clientId"
+                                                        field="clientId"
+                                                        value={clientId}
+                                                        label="Client"
+                                                        options={clientList}
+                                                        onChange={(field, value) => handleClientIdChange(field, value)}
+                                                        onBlur={setFieldTouched}
+                                                        placeholder="Select Client"
+                                                        errors={touched.clientId && errors.clientId ? errors.clientId : undefined}
+                                                    />
                                                 </div>
+                                            )}
+                                            {clientType === 'active' ? (
+                                                <React.Fragment>
+                                                    <div className="mt-4">
+                                                        <div className={`flex flex-col border rounded-md px-4 py-2 bg-white border-main`}>
+                                                            <div className="flex justify-between">
+                                                                <label htmlFor={'slotNo'} className={`font-proxima-bold text-xs font-bold text-main`}>
+                                                                    Slot Number
+                                                                </label>
+                                                            </div>
+                                                            <span className="text-gray-400">{ slotNo ? slotNo : '-' }</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="mt-4">
+                                                        <div className={`flex flex-col border rounded-md px-4 py-2 bg-white border-main`}>
+                                                            <div className="flex justify-between">
+                                                                <label htmlFor={'slotNo'} className={`font-proxima-bold text-xs font-bold text-main`}>
+                                                                    Loan Balance
+                                                                </label>
+                                                            </div>
+                                                            <span className="text-gray-400">{ formatPricePhp(loanBalance) }</span>
+                                                        </div>
+                                                    </div>
+                                                </React.Fragment>
                                             ) : (
                                                 <div className="mt-4">
                                                     <SelectDropdown

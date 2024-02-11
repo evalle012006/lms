@@ -947,6 +947,7 @@ const BranchManagerSummary = () => {
                         noConsolidatedTransfer = -Math.abs(noConsolidatedTransfer);
                     }
 
+                    totalTransfer = noConsolidatedTransfer;
                     totalActiveClients += noConsolidatedTransfer;
                     totalMcbuTarget += transferRow.mcbuTarget ? transferRow.mcbuTarget : 0;
                     totalMcbuActual += transferRow.mcbuActual ? transferRow.mcbuActual : 0;
@@ -963,8 +964,8 @@ const BranchManagerSummary = () => {
                     totalLoanReleaseWeeklyAmount += transferRow.loanReleaseWeeklyAmount;
                     totalConsolidatedLoanReleasePerson += noConsolidatedTransfer;
                     totalConsolidatedLoanReleaseAmount += transferRow.consolidatedLoanReleaseAmount;
-                    totalActiveLoanReleasePerson = transferRow.activeLoanReleasePerson > 0 ? transferRow.activeLoanReleasePerson : totalActiveLoanReleasePerson;
-                    totalActiveLoanReleaseAmount = transferRow.activeLoanReleaseAmount > 0 ? transferRow.activeLoanReleaseAmount : totalActiveLoanReleaseAmount;
+                    totalActiveLoanReleasePerson = transferRow.activeLoanReleasePerson > 0 ? transferRow.activeLoanReleasePerson : totalActiveLoanReleasePerson + noConsolidatedTransfer;
+                    totalActiveLoanReleaseAmount = transferRow.activeLoanReleaseAmount > 0 ? transferRow.activeLoanReleaseAmount : totalActiveLoanReleaseAmount + transferRow.consolidatedLoanReleaseAmount;
                     totalCollectionTargetDaily += transferRow.collectionTargetDaily ? transferRow.collectionTargetDaily : 0;
                     totalCollectionActualDaily += transferRow.collectionActualDaily;
                     totalCollectionTargetWeekly += transferRow.collectionTargetWeekly ? transferRow.collectionTargetWeekly : 0;
@@ -972,7 +973,7 @@ const BranchManagerSummary = () => {
                     totalConsolidatedCollection += transferRow.consolidatedCollection;
                     totalPastDuePerson += transferRow.pastDuePerson;
                     totalPastDueAmount += transferRow.pastDueAmount;
-                    totalActiveBorrowers = transferRow.activeBorrowers > 0 ? transferRow.activeBorrowers : totalActiveBorrowers;
+                    totalActiveBorrowers = transferRow.activeBorrowers > 0 ? transferRow.activeBorrowers : totalActiveBorrowers + noConsolidatedTransfer;
                     totalLoanBalance = transferRow.loanBalance > 0 ? transferRow.loanBalance : totalLoanBalance;
                 }
 
@@ -1186,11 +1187,8 @@ const BranchManagerSummary = () => {
             totalFullPaymentWeeklyAmount += wt.fullPaymentWeeklyAmount;
             totalConsolidatedFullPaymentPerson += wt.consolidatedFullPaymentPerson;
             totalConsolidatedFullPaymentAmount += wt.consolidatedFullPaymentAmount;
-
-            if (wt.pastDueAmount > 0) {
-                totalPastDuePerson = wt.pastDuePerson;
-                totalPastDueAmount = wt.pastDueAmount;
-            }
+            totalPastDuePerson = wt.pastDuePerson;
+            totalPastDueAmount = wt.pastDueAmount;
 
             // if (wt.activeClients > 0) {
             //     lastActiveClients = wt.activeClients;

@@ -186,45 +186,46 @@ const LoanOfficerSummary = () => {
                 let fBal = response.data.fBalance;
                 if (fBal.length > 0) {
                     fBal = fBal[0].data;
+                    const activeClients = fBal.activeClients;
                     losList[0] = {
                         day: 'F / Balance',
-                        transfer: fBal.transfer,
-                        newMember: fBal.newMember,
-                        mcbuTarget: fBal.mcbuTarget,
-                        mcbuTargetStr: formatPricePhp(fBal.mcbuTarget),
-                        mcbuActual: fBal.mcbuActual,
-                        mcbuActualStr: formatPricePhp(fBal.mcbuActual),
-                        mcbuWithdrawal: fBal.mcbuWithdrawal,
-                        mcbuWithdrawalStr: formatPricePhp(fBal.mcbuWithdrawal),
-                        mcbuInterest: fBal.mcbuInterest,
-                        mcbuInterestStr: formatPricePhp(fBal.mcbuInterest),
-                        noMcbuReturn: fBal.noMcbuReturn,
-                        mcbuReturnAmt: fBal.mcbuReturnAmt,
-                        mcbuReturnAmtStr: formatPricePhp(fBal.mcbuReturnAmt),
-                        mcbuBalance: fBal.mcbuBalance,
-                        mcbuBalanceStr: formatPricePhp(fBal.mcbuBalance),
-                        offsetPerson: fBal.offsetPerson,
-                        activeClients: fBal.activeClients,
-                        loanReleasePerson: fBal.loanReleasePerson,
-                        loanReleaseAmount: fBal.loanReleaseAmount,
-                        loanReleaseAmountStr: formatPricePhp(fBal.loanReleaseAmount),
-                        activeLoanReleasePerson: fBal.activeLoanReleasePerson,
-                        activeLoanReleaseAmount: fBal.activeLoanReleaseAmount,
-                        activeLoanReleaseAmountStr: formatPricePhp(fBal.activeLoanReleaseAmount),
-                        collectionAdvancePayment: fBal.collectionAdvancePayment,
-                        collectionAdvancePaymentStr: formatPricePhp(fBal.collectionAdvancePayment),
-                        collectionActual: fBal.collectionActual,
-                        collectionActualStr: formatPricePhp(fBal.collectionActual),
-                        pastDuePerson: fBal.pastDuePerson,
-                        pastDueAmount: fBal.pastDueAmount,
-                        pastDueAmountStr: formatPricePhp(fBal.pastDueAmount),
-                        mispaymentPerson: fBal.mispaymentPerson,
-                        fullPaymentPerson: fBal.fullPaymentPerson,
-                        fullPaymentAmount: fBal.fullPaymentAmount,
-                        fullPaymentAmountStr: formatPricePhp(fBal.fullPaymentAmount),
-                        activeBorrowers: fBal.activeBorrowers,
-                        loanBalance: fBal.loanBalance,
-                        loanBalanceStr: formatPricePhp(fBal.loanBalance),
+                        transfer: activeClients > 0 ? fBal.transfer : 0,
+                        newMember: activeClients > 0 ? fBal.newMember : 0,
+                        mcbuTarget: activeClients > 0 ? fBal.mcbuTarget : 0,
+                        mcbuTargetStr: activeClients > 0 ? formatPricePhp(fBal.mcbuTarget) : '-',
+                        mcbuActual: activeClients > 0 ? fBal.mcbuActual : 0,
+                        mcbuActualStr: activeClients > 0 ? formatPricePhp(fBal.mcbuActual) : '-',
+                        mcbuWithdrawal: activeClients > 0 ? fBal.mcbuWithdrawal : 0,
+                        mcbuWithdrawalStr: activeClients > 0 ? formatPricePhp(fBal.mcbuWithdrawal) : '-',
+                        mcbuInterest: activeClients > 0 ? fBal.mcbuInterest : 0,
+                        mcbuInterestStr: activeClients > 0 ? formatPricePhp(fBal.mcbuInterest) : '-',
+                        noMcbuReturn: activeClients > 0 ? fBal.noMcbuReturn : 0,
+                        mcbuReturnAmt: activeClients > 0 ? fBal.mcbuReturnAmt : 0,
+                        mcbuReturnAmtStr: activeClients > 0 ? formatPricePhp(fBal.mcbuReturnAmt) : '-',
+                        mcbuBalance: activeClients > 0 ? fBal.mcbuBalance : 0,
+                        mcbuBalanceStr: activeClients > 0 ? formatPricePhp(fBal.mcbuBalance) : '-',
+                        offsetPerson: activeClients > 0 ? fBal.offsetPerson : 0,
+                        activeClients: activeClients,
+                        loanReleasePerson: activeClients > 0 ? fBal.loanReleasePerson : 0,
+                        loanReleaseAmount: activeClients > 0 ? fBal.loanReleaseAmount : 0,
+                        loanReleaseAmountStr: activeClients > 0 ? formatPricePhp(fBal.loanReleaseAmount) : '-',
+                        activeLoanReleasePerson: activeClients > 0 ? fBal.activeLoanReleasePerson : 0,
+                        activeLoanReleaseAmount: activeClients > 0 ? fBal.activeLoanReleaseAmount : 0,
+                        activeLoanReleaseAmountStr: activeClients > 0 ? formatPricePhp(fBal.activeLoanReleaseAmount) : '-',
+                        collectionAdvancePayment: activeClients > 0 ? fBal.collectionAdvancePayment : 0,
+                        collectionAdvancePaymentStr: activeClients > 0 ? formatPricePhp(fBal.collectionAdvancePayment) : '-',
+                        collectionActual: activeClients > 0 ? fBal.collectionActual : 0,
+                        collectionActualStr: activeClients > 0 ? formatPricePhp(fBal.collectionActual) : '-',
+                        pastDuePerson: activeClients > 0 ? fBal.pastDuePerson : 0,
+                        pastDueAmount: activeClients > 0 ? fBal.pastDueAmount : 0,
+                        pastDueAmountStr: activeClients > 0 ? formatPricePhp(fBal.pastDueAmount) : '-',
+                        mispaymentPerson: activeClients > 0 ? fBal.mispaymentPerson : 0,
+                        fullPaymentPerson: activeClients > 0 ? fBal.fullPaymentPerson : 0,
+                        fullPaymentAmount: activeClients > 0 ? fBal.fullPaymentAmount : 0,
+                        fullPaymentAmountStr: activeClients > 0 ? formatPricePhp(fBal.fullPaymentAmount) : '-',
+                        activeBorrowers: activeClients > 0 ? fBal.activeBorrowers : 0,
+                        loanBalance: activeClients > 0 ? fBal.loanBalance : 0,
+                        loanBalanceStr: activeClients > 0 ? formatPricePhp(fBal.loanBalance) : '-',
                         fBalance: true
                     };
                 }
@@ -831,11 +832,8 @@ const LoanOfficerSummary = () => {
             totalMispaymentPerson += wt.mispaymentPerson;
             totalFullPaymentPerson += wt.fullPaymentPerson;
             totalFullPaymentAmount += wt.fullPaymentAmount;
-
-            if (wt.pastDueAmount > 0) {
-                totalPastDuePerson = wt.pastDuePerson;
+            totalPastDuePerson = wt.pastDuePerson;
                 totalPastDueAmount = wt.pastDueAmount;
-            }
 
             if (wt.loanBalance > 0) {
                 totalLoanBalance = wt.loanBalance;
@@ -990,8 +988,8 @@ const LoanOfficerSummary = () => {
             totalActiveLoanReleaseAmount = monthly.activeLoanReleaseAmount;
             totalCollectionAdvancePayment = fBal.collectionAdvancePayment + monthly.collectionTarget + monthly.collectionAdvancePayment - monthly.fullPaymentAmount;
             totalCollectionActual = fBal.collectionActual + monthly.collectionActual - monthly.fullPaymentAmount;
-            totalPastDuePerson = fBal.pastDuePerson + monthly.pastDuePerson;
-            totalPastDueAmount = fBal.pastDueAmount + monthly.pastDueAmount;
+            // totalPastDuePerson = fBal.pastDuePerson + monthly.pastDuePerson;
+            // totalPastDueAmount = fBal.pastDueAmount + monthly.pastDueAmount;
             totalMispaymentPerson = fBal.mispaymentPerson + monthly.mispaymentPerson;
             totalFullPaymentPerson = fBal.fullPaymentPerson + monthly.fullPaymentPerson;
             totalFullPaymentAmount = fBal.fullPaymentAmount + monthly.fullPaymentAmount;
