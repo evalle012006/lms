@@ -99,7 +99,7 @@ const CashCollectionDetailsPage = () => {
                 );
             });
 
-            if (selectedBranchSubject.value) {
+            if (currentUser.role.rep < 3 && selectedBranchSubject.value) {
                 branches = [branches.find(b => b._id === selectedBranchSubject.value)];
             }
             
@@ -137,8 +137,8 @@ const CashCollectionDetailsPage = () => {
     useEffect(() => {
         const getListUser = async () => {
             let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
-            if (branchList.length > 0 && branchList[0]?.code) {
-                url = url + '?' + new URLSearchParams({ loOnly: true, branchCode: branchList[0].code });
+            if (branchList.length > 0) {
+                url = url + '?' + new URLSearchParams({ loOnly: true, branchCode: branchList[0]?.code });
                 const response = await fetchWrapper.get(url);
                 if (response.success) {
                     let userDataList = [];
