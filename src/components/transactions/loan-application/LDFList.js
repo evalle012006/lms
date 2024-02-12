@@ -151,10 +151,10 @@ const LDFListPage = React.forwardRef((props, ref) => {
                                             <th className='border border-gray-900 w-10' rowSpan={2}>Loan Cycle</th>
                                             <th className='border border-gray-900 w-12' rowSpan={2}>Business Type</th>
                                             <th className='border border-gray-900 w-12' colSpan={3}>Loan Disbursement</th>
-                                            <th className='border border-gray-900 w-50' rowSpan={2}>Client's Signature Over Printed Name</th>
+                                            <th className='border border-gray-900 w-60' rowSpan={2}>Client's Signature Over Printed Name</th>
                                             <th className='border border-gray-900 w-12' rowSpan={2}>Loan App. #</th>
                                             <th className='border border-gray-900 w-12' colSpan={3}>Signatures</th>
-                                            <th className='border border-gray-900 w-12' rowSpan={2}>Designated LO</th>
+                                            <th className='border border-gray-900 w-8' rowSpan={2}>Designated LO</th>
                                         </tr>
                                         <tr>
                                             <th className='border border-gray-900 w-16'>Date</th>
@@ -168,7 +168,7 @@ const LDFListPage = React.forwardRef((props, ref) => {
                                     <tbody>
                                         { list.map((loan, index) => {
                                             return (
-                                                <tr key={index}>
+                                                <tr key={index} className='leading-4'>
                                                     <td className='border border-gray-900 text-center'>{ index + 1 }</td>
                                                     <td className='border border-gray-900 text-center'>{ loan.slotNo }</td>
                                                     <td className='border border-gray-900'>{ loan.fullName }</td>
@@ -179,11 +179,11 @@ const LDFListPage = React.forwardRef((props, ref) => {
                                                     <td className='border border-gray-900 text-center'>{ loan.loanDisbursementDate }</td>
                                                     <td className='border border-gray-900 text-right'>{ loan.loanDisbursementPrincipalAmount ? formatPricePhp(loan.loanDisbursementPrincipalAmount) : '' }</td>
                                                     <td className='border border-gray-900 text-right'>{ loan.loanDisbursementAmountRelease ? formatPricePhp(loan.loanDisbursementAmountRelease) : '' }</td>
-                                                    <td className='border border-gray-900'>{ '' }</td>
-                                                    <td className='border border-gray-900'>{ '' }</td>
-                                                    <td className='border border-gray-900'>{ '' }</td>
-                                                    <td className='border border-gray-900'>{ '' }</td>
-                                                    <td className='border border-gray-900'>{ '' }</td>
+                                                    <td className='border border-gray-900'></td>
+                                                    <td className='border border-gray-900'></td>
+                                                    <td className='border border-gray-900'></td>
+                                                    <td className='border border-gray-900'></td>
+                                                    <td className='border border-gray-900'></td>
                                                     <td className='border border-gray-900'>{ loan.designatedOfficer }</td>
                                                 </tr>
                                             )

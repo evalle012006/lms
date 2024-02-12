@@ -1116,47 +1116,49 @@ const LoanApplicationPage = () => {
                             </nav>
                             <div>
                             <TabPanel hidden={selectedTab !== "ldf"}>
-                                    <div className="flex flex-row bg-white p-4">
-                                        <div className='flex flex-col ml-4'>
-                                            <span className='text-zinc-400 mb-1'>Branch:</span>
-                                            <Select 
-                                                options={branchList}
-                                                value={branchList && branchList.find(branch => { return branch.value === selectedFilterBranch } )}
-                                                styles={borderStyles}
-                                                components={{ DropdownIndicator }}
-                                                onChange={handleBranchChange}
-                                                isSearchable={true}
-                                                closeMenuOnSelect={true}
-                                                placeholder={'Branch Filter'}/>
-                                        </div>
-                                        <div className='flex flex-col ml-4'>
-                                            <span className='text-zinc-400 mb-1'>Loan Officer:</span>
-                                            <Select 
-                                                options={userList}
-                                                value={userList && userList.find(user => { return user.value === selectedFilterUser } )}
-                                                styles={borderStyles}
-                                                components={{ DropdownIndicator }}
-                                                onChange={handleUserChange}
-                                                isSearchable={true}
-                                                closeMenuOnSelect={true}
-                                                placeholder={'LO Filter'}/>
-                                        </div>
-                                        <div className='flex flex-col ml-4'>
-                                            <span className='text-zinc-400 mb-1'>Group:</span>
-                                            <Select 
-                                                options={groupList}
-                                                value={groupList && groupList.find(group => { return group.value === selectedFilterGroup } )}
-                                                styles={borderStyles}
-                                                components={{ DropdownIndicator }}
-                                                onChange={handleGroupChange}
-                                                isSearchable={true}
-                                                closeMenuOnSelect={true}
-                                                placeholder={'Group Filter'}/>
+                                    <div className="flex flex-row justify-between w-full bg-white p-4">
+                                        <div className="flex flex-row">
+                                            <div className='flex flex-col ml-4'>
+                                                <span className='text-zinc-400 mb-1'>Branch:</span>
+                                                <Select 
+                                                    options={branchList}
+                                                    value={branchList && branchList.find(branch => { return branch.value === selectedFilterBranch } )}
+                                                    styles={borderStyles}
+                                                    components={{ DropdownIndicator }}
+                                                    onChange={handleBranchChange}
+                                                    isSearchable={true}
+                                                    closeMenuOnSelect={true}
+                                                    placeholder={'Branch Filter'}/>
+                                            </div>
+                                            <div className='flex flex-col ml-4'>
+                                                <span className='text-zinc-400 mb-1'>Loan Officer:</span>
+                                                <Select 
+                                                    options={userList}
+                                                    value={userList && userList.find(user => { return user.value === selectedFilterUser } )}
+                                                    styles={borderStyles}
+                                                    components={{ DropdownIndicator }}
+                                                    onChange={handleUserChange}
+                                                    isSearchable={true}
+                                                    closeMenuOnSelect={true}
+                                                    placeholder={'LO Filter'}/>
+                                            </div>
+                                            <div className='flex flex-col ml-4'>
+                                                <span className='text-zinc-400 mb-1'>Group:</span>
+                                                <Select 
+                                                    options={groupList}
+                                                    value={groupList && groupList.find(group => { return group.value === selectedFilterGroup } )}
+                                                    styles={borderStyles}
+                                                    components={{ DropdownIndicator }}
+                                                    onChange={handleGroupChange}
+                                                    isSearchable={true}
+                                                    closeMenuOnSelect={true}
+                                                    placeholder={'Group Filter'}/>
+                                            </div>
                                         </div>
                                         {currentUser.role.rep < 4 && (
-                                            <div className='flex justify-end ml-4 h-10'>
+                                            <div className='flex justify-end ml-4 h-10 my-auto'>
                                                 <ReactToPrint
-                                                    trigger={() => <ButtonSolid label="Print LDF" icon={[<PrinterIcon className="w-5 h-5" />, 'left']} width='!w-24'/> }
+                                                    trigger={() => <ButtonSolid label="Print LDF" icon={[<PrinterIcon className="w-5 h-5" />, 'left']} width='!w-28'/> }
                                                     content={() => ndsFormRef.current }
                                                 />
                                             </div>
