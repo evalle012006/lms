@@ -1155,7 +1155,7 @@ const LoanApplicationPage = () => {
                                                     placeholder={'Group Filter'}/>
                                             </div>
                                         </div>
-                                        {currentUser.role.rep < 4 && (
+                                        {currentUser.role.rep === 3 && (
                                             <div className='flex justify-end ml-4 h-10 my-auto'>
                                                 <ReactToPrint
                                                     trigger={() => <ButtonSolid label="Print LDF" icon={[<PrinterIcon className="w-5 h-5" />, 'left']} width='!w-28'/> }

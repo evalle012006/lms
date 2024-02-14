@@ -53,7 +53,7 @@ const LDFListPage = React.forwardRef((props, ref) => {
                 arr.push(loanDetails);
             });
 
-            const noOfLo = currentBranch ? currentBranch.noOfLO.count : 10;
+            const noOfLo = currentBranch ? currentBranch?.noOfLO?.count : 10;
             let summary = [];
             for (let i = 0; i < noOfLo; i++) {
                 summary.push({
