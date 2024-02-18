@@ -67,6 +67,10 @@ async function save(req, res) {
                     await updateLoan(collection, currentDate)
                     await updateClient(collection, currentDate);
                 }
+
+                if (collection.status === 'pending' && collection?.advance) {
+                    await updatePendingLoan(collection, currentDate);
+                }
             }
         });
 
@@ -129,25 +133,6 @@ async function updateCollection(collections) {
     });
 }
 
-// async function updateCompletedCollection(collections) {
-//     const { db } = await connectToDatabase();
-//     const ObjectId = require('mongodb').ObjectId;
-
-//     collections.map(async collection => {
-//         delete collection._id;
-        
-//         await db.collection('cashCollections')
-//             .updateOne(
-//                 { dateAdded: collection.prevLastUpdated, clientId: collection.clientId },
-//                 {
-//                     $unset: { origin: 1, reverted: 1 },
-//                     $set: {...collection}
-//                 },
-//                 { upsert: true }
-//             );
-//     });
-// }
-
 async function updateLoan(collection, currentDate) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
@@ -181,7 +166,7 @@ async function updateLoan(collection, currentDate) {
         loan.advanceDays = collection?.advanceDays ? collection.advanceDays : 0;
 
         loan.mcbuTarget = collection.mcbuTarget;
-        loan.mcbu = collection.mcbu;
+        loan.mcbu = collection.mcbu < 0 ? 0 : collection.mcbu;
         if (!loan.mcbuCollection || loan.mcbuCollection < 0) {
             loan.mcbuCollection = 0;
         }
@@ -261,6 +246,52 @@ async function updateLoan(collection, currentDate) {
 
         return { success: true }
     }
+}
+
+async function updatePendingLoan(collection, currentDate) {
+    const { db } = await connectToDatabase();
+    const ObjectId = require('mongodb').ObjectId;
+
+    let currentLoan = await db.collection('loans').find({ _id: new ObjectId(collection.loanId) }).toArray();
+    let pendingLoan = await db.collection('loans').find({ clientId: collection.clientId, status: 'pending' }).toArray();
+    let cashCollection = await db.collection('cashCollections').find({ clientId: collection.clientId, dateAdded: currentDate }).toArray();
+    if (currentLoan.length > 0 && pendingLoan.length > 0 && cashCollection.length > 0) {
+        currentLoan = currentLoan[0];
+        pendingLoan = pendingLoan[0];
+        cashCollection = cashCollection[0];
+
+        currentLoan.status = 'closed';
+        currentLoan.loanBalance = 0;
+        currentLoan.amountRelease = 0;
+        currentLoan.activeLoan = 0;
+        currentLoan.mcbu = 0;
+        currentLoan.mcbuCollection = collection.mcbu;
+        currentLoan.noOfPayments = collection.noOfPayments;
+        currentLoan.fullPaymentDate = currentDate;
+        currentLoan.mcbuWithdrawal = collection.mcbuWithdrawal > 0 ? collection.mcbuWithdrawal : 0;
+        currentLoan.mcbuReturnAmt = collection.mcbuReturnAmt > 0 ? collection.mcbuReturnAmt : 0;
+        currentLoan.history = collection.history;
+
+        if (collection.remarks && collection.remarks.value == 'reloaner-cont') {
+            pendingLoan.mcbu = collection.mcbu;
+        }
+
+        pendingLoan.prevLoanFullPaymentDate = currentDate;
+        pendingLoan.prevLoanFullPaymentAmount = collection.fullPayment;
+        cashCollection.currentReleaseAmount = pendingLoan.amountRelease;
+
+        const currentLoanId = currentLoan._id;
+        const pendingLoanId = pendingLoan._id;
+        const cashCollectionId = cashCollection._id;
+        delete currentLoan._id;
+        delete pendingLoan._id;
+        delete cashCollection._id;
+        
+        await db.collection('loans').updateOne({ _id: currentLoanId}, { $set: { ...currentLoan } });
+        await db.collection('loans').updateOne({ _id: pendingLoanId}, { $set: { ...pendingLoan } });
+        await db.collection('cashCollections').updateOne({ _id: cashCollectionId}, { $set: { ...cashCollection } });
+    }
+    
 }
 
 async function updateClient(loan, currentDate) {

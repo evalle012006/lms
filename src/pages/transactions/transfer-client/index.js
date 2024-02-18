@@ -244,22 +244,13 @@ const TransferClientPage = () => {
     const handleMultiSelect = (mode, selectAll, row, rowIndex) => {
         if (transferList) {
             if (mode === 'all') {
-                let errorMsg = "";
                 const tempList = transferList.map(loan => {
                     let temp = {...loan};
                     
-                    if (temp.loanStatus !== 'active') {
-                        errorMsg += `${temp.firstName} ${temp.lastName} loan is not active!\n`;
-                    } else {
-                        temp.selected = selectAll;
-                    }
+                    temp.selected = selectAll;
                     
                     return temp;
                 });
-
-                if (errorMsg.length > 0) {
-                    toast.error(errorMsg);
-                }
 
                 dispatch(setTransferClientList(tempList));
             } else if (mode === 'row') {
@@ -267,11 +258,7 @@ const TransferClientPage = () => {
                     let temp = {...loan};
                     
                     if (index === rowIndex) {
-                        if (temp.loanStatus !== 'active') {
-                            toast.error('Selected client loan is not active. Please delete and add again.');
-                        } else {
-                            temp.selected = !temp.selected;
-                        }
+                        temp.selected = !temp.selected;
                     }
     
                     return temp;

@@ -666,7 +666,7 @@ async function getAllLoansPerGroup(date, mode, loId, dayName, currentDate) {
                                             then: 1,
                                             else: {
                                                 $cond: {
-                                                    if: { $and: [{$eq: ['$status', 'pending']}, {$gt: ['$loanCycle', 1]}] },
+                                                    if: { $and: [{$eq: ['$status', 'pending']}, {$gt: ['$loanCycle', 1]}, {$ne: ['$advanceTransaction', true]}] },
                                                     then: 1,
                                                     else: 0
                                                 }

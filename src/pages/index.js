@@ -64,7 +64,12 @@ const Index = () => {
         //     await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}aahandy-scripts/update-group-data`, {});
         // }
 
+        // const testQuery = async () => {
+        //     await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}aahandy-scripts/aaa-test`, {});
+        // }
+
         mounted && getSystemSettings();
+        // mounted && testQuery();
 
         if (currentTime) {
             const timeArgs = currentTime.split(" ");

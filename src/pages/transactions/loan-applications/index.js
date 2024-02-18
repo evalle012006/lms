@@ -63,6 +63,8 @@ const LoanApplicationPage = () => {
         'history'
     ]);
 
+    const [noOfLDFLoans, setNoOfLDFLoans] = useState(0);
+    const [totalLDFAmountRelease, setTotalLDFAmountRelease] = useState(0);
     const [noOfPendingLoans, setNoOfPendingLoans] = useState(0);
     const [totalAmountRelease, setTotalAmountRelease] = useState(0);
 
@@ -243,12 +245,16 @@ const LoanApplicationPage = () => {
                 let loanList = [];
                 await response.loans && response.loans.map(loan => {
                     let allowApproved = false;
+                    let hasActiveLoan = false;
 
                     if (loan.groupStatus.length > 0) {
                         const transactionStatus = loan.groupStatus[0].groupStatusArr.filter(s => s === "pending");
                         if (transactionStatus.length > 0) {
                             allowApproved = true;
                         }
+                    } else if (loan.pendings.length > 0) {
+                        allowApproved = false;
+                        hasActiveLoan = true;
                     } else {
                         allowApproved = true;
                     }
@@ -265,7 +271,8 @@ const LoanApplicationPage = () => {
                         loanReleaseStr: formatPricePhp(loan.amountRelease),
                         fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
                         allowApproved: allowApproved,
-                        selected: false
+                        selected: false,
+                        hasActiveLoan: hasActiveLoan
                     });
                 });
                 loanList.sort((a, b) => {
@@ -293,12 +300,18 @@ const LoanApplicationPage = () => {
                 let loanList = [];
                 await response.loans && response.loans.map(loan => {
                     let allowApproved = false;
+                    let hasActiveLoan = false;
 
                     if (loan.groupStatus.length > 0) {
                         const transactionStatus = loan.groupStatus[0].groupStatusArr.filter(s => s === "pending");
                         if (transactionStatus.length > 0) {
                             allowApproved = true;
+                        } else if (loan.loanCycle == 1) {
+                            allowApproved = true;
                         }
+                    } else if (loan.pendings.length > 0) {
+                        allowApproved = false;
+                        hasActiveLoan = true;
                     } else {
                         allowApproved = true;
                     }
@@ -315,7 +328,8 @@ const LoanApplicationPage = () => {
                         loanReleaseStr: formatPricePhp(loan.amountRelease),
                         fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
                         allowApproved: allowApproved,
-                        selected: false
+                        selected: false,
+                        hasActiveLoan: hasActiveLoan
                     });
                 });
                 loanList.sort((a, b) => {
@@ -343,12 +357,16 @@ const LoanApplicationPage = () => {
                 let loanList = [];
                 await response.loans && response.loans.map(loan => {
                     let allowApproved = false;
+                    let hasActiveLoan = false;
 
                     if (loan.groupStatus.length > 0) {
                         const transactionStatus = loan.groupStatus[0].groupStatusArr.filter(s => s === "pending");
                         if (transactionStatus.length > 0) {
                             allowApproved = true;
                         }
+                    } else if (loan.pendings.length > 0) {
+                        allowApproved = false;
+                        hasActiveLoan = true;
                     } else {
                         allowApproved = true;
                     }
@@ -366,7 +384,8 @@ const LoanApplicationPage = () => {
                         loanReleaseStr: formatPricePhp(loan.amountRelease),
                         fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
                         allowApproved: allowApproved,
-                        selected: false
+                        selected: false,
+                        hasActiveLoan: hasActiveLoan
                     });
                 });
                 loanList.sort((a, b) => {
@@ -394,12 +413,16 @@ const LoanApplicationPage = () => {
                 let loanList = [];
                 await response.loans && response.loans.map(loan => {
                     let allowApproved = false;
+                    let hasActiveLoan = false;
 
                     if (loan.groupStatus.length > 0) {
                         const transactionStatus = loan.groupStatus[0].groupStatusArr.filter(s => s === "pending");
                         if (transactionStatus.length > 0) {
                             allowApproved = true;
                         }
+                    } else if (loan.pendings.length > 0) {
+                        allowApproved = false;
+                        hasActiveLoan = true;
                     } else {
                         allowApproved = true;
                     }
@@ -417,7 +440,8 @@ const LoanApplicationPage = () => {
                         loanReleaseStr: formatPricePhp(loan.amountRelease),
                         fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
                         allowApproved: allowApproved,
-                        selected: false
+                        selected: false,
+                        hasActiveLoan: hasActiveLoan
                     });
                 });
                 loanList.sort((a, b) => {
@@ -629,9 +653,9 @@ const LoanApplicationPage = () => {
         if (currentUser.role.rep === 4) {
             getListGroup(currentUser._id, currentUser?.transactionType);
         }
-        setTimeout(() => {
-            setLoading(false);
-        }, 1000);
+        // setTimeout(() => {
+        //     setLoading(false);
+        // }, 1000);
     }
 
     const handleMultiSelect = (mode, selectAll, row, rowIndex) => {
@@ -708,10 +732,10 @@ const LoanApplicationPage = () => {
                 const group = loan.group;
                 const lo = loan.loanOfficer;
 
-                if (!client.firstName || !client.lastName) {
+                if (!client.firstName || !client.lastName || client.firstName == 'null' || client.lastName == 'null') {
                     errorMsg += `First and/or Last Name of slot no ${loan.slotNo} from group ${group.name} is missing! \n`;
                 }
-                if (!client.fullName && (client.fullName && !client.fullName.length === 0)) {
+                if ((!client.fullName && (client.fullName && !client.fullName.length === 0)) || client.fullName.includes('null')) {
                     errorMsg += `There are missing info for slot no ${loan.slotNo} from group ${group.name}! \n`;
                 }
                 if (!client.hasOwnProperty('profile') && !client.profile) {
@@ -1060,9 +1084,14 @@ const LoanApplicationPage = () => {
     }, [currentUser, branchList]);
 
     useEffect(() => {
-        setNoOfPendingLoans(data.length);
-        setTotalAmountRelease(getTotal(data, 'principalLoan'));
+        setNoOfLDFLoans(data.length);
+        setTotalLDFAmountRelease(getTotal(data, 'principalLoan'));
     }, [data]);
+
+    useEffect(() => {
+        setNoOfPendingLoans(pendingData.length);
+        setTotalAmountRelease(getTotal(pendingData, 'principalLoan'));
+    }, [pendingData]);
 
     useEffect(() => {
         let actBtns = [ <ButtonSolid label="Add Loan" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} /> ];
@@ -1180,11 +1209,11 @@ const LoanApplicationPage = () => {
                                         <div className="flex flex-row justify-center bg-white px-4 py-2 shadow-inner border-t-4 border-zinc-200">
                                             <div className="flex flex-row">
                                                 <span className="pr-6">No. of Pending Loans: </span>
-                                                <span className="pr-6">{ noOfPendingLoans }</span>
+                                                <span className="pr-6">{ noOfLDFLoans }</span>
                                             </div>
                                             <div className="flex flex-row">
                                                 <span className="pr-6">Total Amount Release: </span>
-                                                <span className="pr-6">{ formatPricePhp(totalAmountRelease) }</span>
+                                                <span className="pr-6">{ formatPricePhp(totalLDFAmountRelease) }</span>
                                             </div>
                                         </div>
                                     </footer>

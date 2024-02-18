@@ -13,11 +13,15 @@ import ButtonOutline from "@/lib/ui/ButtonOutline";
 
 const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, dateFilter, setDateFilter, handleDateFilter, revertMode = false,
                             groupFilter, handleGroupFilter, groupTransactionStatus, allowMcbuWithdrawal, allowOffsetTransaction, hasDraft, changeRemarks,
-                            addMcbuInterest }) => {
+                            addMcbuInterest, handleShowWarningDialog }) => {
     const router = useRouter();
     const groupList = useSelector(state => state.group.list);
     const group = useSelector(state => state.group.data);
     const [showCalendar, setShowCalendar] = useState(false);
+    const branchList = useSelector(state => state.branch.list);
+    const [branchName, setBranchName] = useState();
+    const isHoliday = useSelector(state => state.systemSettings.holiday);
+    const isWeekend = useSelector(state => state.systemSettings.weekend);
     const statusClass = {
         'available': "text-green-700 bg-green-100",
         'full': "text-red-400 bg-red-100",
@@ -52,6 +56,15 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
         router.back();
     }
 
+    useEffect(() => {
+        if (group) {
+            const currentBranch = branchList.find(branch => branch._id == group.branchId);
+            if (currentBranch) {
+                setBranchName(currentBranch.name);
+            }
+        }
+    }, [group, branchList]);
+
     return (
         <div className="bg-white px-7 py-2 fixed w-screen z-10">
             <div className="flex flex-row justify-between w-11/12">
@@ -67,7 +80,7 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
                         <div className="flex flex-row justify-items-start space-x-5 py-4" style={{ height: '40px' }}>
                             <div className="space-x-2 flex items-center">
                                 <span className="text-gray-400 text-sm">Branch Name:</span>
-                                <span className="text-sm">{group.branchName}</span>
+                                <span className="text-sm">{branchName}</span>
                             </div>
                             <div className="space-x-2 flex items-center ">
                                 <span className="text-gray-400 text-sm">Day:</span >
@@ -129,7 +142,7 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
                             </div>
                         </div>
                     </div>
-                    {(showSaveButton || allowMcbuWithdrawal || allowOffsetTransaction) && (
+                    {((showSaveButton || allowMcbuWithdrawal || allowOffsetTransaction) && groupTransactionStatus != 'close') && (
                         <div className={`flex items-center`}>
                             {((hasDraft && !revertMode) || hasDraft || (hasDraft && !changeRemarks) || !addMcbuInterest) && (
                                 <div className="w-40 mr-4">
@@ -141,6 +154,12 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
                             </div>
                         </div>
                     )}
+
+                    {( (!showSaveButton && groupTransactionStatus != 'close' && !isHoliday && !isWeekend) && (
+                        <div className="w-40">
+                            <ButtonSolid label="Revert" onClick={(e) => handleShowWarningDialog(e)} />
+                        </div>
+                    ) )}
                 </div>
             )}
         </div>

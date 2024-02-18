@@ -49,6 +49,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     const [selectedOldLO, setSelectedOldLO] = useState();
     const [selectedOldGroup, setSelectedOldGroup] = useState();
     const [oldLOList, setOldLOList] = useState();
+    const [selectedLoanId, setSelectedLoanId] = useState();
 
     const initialValues = {
         branchId: loan.branchId,
@@ -130,7 +131,12 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             form.setFieldValue('loId', group.loanOfficerId);
         }
 
-        getListGroup(u?.transactionType, value);
+        if (clientType !== 'advance') {
+            getListGroup(u?.transactionType, value);
+        } else {
+            getListGroup(u?.transactionType, value, 'filter');
+        }
+
         form.setFieldValue(field, value);
         setLoading(false);
     }
@@ -167,12 +173,13 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         const form = formikRef.current;
         setClientId(value);
         
-        if (clientType === 'active') {
+        if (clientType === 'active' || clientType == 'advance') {
             const currentClient = clientList.find(c => c._id === value);
             const currentSlotNo = currentClient && currentClient.loans[0].slotNo;
             const currentLoanCycle = currentClient && currentClient.loans[0].loanCycle;
             setSlotNo(currentSlotNo);
             setLoanBalance(currentClient?.loans[0]?.loanBalance);
+            setSelectedLoanId(currentClient?.loans[0]?._id);
             form.setFieldValue('slotNo', currentSlotNo);
             form.setFieldValue('loanCycle', currentLoanCycle + 1);
         }
@@ -219,6 +226,14 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             values.branchId = branch._id;
             values.branchName = branch.name;
             values.loId = group.loanOfficerId;
+
+            if (clientType == 'advance') {
+                values.mode = 'advance';
+                if (mode == 'add') {
+                    values.oldLoanId = selectedLoanId;
+                    values.advanceTransaction = true;
+                }
+            }
         } else {
             group = loan.group;
             values.loId = group.loanOfficerId;
@@ -428,6 +443,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                     label: UppercaseFirstLetter(group.name)
                 });
             });
+            groups.sort((a,b) => { return a.groupNo - b.groupNo });
             dispatch(setGroupList(groups));
             setLoading(false);
         } else if (response.error) {
@@ -442,6 +458,8 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) {
             if (status === 'active') {
                 url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", branchId: currentUser.designatedBranchId, groupId: groupId, status: status });
+            } else if (status === 'advance') {
+                url = url + '?' + new URLSearchParams({ mode: "view_existing_loan", branchId: currentUser.designatedBranchId, groupId: groupId, status: status });
             } else if (status === 'offset') {
                 url = url + '?' + new URLSearchParams({ mode: "view_offset", status: status, branchId: selectedOldBranch, loId: selectedOldLO, groupId: groupId });
             } else {
@@ -450,6 +468,8 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
             if (status === 'active') {
                 url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", branchId: currentUser.designatedBranchId, groupId: groupId, status: status });
+            } else if (status === 'advance') {
+                url = url + '?' + new URLSearchParams({ mode: "view_existing_loan", branchId: currentUser.designatedBranchId, groupId: groupId, status: status });
             } else if (status === 'offset') {
                 url = url + '?' + new URLSearchParams({ mode: "view_offset", status: status, branchId: selectedOldBranch, loId: selectedOldLO, groupId: groupId });
             } else {
@@ -461,12 +481,13 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         if (response.success) {
             let clients = [];
             await response.clients && response.clients.map(client => {
-                if (status === 'active') {
+                if (status === 'active' || status === 'advance') {
                     let temp = {
                         ...client.client,
                         loans: [client],
                         label: UppercaseFirstLetter(`${client.client.lastName}, ${client.client.firstName}`),
-                        value: client.client._id
+                        value: client.client._id,
+                        slotNo: client.slotNo
                     };
                     delete temp.loans[0].client;
                     clients.push(temp);
@@ -478,6 +499,10 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                     });   
                 }
             });
+            if (status === 'active' || status === 'advance') {
+                clients.sort((a,b) => { return a.slotNo - b.slotNo });
+            }
+
             dispatch(setClientList(clients));
             setLoading(false);
         } else if (response.error) {
@@ -520,6 +545,9 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         setClientType(value);
         if (value !== 'offset') {
             getListClient(value, selectedGroup);
+        }
+        if (value == 'advance' && currentUser.role.rep == 4) {
+            getListGroup(currentUser.transactionType, currentUser._id, 'filter');
         }
     }
 
@@ -662,7 +690,8 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                         <React.Fragment>
                                             <div className="mt-4 flex flex-row">
                                                 <RadioButton id={"radio_pending"} name="radio-client-type" label={"Prospect Clients"} checked={clientType === 'pending'} value="pending" onChange={handleClientTypeChange} />
-                                                <RadioButton id={"radio_active"} name="radio-client-type" label={"Active Clients"} checked={clientType === 'active'} value="active" onChange={handleClientTypeChange} />
+                                                <RadioButton id={"radio_advance"} name="radio-client-type" label={"Reloan Clients"} checked={clientType === 'advance'} value="advance" onChange={handleClientTypeChange} />
+                                                <RadioButton id={"radio_active"} name="radio-client-type" label={"Pending Clients"} checked={clientType === 'active'} value="active" onChange={handleClientTypeChange} />
                                                 <RadioButton id={"radio_offset"} name="radio-client-type" label={"Balik Clients"} checked={clientType === 'offset'} value="offset" onChange={handleClientTypeChange} />
                                             </div>
                                             {clientType == 'offset' && (
@@ -723,10 +752,6 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                                 </div>
                                             )}
                                             { currentUser.role.rep === 3 && (
-                                                // <div className="mt-4 flex flex-row">
-                                                //     <RadioButton id={"radio_daily"} name="radio-group-occurence" label={"Daily"} checked={groupOccurence === 'daily'} value="daily" onChange={handleOccurenceChange} />
-                                                //     <RadioButton id={"radio_weekly"} name="radio-group-occurence" label={"Weekly"} checked={groupOccurence === 'weekly'} value="weekly" onChange={handleOccurenceChange} />
-                                                // </div>
                                                 <div className="mt-4">
                                                     <SelectDropdown
                                                         name="loId"
@@ -769,7 +794,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                                     />
                                                 </div>
                                             )}
-                                            {clientType === 'active' ? (
+                                            {(clientType === 'active' || clientType === 'advance') ? (
                                                 <React.Fragment>
                                                     <div className="mt-4">
                                                         <div className={`flex flex-col border rounded-md px-4 py-2 bg-white border-main`}>

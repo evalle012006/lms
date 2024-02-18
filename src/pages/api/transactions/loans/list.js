@@ -41,6 +41,20 @@ async function list(req, res) {
                     },
                     {
                         $lookup: {
+                            from: "loans",
+                            localField: "clientId",
+                            foreignField: "clientId",
+                            pipeline: [
+                                { $match: { status: 'active' } },
+                                { $project: { 
+                                    loanCycle: '$loanCycle'
+                                } }
+                            ],
+                            as: 'pendings'
+                        }
+                    },
+                    {
+                        $lookup: {
                             from: "cashCollections",
                             localField: "groupId",
                             foreignField: "groupId",
@@ -129,6 +143,20 @@ async function list(req, res) {
                                 } }
                             ],
                             as: 'groupStatus'
+                        }
+                    },
+                    {
+                        $lookup: {
+                            from: "loans",
+                            localField: "clientId",
+                            foreignField: "clientId",
+                            pipeline: [
+                                { $match: { status: 'active' } },
+                                { $project: { 
+                                    loanCycle: '$loanCycle'
+                                } }
+                            ],
+                            as: 'pendings'
                         }
                     },
                     {

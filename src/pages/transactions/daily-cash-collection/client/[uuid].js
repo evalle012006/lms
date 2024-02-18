@@ -24,6 +24,7 @@ import Modal from '@/lib/ui/Modal';
 import ClientDetailPage from '@/components/clients/ClientDetailPage';
 import { setClient } from '@/redux/actions/clientActions';
 import { LOR_DAILY_REMARKS } from '@/lib/constants';
+import CheckBox from '@/lib/ui/checkbox';
 
 const CashCollectionDetailsPage = () => {
     const isHoliday = useSelector(state => state.systemSettings.holiday);
@@ -74,35 +75,16 @@ const CashCollectionDetailsPage = () => {
     const [selectedNewRemarks, setSelectedNewRemarks] = useState();
     const [addMcbuInterest, setAddMcbuInterest] = useState(false);
 
-    const handleShowWarningDialog = (e, selected) => {
+    const [selectAll, setSelectAll] = useState(false);
+
+    const handleShowWarningDialog = (e) => {
         e.stopPropagation();
 
-        if (selected.status !== 'totals') {
-            let temp = {...selected};
-            delete temp.targetCollectionStr;
-            delete temp.amountReleaseStr;
-            delete temp.loanBalanceStr;
-            delete temp.excessStr;
-            delete temp.totalStr;
-            delete temp.currentReleaseAmountStr;
-            delete temp.fullPaymentStr;
-            delete temp.paymentCollectionStr;
-            delete temp.noOfPaymentStr;
-            delete temp.error;
-            delete temp.dirty;
-            delete temp.pastDueStr;
-            delete temp.groupCashCollections;
-            delete temp.loanOfficer;
-            delete temp.noMispaymentStr;
-            delete temp.mcbuStr;
-            delete temp.mcbuColStr;
-            delete temp.mcbuWithdrawalStr;
-            delete temp.mcbuReturnAmtStr;
-            delete temp.mcbuInterestStr;
-            delete temp.mcbuError;
-            delete temp.transferStr;
-            setSelectedSlot(temp);
+        const hasSelected = data.filter(d => d.selected);
+        if (hasSelected.length > 0) {
             setShowWarningDialog(true);
+        } else {
+            toast.error('Please select at least one row to revert!');
         }
     }
 
@@ -602,7 +584,8 @@ const CashCollectionDetailsPage = () => {
                             guarantorMiddleName: cc.guarantorMiddleName,
                             guarantorLastName: cc.guarantorLastName,
                             loanRelease: cc.loanRelease,
-                            maturedPD: cc.hasOwnProperty('maturedPD') ? cc.maturedPD : false
+                            maturedPD: cc.hasOwnProperty('maturedPD') ? cc.maturedPD : false,
+                            advance: cc.hasOwnProperty('advance') ? cc.advance : false
                         }
 
                         delete cc._id;
@@ -758,6 +741,7 @@ const CashCollectionDetailsPage = () => {
                     }
                 }
 
+                collection.selected = false;
                 cashCollection.push(collection);   
             });
 
@@ -820,7 +804,8 @@ const CashCollectionDetailsPage = () => {
                             tomorrow: loan.status === 'active' ? true : false,
                             reverted: currentLoan.reverted,
                             history: currentLoan.history,
-                            prevData: currentLoan?.prevData
+                            prevData: currentLoan?.prevData,
+                            selected: false
                         };
 
                         if (currentLoan?.current?.length > 0) {
@@ -874,7 +859,8 @@ const CashCollectionDetailsPage = () => {
                             pending: loan.status === 'pending' ? true : false,
                             tomorrow: loan.status === 'active' ? true : false,
                             reverted: currentLoan.reverted,
-                            history: currentLoan.history
+                            history: currentLoan.history,
+                            selected: false
                         };
                         if (currentLoan?.current?.length > 0) {
                             cashCollection[index]._id = currentLoan.current[0]._id;
@@ -927,7 +913,8 @@ const CashCollectionDetailsPage = () => {
                         pastDueStr: '-',
                         fullPaymentStr: '-',
                         loanTerms: loan.loanTerms,
-                        status: loan.status === 'active' ? 'tomorrow' : 'pending'
+                        status: loan.status === 'active' ? 'tomorrow' : 'pending',
+                        selected: false
                     };
 
                     cashCollection.push(pendingTomorrow);
@@ -1184,6 +1171,7 @@ const CashCollectionDetailsPage = () => {
                     delete temp.mcbuError;
                     delete temp.client;
                     delete temp.transferStr;
+                    delete temp.selected;
 
                     if (cc.hasOwnProperty('_id')) {
                         temp.modifiedBy = currentUser._id;
@@ -1225,7 +1213,7 @@ const CashCollectionDetailsPage = () => {
                         }
     
                         if (temp.loanBalance <= 0 && temp.remarks?.value !== 'offset-matured-pd') {
-                            temp.status = 'completed';
+                            temp.status = temp?.advance ? 'pending' : 'completed';
                         }
     
                         if (temp.status === 'completed' || (temp.maturedPD && temp.remarks?.value == 'offset-matured-pd')) {
@@ -1581,6 +1569,8 @@ const CashCollectionDetailsPage = () => {
     
                         if (temp.status === "completed" && !(remarks.value && (remarks.value?.startsWith('offset') || remarks.value?.startsWith('reloaner')))) {
                             toast.error("Error occured. Invalid remarks. Should only choose a reloaner/offset remarks.");
+                        } else if (temp.status == 'completed' && temp?.advance && remarks.value?.startsWith('offset')) {
+                            toast.error(`Error occured. Slot No ${temp.slotNo} has a pending loan release.`);
                         } else {
                             // always reset these fields
                             temp.error = false;
@@ -2082,20 +2072,21 @@ const CashCollectionDetailsPage = () => {
 
     const handleNewRevert = async () => {
         setShowWarningDialog(false);
-        if (selectedSlot) {
+        const selectedRows = data.filter(d => d.selected);
+        if (selectedRows.length > 0) {
             setLoading(true);
-            const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/revert-transaction', selectedSlot);
+            const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/revert-transaction', selectedRows);
             if (response.success) {
                 setTimeout(() => {
                     setLoading(false);
-                    toast.success(`Slot No ${selectedSlot.slotNo} was successfuly reverted! Please wait reloading data.`);
+                    toast.success(`Selected ${selectedRows.length > 1 ? 'rows were' : 'row was'} successfuly reverted! Please wait reloading data.`);
                     setTimeout(() => {
                         window.location.reload();
                     }, 1000);
                 }, 1000);
             }
         } else {
-            toast.error('No slot selected!');
+            toast.error('No row(s) selected!');
         }
     }
 
@@ -2263,6 +2254,35 @@ const CashCollectionDetailsPage = () => {
         return cashCollection;
     }
 
+    const handleSelectAll = () => {
+        setSelectAll(!selectAll);
+        const dataList = data.map(cc => {
+            let temp = {...cc};
+            if (temp.clientId && !temp?.transferId) {
+                temp.selected = !selectAll;
+            }
+            return temp;
+        });
+
+        setData(dataList);
+        dispatch(setCashCollectionGroup(dataList));
+    }
+
+    const handleSelectRow = (index) => {
+        const dataList = data.map((cc, idx) => {
+            let temp = {...cc};
+
+            if (idx == index) {
+                temp.selected = !temp.selected;
+            }
+
+            return temp;
+        });
+
+        setData(dataList);
+        dispatch(setCashCollectionGroup(dataList));
+    }
+
     useEffect(() => {
         const getListBranch = async () => {
             let url = process.env.NEXT_PUBLIC_API_URL + 'branches/list';
@@ -2386,12 +2406,13 @@ const CashCollectionDetailsPage = () => {
                         handleSaveUpdate={handleSaveUpdate} data={allData} setData={setFilteredData} allowMcbuWithdrawal={allowMcbuWithdrawal} hasDraft={hasDraft}
                         dateFilter={dateFilter} setDateFilter={setDateFilter} handleDateFilter={handleDateFilter} currentGroup={uuid} revertMode={revertMode}
                         groupFilter={groupFilter} handleGroupFilter={handleGroupFilter} groupTransactionStatus={groupSummaryIsClose ? 'close' : 'open'}
-                        changeRemarks={changeRemarks} addMcbuInterest={addMcbuInterest} />}
+                        changeRemarks={changeRemarks} addMcbuInterest={addMcbuInterest} handleShowWarningDialog={handleShowWarningDialog} />}
                     <div className="px-4 mt-[12rem] mb-[4rem] overflow-y-auto min-h-[55rem]">
                         <div className="bg-white flex flex-col rounded-md pt-0 pb-2 px-6 overflow-auto h-[46rem]">
                             <table className="table-auto border-collapse text-sm">
                                 <thead className="border-b border-b-gray-300">
                                     <tr className="sticky top-0 column py-0 pr-0 pl-4 text-left text-gray-500 uppercase tracking-wider bg-white z-20">
+                                        <th className="p-2 text-center"><CheckBox size={"md"} value={selectAll} onChange={handleSelectAll} /></th>
                                         <th className="p-2 text-center">Slot #</th>
                                         <th className="p-2 text-center">Client Name</th>
                                         <th className="p-2 text-center">Co-Maker</th>
@@ -2447,6 +2468,7 @@ const CashCollectionDetailsPage = () => {
                                         return (
                                             <tr key={index} className={`w-full hover:bg-slate-200 border-b border-b-gray-300 font-proxima
                                                                 ${rowBg} ${cc.status === 'totals' ? 'font-bold font-proxima-bold text-red-400' : 'text-gray-600'}`} >
+                                                <th className="p-2 text-center">{(cc.status !== 'totals' && cc.clientId && !cc?.transferId) && <CheckBox size={"md"} value={cc.selected} onChange={() => handleSelectRow(index)} />}</th>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.status !== 'totals' ? cc.slotNo : '' }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer" onClick={() => handleShowClientInfoModal(cc)}>{ cc.fullName }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.coMaker }</td>
@@ -2560,8 +2582,8 @@ const CashCollectionDetailsPage = () => {
                                                     <React.Fragment>
                                                         {(!isWeekend && !isHoliday && currentUser.role.rep > 2 && !groupSummaryIsClose) && (
                                                             <div className='flex flex-row p-2'>
-                                                                {(currentUser.role.rep === 3 && cc.hasOwnProperty('_id') && !filter && !cc.draft && !cc.reverted && cc?.prevData && !cc.mcbuInterestFlag) && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleShowWarningDialog(e, cc)} />}
-                                                                {(cc.status === 'completed' && !prevDraft && ((cc.remarks && cc.remarks.value?.startsWith('reloaner')) || (cc.status === 'completed' && !cc.remarks))) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
+                                                                {/* {(currentUser.role.rep === 3 && cc.hasOwnProperty('_id') && !filter && !cc.draft && !cc.reverted && cc?.prevData && !cc.mcbuInterestFlag) && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleShowWarningDialog(e, cc)} />} */}
+                                                                {(!cc.advance && cc.status === 'completed' && !prevDraft && ((cc.remarks && cc.remarks.value?.startsWith('reloaner')) || (cc.status === 'completed' && !cc.remarks))) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
                                                                 {((cc.remarks?.value?.startsWith('reloaner') && (cc.status === 'pending' || cc.status === 'tomorrow')) && !filter && !cc.draft && !cc.reverted) && <ArrowsRightLeftIcon className="w-5 h-5 mr-6" title="Change Reloaner Remarks" onClick={(e) => handleShowChangeRemarksDialog(e, cc)} />}
                                                                 {(!filter && !editMode && cc.status !== 'closed' && currentMonth === 11 && !cc.draft) && <ReceiptPercentIcon className="w-5 h-5 mr-6" title="Calculate MCBU Interest" onClick={(e) => handleMCBUInterest(e, cc, index)} />}
                                                             </div>
@@ -2605,7 +2627,7 @@ const CashCollectionDetailsPage = () => {
                             <div className="sm:flex sm:items-start justify-center">
                                 <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-center">
                                     <div className="mt-2">
-                                        <p className="text-2xl font-normal text-dark-color">Are you sure you want to revert today's transaction?</p>
+                                        <p className="text-2xl font-normal text-dark-color">Are you sure you want to revert the selected today's transaction(s)?</p>
                                     </div>
                                 </div>
                             </div>

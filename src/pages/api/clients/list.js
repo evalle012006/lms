@@ -431,6 +431,47 @@ async function list(req, res) {
                     .toArray();
             }
         }
+    } else if (mode === 'view_existing_loan') {
+            clients = await db
+                .collection('loans')
+                .aggregate([
+                    { $match: {$expr: {$and: [{$eq: ['$status', 'active']}, {$eq: ['$groupId', groupId]}]} } },
+                    {
+                        $addFields: {
+                            "clientIdObj": { $toObjectId: "$clientId" }
+                        }
+                    },
+                    {
+                        $lookup: {
+                            from: "client",
+                            localField: "clientIdObj",
+                            foreignField: "_id",
+                            pipeline: [
+                                { $match: {status: 'active'} }
+                            ],
+                            as: "client"
+                        }
+                    },
+                    {
+                        $unwind: "$client"
+                    },
+                    {
+                        $addFields: {
+                            "loIdObj": {$toObjectId: "$client.loId"}
+                        }
+                    },
+                    {
+                        $lookup: {
+                            from: "users",
+                            localField: "loIdObj",
+                            foreignField: "_id",
+                            as: "lo"
+                        }
+                    },
+                    { $project: { clientIdObj: 0, loIdObj: 0 } }
+                ])
+                .toArray();
+        
     } else if (mode === 'view_all_by_group_for_transfer' && groupId) {
         clients = await db
             .collection('client')

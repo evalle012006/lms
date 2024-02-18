@@ -116,7 +116,7 @@ const LoginPage = () => {
                         </div>
                         <div className="pt-5 text-center text-gray-400 text-xs">
                             <span>
-                                Copyright © 2022-2023
+                                Copyright © 2022-2024
                                 <a href="#" rel="" target="_blank" title="Ajimon" className="text-green hover:text-main "> xdonie11</a>
                             </span>
                         </div>
