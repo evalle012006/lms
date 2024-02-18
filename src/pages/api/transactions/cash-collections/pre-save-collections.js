@@ -78,7 +78,7 @@ async function save(req, res) {
                 remarks: '',
                 status: loan.status,
                 dateAdded: currentDate,
-                groupStatus: "closed",
+                groupStatus: "pending",
                 insertedDateTime: new Date(),
                 origin: 'pre-save'
             };
