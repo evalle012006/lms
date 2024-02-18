@@ -34,7 +34,7 @@ async function save(req, res) {
 
     const spotExist = await db.collection('loans').find({ $expr: { $and: [{$eq: ["$slotNo", loanData.slotNo]}, {$eq: ["$groupId", loanData.groupId]}, { $or: [{$eq: ["$status", "active"]}, {$eq: ["$status", "completed"]}] }] } }).toArray();
 
-    if (mode !== 'reloan' && spotExist.length > 0) {
+    if ((mode !== 'reloan' && mode !== 'advance') && spotExist.length > 0) {
             response = {
                 error: true,
                 fields: [['slotNo']],
@@ -46,7 +46,7 @@ async function save(req, res) {
             .find({ clientId: loanData.clientId, status: 'active' })
             .toArray();
 
-        if (loans.length > 0) {
+        if (loans.length > 0 && mode !== 'advance') {
             response = {
                 error: true,
                 fields: ['clientId'],
@@ -79,13 +79,16 @@ async function save(req, res) {
             if (mode === 'reloan') {
                 reloan = true;
                 await updateLoan(oldLoanId, finalData, currentDate);
+            } else if (mode == 'advance') {
+                await updateLoan(oldLoanId, finalData, currentDate, mode);
             } else {
                 await updateGroup(loanData);
             }
 
-            await saveCashCollection(loanData, currentReleaseAmount, reloan, group, loanId, currentDate);
-
-            await updateUser(loanData);
+            if (mode != 'advance') {
+                await saveCashCollection(loanData, currentReleaseAmount, reloan, group, loanId, currentDate);
+                await updateUser(loanData);
+            }
 
             response = {
                 success: true,
@@ -151,7 +154,7 @@ async function updateGroup(loan) {
     }
 }
 
-async function updateLoan(loanId, loanData, currentDate) {
+async function updateLoan(loanId, loanData, currentDate, mode) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
 
@@ -160,11 +163,23 @@ async function updateLoan(loanId, loanData, currentDate) {
     if (loan.length > 0) {
         loan = loan[0];
 
-        loan.mcbu = loan.mcbu - loanData.mcbu;
-        loan.status = 'closed';
-
         delete loan.loanOfficer;
         delete loan.groupCashCollections;
+
+        if (mode == 'advance') {
+            loan.advance = true;
+            loan.advanceDate = currentDate;
+        } else {
+            loan.mcbu = loan.mcbu - loanData.mcbu;
+            loan.status = 'closed';
+
+            await db
+                .collection('cashCollections')
+                .updateOne(
+                    { loanId: loanId, dateAdded: currentDate },
+                    { $set: { status: 'closed' } }
+                );   
+        }
 
         await db
             .collection('loans')
@@ -174,13 +189,6 @@ async function updateLoan(loanId, loanData, currentDate) {
                     $set: { ...loan }
                 }, 
                 { upsert: false });
-
-        await db
-            .collection('cashCollections')
-            .updateOne(
-                { loanId: loanId, dateAdded: currentDate },
-                { $set: { status: 'closed' } }
-            );
     }
 }
 
@@ -193,6 +201,10 @@ async function saveCashCollection(loan, currentReleaseAmount, reloan, group, loa
         let groupStatus = 'pending';
         if (groupCashCollections.length > 0) {
             groupStatus = groupCashCollections[0].groupStatus;
+        }
+
+        if (loan.loanCycle == 1) {
+            groupStatus = 'closed';
         }
 
         let data = {

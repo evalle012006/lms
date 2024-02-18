@@ -22,6 +22,7 @@ async function updateLoan(req, res) {
     delete loan.allowApproved;
     delete loan.currentDate;
     delete loan.groupStatus;
+    delete loan.selected;
 
     let groupData = await db.collection('groups').find({ _id: new ObjectId(loan.groupId) }).toArray();
     if (groupData.length > 0) {
@@ -70,21 +71,25 @@ async function updateLoan(req, res) {
                     }
 
                     let tempLoan = {...loans[0]};
+                    tempLoan.mcbu = loan.mcbu;
+                    tempLoan.mcbuCollection = loan.mcbu;
                     const prevLoanId = tempLoan._id;
                     delete tempLoan._id;
                     tempLoan.status = 'completed';
                     await db.collection('loans').updateOne({ _id: prevLoanId }, {$set: { ...tempLoan }});
                 }
+            } else {
+                await db.collection('cashCollections').deleteOne({ loanId: loan._id });
             }
 
-            let client = await db.collection('client').find({ _id: new ObjectId(loan.clientId) }).toArray();
-            if (client) {
-                client = client[0];
-                client.status = 'pending';
+            // let client = await db.collection('client').find({ _id: new ObjectId(loan.clientId) }).toArray();
+            // if (client && loan.loanCycle == 1) {
+            //     client = client[0];
+            //     client.status = 'pending';
 
-                delete client._id;
-                await db.collection('client').updateOne({ _id: new ObjectId(loan.clientId) }, { $set: { ...client } });
-            }
+            //     delete client._id;
+            //     await db.collection('client').updateOne({ _id: new ObjectId(loan.clientId) }, { $set: { ...client } });
+            // }
 
             loan.loanCycle = 0;
 
@@ -98,7 +103,7 @@ async function updateLoan(req, res) {
         }
 
         if (loan.status === 'active' || loan.status === 'reject') {
-            const loanResp = await db
+            await db
                 .collection('loans')
                 .updateOne(
                     { _id: new ObjectId(loanId) }, 
@@ -108,10 +113,12 @@ async function updateLoan(req, res) {
                     { upsert: false });
 
             loan._id = loanId;
-            await saveCashCollection(loan, groupData, currentDate);
-            
-            response = { success: true, loan: loanResp };   
+            if (loan.status == 'active') {
+                await saveCashCollection(loan, groupData, currentDate);
+            }
         }
+
+        response = { success: true };   
     } else {
         response = { error: true, message: 'Group data not found.' };
     }

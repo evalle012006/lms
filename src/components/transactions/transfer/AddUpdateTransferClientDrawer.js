@@ -87,7 +87,7 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
         if (selectedBranch) {
             let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
 
-            url = url + '?' + new URLSearchParams({ branchCode: selectedBranch.code });
+            url = url + '?' + new URLSearchParams({ branchCode: selectedBranch?.code });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let userList = [];
@@ -165,28 +165,26 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
                 await response.clients && response.clients.map(client => {
                     const hasTransfer = transferList.find(t => t.selectedClientId === client._id);
                     if (!hasTransfer) {
-                        const clientCollections = client.cashCollections.length > 0 ? client.cashCollections[0] : null;
-                        const clientLoans = client.loans.length > 0 ? client.loans[0] : null;
-                        if (clientCollections?.status == 'tomorrow' || clientCollections?.status == 'pending' || (clientCollections?.status == 'completed' && clientLoans?.fullPaymentDate == currentDate)) {
-                            // don't add...
-                        } else {
-                            clients.push({
-                                ...client,
-                                slotNo: client.loans.length > 0 ? client.loans[0].slotNo : 100, // for sorting purposes
-                                label: UppercaseFirstLetter(`${client.lastName}, ${client.firstName}`),
-                                value: client._id
-                            }); 
-                        }
+                        // const clientCollections = client.cashCollections.length > 0 ? client.cashCollections[0] : null;
+                        // const clientLoans = client.loans.length > 0 ? client.loans[0] : null;
+                        
+                        clients.push({
+                            ...client,
+                            slotNo: client.loans.length > 0 ? client.loans[0].slotNo : 100, // for sorting purposes
+                            label: UppercaseFirstLetter(`${client.lastName}, ${client.firstName}`),
+                            value: client._id
+                        }); 
                     }  
                 });
                 clients.sort((a, b) => { return a.slotNo - b.slotNo });
                 setClientList(clients);
-                setLoading(false);
+                setTimeout(() => { setLoading(false); }, 1000);
             } else if (response.error) {
                 setLoading(false);
                 toast.error(response.message);
             }
         } else {
+            setLoading(false);
             toast.error("No group selected!");
         }
     }
