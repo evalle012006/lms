@@ -735,7 +735,7 @@ const LoanApplicationPage = () => {
                 if (!client.firstName || !client.lastName || client.firstName == 'null' || client.lastName == 'null') {
                     errorMsg += `First and/or Last Name of slot no ${loan.slotNo} from group ${group.name} is missing! \n`;
                 }
-                if ((!client.fullName && (client.fullName && !client.fullName.length === 0)) || client.fullName.includes('null')) {
+                if ((!client.fullName && (client.fullName && !client.fullName.length === 0))) {
                     errorMsg += `There are missing info for slot no ${loan.slotNo} from group ${group.name}! \n`;
                 }
                 if (!client.hasOwnProperty('profile') && !client.profile) {
