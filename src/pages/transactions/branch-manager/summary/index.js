@@ -1159,7 +1159,13 @@ const BranchManagerSummary = () => {
         let lastLoanBalance = 0;
 
         weeklyTotals.map(wt => {
-            totalTransfer += wt.transfer;
+            let transfer = 0;
+            if (typeof wt.transfer === "string" && wt.transfer !== '-') {
+                transfer = wt.transfer.replace('(','').replace(')','');
+                transfer = -Math.abs(transfer);
+            }
+            
+            totalTransfer += transfer;
             totalNewMember += wt.newMember;
             totalMcbuActual += wt.mcbuActual ? wt.mcbuActual : 0;
             totalMcbuWithdrawal += wt.mcbuWithdrawal ? wt.mcbuWithdrawal : 0;
