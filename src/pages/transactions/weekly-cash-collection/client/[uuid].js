@@ -1554,11 +1554,15 @@ const CashCollectionDetailsPage = () => {
                         }
 
                         if (temp?.dcmc || temp?.mpdc) {
-                            temp.mcbuCol = mcbuCol;
-                            temp.mcbuColStr = formatPricePhp(mcbuCol);
-                            temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + mcbuCol : 0 + mcbuCol;
-                            temp.mcbuStr = formatPricePhp(temp.mcbu);
-                            temp.prevData.mcbuCol = mcbuCol;
+                            if (mcbuCol > 0) {
+                                temp.mcbuCol = mcbuCol;
+                                temp.mcbuColStr = formatPricePhp(mcbuCol);
+                                temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + mcbuCol : 0 + mcbuCol;
+                                temp.mcbuStr = formatPricePhp(temp.mcbu);
+                                temp.prevData.mcbuCol = mcbuCol;
+                            } else {
+                                toast.error('MCBU Collection must be greater than 0.');
+                            }
                         } else {
                             if (mcbuCol < 50) {
                                 temp.mcbuError = true;
@@ -1867,10 +1871,10 @@ const CashCollectionDetailsPage = () => {
     
                                 if (remarks.value === 'delinquent-mcbu') {
                                     temp.dcmc = true;
-                                    if (temp.paymentCollection > 0) {
-                                        temp.loanBalance += temp.paymentCollection;
-                                        temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
-                                    }
+                                    // if (temp.paymentCollection > 0) {
+                                    //     temp.loanBalance += temp.paymentCollection;
+                                    //     temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
+                                    // }
                                     temp.mispayment = false;
                                     temp.mispaymentStr = 'No';
                                     temp.activeLoan = 0;
