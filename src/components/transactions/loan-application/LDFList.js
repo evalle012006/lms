@@ -168,7 +168,7 @@ const LDFListPage = React.forwardRef((props, ref) => {
                                     <tbody>
                                         { list.map((loan, index) => {
                                             return (
-                                                <tr key={index} className='leading-4'>
+                                                <tr key={index} className='leading-8'>
                                                     <td className='border border-gray-900 text-center'>{ index + 1 }</td>
                                                     <td className='border border-gray-900 text-center'>{ loan.slotNo }</td>
                                                     <td className='border border-gray-900'>{ loan.fullName }</td>

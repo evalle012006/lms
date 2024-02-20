@@ -100,17 +100,32 @@ async function revert(req, res) {
                     if (previousCC.status == 'completed') {
                         currentLoan.activeLoan = 0;
                     }
-                    currentLoan.amountRelease = previousCC.status == 'completed' ? 0 : previousCC.amountRelease;
-                    currentLoan.loanBalance = previousCC.status == 'completed' ? 0 : previousCC.loanBalance;
-                    currentLoan.mcbu = previousCC.status == 'completed' ? currentLoan.mcbu : previousCC.mcbu;
-                    currentLoan.mcbuCollection = previousCC.status == 'completed' ? currentLoan.mcbu : previousCC.mcbu;
-                    currentLoan.mcbuReturnAmt = previousCC.status == 'completed' ? currentLoan.mcbuReturnAmt : 0;
-                    currentLoan.mcbuWithdrawal = previousCC.status == 'completed' ? currentLoan.mcbuWithdrawal : 0;
-                    currentLoan.noOfPayments = previousCC.noOfPayments;
-                    currentLoan.advanceDays = previousCC.advanceDays;
-                    currentLoan.history = previousCC.history;
-                    currentLoan.status = previousCC.status == 'completed' ? 'completed' : 'active';
-                    currentLoan.fullPaymentDate = previousCC.status == 'completed' ? previousCC.fullPaymentDate : null;
+
+                    if (previousCC.status == 'tomorrow') {
+                        currentLoan.amountRelease = previousCC.currentReleaseAmount;
+                        currentLoan.loanBalance = previousCC.currentReleaseAmount;
+                        currentLoan.mcbu = 0;
+                        currentLoan.mcbuCollection = 0;
+                        currentLoan.mcbuReturnAmt = 0;
+                        currentLoan.mcbuWithdrawal = 0;
+                        currentLoan.noOfPayments = 0;
+                        currentLoan.advanceDays = 0;
+                        currentLoan.status = 'active';
+                        currentLoan.fullPaymentDate = null;
+                    } else {
+                        currentLoan.amountRelease = previousCC.status == 'completed' ? 0 : previousCC.amountRelease;
+                        currentLoan.loanBalance = previousCC.status == 'completed' ? 0 : previousCC.loanBalance;
+                        currentLoan.mcbu = previousCC.status == 'completed' ? currentLoan.mcbu : previousCC.mcbu;
+                        currentLoan.mcbuCollection = previousCC.status == 'completed' ? currentLoan.mcbu : previousCC.mcbu;
+                        currentLoan.mcbuReturnAmt = previousCC.status == 'completed' ? currentLoan.mcbuReturnAmt : 0;
+                        currentLoan.mcbuWithdrawal = previousCC.status == 'completed' ? currentLoan.mcbuWithdrawal : 0;
+                        currentLoan.noOfPayments = previousCC.noOfPayments;
+                        currentLoan.advanceDays = previousCC.advanceDays;
+                        currentLoan.history = previousCC.history;
+                        currentLoan.status = previousCC.status == 'completed' ? 'completed' : 'active';
+                        currentLoan.fullPaymentDate = previousCC.status == 'completed' ? previousCC.fullPaymentDate : null;
+                    }
+
                     currentLoan.reverted = true;
                     currentLoan.revertedDate = currentDate;
 
