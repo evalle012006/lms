@@ -357,16 +357,12 @@ const LoanApplicationPage = () => {
                 let loanList = [];
                 await response.loans && response.loans.map(loan => {
                     let allowApproved = false;
-                    let hasActiveLoan = false;
 
                     if (loan.groupStatus.length > 0) {
                         const transactionStatus = loan.groupStatus[0].groupStatusArr.filter(s => s === "pending");
                         if (transactionStatus.length > 0) {
                             allowApproved = true;
                         }
-                    } else if (loan.pendings.length > 0) {
-                        allowApproved = false;
-                        hasActiveLoan = true;
                     } else {
                         allowApproved = true;
                     }
@@ -384,8 +380,7 @@ const LoanApplicationPage = () => {
                         loanReleaseStr: formatPricePhp(loan.amountRelease),
                         fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
                         allowApproved: allowApproved,
-                        selected: false,
-                        hasActiveLoan: hasActiveLoan
+                        selected: false
                     });
                 });
                 loanList.sort((a, b) => {
@@ -413,16 +408,12 @@ const LoanApplicationPage = () => {
                 let loanList = [];
                 await response.loans && response.loans.map(loan => {
                     let allowApproved = false;
-                    let hasActiveLoan = false;
 
                     if (loan.groupStatus.length > 0) {
                         const transactionStatus = loan.groupStatus[0].groupStatusArr.filter(s => s === "pending");
                         if (transactionStatus.length > 0) {
                             allowApproved = true;
                         }
-                    } else if (loan.pendings.length > 0) {
-                        allowApproved = false;
-                        hasActiveLoan = true;
                     } else {
                         allowApproved = true;
                     }
@@ -440,8 +431,7 @@ const LoanApplicationPage = () => {
                         loanReleaseStr: formatPricePhp(loan.amountRelease),
                         fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
                         allowApproved: allowApproved,
-                        selected: false,
-                        hasActiveLoan: hasActiveLoan
+                        selected: false
                     });
                 });
                 loanList.sort((a, b) => {
@@ -948,7 +938,7 @@ const LoanApplicationPage = () => {
     useEffect(() => {
         if (branchList && currentDate) {
             getListLoan();
-            getHistoyListLoan();
+            // getHistoyListLoan();
         }
     }, [branchList]);
 

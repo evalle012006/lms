@@ -22,6 +22,7 @@ async function save(req, res) {
     delete loanData.currentDate;
     delete loanData.group;
     delete loanData.groupStatus;
+    delete loanData.pendings;
     
     if (loanData.hasOwnProperty('mode')) {
         mode = loanData.mode;
@@ -33,13 +34,20 @@ async function save(req, res) {
     }
 
     const spotExist = await db.collection('loans').find({ $expr: { $and: [{$eq: ["$slotNo", loanData.slotNo]}, {$eq: ["$groupId", loanData.groupId]}, { $or: [{$eq: ["$status", "active"]}, {$eq: ["$status", "completed"]}] }] } }).toArray();
+    const pendingExist = await db.collection('loans').find({ slotNo: loanData.slotNo, clientId: loanData.clientId, status: 'pending' }).toArray();
 
     if ((mode !== 'reloan' && mode !== 'advance') && spotExist.length > 0) {
-            response = {
-                error: true,
-                fields: [['slotNo']],
-                message: `Slot Number ${loanData.slotNo} is already taken in group ${loanData.groupName}`
-            };
+        response = {
+            error: true,
+            fields: [['slotNo']],
+            message: `Slot Number ${loanData.slotNo} is already taken in group ${loanData.groupName}`
+        };
+    } else if (pendingExist.length > 0) {
+        response = {
+            error: true,
+            fields: [['clientId']],
+            message: `Client has a PENDING release already!`
+        };
     } else {
         const loans = await db
             .collection('loans')

@@ -15,6 +15,7 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
                             groupFilter, handleGroupFilter, groupTransactionStatus, allowMcbuWithdrawal, allowOffsetTransaction, hasDraft, changeRemarks,
                             addMcbuInterest, handleShowWarningDialog }) => {
     const router = useRouter();
+    const currentUser = useSelector(state => state.user.data);
     const groupList = useSelector(state => state.group.list);
     const group = useSelector(state => state.group.data);
     const [showCalendar, setShowCalendar] = useState(false);
@@ -155,7 +156,7 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
                         </div>
                     )}
 
-                    {( (!showSaveButton && groupTransactionStatus != 'close' && !isHoliday && !isWeekend) && (
+                    {( (!showSaveButton && groupTransactionStatus != 'close' && !isHoliday && !isWeekend && currentUser.role.rep == 3) && (
                         <div className="w-40">
                             <ButtonSolid label="Revert" onClick={(e) => handleShowWarningDialog(e)} />
                         </div>
