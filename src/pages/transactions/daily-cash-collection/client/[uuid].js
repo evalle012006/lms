@@ -2006,7 +2006,7 @@ const CashCollectionDetailsPage = () => {
                                 }
                             } else {
                                 if (remarks.value === 'reloaner-cont' && (temp.remarks && (temp?.remarks?.value.startsWith("reloaner-") || temp?.remarks?.value?.startsWith('offset')))) {
-                                    temp.mcbu = 600; // should be fixed since it is already full
+                                    temp.mcbu = temp.mcbu < 600 ? 600 : temp.mcbu; // should be fixed since it is already full
                                     temp.mcbuCol = 0;
                                     temp.mcbuColStr = '-';
                                     if (temp.excess && temp.excess > 0) {
