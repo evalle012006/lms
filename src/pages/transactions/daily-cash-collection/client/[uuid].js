@@ -1493,11 +1493,15 @@ const CashCollectionDetailsPage = () => {
                             };
                         }
 
-                        temp.mcbuCol = mcbuCol;
-                        temp.mcbuColStr = formatPricePhp(mcbuCol);
-                        temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + mcbuCol : 0 + mcbuCol;
-                        temp.mcbuStr = formatPricePhp(temp.mcbu);
-                        temp.prevData.mcbuCol = mcbuCol;
+                        if (mcbuCol > 0) {
+                            temp.mcbuCol = mcbuCol;
+                            temp.mcbuColStr = formatPricePhp(mcbuCol);
+                            temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + mcbuCol : 0 + mcbuCol;
+                            temp.mcbuStr = formatPricePhp(temp.mcbu);
+                            temp.prevData.mcbuCol = mcbuCol;
+                        } else {
+                            toast.error('MCBU Collection must be greater than 0.');
+                        }
                     }
 
                     return temp;
@@ -1535,7 +1539,8 @@ const CashCollectionDetailsPage = () => {
                         }
 
                         if (temp.mcbuCol > 0) {
-                            temp.mcbu += temp.mcbuCol;
+                            const mcbu = temp.mcbu ? temp.mcbu : 0;
+                            temp.mcbu =  mcbu + temp.mcbuCol;
                         }
 
                         temp.mcbuInterest = mcbuInterest;
@@ -1718,10 +1723,10 @@ const CashCollectionDetailsPage = () => {
     
                                 if (remarks.value === 'delinquent-mcbu') {
                                     temp.dcmc = true;
-                                    if (temp.paymentCollection > 0) {
-                                        temp.loanBalance += temp.paymentCollection;
-                                        temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
-                                    }
+                                    // if (temp.paymentCollection > 0) {
+                                    //     temp.loanBalance += temp.paymentCollection;
+                                    //     temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
+                                    // }
                                     temp.mispayment = false;
                                     temp.mispaymentStr = 'No';
                                     temp.activeLoan = 0;
@@ -2001,7 +2006,7 @@ const CashCollectionDetailsPage = () => {
                                 }
                             } else {
                                 if (remarks.value === 'reloaner-cont' && (temp.remarks && (temp?.remarks?.value.startsWith("reloaner-") || temp?.remarks?.value?.startsWith('offset')))) {
-                                    temp.mcbu = 600; // should be fixed since it is already full
+                                    temp.mcbu = temp.mcbu < 600 ? 600 : temp.mcbu; // should be fixed since it is already full
                                     temp.mcbuCol = 0;
                                     temp.mcbuColStr = '-';
                                     if (temp.excess && temp.excess > 0) {
