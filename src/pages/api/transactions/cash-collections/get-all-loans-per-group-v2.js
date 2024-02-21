@@ -269,7 +269,7 @@ async function getAllLoansPerGroup(date, mode, groupId, dayName, currentDate) {
                                             ] }
                                         ]}
                                     ]}, 
-                                    {$gte: ['$startDateObj', '$currentDateObj']}
+                                    {$lte: ['$startDateObj', '$currentDateObj']}
                                 ] } 
                             } },
                             { $group: { 
