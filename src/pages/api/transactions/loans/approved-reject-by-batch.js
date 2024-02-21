@@ -27,6 +27,8 @@ async function processData(req, res) {
             delete loan.allowApproved;
             delete loan.currentDate;
             delete loan.groupStatus;
+            delete loan.pendings;
+            delete loan.origin;
 
             await db.collection('loans').updateOne({ _id: new ObjectId(loanId) }, { $set: {...loan} });
         });
@@ -42,6 +44,8 @@ async function processData(req, res) {
             delete loan.allowApproved;
             delete loan.currentDate;
             delete loan.groupStatus;
+            delete loan.pendings;
+            delete loan.origin;
     
             let groupData = await checkGroupStatus(loan.groupId);
             if (groupData.length > 0) {

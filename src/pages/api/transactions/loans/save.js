@@ -23,7 +23,8 @@ async function save(req, res) {
     delete loanData.group;
     delete loanData.groupStatus;
     delete loanData.pendings;
-    
+    delete loanData.origin;
+
     if (loanData.hasOwnProperty('mode')) {
         mode = loanData.mode;
         oldLoanId = loanData.oldLoanId;
@@ -36,7 +37,7 @@ async function save(req, res) {
     const spotExist = await db.collection('loans').find({ $expr: { $and: [{$eq: ["$slotNo", loanData.slotNo]}, {$eq: ["$groupId", loanData.groupId]}, { $or: [{$eq: ["$status", "active"]}, {$eq: ["$status", "completed"]}] }] } }).toArray();
     const pendingExist = await db.collection('loans').find({ slotNo: loanData.slotNo, clientId: loanData.clientId, status: 'pending' }).toArray();
 
-    if ((mode !== 'reloan' && mode !== 'advance') && spotExist.length > 0) {
+    if ((mode !== 'reloan' && mode !== 'advance' && mode !== 'active') && spotExist.length > 0) {
         response = {
             error: true,
             fields: [['slotNo']],
@@ -64,6 +65,10 @@ async function save(req, res) {
             const currentReleaseAmount = loanData.currentReleaseAmount;
             let finalData = {...loanData};
             if (finalData.occurence === 'weekly') {
+                if (finalData.loanCycle == 1) {
+                    finalData.mcbu = 50;
+                    finalData.mcbuCollection = 50;
+                }
                 finalData.mcbuTarget = 50;
             }
 
@@ -87,15 +92,15 @@ async function save(req, res) {
             if (mode === 'reloan') {
                 reloan = true;
                 await updateLoan(oldLoanId, finalData, currentDate);
-            } else if (mode == 'advance') {
+            } else if (mode == 'advance' || mode == 'active') {
                 await updateLoan(oldLoanId, finalData, currentDate, mode);
             } else {
                 await updateGroup(loanData);
             }
 
-            if (mode != 'advance') {
+            if (mode != 'advance' && mode !== 'active') {
                 await saveCashCollection(loanData, currentReleaseAmount, reloan, group, loanId, currentDate);
-                await updateUser(loanData);
+                // await updateUser(loanData);
             }
 
             response = {
@@ -174,7 +179,7 @@ async function updateLoan(loanId, loanData, currentDate, mode) {
         delete loan.loanOfficer;
         delete loan.groupCashCollections;
 
-        if (mode == 'advance') {
+        if (mode == 'advance' || mode == 'active') {
             loan.advance = true;
             loan.advanceDate = currentDate;
         } else {
@@ -211,8 +216,15 @@ async function saveCashCollection(loan, currentReleaseAmount, reloan, group, loa
             groupStatus = groupCashCollections[0].groupStatus;
         }
 
+        let mcbu = loan.mcbu;
+        let mcbuCol = 0;
+
         if (loan.loanCycle == 1) {
             groupStatus = 'closed';
+            if (loan.occurence == 'weekly') {
+                mcbu = 50;
+                mcbuCol = 50;
+            }
         }
 
         let data = {
@@ -238,8 +250,8 @@ async function saveCashCollection(loan, currentReleaseAmount, reloan, group, loa
             occurence: group.occurence,
             currentReleaseAmount: currentReleaseAmount,
             fullPayment: loan.fullPayment,
-            mcbu: loan.mcbu,
-            mcbuCol: 0,
+            mcbu: mcbu,
+            mcbuCol: mcbuCol,
             mcbuWithdrawal: 0,
             mcbuReturnAmt: 0,
             remarks: '',
@@ -254,7 +266,7 @@ async function saveCashCollection(loan, currentReleaseAmount, reloan, group, loa
             data.mcbuTarget = 50;
             data.groupDay = group.day;
 
-            if (!reloan) {
+            if (!reloan && data.loanCycle !== 1) {
                 data.mcbuCol = loan.mcbu;
             }
         }

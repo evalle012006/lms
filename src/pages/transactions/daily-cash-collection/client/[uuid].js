@@ -817,7 +817,7 @@ const CashCollectionDetailsPage = () => {
                             cashCollection[index].mcbuCol = loan.current[0].mcbuCol;
                             cashCollection[index].mcbuColStr = loan.current[0].mcbuCol > 0 ? formatPricePhp(loan.current[0].mcbuCol) : '-';
                         }
-                    } else if (currentLoan.status !== 'active') {
+                    } else if (currentLoan.status !== 'active' && (currentLoan.status == 'completed' && !currentLoan?.advance)) {
                         cashCollection[index] = {
                             client: currentLoan.client,
                             coMaker: (loan.coMaker && typeof loan.coMaker == 'number') ? loan.coMaker : '-',
@@ -916,6 +916,13 @@ const CashCollectionDetailsPage = () => {
                         status: loan.status === 'active' ? 'tomorrow' : 'pending',
                         selected: false
                     };
+
+                    if (prevLoan) {
+                        const current = loan.current.length > 0 ? loan.current[0] : null;
+                        pendingTomorrow.prevLoanId = prevLoan._id;
+                        pendingTomorrow.loanId = loan._id;
+                        pendingTomorrow._id = current?._id;
+                    }
 
                     cashCollection.push(pendingTomorrow);
                 }
@@ -1214,6 +1221,7 @@ const CashCollectionDetailsPage = () => {
     
                         if (temp.loanBalance <= 0 && temp.remarks?.value !== 'offset-matured-pd') {
                             temp.status = temp?.advance ? 'pending' : 'completed';
+                            temp.fullPaymentDate = currentDate;
                         }
     
                         if (temp.status === 'completed' || (temp.maturedPD && temp.remarks?.value == 'offset-matured-pd')) {
@@ -1229,6 +1237,10 @@ const CashCollectionDetailsPage = () => {
                                 temp.clientStatus = 'offset';
                                 temp.closedDate = temp.previousDraft ? temp.dateAdded : currentDate;
                             } 
+                        }
+                    } else if (cc.status == 'completed') {
+                        if (temp.loanBalance <= 0 && temp.remarks?.value !== 'offset-matured-pd') {
+                            temp.status = temp?.advance ? 'pending' : 'completed';
                         }
                     }
 
@@ -2588,7 +2600,7 @@ const CashCollectionDetailsPage = () => {
                                                         {(!isWeekend && !isHoliday && currentUser.role.rep > 2 && !groupSummaryIsClose) && (
                                                             <div className='flex flex-row p-2'>
                                                                 {/* {(currentUser.role.rep === 3 && cc.hasOwnProperty('_id') && !filter && !cc.draft && !cc.reverted && cc?.prevData && !cc.mcbuInterestFlag) && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleShowWarningDialog(e, cc)} />} */}
-                                                                {(!cc.advance && cc.status === 'completed' && !prevDraft && ((cc.remarks && cc.remarks.value?.startsWith('reloaner')) || (cc.status === 'completed' && !cc.remarks))) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
+                                                                {(!cc.advance && cc.status === 'completed' && !prevDraft && cc.hasOwnProperty("_id") && (cc.remarks && cc.remarks.value?.startsWith('reloaner'))) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
                                                                 {((cc.remarks?.value?.startsWith('reloaner') && (cc.status === 'pending' || cc.status === 'tomorrow')) && !filter && !cc.draft && !cc.reverted) && <ArrowsRightLeftIcon className="w-5 h-5 mr-6" title="Change Reloaner Remarks" onClick={(e) => handleShowChangeRemarksDialog(e, cc)} />}
                                                                 {(!filter && !editMode && cc.status !== 'closed' && currentMonth === 11 && !cc.draft) && <ReceiptPercentIcon className="w-5 h-5 mr-6" title="Calculate MCBU Interest" onClick={(e) => handleMCBUInterest(e, cc, index)} />}
                                                             </div>

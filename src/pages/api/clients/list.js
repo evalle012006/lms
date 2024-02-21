@@ -302,7 +302,7 @@ async function list(req, res) {
             clients = await db
                 .collection('loans')
                 .aggregate([
-                    { $match: {$expr: {$and: [{$or: [{$eq: ['$status', 'active']}, {$eq: ['$status', 'completed']}]}, {$eq: ['$groupId', groupId]}]} } },
+                    { $match: {$expr: {$and: [{$eq: ['$status', 'completed']}, {$eq: ['$groupId', groupId]}]} } },
                     {
                         $addFields: {
                             "clientIdObj": { $toObjectId: "$clientId" }

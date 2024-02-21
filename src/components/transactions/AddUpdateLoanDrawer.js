@@ -131,7 +131,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             form.setFieldValue('loId', group.loanOfficerId);
         }
 
-        if (clientType !== 'advance') {
+        if (clientType !== 'advance' && clientType !== 'active') {
             getListGroup(u?.transactionType, value);
         } else {
             getListGroup(u?.transactionType, value, 'filter');
@@ -184,6 +184,8 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             form.setFieldValue('loanCycle', currentLoanCycle + 1);
         }
 
+        form.setFieldValue('groupId', selectedGroup);
+
         form.setFieldValue(field, value);
         setLoading(false);
     }
@@ -215,9 +217,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         let group;
         values.currentDate = currentDate;
         values.clientId = clientId;
-        // if (clientType == 'active' && values?.loanBalance > 0) {
-        //     values.mode = 
-        // }
+
         if (mode !== 'reloan') {
             values.groupId = selectedGroup;
             group = groupList.find(g => g._id === values.groupId);
@@ -227,8 +227,8 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             values.branchName = branch.name;
             values.loId = group.loanOfficerId;
 
-            if (clientType == 'advance') {
-                values.mode = 'advance';
+            if (clientType == 'advance' || clientType == 'active') {
+                values.mode = clientType;
                 if (mode == 'add') {
                     values.oldLoanId = selectedLoanId;
                     values.advanceTransaction = true;
@@ -546,7 +546,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         if (value !== 'offset') {
             getListClient(value, selectedGroup);
         }
-        if (value == 'advance' && currentUser.role.rep == 4) {
+        if ((value == 'advance' || value == 'active') && currentUser.role.rep == 4) {
             getListGroup(currentUser.transactionType, currentUser._id, 'filter');
         }
     }
