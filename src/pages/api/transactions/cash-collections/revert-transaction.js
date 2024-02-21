@@ -43,31 +43,13 @@ async function revert(req, res) {
 
             let previousCC = await db.collection("cashCollections").find({ clientId: cashCollection.clientId }).sort({ $natural: -1 }).limit(2).toArray();
 
-            // if active and completed (should check for pending) - just sync the previous cc tranction and delete the current cc transaction
-            // if pending and tomorrow - delete the currentLoan and delete the current cc transaction
-            // if active: 
-            //      loans.activeLoan = previousCC.activeLoan // check if greater than 0 else get it from history
-            //      loans.amountRelease = previoucsCC.amountRelease;
-            //      loans.loanBalance = previoucCC.loanBalance
-            //      loans.mcbu = previousCC.mcbu; 
-            //      loans.mcbuCollection = previousCC.mcbu; 
-            //      loans.noOfPayments = previousCC.noOfPayments; 
-            //      loans.advanceDays = previousCC.advanceDays;
-            //      if delinquent or excused, loans.mispayment -= 1;
-            //      loans.history = previousCC.history
-            //      loans.status = active
-            //      loans.fullPaymentDate = null
-            // if closed:
-            //      same above
-            //      delete loans.closedDate
-            //      delete loans.remarks
-            //      set client status to active
-            //      remove the slotNo in availableSlotNo in group and add 1 in noOfClient; if noOfClient = availableSlot set status to full
+            // NEED TO ACCOMODATE REVERT FOR NEW CLIENT PENDING/TOMORROW
+            // - delete cashcollection
+            // - set loan to rejected
 
             if (client.length > 0 && previousCC.length == 2) {
                 client = client[0];
                 previousCC = previousCC[1];
-
                 // delete current transaction
                 await db.collection('cashCollections').deleteOne({ _id: new ObjectId(cashCollectionId) });
 
@@ -76,22 +58,39 @@ async function revert(req, res) {
                     delete previousLoan._id;
                     await db.collection('loans').deleteOne({ _id: new ObjectId(loanId) });
 
-                    previousLoan.activeLoan = previousCC.activeLoan > 0 ? previousCC.activeLoan : previousCC.history?.activeLoan;
-                    previousLoan.amountRelease = previousCC.amountRelease;
-                    previousLoan.loanBalance = previousCC.loanBalance;
-                    previousLoan.mcbu = previousCC.mcbu;
-                    previousLoan.mcbuCollection = previousCC.mcbu;
-                    previousLoan.mcbuReturnAmt = 0;
-                    previousLoan.mcbuWithdrawal = 0;
-                    previousLoan.noOfPayments = previousCC.noOfPayments;
-                    previousLoan.advanceDays = previousCC.advanceDays;
-                    previousLoan.history = previousCC.history;
-                    previousLoan.status = 'active';
-                    previousLoan.fullPaymentDate = null;
+                    if (previousCC.status == 'completed') {
+                        previousLoan.activeLoan = 0;
+                        previousLoan.amountRelease = 0;
+                        previousLoan.loanBalance = 0;
+                        previousLoan.mcbu = previousCC.mcbu;
+                        previousLoan.mcbuCollection = previousCC.mcbu;
+                        previousLoan.mcbuReturnAmt = 0;
+                        previousLoan.mcbuWithdrawal = 0;
+                        previousLoan.noOfPayments = previousCC.noOfPayments;
+                        previousLoan.advanceDays = 0;
+                        previousLoan.history = previousCC.history;
+                        previousLoan.status = 'completed';
+                    } else {
+                        previousLoan.activeLoan = previousCC.activeLoan > 0 ? previousCC.activeLoan : previousCC.history?.activeLoan;
+                        previousLoan.amountRelease = previousCC.amountRelease;
+                        previousLoan.loanBalance = previousCC.loanBalance;
+                        previousLoan.mcbu = previousCC.mcbu;
+                        previousLoan.mcbuCollection = previousCC.mcbu;
+                        previousLoan.mcbuReturnAmt = 0;
+                        previousLoan.mcbuWithdrawal = 0;
+                        previousLoan.noOfPayments = previousCC.noOfPayments;
+                        previousLoan.advanceDays = previousCC.advanceDays;
+                        previousLoan.history = previousCC.history;
+                        previousLoan.status = 'active';
+                        previousLoan.fullPaymentDate = null;
+                    }
+                    
                     previousLoan.reverted = true;
                     previousLoan.revertedDate = currentDate;
+                    delete previousLoan.advance;
+                    delete previousLoan.advanceDate;
 
-                    await db.collection('loans').updateOne({ _id: new ObjectId(previousLoanId) }, { $set: {...previousLoan} });
+                    await db.collection('loans').updateOne({ _id: new ObjectId(previousLoanId) }, { $unset: {advance: 1, advanceDate: 1}, $set: {...previousLoan} });
                 } else if (currentLoan.length > 0) { // active, completed, closed
                     currentLoan = currentLoan[0];
                     delete currentLoan._id;
@@ -115,10 +114,10 @@ async function revert(req, res) {
                     } else {
                         currentLoan.amountRelease = previousCC.status == 'completed' ? 0 : previousCC.amountRelease;
                         currentLoan.loanBalance = previousCC.status == 'completed' ? 0 : previousCC.loanBalance;
-                        currentLoan.mcbu = previousCC.status == 'completed' ? currentLoan.mcbu : previousCC.mcbu;
-                        currentLoan.mcbuCollection = previousCC.status == 'completed' ? currentLoan.mcbu : previousCC.mcbu;
-                        currentLoan.mcbuReturnAmt = previousCC.status == 'completed' ? currentLoan.mcbuReturnAmt : 0;
-                        currentLoan.mcbuWithdrawal = previousCC.status == 'completed' ? currentLoan.mcbuWithdrawal : 0;
+                        currentLoan.mcbu = previousCC.status == 'completed' ? previousCC.mcbu : previousCC.mcbu;
+                        currentLoan.mcbuCollection = previousCC.status == 'completed' ? previousCC.mcbu : previousCC.mcbu;
+                        currentLoan.mcbuReturnAmt = previousCC.status == 'completed' ? previousCC.mcbuReturnAmt : 0;
+                        currentLoan.mcbuWithdrawal = previousCC.status == 'completed' ? previousCC.mcbuWithdrawal : 0;
                         currentLoan.noOfPayments = previousCC.noOfPayments;
                         currentLoan.advanceDays = previousCC.advanceDays;
                         currentLoan.history = previousCC.history;

@@ -60,7 +60,12 @@ const ClientsProspectPage = () => {
     const getListGroup = async () => {
         let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list'
         if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
-            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id });
+            if (status == 'pending') {
+                url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id, mode: 'all' });
+            } else {
+                url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id });
+            }
+            
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let groupList = [];
@@ -78,7 +83,11 @@ const ClientsProspectPage = () => {
                 setLoading(false);
             }
         } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
-            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id });
+            if (status == 'pending') {
+                url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, mode: 'all' });
+            } else {
+                url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id });
+            }
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let groupList = [];
@@ -96,7 +105,11 @@ const ClientsProspectPage = () => {
                 setLoading(false);
             }
         } else if (currentUser.role.rep === 2 && branchList.length > 0) {
-            url = url + '?' + new URLSearchParams({ areaManagerId: currentUser._id });
+            if (status == 'pending') {
+                url = url + '?' + new URLSearchParams({ areaManagerId: currentUser._id, mode: 'all' });
+            } else {
+                url = url + '?' + new URLSearchParams({ areaManagerId: currentUser._id });
+            }
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let groupList = [];
@@ -115,6 +128,9 @@ const ClientsProspectPage = () => {
             }
         } else if (branchList.length > 0) {
             const response = await fetchWrapper.get(url);
+            if (status == 'pending') {
+                url = url + '?' + new URLSearchParams({ mode: 'all' });
+            }
             if (response.success) {
                 let groupList = [];
                 await response.groups && response.groups.map(group => {

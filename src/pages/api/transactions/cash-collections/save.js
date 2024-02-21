@@ -46,6 +46,10 @@ async function save(req, res) {
                         collection.noOfPayments = 24;
                     }
                 }
+                
+                if (collection.status === 'completed' || (collection.status == 'pending' && collection.loanCycle > 1) || collection.status === 'closed') {
+                    collection.fullPaymentDate = collection.fullPaymentDate ? collection.fullPaymentDate : currentDate;
+                }
 
                 if (collection.hasOwnProperty('_id')) {
                     collection.modifiedDateTime = new Date();
@@ -62,7 +66,7 @@ async function save(req, res) {
                         newCC.push(collection);
                     // }
                 }
-
+                
                 if (collection.status !== "tomorrow" && collection.status !== "pending" && !collection.draft) {
                     await updateLoan(collection, currentDate)
                     await updateClient(collection, currentDate);
@@ -267,17 +271,18 @@ async function updatePendingLoan(collection, currentDate) {
         currentLoan.mcbu = 0;
         currentLoan.mcbuCollection = collection.mcbu;
         currentLoan.noOfPayments = collection.noOfPayments;
-        currentLoan.fullPaymentDate = currentDate;
+        currentLoan.fullPaymentDate = collection.fullPaymentDate ? collection.fullPaymentDate : currentDate;
         currentLoan.mcbuWithdrawal = collection.mcbuWithdrawal > 0 ? collection.mcbuWithdrawal : 0;
         currentLoan.mcbuReturnAmt = collection.mcbuReturnAmt > 0 ? collection.mcbuReturnAmt : 0;
         currentLoan.history = collection.history;
 
-        if (collection.remarks && collection.remarks.value == 'reloaner-cont') {
+        if (collection.remarks && (collection.remarks.value == 'reloaner-cont' || collection.remarks.value == 'reloaner')) {
             pendingLoan.mcbu = collection.mcbu;
         }
 
         pendingLoan.prevLoanFullPaymentDate = currentDate;
         pendingLoan.prevLoanFullPaymentAmount = collection.fullPayment;
+        cashCollection.loanId = pendingLoan._id + "";
         cashCollection.currentReleaseAmount = pendingLoan.amountRelease;
 
         const currentLoanId = currentLoan._id;
@@ -312,32 +317,32 @@ async function updateClient(loan, currentDate) {
             client.loId = null;
         }
 
-        let mcbuHistory = [];
-        const currentMonth = moment(currentDate).month() + 1;
-        const currentYear = moment(currentDate).year();
-        if (client.hasOwnProperty('mcbuHistory')) {
-            mcbuHistory = [...client.mcbuHistory];
-            const yearIndex = mcbuHistory.findIndex(h => h.year === currentYear);
-            if (yearIndex > -1) {
-                let mcbuMonths = mcbuHistory[yearIndex].mcbuMonths;
-                const monthIndex = mcbuMonths.findIndex(m => m.month === currentMonth);
-                if (monthIndex > -1) {
-                    let mcbuMonth = {...mcbuMonths[monthIndex]};
-                    mcbuMonth.mcbu = loan.mcbu;
-                    mcbuMonths[monthIndex] = mcbuMonth;
-                } else {
-                    mcbuMonths.push({ month: currentMonth, mcbu: loan.mcbu });
-                }
+        // let mcbuHistory = [];
+        // const currentMonth = moment(currentDate).month() + 1;
+        // const currentYear = moment(currentDate).year();
+        // if (client.hasOwnProperty('mcbuHistory')) {
+        //     mcbuHistory = [...client.mcbuHistory];
+        //     const yearIndex = mcbuHistory.findIndex(h => h.year === currentYear);
+        //     if (yearIndex > -1) {
+        //         let mcbuMonths = mcbuHistory[yearIndex].mcbuMonths;
+        //         const monthIndex = mcbuMonths.findIndex(m => m.month === currentMonth);
+        //         if (monthIndex > -1) {
+        //             let mcbuMonth = {...mcbuMonths[monthIndex]};
+        //             mcbuMonth.mcbu = loan.mcbu;
+        //             mcbuMonths[monthIndex] = mcbuMonth;
+        //         } else {
+        //             mcbuMonths.push({ month: currentMonth, mcbu: loan.mcbu });
+        //         }
 
-                mcbuHistory[yearIndex] = mcbuMonths;
-            } else {
-                mcbuHistory.push({ year: currentYear, mcbuMonths: [ {month: currentMonth, mcbu: loan.mcbu} ] });
-            }
-        } else {
-            mcbuHistory.push({ year: currentYear, mcbuMonths: [ {month: currentMonth, mcbu: loan.mcbu} ] });
-        }
+        //         mcbuHistory[yearIndex] = mcbuMonths;
+        //     } else {
+        //         mcbuHistory.push({ year: currentYear, mcbuMonths: [ {month: currentMonth, mcbu: loan.mcbu} ] });
+        //     }
+        // } else {
+        //     mcbuHistory.push({ year: currentYear, mcbuMonths: [ {month: currentMonth, mcbu: loan.mcbu} ] });
+        // }
 
-        client.mcbuHistory = mcbuHistory;
+        // client.mcbuHistory = mcbuHistory;
 
         if (loan.remarks && loan.remarks.value?.startsWith('delinquent')) {
             client.delinquent = true;

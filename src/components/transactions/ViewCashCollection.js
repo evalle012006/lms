@@ -122,8 +122,8 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         isDraft = true;
                     }
                 } else if (cc.cashCollections.length > 0) {
-                    const transactionStatus = cc.cashCollections[0].groupStatusArr.filter(status => status === "closed");
-                    if (transactionStatus.length > 0) {
+                    const transactionStatus = cc.cashCollections[0].groupStatusArr.filter(status => status === "pending");
+                    if (transactionStatus.length === 0) {
                         groupStatus = 'closed';
                     }
 
