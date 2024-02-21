@@ -301,7 +301,7 @@ async function getAllLoanTransactionsByBranch(branchId, date, dayName, currentDa
                                             ] }
                                         ]}
                                     ]}, 
-                                    {$gte: ['$startDateObj', '$currentDateObj']}
+                                    {$lte: ['$startDateObj', '$currentDateObj']}
                                 ]
                             } } },
                             { $group: { 
