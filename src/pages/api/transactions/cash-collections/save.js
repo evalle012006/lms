@@ -51,6 +51,10 @@ async function save(req, res) {
                     collection.fullPaymentDate = collection.fullPaymentDate ? collection.fullPaymentDate : currentDate;
                 }
 
+                if (collection.status === 'completed' && (collection.remarks.startsWith('offset') || collection.mcbuReturnAmt > 0)) {
+                    collection.status = "closed";
+                }
+
                 if (collection.hasOwnProperty('_id')) {
                     collection.modifiedDateTime = new Date();
                     const existCollection = {...collection};

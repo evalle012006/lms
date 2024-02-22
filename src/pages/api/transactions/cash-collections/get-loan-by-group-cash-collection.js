@@ -201,7 +201,7 @@ async function getLoanWithCashCollection(req, res) {
                         localField: "clientId",
                         foreignField: "clientId",
                         pipeline: [
-                            { $match: { status: 'closed' } }
+                            { $match: { status: 'closed', loanCycle: {$ne: 0} } }
                         ],
                         as: "prevLoans"
                     }

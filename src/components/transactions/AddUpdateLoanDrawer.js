@@ -161,6 +161,10 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             form.setFieldValue('loId', group.loanOfficerId);
         }
 
+        if (clientType == 'offset') {
+            form.setFieldValue('clientId', clientId);
+        }
+        
         form.setFieldValue(field, value);
         if (clientType !== 'offset') {
             getListClient(clientType, value);
@@ -197,6 +201,11 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         if (mode !== 'reloan') {
             form.setFieldValue('groupId', selectedGroup);
         }
+
+        if (clientType == 'offset') {
+            form.setFieldValue('clientId', clientId);
+        }
+
         form.setFieldValue(field, value);
         setLoading(false);
     }
@@ -208,6 +217,11 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         if (mode !== 'reloan') {
             form.setFieldValue('groupId', selectedGroup);
         }
+
+        if (clientType == 'offset') {
+            form.setFieldValue('clientId', clientId);
+        }
+
         form.setFieldValue(field, value);
         setLoading(false);
     }
