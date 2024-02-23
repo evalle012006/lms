@@ -51,7 +51,7 @@ async function save(req, res) {
                     collection.fullPaymentDate = collection.fullPaymentDate ? collection.fullPaymentDate : currentDate;
                 }
 
-                if (collection.status === 'completed' && (collection.remarks.startsWith('offset') || collection.mcbuReturnAmt > 0)) {
+                if (collection.status === 'completed' && (collection?.remarks?.value?.startsWith('offset') || collection.mcbuReturnAmt > 0)) {
                     collection.status = "closed";
                 }
 
