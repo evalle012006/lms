@@ -29,6 +29,7 @@ async function processData(req, res) {
             delete loan.groupStatus;
             delete loan.pendings;
             delete loan.origin;
+            delete loan.hasActiveLoan;
 
             await db.collection('loans').updateOne({ _id: new ObjectId(loanId) }, { $set: {...loan} });
         });
@@ -46,6 +47,7 @@ async function processData(req, res) {
             delete loan.groupStatus;
             delete loan.pendings;
             delete loan.origin;
+            delete loan.hasActiveLoan;
     
             let groupData = await checkGroupStatus(loan.groupId);
             if (groupData.length > 0) {
@@ -208,16 +210,13 @@ async function getCoMakerInfo(coMaker, groupId) {
 
 async function saveCashCollection(loan, group, currentDate) {
     const { db } = await connectToDatabase();
-
     const status = loan.status === "active" ? "tomorrow" : loan.status;
-
-    let cashCollection = await db.collection('cashCollections').find({ clientId: loan.clientId, dateAdded: currentDate }).toArray();
+    let cashCollection = await db.collection('cashCollections').find({ clientId: loan.clientId, groupId: loan.groupId, dateAdded: currentDate }).toArray();
 
     if (cashCollection.length > 0) {
         cashCollection = cashCollection[0];
         const ccId = cashCollection._id;
         delete cashCollection._id;
-
         await db.collection('cashCollections')
             .updateOne(
                 { _id: ccId }, 
@@ -251,7 +250,7 @@ async function saveCashCollection(loan, group, currentDate) {
             occurence: group.occurence,
             currentReleaseAmount: loan.amountRelease,
             fullPayment: 0,
-            remarks: '',
+            remarks: loan?.history?.remarks,
             mcbu: loan.mcbu,
             mcbuCol: 0,
             mcbuWithdrawal: 0,

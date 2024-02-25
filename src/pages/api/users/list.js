@@ -10,7 +10,7 @@ async function list(req, res) {
     let statusCode = 200;
     let response = {};
 
-    const { branchCode, loOnly, selectedLoGroup } = req.query;
+    const { branchCode, branchId, loOnly, selectedLoGroup } = req.query;
     let users;
 
     if (branchCode) {
@@ -44,6 +44,13 @@ async function list(req, res) {
                 .project({ password: 0 })
                 .toArray();
         }
+    } else if (branchId) {
+        users = await db
+            .collection('users')
+            .find({ 'root': { $ne: true }, "role.rep": 4, designatedBranchId: branchId })
+            .project({ password: 0 })
+            .sort({ loNo: 1 })
+            .toArray();
     } else {
         users = await db
             .collection('users')

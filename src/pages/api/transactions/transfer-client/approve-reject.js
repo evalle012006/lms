@@ -17,9 +17,6 @@ async function approveReject(req, res) {
     let groupFullError = false;
     transfers.map(async (transfer) => {
         if (transfer.status === "approved") {
-            // let sourceGroup = await db.collection('groups').find({ _id: new ObjectId(transfer.oldGroupId) }).toArray();
-            // let targetGroup = await db.collection('groups').find({ _id: new ObjectId(transfer.groupId) }).toArray();
-    
             let client = {...transfer.client};
             let loan = transfer.loans.length > 0 ? transfer.loans[0] : null;
             let sourceGroup = transfer.sourceGroup;
@@ -29,6 +26,8 @@ async function approveReject(req, res) {
             const targetGroupId = targetGroup._id;
             delete sourceGroup._id;
             delete targetGroup._id;
+
+            const existingCashCollection = await db.collection('cashCollections').find({ clientId: client._id, groupId: transfer.oldGroupId, dateAdded: transfer.dateAdded }).toArray();
 
             targetGroup.noOfClients = targetGroup.noOfClients ? targetGroup.noOfClients : 0;
             if (targetGroup.status === 'full') {
@@ -68,17 +67,43 @@ async function approveReject(req, res) {
                         updatedLoan.groupId = transfer.targetGroupId;
                         updatedLoan.groupName = targetGroup.name;
                         updatedLoan.slotNo = selectedSlotNo;
+                        updatedLoan.mcbuCollection = loan.mcbu;
                         updatedLoan.transferId = transfer._id;
                         updatedLoan.transfer = true;
-                        updatedLoan.startDate = moment(transfer.dateAdded).add(1, 'days').format("YYYY-MM-DD");
+                        if (updatedLoan.status == 'active') {
+                            updatedLoan.startDate = moment(transfer.dateAdded).add(1, 'days').format("YYYY-MM-DD");
+                        }
                         updatedLoan.transferDate = transfer.dateAdded;
                         updatedLoan.insertedDateTime = new Date();
+
+                        if (updatedLoan.status == 'completed' && updatedLoan.fullPaymentDate == transfer.dateAdded) {
+                            updatedLoan.fullPaymentDate = null;
+                        }
+
+                        if (existingCashCollection.length > 0) {
+                            const prevLoanId = existingCashCollection[0].prevLoanId;
+                            let prevLoan = await db.collection('loans').find({ _id: new ObjectId(prevLoanId) }).toArray();
+                            if (prevLoan.length > 0) {
+                                prevLoan = prevLoan[0];
+
+                                if (existingCashCollection[0].status == 'tomorrow' || existingCashCollection[0].status == 'pending') {
+                                    prevLoan.transferredReleased = true;
+                                }
+
+                                if (existingCashCollection[0].status == 'completed') {
+                                    updatedLoan.status = 'completed';
+                                }
+                            }
+                            delete prevLoan._id;
+                            await db.collection('loans').updateOne({ _id: new ObjectId(prevLoanId) }, {$set: {...prevLoan}});
+                        }
+
                         const newLoan = await db.collection('loans').insertOne({ ...updatedLoan });
                         if (newLoan.acknowledged) {
                             loan.status = "closed"
                             loan.transferred = true;
                             loan.transferId = transfer._id;
-                            loan.endDate = transfer.dateAdded;
+                            loan.transferredDate = transfer.dateAdded;
                             loan.modifiedDateTime = new Date();
                             await db.collection('loans').updateOne({ _id: new ObjectId(loanId) }, { $set: { ...loan } });
                             loan._id = newLoan.insertedId + "";
@@ -92,7 +117,7 @@ async function approveReject(req, res) {
                 client.groupId = transfer.targetGroupId;
                 client.groupName = targetGroup.name;
 
-                await saveCashCollection(transfer, client, loan, sourceGroup, targetGroup, selectedSlotNo);
+                await saveCashCollection(transfer, client, loan, sourceGroup, targetGroup, selectedSlotNo, existingCashCollection);
 
                 const updatedClient = {...client};
                 delete updatedClient._id;
@@ -126,11 +151,11 @@ async function approveReject(req, res) {
         .end(JSON.stringify(response));
 }
 
-async function saveCashCollection(transfer, client, loan, sourceGroup, targetGroup, selectedSlotNo) {
+async function saveCashCollection(transfer, client, loan, sourceGroup, targetGroup, selectedSlotNo, existingCashCollection) {
     const { db } = await connectToDatabase();
 
     // add new cash collection entry with updated data
-    const cashCollection = await db.collection('cashCollections').find({ clientId: client._id, groupId: client.groupId, dateAdded: transfer.dateAdded }).toArray();    
+    const cashCollection = await db.collection('cashCollections').find({ clientId: client._id, groupId: client.groupId, dateAdded: transfer.dateAdded }).toArray();
     if (cashCollection.length === 0) {
         let data = {
             branchId: transfer.targetBranchId,
@@ -154,7 +179,7 @@ async function saveCashCollection(transfer, client, loan, sourceGroup, targetGro
             mcbuCol: 0,
             mcbuWithdrawal: 0,
             mcbuReturnAmt: 0,
-            remarks: '',
+            remarks: null,
             dateAdded: transfer.dateAdded,
             groupStatus: 'closed',
             transferId: transfer._id,
@@ -176,11 +201,12 @@ async function saveCashCollection(transfer, client, loan, sourceGroup, targetGro
             data.slotNo = selectedSlotNo;
             data.loanCycle = loan.loanCycle;
             data.noOfPayments = loan.noOfPayments;
-            data.status = loan.status === 'closed' ? 'active' : loan.status;
             data.mcbu = loan.mcbu;
             data.pastDue = loan.pastDue;
             data.noPastDue = loan.noPastDue;
             data.loanTerms = loan.loanTerms;
+            data.remarks = existingCashCollection.length > 0 ? existingCashCollection[0].remarks : null;
+            data.status = existingCashCollection.length > 0 ? existingCashCollection[0].status : null;
 
             if (data.occurence === 'weekly') {
                 // data.mcbuTarget = 50;
@@ -204,7 +230,6 @@ async function saveCashCollection(transfer, client, loan, sourceGroup, targetGro
     }
 
     // add or update client data on cash collection
-    const existingCashCollection = await db.collection('cashCollections').find({ clientId: client._id, groupId: transfer.oldGroupId, dateAdded: transfer.dateAdded }).toArray();
     if (existingCashCollection.length === 0) {
         let data = {
             branchId: transfer.oldBranchId,
@@ -252,6 +277,7 @@ async function saveCashCollection(transfer, client, loan, sourceGroup, targetGro
             data.status = loan.status;
             data.mcbu = loan.mcbu;
             data.loanTerms = loan.loanTerms;
+            data.remarks = loan?.history?.remarks;
         }
 
         if (data.occurence === 'weekly') {

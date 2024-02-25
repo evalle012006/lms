@@ -328,9 +328,9 @@ async function getAllLoansPerGroup(date, mode, loId, dayName, currentDate) {
                                     $and: [
                                         {$ne: ['$status', 'reject']},
                                         { $or: [
-                                            { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}] },
+                                            { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}, {$ne: ['$transferredReleased', true]}] },
                                             { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$closedDate', date]}] },
-                                            { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$transferred', true]}, {$eq: ['$endDate', date]}] },
+                                            { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$transferred', true]}, {$eq: ['$transferredDate', date]}] },
                                             { $eq: ['$status', 'active'] }, { $eq: ['$status', 'pending'] }, { $eq: ['$status', 'completed'] }
                                         ] }
                                     ]
@@ -391,8 +391,9 @@ async function getAllLoansPerGroup(date, mode, loId, dayName, currentDate) {
                                         {$eq: ['$status', 'completed']}, 
                                         {$and: [
                                             { $or: [
-                                                { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}] },
-                                                { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$transferred', true]}, {$eq: ['$endDate', date]}] }
+                                                { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}, {$ne: ['$transferredReleased', true]}] },
+                                                { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$closedDate', date]}] },
+                                                { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$transferred', true]}, {$eq: ['$transferredDate', date]}] },
                                             ] }
                                         ]}
                                     ]}, 

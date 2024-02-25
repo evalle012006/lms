@@ -28,16 +28,18 @@ async function getLoanWithCashCollection(req, res) {
                     $expr: { 
                         $and: [
                             {$eq: ['$groupId', groupId]},
+                            {$ne: ['$status', 'reject']},
                             {$or: [
                                 {$gte: ['$currentDateObj', '$startDateObj']},
-                                {$eq: ['$transfer', true]}
+                                {$eq: ['$transfer', true]},
+                                { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$transferred', true]}, {$gt: ['$startDate', date]}] }
                             ]},
                             {$or: [ 
                                 {$eq: ['$status', 'active']},
                                 {$eq: ['$status', 'completed']},
-                                { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}] },
+                                { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$fullPaymentDate', date]}, {$ne: ['$transferredReleased', true]}] },
                                 { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$closedDate', date]}] },
-                                { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$transferred', true]}, {$eq: ['$endDate', date]}] }
+                                { $and: [ {$eq: ['$status', 'closed']}, {$eq: ['$transferred', true]}, {$eq: ['$transferredDate', date]}] }
                             ]}
                         ]
                     }

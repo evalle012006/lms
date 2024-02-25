@@ -115,9 +115,9 @@ const TransferClientPage = () => {
         if (response.success) {
             const data = response.data;
             if (data.length > 0) {
-                const pendings = data.find(cc => cc.groupStatus === 'pending');
-
-                if (pendings) {
+                const pendings = data.filter(cc => cc.groupStatus === 'pending');
+                console.log(pendings)
+                if (pendings.length > 0) {
                     errorMsg = "One or more group transactions are not yet closed!";
                 }
             } else {
@@ -235,10 +235,10 @@ const TransferClientPage = () => {
 
     const handleCloseAddDrawer = () => {
         setLoading(true);
-        getTransferList();
+        // getTransferList();
         setMode('add');
         setClient({});
-        // window.location.reload();
+        window.location.reload();
     }
 
     const handleMultiSelect = (mode, selectAll, row, rowIndex) => {
@@ -296,8 +296,8 @@ const TransferClientPage = () => {
                     setLoading(false);
                     toast.success('Selected clients successfully transferred.');
                     setTimeout(() => {
-                        getTransferList();
-                    }, 500);
+                        window.location.reload();
+                    }, 1000);
                 }   
             }
         } else {
@@ -551,7 +551,7 @@ const TransferClientPage = () => {
                 // { label: 'Delete', action: handleDeleteAction}
             ]);
         }
-    }, [currentDate, lastMonthDate]);
+    }, [currentDate, transferList, lastMonthDate]);
 
     return (
         <Layout actionButtons={currentUser.role.rep <= 3 && actionButtons}>

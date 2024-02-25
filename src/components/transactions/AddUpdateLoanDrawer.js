@@ -98,9 +98,9 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             .integer()
             .positive()
             .required('Please enter a loan cycle number'),
-        pnNumber: yup
-            .string()
-            .required('Please enter a promisory note number.'),
+        // pnNumber: yup
+        //     .string()
+        //     .required('Please enter a promisory note number.'),
         guarantorFirstName: yup
             .string()
             .required('Please enter guarantor first name'),
