@@ -475,7 +475,7 @@ const CashCollectionDetailsPage = () => {
                         }
     
                         setEditMode(false);
-                    } else if (cc.status !== "closed" && (type !== 'filter' && cc?.current?.length < 2)) {
+                    } else if (cc.status !== "closed" || (type !== 'filter' && cc?.current?.length < 2)) {
                         let noPaymentsStr = (cc.status === "active" || (cc.status === "completed" && cc.fullPaymentDate === currentDate)) ? cc.noOfPayments + ' / ' + cc.loanTerms : '-';
                         let numMispayment = cc.mispayment > 0 ? cc.mispayment + ' / ' + cc.loanTerms : '-';
                         let noMispayment = date ? cc.noMispayment ? cc.noMispayment : 0 : cc.mispayment;

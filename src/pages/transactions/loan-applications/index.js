@@ -1271,16 +1271,20 @@ const LoanApplicationPage = () => {
                                                     closeMenuOnSelect={true}
                                                     placeholder={'Group Filter'}/>
                                             </div>
-                                            <div className="mt-4 flex flex-row border border-zinc-200 rounded-lg mr-4 pl-4">
-                                                <RadioButton id={"radio_main"} name="radio-lo-type" label={"All"} checked={ldfFilter === 'all'} value="all" onChange={handleLoTypeChange} />
-                                                <RadioButton id={"radio_mother"} name="radio-lo-type" label={"Main"} checked={ldfFilter === 'main'} value="main" onChange={handleLoTypeChange} />
-                                                <RadioButton id={"radio_ext"} name="radio-lo-type" label={"Ext"} checked={ldfFilter === 'ext'} value="ext" onChange={handleLoTypeChange} />
-                                            </div>
-                                            <div className="mt-4 flex flex-row border border-zinc-200 rounded-lg pl-4">
-                                                <RadioButton id={"radio_occurence_main"} name="radio-occurence" label={"All"} checked={ldfOccurenceFilter === 'all'} value="all" onChange={handleLoOccurenceChange} />
-                                                <RadioButton id={"radio_occurence_daily"} name="radio-occurence" label={"Daily"} checked={ldfOccurenceFilter === 'daily'} value="daily" onChange={handleLoOccurenceChange} />
-                                                <RadioButton id={"radio_occurence_weekly"} name="radio-occurence" label={"Weekly"} checked={ldfOccurenceFilter === 'weekly'} value="weekly" onChange={handleLoOccurenceChange} />
-                                            </div>
+                                            {currentUser.role.rep < 4 && (
+                                                <React.Fragment>
+                                                    <div className="mt-4 flex flex-row border border-zinc-200 rounded-lg mr-4 pl-4">
+                                                        <RadioButton id={"radio_main"} name="radio-lo-type" label={"All"} checked={ldfFilter === 'all'} value="all" onChange={handleLoTypeChange} />
+                                                        <RadioButton id={"radio_mother"} name="radio-lo-type" label={"Main"} checked={ldfFilter === 'main'} value="main" onChange={handleLoTypeChange} />
+                                                        <RadioButton id={"radio_ext"} name="radio-lo-type" label={"Ext"} checked={ldfFilter === 'ext'} value="ext" onChange={handleLoTypeChange} />
+                                                    </div>
+                                                    <div className="mt-4 flex flex-row border border-zinc-200 rounded-lg pl-4">
+                                                        <RadioButton id={"radio_occurence_main"} name="radio-occurence" label={"All"} checked={ldfOccurenceFilter === 'all'} value="all" onChange={handleLoOccurenceChange} />
+                                                        <RadioButton id={"radio_occurence_daily"} name="radio-occurence" label={"Daily"} checked={ldfOccurenceFilter === 'daily'} value="daily" onChange={handleLoOccurenceChange} />
+                                                        <RadioButton id={"radio_occurence_weekly"} name="radio-occurence" label={"Weekly"} checked={ldfOccurenceFilter === 'weekly'} value="weekly" onChange={handleLoOccurenceChange} />
+                                                    </div>
+                                                </React.Fragment>
+                                            )}
                                         </div>
                                         {currentUser.role.rep === 3 && (
                                             <div className='flex justify-end ml-4 h-10 my-auto'>
