@@ -649,11 +649,11 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         };
     }, [mode]);
 
-    useEffect(() => {
-        if (mode !== 'edit' && selectedGroup) {
-            getListCoMaker(selectedGroup);
-        }
-    }, [selectedGroup, mode]);
+    // useEffect(() => {
+    //     if (mode !== 'edit' && selectedGroup) {
+    //         getListCoMaker(selectedGroup);
+    //     }
+    // }, [selectedGroup, mode]);
 
     useEffect(() => {
         if (selectedGroup || mode === 'reloan') {
