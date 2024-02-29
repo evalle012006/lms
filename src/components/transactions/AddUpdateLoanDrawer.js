@@ -49,6 +49,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     const [selectedOldLO, setSelectedOldLO] = useState();
     const [selectedOldGroup, setSelectedOldGroup] = useState();
     const [oldLOList, setOldLOList] = useState();
+    const [oldGroupList, setOldGroupList] = useState();
     const [selectedLoanId, setSelectedLoanId] = useState();
 
     const initialValues = {
@@ -400,7 +401,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         }
     }
 
-    const getListUser = async (branchCode) => {
+    const getListUser = async (branchCode, type) => {
         let url = process.env.NEXT_PUBLIC_API_URL + 'users/list?' + new URLSearchParams({ branchCode: branchCode });
         const response = await fetchWrapper.get(url);
         if (response.success) {
@@ -418,7 +419,9 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             });
             userList.sort((a, b) => { return a.loNo - b.loNo; });
 
-            setOldLOList(userList);
+            if (type == 'old') {
+                setOldLOList(userList);
+            }
         } else {
             toast.error('Error retrieving user list.');
         }
@@ -442,11 +445,11 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             } else {
                 url = url + '?' + new URLSearchParams({ branchId: branchId, loId: loId, occurence: occurence });
             }
-            processGroupList(url);
+            processGroupList(url, origin);
         }
     }
 
-    const processGroupList = async (url) => {
+    const processGroupList = async (url, origin) => {
         const response = await fetchWrapper.get(url);
         if (response.success) {
             let groups = [];
@@ -458,7 +461,11 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                 });
             });
             groups.sort((a,b) => { return a.groupNo - b.groupNo });
-            dispatch(setGroupList(groups));
+            if (origin == 'old') {
+                setOldGroupList(groups);
+            } else {
+                dispatch(setGroupList(groups));
+            }
             setLoading(false);
         } else if (response.error) {
             setLoading(false);
@@ -586,7 +593,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         const selectedBranch = branchList.find(b => b._id == value);
         setSelectedOldBranch(value);
         form.setFieldValue(field, value);
-        getListUser(selectedBranch?.code);
+        getListUser(selectedBranch?.code, 'old');
         setLoading(false);
     }
 
@@ -743,10 +750,10 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                                             field="oldGroupId"
                                                             value={selectedOldGroup}
                                                             label="Previous Group"
-                                                            options={groupList}
+                                                            options={oldGroupList}
                                                             onChange={(field, value) => handleOldGroupIdChange(field, value)}
                                                             onBlur={setFieldTouched}
-                                                            placeholder="Select Prevoius Group"
+                                                            placeholder="Select Previous Group"
                                                             errors={touched.oldGroupId && errors.oldGroupId ? errors.oldGroupId : undefined}
                                                         />
                                                     </div>

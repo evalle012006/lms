@@ -34,7 +34,7 @@ async function save(req, res) {
         delete loanData.loanOfficer;
     }
 
-    const spotExist = await db.collection('loans').find({ $expr: { $and: [{$eq: ["$slotNo", loanData.slotNo]}, {$eq: ["$groupId", loanData.groupId]}, { $or: [{$eq: ["$status", "active"]}, {$eq: ["$status", "completed"]}] }] } }).toArray();
+    const spotExist = await db.collection('loans').find({ $expr: { $and: [{$eq: ["$slotNo", loanData.slotNo]}, {$eq: ["$groupId", loanData.groupId]}, { $or: [{$eq: ["$status", "active"]}, {$eq: ["$status", "completed"]}, {$eq: ["$status", "pending"]}] }] } }).toArray();
     const pendingExist = await db.collection('loans').find({ slotNo: loanData.slotNo, clientId: loanData.clientId, status: 'pending' }).toArray();
 
     if ((mode !== 'reloan' && mode !== 'advance' && mode !== 'active') && spotExist.length > 0) {
@@ -62,7 +62,6 @@ async function save(req, res) {
                 message: `Client ${loanData.fullName} already have an active loan`
             };
         } else {
-            const currentReleaseAmount = loanData.currentReleaseAmount;
             let finalData = {...loanData};
             if (finalData.occurence === 'weekly') {
                 if (finalData.loanCycle == 1) {
@@ -99,7 +98,7 @@ async function save(req, res) {
             }
 
             if (mode != 'advance' && mode !== 'active') {
-                await saveCashCollection(loanData, currentReleaseAmount, reloan, group, loanId, currentDate);
+                await saveCashCollection(loanData, reloan, group, loanId, currentDate);
                 // await updateUser(loanData);
             }
 
@@ -205,8 +204,10 @@ async function updateLoan(loanId, loanData, currentDate, mode) {
     }
 }
 
-async function saveCashCollection(loan, currentReleaseAmount, reloan, group, loanId, currentDate) {
+async function saveCashCollection(loan, reloan, group, loanId, currentDate) {
     const { db } = await connectToDatabase();
+
+    const currentReleaseAmount = loan.amountRelease;
 
     const cashCollection = await db.collection('cashCollections').find({ clientId: loan.clientId, dateAdded: currentDate }).toArray();
     const groupCashCollections = await db.collection('cashCollections').find({ groupId: group._id, dateAdded: currentDate }).toArray();

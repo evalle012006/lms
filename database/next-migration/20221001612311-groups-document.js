@@ -500,7 +500,7 @@ module.exports = {
                     dateAdded: new Date()
                   },
                   {
-                    name: "TULIP",
+                    name: "TULIPS",
                     branchId: branch._id + '',
                     branchName: branch.name,
                     day: "all",

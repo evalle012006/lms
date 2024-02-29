@@ -263,10 +263,6 @@ const LoanApplicationPage = () => {
                         allowApproved = true;
                     }
 
-                    if (loan.pnNumber == null || !loan.pnNumber) {
-                        allowApproved = false;
-                    }
-
                     loanList.push({
                         ...loan,
                         loanOfficerName: `${loan.loanOfficer.lastName}, ${loan.loanOfficer.firstName}`,
@@ -310,7 +306,7 @@ const LoanApplicationPage = () => {
                     let allowApproved = false;
                     let hasActiveLoan = false;
                     
-                    if (loan.groupStatus.length > 0) {
+                    if (loan.groupStatus.length > 0 && loan.groupStatus[0].hasOwnProperty('groupStatusArr')) {
                         const transactionStatus = loan.groupStatus[0].groupStatusArr.filter(s => s === "pending");
                         if (transactionStatus.length > 0) {
                             allowApproved = true;
@@ -322,10 +318,6 @@ const LoanApplicationPage = () => {
                         hasActiveLoan = true;
                     } else {
                         allowApproved = true;
-                    }
-
-                    if (loan.pnNumber == null || !loan.pnNumber) {
-                        allowApproved = false;
                     }
 
                     loanList.push({
@@ -369,18 +361,20 @@ const LoanApplicationPage = () => {
                 let loanList = [];
                 await response.loans && response.loans.map(loan => {
                     let allowApproved = false;
-
-                    if (loan.groupStatus.length > 0) {
+                    let hasActiveLoan = false;
+                    
+                    if (loan.groupStatus.length > 0 && loan.groupStatus[0].hasOwnProperty('groupStatusArr')) {
                         const transactionStatus = loan.groupStatus[0].groupStatusArr.filter(s => s === "pending");
                         if (transactionStatus.length > 0) {
                             allowApproved = true;
+                        } else if (loan.loanCycle == 1) {
+                            allowApproved = true;
                         }
+                    } else if (loan.pendings.length > 0) {
+                        allowApproved = false;
+                        hasActiveLoan = true;
                     } else {
                         allowApproved = true;
-                    }
-
-                    if (loan.pnNumber == null || !loan.pnNumber) {
-                        allowApproved = false;
                     }
 
                     loanList.push({
@@ -396,7 +390,8 @@ const LoanApplicationPage = () => {
                         loanReleaseStr: formatPricePhp(loan.amountRelease),
                         fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
                         allowApproved: allowApproved,
-                        selected: false
+                        selected: false,
+                        hasActiveLoan: hasActiveLoan
                     });
                 });
                 loanList.sort((a, b) => {
@@ -424,18 +419,20 @@ const LoanApplicationPage = () => {
                 let loanList = [];
                 await response.loans && response.loans.map(loan => {
                     let allowApproved = false;
-
-                    if (loan.groupStatus.length > 0) {
+                    let hasActiveLoan = false;
+                    
+                    if (loan.groupStatus.length > 0 && loan.groupStatus[0].hasOwnProperty('groupStatusArr')) {
                         const transactionStatus = loan.groupStatus[0].groupStatusArr.filter(s => s === "pending");
                         if (transactionStatus.length > 0) {
                             allowApproved = true;
+                        } else if (loan.loanCycle == 1) {
+                            allowApproved = true;
                         }
+                    } else if (loan.pendings.length > 0) {
+                        allowApproved = false;
+                        hasActiveLoan = true;
                     } else {
                         allowApproved = true;
-                    }
-
-                    if (loan.pnNumber == null || !loan.pnNumber) {
-                        allowApproved = false;
                     }
                     
                     loanList.push({
@@ -451,7 +448,8 @@ const LoanApplicationPage = () => {
                         loanReleaseStr: formatPricePhp(loan.amountRelease),
                         fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
                         allowApproved: allowApproved,
-                        selected: false
+                        selected: false,
+                        hasActiveLoan: hasActiveLoan
                     });
                 });
                 loanList.sort((a, b) => {
@@ -675,9 +673,9 @@ const LoanApplicationPage = () => {
                     const tempList = list.map(loan => {
                         let temp = {...loan};
     
-                        if (temp.allowApproved) {
+                        // if (temp.allowApproved) {
                             temp.selected = selectAll;
-                        }
+                        // }
                         
                         return temp;
                     });
@@ -701,9 +699,9 @@ const LoanApplicationPage = () => {
                     const tempList = pendingList.map(loan => {
                         let temp = {...loan};
     
-                        if (temp.allowApproved) {
+                        // if (temp.allowApproved) {
                             temp.selected = selectAll;
-                        }
+                        // }
                         
                         return temp;
                     });
@@ -724,15 +722,56 @@ const LoanApplicationPage = () => {
         }
     }
 
+    const validate = (loanList) => {
+        let errorMsg = new Set();
+        loanList.map(loan => {
+            const clientName = `${loan.client.firstName} ${loan.client.lastName}`;
+            const groupName = loan.group.name;
+
+            if (!loan.allowApproved) {
+                errorMsg.add(`${clientName} in group ${groupName} please re-open the LO transaction.`);
+            }
+
+            if (loan.hasActiveLoan) {
+                errorMsg.add(`${clientName} in group ${groupName} still has active loan. Please transact it first`);
+            }
+
+            if (loan.pnNumber == null || !loan.pnNumber) {
+                errorMsg.add(`${clientName} in group ${groupName} don't have PN Number.`);
+            }
+        });
+
+        return Array.from(errorMsg);
+    }
+
     const handleMultiApprove = async (origin, unapprove) => {
         let selectedLoanList;
+        let validation = [];
         if (origin == 'ldf') {
             selectedLoanList = list && list.filter(loan => loan.selected === true);
+            
+            validation = validate(selectedLoanList);
+
+            if (validation.length > 0) {
+                selectedLoanList = [];
+            }
         } else if (origin == 'application') {
             selectedLoanList = pendingList && pendingList.filter(loan => loan.selected === true);
+
+            validation = validate(selectedLoanList);
+
+            if (validation.length > 0) {
+                selectedLoanList = [];
+            }
         }
-        
-        if (selectedLoanList.length > 0) {
+
+        if (validation.length > 0) {
+            let errorMsg;
+            validation.map(msg => {
+                errorMsg = errorMsg ? <span>{errorMsg} <br/><br/> {msg}</span> : <span>{msg}</span>
+            });
+            toast.error(errorMsg, { autoClose: 5000 });
+        } else if (selectedLoanList.length > 0) {
             const coMakerList = [];
             let errorMsg = '';
             selectedLoanList = selectedLoanList.map(loan => {
@@ -822,6 +861,8 @@ const LoanApplicationPage = () => {
                     }
                 }
             // }
+        } else if (error) {
+            toast.error('Some loan selected has no PN Number.');
         } else {
             toast.error('No loan selected!');
         }

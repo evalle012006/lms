@@ -29,8 +29,13 @@ const LDFListPage = React.forwardRef((props, ref) => {
 
     useEffect(() => {
         if (props.data) {
+            let dataList = props.data;
             const arr = [];
-            props.data.map((loan, index) => {
+            const hasSelected = props.data.filter(d => d.selected);
+            if (hasSelected.length > 0) {
+                dataList = hasSelected;
+            }
+            dataList.map((loan, index) => {
                 let loanDetails = {};
                 loanDetails.slotNo = loan.slotNo;
                 const clientData = { ...loan.client, fullName: fullName };
