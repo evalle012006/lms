@@ -39,7 +39,7 @@ const DetailsHeader = ({ pageTitle, page, pageName, currentDate, mode, selectedB
         if (currentUser.role.rep < 3 && page == 2 && pageName == 'lo-view') {
             router.push(`/branch-manager/cash-collection/users/${currentBranch._id}`);
         } else if (currentUser.role.rep == 3) {
-            router.push(`/transactions/${selectedLO.transactionType}-cash-collection`);
+            router.push(`/transactions/branch-manager/cash-collection`);
         } else {
             router.back();
         }

@@ -134,7 +134,7 @@ async function getAllLoanTransactionsByBranch(branchId, date, dayName, currentDa
                                     } },
                                     groupStatusArr: { $addToSet: {
                                         $cond: {
-                                            if: { $and: [
+                                            if: { $or: [
                                                 {$ne: ['$status', 'pending']},
                                                 {$and: [
                                                     {$ne: ['$status', 'tomorrow']},
@@ -671,7 +671,7 @@ async function getAllLoanTransactionsByBranch(branchId, date, dayName, currentDa
                                     } },
                                     groupStatusArr: { $addToSet: {
                                         $cond: {
-                                            if: { $and: [
+                                            if: { $or: [
                                                 {$ne: ['$status', 'pending']},
                                                 {$and: [
                                                     {$ne: ['$status', 'tomorrow']},
