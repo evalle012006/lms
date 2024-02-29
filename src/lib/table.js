@@ -619,7 +619,7 @@ const TableComponent = ({
                                 const delinquent = row.original.delinquent;
                                 const totalData = row.original.hasOwnProperty('totalData') ? row.original.totalData : false;
                                 const selected = row.original.hasOwnProperty('selected') ? row.original.selected : false;
-                                const allowApproved = row.original.hasOwnProperty('allowApproved') ? row.original.allowApproved : true;
+                                const disable = row.original.hasOwnProperty('disable') ? row.original.disable : false;
                                 const status = row.original.hasOwnProperty('status') && row.original.status;
                                 const draft = row.original.hasOwnProperty('isDraft') && row.original.isDraft;
                                 const pageName = row.original.hasOwnProperty('page') && row.original.page;
@@ -644,7 +644,7 @@ const TableComponent = ({
                                                 value={selected} 
                                                 onChange={() => handleSelectRow(row.original, i)}
                                                 size={"md"}
-                                                disabled={!allowApproved}
+                                                disabled={disable}
                                             />
                                           </td>
                                         )}
@@ -705,7 +705,7 @@ const TableComponent = ({
                                                 value={selected} 
                                                 onChange={() => handleSelectRow(row.original, i)}
                                                 size={"md"}
-                                                disabled={!allowApproved}
+                                                disabled={disable}
                                             />
                                           </td>
                                         )}

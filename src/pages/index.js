@@ -36,16 +36,16 @@ const Index = () => {
         //     await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}transactions/loans/update-loan-data`);
         // }
 
-        const updateLOData = async () => {
-            await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}aahandy-scripts/update-lo-data`);
-        }
+        // const updateLOData = async () => {
+        //     await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}aahandy-scripts/update-lo-data`);
+        // }
 
         // const updateLoanMaturedData = async () => {
         //     await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}aahandy-scripts/update-loan-matured-past-due`);
         // }
 
         // const updateLOSData = async () => {
-        //     await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}transactions/cash-collection-summary/update-los-data`);
+        //     await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}aahandy-scripts/update-los-data`);
         // }
 
         // const updateLoanCoMaker = async () => {

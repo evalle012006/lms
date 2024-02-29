@@ -291,6 +291,8 @@ const LoanOfficerSummary = () => {
         let activeLoanReleasePerson = 0;
         let activeLoanReleaseAmount = 0;
         let loanBalance = 0;
+        let totalTdaClients = 0;
+        let totalPendingClients = 0;
 
         losList.map((los, index) => {
             let temp = {...los};
@@ -322,7 +324,7 @@ const LoanOfficerSummary = () => {
                     noMcbuReturn: noMcbuReturn,
                     mcbuReturnAmt: mcbuReturnAmt,
                     mcbuBalance: -Math.abs(mcbuActual - mcbuWithdrawal + mcbuInterest - mcbuReturnAmt),
-                    loanReleaseAmount: -Math.abs(data.currentReleaseAmount),
+                    loanReleaseAmount: -Math.abs(data.totalLoanRelease),
                     collectionTarget: -Math.abs(data.targetLoanCollection + excess),
                     collectionActual: -Math.abs(data.collection),
                     pastDuePerson: (data?.noPastDue && data?.noPastDue !== '-') ? data?.noPastDue : 0,
@@ -333,8 +335,8 @@ const LoanOfficerSummary = () => {
                 activeClients = temp.activeClients + noTransfer;
                 activeBorrowers = temp.activeBorrowers + noTransfer;
                 activeLoanReleasePerson = temp.activeLoanReleasePerson + noTransfer;
-                activeLoanReleaseAmount = temp.activeLoanReleaseAmount - data.totalLoanRelease - data.currentReleaseAmount;
-                loanBalance = temp.loanBalance - (data.currentReleaseAmount - data.collection);
+                activeLoanReleaseAmount = temp.activeLoanReleaseAmount - data.totalLoanRelease + data.currentReleaseAmount;
+                loanBalance = temp.loanBalance - (data.totalLoanRelease - data.collection) + data.currentReleaseAmount;
             }
 
             if (temp?.transferRcv) {
@@ -352,6 +354,8 @@ const LoanOfficerSummary = () => {
                 const noMcbuReturn = (data.noMcbuReturn && data.noMcbuReturn !== '-') ? data.noMcbuReturn : 0;
                 const mcbuReturnAmt = (data.mcbuReturnAmt && data.mcbuReturnAmt !== '-') ? data.mcbuReturnAmt : 0;
                 const excess = data.excess !== '-' ? data.excess : 0;
+                const tdaClients = data.hasOwnProperty('totalTdaClients') ? data.totalTdaClients : 0;
+                const pendingClients = data.hasOwnProperty('totalPendingClients') ? data.totalPendingClients : 0;
 
                 transferRcv = {
                     transfer: noTransfer,
@@ -362,7 +366,7 @@ const LoanOfficerSummary = () => {
                     noMcbuReturn: noMcbuReturn,
                     mcbuReturnAmt: mcbuReturnAmt,
                     mcbuBalance: mcbuActual - mcbuWithdrawal + mcbuInterest - mcbuReturnAmt,
-                    loanReleaseAmount: data.currentReleaseAmount,
+                    loanReleaseAmount: data.totalLoanRelease,
                     collectionTarget: data.targetLoanCollection + excess,
                     collectionActual: data.collection,
                     pastDuePerson: (data?.noPastDue && data?.noPastDue !== '-') ? data?.noPastDue : 0,
@@ -370,11 +374,13 @@ const LoanOfficerSummary = () => {
                     // excess: excess
                 }
 
-                activeClients += noTransfer;
-                activeBorrowers += noTransfer;
-                activeLoanReleasePerson += noTransfer;
+                activeClients = activeClients + noTransfer - pendingClients;
+                activeBorrowers = activeBorrowers + noTransfer - tdaClients;
+                activeLoanReleasePerson = activeLoanReleasePerson + noTransfer - tdaClients;
                 activeLoanReleaseAmount += data.totalLoanRelease + data.currentReleaseAmount;
-                loanBalance += (data.currentReleaseAmount - data.collection);
+                loanBalance += (data.totalLoanRelease - data.collection) + data.currentReleaseAmount;
+                totalTdaClients += tdaClients;
+                totalPendingClients += pendingClients;
             }
 
             if (transferGvr || transferRcv) {
@@ -461,6 +467,8 @@ const LoanOfficerSummary = () => {
             activeBorrowers: activeBorrowers,
             loanBalance: loanBalance,
             loanBalanceStr: loanBalance < 0 ? `(${formatPricePhp(Math.abs(loanBalance))})` : formatPricePhp(loanBalance),
+            tdaClients: totalTdaClients,
+            pendingClients: totalPendingClients,
             flag: 'transfer'
         };
     }
@@ -673,15 +681,15 @@ const LoanOfficerSummary = () => {
                     }
                     totalLoanReleasePerson += noTransfer;
                     totalLoanReleaseAmount += transferRow.loanReleaseAmount;
-                    totalActiveLoanReleasePerson = transferRow.activeLoanReleasePerson;
-                    totalActiveLoanReleaseAmount = transferRow.activeLoanReleaseAmount;
+                    totalActiveLoanReleasePerson = totalActiveClients <= 0 ? 0 : transferRow.activeLoanReleasePerson;
+                    totalActiveLoanReleaseAmount = totalActiveClients <= 0 ? 0 :  transferRow.activeLoanReleaseAmount;
                     totalCollectionTarget += transferRow.collectionTarget ? transferRow.collectionTarget : 0;
                     totalCollectionAdvancePayment += transferRow.collectionAdvancePayment;
                     totalCollectionActual += transferRow.collectionActual;
                     totalPastDuePerson += transferRow.pastDuePerson;
                     totalPastDueAmount += transferRow.pastDueAmount;
-                    totalActiveBorrowers = transferRow.activeBorrowers;
-                    totalLoanBalance = transferRow.loanBalance;
+                    totalActiveBorrowers = totalActiveClients <= 0 ? 0 : transferRow.activeBorrowers;
+                    totalLoanBalance = totalActiveClients <= 0 ? 0 : transferRow.loanBalance;
                 }
 
                 losList[index] = {
@@ -833,18 +841,15 @@ const LoanOfficerSummary = () => {
             totalFullPaymentPerson += wt.fullPaymentPerson;
             totalFullPaymentAmount += wt.fullPaymentAmount;
             totalPastDuePerson = wt.pastDuePerson;
-                totalPastDueAmount = wt.pastDueAmount;
-
-            if (wt.loanBalance > 0) {
-                totalLoanBalance = wt.loanBalance;
-            }
+            totalPastDueAmount = wt.pastDueAmount;
+            totalLoanBalance = wt.loanBalance;
         });
 
         totalMcbuBalance = fBal.mcbuBalance + totalMcbuActual - totalMcbuWithdrawal + totalMcbuInterest - totalMcbuReturnAmt;
-        totalActiveClients = fBal.activeClients + totalTransfer + totalNewMember - totalNoMcbuReturn;
-        totalActiveLoanReleasePerson = fBal.activeLoanReleasePerson + totalLoanReleasePerson - totalFullPaymentPerson;
-        totalActiveLoanReleaseAmount = fBal.activeLoanReleaseAmount + totalLoanReleaseAmount - totalFullPaymentAmount;
-        totalActiveBorrowers = fBal.activeBorrowers + totalLoanReleasePerson - totalFullPaymentPerson;
+        totalActiveClients = fBal.activeClients + totalTransfer + totalNewMember - totalNoMcbuReturn; // bring down on last week
+        totalActiveLoanReleasePerson = totalActiveClients <= 0 ? 0 : fBal.activeLoanReleasePerson + totalLoanReleasePerson - totalFullPaymentPerson;
+        totalActiveLoanReleaseAmount = totalActiveClients <= 0 ? 0 : fBal.activeLoanReleaseAmount + totalLoanReleaseAmount - totalFullPaymentAmount;
+        totalActiveBorrowers = totalActiveClients <= 0 ? 0 : weeklyTotals[weeklyTotals.length - 1]?.activeBorrowers; // fBal.activeBorrowers + totalLoanReleasePerson - totalFullPaymentPerson;
         // totalLoanBalance = fBal.loanBalance + totalLoanReleaseAmount - totalCollectionActual;
 
         monthlyTotal.transfer = totalTransfer < 0 ? `(${Math.abs(totalTransfer)})` : totalTransfer;
@@ -1029,10 +1034,10 @@ const LoanOfficerSummary = () => {
         grandTotal.activeLoanReleasePerson = totalActiveLoanReleasePerson;
         grandTotal.activeLoanReleaseAmount = totalActiveLoanReleaseAmount;
         grandTotal.activeLoanReleaseAmountStr = formatPricePhp(totalActiveLoanReleaseAmount);
-        grandTotal.collectionAdvancePayment = totalCollectionAdvancePayment;
-        grandTotal.collectionAdvancePaymentStr = formatPricePhp(totalCollectionAdvancePayment);
-        grandTotal.collectionActual = totalCollectionActual;
-        grandTotal.collectionActualStr = formatPricePhp(totalCollectionActual);
+        grandTotal.collectionAdvancePayment = totalCollectionAdvancePayment <= 0 ? 0 : totalCollectionAdvancePayment;
+        grandTotal.collectionAdvancePaymentStr = formatPricePhp(grandTotal.collectionAdvancePayment);
+        grandTotal.collectionActual = totalCollectionActual <= 0 ? 0 : totalCollectionActual;
+        grandTotal.collectionActualStr = formatPricePhp(grandTotal.collectionActual);
         grandTotal.pastDuePerson = totalPastDuePerson;
         grandTotal.pastDueAmount = totalPastDueAmount;
         grandTotal.pastDueAmountStr = formatPricePhp(totalPastDueAmount);

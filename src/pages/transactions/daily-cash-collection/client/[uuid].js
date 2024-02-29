@@ -1159,7 +1159,7 @@ const CashCollectionDetailsPage = () => {
             if (errorMsgArr.length > 0) {
                 let errorMsg;
                 errorMsgArr.map(msg => {
-                    errorMsg = errorMsg ? errorMsg + '\n \n' + msg  : msg;
+                    errorMsg = errorMsg ? <span>{errorMsg} <br/><br/> {msg}</span> : <span>{msg}</span>
                 });
                 toast.error(errorMsg, { autoClose: 5000 });
                 setLoading(false);
@@ -1264,6 +1264,10 @@ const CashCollectionDetailsPage = () => {
                     } else if (cc.status == 'completed') {
                         if (temp.loanBalance <= 0 && temp.remarks?.value !== 'offset-matured-pd') {
                             temp.status = temp?.advance ? 'pending' : 'completed';
+                        }
+
+                        if (temp.paymentCollection > 0) {
+                            temp.fullPaymentDate = currentDate;
                         }
                     }
 

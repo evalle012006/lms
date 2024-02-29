@@ -82,7 +82,7 @@ export const LO_2_DAILY_GROUPS = [
 ];
 
 export const LO_3_DAILY_GROUPS = [
-    "DAISY", "ROSE", "IRIS", "ORCHIDS", "TULIP", "PANSY", "LILY", "ANEMONE", "BLUEBELL", "POPPY", "MIMOSA", "CARNATION"
+    "DAISY", "ROSE", "IRIS", "ORCHIDS", "TULIPS", "PANSY", "LILY", "ANEMONE", "BLUEBELL", "POPPY", "MIMOSA", "CARNATION"
 ];
 
 export const LO_4_DAILY_GROUPS = [
