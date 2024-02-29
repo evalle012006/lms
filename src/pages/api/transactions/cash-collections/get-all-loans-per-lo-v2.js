@@ -179,7 +179,7 @@ async function getAllLoansPerGroup(date, mode, loId, dayName, currentDate) {
                                     } },
                                     groupStatusArr: { $addToSet: {
                                         $cond: {
-                                            if: { $and: [
+                                            if: { $or: [
                                                 {$ne: ['$status', 'pending']},
                                                 {$and: [
                                                     {$ne: ['$status', 'tomorrow']},
@@ -1118,7 +1118,7 @@ async function getAllLoansPerGroup(date, mode, loId, dayName, currentDate) {
                                     } },
                                     groupStatusArr: { $addToSet: {
                                         $cond: {
-                                            if: { $and: [
+                                            if: { $or: [
                                                 {$ne: ['$status', 'pending']},
                                                 {$and: [
                                                     {$ne: ['$status', 'tomorrow']},
