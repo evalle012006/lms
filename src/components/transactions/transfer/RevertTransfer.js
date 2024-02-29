@@ -20,6 +20,7 @@ const RevertTransferPage = () => {
     const [showWarningDialog, setShowWarningDialog] = useState(false);
 
     const getList = async () => {
+        setLoading(true);
         let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/transfer-client/list-history';
         if (currentUser.role.rep === 1) {
             const response = await fetchWrapper.get(url);
@@ -155,15 +156,18 @@ const RevertTransferPage = () => {
 
     const handleRevert = () => {
         if (selectedTransfer) {
+            setShowWarningDialog(false);
             setLoading(true);
             fetchWrapper.postCors(process.env.NEXT_PUBLIC_API_URL + 'transactions/transfer-client/revert-transfer', {transferId: selectedTransfer._id})
                 .then(response => {
                     if (response.success) {
-                        getList();
                         setShowWarningDialog(false);
                         toast.success('Transfer successfully reverted.');
                         setLoading(false);
                         setSelectedTransfer({});
+                        setTimeout(() => {
+                            getList();
+                        }, 500);
                     } else if (response.error) {
                         toast.error(response.message);
                     } else {

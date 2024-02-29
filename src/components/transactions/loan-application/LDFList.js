@@ -49,6 +49,7 @@ const LDFListPage = React.forwardRef((props, ref) => {
                 // const month = moment().month() + 1;
                 // const monthStr = month < 10 ? '0' + month : month;
                 // loanDetails.loanApplicationNo = loanDetails.designatedOfficer + '-' + monthStr + 
+                loanDetails.loNo = loanOfficer?.loNo;
                 
                 arr.push(loanDetails);
             });
@@ -109,6 +110,8 @@ const LDFListPage = React.forwardRef((props, ref) => {
                 amountRelease: totalAmountRelease,
                 total: true
             });
+
+            arr.sort((a, b) => { return a.loNo - b.loNo });
 
             setList(arr);
             setSummaryList(summary);

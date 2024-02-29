@@ -179,6 +179,9 @@ const CashCollectionDetailsPage = () => {
                     let amountRelease = 0;
                     let loanBalance = 0;
                     let mispayment = false;
+                    let coMaker = (cc.coMaker && typeof cc.coMaker == 'number') ? cc.coMaker : '-';
+                    let currentReleaseAmount = 0;
+                    let noOfPayments = cc.noOfPayments;
                     if (cc.hasOwnProperty('current') && cc.current.length > 0) {
                         const current = cc.current[0];
                         if (cc?.transfer) {
@@ -198,6 +201,16 @@ const CashCollectionDetailsPage = () => {
                             activeLoan = cc.fullPaymentDate ? cc.history.activeLoan : cc.activeLoan;
                             excess = cc.fullPaymentDate ? cc.history.excess : cc.excess;
                             paymentCollection = cc.fullPaymentDate ? cc.history.collection : cc.paymentCollection;
+                            coMaker = '-';
+                        }
+
+                        if (current.status == "tomorrow") {
+                            activeLoan = (current.transferred && current.paymentCollection == 0)? 0 : current.activeLoan;
+                            currentReleaseAmount = current.transferred ? current.currentReleaseAmount : 0;
+                        }
+
+                        if (current.status == 'tomorrow' || current.status == 'pending') {
+                            noOfPayments = 60;
                         }
                     } else {
                         if (cc?.transfer) {
@@ -222,7 +235,7 @@ const CashCollectionDetailsPage = () => {
                     collection = {
                         ...cc,
                         group: cc.group,
-                        coMaker: (cc.coMaker && typeof cc.coMaker == 'number') ? cc.coMaker : '-',
+                        coMaker: coMaker,
                         loId: cc.loId,
                         loanId: cc.loanId,
                         branchId: cc.branchId,
@@ -241,8 +254,8 @@ const CashCollectionDetailsPage = () => {
                         excessStr: excess > 0 ? formatPricePhp(excess) : '-',
                         total: 0,
                         totalStr: '-',
-                        noOfPayments: cc.noOfPayments,
-                        noOfPaymentStr: cc.noOfPayments + ' / ' + cc.loanTerms,
+                        noOfPayments: noOfPayments,
+                        noOfPaymentStr: noOfPayments + ' / ' + cc.loanTerms,
                         activeLoan: activeLoan,
                         targetCollection: activeLoan,
                         targetCollectionStr: activeLoan > 0 ? formatPricePhp(activeLoan) : '-',
@@ -256,15 +269,15 @@ const CashCollectionDetailsPage = () => {
                         mcbuReturnAmtStr: mcbuReturnAmt > 0 ? formatPricePhp(mcbuReturnAmt) : '-',
                         mcbuInterest: cc.mcbuInterest ? cc.mcbuInterest : 0,
                         mcbuInterestStr: cc.mcbuInterest > 0 ? formatPricePhp(cc.mcbuInterest) : '-',
-                        amountRelease: cc.transferred ? 0 : amountRelease,
-                        amountReleaseStr: (cc.transfer && amountRelease > 0) ? formatPricePhp(amountRelease) : '-',
-                        loanBalance: cc.transferred ? 0 : loanBalance,
-                        loanBalanceStr: (cc.transfer && loanBalance > 0) ? formatPricePhp(loanBalance) : '-',
+                        amountRelease: amountRelease,
+                        amountReleaseStr: amountRelease > 0 ? formatPricePhp(amountRelease) : '-',
+                        loanBalance: loanBalance,
+                        loanBalanceStr: loanBalance > 0 ? formatPricePhp(loanBalance) : '-',
                         paymentCollection: paymentCollection,
                         paymentCollectionStr: paymentCollection > 0 ? formatPricePhp(paymentCollection) : '-',
                         occurence: cc.group.occurence,
-                        currentReleaseAmount: 0,
-                        currentReleaseAmountStr: '-',
+                        currentReleaseAmount: currentReleaseAmount,
+                        currentReleaseAmountStr: currentReleaseAmount > 0 ? formatPricePhp(currentReleaseAmount) : '-',
                         fullPayment: cc.fullPayment.length > 0 ? cc.fullPayment[0].fullPaymentAmount : 0,
                         fullPaymentStr: cc.fullPayment.length > 0 ? formatPricePhp(cc.fullPayment[0].fullPaymentAmount) : '-',
                         remarks: cc.remarks ? cc.remarks : '',
@@ -351,7 +364,7 @@ const CashCollectionDetailsPage = () => {
                         }
     
                         setEditMode(false);
-                    } else if (cc.status === "closed" && !cc.transfer) {
+                    } else if (cc.status === "closed") {
                         let numMispayment = cc.mispayment > 0 ? cc.mispayment + ' / ' + maxDays : '-';
                         if (date) {
                             numMispayment = cc.noMispayment > 0 ? cc.noMispayment + ' / ' + maxDays : '-';
@@ -463,7 +476,7 @@ const CashCollectionDetailsPage = () => {
                         }
     
                         setEditMode(false);
-                    } else if (cc.status !== "closed" || (type !== 'filter' && cc?.current?.length < 2)) {
+                    } else if (cc.status !== "closed" && (type !== 'filter' && cc?.current?.length < 2)) {
                         let noPaymentsStr = (cc.status === "active" || (cc.status === "completed" && cc.fullPaymentDate === currentDate)) ? cc.noOfPayments + ' / ' + maxDays : '-';
                         let numMispayment = cc.mispayment > 0 ? cc.mispayment + ' / ' + maxDays : '-';
                         let noMispayment = date ? cc.noMispayment ? cc.noMispayment : 0 : cc.mispayment;
@@ -720,6 +733,8 @@ const CashCollectionDetailsPage = () => {
                         }
 
                         if (cc?.transfer && cc?.transferDate === currentDate) {
+                            collection.fullPayment = 0;
+                            collection.fullPaymentStr = '-';
                             collection.transfer = true;
                             transferStr = 'TCR';
                         }
@@ -936,9 +951,17 @@ const CashCollectionDetailsPage = () => {
 
                     if (prevLoan) {
                         const current = loan.current.length > 0 ? loan.current[0] : null;
-                        pendingTomorrow.prevLoanId = prevLoan._id;
-                        pendingTomorrow.loanId = loan._id;
-                        pendingTomorrow._id = current?._id;
+                        if (loan?.transferred) {
+                            pendingTomorrow.transferred = true;
+                            pendingTomorrow.transferStr = 'TCG';
+                        } else if (loan?.transfer) {
+                            pendingTomorrow.transfer = true;
+                            pendingTomorrow.transferStr = 'TCR';
+                        } else {
+                            pendingTomorrow.prevLoanId = prevLoan._id;
+                            pendingTomorrow.loanId = loan._id;
+                            pendingTomorrow._id = current?._id;
+                        }
                     }
 
                     cashCollection.push(pendingTomorrow);
@@ -1084,7 +1107,7 @@ const CashCollectionDetailsPage = () => {
         let errorMsg = new Set();
 
         data && data.map(cc => {
-            if (cc.status !== 'totals' && cc.status == 'active' && cc?.loanBalance > 0 && !draft && !cc?.maturedPD) {
+            if (cc.status !== 'totals' && cc.status == 'active' && cc?.loanBalance > 0 && !draft && !cc?.maturedPD && (!cc.hasOwnProperty('transferStr') || cc?.transferStr == '-')) {
                 if (cc.group.day === dayName) {
                     if (cc.error) {
                         errorMsg.add('Error occured. Please double check the Actual Collection column.');
@@ -1155,7 +1178,7 @@ const CashCollectionDetailsPage = () => {
                         errorMsg.add('Error occured. Only offset transaction allowed.');
                     }
                 }
-            } else if (cc.status !== 'totals' && (cc.status === 'completed' || (cc?.status !== 'closed' && cc?.loanBalance <= 0)) && (!cc.remarks || (cc.remarks && (cc.remarks.value !== 'pending' && !cc.remarks.value?.startsWith('reloaner') && !cc.remarks.value?.startsWith('offset'))))) {
+            } else if (cc.status !== 'totals' && (!cc.hasOwnProperty('transferStr') || cc?.transferStr == '-') && (cc.status === 'completed' || (cc?.status !== 'closed' && cc?.loanBalance <= 0)) && (!cc.remarks || (cc.remarks && (cc.remarks.value !== 'pending' && !cc.remarks.value?.startsWith('reloaner') && !cc.remarks.value?.startsWith('offset'))))) {
                 errorMsg.add("Invalid remarks. Fullpayment transaction has no remarks. Please set the remarks to RELOANER OR OFFSET.");
             }
         });
@@ -2414,7 +2437,7 @@ const CashCollectionDetailsPage = () => {
         setSelectAll(!selectAll);
         const dataList = data.map(cc => {
             let temp = {...cc};
-            if (temp.clientId) {
+            if (temp.clientId && (!temp.hasOwnProperty('transferStr') || temp?.transferStr == '-')) {
                 temp.selected = !selectAll;
             }
             return temp;
@@ -2632,7 +2655,7 @@ const CashCollectionDetailsPage = () => {
                                         return (
                                             <tr key={index} className={`w-full hover:bg-slate-200 border-b border-b-gray-300 font-proxima 
                                                                 ${rowBg} ${cc.status === 'totals' ? 'font-bold font-proxima-bold text-red-400' : 'text-gray-600'}`} >
-                                                <th className="p-2 text-center">{(cc.status !== 'totals' && cc.clientId) && <CheckBox size={"md"} value={cc.selected} onChange={() => handleSelectRow(index)} />}</th>
+                                                <th className="p-2 text-center">{(cc.status !== 'totals' && cc.clientId && (!cc.hasOwnProperty('transferStr') || cc?.transferStr == '-')) && <CheckBox size={"md"} value={cc.selected} onChange={() => handleSelectRow(index)} />}</th>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.status !== 'totals' ? cc.slotNo : '' }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer" onClick={() => handleShowClientInfoModal(cc)}>{ cc.fullName }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.coMaker }</td>
@@ -2664,7 +2687,7 @@ const CashCollectionDetailsPage = () => {
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
                                                     { (!isWeekend && !isHoliday && currentUser.role.rep > 2 && cc.status === 'active' 
                                                         && editMode && ((cc?.origin && (cc?.origin === 'pre-save' || cc?.origin === 'automation-trf')) || cc?.reverted || cc.draft)
-                                                        || (cc.offsetTransFlag && cc.otherDay) && !cc?.dcmc && !cc?.mpdc && !cc?.maturedPD) ? (
+                                                        || (cc.offsetTransFlag && cc.otherDay) && !cc?.dcmc && !cc?.mpdc && !cc?.maturedPD && (!cc.hasOwnProperty('transferStr') || cc?.transferStr == '-')) ? (
                                                         <React.Fragment>
                                                             <input type="number" name={cc.clientId} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'amount', cc.activeLoan)}
                                                                 onClick={(e) => e.stopPropagation()} value={cc.paymentCollection} tabIndex={index + 2} onWheel={(e) => e.target.blur()}
@@ -2678,7 +2701,7 @@ const CashCollectionDetailsPage = () => {
                                                     }
                                                 </td>
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
-                                                    { cc.mcbuWithdrawFlag ? (
+                                                    { (cc.mcbuWithdrawFlag && (!cc.hasOwnProperty('transferStr') || cc?.transferStr == '-')) ? (
                                                         <React.Fragment>
                                                             <input type="number" name={`${cc.clientId}-mcbuWithdrawal`} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'mcbuWithdrawal')}
                                                                 onClick={(e) => e.stopPropagation()} onBlur={(e) => handlePaymentValidation(e, cc, index, 'mcbuWithdrawal')} defaultValue={cc.mcbuWithdrawal ? cc.mcbuWithdrawal : 0} tabIndex={index + 3}
@@ -2718,6 +2741,7 @@ const CashCollectionDetailsPage = () => {
                                                         || (cc.status == 'completed' && cc.remarks == '')
                                                         || (cc.offsetTransFlag && cc.otherDay)  
                                                        )
+                                                    && (!cc.hasOwnProperty('transferStr') || cc?.transferStr == '-')
                                                     // !isWeekend && !isHoliday && !filter && (currentUser.role.rep > 2 && (cc.status === 'active' || cc.status === 'completed') && (editMode && !groupSummaryIsClose) 
                                                     // && ((cc?.origin && (cc?.origin === 'pre-save' || cc?.origin === 'automation-trf')) || cc.reverted)) || ((cc.remarks && cc.remarks.value === "reloaner" && cc.status !== "tomorrow") && !groupSummaryIsClose)
                                                     // && (cc.remarks && cc.remarks.value === "reloaner" && cc.fullPaymentDate !== currentDate) && cc.status !== 'pending' || cc.draft || (cc.offsetTransFlag && cc.otherDay)

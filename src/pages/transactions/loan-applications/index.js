@@ -27,6 +27,7 @@ import ReactToPrint from 'node_modules/react-to-print/lib/index';
 import { PrinterIcon } from '@heroicons/react/24/outline';
 import { useRef } from "react";
 import LDFListPage from "@/components/transactions/loan-application/LDFList";
+import RadioButton from "@/lib/ui/radio-button";
 
 const LoanApplicationPage = () => {
     const isHoliday = useSelector(state => state.systemSettings.holiday);
@@ -75,6 +76,9 @@ const LoanApplicationPage = () => {
 
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [rejectReason, setRejectReason] = useState();
+
+    const [ldfFilter, setLdfFilter] = useState('all');
+    const [ldfOccurenceFilter, setLdfOccurenceFilter] = useState('all');
 
     const ndsFormRef = useRef();
 
@@ -259,6 +263,10 @@ const LoanApplicationPage = () => {
                         allowApproved = true;
                     }
 
+                    if (loan.pnNumber == null || !loan.pnNumber) {
+                        allowApproved = false;
+                    }
+
                     loanList.push({
                         ...loan,
                         loanOfficerName: `${loan.loanOfficer.lastName}, ${loan.loanOfficer.firstName}`,
@@ -301,7 +309,7 @@ const LoanApplicationPage = () => {
                 await response.loans && response.loans.map(loan => {
                     let allowApproved = false;
                     let hasActiveLoan = false;
-
+                    
                     if (loan.groupStatus.length > 0) {
                         const transactionStatus = loan.groupStatus[0].groupStatusArr.filter(s => s === "pending");
                         if (transactionStatus.length > 0) {
@@ -314,6 +322,10 @@ const LoanApplicationPage = () => {
                         hasActiveLoan = true;
                     } else {
                         allowApproved = true;
+                    }
+
+                    if (loan.pnNumber == null || !loan.pnNumber) {
+                        allowApproved = false;
                     }
 
                     loanList.push({
@@ -367,6 +379,10 @@ const LoanApplicationPage = () => {
                         allowApproved = true;
                     }
 
+                    if (loan.pnNumber == null || !loan.pnNumber) {
+                        allowApproved = false;
+                    }
+
                     loanList.push({
                         ...loan,
                         branchName: `${loan.branch[0].code} - ${loan.branch[0].name}`,
@@ -416,6 +432,10 @@ const LoanApplicationPage = () => {
                         }
                     } else {
                         allowApproved = true;
+                    }
+
+                    if (loan.pnNumber == null || !loan.pnNumber) {
+                        allowApproved = false;
                     }
                     
                     loanList.push({
@@ -926,6 +946,84 @@ const LoanApplicationPage = () => {
         }
     }
 
+    const handleLoTypeChange = (value) => {
+        setLdfFilter(value);
+
+        let dataList = list;
+        if (ldfOccurenceFilter !== 'all') {
+            dataList = data;
+        }
+        
+        switch(value) {
+            case 'all':
+                if (ldfOccurenceFilter == 'daily') {
+                    dataList = list.filter(loan => loan.occurence == 'daily' );
+                } else if (ldfOccurenceFilter == 'weekly') {
+                    dataList = list.filter(loan => loan.occurence == 'weekly' );
+                }
+                setData(dataList);
+                break;
+            case 'main':
+                if (ldfOccurenceFilter == 'daily') {
+                    dataList = list.filter(loan => loan.occurence == 'daily' );
+                } else if (ldfOccurenceFilter == 'weekly') {
+                    dataList = list.filter(loan => loan.occurence == 'weekly' );
+                }
+                const mainData = dataList.filter(loan => loan.loanOfficer.loNo < 11 );
+                setData(mainData);
+                break;
+            case 'ext':
+                if (ldfOccurenceFilter == 'daily') {
+                    dataList = list.filter(loan => loan.occurence == 'daily' );
+                } else if (ldfOccurenceFilter == 'weekly') {
+                    dataList = list.filter(loan => loan.occurence == 'weekly' );
+                }
+                const extData = dataList.filter(loan => loan.loanOfficer.loNo > 10 ); 
+                setData(extData);
+                break;
+            default: break;
+        }
+    }
+
+    const handleLoOccurenceChange = (value) => {
+        setLdfOccurenceFilter(value);
+
+        let dataList = list;
+        if (ldfFilter !== 'all') {
+            dataList = data;
+        }
+
+        switch(value) {
+            case 'all':
+                if (ldfFilter == 'main') {
+                    dataList = list.filter(loan => loan.loanOfficer.loNo < 11 );
+                } else if (ldfFilter == 'ext') {
+                    dataList = list.filter(loan => loan.loanOfficer.loNo > 10 );
+                }
+                setData(dataList);
+                break;
+            case 'daily':
+                if (ldfFilter == 'main') {
+                    dataList = list.filter(loan => loan.loanOfficer.loNo < 11 );
+                } else if (ldfFilter == 'ext') {
+                    dataList = list.filter(loan => loan.loanOfficer.loNo > 10 );
+                }
+                const dailyData = dataList.filter(loan => loan.occurence == 'daily' ); 
+                setData(dailyData);
+                break;
+            case 'weekly':
+                if (ldfFilter == 'main') {
+                    dataList = list.filter(loan => loan.loanOfficer.loNo < 11 );
+                } else if (ldfFilter == 'ext') {
+                    dataList = list.filter(loan => loan.loanOfficer.loNo > 10 );
+                }
+                const weeklyData = dataList.filter(loan => loan.occurence == 'weekly' ); 
+                setData(weeklyData);
+                break;
+            default: break;
+        }
+    }
+
     useEffect(() => {
         let mounted = true;
         mounted && getListBranch();
@@ -1092,7 +1190,7 @@ const LoanApplicationPage = () => {
                 <ButtonSolid label="Add Loan" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
             ];
 
-            if (selectedTab == 'application') {
+            if (selectedTab == 'application' && !isWeekend && !isHoliday) {
                 // actBtns.splice(0, 1);
                 actBtns.splice(0, 2);
                 actBtns.unshift(
@@ -1107,7 +1205,7 @@ const LoanApplicationPage = () => {
     }, [selectedTab, list, pendingList]);
 
     return (
-        <Layout actionButtons={(currentUser.role.rep > 2 && !isWeekend && !isHoliday) && actionButtons}>
+        <Layout actionButtons={currentUser.role.rep > 2 && actionButtons}>
             <div className="pb-4">
                 {loading ?
                     (
@@ -1161,7 +1259,7 @@ const LoanApplicationPage = () => {
                                                     closeMenuOnSelect={true}
                                                     placeholder={'LO Filter'}/>
                                             </div>
-                                            <div className='flex flex-col ml-4'>
+                                            <div className='flex flex-col ml-4 mr-4'>
                                                 <span className='text-zinc-400 mb-1'>Group:</span>
                                                 <Select 
                                                     options={groupList}
@@ -1172,6 +1270,16 @@ const LoanApplicationPage = () => {
                                                     isSearchable={true}
                                                     closeMenuOnSelect={true}
                                                     placeholder={'Group Filter'}/>
+                                            </div>
+                                            <div className="mt-4 flex flex-row border border-zinc-200 rounded-lg mr-4 pl-4">
+                                                <RadioButton id={"radio_main"} name="radio-lo-type" label={"All"} checked={ldfFilter === 'all'} value="all" onChange={handleLoTypeChange} />
+                                                <RadioButton id={"radio_mother"} name="radio-lo-type" label={"Main"} checked={ldfFilter === 'main'} value="main" onChange={handleLoTypeChange} />
+                                                <RadioButton id={"radio_ext"} name="radio-lo-type" label={"Ext"} checked={ldfFilter === 'ext'} value="ext" onChange={handleLoTypeChange} />
+                                            </div>
+                                            <div className="mt-4 flex flex-row border border-zinc-200 rounded-lg pl-4">
+                                                <RadioButton id={"radio_occurence_main"} name="radio-occurence" label={"All"} checked={ldfOccurenceFilter === 'all'} value="all" onChange={handleLoOccurenceChange} />
+                                                <RadioButton id={"radio_occurence_daily"} name="radio-occurence" label={"Daily"} checked={ldfOccurenceFilter === 'daily'} value="daily" onChange={handleLoOccurenceChange} />
+                                                <RadioButton id={"radio_occurence_weekly"} name="radio-occurence" label={"Weekly"} checked={ldfOccurenceFilter === 'weekly'} value="weekly" onChange={handleLoOccurenceChange} />
                                             </div>
                                         </div>
                                         {currentUser.role.rep === 3 && (

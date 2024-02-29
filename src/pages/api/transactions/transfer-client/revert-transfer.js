@@ -66,8 +66,19 @@ async function revertTransfer(req, res) {
         let originalGroup = transferData.originalGroup[0];
         let newGroup = transferData.newGroup[0];
 
-        originalLoan.status = "active";
-        originalLoan.endDate = getEndDate(originalLoan.dateGranted, originalLoan.occurence === 'daily' ? 60 : 24 );
+        let prevLoan = await db.collection('loans').find({ _id: new ObjectId(originalCC?.prevLoanId) }).toArray();
+        if (prevLoan.length > 0) {
+            prevLoan = prevLoan[0];
+            delete prevLoan.transferredReleased;
+            delete prevLoan._id;
+            await db.collection('loans').updateOne({ _id: new ObjectId(originalCC.prevLoanId) }, {$unset: {transferredReleased: 1}, $set: {...prevLoan}});
+        }
+
+        originalLoan.status = originalCC.status !== 'pending' ? originalCC.status !== 'completed' ? 'active' : 'completed' : 'pending';
+        // if (originalLoan.status == 'active') {
+        //     originalLoan.endDate = getEndDate(originalLoan.dateGranted, originalLoan.occurence === 'daily' ? 60 : 24 );
+        // }
+        
         originalLoan.revertedTransfer = true;
 
         delete originalLoan.transferred;
@@ -75,7 +86,7 @@ async function revertTransfer(req, res) {
 
         const originalLoanId = originalLoan._id;
         delete originalLoan._id;
-        await db.collection('loans').updateOne({ _id: originalLoanId }, { $set: originalLoan, $unset: { transferred: 1, transferId: 1 } });
+        await db.collection('loans').updateOne({ _id: originalLoanId }, { $unset: { transferred: 1, transferId: 1 }, $set: {...originalLoan} });
 
         delete originalCC.transferred;
         delete originalCC.sameLo;
@@ -85,7 +96,7 @@ async function revertTransfer(req, res) {
 
         const originalCCId = originalCC._id;
         delete originalCC._id;
-        await db.collection('cashCollections').updateOne({ _id: originalCCId }, { $set: originalCC, $unset: { transferred: 1, transferId: 1, sameLo: 1, loToLo: 1, branchToBranch: 1 } });
+        await db.collection('cashCollections').updateOne({ _id: originalCCId }, { $unset: { transferred: 1, transferId: 1, sameLo: 1, loToLo: 1, branchToBranch: 1 }, $set: {...originalCC} });
 
         await db.collection('loans').deleteOne({ _id: newLoan._id });
         await db.collection('cashCollections').deleteOne({ _id: newCC._id });

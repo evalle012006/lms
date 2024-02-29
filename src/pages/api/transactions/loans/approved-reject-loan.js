@@ -71,6 +71,7 @@ async function updateLoan(req, res) {
                     }
 
                     let tempLoan = {...loans[0]};
+                    // need to check on why the loan is lost when rejecting....
                     tempLoan.mcbu = loan.mcbu;
                     tempLoan.mcbuCollection = loan.mcbu;
                     const prevLoanId = tempLoan._id;

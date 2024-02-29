@@ -54,7 +54,15 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
     };
 
     const handleBack = () => {
-        router.back();
+        if (page == 'transaction') {
+            if (currentUser.role.rep == 4) {
+                router.push(`/transactions/${currentUser.transactionType}-cash-collection`);
+            } else {
+                router.push(`/transactions/${group.occurence}-cash-collection/group/${group.loanOfficerId}`);
+            }
+        } else {
+            router.back();
+        }
     }
 
     useEffect(() => {
