@@ -363,19 +363,19 @@ const LoanApplicationPage = () => {
                     let allowApproved = false;
                     let hasActiveLoan = false;
                     
-                    if (loan.groupStatus.length > 0 && loan.groupStatus[0].hasOwnProperty('groupStatusArr')) {
-                        const transactionStatus = loan.groupStatus[0].groupStatusArr.filter(s => s === "pending");
-                        if (transactionStatus.length > 0) {
-                            allowApproved = true;
-                        } else if (loan.loanCycle == 1) {
-                            allowApproved = true;
-                        }
-                    } else if (loan.pendings.length > 0) {
-                        allowApproved = false;
-                        hasActiveLoan = true;
-                    } else {
-                        allowApproved = true;
-                    }
+                    // if (loan.groupStatus.length > 0 && loan.groupStatus[0].hasOwnProperty('groupStatusArr')) {
+                    //     const transactionStatus = loan.groupStatus[0].groupStatusArr.filter(s => s === "pending");
+                    //     if (transactionStatus.length > 0) {
+                    //         allowApproved = true;
+                    //     } else if (loan.loanCycle == 1) {
+                    //         allowApproved = true;
+                    //     }
+                    // } else if (loan.pendings.length > 0) {
+                    //     allowApproved = false;
+                    //     hasActiveLoan = true;
+                    // } else {
+                    //     allowApproved = true;
+                    // }
 
                     loanList.push({
                         ...loan,
@@ -412,7 +412,7 @@ const LoanApplicationPage = () => {
                 setLoading(false);
                 toast.error(response.message);
             }
-        } else if (branchList.length > 0) {
+        } else {
             url = url + '?' + new URLSearchParams({ status: 'pending', currentDate: currentDate });
             const response = await fetchWrapper.get(url);
             if (response.success) {
@@ -421,19 +421,19 @@ const LoanApplicationPage = () => {
                     let allowApproved = false;
                     let hasActiveLoan = false;
                     
-                    if (loan.groupStatus.length > 0 && loan.groupStatus[0].hasOwnProperty('groupStatusArr')) {
-                        const transactionStatus = loan.groupStatus[0].groupStatusArr.filter(s => s === "pending");
-                        if (transactionStatus.length > 0) {
-                            allowApproved = true;
-                        } else if (loan.loanCycle == 1) {
-                            allowApproved = true;
-                        }
-                    } else if (loan.pendings.length > 0) {
-                        allowApproved = false;
-                        hasActiveLoan = true;
-                    } else {
-                        allowApproved = true;
-                    }
+                    // if (loan.groupStatus.length > 0 && loan.groupStatus[0].hasOwnProperty('groupStatusArr')) {
+                    //     const transactionStatus = loan.groupStatus[0].groupStatusArr.filter(s => s === "pending");
+                    //     if (transactionStatus.length > 0) {
+                    //         allowApproved = true;
+                    //     } else if (loan.loanCycle == 1) {
+                    //         allowApproved = true;
+                    //     }
+                    // } else if (loan.pendings.length > 0) {
+                    //     allowApproved = false;
+                    //     hasActiveLoan = true;
+                    // } else {
+                    //     allowApproved = true;
+                    // }
                     
                     loanList.push({
                         ...loan,
@@ -465,6 +465,7 @@ const LoanApplicationPage = () => {
                 } );
                 dispatch(setLoanList(loanList));
                 dispatch(setPendingLoanList(loanList.filter(l => l.ldfApproved)));
+
                 setLoading(false);
             } else if (response.error) {
                 setLoading(false);
