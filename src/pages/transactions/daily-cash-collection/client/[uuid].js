@@ -175,14 +175,15 @@ const CashCollectionDetailsPage = () => {
                     let coMaker = (cc.coMaker && typeof cc.coMaker == 'number') ? cc.coMaker : '-';
                     let currentReleaseAmount = 0;
                     let noOfPayments = cc.noOfPayments;
+                    let fullPayment = cc.fullPayment.length > 0 ? cc.fullPayment[0].fullPaymentAmount : 0;
                     if (cc.hasOwnProperty('current') && cc.current.length > 0) {
                         const current = cc.current[0];
+                        mispayment = current.mispayment;
                         if (cc?.transfer) {
                             transferStr = 'TCR';
                             mcbu = current.mcbu;
                             amountRelease = current.amountRelease;
                             loanBalance = current.loanBalance;
-                            mispayment = current.mispayment;
                             numMispayment = '';
                         }
 
@@ -206,12 +207,14 @@ const CashCollectionDetailsPage = () => {
                             noOfPayments = 60;
                         }
                     } else {
+                        mispayment = cc.mispayment;
                         if (cc?.transfer) {
                             transferStr = 'TCR';
                             mcbu = cc.mcbu;
                             amountRelease = cc.amountRelease;
                             loanBalance = cc.loanBalance;
                             numMispayment = '';
+                            fullPayment = 0;
                         }
 
                         if (cc?.transferred) {
@@ -219,9 +222,15 @@ const CashCollectionDetailsPage = () => {
                             mcbuCol = cc.mcbuCol;
                             mcbuWithdrawal = cc.mcbuWithdrawal;
                             mcbuReturnAmt = cc.mcbuReturnAmt;
-                            activeLoan = cc?.history?.activeLoan ? cc.history.activeLoan : cc.activeLoan;
-                            excess = cc?.history?.excess > 0 ? cc.history.excess : cc.excess;
-                            paymentCollection = cc?.history?.collection ? cc.history.collection : 0;
+                            if (cc.status == 'active') {
+                                activeLoan = cc.activeLoan;
+                                excess = cc.excess;
+                                paymentCollection = cc.paymentCollection;
+                            } else {
+                                activeLoan = cc?.history?.activeLoan ? cc.history.activeLoan : cc.activeLoan;
+                                excess = cc?.history?.excess > 0 ? cc.history.excess : cc.excess;
+                                paymentCollection = cc?.history?.collection ? cc.history.collection : 0;
+                            }
                         }
                     }
 
@@ -271,8 +280,8 @@ const CashCollectionDetailsPage = () => {
                         occurence: cc.group.occurence,
                         currentReleaseAmount: currentReleaseAmount,
                         currentReleaseAmountStr: currentReleaseAmount > 0 ? formatPricePhp(currentReleaseAmount) : '-',
-                        fullPayment: cc.fullPayment.length > 0 ? cc.fullPayment[0].fullPaymentAmount : 0,
-                        fullPaymentStr: cc.fullPayment.length > 0 ? formatPricePhp(cc.fullPayment[0].fullPaymentAmount) : '-',
+                        fullPayment: fullPayment,
+                        fullPaymentStr: fullPayment > 0 ? formatPricePhp(fullPayment) : '-',
                         remarks: cc.remarks ? cc.remarks : '',
                         pastDue: cc.pastDue ? cc.pastDue : 0,
                         pastDueStr: cc.pastDue ? formatPricePhp(cc.pastDue) : '-',
@@ -1020,7 +1029,7 @@ const CashCollectionDetailsPage = () => {
 
         dataArr.map(collection => {
             if (collection.status !== 'open' && collection.status !== 'totals') {
-                if (collection.status === 'active' || collection?.transferred) {
+                if (collection.status === 'active' || collection?.transferred || (collection?.transfer && collection.status == 'tomorrow')) {
                     totalLoanRelease += collection.amountRelease ? collection.amountRelease !== '-' ? collection.amountRelease : 0 : 0;
                     totalLoanBalance += collection.loanBalance ? collection.loanBalance !== '-' ? collection.loanBalance : 0 : 0;
                 }
@@ -1273,7 +1282,7 @@ const CashCollectionDetailsPage = () => {
 
                     // if admin it should not override what it is currently saved
                     temp.groupStatus = 'pending';
-                    temp.draft = temp.status === 'completed' ? false : draft;
+                    temp.draft = temp.loanBalance <= 0 ? false : draft;
 
                     if (prevDraft && !draft) {
                         temp.groupStatus = "closed";
@@ -1762,10 +1771,10 @@ const CashCollectionDetailsPage = () => {
     
                                 if (remarks.value === 'delinquent-mcbu') {
                                     temp.dcmc = true;
-                                    // if (temp.paymentCollection > 0) {
-                                    //     temp.loanBalance += temp.paymentCollection;
-                                    //     temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
-                                    // }
+                                    if (temp.paymentCollection > 0) {
+                                        temp.loanBalance = temp.loanBalance + temp.paymentCollection;
+                                        temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
+                                    }
                                     temp.mispayment = false;
                                     temp.mispaymentStr = 'No';
                                     temp.activeLoan = 0;
@@ -1776,6 +1785,8 @@ const CashCollectionDetailsPage = () => {
                                         temp.mcbuStr = formatPricePhp(temp.mcbu);
                                         temp.mcbuCol = 0;
                                         temp.mcbuColStr = '-';
+                                        temp.noOfPayments = temp.noOfPayments - 1;
+                                        temp.noOfPaymentStr = temp.noOfPayments + ' / ' + temp.loanTerms;
                                     }
                                     temp.paymentCollection = 0;
                                     temp.paymentCollectionStr = '-';
@@ -2054,8 +2065,12 @@ const CashCollectionDetailsPage = () => {
                                         const finalMcbu = (excessMcbu * 10) + 10;
                                         temp.mcbuCol = finalMcbu;
                                         temp.mcbuColStr = formatPricePhp(temp.mcbuCol);
-                                        temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + temp.mcbuCol : 0 + temp.mcbuCol;
+                                    } else {
+                                        temp.mcbuCol = 10;
+                                        temp.mcbuColStr = formatPricePhp(temp.mcbuCol);
                                     }
+
+                                    temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + temp.mcbuCol : 0 + temp.mcbuCol;
                                     temp.mcbuStr = formatPricePhp(temp.mcbu);
                                 }
     
@@ -2457,7 +2472,7 @@ const CashCollectionDetailsPage = () => {
                             <table className="table-auto border-collapse text-sm">
                                 <thead className="border-b border-b-gray-300">
                                     <tr className="sticky top-0 column py-0 pr-0 pl-4 text-left text-gray-500 uppercase tracking-wider bg-white z-20">
-                                        <th className="p-2 text-center"><CheckBox size={"md"} value={selectAll} onChange={handleSelectAll} /></th>
+                                        {currentUser.role.rep == 3 && <th className="p-2 text-center"><CheckBox size={"md"} value={selectAll} onChange={handleSelectAll} /></th>}
                                         <th className="p-2 text-center">Slot #</th>
                                         <th className="p-2 text-center">Client Name</th>
                                         <th className="p-2 text-center">Co-Maker</th>
@@ -2513,7 +2528,7 @@ const CashCollectionDetailsPage = () => {
                                         return (
                                             <tr key={index} className={`w-full hover:bg-slate-200 border-b border-b-gray-300 font-proxima
                                                                 ${rowBg} ${cc.status === 'totals' ? 'font-bold font-proxima-bold text-red-400' : 'text-gray-600'}`} >
-                                                <th className="p-2 text-center">{(cc.status !== 'totals' && cc.clientId && (!cc.hasOwnProperty('transferStr') || cc?.transferStr == '-')) && <CheckBox size={"md"} value={cc.selected} onChange={() => handleSelectRow(index)} />}</th>
+                                                {currentUser.role.rep == 3 && <th className="p-2 text-center">{(cc.status !== 'totals' && cc.clientId && (!cc.hasOwnProperty('transferStr') || cc?.transferStr == '-')) && <CheckBox size={"md"} value={cc.selected} onChange={() => handleSelectRow(index)} />}</th>}
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.status !== 'totals' ? cc.slotNo : '' }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer" onClick={() => handleShowClientInfoModal(cc)}>{ cc.fullName }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.coMaker }</td>

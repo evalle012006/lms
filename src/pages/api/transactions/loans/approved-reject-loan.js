@@ -50,34 +50,43 @@ async function updateLoan(req, res) {
             // in loans, change back the previous loan to completed status and the current one change the loanCycle to 0
             // client status to pending
             if (loan.loanCycle > 1) {
-                let loans = await db.collection('loans').find({ clientId: loan.clientId, loanCycle: loan.loanCycle - 1 }).toArray();
-                if (loans && loans?.length > 0) {
+                let prevLoan = await db.collection('loans').find({ clientId: loan.clientId, loanCycle: loan.loanCycle - 1 }).toArray();
+                if (prevLoan && prevLoan?.length > 0) {
+                    prevLoan = prevLoan[0];
                     let cashCollection = await db.collection('cashCollections')
                                             .aggregate([
                                                 { $match: { $expr: { $and: [
                                                     { $eq: ['$clientId', loan.clientId] },
-                                                    { $eq: ['$dateAdded', loans[0].fullPaymentDate] },
+                                                    { $eq: ['$dateAdded', currentDate] },
                                                 ] } } }
                                             ])
                                             .toArray();
 
                     if (cashCollection.length > 0) {
                         cashCollection = cashCollection[0];
-                        cashCollection.status = 'completed';
+                        cashCollection.status = cashCollection.loanBalance <= 0 ? 'completed' : 'active';
                         cashCollection.currentReleaseAmount = 0;
+                        cashCollection.loanId = prevLoan._id + "";
                         const ccId = cashCollection._id;
                         delete cashCollection._id;
-                        await db.collection('cashCollections').updateOne({ _id: ccId }, { $set: { ...cashCollection } });
+                        delete cashCollection.prevLoanId;
+                        await db.collection('cashCollections').updateOne({ _id: ccId }, { $unset: { prevLoanId: 1 }, $set: { ...cashCollection } });
                     }
 
-                    let tempLoan = {...loans[0]};
-                    // need to check on why the loan is lost when rejecting....
-                    tempLoan.mcbu = loan.mcbu;
-                    tempLoan.mcbuCollection = loan.mcbu;
-                    const prevLoanId = tempLoan._id;
-                    delete tempLoan._id;
-                    tempLoan.status = 'completed';
-                    await db.collection('loans').updateOne({ _id: prevLoanId }, {$set: { ...tempLoan }});
+                    const prevLoanId = prevLoan._id;
+                    delete prevLoan._id;
+                    if (prevLoan.loanBalance <= 0 && prevLoan.fullPaymentDate) {
+                        prevLoan.status = 'completed';
+                        prevLoan.mcbu = loan.mcbu;
+                        prevLoan.mcbuCollection = loan.mcbu;
+                    } else {
+                        prevLoan.status = 'active';
+                    }
+
+                    delete prevLoan.advance;
+                    delete prevLoan.advanceDate;
+                    
+                    await db.collection('loans').updateOne({ _id: prevLoanId }, {$unset: {advance: 1, advanceDate: 1}, $set: { ...prevLoan }});
                 }
             } else {
                 await db.collection('cashCollections').deleteOne({ loanId: loan._id });

@@ -335,6 +335,20 @@ async function list(req, res) {
                             as: "lo"
                         }
                     },
+                    {
+                        $lookup: {
+                            from: "loans",
+                            localField: "clientId",
+                            foreignField: "clientId",
+                            pipeline: [
+                                { $match: { status: 'pending' } }
+                            ],
+                            as: "loans"
+                        }
+                    },
+                    {
+                        "$match": { "loans.0": { "$exists": false } }
+                    },
                     { $project: { clientIdObj: 0, loIdObj: 0 } }
                 ])
                 .toArray();

@@ -183,6 +183,7 @@ async function saveCashCollection(transfer, client, loan, sourceGroup, targetGro
             dateAdded: transfer.dateAdded,
             groupStatus: 'closed',
             transferId: transfer._id,
+            transferDate: transfer.dateAdded,
             sameLo: transfer.sameLo, 
             transfer: true,
             loToLo: transfer.loToLo,
@@ -222,6 +223,7 @@ async function saveCashCollection(transfer, client, loan, sourceGroup, targetGro
                 transfer: true,
                 sameLo: transfer.sameLo, 
                 transferId: transfer._id, 
+                transferDate: transfer.dateAdded,
                 loToLo: transfer.loToLo, 
                 branchToBranch: transfer.branchToBranch,
                 modifiedDateTime: new Date()
@@ -257,6 +259,7 @@ async function saveCashCollection(transfer, client, loan, sourceGroup, targetGro
             dateAdded: transfer.dateAdded,
             groupStatus: 'closed',
             transferId: transfer._id,
+            transferredDate: transfer.dateAdded,
             sameLo: transfer.sameLo, 
             transferred: true,
             loToLo: transfer.loToLo,
@@ -293,6 +296,7 @@ async function saveCashCollection(transfer, client, loan, sourceGroup, targetGro
                 transferred: true,
                 sameLo: transfer.sameLo, 
                 transferId: transfer._id, 
+                transferredDate: transfer.dateAdded,
                 loToLo: transfer.loToLo, 
                 branchToBranch: transfer.branchToBranch,
                 modifiedDateTime: new Date()

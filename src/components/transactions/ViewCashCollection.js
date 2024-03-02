@@ -527,6 +527,14 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                                 }
                                 collection.loanTarget -= rcv.targetCollection;
                                 collection.loanTargetStr = formatPricePhp(collection.loanTarget);
+
+                                if (rcv.status == 'tomorrow') {
+                                    collection.totalReleases += rcv.amountRelease ? rcv.amountRelease : 0;
+                                    collection.totalLoanBalance += rcv.loanBalance ? rcv.loanBalance : 0;
+
+                                    totalsLoanRelease += rcv.amountRelease ? rcv.amountRelease : 0;
+                                    totalsLoanBalance += rcv.loanBalance ? rcv.loanBalance : 0;
+                                }
         
                                 targetLoanCollection -= rcv.targetCollection;
                             }

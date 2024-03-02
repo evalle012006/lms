@@ -604,12 +604,12 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
 
             const details = transfer?.data[0];
             if (details) {
-                totalMcbuTarget += details.mcbuTarget;
-                totalMcbuCol += details.mcbuCol;
-                totalMcbuWithdrawal += details.mcbuWithdrawal;
-                totalMcbuReturnAmt += details.mcbuReturnAmt;
-                totalMcbuNoReturn += details.mcbuNoReturn;
-                totalMcbuInterest += details.mcbuInterest;
+                // totalMcbuTarget += details.mcbuTarget;
+                // totalMcbuCol += details.mcbuCol;
+                // totalMcbuWithdrawal += details.mcbuWithdrawal;
+                // totalMcbuReturnAmt += details.mcbuReturnAmt;
+                // totalMcbuNoReturn += (details.mcbuNoReturn && details.mcbuNoReturn != '-') ? details.mcbuReturn;
+                // totalMcbuInterest += details.mcbuInterest;
                 totalTargetCollection += details.targetCollection + details.excess;
                 // totalExcess += details.excess;
                 totalActualCollection += details.actualCollection;
