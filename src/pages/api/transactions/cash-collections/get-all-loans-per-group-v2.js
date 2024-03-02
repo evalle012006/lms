@@ -604,7 +604,10 @@ async function getAllLoansPerGroup(date, mode, groupId, dayName, currentDate) {
                                     noOfCurrentRelease: {
                                         $sum: {
                                             $cond: {
-                                                if: {$eq: ['$status', 'tomorrow']},
+                                                if: { $and: [
+                                                    {$eq: ['$status', 'tomorrow']}, 
+                                                    {$ne: ['$transfer', true]}
+                                                ] },
                                                 then: 1,
                                                 else: 0
                                             }
@@ -622,7 +625,11 @@ async function getAllLoansPerGroup(date, mode, groupId, dayName, currentDate) {
                                     reCurrentRelease: {
                                         $sum: {
                                             $cond: {
-                                                if: { $and: [{$eq: ['$status', 'tomorrow']}, { $gt: ['$loanCycle', 1]}] },
+                                                if: { $and: [
+                                                    {$eq: ['$status', 'tomorrow']}, 
+                                                    {$gt: ['$loanCycle', 1]},
+                                                    {$ne: ['$transfer', true]}
+                                                ] },
                                                 then: 1,
                                                 else: 0
                                             }

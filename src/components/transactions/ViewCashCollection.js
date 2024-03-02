@@ -469,7 +469,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 }
 
                 let transfer = 0;
-
+                console.log(collection.group, collection.totalReleases, collection.totalLoanBalance)
                 if (cc.transferGiverDetails.length > 0) {
                     collectionTransferred.push.apply(collectionTransferred, cc.transferGiverDetails);
                     transfer = transfer - cc.transferGiverDetails.length;
@@ -527,6 +527,14 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                                 }
                                 collection.loanTarget -= rcv.targetCollection;
                                 collection.loanTargetStr = formatPricePhp(collection.loanTarget);
+
+                                if (rcv.status == 'tomorrow') {
+                                    collection.totalReleases += rcv.amountRelease ? rcv.amountRelease : 0;
+                                    collection.totalLoanBalance += rcv.loanBalance ? rcv.loanBalance : 0;
+
+                                    totalsLoanRelease += rcv.amountRelease ? rcv.amountRelease : 0;
+                                    totalsLoanBalance += rcv.loanBalance ? rcv.loanBalance : 0;
+                                }
         
                                 targetLoanCollection -= rcv.targetCollection;
                             }

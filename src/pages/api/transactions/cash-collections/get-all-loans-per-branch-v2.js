@@ -562,7 +562,10 @@ async function getAllLoanTransactionsByBranch(branchId, date, dayName, currentDa
                                     noOfCurrentRelease: {
                                         $sum: {
                                             $cond: {
-                                                if: {$eq: ['$status', 'tomorrow']},
+                                                if: { $and: [
+                                                    {$eq: ['$status', 'tomorrow']}, 
+                                                    {$ne: ['$transfer', true]}
+                                                ] },
                                                 then: 1,
                                                 else: 0
                                             }
@@ -580,7 +583,11 @@ async function getAllLoanTransactionsByBranch(branchId, date, dayName, currentDa
                                     reCurrentRelease: {
                                         $sum: {
                                             $cond: {
-                                                if: { $and: [{$eq: ['$status', 'tomorrow']}, { $gt: ['$loanCycle', 1]}] },
+                                                if: { $and: [
+                                                    {$eq: ['$status', 'tomorrow']}, 
+                                                    {$gt: ['$loanCycle', 1]},
+                                                    {$ne: ['$transfer', true]}
+                                                ] },
                                                 then: 1,
                                                 else: 0
                                             }

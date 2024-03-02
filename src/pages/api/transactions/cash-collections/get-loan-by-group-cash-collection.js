@@ -280,7 +280,8 @@ async function getLoanWithCashCollection(req, res) {
                         foreignField: "clientId",
                         pipeline: [
                             { $match: {$expr: { $and: [
-                                {$or: [{$eq: ['$status', 'completed']}, {$eq: ['$status', 'closed']}]}, {$lte: ['$loanBalance', 0]}, {$eq: ['$fullPaymentDate', date]}
+                                {$or: [{$eq: ['$status', 'completed']}, {$eq: ['$status', 'closed']}]}, {$lte: ['$loanBalance', 0]}, {$eq: ['$fullPaymentDate', date]},
+                                {$or: [{$ne: ['$transferredDate', date]}, {$ne: ['$transferDate', date]}]}
                             ]}} },
                             { $group: {
                                     _id: '$$clientId',

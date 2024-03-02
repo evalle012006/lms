@@ -427,7 +427,7 @@ const BranchManagerSummary = () => {
                             pastDuePerson: (data?.noPastDue && data?.noPastDue !== '-') ? data?.noPastDue : 0,
                             pastDueAmount: (data?.pastDue && data?.pastDue !== '-') ? -Math.abs(data?.pastDue) : 0,
                         });
-
+                        console.log(transferDailyGvr)
                         activeClients += noTransfer;
                         activeBorrowers += noTransfer;
                         activeLoanReleasePerson += noTransfer;
@@ -456,7 +456,7 @@ const BranchManagerSummary = () => {
                         const excess = data.excess !== '-' ? data.excess : 0;
                         const tdaClients = data.hasOwnProperty('totalTdaClients') ? data.totalTdaClients : 0;
                         const pendingClients = data.hasOwnProperty('totalPendingClients') ? data.totalPendingClients : 0;
-
+                        
                         transferDailyRcv.push({
                             transfer: noTransfer,
                             mcbuTarget: mcbuTarget,
@@ -472,7 +472,7 @@ const BranchManagerSummary = () => {
                             pastDuePerson: (data?.noPastDue && data?.noPastDue !== '-') ? data?.noPastDue : 0,
                             pastDueAmount: (data?.pastDue && data?.pastDue !== '-') ? -Math.abs(data?.pastDue) : 0,
                         });
-
+                        console.log(transferDailyRcv)
                         activeClients = activeClients + noTransfer - pendingClients;
                         activeBorrowers = activeBorrowers + noTransfer - tdaClients;
                         activeLoanReleasePerson = activeLoanReleasePerson + noTransfer - tdaClients;
@@ -641,7 +641,7 @@ const BranchManagerSummary = () => {
                     totalNoPastDue += wRcv.pastDuePerson > 0 ? wRcv.pastDuePerson : 0;
                     totalWeeklyCollectionAdvancePayment += wRcv.excess;
                 });
-                console.log(mcbuBalance, totalMcbuBalance)
+                
                 if (totalMcbuBalance !== 0) {
                     mcbuBalance = temp.mcbuBalance ? temp.mcbuBalance : 0;
                 }

@@ -175,14 +175,15 @@ const CashCollectionDetailsPage = () => {
                     let coMaker = (cc.coMaker && typeof cc.coMaker == 'number') ? cc.coMaker : '-';
                     let currentReleaseAmount = 0;
                     let noOfPayments = cc.noOfPayments;
+                    let fullPayment = cc.fullPayment.length > 0 ? cc.fullPayment[0].fullPaymentAmount : 0;
                     if (cc.hasOwnProperty('current') && cc.current.length > 0) {
                         const current = cc.current[0];
+                        mispayment = current.mispayment;
                         if (cc?.transfer) {
                             transferStr = 'TCR';
                             mcbu = current.mcbu;
                             amountRelease = current.amountRelease;
                             loanBalance = current.loanBalance;
-                            mispayment = current.mispayment;
                             numMispayment = '';
                         }
 
@@ -206,12 +207,14 @@ const CashCollectionDetailsPage = () => {
                             noOfPayments = 60;
                         }
                     } else {
+                        mispayment = cc.mispayment;
                         if (cc?.transfer) {
                             transferStr = 'TCR';
                             mcbu = cc.mcbu;
                             amountRelease = cc.amountRelease;
                             loanBalance = cc.loanBalance;
                             numMispayment = '';
+                            fullPayment = 0;
                         }
 
                         if (cc?.transferred) {
@@ -219,9 +222,15 @@ const CashCollectionDetailsPage = () => {
                             mcbuCol = cc.mcbuCol;
                             mcbuWithdrawal = cc.mcbuWithdrawal;
                             mcbuReturnAmt = cc.mcbuReturnAmt;
-                            activeLoan = cc?.history?.activeLoan ? cc.history.activeLoan : cc.activeLoan;
-                            excess = cc?.history?.excess > 0 ? cc.history.excess : cc.excess;
-                            paymentCollection = cc?.history?.collection ? cc.history.collection : 0;
+                            if (cc.status == 'active') {
+                                activeLoan = cc.activeLoan;
+                                excess = cc.excess;
+                                paymentCollection = cc.paymentCollection;
+                            } else {
+                                activeLoan = cc?.history?.activeLoan ? cc.history.activeLoan : cc.activeLoan;
+                                excess = cc?.history?.excess > 0 ? cc.history.excess : cc.excess;
+                                paymentCollection = cc?.history?.collection ? cc.history.collection : 0;
+                            }
                         }
                     }
 
@@ -271,8 +280,8 @@ const CashCollectionDetailsPage = () => {
                         occurence: cc.group.occurence,
                         currentReleaseAmount: currentReleaseAmount,
                         currentReleaseAmountStr: currentReleaseAmount > 0 ? formatPricePhp(currentReleaseAmount) : '-',
-                        fullPayment: cc.fullPayment.length > 0 ? cc.fullPayment[0].fullPaymentAmount : 0,
-                        fullPaymentStr: cc.fullPayment.length > 0 ? formatPricePhp(cc.fullPayment[0].fullPaymentAmount) : '-',
+                        fullPayment: fullPayment,
+                        fullPaymentStr: fullPayment > 0 ? formatPricePhp(fullPayment) : '-',
                         remarks: cc.remarks ? cc.remarks : '',
                         pastDue: cc.pastDue ? cc.pastDue : 0,
                         pastDueStr: cc.pastDue ? formatPricePhp(cc.pastDue) : '-',
@@ -1020,7 +1029,7 @@ const CashCollectionDetailsPage = () => {
 
         dataArr.map(collection => {
             if (collection.status !== 'open' && collection.status !== 'totals') {
-                if (collection.status === 'active' || collection?.transferred) {
+                if (collection.status === 'active' || collection?.transferred || (collection?.transfer && collection.status == 'tomorrow')) {
                     totalLoanRelease += collection.amountRelease ? collection.amountRelease !== '-' ? collection.amountRelease : 0 : 0;
                     totalLoanBalance += collection.loanBalance ? collection.loanBalance !== '-' ? collection.loanBalance : 0 : 0;
                 }
