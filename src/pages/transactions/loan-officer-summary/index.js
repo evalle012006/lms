@@ -324,6 +324,7 @@ const LoanOfficerSummary = () => {
                     noMcbuReturn: noMcbuReturn,
                     mcbuReturnAmt: mcbuReturnAmt,
                     mcbuBalance: -Math.abs(mcbuActual - mcbuWithdrawal + mcbuInterest - mcbuReturnAmt),
+                    currentReleaseAmount: data.currentReleaseAmount,
                     loanReleaseAmount: -Math.abs(data.totalLoanRelease),
                     collectionTarget: -Math.abs(data.targetLoanCollection + excess),
                     collectionActual: -Math.abs(data.collection),
@@ -366,6 +367,7 @@ const LoanOfficerSummary = () => {
                     noMcbuReturn: noMcbuReturn,
                     mcbuReturnAmt: mcbuReturnAmt,
                     mcbuBalance: mcbuActual - mcbuWithdrawal + mcbuInterest - mcbuReturnAmt,
+                    currentReleaseAmount: data.currentReleaseAmount,
                     loanReleaseAmount: data.totalLoanRelease,
                     collectionTarget: data.targetLoanCollection + excess,
                     collectionActual: data.collection,
@@ -393,7 +395,7 @@ const LoanOfficerSummary = () => {
                     totalMcbuNoReturn = transferGvr?.noMcbuReturn;
                     totalMcbuReturnAmt = transferGvr?.mcbuReturnAmt;
                     totalMcbuBalance = transferGvr?.mcbuBalance;
-                    totalLoanRelease = transferGvr?.loanReleaseAmount;
+                    totalLoanRelease = transferGvr?.loanReleaseAmount + transferGvr?.currentReleaseAmount;
                     totalTargetCollection = transferGvr?.collectionTarget;
                     totalActualCollection = transferGvr?.collectionActual;
                     totalPastDue = transferGvr?.pastDueAmount > 0 ? transferGvr?.pastDueAmount : 0;
@@ -410,13 +412,14 @@ const LoanOfficerSummary = () => {
                     totalMcbuNoReturn += transferRcv?.noMcbuReturn;
                     totalMcbuReturnAmt += transferRcv.mcbuReturnAmt;
                     totalMcbuBalance += transferRcv?.mcbuBalance;
-                    totalLoanRelease += transferRcv?.loanReleaseAmount;
+                    totalLoanRelease += transferRcv?.loanReleaseAmount + transferRcv?.currentReleaseAmount;
                     totalTargetCollection += transferRcv?.collectionTarget;
                     totalActualCollection += transferRcv?.collectionActual;
                     totalPastDue += transferRcv?.pastDueAmount > 0 ? transferRcv?.pastDueAmount : 0;
                     totalNoPastDue += transferRcv?.pastDuePerson > 0 ? transferRcv?.pastDuePerson : 0;
                     // totalExcess += transferRcv?.excess;
                 }
+
 
                 if (totalMcbuBalance !== 0) {
                     mcbuBalance = temp.mcbuBalance ? temp.mcbuBalance : 0 //+ totalMcbuBalance;
