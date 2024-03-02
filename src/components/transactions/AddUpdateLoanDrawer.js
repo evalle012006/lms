@@ -506,7 +506,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                     let temp = {
                         ...client.client,
                         loans: [client],
-                        label: UppercaseFirstLetter(`${client.client.lastName}, ${client.client.firstName}`),
+                        label: UppercaseFirstLetter(`${client.slotNo} - ${client.client.lastName}, ${client.client.firstName}`),
                         value: client.client._id,
                         slotNo: client.slotNo
                     };
