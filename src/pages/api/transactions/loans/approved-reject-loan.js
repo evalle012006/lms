@@ -50,7 +50,7 @@ async function updateLoan(req, res) {
             // in loans, change back the previous loan to completed status and the current one change the loanCycle to 0
             // client status to pending
             if (loan.loanCycle > 1) {
-                let prevLoan = await db.collection('loans').find({ clientId: loan.clientId, loanCycle: loan.loanCycle - 1 }).toArray();
+                let prevLoan = await db.collection('loans').find({ clientId: loan.clientId, loanCycle: loan.loanCycle - 1, groupId: loan.groupId }).toArray();
                 if (prevLoan && prevLoan?.length > 0) {
                     prevLoan = prevLoan[0];
                     let cashCollection = await db.collection('cashCollections')
@@ -58,6 +58,7 @@ async function updateLoan(req, res) {
                                                 { $match: { $expr: { $and: [
                                                     { $eq: ['$clientId', loan.clientId] },
                                                     { $eq: ['$dateAdded', currentDate] },
+                                                    { $eq: ['$groupId', loan.groupId] }
                                                 ] } } }
                                             ])
                                             .toArray();
