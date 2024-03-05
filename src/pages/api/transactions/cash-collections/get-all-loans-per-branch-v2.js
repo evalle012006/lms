@@ -428,6 +428,174 @@ async function getAllLoanTransactionsByBranch(branchId, date, dayName, currentDa
                     }
                 },
                 {
+                    $lookup: {
+                        from: "cashCollections",
+                        let: { groupName: '$name' },
+                        localField: "branchIdstr",
+                        foreignField: "branchId",
+                        pipeline: [
+                            { $match: { transfer: true, dateAdded: date, occurence: 'daily' } },
+                            {
+                                $lookup: {
+                                    from: "cashCollections",
+                                    localField: "oldLoanId",
+                                    foreignField: "loanId",
+                                    pipeline: [
+                                        {
+                                            $group: {
+                                                _id: '$branchId',
+                                                amountRelease: { $last: '$amountRelease' },
+                                                loanBalance: { $last: '$loanBalance' },
+                                                pastDue: { $sum: '$pastDue' },
+                                                noPastDue: { $sum: {
+                                                    $cond: {
+                                                        if: { $gt: ['$pastDue', 0] },
+                                                        then: 1,
+                                                        else: 0
+                                                    }
+                                                } }
+                                            }
+                                        },
+                                        {
+                                            $addFields: { 
+                                                actualCollection: { $subtract: ['$amountRelease', '$loanBalance'] }
+                                            }
+                                        }
+                                    ],
+                                    as: "data"
+                                }
+                            }
+                        ],
+                        as: "transferDailyReceivedDetails"
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "cashCollections",
+                        let: { groupName: '$name' },
+                        localField: "branchIdstr",
+                        foreignField: "branchId",
+                        pipeline: [
+                            { $match: { transferred: true, dateAdded: date, occurence: 'daily' } },
+                            {
+                                $lookup: {
+                                    from: "cashCollections",
+                                    localField: "loanId",
+                                    foreignField: "loanId",
+                                    pipeline: [
+                                        {
+                                            $group: {
+                                                _id: '$branchId',
+                                                amountRelease: { $last: '$amountRelease' },
+                                                loanBalance: { $last: '$loanBalance' },
+                                                pastDue: { $sum: '$pastDue' },
+                                                noPastDue: { $sum: {
+                                                    $cond: {
+                                                        if: { $gt: ['$pastDue', 0] },
+                                                        then: 1,
+                                                        else: 0
+                                                    }
+                                                } }
+                                            }
+                                        },
+                                        {
+                                            $addFields: { 
+                                                actualCollection: { $subtract: ['$amountRelease', '$loanBalance'] }
+                                            }
+                                        }
+                                    ],
+                                    as: "data"
+                                }
+                            }
+                        ],
+                        as: "transferDailyGiverDetails"
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "cashCollections",
+                        let: { groupName: '$name' },
+                        localField: "branchIdstr",
+                        foreignField: "branchId",
+                        pipeline: [
+                            { $match: { transfer: true, dateAdded: date, occurence: 'weekly' } },
+                            {
+                                $lookup: {
+                                    from: "cashCollections",
+                                    localField: "oldLoanId",
+                                    foreignField: "loanId",
+                                    pipeline: [
+                                        {
+                                            $group: {
+                                                _id: '$branchId',
+                                                amountRelease: { $last: '$amountRelease' },
+                                                loanBalance: { $last: '$loanBalance' },
+                                                pastDue: { $sum: '$pastDue' },
+                                                noPastDue: { $sum: {
+                                                    $cond: {
+                                                        if: { $gt: ['$pastDue', 0] },
+                                                        then: 1,
+                                                        else: 0
+                                                    }
+                                                } }
+                                            }
+                                        },
+                                        {
+                                            $addFields: { 
+                                                actualCollection: { $subtract: ['$amountRelease', '$loanBalance'] }
+                                            }
+                                        }
+                                    ],
+                                    as: "data"
+                                }
+                            }
+                        ],
+                        as: "transferWeeklyReceivedDetails"
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "cashCollections",
+                        let: { groupName: '$name' },
+                        localField: "branchIdstr",
+                        foreignField: "branchId",
+                        pipeline: [
+                            { $match: { transferred: true, dateAdded: date, occurence: 'weekly' } },
+                            {
+                                $lookup: {
+                                    from: "cashCollections",
+                                    localField: "loanId",
+                                    foreignField: "loanId",
+                                    pipeline: [
+                                        {
+                                            $group: {
+                                                _id: '$branchId',
+                                                amountRelease: { $last: '$amountRelease' },
+                                                loanBalance: { $last: '$loanBalance' },
+                                                pastDue: { $sum: '$pastDue' },
+                                                noPastDue: { $sum: {
+                                                    $cond: {
+                                                        if: { $gt: ['$pastDue', 0] },
+                                                        then: 1,
+                                                        else: 0
+                                                    }
+                                                } }
+                                            }
+                                        },
+                                        {
+                                            $addFields: { 
+                                                actualCollection: { $subtract: ['$amountRelease', '$loanBalance'] }
+                                            }
+                                        }
+                                    ],
+                                    as: "data"
+                                }
+                            }
+                        ],
+                        as: "transferWeeklyGiverDetails"
+                    }
+                },
+                {
                     $sort: { code: 1 }
                 }
             ]).toArray();
@@ -504,7 +672,7 @@ async function getAllLoanTransactionsByBranch(branchId, date, dayName, currentDa
                                     loanTarget: { 
                                         $sum: { 
                                             $cond: {
-                                                if: { $ne: ['$status', 'pending'] }, 
+                                                if: { $and: [{ $ne: ['$status', 'pending'] }, { $ne: ['$transfer', true] }] },
                                                 then: { 
                                                     $cond: {
                                                         if: { $and: [{$eq: ['$activeLoan', 0]}, {$eq: ['$fullPaymentDate', date]}] },
@@ -694,6 +862,174 @@ async function getAllLoanTransactionsByBranch(branchId, date, dayName, currentDa
                             }
                         ],
                         as: "cashCollections"
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "cashCollections",
+                        let: { groupName: '$name' },
+                        localField: "branchIdstr",
+                        foreignField: "branchId",
+                        pipeline: [
+                            { $match: { transfer: true, dateAdded: date, occurence: 'daily' } },
+                            {
+                                $lookup: {
+                                    from: "cashCollections",
+                                    localField: "oldLoanId",
+                                    foreignField: "loanId",
+                                    pipeline: [
+                                        {
+                                            $group: {
+                                                _id: '$branchId',
+                                                amountRelease: { $last: '$amountRelease' },
+                                                loanBalance: { $last: '$loanBalance' },
+                                                pastDue: { $sum: '$pastDue' },
+                                                noPastDue: { $sum: {
+                                                    $cond: {
+                                                        if: { $gt: ['$pastDue', 0] },
+                                                        then: 1,
+                                                        else: 0
+                                                    }
+                                                } }
+                                            }
+                                        },
+                                        {
+                                            $addFields: { 
+                                                actualCollection: { $subtract: ['$amountRelease', '$loanBalance'] }
+                                            }
+                                        }
+                                    ],
+                                    as: "data"
+                                }
+                            }
+                        ],
+                        as: "transferDailyReceivedDetails"
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "cashCollections",
+                        let: { groupName: '$name' },
+                        localField: "branchIdstr",
+                        foreignField: "branchId",
+                        pipeline: [
+                            { $match: { transferred: true, dateAdded: date, occurence: 'daily' } },
+                            {
+                                $lookup: {
+                                    from: "cashCollections",
+                                    localField: "loanId",
+                                    foreignField: "loanId",
+                                    pipeline: [
+                                        {
+                                            $group: {
+                                                _id: '$branchId',
+                                                amountRelease: { $last: '$amountRelease' },
+                                                loanBalance: { $last: '$loanBalance' },
+                                                pastDue: { $sum: '$pastDue' },
+                                                noPastDue: { $sum: {
+                                                    $cond: {
+                                                        if: { $gt: ['$pastDue', 0] },
+                                                        then: 1,
+                                                        else: 0
+                                                    }
+                                                } }
+                                            }
+                                        },
+                                        {
+                                            $addFields: { 
+                                                actualCollection: { $subtract: ['$amountRelease', '$loanBalance'] }
+                                            }
+                                        }
+                                    ],
+                                    as: "data"
+                                }
+                            }
+                        ],
+                        as: "transferDailyGiverDetails"
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "cashCollections",
+                        let: { groupName: '$name' },
+                        localField: "branchIdstr",
+                        foreignField: "branchId",
+                        pipeline: [
+                            { $match: { transfer: true, dateAdded: date, occurence: 'weekly' } },
+                            {
+                                $lookup: {
+                                    from: "cashCollections",
+                                    localField: "oldLoanId",
+                                    foreignField: "loanId",
+                                    pipeline: [
+                                        {
+                                            $group: {
+                                                _id: '$branchId',
+                                                amountRelease: { $last: '$amountRelease' },
+                                                loanBalance: { $last: '$loanBalance' },
+                                                pastDue: { $sum: '$pastDue' },
+                                                noPastDue: { $sum: {
+                                                    $cond: {
+                                                        if: { $gt: ['$pastDue', 0] },
+                                                        then: 1,
+                                                        else: 0
+                                                    }
+                                                } }
+                                            }
+                                        },
+                                        {
+                                            $addFields: { 
+                                                actualCollection: { $subtract: ['$amountRelease', '$loanBalance'] }
+                                            }
+                                        }
+                                    ],
+                                    as: "data"
+                                }
+                            }
+                        ],
+                        as: "transferWeeklyReceivedDetails"
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "cashCollections",
+                        let: { groupName: '$name' },
+                        localField: "branchIdstr",
+                        foreignField: "branchId",
+                        pipeline: [
+                            { $match: { transferred: true, dateAdded: date, occurence: 'weekly' } },
+                            {
+                                $lookup: {
+                                    from: "cashCollections",
+                                    localField: "loanId",
+                                    foreignField: "loanId",
+                                    pipeline: [
+                                        {
+                                            $group: {
+                                                _id: '$branchId',
+                                                amountRelease: { $last: '$amountRelease' },
+                                                loanBalance: { $last: '$loanBalance' },
+                                                pastDue: { $sum: '$pastDue' },
+                                                noPastDue: { $sum: {
+                                                    $cond: {
+                                                        if: { $gt: ['$pastDue', 0] },
+                                                        then: 1,
+                                                        else: 0
+                                                    }
+                                                } }
+                                            }
+                                        },
+                                        {
+                                            $addFields: { 
+                                                actualCollection: { $subtract: ['$amountRelease', '$loanBalance'] }
+                                            }
+                                        }
+                                    ],
+                                    as: "data"
+                                }
+                            }
+                        ],
+                        as: "transferWeeklyGiverDetails"
                     }
                 },
                 {

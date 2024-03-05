@@ -861,20 +861,5 @@ async function getAllLoansPerGroup(date, mode, groupId, dayName, currentDate) {
         cashCollection = cashCollection
     }
 
-    // if (cashCollection.length > 0) {
-    //     cashCollection[0].transferReceivedDetails = [];
-    //     cashCollection[0].transferGiverDetails = [];
-    //     cashCollection[0].draftCollections = [];
-
-    //     if (transferCollections.length > 0) {
-    //         cashCollection[0].transferReceivedDetails = transferCollections[0].transferReceivedDetails;
-    //         cashCollection[0].transferGiverDetails = transferCollections[0].transferGiverDetails;
-    //     }
-
-    //     if (draftCollections.length > 0) {
-    //         cashCollection[0].draftCollections = draftCollections[0].draftCollections;
-    //     }
-    // }
-    
     return cashCollection;
 }
