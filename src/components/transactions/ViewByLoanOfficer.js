@@ -238,6 +238,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
                         totalTransfer += collection.transfer !== '-' ? collection.transfer : 0;
                     } else if (lo.cashCollections.length > 0) {
                         const loanTarget = collection.loanTarget - lo.cashCollections[0].loanTarget;
+
                         collection.loanTarget = loanTarget;
                         collection.loanTargetStr = loanTarget > 0 ? formatPricePhp(loanTarget) : '-';
                         collection.excess = lo.cashCollections[0].excess;
@@ -267,7 +268,6 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
                         mispayment += lo.cashCollections[0].mispayment;
                         targetLoanCollection = targetLoanCollection - lo.cashCollections[0].loanTarget;
                         offsetPerson += collection.offsetPerson;
-                        // totalMcbu += collection.mcbu;
                         totalMcbuCol += collection.mcbuCol ? collection.mcbuCol : 0;
                         totalMcbuWithdrawal += collection.mcbuWithdrawal ? collection.mcbuWithdrawal : 0;
                         totalMcbuReturnNo += collection.noMcbuReturn ? collection.noMcbuReturn : 0;
@@ -394,7 +394,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
                         collectionDailyReceived.push.apply(collectionDailyReceived, lo.transferDailyGiverDetails);
                         transfer = transfer - lo.transferDailyGiverDetails.length;
 
-                        lo.transferDailyGiverDetails.map(giver => {
+                        lo.transferDailyGiverDetails.map(giver => {    
                             if (filter) {
                                 collection.activeClients -= 1;
                                 collection.activeBorrowers -= 1;
@@ -404,10 +404,18 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
                             totalTransferMcbu -= giver.mcbu;
 
                             const details = giver.data[0];
-                            const detailsTargetCollection = details?.targetCollection ? details?.targetCollection : 0;
+                            const actualCollection = details?.actualCollection ? details?.actualCollection : 0;
                             // const detailsExcess = details?.excess ? details?.excess : 0;
-                            totalTransferTargetCollection -= detailsTargetCollection;
-                            totalTransferActualCollection -= details?.actualCollection ? details?.actualCollection : 0;
+                            totalTransferTargetCollection -= actualCollection;
+                            totalTransferActualCollection -= actualCollection;
+
+                            collection.totalLoanRelease = collection.totalLoanRelease ? collection.totalLoanRelease : 0;
+                            collection.totalLoanRelease -= giver.amountRelease ? giver.amountRelease : 0;
+                            collection.totalLoanBalance = collection.totalLoanBalance ? collection.totalLoanBalance : 0;
+                            collection.totalLoanBalance -= giver.loanBalance ? giver.loanBalance : 0;
+
+                            totalsLoanRelease -= giver.amountRelease ? giver.amountRelease : 0;
+                            totalsLoanBalance -= giver.loanBalance ? giver.loanBalance : 0;
                         });
                     }
 
@@ -415,22 +423,68 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
                         collectionDailyTransferred.push.apply(collectionDailyTransferred, lo.transferDailyReceivedDetails);
                         transfer = transfer + lo.transferDailyReceivedDetails.length;
 
-                        if (!filter) {
-                            lo.transferDailyReceivedDetails.map(rcv => {
-                                totalTransferMcbu += rcv.mcbu;
-                                collection.totalLoanRelease += rcv.amountRelease;
-                                collection.totalLoanBalance += rcv.loanBalance;
+                        // if (!filter) {
+                        //     lo.transferDailyReceivedDetails.map(rcv => {
+                        //         totalTransferMcbu += rcv.mcbu;
+                        //         collection.totalLoanRelease += rcv.amountRelease;
+                        //         collection.totalLoanBalance += rcv.loanBalance;
         
-                                totalsLoanRelease += rcv.amountRelease;
-                                totalsLoanBalance += rcv.loanBalance;
+                        //         totalsLoanRelease += rcv.amountRelease;
+                        //         totalsLoanBalance += rcv.loanBalance;
 
-                                const details = rcv.data[0];
-                                const detailsTargetCollection = details?.targetCollection ? details?.targetCollection : 0;
-                                // const detailsExcess = details?.excess ? details?.excess : 0;
-                                totalTransferTargetCollection += detailsTargetCollection;
-                                totalTransferActualCollection += details?.actualCollection ? details?.actualCollection : 0;
-                            });
-                        }
+                        //         const details = rcv.data[0];
+                        //         const detailsTargetCollection = details?.targetCollection ? details?.targetCollection : 0;
+                        //         const detailsExcess = details?.excess ? details?.excess : 0;
+                        //         totalTransferTargetCollection += detailsTargetCollection;
+                        //         totalTransferActualCollection += details?.actualCollection ? details?.actualCollection : 0;
+                        //     });
+                        // }
+
+                        
+                        lo.transferDailyReceivedDetails.map(rcv => {
+                            totalTransferMcbu += rcv.mcbu;
+                            const details = rcv.data[0];
+                            const actualCollection = details?.actualCollection ? details?.actualCollection : 0;
+                            // const detailsExcess = details?.excess ? details?.excess : 0;
+                            totalTransferTargetCollection += actualCollection;
+                            totalTransferActualCollection += actualCollection;
+
+                            if (!filter) {
+                                if (rcv.status !== 'pending') {
+                                    collection.activeClients += 1;
+                                    if (collection.status !== "completed") {
+                                        collection.activeBorrowers += 1;
+                                    }
+                                    collection.mcbu += rcv.mcbu ? rcv.mcbu : 0;
+        
+                                    collection.totalLoanRelease = collection.totalLoanRelease ? collection.totalLoanRelease : 0;
+                                    collection.totalLoanRelease += rcv.amountRelease ? rcv.amountRelease : 0;
+                                    collection.totalLoanBalance = collection.totalLoanBalance ? collection.totalLoanBalance : 0;
+                                    collection.totalLoanBalance += rcv.loanBalance ? rcv.loanBalance : 0;
+        
+                                    totalsLoanRelease += rcv.amountRelease ? rcv.amountRelease : 0;
+                                    totalsLoanBalance += rcv.loanBalance ? rcv.loanBalance : 0;
+                                }
+                            } else {
+                                if (rcv.status !== 'pending') {
+                                    if (rcv.status == "completed") {
+                                        collection.activeBorrowers -= 1;
+                                    }
+                                    collection.loanTarget -= rcv.targetCollection;
+                                    collection.loanTargetStr = formatPricePhp(collection.loanTarget);
+    
+                                    if (rcv.status == 'tomorrow') {
+                                        collection.totalLoanRelease += rcv.amountRelease ? rcv.amountRelease : 0;
+                                        collection.totalLoanBalance += rcv.loanBalance ? rcv.loanBalance : 0;
+    
+                                        totalsLoanRelease += rcv.amountRelease ? rcv.amountRelease : 0;
+                                        totalsLoanBalance += rcv.loanBalance ? rcv.loanBalance : 0;
+                                    }
+            
+                                    targetLoanCollection -= rcv.targetCollection;
+                                }
+                            }
+                        });
                     }
 
                     if (lo.transferWeeklyGiverDetails.length > 0) {
@@ -446,10 +500,18 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
                             totalTransferMcbu -= giver.mcbu;
 
                             const details = giver.data[0];
-                            const detailsTargetCollection = details?.targetCollection ? details?.targetCollection : 0;
+                            const actualCollection = details?.actualCollection ? details?.actualCollection : 0;
                             // const detailsExcess = details?.excess ? details?.excess : 0;
-                            totalTransferTargetCollection -= detailsTargetCollection;
-                            totalTransferActualCollection -= details?.actualCollection ? details?.actualCollection : 0;
+                            totalTransferTargetCollection -= actualCollection;
+                            totalTransferActualCollection -= actualCollection;
+
+                            collection.totalLoanRelease = collection.totalLoanRelease ? collection.totalLoanRelease : 0;
+                            collection.totalLoanRelease -= giver.amountRelease ? giver.amountRelease : 0;
+                            collection.totalLoanBalance = collection.totalLoanBalance ? collection.totalLoanBalance : 0;
+                            collection.totalLoanBalance -= giver.loanBalance ? giver.loanBalance : 0;
+
+                            totalsLoanRelease -= giver.amountRelease ? giver.amountRelease : 0;
+                            totalsLoanBalance -= giver.loanBalance ? giver.loanBalance : 0;
                         });
                     }
                     
@@ -457,22 +519,66 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
                         collectionWeeklyTransferred.push.apply(collectionWeeklyTransferred, lo.transferWeeklyReceivedDetails);
                         transfer = transfer + lo.transferWeeklyReceivedDetails.length;
 
-                        if (!filter) {
-                            lo.transferWeeklyReceivedDetails.map(rcv => {
-                                totalTransferMcbu += rcv.mcbu;
-                                collection.totalLoanRelease += rcv.amountRelease;
-                                collection.totalLoanBalance += rcv.loanBalance;
+                        // if (!filter) {
+                        //     lo.transferWeeklyReceivedDetails.map(rcv => {
+                        //         totalTransferMcbu += rcv.mcbu;
+                        //         collection.totalLoanRelease += rcv.amountRelease;
+                        //         collection.totalLoanBalance += rcv.loanBalance;
         
-                                totalsLoanRelease += rcv.amountRelease;
-                                totalsLoanBalance += rcv.loanBalance;
+                        //         totalsLoanRelease += rcv.amountRelease;
+                        //         totalsLoanBalance += rcv.loanBalance;
 
-                                const details = rcv.data[0];
-                                const detailsTargetCollection = details?.targetCollection ? details?.targetCollection : 0;
-                                // const detailsExcess = details?.excess ? details?.excess : 0;
-                                totalTransferTargetCollection += detailsTargetCollection;
-                                totalTransferActualCollection += details?.actualCollection ? details?.actualCollection : 0;
-                            });
-                        }
+                        //         const details = rcv.data[0];
+                        //         const detailsTargetCollection = details?.targetCollection ? details?.targetCollection : 0;
+                        //         // const detailsExcess = details?.excess ? details?.excess : 0;
+                        //         totalTransferTargetCollection += detailsTargetCollection;
+                        //         totalTransferActualCollection += details?.actualCollection ? details?.actualCollection : 0;
+                        //     });
+                        // }
+
+                        lo.transferWeeklyReceivedDetails.map(rcv => {
+                            totalTransferMcbu += rcv.mcbu;
+                            const details = rcv.data[0];
+                            const actualCollection = details?.actualCollection ? details?.actualCollection : 0;
+                            // const detailsExcess = details?.excess ? details?.excess : 0;
+                            totalTransferTargetCollection += actualCollection;
+                            totalTransferActualCollection += actualCollection;
+                            if (!filter) {
+                                if (rcv.status !== 'pending') {
+                                    collection.activeClients += 1;
+                                    if (collection.status !== "completed") {
+                                        collection.activeBorrowers += 1;
+                                    }
+                                    collection.mcbu += rcv.mcbu ? rcv.mcbu : 0;
+        
+                                    collection.totalLoanRelease = collection.totalLoanRelease ? collection.totalLoanRelease : 0;
+                                    collection.totalLoanRelease += rcv.amountRelease ? rcv.amountRelease : 0;
+                                    collection.totalLoanBalance = collection.totalLoanBalance ? collection.totalLoanBalance : 0;
+                                    collection.totalLoanBalance += rcv.loanBalance ? rcv.loanBalance : 0;
+        
+                                    totalsLoanRelease += rcv.amountRelease ? rcv.amountRelease : 0;
+                                    totalsLoanBalance += rcv.loanBalance ? rcv.loanBalance : 0;
+                                }
+                            } else {
+                                if (rcv.status !== 'pending') {
+                                    if (rcv.status == "completed") {
+                                        collection.activeBorrowers -= 1;
+                                    }
+                                    collection.loanTarget -= rcv.targetCollection;
+                                    collection.loanTargetStr = formatPricePhp(collection.loanTarget);
+    
+                                    if (rcv.status == 'tomorrow') {
+                                        collection.totalLoanRelease += rcv.amountRelease ? rcv.amountRelease : 0;
+                                        collection.totalLoanBalance += rcv.loanBalance ? rcv.loanBalance : 0;
+    
+                                        totalsLoanRelease += rcv.amountRelease ? rcv.amountRelease : 0;
+                                        totalsLoanBalance += rcv.loanBalance ? rcv.loanBalance : 0;
+                                    }
+            
+                                    targetLoanCollection -= rcv.targetCollection;
+                                }
+                            }
+                        });
                     }
 
                     if (lo.transferDailyReceivedDetails.length > 0 || lo.transferDailyGiverDetails.length > 0 || lo.transferWeeklyReceivedDetails.length > 0 || lo.transferWeeklyGiverDetails.length > 0) {
@@ -595,27 +701,33 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
         let totalPastDue = 0;
         let totalNoPastDue = 0;
         let totalMispay = 0;
+        let totalTdaClients = 0;
+        let totalPendingClients = 0;
+        let totalCurrentReleaseAMount = 0;
 
         detailsDaily.map(transfer => {
             totalTransfer++;
             totalMcbu += transfer.mcbu;
             totalLoanRelease += transfer.amountRelease;
             totalLoanBalance += transfer.loanBalance;
+            totalCurrentReleaseAMount += transfer.currentReleaseAmount;
+
+            if (type == 'Transfer RCV') {
+                if (transfer.status == 'completed') {
+                    totalTdaClients += 1;
+                } else if (transfer.status == 'pending') {
+                    totalPendingClients += 1;
+                }
+            }
 
             const details = transfer?.data[0];
             if (details) {
-                // totalMcbuTarget += details.mcbuTarget;
-                // totalMcbuCol += details.mcbuCol;
-                // totalMcbuWithdrawal += details.mcbuWithdrawal;
-                // totalMcbuReturnAmt += details.mcbuReturnAmt;
-                // totalMcbuNoReturn += (details.mcbuNoReturn && details.mcbuNoReturn != '-') ? details.mcbuReturn;
-                // totalMcbuInterest += details.mcbuInterest;
-                totalTargetCollection += details.targetCollection + details.excess;
-                // totalExcess += details.excess;
+                totalMcbuTarget += details.mcbuTarget;
+                totalMcbuCol += details.mcbuCol;
+                totalTargetCollection += details.actualCollection;
                 totalActualCollection += details.actualCollection;
                 totalPastDue += details.pastDue;
                 totalNoPastDue += details.noPastDue;
-                totalMispay += details.mispay;
             }
         });
 
@@ -624,21 +736,24 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
             totalMcbu += transfer.mcbu;
             totalLoanRelease += transfer.amountRelease;
             totalLoanBalance += transfer.loanBalance;
+            totalCurrentReleaseAMount += transfer.currentReleaseAmount;
+
+            if (type == 'Transfer RCV') {
+                if (transfer.status == 'completed') {
+                    totalTdaClients += 1;
+                } else if (transfer.status == 'pending') {
+                    totalPendingClients += 1;
+                }
+            }
 
             const details = transfer?.data[0];
             if (details) {
-                // totalMcbuTarget += details.mcbuTarget;
-                // totalMcbuCol += details.mcbuCol;
-                // totalMcbuWithdrawal += details.mcbuWithdrawal;
-                // totalMcbuReturnAmt += details.mcbuReturnAmt;
-                // totalMcbuNoReturn += details.mcbuNoReturn;
-                // totalMcbuInterest += details.mcbuInterest;
+                totalMcbuTarget += details.mcbuTarget;
+                totalMcbuCol += details.mcbuCol;
                 totalTargetCollection += details.actualCollection;
-                // totalExcess += details.excess;
                 totalActualCollection += details.actualCollection;
                 totalPastDue += details.pastDue;
                 totalNoPastDue += details.noPastDue;
-                // totalMispay += details.mispay;
             }
         });
         
@@ -648,11 +763,11 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
             transferStr: (type === 'Transfer GVR' && totalTransfer > 0) ? `(${totalTransfer})` : totalTransfer,
             noOfNewCurrentRelease: '-',
             noCurrentReleaseStr: '-',
-            currentReleaseAmount: totalLoanRelease,
+            currentReleaseAmount: (type === 'Transfer GVR' && totalCurrentReleaseAMount > 0) ? -Math.abs(totalCurrentReleaseAMount) : totalCurrentReleaseAMount,
             currentReleaseAmountStr: '-', // don't display in group summary
             activeClients: '-',
             activeBorrowers: '-',
-            totalLoanRelease: 0,
+            totalLoanRelease: totalLoanRelease,
             totalReleasesStr: '-',
             totalLoanBalance: 0,
             totalLoanBalanceStr: '-',

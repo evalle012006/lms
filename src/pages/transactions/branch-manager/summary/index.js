@@ -393,7 +393,7 @@ const BranchManagerSummary = () => {
             activeLoanReleasePerson = temp.activeLoanReleasePerson;
             activeLoanReleaseAmount = temp.activeLoanReleaseAmount !== '-' ? temp.activeLoanReleaseAmount : 0;
             loanBalance = temp.loanBalance !== '-' ? temp.loanBalance : 0;
-            
+
             temp?.transferDailyGvr?.map(dailyGvr => {
                 if (dailyGvr) {
                     const data = {...dailyGvr};
@@ -428,7 +428,7 @@ const BranchManagerSummary = () => {
                             pastDuePerson: (data?.noPastDue && data?.noPastDue !== '-') ? data?.noPastDue : 0,
                             pastDueAmount: (data?.pastDue && data?.pastDue !== '-') ? -Math.abs(data?.pastDue) : 0,
                         });
-                        console.log(transferDailyGvr)
+
                         activeClients += noTransfer;
                         activeBorrowers += noTransfer;
                         activeLoanReleasePerson += noTransfer;
@@ -474,7 +474,7 @@ const BranchManagerSummary = () => {
                             pastDuePerson: (data?.noPastDue && data?.noPastDue !== '-') ? data?.noPastDue : 0,
                             pastDueAmount: (data?.pastDue && data?.pastDue !== '-') ? -Math.abs(data?.pastDue) : 0,
                         });
-                        console.log(transferDailyRcv)
+
                         activeClients = activeClients + noTransfer - pendingClients;
                         activeBorrowers = activeBorrowers + noTransfer - tdaClients;
                         activeLoanReleasePerson = activeLoanReleasePerson + noTransfer - tdaClients;

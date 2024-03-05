@@ -349,6 +349,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                     }
     
                     if (cc.currentRelease.length > 0) {
+                        const totalCurrentRelease = cc.currentRelease[0].noOfCurrentRelease;
                         noCurrentRelease = cc.currentRelease[0].newCurrentRelease + ' / ' + cc.currentRelease[0].reCurrentRelease;
                         collection = {
                             ...collection,
@@ -363,11 +364,16 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         noOfReCurrentRelease += cc.currentRelease[0].reCurrentRelease ? cc.currentRelease[0].reCurrentRelease : 0;
                         currentReleaseAmount += cc.currentRelease[0].currentReleaseAmount ? cc.currentRelease[0].currentReleaseAmount : 0;
                         
-                        if (!collection.hasOwnProperty('status') || collection.status === '-') {
+                        if ((!collection.hasOwnProperty('status') || collection.status === '-')) {
                             collection.activeClients = collection.newCurrentRelease;
                             collection.status = "closed";
                             collection.page = "collection";
                             noOfClients += collection.newCurrentRelease;
+                        }
+
+                        if (collection.activeClients == 0 && (collection.activeBorrowers > 0 || totalCurrentRelease > 0)) {
+                            collection.activeClients = totalCurrentRelease;
+                            collection.status = "closed";
                         }
                     }
     
@@ -796,16 +802,10 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
             if (details) {
                 totalMcbuTarget += details.mcbuTarget;
                 totalMcbuCol += details.mcbuCol;
-                // totalMcbuWithdrawal += details.mcbuWithdrawal;
-                // totalMcbuReturnAmt += details.mcbuReturnAmt;
-                // totalMcbuNoReturn += details.mcbuNoReturn;
-                // totalMcbuInterest += details.mcbuInterest;
                 totalTargetCollection += details.actualCollection;
-                // totalExcess += details.excess;
                 totalActualCollection += details.actualCollection;
                 totalPastDue += details.pastDue;
                 totalNoPastDue += details.noPastDue;
-                // totalMispay += details.mispay;
             }
         });
 
