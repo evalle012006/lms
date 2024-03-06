@@ -46,7 +46,6 @@ async function revert(req, res) {
             // NEED TO ACCOMODATE REVERT FOR NEW CLIENT PENDING/TOMORROW
             // - delete cashcollection
             // - set loan to rejected
-            console.log(cc.slotNo, client.length, previousCC.length, currentLoan.length)
             if (client.length > 0 && previousCC.length == 2) {
                 client = client[0];
                 previousCC = previousCC[1];
@@ -54,13 +53,11 @@ async function revert(req, res) {
                 await db.collection('cashCollections').deleteOne({ _id: new ObjectId(cashCollectionId) });
 
                 if (previousLoan.length > 0) { // pending, tomorrow
-                    console.log(cc.slotNo, 'aa')
                     previousLoan = previousLoan[0];
                     delete previousLoan._id;
                     await db.collection('loans').deleteOne({ _id: new ObjectId(loanId) });
-
+                    // there are cases wherein the advance loan were not deleted....need proper steps
                     if (previousCC.status == 'completed') {
-                        console.log(cc.slotNo, 'bb')
                         previousLoan.activeLoan = 0;
                         previousLoan.amountRelease = 0;
                         previousLoan.loanBalance = 0;
@@ -77,7 +74,6 @@ async function revert(req, res) {
                     } else if (previousCC.status == 'pending') {
                         // do nothing
                     } else {
-                        console.log(cc.slotNo, 'dd')
                         previousLoan.activeLoan = previousCC.activeLoan > 0 ? previousCC.activeLoan : previousCC.history?.activeLoan;
                         previousLoan.amountRelease = previousCC.amountRelease;
                         previousLoan.loanBalance = previousCC.loanBalance;
@@ -93,7 +89,6 @@ async function revert(req, res) {
                     }
                     
                     if (previousCC.status !== 'closed') {
-                        console.log(cc.slotNo, 'ee')
                         previousLoan.reverted = true;
                         previousLoan.revertedDate = currentDate;
                         delete previousLoan.advance;
@@ -102,14 +97,11 @@ async function revert(req, res) {
                         await db.collection('loans').updateOne({ _id: new ObjectId(previousLoanId) }, { $unset: {advance: 1, advanceDate: 1}, $set: {...previousLoan} });
                     }
                 } else if (currentLoan.length > 0) { // active, completed, closed
-                    console.log(cc.slotNo, 'ff')
                     currentLoan = currentLoan[0];
                     delete currentLoan._id;
 
-                    currentLoan.activeLoan = previousCC.activeLoan > 0 ? previousCC.activeLoan : previousCC.history?.activeLoan;
 
                     if (previousCC.status == 'tomorrow') {
-                        console.log(cc.slotNo, 'gg')
                         if (currentLoan.loanCycle > 1) {
                             currentLoan.amountRelease = previousCC.currentReleaseAmount;
                             currentLoan.loanBalance = previousCC.currentReleaseAmount;
@@ -122,13 +114,11 @@ async function revert(req, res) {
                             currentLoan.status = 'active';
                             currentLoan.fullPaymentDate = null;
                         } else {
-                            console.log(cc.slotNo, 'hh')
                             delete currentLoan.startDate;
                             delete currentLoan.endDate;
                             currentLoan.status = 'pending';
                         }
                     } else if (previousCC.status == 'completed') {
-                        console.log(cc.slotNo, 'ii')
                         currentLoan.activeLoan = 0;
                         currentLoan.amountRelease = 0;
                         currentLoan.loanBalance = 0;
@@ -142,7 +132,7 @@ async function revert(req, res) {
                         currentLoan.status = 'completed';
                         currentLoan.fullPaymentDate = previousCC.fullPaymentDate;
                     } else {
-                        console.log(cc.slotNo, 'jj')
+                        currentLoan.activeLoan = previousCC.activeLoan > 0 ? previousCC.activeLoan : previousCC.history?.activeLoan;
                         currentLoan.amountRelease = previousCC.amountRelease;
                         currentLoan.loanBalance = previousCC.loanBalance;
                         currentLoan.mcbu = previousCC.mcbu;
@@ -181,14 +171,11 @@ async function revert(req, res) {
                         await db.collection('loans').updateOne({ _id: new ObjectId(loanId) }, { $unset: { closedDate: 1, remarks: 1 }, $set: {...currentLoan} });
                     } else {
                         if (currentLoan.status == 'pending' && cc.status == 'tomorrow') {
-                            console.log(cc.slotNo, 'kk')
                             await db.collection('loans').updateOne({ _id: new ObjectId(loanId) }, { $unset: {startDate: 1, endDate: 1}, $set: {...currentLoan} });
                         } else if (cc.status == 'pending') {
-                            console.log(cc.slotNo, 'll')
                             await db.collection('loans').deleteOne({ _id: new ObjectId(loanId) });
                             await updateGroup(db, cashCollection.group, cashCollection.slotNo);
                         } else {
-                            console.log(cc.slotNo, 'mm')
                             await db.collection('loans').updateOne({ _id: new ObjectId(loanId) }, { $set: {...currentLoan} });
                         }
                     }
@@ -197,7 +184,6 @@ async function revert(req, res) {
                 // this is for new client, balik clients
                 previousCC = previousCC[0];
                 currentLoan = currentLoan[0];
-                console.log(currentLoan.slotNo, previousCC.status)
                 // delete current transaction
                 await db.collection('cashCollections').deleteOne({ _id: previousCC._id });
                 await db.collection('loans').deleteOne({ _id: currentLoan._id });

@@ -305,6 +305,7 @@ const LoanApplicationPage = () => {
                 await response.loans && response.loans.map(loan => {
                     let allowApproved = false;
                     let hasActiveLoan = false;
+                    let hasTdaLoan = false;
                     
                     if (loan.groupStatus.length > 0 && loan.groupStatus[0].hasOwnProperty('groupStatusArr')) {
                         const transactionStatus = loan.groupStatus[0].groupStatusArr.filter(s => s === "pending");
@@ -315,7 +316,13 @@ const LoanApplicationPage = () => {
                         }
                     } else if (loan.pendings.length > 0) {
                         allowApproved = false;
-                        hasActiveLoan = true;
+                        
+                        const loanPendingStatus = loan.pendings[0].status;
+                        if (loanPendingStatus == 'active') {
+                            hasActiveLoan = true;
+                        } else if (loanPendingStatus == 'completed') {
+                            hasTdaLoan = true;
+                        }
                     } else {
                         allowApproved = true;
                     }
@@ -333,7 +340,8 @@ const LoanApplicationPage = () => {
                         fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
                         allowApproved: allowApproved,
                         selected: false,
-                        hasActiveLoan: hasActiveLoan
+                        hasActiveLoan: hasActiveLoan,
+                        hasTdaLoan: hasTdaLoan
                     });
                 });
                 loanList.sort((a, b) => {
@@ -737,6 +745,10 @@ const LoanApplicationPage = () => {
                 errorMsg.add(`${clientName} in group ${groupName} still has active loan. Please transact it first`);
             }
 
+            if (loan.hasTdaLoan) {
+                errorMsg.add(`${clientName} in group ${groupName} still has completed loan. Please transact it first`);
+            }
+
             if (loan.pnNumber == null || !loan.pnNumber) {
                 errorMsg.add(`${clientName} in group ${groupName} don't have PN Number.`);
             }
@@ -862,8 +874,6 @@ const LoanApplicationPage = () => {
                     }
                 }
             // }
-        } else if (error) {
-            toast.error('Some loan selected has no PN Number.');
         } else {
             toast.error('No loan selected!');
         }

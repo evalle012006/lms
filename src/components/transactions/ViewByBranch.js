@@ -143,37 +143,38 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup}) => {
                         // totalMcbu += collection.mcbu;
                     }
                     
-                    if (branch?.draftCollections?.length > 0) {
-                        const draftCollection = branch.draftCollections[branch.draftCollections.length - 1];
-                        const loanTarget = collection.loanTarget - draftCollection.loanTarget;
+                    // if (branch?.draftCollections?.length > 0) {
+                    //     const draftCollection = branch.draftCollections[branch.draftCollections.length - 1];
+                    //     const loanTarget = collection.loanTarget - draftCollection.loanTarget;
 
-                        collection.loanTarget = loanTarget;
-                        collection.loanTargetStr = loanTarget > 0 ? formatPricePhp(loanTarget) : '-';
-                        collection.excessStr = draftCollection.excess > 0 ? formatPricePhp(draftCollection.excess) : '-';
-                        collection.total = draftCollection.collection;
-                        collection.totalStr = draftCollection.collection > 0 ? formatPricePhp(draftCollection.collection) : '-';
-                        collection.mispaymentStr = draftCollection.mispayment > 0 ? draftCollection.mispayment : '-';
-                        collection.mcbu = draftCollection.mcbu;
-                        collection.mcbuStr = collection.mcbu > 0 ? formatPricePhp(collection.mcbu) : '-';
-                        collection.mcbuCol = draftCollection.mcbuCol;
-                        collection.mcbuColStr = collection.mcbuCol > 0 ? formatPricePhp(collection.mcbuCol) : '-';
-                        collection.mcbuWithdrawal = draftCollection.mcbuWithdrawal;
-                        collection.mcbuWithdrawalStr = collection.mcbuWithdrawal ? formatPricePhp(collection.mcbuWithdrawal) : '-';
-                        collection.noMcbuReturn = draftCollection.mcbuReturnNo;
-                        collection.mcbuReturnAmt = draftCollection.mcbuReturnAmt;
-                        collection.mcbuReturnAmtStr = collection.mcbuReturnAmt ? formatPricePhp(collection.mcbuReturnAmt) : '-';
-                        collection.transfer = 0;
-                        collection.transferStr = '-';
+                    //     collection.loanTarget = loanTarget;
+                    //     collection.loanTargetStr = loanTarget > 0 ? formatPricePhp(loanTarget) : '-';
+                    //     collection.excessStr = draftCollection.excess > 0 ? formatPricePhp(draftCollection.excess) : '-';
+                    //     collection.total = draftCollection.collection;
+                    //     collection.totalStr = draftCollection.collection > 0 ? formatPricePhp(draftCollection.collection) : '-';
+                    //     collection.mispaymentStr = draftCollection.mispayment > 0 ? draftCollection.mispayment : '-';
+                    //     collection.mcbu = draftCollection.mcbu;
+                    //     collection.mcbuStr = collection.mcbu > 0 ? formatPricePhp(collection.mcbu) : '-';
+                    //     collection.mcbuCol = draftCollection.mcbuCol;
+                    //     collection.mcbuColStr = collection.mcbuCol > 0 ? formatPricePhp(collection.mcbuCol) : '-';
+                    //     collection.mcbuWithdrawal = draftCollection.mcbuWithdrawal;
+                    //     collection.mcbuWithdrawalStr = collection.mcbuWithdrawal ? formatPricePhp(collection.mcbuWithdrawal) : '-';
+                    //     collection.noMcbuReturn = draftCollection.mcbuReturnNo;
+                    //     collection.mcbuReturnAmt = draftCollection.mcbuReturnAmt;
+                    //     collection.mcbuReturnAmtStr = collection.mcbuReturnAmt ? formatPricePhp(collection.mcbuReturnAmt) : '-';
+                    //     collection.transfer = 0;
+                    //     collection.transferStr = '-';
     
-                        excess += draftCollection.excess;
-                        totalLoanCollection += draftCollection.collection;
-                        mispayment += draftCollection.mispayment;
-                        totalMcbuCol += collection.mcbuCol ? collection.mcbuCol : 0;
-                        totalMcbuWithdrawal += collection.mcbuWithdrawal ? collection.mcbuWithdrawal : 0;
-                        totalMcbuReturnNo += collection.noMcbuReturn ? collection.noMcbuReturn : 0;
-                        totalMcbuReturnAmt += collection.mcbuReturnAmt ? collection.mcbuReturnAmt : 0;
-                        totalTransfer += collection.transfer !== '-' ? collection.transfer : 0;
-                    } else if (branch.cashCollections.length > 0) {
+                    //     excess += draftCollection.excess;
+                    //     totalLoanCollection += draftCollection.collection;
+                    //     mispayment += draftCollection.mispayment;
+                    //     totalMcbuCol += collection.mcbuCol ? collection.mcbuCol : 0;
+                    //     totalMcbuWithdrawal += collection.mcbuWithdrawal ? collection.mcbuWithdrawal : 0;
+                    //     totalMcbuReturnNo += collection.noMcbuReturn ? collection.noMcbuReturn : 0;
+                    //     totalMcbuReturnAmt += collection.mcbuReturnAmt ? collection.mcbuReturnAmt : 0;
+                    //     totalTransfer += collection.transfer !== '-' ? collection.transfer : 0;
+                    // } else 
+                    if (branch.cashCollections.length > 0) {
                         const loanTarget = collection.loanTarget - branch.cashCollections[0].loanTarget;
 
                         collection.loanTarget = loanTarget;
@@ -197,7 +198,7 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup}) => {
                         excess += branch.cashCollections[0].excess;
                         totalLoanCollection += branch.cashCollections[0].collection;
                         mispayment += branch.cashCollections[0].mispayment;
-                        totalMcbuCol += collection.mcbuCol ? collection.mcbuCol : 0;
+                        // totalMcbuCol += collection.mcbuCol ? collection.mcbuCol : 0;
                         totalMcbuWithdrawal += collection.mcbuWithdrawal ? collection.mcbuWithdrawal : 0;
                         totalMcbuReturnNo += collection.noMcbuReturn ? collection.noMcbuReturn : 0;
                         totalMcbuReturnAmt += collection.mcbuReturnAmt ? collection.mcbuReturnAmt : 0;
@@ -227,6 +228,8 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup}) => {
                         fullPaymentAmount += branch.fullPayment[0].fullPaymentAmount;
                         noOfFullPayment += branch.fullPayment[0].noOfFullPayment;
                     }
+
+                    targetLoanCollection += collection.loanTarget;
                 } else {
                     if (branch.cashCollections.length > 0) {
                         collection.activeClients = branch.cashCollections[0].activeClients; 
@@ -287,7 +290,7 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup}) => {
                         fullPaymentAmount += branch.cashCollections[0].fullPaymentAmount;
                         noOfFullPayment += branch.cashCollections[0].noOfFullPayment;
                         // totalMcbu += collection.mcbu ? collection.mcbu : 0;
-                        totalMcbuCol += collection.mcbuCol ? collection.mcbuCol : 0;
+                        // totalMcbuCol += collection.mcbuCol ? collection.mcbuCol : 0;
                         totalMcbuWithdrawal += collection.mcbuWithdrawal ? collection.mcbuWithdrawal : 0;
                         totalMcbuReturnNo += collection.noMcbuReturn ? collection.noMcbuReturn : 0;
                         totalMcbuReturnAmt += collection.mcbuReturnAmt ? collection.mcbuReturnAmt : 0;
@@ -479,6 +482,7 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup}) => {
 
             collectionData.map(c => {
                 totalMcbu += c.mcbu ? c.mcbu : 0;
+                totalMcbuCol += c.mcbuCol ? c.mcbuCol : 0;
                 // noOfClients += c.activeClients !== '-' ? c.activeClients : 0;
                 // noOfBorrowers += c.activeBorrowers !== '-' ? c.activeBorrowers : 0;
             });
