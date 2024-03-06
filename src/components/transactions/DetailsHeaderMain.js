@@ -37,11 +37,15 @@ const DetailsHeader = ({ pageTitle, page, pageName, currentDate, mode, selectedB
 
     const handleBack = () => {
         if (currentUser.role.rep < 3 && page == 2 && pageName == 'lo-view') {
-            router.push(`/branch-manager/cash-collection/users/${currentBranch._id}`);
+            router.push(`/transactions/branch-manager/cash-collection/users/${currentBranch._id}`);
         } else if (currentUser.role.rep == 3) {
             router.push(`/transactions/branch-manager/cash-collection`);
-        } else {
-            router.back();
+        } else if (currentUser.role.rep < 3) {
+            if (pageName == 'branch-view') {
+                router.push(`/transactions/branch-manager/cash-collection`);
+            } else {
+                router.push(`/transactions/branch-manager/cash-collection/users/${selectedLO._id}`);
+            }
         }
     }
 
