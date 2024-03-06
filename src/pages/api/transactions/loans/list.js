@@ -151,9 +151,10 @@ async function list(req, res) {
                             localField: "clientId",
                             foreignField: "clientId",
                             pipeline: [
-                                { $match: { status: 'active' } },
+                                { $match: { status: {$in: ['active', 'completed']} } },
                                 { $project: { 
-                                    loanCycle: '$loanCycle'
+                                    loanCycle: '$loanCycle',
+                                    status: '$status'
                                 } }
                             ],
                             as: 'pendings'
