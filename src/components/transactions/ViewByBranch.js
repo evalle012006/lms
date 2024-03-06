@@ -136,7 +136,7 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup}) => {
                         collection.mcbuReturnAmtStr = '-';
                         collection.status = groupStatus;
     
-                        totalsLoanRelease += collection.totalRelease;
+                        totalsLoanRelease += collection.totalReleases;
                         totalsLoanBalance += collection.totalLoanBalance;
                         totalPastDue += collection.pastDue;
                         totalNoPastDue += collection.noPastDue;
@@ -479,8 +479,8 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup}) => {
 
             collectionData.map(c => {
                 totalMcbu += c.mcbu ? c.mcbu : 0;
-                noOfClients += c.activeClients !== '-' ? c.activeClients : 0;
-                noOfBorrowers += c.activeBorrowers !== '-' ? c.activeBorrowers : 0;
+                // noOfClients += c.activeClients !== '-' ? c.activeClients : 0;
+                // noOfBorrowers += c.activeBorrowers !== '-' ? c.activeBorrowers : 0;
             });
 
             const transferGvr = transferDetailsTotal(collectionDailyTransferred, collectionWeeklyTransferred, 'Transfer GVR');

@@ -166,7 +166,7 @@ const BranchCashCollectionPage = () => {
             ) : (
                 <React.Fragment>
                     <div className="overflow-x-auto">
-                        {branchList && <DetailsHeader pageTitle='Branch Cash Collections' pageName={currentUser.role.rep === 1 ? "branch-view" : ""}
+                        {branchList && <DetailsHeader pageTitle='Branch Cash Collections' pageName={currentUser.role.rep < 3 ? "branch-view" : ""}
                             page={1} currentDate={moment(currentDate).format('dddd, MMMM DD, YYYY')} weekend={isWeekend} holiday={isHoliday}
                             dateFilter={dateFilter} handleDateFilter={handleDateFilter} handleSubmit={handleShowSubmitDialog} filter={filter}
                             selectedLoGroup={selectedLoGroup} handleLoGroupChange={handleLoGroupChange}
