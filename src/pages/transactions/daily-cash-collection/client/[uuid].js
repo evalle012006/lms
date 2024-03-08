@@ -1471,6 +1471,12 @@ const CashCollectionDetailsPage = () => {
                                     temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + temp.mcbuCol : 0 + temp.mcbuCol;
                                     temp.mcbuStr = formatPricePhp(temp.mcbu);
                                 }
+
+                                // check if previous mcbu is less than 600 then it means the previous loan did not cont-mcbu
+                                if (cc.mcbu < 600 && temp.mcbu > 600) {
+                                    temp.mcbu = 600;
+                                    temp.mcbuStr = formatPricePhp(temp.mcbu);
+                                }
         
                                 temp.noOfPaymentStr = temp.noOfPayments + ' / ' + temp.loanTerms;
         

@@ -45,7 +45,7 @@ async function authenticate(req, res) {
     }
 
     if (success) {
-        const token = jwt.sign({ sub: user._id }, serverRuntimeConfig.secret, { expiresIn: '12h' });
+        const token = jwt.sign({ sub: user._id }, serverRuntimeConfig.secret, { expiresIn: '4h' });
         delete user.password;
         const query = await db
             .collection('users')

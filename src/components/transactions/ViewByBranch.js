@@ -237,7 +237,7 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup}) => {
                         collection.pendingClients = branch.cashCollections[0].pendingClients;
 
                         collection.totalReleases = branch.cashCollections[0].totalRelease;
-                        collection.totalReleasesStr = collection.totalRelease > 0 ? formatPricePhp(collection.totalReleases) : '-';
+                        collection.totalReleasesStr = collection.totalReleases > 0 ? formatPricePhp(collection.totalReleases) : '-';
                         collection.totalLoanBalance = branch.cashCollections[0].totalLoanBalance;
                         collection.totalLoanBalanceStr = collection.totalLoanBalance > 0 ? formatPricePhp(collection.totalLoanBalance) : '-';
                         collection.loanTarget = branch.cashCollections[0].loanTarget;
