@@ -392,7 +392,7 @@ const BranchManagerSummary = () => {
             activeBorrowers = temp.activeBorrowers;
             activeLoanReleasePerson = temp.activeLoanReleasePerson;
             activeLoanReleaseAmount = temp.activeLoanReleaseAmount !== '-' ? temp.activeLoanReleaseAmount : 0;
-            loanBalance = temp.loanBalance !== '-' ? temp.loanBalance : 0;
+            // loanBalance = temp.loanBalance !== '-' ? temp.loanBalance : 0;
 
             temp?.transferDailyGvr?.map(dailyGvr => {
                 if (dailyGvr) {
@@ -433,7 +433,7 @@ const BranchManagerSummary = () => {
                         activeBorrowers += noTransfer;
                         activeLoanReleasePerson += noTransfer;
                         activeLoanReleaseAmount = activeLoanReleaseAmount - data.totalLoanRelease ? data.totalLoanRelease : 0 + data.currentReleaseAmount ? data.currentReleaseAmount : 0;
-                        loanBalance = loanBalance - (data.totalLoanRelease - data.collection) + data.currentReleaseAmount;
+                        loanBalance = temp.loanBalance - (data.totalLoanRelease - data.collection) + data.currentReleaseAmount;
                     }
                 }
             });
