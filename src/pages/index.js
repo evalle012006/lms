@@ -98,6 +98,14 @@ const Index = () => {
         };
     }, [currentTime]);
 
+    // useEffect(() => {
+    //     const updateCCData = async () => {
+    //         await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}aahandy-scripts/update-cc-data`);
+    //     }
+
+    //     updateCCData();
+    // }, []);
+
     return (
         <Layout header={false} noPad={true}>
             <DashboardPage />
