@@ -572,6 +572,20 @@ const MenuItems = [
                 active: false,
                 hasSub: false
             },
+            {
+                label: "Low Loan Balance List",
+                url: "/reports/low-loan-balance",
+                icon: {
+                    active: (
+                        <DocumentChartBarIcon className="text-gray-800 w-5 h-5" />
+                    ),
+                    notActive: (
+                        <DocumentChartBarIcon className="text-white w-5 h-5" />
+                    ),
+                },
+                active: false,
+                hasSub: false
+            },
         ]
     },
     {
