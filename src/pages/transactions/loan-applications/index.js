@@ -737,6 +737,10 @@ const LoanApplicationPage = () => {
             const clientName = `${loan.client.firstName} ${loan.client.lastName}`;
             const groupName = loan.group.name;
 
+            if (loan.client.firstName == null || loan.client.lastName == null) {
+                errorMsg.add(`Invalid name: ${clientName} in group ${groupName}, please update it in Client page.`);
+            }
+
             if (!loan.allowApproved) {
                 errorMsg.add(`${clientName} in group ${groupName} please re-open the LO transaction.`);
             }
@@ -1444,7 +1448,7 @@ const LoanApplicationPage = () => {
                 } 
             </div>
             {occurence && <AddUpdateLoan mode={mode} loan={loan} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} type={occurence} />}
-            <Modal title="Client Detail Info" show={showClientInfoModal} onClose={handleCloseClientInfoModal} width="60rem">
+            <Modal title="Client Detail Info" show={showClientInfoModal} onClose={handleCloseClientInfoModal} width="70rem">
                 <ClientDetailPage />
             </Modal>
             <Dialog show={showRejectModal}>

@@ -18,7 +18,7 @@ async function allLoans(req, res) {
             .aggregate([
                 { $match: { loanOfficerId: loId, noOfClients: { $ne: 0 } } },
                 { $addFields: {
-                    groupIdStr: { $toString: '$_id' },
+                    groupIdStr: { $toString: '$_id' }
                 } },
                 {
                     $lookup: {
@@ -34,8 +34,29 @@ async function allLoans(req, res) {
                                 loanBalance: '$loanBalance',
                                 amountRelease: '$amountRelease',
                                 loanCycle: '$loanCycle',
-                                mcbu: '$mcbu'
-                            } }
+                                mcbu: '$mcbu',
+                                noOfMisPayments: '$mispayment'
+                            } },
+                            {
+                                $addFields: {
+                                    clientIdObj: { $toObjectId: '$clientId' }
+                                }
+                            },
+                            {
+                                $lookup: {
+                                    from: 'client',
+                                    localField: 'clientIdObj',
+                                    foreignField: '_id',
+                                    pipeline: [
+                                        {
+                                            $project: {
+                                                delinquent: '$delinquent'
+                                            }
+                                        }
+                                    ],
+                                    as: 'clientStatus'
+                                }
+                            }
                         ],
                         as: 'loans'
                     }
