@@ -44,6 +44,14 @@ const ViewLowBalanceByGroupsPage = ({ amount }) => {
             Header: "MCBU",
             accessor: 'mcbuStr'
         },
+        {
+            Header: "Mispayments",
+            accessor: 'noOfMispayments'
+        },
+        {
+            Header: "Delinquent",
+            accessor: 'delinquent'
+        }
     ]);
 
     const getList = async (loId) => {
@@ -53,6 +61,7 @@ const ViewLowBalanceByGroupsPage = ({ amount }) => {
             const responseData = [];
             response.data.map(group => {
                 group.loans.map(loan => {
+                    const delinquent = loan.clientStatus.length > 0 ? loan.clientStatus[0].delinquent == true ? 'Yes' : 'No' : 'No';
                     responseData.push({
                         groupId: group._id,
                         groupName: group.name,
@@ -64,7 +73,9 @@ const ViewLowBalanceByGroupsPage = ({ amount }) => {
                         loanBalance: loan.loanBalance,
                         loanBalanceStr: formatPricePhp(loan.loanBalance),
                         mcbu: loan.mcbu,
-                        mcbuStr: formatPricePhp(loan.mcbu)
+                        mcbuStr: formatPricePhp(loan.mcbu),
+                        noOfMispayments: loan.noOfMisPayments,
+                        delinquent: delinquent
                     });
                 });
             });

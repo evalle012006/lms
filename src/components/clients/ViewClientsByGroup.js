@@ -470,7 +470,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                         </div>
                     ) : <TableComponent columns={columns} data={list} hasActionButtons={groupId ? false : true} rowActionButtons={currentUser.role.rep > 2 && rowActionButtons} showFilters={true} rowClick={handleShowClientInfoModal}/>}
             </div>
-            <Modal title="Client Detail Info" show={showClientInfoModal} onClose={handleCloseClientInfoModal} width="60rem">
+            <Modal title="Client Detail Info" show={showClientInfoModal} onClose={handleCloseClientInfoModal} width="70rem">
                 <ClientDetailPage />
             </Modal>
             <Dialog show={showDeleteDialog}>

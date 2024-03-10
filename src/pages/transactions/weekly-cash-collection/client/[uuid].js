@@ -2809,7 +2809,7 @@ const CashCollectionDetailsPage = () => {
                         </div>
                     </div>
                     {loan && <AddUpdateLoan mode={'reloan'} loan={loan} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />}
-                    <Modal title="Client Detail Info" show={showClientInfoModal} onClose={handleCloseClientInfoModal} width="60rem">
+                    <Modal title="Client Detail Info" show={showClientInfoModal} onClose={handleCloseClientInfoModal} width="70rem">
                         <ClientDetailPage />
                     </Modal>
                     <Dialog show={showRemarksModal}>

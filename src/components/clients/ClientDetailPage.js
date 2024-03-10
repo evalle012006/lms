@@ -88,6 +88,12 @@ const ClientDetailPage = () => {
             filter: 'includes'
         },
         {
+            Header: "PN Number",
+            accessor: 'pnNumber',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
             Header: "Remarks",
             accessor: 'remarks',
             Filter: SelectColumnFilter,

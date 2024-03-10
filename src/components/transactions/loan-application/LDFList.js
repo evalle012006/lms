@@ -39,7 +39,7 @@ const LDFListPage = React.forwardRef((props, ref) => {
                 let loanDetails = {};
                 loanDetails.slotNo = loan.slotNo;
                 const clientData = { ...loan.client, fullName: fullName };
-                const fullName = clientData.firstName + ' ' + clientData.lastName;
+                let fullName = clientData.fullName ? clientData.fullName : clientData.firstName + ' ' + clientData.lastName;
                 loanDetails.fullName = fullName;
                 loanDetails.dob = clientData.birthdate;
                 const groupData = loan.group;
@@ -157,7 +157,7 @@ const LDFListPage = React.forwardRef((props, ref) => {
                                             <th className='border border-gray-900 w-16' rowSpan={2}>Date of Birth</th>
                                             <th className='border border-gray-900 w-12' rowSpan={2}>Group Name</th>
                                             <th className='border border-gray-900 w-10' rowSpan={2}>Loan Cycle</th>
-                                            <th className='border border-gray-900 w-12' rowSpan={2}>Business Type</th>
+                                            {/* <th className='border border-gray-900 w-12' rowSpan={2}>Business Type</th> */}
                                             <th className='border border-gray-900 w-12' colSpan={3}>Loan Disbursement</th>
                                             <th className='border border-gray-900 w-60' rowSpan={2}>Client's Signature Over Printed Name</th>
                                             <th className='border border-gray-900 w-12' rowSpan={2}>Loan App. #</th>
@@ -176,14 +176,14 @@ const LDFListPage = React.forwardRef((props, ref) => {
                                     <tbody>
                                         { list.map((loan, index) => {
                                             return (
-                                                <tr key={index} className='leading-8'>
+                                                <tr key={index} className={`${loan.slotNo && 'leading-8'}`}>
                                                     <td className='border border-gray-900 text-center'>{ index + 1 }</td>
                                                     <td className='border border-gray-900 text-center'>{ loan.slotNo }</td>
                                                     <td className='border border-gray-900'>{ loan.fullName }</td>
                                                     <td className='border border-gray-900 text-center'>{ loan.dob }</td>
                                                     <td className='border border-gray-900'>{ loan.groupName }</td>
                                                     <td className='border border-gray-900 text-center'>{ loan.loanCycle }</td>
-                                                    <td className='border border-gray-900'>{ loan.businessType }</td>
+                                                    {/* <td className='border border-gray-900'>{ loan.businessType }</td> */}
                                                     <td className='border border-gray-900 text-center'>{ loan.loanDisbursementDate }</td>
                                                     <td className='border border-gray-900 text-right'>{ loan.loanDisbursementPrincipalAmount ? formatPricePhp(loan.loanDisbursementPrincipalAmount) : '' }</td>
                                                     <td className='border border-gray-900 text-right'>{ loan.loanDisbursementAmountRelease ? formatPricePhp(loan.loanDisbursementAmountRelease) : '' }</td>
