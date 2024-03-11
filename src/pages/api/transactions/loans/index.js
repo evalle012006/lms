@@ -1,5 +1,6 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
+import logger from '@/logger';
 
 export default apiHandler({
     get: getLoan,
@@ -73,7 +74,7 @@ async function updateLoan(req, res) {
     const loanId = loan._id;
     delete loan._id;
     delete loan.group;
-
+    logger.debug({page: `Updating Loan: ${loan.clientId}`, data: loan});
     const loanResp = await db
         .collection('loans')
         .updateOne(
@@ -82,6 +83,8 @@ async function updateLoan(req, res) {
                 $set: { ...loan }
             }, 
             { upsert: false });
+
+    await db.collection('cashCollections').updateMany({ loanId: loanId, status: { $in: ['tomorrow', 'pending'] } }, { $set: {currentReleaseAmount: loan.amountRelease} });
 
     response = { success: true, loan: loanResp };
 

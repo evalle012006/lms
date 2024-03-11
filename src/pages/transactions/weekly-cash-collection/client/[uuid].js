@@ -96,6 +96,9 @@ const CashCollectionDetailsPage = () => {
 
     const handleCloseClientInfoModal = () => {
         setShowClientInfoModal(false);
+        setTimeout(async () => {
+            window.location.reload();
+        }, 1000);
     }
 
     const handleGroupFilter = (selected) => {

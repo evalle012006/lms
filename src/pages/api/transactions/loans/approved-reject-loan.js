@@ -1,5 +1,6 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
+import logger from '@/logger';
 
 export default apiHandler({
     post: updateLoan
@@ -44,6 +45,7 @@ async function updateLoan(req, res) {
                 }
             }
         }  else if (loan.status === 'reject') {
+            logger.debug({page: `Rejecting Loan: ${loanId}`, data: loan});
             // if reloan cashCollections:
             // status to completed
             // currentReleaseAmount to 0
@@ -51,6 +53,7 @@ async function updateLoan(req, res) {
             // client status to pending
             if (loan.loanCycle > 1) {
                 let prevLoan = await db.collection('loans').find({ clientId: loan.clientId, loanCycle: loan.loanCycle - 1, groupId: loan.groupId }).toArray();
+                logger.debug({page: `Rejecting Loan: ${loanId}`, message: 'Previous Loan', data: prevLoan});
                 if (prevLoan && prevLoan?.length > 0) {
                     prevLoan = prevLoan[0];
                     let cashCollection = await db.collection('cashCollections')
@@ -62,7 +65,7 @@ async function updateLoan(req, res) {
                                                 ] } } }
                                             ])
                                             .toArray();
-
+                    logger.debug({page: `Rejecting Loan: ${loan._id}`, message: 'Cash Collection Data', data: cashCollection});
                     if (cashCollection.length > 0) {
                         cashCollection = cashCollection[0];
                         cashCollection.status = cashCollection.loanBalance <= 0 ? 'completed' : 'active';
@@ -78,8 +81,8 @@ async function updateLoan(req, res) {
                     delete prevLoan._id;
                     if (prevLoan.loanBalance <= 0 && prevLoan.fullPaymentDate) {
                         prevLoan.status = 'completed';
-                        prevLoan.mcbu = loan.mcbu;
-                        prevLoan.mcbuCollection = loan.mcbu;
+                        prevLoan.mcbu = loan.mcbu ? loan.mcbu : 0;
+                        prevLoan.mcbuCollection = loan.mcbu ? loan.mcbu : 0;
                     } else {
                         prevLoan.status = 'active';
                     }
@@ -90,6 +93,7 @@ async function updateLoan(req, res) {
                     await db.collection('loans').updateOne({ _id: prevLoanId }, {$unset: {advance: 1, advanceDate: 1}, $set: { ...prevLoan }});
                 }
             } else {
+                logger.debug({page: `Rejecting Loan: ${loanId}`, message: 'Deleting cashCollection data.'});
                 await db.collection('cashCollections').deleteOne({ loanId: loan._id });
             }
 
@@ -114,6 +118,7 @@ async function updateLoan(req, res) {
         }
 
         if (loan.status === 'active' || loan.status === 'reject') {
+            logger.debug({page: `Loan: ${loanId}`, message: 'Updating loan data.', status: loan.status});
             await db
                 .collection('loans')
                 .updateOne(
@@ -272,7 +277,7 @@ async function saveCashCollection(loan, group, currentDate) {
             currentReleaseAmount: loan.amountRelease,
             fullPayment: 0,
             remarks: '',
-            mcbu: loan.mcbu,
+            mcbu: loan.mcbu ? loan.mcbu : 0,
             mcbuCol: 0,
             mcbuWithdrawal: 0,
             mcbuReturnAmt: 0,

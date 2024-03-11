@@ -1,5 +1,6 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
+import logger from '@/logger';
 
 export default apiHandler({
     post: processData
@@ -19,7 +20,7 @@ async function processData(req, res) {
     if (origin == 'ldf') {
         loanData.map(async loan => {
             const loanId = loan._id;
-    
+            logger.debug({page: `LDF Approved Loan: ${loanId}`});
             delete loan._id;
             delete loan.loanOfficer;
             delete loan.groupCashCollections;
@@ -37,7 +38,7 @@ async function processData(req, res) {
         loanData.map(async loan => {
             const loanId = loan._id;
             const currentDate = loan.currentDate;
-    
+            logger.debug({page: `Approving Loan: ${loanId}`, data: loan});
             delete loan._id;
             delete loan.loanOfficer;
             delete loan.groupCashCollections;
@@ -80,6 +81,7 @@ async function processData(req, res) {
                 }
     
                 if (loan.status === 'active' || loan.status === 'reject') {
+                    logger.debug({page: `Loan: ${loan._id}`, message: 'Updating loan data.', status: loan.status});
                     await db.collection('loans')
                         .updateOne(
                             { _id: new ObjectId(loanId) }, 
@@ -212,8 +214,9 @@ async function saveCashCollection(loan, group, currentDate) {
     const { db } = await connectToDatabase();
     const status = loan.status === "active" ? "tomorrow" : loan.status;
     let cashCollection = await db.collection('cashCollections').find({ clientId: loan.clientId, groupId: loan.groupId, dateAdded: currentDate }).toArray();
-
+    logger.debug({page: `Loan: ${loan._id}`, message: 'Saving/Updating cashCollection data.', data: cashCollection});
     if (cashCollection.length > 0) {
+        logger.debug({page: `Loan: ${loan._id}`, message: 'Updating loan data.'});
         cashCollection = cashCollection[0];
         const ccId = cashCollection._id;
         delete cashCollection._id;
@@ -251,7 +254,7 @@ async function saveCashCollection(loan, group, currentDate) {
             currentReleaseAmount: loan.amountRelease,
             fullPayment: 0,
             remarks: loan?.history?.remarks,
-            mcbu: loan.mcbu,
+            mcbu: loan.mcbu ? loan.mcbu : 0,
             mcbuCol: 0,
             mcbuWithdrawal: 0,
             mcbuReturnAmt: 0,
@@ -269,7 +272,7 @@ async function saveCashCollection(loan, group, currentDate) {
             data.mcbuTarget = 50;
             data.groupDay = group.day;
         }
-
+        logger.debug({page: `Loan: ${loan._id}`, message: 'Adding loan data.', data: data});
         await db.collection('cashCollections').insertOne({ ...data });
     }
 }

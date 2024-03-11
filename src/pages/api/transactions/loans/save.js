@@ -1,5 +1,6 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
+import logger from '@/logger';
 
 export default apiHandler({
     post: save
@@ -33,7 +34,7 @@ async function save(req, res) {
         delete loanData.groupCashCollections;
         delete loanData.loanOfficer;
     }
-
+    logger.debug({page: `Saving Loan: ${loanData.clientId}`, mode: mode, data: loanData});
     const spotExist = await db.collection('loans').find({ $expr: { $and: [{$eq: ["$slotNo", loanData.slotNo]}, {$eq: ["$groupId", loanData.groupId]}, { $or: [{$eq: ["$status", "active"]}, {$eq: ["$status", "completed"]}, {$eq: ["$status", "pending"]}] }] } }).toArray();
     const pendingExist = await db.collection('loans').find({ slotNo: loanData.slotNo, clientId: loanData.clientId, status: 'pending' }).toArray();
 
@@ -74,7 +75,7 @@ async function save(req, res) {
             if (mode === 'reloan') {
                 finalData.modifiedDateTime = new Date();
             }
-
+            logger.debug({page: `Saving Loan: ${loanData.clientId}`, message: 'Final Data', data: finalData});
             delete finalData.currentReleaseAmount;
             delete finalData.currentDate;
             const loan = await db.collection('loans').insertOne({
@@ -171,7 +172,7 @@ async function updateLoan(loanId, loanData, currentDate, mode) {
     const ObjectId = require('mongodb').ObjectId;
 
     let loan = await db.collection('loans').find({ _id: new ObjectId(loanId) }).toArray();
-
+    logger.debug({page: `Updating Old Loan: ${loanId}`, mode: mode, data: loan});
     if (loan.length > 0) {
         loan = loan[0];
 
@@ -184,7 +185,7 @@ async function updateLoan(loanId, loanData, currentDate, mode) {
         } else {
             loan.mcbu = loan.mcbu - loanData.mcbu;
             loan.status = 'closed';
-
+            logger.debug({page: `Updating Cash Collection: ${loanId}`, data: loan});
             await db
                 .collection('cashCollections')
                 .updateOne(
@@ -211,13 +212,14 @@ async function saveCashCollection(loan, reloan, group, loanId, currentDate) {
 
     const cashCollection = await db.collection('cashCollections').find({ clientId: loan.clientId, dateAdded: currentDate }).toArray();
     const groupCashCollections = await db.collection('cashCollections').find({ groupId: group._id, dateAdded: currentDate }).toArray();
+    logger.debug({page: `Saving Cash Collection: ${loanId}`, cashCollection: cashCollection, groupCashCollections: groupCashCollections});
     if (groupCashCollections && cashCollection.length === 0) {
         let groupStatus = 'pending';
         if (groupCashCollections.length > 0) {
             groupStatus = groupCashCollections[0].groupStatus;
         }
 
-        let mcbu = loan.mcbu;
+        let mcbu = loan.mcbu ? loan.mcbu : 0;
         let mcbuCol = 0;
 
         if (loan.loanCycle == 1) {
@@ -268,16 +270,17 @@ async function saveCashCollection(loan, reloan, group, loanId, currentDate) {
             data.groupDay = group.day;
 
             if (!reloan && data.loanCycle !== 1) {
-                data.mcbuCol = loan.mcbu;
+                data.mcbuCol = loan.mcbu ? loan.mcbu : 0;
             }
         }
 
         if (loan.status === 'reject') {
             data.rejectReason = loan.rejectReason;
         }
-
+        logger.debug({page: `Saving Cash Collection: ${loan.clientId}`, data: data});
         await db.collection('cashCollections').insertOne({ ...data });
     } else {
+        logger.debug({page: `Updating Loan: ${loan.clientId}`});
         await db.collection('cashCollections').updateOne({ _id: cashCollection[0]._id }, { $set: { currentReleaseAmount: currentReleaseAmount, status: loan.status, modifiedBy: 'automation-loan', modifiedDateTime: new Date() } })
     }
 }
