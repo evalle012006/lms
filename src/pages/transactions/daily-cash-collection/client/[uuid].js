@@ -98,6 +98,9 @@ const CashCollectionDetailsPage = () => {
 
     const handleCloseClientInfoModal = () => {
         setShowClientInfoModal(false);
+        setTimeout(async () => {
+            window.location.reload();
+        }, 1000);
     }
 
     const handleGroupFilter = (selected) => {
@@ -2666,7 +2669,7 @@ const CashCollectionDetailsPage = () => {
                     </div>
                     {loan && <AddUpdateLoan mode={'reloan'} loan={loan} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />}
                     <Modal title="Client Detail Info" show={showClientInfoModal} onClose={handleCloseClientInfoModal} width="70rem">
-                        <ClientDetailPage />
+                        <ClientDetailPage callback={handleCloseClientInfoModal} />
                     </Modal>
                     <Dialog show={showRemarksModal}>
                         <h2>Close Account Remarks</h2>

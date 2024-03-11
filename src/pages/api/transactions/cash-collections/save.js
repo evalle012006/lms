@@ -1,6 +1,7 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
 import moment from 'moment';
+import logger from '@/logger';
 
 export default apiHandler({
     post: save
@@ -18,6 +19,7 @@ async function save(req, res) {
         let existCC = [];
         let newCC = [];
         // let prevCommpleted = [];
+        logger.debug({page: `Saving Cash Collection - Group ID: ${data.collection[0]?.groupId}`});
         data.collection.map(async cc => {
             if (cc.status !== "totals") {
                 let collection = {...cc};
@@ -55,7 +57,7 @@ async function save(req, res) {
                 if (collection.status === 'completed' && (collection?.remarks?.value?.startsWith('offset') || collection.mcbuReturnAmt > 0)) {
                     collection.status = "closed";
                 }
-
+                logger.debug({page: `Saving Cash Collection - Group ID: ${data.collection[0]?.groupId}`, data: collection});
                 if (collection.hasOwnProperty('_id')) {
                     collection.modifiedDateTime = new Date();
                     const existCollection = {...collection};
@@ -143,6 +145,7 @@ async function updateLoan(db, collection, currentDate) {
     const ObjectId = require('mongodb').ObjectId;
 
     let loan = await db.collection('loans').find({ _id: new ObjectId(collection.loanId) }).toArray();
+    logger.debug({page: `Saving Cash Collection - Updating Loan: ${collection.loanId}`});
     if (loan.length > 0) {
         loan = loan[0];
         delete loan.groupStatus;
@@ -239,7 +242,7 @@ async function updateLoan(db, collection, currentDate) {
         }
 
         loan.lastUpdated = currentDate;
-
+        logger.debug({page: `Saving Cash Collection - Updating Loan`, data: loan});
         delete loan._id;
         await db.collection('loans').updateOne(
             { _id: new ObjectId(collection.loanId) }, 
@@ -255,10 +258,11 @@ async function updateLoan(db, collection, currentDate) {
 
 async function updatePendingLoan(db, collection, currentDate) {
     const ObjectId = require('mongodb').ObjectId;
-
+    logger.debug({page: `Saving Cash Collection - Updating Pending Loan: ${collection.loanId}`});
     let currentLoan = await db.collection('loans').find({ _id: new ObjectId(collection.loanId) }).toArray();
     let pendingLoan = await db.collection('loans').find({ clientId: collection.clientId, status: 'pending' }).toArray();
     let cashCollection = await db.collection('cashCollections').find({ clientId: collection.clientId, dateAdded: currentDate }).toArray();
+    logger.debug({page: `Saving Cash Collection - Updating Pending Loan`, currentLoanSize: currentLoan.length, pendingLoanSize: pendingLoan.length, cashCollectionSize: cashCollection.length});
     if (currentLoan.length > 0 && pendingLoan.length > 0 && cashCollection.length > 0) {
         currentLoan = currentLoan[0];
         pendingLoan = pendingLoan[0];
@@ -292,7 +296,7 @@ async function updatePendingLoan(db, collection, currentDate) {
         delete currentLoan._id;
         delete pendingLoan._id;
         delete cashCollection._id;
-        
+        logger.debug({page: `Saving Cash Collection - Updating Pending Loan`, currentLoan: currentLoan, pendingLoan: pendingLoan, cashCollection: cashCollection});
         await db.collection('loans').updateOne({ _id: currentLoanId}, { $set: { ...currentLoan } });
         await db.collection('loans').updateOne({ _id: pendingLoanId}, { $set: { ...pendingLoan } });
         await db.collection('cashCollections').updateOne({ _id: cashCollectionId}, { $set: { ...cashCollection } });
@@ -366,9 +370,9 @@ async function updateClient(db, loan, currentDate) {
 
 async function updateLoanClose(db, loanData, currentDate) {
     const ObjectId = require('mongodb').ObjectId;
-    
+    logger.debug({page: `Saving Cash Collection - Updating Loan Close`});
     let loan = await db.collection('loans').find({ _id: new ObjectId(loanData.loanId) }).toArray();
-
+    logger.debug({page: `Saving Cash Collection - Updating Loan Close`, loanSize: loan.length});
     if (loan.length > 0) {
         loan = loan[0];
 
@@ -378,6 +382,7 @@ async function updateLoanClose(db, loanData, currentDate) {
         loan.closedDate = currentDate;
         loan.dateModified = currentDate;
         delete loan._id;
+        logger.debug({page: `Saving Cash Collection - Updating Loan Close`, data: loan});
         await db
             .collection('loans')
             .updateOne(

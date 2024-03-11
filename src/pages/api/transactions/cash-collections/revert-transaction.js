@@ -21,7 +21,7 @@ async function revert(req, res) {
     const promise = await new Promise(async (resolve) => {
         const response = await Promise.all(cashCollections.map(async (cc) => {
             let cashCollection = {...cc};
-
+            logger.debug({page: `Reverting Transaction Loan: ${cashCollection.clientId}`, data: cashCollection});
             let loanId = cashCollection.loanId;
             let cashCollectionId = cashCollection._id;
             if (cashCollection.status == 'closed') {
@@ -42,7 +42,7 @@ async function revert(req, res) {
             }
 
             let previousCC = await db.collection("cashCollections").find({ clientId: cashCollection.clientId }).sort({ $natural: -1 }).limit(2).toArray();
-
+            logger.debug({page: `Reverting Transaction Loan: ${cashCollection.clientId}`, clientSize: client.length, previousLoanSize: previousLoan.length, previousCCSize: previousCC.length });
             // NEED TO ACCOMODATE REVERT FOR NEW CLIENT PENDING/TOMORROW
             // - delete cashcollection
             // - set loan to rejected
@@ -51,7 +51,7 @@ async function revert(req, res) {
                 previousCC = previousCC[1];
                 // delete current transaction
                 await db.collection('cashCollections').deleteOne({ _id: new ObjectId(cashCollectionId) });
-
+                logger.debug({page: `Reverting Transaction Loan: ${cashCollection.clientId}`, previousCC: previousCC });
                 if (previousLoan.length > 0) { // pending, tomorrow
                     previousLoan = previousLoan[0];
                     delete previousLoan._id;
@@ -93,14 +93,13 @@ async function revert(req, res) {
                         previousLoan.revertedDate = currentDate;
                         delete previousLoan.advance;
                         delete previousLoan.advanceDate;
-
+                        logger.debug({page: `Reverting Transaction Loan: ${cashCollection.clientId}`, previousLoan: previousLoan });
                         await db.collection('loans').updateOne({ _id: new ObjectId(previousLoanId) }, { $unset: {advance: 1, advanceDate: 1}, $set: {...previousLoan} });
                     }
                 } else if (currentLoan.length > 0) { // active, completed, closed
                     currentLoan = currentLoan[0];
                     delete currentLoan._id;
-
-
+                    logger.debug({page: `Reverting Transaction Loan: ${cashCollection.clientId}`, previousCCStatus: previousCC.status, currentLoan: currentLoan });
                     if (previousCC.status == 'tomorrow') {
                         if (currentLoan.loanCycle > 1) {
                             currentLoan.amountRelease = previousCC.currentReleaseAmount;
@@ -168,8 +167,10 @@ async function revert(req, res) {
                         currentLoan.loanCycle = previousCC.loanCycle;
                         delete currentLoan.closedDate;
                         delete currentLoan.remarks;
+                        logger.debug({page: `Reverting Transaction Loan: ${cashCollection.clientId}`, updatedCurrentLoan: currentLoan });
                         await db.collection('loans').updateOne({ _id: new ObjectId(loanId) }, { $unset: { closedDate: 1, remarks: 1 }, $set: {...currentLoan} });
                     } else {
+                        logger.debug({page: `Reverting Transaction Loan: ${cashCollection.clientId}`, currentLoan: currentLoan });
                         if (currentLoan.status == 'pending' && cc.status == 'tomorrow') {
                             await db.collection('loans').updateOne({ _id: new ObjectId(loanId) }, { $unset: {startDate: 1, endDate: 1}, $set: {...currentLoan} });
                         } else if (cc.status == 'pending') {
@@ -184,6 +185,7 @@ async function revert(req, res) {
                 // this is for new client, balik clients
                 previousCC = previousCC[0];
                 currentLoan = currentLoan[0];
+                logger.debug({page: `Reverting Transaction Loan: ${cashCollection.clientId}`, previousCC: previousCC, currentLoan: currentLoan });
                 // delete current transaction
                 await db.collection('cashCollections').deleteOne({ _id: previousCC._id });
                 await db.collection('loans').deleteOne({ _id: currentLoan._id });
