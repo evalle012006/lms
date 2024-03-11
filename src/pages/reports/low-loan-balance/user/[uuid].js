@@ -13,10 +13,12 @@ const LowLoanBalanceByGroupPage = () => {
     const dispatch = useDispatch();
     const router = useRouter();
     const amountSubject = new BehaviorSubject(process.browser && localStorage.getItem('filterLowBalanceAmount'));
+    const operatorSubject = new BehaviorSubject(process.browser && localStorage.getItem('filterLowBalanceAmountOperator'));
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
     const [currentBranch, setCurrentBranch] = useState();
     const [amount, setAmount] = useState(amountSubject.value ? amountSubject.value : 1000);
+    const [operator, setOperator] = useState(operatorSubject.value ? operatorSubject.value : 'less_than_equal');
     const { uuid } = router.query;
 
     const handleBranchFilter = (selected) => {
@@ -57,9 +59,18 @@ const LowLoanBalanceByGroupPage = () => {
         setAmount(value);
     }
 
+    const handleOperatorChange = (selected) => {
+        localStorage.setItem('filterLowBalanceAmountOperator', selected.value);
+        setOperator(selected.value);
+    }
+
     useEffect(() => {
         localStorage.setItem('filterLowBalanceAmount', amount);
     }, [amount]);
+
+    useEffect(() => {
+        localStorage.setItem('filterLowBalanceAmountOperator', operator);
+    }, [operator]);
 
     useEffect(() => {
         let mounted = true;
@@ -79,8 +90,8 @@ const LowLoanBalanceByGroupPage = () => {
 
     return (
         <Layout noPad={true} header={false}>
-            <Header pageNo={2} pageTitle="Low Loan Balance List" pageName="lo-view" amount={amount} handleAmountChange={handleAmountChange} currentBranch={currentBranch} handleBranchFilter={handleBranchFilter} />
-            <ViewLowBalanceByLOPage amount={amount} />
+            <Header pageNo={2} pageTitle="Low Loan Balance List" pageName="lo-view" amount={amount} handleAmountChange={handleAmountChange} operator={operator} handleOperatorChange={handleOperatorChange} currentBranch={currentBranch} handleBranchFilter={handleBranchFilter} />
+            <ViewLowBalanceByLOPage amount={amount} operator={operator} />
         </Layout>
     )
 }

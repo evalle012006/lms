@@ -7,7 +7,7 @@ import { formatPricePhp } from "@/lib/utils";
 import { useDispatch, useSelector } from "react-redux";
 import { setBranchList } from "@/redux/actions/branchActions";
 
-const ViewLowBalanceByBranchPage = ({ amount }) => {
+const ViewLowBalanceByBranchPage = ({ amount, operator }) => {
     const dispatch = useDispatch();
     const router = useRouter();
     const currentUser = useSelector(state => state.user.data);
@@ -49,13 +49,13 @@ const ViewLowBalanceByBranchPage = ({ amount }) => {
         }
     }
 
-    const getList = async (amount) => {
+    const getList = async (amount, operator) => {
         let url = process.env.NEXT_PUBLIC_API_URL + 'reports/get-all-low-loan-balance';
         if (currentUser.role.rep == 2 && branchList.length > 0) {
             const branchIds = branchList.filter(branch => currentUser.designatedBranch.includes(branch.code)).map(branch => branch._id);
-            url = url + '?' + new URLSearchParams({ branchIds: JSON.stringify(branchIds), amount: amount });
+            url = url + '?' + new URLSearchParams({ branchIds: JSON.stringify(branchIds), amount: amount, operator: operator });
         } else {
-            url = url + '?' + new URLSearchParams({ amount: amount });
+            url = url + '?' + new URLSearchParams({ amount: amount, operator: operator });
         }
         const response = await fetchWrapper.get(url);
         if (response.success) {
@@ -142,12 +142,12 @@ const ViewLowBalanceByBranchPage = ({ amount }) => {
     useEffect(() => {
         let mounted = true;
 
-        mounted && getList(amount);
+        mounted && getList(amount, operator);
 
         return (() => {
             mounted = false;
         });
-    }, [branchList, amount]);
+    }, [branchList, amount, operator]);
 
     return (
         <React.Fragment>

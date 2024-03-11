@@ -5,12 +5,18 @@ import { useSelector } from "react-redux";
 import Select from 'react-select';
 import { styles, DropdownIndicator, borderStyles } from "@/styles/select";
 import { BehaviorSubject } from 'rxjs';
+import Dropdown from "@/lib/ui/dropdown";
 
-const Header = ({ pageNo, pageTitle, pageName, amount, handleAmountChange, currentBranch, handleBranchFilter, currentLO, handleLOFilter }) => {
+const Header = ({ pageNo, pageTitle, pageName, amount, handleAmountChange, operator, handleOperatorChange, currentBranch, handleBranchFilter, currentLO, handleLOFilter }) => {
     const router = useRouter();
     const userList = useSelector(state => state.user.list);
     const branchList = useSelector(state => state.branch.list);
     const selectedBranchSubject = new BehaviorSubject(process.browser && localStorage.getItem('selectedBranch'));
+    const operatorOptions = [
+        { label: 'Less Than Equal', value: 'less_than_equal' },
+        { label: 'Greater Than Equal', value: 'greater_than_equal' },
+        { label: 'Equal', value: 'equal' }
+    ];
 
     const handleBack = () => {
         if (pageName == 'group-view') {
@@ -42,9 +48,24 @@ const Header = ({ pageNo, pageTitle, pageName, amount, handleAmountChange, curre
                 )}
                 <div className="flex flex-row w-11/12 text-gray-400 text-sm justify-start align-middle">
                     <span className="text-zinc-500 text-sm font-bold mt-2">Filters:</span>
-                    <div className="ml-6 flex">
+                    <div className="ml-6 flex w-[27rem]">
                         <span className="text-sm mr-3 mt-2">Loan Balance: </span>
-                        <InputNumber name="dayNo" value={amount} onChange={(val) => { handleAmountChange(val.target.value) }} className="w-14" />
+                        <div className="ml-4 flex w-40">
+                            <Select 
+                                options={operatorOptions}
+                                value={operator && operatorOptions.find(op => {
+                                    return op.value == operator
+                                })}
+                                styles={borderStyles}
+                                components={{ DropdownIndicator }}
+                                onChange={handleOperatorChange}
+                                isSearchable={true}
+                                closeMenuOnSelect={true}
+                                placeholder={'Operator Filter'}/>
+                            <div className="ml-2">
+                                <InputNumber name="dayNo" value={amount} onChange={(val) => { handleAmountChange(val.target.value) }} className="w-14" />
+                            </div>
+                        </div>
                     </div>
                     {pageName == 'group-view' && (
                         <div className="ml-4 flex w-40">

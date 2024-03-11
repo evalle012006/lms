@@ -36,6 +36,7 @@ function login(username, password) {
 
 function logout() {
     // localStorage.removeItem('selectedBranch');
+    localStorage.removeItem('filterLowBalanceAmountOperator');
     localStorage.removeItem('filterLowBalanceAmount');
     localStorage.removeItem('pageNo');
     localStorage.removeItem('selectedLO');

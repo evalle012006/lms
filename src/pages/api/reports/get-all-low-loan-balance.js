@@ -10,7 +10,7 @@ async function allLoans(req, res) {
     let response;
     let statusCode = 200;
 
-    const { loId, branchIds, branchId, amount } = req.query;
+    const { loId, branchIds, branchId, amount, operator } = req.query;
     let data = [];
 
     if (loId) {
@@ -26,7 +26,28 @@ async function allLoans(req, res) {
                         localField: 'groupIdStr',
                         foreignField: 'groupId',
                         pipeline: [
-                            { $match: { $expr: { $and: [ {$eq: ['$status', 'active']}, {$lte: ['$loanBalance', parseInt(amount)]} ] } } },
+                            { $match: { $expr: { 
+                                $and: [ 
+                                    {$eq: ['$status', 'active']},
+                                    { $or: [
+                                        {$cond: {
+                                            if: { $eq: [operator, 'less_than_equal'] },
+                                            then: {$lte: ['$loanBalance', parseInt(amount)]},
+                                            else: null
+                                        }},
+                                        {$cond: {
+                                            if: { $eq: [operator, 'greater_than_equal'] },
+                                            then: {$gte: ['$loanBalance', parseInt(amount)]},
+                                            else: null
+                                        }},
+                                        {$cond: {
+                                            if: { $eq: [operator, 'equal'] },
+                                            then: {$eq: ['$loanBalance', parseInt(amount)]},
+                                            else: null
+                                        }}
+                                    ] }
+                                ] 
+                            } } },
                             { $project: {
                                 clientId: '$clientId',
                                 clientName: '$fullName',
@@ -82,7 +103,28 @@ async function allLoans(req, res) {
                         localField: 'loId',
                         foreignField: 'loId',
                         pipeline: [
-                            { $match: { $expr: { $and: [ {$eq: ['$status', 'active']}, {$lte: ['$loanBalance', parseInt(amount)]} ] } } },
+                            { $match: { $expr: { 
+                                $and: [ 
+                                    {$eq: ['$status', 'active']},
+                                    { $or: [
+                                        {$cond: {
+                                            if: { $eq: [operator, 'less_than_equal'] },
+                                            then: {$lte: ['$loanBalance', parseInt(amount)]},
+                                            else: null
+                                        }},
+                                        {$cond: {
+                                            if: { $eq: [operator, 'greater_than_equal'] },
+                                            then: {$gte: ['$loanBalance', parseInt(amount)]},
+                                            else: null
+                                        }},
+                                        {$cond: {
+                                            if: { $eq: [operator, 'equal'] },
+                                            then: {$eq: ['$loanBalance', parseInt(amount)]},
+                                            else: null
+                                        }}
+                                    ] }
+                                ] 
+                            } } },
                             { $group: {
                                 _id: '$loId',
                                 totalClients: { $sum: 1 },
@@ -119,7 +161,7 @@ async function allLoans(req, res) {
         const branchData = [];
         const promise = await new Promise(async (resolve) => {
             const response = await Promise.all(branchIdsObj.map(async (branchId) => {
-                branchData.push.apply(branchData, await getByBranch(db, branchId, amount));
+                branchData.push.apply(branchData, await getByBranch(db, branchId, amount, operator));
             }));
 
             resolve(response);
@@ -138,7 +180,7 @@ async function allLoans(req, res) {
 }
 
 
-const getByBranch = async (db, branchId, amount) => {
+const getByBranch = async (db, branchId, amount, operator) => {
     const ObjectId = require('mongodb').ObjectId;
 
     return await db.collection('branches')
@@ -153,7 +195,28 @@ const getByBranch = async (db, branchId, amount) => {
                     localField: 'branchIdStr',
                     foreignField: 'branchId',
                     pipeline: [
-                        { $match: { $expr: { $and: [ {$eq: ['$status', 'active']}, {$lte: ['$loanBalance', parseInt(amount)]} ] } } },
+                        { $match: { $expr: { 
+                            $and: [ 
+                                {$eq: ['$status', 'active']},
+                                { $or: [
+                                    {$cond: {
+                                        if: { $eq: [operator, 'less_than_equal'] },
+                                        then: {$lte: ['$loanBalance', parseInt(amount)]},
+                                        else: null
+                                    }},
+                                    {$cond: {
+                                        if: { $eq: [operator, 'greater_than_equal'] },
+                                        then: {$gte: ['$loanBalance', parseInt(amount)]},
+                                        else: null
+                                    }},
+                                    {$cond: {
+                                        if: { $eq: [operator, 'equal'] },
+                                        then: {$eq: ['$loanBalance', parseInt(amount)]},
+                                        else: null
+                                    }}
+                                ] }
+                            ] 
+                        } } },
                         { $group: {
                             _id: '$branchid',
                             totalClients: { $sum: 1 },

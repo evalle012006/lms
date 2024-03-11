@@ -7,7 +7,7 @@ import TableComponent from "@/lib/table";
 import { useRouter } from "node_modules/next/router";
 import { formatPricePhp } from "@/lib/utils";
 
-const ViewLowBalanceByGroupsPage = ({ amount }) => {
+const ViewLowBalanceByGroupsPage = ({ amount, operator }) => {
     const router = useRouter();
     const [loading, setLoading] = useState(true);
     const currentUser = useSelector(state => state.user.data);
@@ -55,7 +55,7 @@ const ViewLowBalanceByGroupsPage = ({ amount }) => {
     ]);
 
     const getList = async (loId) => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'reports/get-all-low-loan-balance?' + new URLSearchParams({ loId: currentUser.role.rep == 4 ? currentUser._id : loId, amount: amount });
+        let url = process.env.NEXT_PUBLIC_API_URL + 'reports/get-all-low-loan-balance?' + new URLSearchParams({ loId: currentUser.role.rep == 4 ? currentUser._id : loId, amount: amount, operator: operator });
         const response = await fetchWrapper.get(url);
         if (response.success) {
             const responseData = [];
@@ -98,7 +98,7 @@ const ViewLowBalanceByGroupsPage = ({ amount }) => {
         return (() => {
             mounted = false;
         });
-    }, [uuid, amount]);
+    }, [uuid, amount, operator]);
 
     return (
         <React.Fragment>
