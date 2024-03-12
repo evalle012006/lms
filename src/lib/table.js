@@ -29,6 +29,7 @@ import {
 } from '@heroicons/react/24/solid';
 import CheckBox from "./ui/checkbox";
 import { useEffect } from "react";
+import ActionDropDown from "./ui/action-dropdown";
 
 // Define a default UI for filtering
 function GlobalFilter({
@@ -457,7 +458,8 @@ const TableComponent = ({
   border = false,
   multiSelect = false,
   multiSelectActionFn = null,
-  pageSize = 50
+  pageSize = 50,
+  dropDownActions = []
 }) => {
   // Use the state and functions returned from useTable to build your UI
   const {
@@ -596,6 +598,9 @@ const TableComponent = ({
                           className="column py-0 pr-0 pl-4 tracking-wider m-1"
                         >Actions</th>
                       )}
+                      {dropDownActions.length > 0 && (
+                        <th scope="col" className="column py-0 pr-0 pl-4 tracking-wider m-1"></th>
+                      )}
                     </tr>
                   ))}
                 </thead>
@@ -694,6 +699,11 @@ const TableComponent = ({
                                             />
                                         </td>
                                         )}
+                                        {(dropDownActions.length > 0) && (
+                                          <td className="py-4-custom whitespace-nowrap-custom" role="cell">
+                                              <ActionDropDown data={row.original} options={dropDownActions} />
+                                          </td>
+                                        )}
                                     </tr>
                                   );
                                 } else {
@@ -754,6 +764,11 @@ const TableComponent = ({
                                               rowActionButtons={rowActionButtons}
                                             />
                                         </td>
+                                        )}
+                                        {(dropDownActions.length > 0) && (
+                                          <td className="py-4-custom whitespace-nowrap-custom" role="cell">
+                                              <ActionDropDown data={row.original} options={dropDownActions} />
+                                          </td>
                                         )}
                                     </tr>
                                   );

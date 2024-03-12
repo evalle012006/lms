@@ -1001,6 +1001,9 @@ const CashCollectionDetailsPage = () => {
                     const hour = parseInt(timeArr[0]);
                     if (hour < 9) {
                         setEditMode(false);
+                        setGroupSummaryIsClose(true);
+                    } else {
+                        setGroupSummaryIsClose(false);
                     }
                 }
                 setLoading(false);
