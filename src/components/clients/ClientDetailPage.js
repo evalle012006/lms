@@ -141,7 +141,7 @@ const ClientDetailPage = () => {
         {
             label: 'Update Principal Loan',
             action: handleShowPrincialLoanDialog,
-            hidden: currentUser.role.rep == 1 ? true : false
+            hidden: currentUser.role.rep == 1 ? false : true
         },
     ];
 
