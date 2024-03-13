@@ -11,14 +11,139 @@ import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { useRef } from "react";
 import { toast } from "react-toastify";
 import { setClient } from "@/redux/actions/clientActions";
+import Dialog from "@/lib/ui/Dialog";
+import InputText from "@/lib/ui/InputText";
+import ButtonOutline from "@/lib/ui/ButtonOutline";
+import ButtonSolid from "@/lib/ui/ButtonSolid";
+import InputNumber from "@/lib/ui/InputNumber";
 
 const ClientDetailPage = () => {
     const dispatch = useDispatch();
+    const currentUser = useSelector(state => state.user.data);
     const [loading, setLoading] = useState(true);
     const client = useSelector(state => state.client.data);
     const [clientAddress, setClientAddress] = useState('');
     const [loanList, setLoanList] = useState([]);
     const imageRef = useRef();
+
+    const [selectedLoan, setSelectedLoan] = useState();
+    const [pnNumber, setPnNumber] = useState();
+    const [principalLoan, setPrincipalLoan] = useState();
+
+    const [showPnNumberDialog, setShowPnNumberDialog] = useState(false);
+    const [showPrincipalLoanDialog, setShowPrincipalLoanDialog] = useState(false);
+
+    const handleShowPnNumberDialog = (row) => {
+        if (row.status == 'closed') {
+            toast.error('Loan already closed!');
+        } else if (row.status == 'reject') {
+            toast.error('Loan already rejected!');
+        } else {
+            setSelectedLoan(row);
+            setShowPnNumberDialog(true);
+        }
+    }
+
+    const handleUpdatePNNumber = () => {
+        if (!pnNumber) {
+            toast.error('PN Number is required!');
+        } else if (selectedLoan) {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/update-pn-number';
+            fetchWrapper.post(apiUrl, { loanId: selectedLoan._id, branchId: selectedLoan.branchId, pnNumber: pnNumber })
+                .then(response => {
+                    setLoading(false);
+                    if (response.error) {
+                        toast.error(response.message);
+                    } else if (response.success) {
+                        setShowPnNumberDialog(false);
+                        toast.success('PN Number successfully updated.');
+                        handleCloseDialog();
+                    }
+                }).catch(error => {
+                    console.log(error)
+                });
+        }
+    }
+
+    const handleShowPrincialLoanDialog = (row) => {
+        if (parseInt(row.noOfPayments) > 0) {
+            toast.error("Updating principal loan is not permitted since client already started paying.");
+        } else if (row.status == 'closed') {
+            toast.error('Loan already closed.');
+        } else if (row.status == 'reject') {
+            toast.error('Loan already rejected!');
+        } else {
+            setSelectedLoan(row);
+            setShowPrincipalLoanDialog(true);
+        }
+    }
+
+    const handleUpdatePrincipalLoan = () => {
+        if (!principalLoan) {
+            toast.error('Principal Loan is required!');
+        } else if (parseFloat(principalLoan) <= 0 || parseFloat(principalLoan) < 5000 ) {
+            toast.error('Invalid Principal Loan Amount!');
+        } else if (selectedLoan) {
+            if (selectedLoan.status == 'closed') {
+                toast.error('Loan already closed');
+            } else {
+                const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/update-loan-release';
+                fetchWrapper.post(apiUrl, { loanId: selectedLoan._id, principalLoan: parseFloat(principalLoan) })
+                    .then(response => {
+                        setLoading(false);
+                        if (response.error) {
+                            toast.error(response.message);
+                        } else if (response.success) {
+                            setShowPnNumberDialog(false);
+                            toast.success('Principal Loan successfully updated.');
+                            handleCloseDialog();
+                        }
+                    }).catch(error => {
+                        console.log(error)
+                    });
+            }
+        }
+    }
+
+    const handleUpdateCoMaker = (row) => {
+        // params: clientId, groupId, coMaker
+        // const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/add-comaker-loan';
+        // fetchWrapper.post(apiUrl, values)
+        //     .then(response => {
+        //         setLoading(false);
+        //         if (response.error) {
+        //             toast.error(response.message);
+        //         } else if (response.success) {
+        //             setShowSidebar(false);
+        //             toast.success('CoMaker successfully added.');
+        //             action.setSubmitting = false;
+        //             action.resetForm({values: ''});
+        //             onClose();
+        //         }
+        //     }).catch(error => {
+        //         console.log(error)
+        //     });
+    }
+
+    const handleCloseDialog = () => {
+        getClientDetails();
+        setSelectedLoan(null);
+        setPnNumber(null);
+        setPrincipalLoan(null);
+    }
+
+    const dropDownActions = [
+        {
+            label: 'Update PN Number',
+            action: handleShowPnNumberDialog,
+            hidden: false
+        },
+        {
+            label: 'Update Principal Loan',
+            action: handleShowPrincialLoanDialog,
+            hidden: currentUser.role.rep == 1 ? true : false
+        },
+    ];
 
     const updatePhoto = async (e) => {
         setLoading(true);
@@ -65,13 +190,13 @@ const ClientDetailPage = () => {
         },
         {
             Header: "Miss Payments",
-            accessor: 'missPayments',
+            accessor: 'mispayment',
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
         {
             Header: "No. of Payment",
-            accessor: 'noOfPayment',
+            accessor: 'noOfPayments',
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
@@ -101,36 +226,36 @@ const ClientDetailPage = () => {
         }
     ]);
 
+    const getClientDetails = async () => {
+        let url = process.env.NEXT_PUBLIC_API_URL + 'clients?clientId=' + client._id;
+
+        const response = await fetchWrapper.get(url);
+        if (response.success) {
+            let loanData = [];
+            await response.client && response.client.map(client => {
+                client.loans.length > 0 && client.loans.map(loan => {
+                    loanData.push({
+                        ...loan,
+                        groupName: loan.groupName,
+                        slotNo: loan.slotNo > 0 ? loan.slotNo : '-',
+                        missPayments: loan.missPayments ? loan.missPayments : 0,
+                        loanStatus: loan.status,
+                        loanBalanceStr: loan.loanBalance ? formatPricePhp(loan.loanBalance) : 0.00,
+                        missPayments: loan.missPayments ?  loan.missPayments : 0,
+                        noOfPayment: loan.noOfPayment ? loan.noOfPayment : 0
+                    });
+                });
+            });
+            setLoanList(loanData);
+        } else if (response.error) {
+            toast.error(response.message);
+        }
+        setLoading(false);
+    }
+
 
     useEffect(() => {
         let mounted = true;
-
-        const getClientDetails = async () => {
-            let url = process.env.NEXT_PUBLIC_API_URL + 'clients?clientId=' + client._id;
-    
-            const response = await fetchWrapper.get(url);
-            if (response.success) {
-                let loanData = [];
-                await response.client && response.client.map(client => {
-                    client.loans.length > 0 && client.loans.map(loan => {
-                        loanData.push({
-                            ...loan,
-                            groupName: loan.groupName,
-                            slotNo: loan.slotNo > 0 ? loan.slotNo : '-',
-                            missPayments: loan.missPayments ? loan.missPayments : 0,
-                            loanStatus: loan.status,
-                            loanBalanceStr: loan.loanBalance ? formatPricePhp(loan.loanBalance) : 0.00,
-                            missPayments: loan.missPayments ?  loan.missPayments : 0,
-                            noOfPayment: loan.noOfPayment ? loan.noOfPayment : 0
-                        });
-                    });
-                });
-                setLoanList(loanData);
-            } else if (response.error) {
-                toast.error(response.message);
-            }
-            setLoading(false);
-        }
 
         mounted && setClientAddress(`${client.addressStreetNo ? client.addressStreetNo + ',': ''} ${client.addressBarangayDistrict}, ${client.addressMunicipalityCity}, ${client.addressProvince}, ${client.addressZipCode}`);
         mounted && getClientDetails() && setLoading(false);
@@ -172,9 +297,61 @@ const ClientDetailPage = () => {
                         </div>
                         <div className="flex flex-col mt-4 md:mt-6">
                             <h5 className="font-proxima-bold">Loan History</h5>
-                            <TableComponent columns={columns} data={loanList} hasActionButtons={false} showFilters={false} noPadding={true} border={true} />
+                            <TableComponent columns={columns} data={loanList} hasActionButtons={false} showFilters={false} noPadding={true} border={true} dropDownActions={dropDownActions} />
                         </div>
                     </div>
+                    {selectedLoan && (
+                        <Dialog show={showPnNumberDialog}>
+                            <h2>Update Loan PN Number</h2>
+                            <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                                <div className="sm:flex sm:items-start justify-center">
+                                    <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-center">
+                                        <div className="mt-2">
+                                            <InputText
+                                                name="pnNumber"
+                                                value={pnNumber}
+                                                onChange={(e) => setPnNumber(e.target.value)}
+                                                label="New PN Number"
+                                                placeholder="Enter PN Number"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex flex-row justify-end text-center px-4 py-3 sm:px-6 sm:flex">
+                                <div className='flex flex-row'>
+                                    <ButtonOutline label="Cancel" type="button" className="p-2 mr-3" onClick={() => setShowPnNumberDialog(false)} />
+                                    <ButtonSolid label="Update" type="button" className="p-2 mr-3" onClick={handleUpdatePNNumber} />
+                                </div>
+                            </div>
+                        </Dialog>
+                    )}
+                    {selectedLoan && (
+                        <Dialog show={showPrincipalLoanDialog}>
+                            <h2>Update Principal Loan Amount</h2>
+                            <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                                <div className="sm:flex sm:items-start justify-center">
+                                    <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-center">
+                                        <div className="mt-2">
+                                            <InputNumber
+                                                name="principalLoan"
+                                                value={principalLoan}
+                                                onChange={(e) => setPrincipalLoan(e.target.value)}
+                                                label="New Principal Loan"
+                                                placeholder="Enter Principal Loan"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex flex-row justify-end text-center px-4 py-3 sm:px-6 sm:flex">
+                                <div className='flex flex-row'>
+                                    <ButtonOutline label="Cancel" type="button" className="p-2 mr-3" onClick={() => setShowPrincipalLoanDialog(false)} />
+                                    <ButtonSolid label="Update" type="button" className="p-2 mr-3" onClick={handleUpdatePrincipalLoan} />
+                                </div>
+                            </div>
+                        </Dialog>
+                    )}
                 </React.Fragment>
             )}
         </React.Fragment>
