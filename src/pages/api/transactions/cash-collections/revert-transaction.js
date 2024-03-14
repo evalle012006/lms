@@ -147,6 +147,7 @@ async function revert(req, res) {
 
                     currentLoan.reverted = true;
                     currentLoan.revertedDate = currentDate;
+                    currentLoan.revertedDateTime = new Date();
 
                     if (cashCollection.status == 'closed') {
                         // update client

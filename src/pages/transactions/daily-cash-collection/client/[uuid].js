@@ -1294,6 +1294,11 @@ const CashCollectionDetailsPage = () => {
                 
                     return temp;   
                 }).filter(cc => cc.status !== "totals");
+
+                const pendings = dataArr.filter(cc => {
+                    return cc?.advance && cc.status == 'pending';
+                });
+                // console.log(pendings)
                 // console.log(dataArr)
                 if (save) {
                     let cashCollection;
@@ -1328,12 +1333,16 @@ const CashCollectionDetailsPage = () => {
             
                     const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save', cashCollection);
                     if (response.success) {
-                        setLoading(false);
-                        toast.success('Payment collection successfully submitted. Reloading page please wait.');
-                        setTimeout(async () => {
-                            // getCashCollections();
-                            window.location.reload();
-                        }, 2000);
+                        if (pendings.length > 0) {
+                            setTimeout(async () => {
+                                const responsePending = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/update-pending-loans', pendings);
+                                if (responsePending.success) {
+                                    reloadAfterSave();
+                                }
+                            }, 3000);
+                        } else {
+                            reloadAfterSave();
+                        }
                     }
                 } else {
                     toast.error('No active data to be saved.');
@@ -1341,6 +1350,14 @@ const CashCollectionDetailsPage = () => {
                 }
             }
         }
+    }
+
+    const reloadAfterSave = () => {
+        setLoading(false);
+        toast.success('Payment collection successfully submitted. Reloading page please wait.');
+        setTimeout(async () => {
+            window.location.reload();
+        }, 2000);
     }
 
     const handlePaymentCollectionChange = (e, index, type, targetCollection) => {

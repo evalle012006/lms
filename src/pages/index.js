@@ -33,7 +33,7 @@ const Index = () => {
         // }
 
         // const updateLoanData = async () => {
-        //     await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}transactions/loans/update-loan-data`);
+        //     await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}aahandy-scripts/update-loan-data`);
         // }
 
         // const updateLOData = async () => {

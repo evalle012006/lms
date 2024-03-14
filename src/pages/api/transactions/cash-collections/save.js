@@ -79,9 +79,9 @@ async function save(req, res) {
                     await updateClient(db, collection, currentDate);
                 }
 
-                if (collection.status === 'pending' && collection?.advance) {
-                    collection = await updatePendingLoan(db, collection, currentDate);
-                }
+                // if (collection.status === 'pending' && collection?.advance) {
+                //     collection = await updatePendingLoan(db, collection, currentDate);
+                // }
             }
         });
 
