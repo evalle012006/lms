@@ -1002,8 +1002,6 @@ const CashCollectionDetailsPage = () => {
                     if (hour < 9) {
                         setEditMode(false);
                         setGroupSummaryIsClose(true);
-                    } else {
-                        setGroupSummaryIsClose(false);
                     }
                 }
                 setLoading(false);
