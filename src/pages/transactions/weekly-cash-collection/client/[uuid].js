@@ -1364,6 +1364,10 @@ const CashCollectionDetailsPage = () => {
                     dataArr = dataArr.filter(cc => cc.mcbuWithdrawFlag || cc.offsetTransFlag);
                 }
 
+                const pendings = dataArr.filter(cc => {
+                    return cc?.advance && cc.status == 'pending';
+                });
+
                 if (save) {
                     let cashCollection;
                     if (editMode) {
@@ -1397,13 +1401,16 @@ const CashCollectionDetailsPage = () => {
             
                     const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save', cashCollection);
                     if (response.success) {
-                        setAllowOffsetTransaction(false);
-                        setLoading(false);
-                        toast.success('Payment collection successfully submitted. Reloading page please wait.');
-            
-                        setTimeout(async () => {
-                            window.location.reload();
-                        }, 2000);
+                        if (pendings.length > 0) {
+                            setTimeout(async () => {
+                                const responsePending = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/update-pending-loans', pendings);
+                                if (responsePending.success) {
+                                    reloadAfterSave();
+                                }
+                            }, 3000);
+                        } else {
+                            reloadAfterSave();
+                        }
                     }
                 } else {
                     toast.warning('No active data to be saved.');
@@ -1411,6 +1418,14 @@ const CashCollectionDetailsPage = () => {
                 }
             }
         }
+    }
+
+    const reloadAfterSave = () => {
+        setLoading(false);
+        toast.success('Payment collection successfully submitted. Reloading page please wait.');
+        setTimeout(async () => {
+            window.location.reload();
+        }, 2000);
     }
 
     const handlePaymentCollectionChange = (e, index, type, targetCollection) => {
@@ -2539,7 +2554,7 @@ const CashCollectionDetailsPage = () => {
 
     useEffect(() => {
         const getListGroup = async (selectedLO) => {
-            let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list-by-group-occurence?' + new URLSearchParams({ mode: "filter", branchId: branchList[0]._id, occurence: 'weekly', loId: selectedLO });
+            let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list-by-group-occurence?' + new URLSearchParams({ mode: "filter", branchId: branchList[0]?._id, occurence: 'weekly', loId: selectedLO });
 
             const response = await fetchWrapper.get(url);
             if (response.success) {

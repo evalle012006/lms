@@ -58,7 +58,7 @@ const DetailsHeader = ({ pageTitle, page, pageName, currentDate, mode, selectedB
                 const branchManager = userList.find(b => b.designatedBranch === selectedBranch.code && b.role.rep === 3);
                 branchManager && setBranchManager(`${branchManager.lastName}, ${branchManager.firstName}`);
             } else {
-                const branchData = branchList.find(b => b.code === currentUser.designatedBranch);
+                const branchData = branchList.find(b => b?.code === currentUser.designatedBranch);
                 branchData && setBranchName(branchData.name);
                 branchData && setBranchCode(branchData.code);
                 const branchManager = userList.find(b => b.role.rep === 3);
@@ -76,7 +76,7 @@ const DetailsHeader = ({ pageTitle, page, pageName, currentDate, mode, selectedB
     }, [selectedLO]);
 
     useEffect(() => {
-        if (Object.keys(currentBranch).length == 0 && branchList.length === 1) {
+        if (currentBranch && branchList.length === 1) {
             dispatch(setBranch(branchList[0]));
         }
     }, [branchList, currentBranch])
