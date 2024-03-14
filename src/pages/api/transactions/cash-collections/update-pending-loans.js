@@ -2,6 +2,7 @@ import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
 import moment from 'moment';
 import logger from '@/logger';
+import { getCurrentDate } from '@/lib/utils';
 
 export default apiHandler({
     post: save
@@ -13,8 +14,9 @@ async function save(req, res) {
     let statusCode = 200;
     let data = req.body;
     logger.debug({page: `Update Cash Collection For Pending Loans - Group ID: ${data[0].groupId}`});
+    const currentDate = moment(getCurrentDate()).format('YYYY-MM-DD');
     data.map(async cc => {
-        await updatePendingLoan(db, cc);
+        await updatePendingLoan(db, cc, currentDate);
     });
 
     response = {success: true};
@@ -24,9 +26,8 @@ async function save(req, res) {
         .end(JSON.stringify(response));
 }
 
-async function updatePendingLoan(db, collection) {
+async function updatePendingLoan(db, collection, currentDate) {
     const ObjectId = require('mongodb').ObjectId;
-    const currentDate = collection.dateAdded;
     logger.debug({page: `Saving Cash Collection - Updating Pending Loan: ${collection.loanId}`, currentDate: currentDate});
     let currentLoan = await db.collection('loans').find({ _id: new ObjectId(collection.loanId) }).toArray();
     let pendingLoan = await db.collection('loans').find({ clientId: collection.clientId, status: 'pending' }).toArray();
