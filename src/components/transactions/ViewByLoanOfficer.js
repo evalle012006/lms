@@ -15,6 +15,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
     const dispatch = useDispatch();
     const isHoliday = useSelector(state => state.systemSettings.holiday);
     const isWeekend = useSelector(state => state.systemSettings.weekend);
+    const currentTime = useSelector(state => state.systemSettings.currentTime);
     const selectedBranchSubject = new BehaviorSubject(process.browser && localStorage.getItem('selectedBranch'));
     const currentBranch = useSelector(state => state.branch.data);
     const currentUser = useSelector(state => state.user.data);
@@ -1120,7 +1121,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
         if (row.original.activeClients > 0 && !row.original.hasOwnProperty("allNew")) {
             setLoading(true);
 
-            let data = { loId: row.original._id, mode: 'close', currentDate: currentDate };
+            let data = { loId: row.original._id, mode: 'close', currentDate: currentDate, currentTime: currentTime };
 
             const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/update-group-transaction-status', data);
             if (response.success) {
