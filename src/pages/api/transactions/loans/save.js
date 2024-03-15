@@ -1,6 +1,7 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
 import logger from '@/logger';
+import moment from 'moment';
 
 export default apiHandler({
     post: save
@@ -37,6 +38,14 @@ async function save(req, res) {
     logger.debug({page: `Saving Loan: ${loanData.clientId}`, mode: mode, data: loanData});
     const spotExist = await db.collection('loans').find({ $expr: { $and: [{$eq: ["$slotNo", loanData.slotNo]}, {$eq: ["$groupId", loanData.groupId]}, { $or: [{$eq: ["$status", "active"]}, {$eq: ["$status", "completed"]}, {$eq: ["$status", "pending"]}] }] } }).toArray();
     const pendingExist = await db.collection('loans').find({ slotNo: loanData.slotNo, clientId: loanData.clientId, status: 'pending' }).toArray();
+    const groupCashCollections = await db.collection('cashCollections').find({ groupId: group._id, dateAdded: currentDate }).toArray();
+    let groupStatus = 'pending';
+    if (groupCashCollections.length > 0) {
+        const groupStatuses = groupCashCollections.filter(cc => cc.groupStatus == 'pending');
+        if (groupStatuses.length == 0) {
+            groupStatus = 'closed';
+        }
+    }
 
     if ((mode !== 'reloan' && mode !== 'advance' && mode !== 'active') && spotExist.length > 0) {
         response = {
@@ -78,6 +87,10 @@ async function save(req, res) {
             logger.debug({page: `Saving Loan: ${loanData.clientId}`, message: 'Final Data', data: finalData});
             delete finalData.currentReleaseAmount;
             delete finalData.currentDate;
+            if (groupStatus == 'closed') {
+                const tomorrowDate = moment(currentDate).add(1, 'days').format('YYYY-MM-DD');
+                finalData.dateOfRelease = tomorrowDate;
+            }
             const loan = await db.collection('loans').insertOne({
                 ...finalData,
                 dateGranted: currentDate,
@@ -93,13 +106,13 @@ async function save(req, res) {
                 reloan = true;
                 await updateLoan(oldLoanId, finalData, currentDate);
             } else if (mode == 'advance' || mode == 'active') {
-                await updateLoan(oldLoanId, finalData, currentDate, mode);
+                await updateLoan(oldLoanId, finalData, currentDate, mode, groupStatus);
             } else {
                 await updateGroup(loanData);
             }
 
-            if (mode != 'advance' && mode !== 'active') {
-                await saveCashCollection(loanData, reloan, group, loanId, currentDate);
+            if (mode != 'advance' && mode !== 'active' && groupStatus !== 'closed') {
+                await saveCashCollection(loanData, reloan, group, loanId, currentDate, groupStatus);
                 // await updateUser(loanData);
             }
 
@@ -205,20 +218,14 @@ async function updateLoan(loanId, loanData, currentDate, mode) {
     }
 }
 
-async function saveCashCollection(loan, reloan, group, loanId, currentDate) {
+async function saveCashCollection(loan, reloan, group, loanId, currentDate, groupStatus) {
     const { db } = await connectToDatabase();
 
     const currentReleaseAmount = loan.amountRelease;
 
     const cashCollection = await db.collection('cashCollections').find({ clientId: loan.clientId, dateAdded: currentDate }).toArray();
-    const groupCashCollections = await db.collection('cashCollections').find({ groupId: group._id, dateAdded: currentDate }).toArray();
-    logger.debug({page: `Saving Cash Collection: ${loanId}`, cashCollection: cashCollection, groupCashCollections: groupCashCollections});
-    if (groupCashCollections && cashCollection.length === 0) {
-        let groupStatus = 'pending';
-        if (groupCashCollections.length > 0) {
-            groupStatus = groupCashCollections[0].groupStatus;
-        }
-
+    logger.debug({page: `Saving Cash Collection: ${loanId}`, cashCollection: cashCollection});
+    if (cashCollection.length === 0) {
         let mcbu = loan.mcbu ? loan.mcbu : 0;
         let mcbuCol = 0;
 
