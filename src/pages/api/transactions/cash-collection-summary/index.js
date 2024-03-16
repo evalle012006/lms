@@ -30,7 +30,7 @@ async function getSummary(req, res) {
         let summary = [];
 
         if (user[0].role.rep === 3) {
-            await getFBalanceMigration(branchId, lastMonth, lastYear, userId);
+            await getFBalanceMigration(branchId, lastMonth, lastYear, userId, loGroup);
             fBalance = await db.collection('losTotals').find({ userId: userId, month: lastMonth, year: lastYear, losType: 'commulative', officeType: loGroup }).toArray();
             summary = await db.collection('losTotals').aggregate([
                 { $match: { 
@@ -233,12 +233,39 @@ async function getSummary(req, res) {
         .end(JSON.stringify(response));
 }
 
-const getFBalanceMigration = async (branchId, lastMonth, lastYear, userId) => {
+const getFBalanceMigration = async (branchId, lastMonth, lastYear, userId, loGroup) => {
     const { db } = await connectToDatabase();
-    const existingMigratedFBalance = await db.collection('losTotals').find({ userId: userId, month: lastMonth, year: lastYear, losType: "commulative", insertedBy: "migration" }).toArray();
+    const existingMigratedFBalance = await db.collection('losTotals').find({ userId: userId, month: lastMonth, year: lastYear, losType: "commulative", insertedBy: "migration", officeType: loGroup }).toArray();
     if (existingMigratedFBalance.length === 0) {
         const migratedFBalance = await db.collection('losTotals').aggregate([
-            { $match: { branchId: branchId, month: lastMonth, year: lastYear, losType: 'commulative', insertedBy: "migration" } },
+            { $match: { 
+                $expr: {
+                    $and: [
+                        { $eq: ['$branchId', branchId] },
+                        { $eq: ['$month', currentMonth] },
+                        { $eq: ['$year', currentYear] },
+                        { $eq: ['$losType', 'commulative'] },
+                        { $eq: ['$insertedBy', 'migration'] },
+                        { $or: [
+                            { $cond: {
+                                if: {$eq: [loGroup, 'all']},
+                                then: { $or: [{ $eq: ['$officeType', 'main'] }, { $eq: ['$officeType', 'ext'] }] },
+                                else: null
+                            } },
+                            { $cond: {
+                                if: {$eq: [loGroup, 'main']},
+                                then: { $eq: ['$officeType', 'main'] },
+                                else: null
+                            } },
+                            { $cond: {
+                                if: {$eq: [loGroup, 'ext']},
+                                then: { $eq: ['$officeType', 'ext'] },
+                                else: null
+                            } }
+                        ] }
+                    ]
+                }
+            } },
             { $sort: { dateAdded: 1 } },
             {
                 $group: {
@@ -390,7 +417,8 @@ const getFBalanceMigration = async (branchId, lastMonth, lastYear, userId) => {
                 losType: "commulative",
                 insertedBy: "migration",
                 insertedDateTime: new Date(),
-                dateAdded: dateAdded
+                dateAdded: dateAdded,
+                officeType: loGroup
             }
     
             // if (existingMigratedFBalance.length > 0) {
