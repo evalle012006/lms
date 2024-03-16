@@ -242,8 +242,8 @@ const getFBalanceMigration = async (branchId, lastMonth, lastYear, userId, loGro
                 $expr: {
                     $and: [
                         { $eq: ['$branchId', branchId] },
-                        { $eq: ['$month', currentMonth] },
-                        { $eq: ['$year', currentYear] },
+                        { $eq: ['$month', lastMonth] },
+                        { $eq: ['$year', lastYear] },
                         { $eq: ['$losType', 'commulative'] },
                         { $eq: ['$insertedBy', 'migration'] },
                         { $or: [
