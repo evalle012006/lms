@@ -12,24 +12,28 @@ export default apiHandler({
 
 async function processLOSTotals(req, res) {
     const { db } = await connectToDatabase();
+    const ObjectId = require('mongodb').ObjectId;
     const data = req.body;
+
+    const lo = await db.collection('users').find({ _id: new ObjectId(data.userId) }).toArray();
+    const officeType = lo.length > 0 ? parseInt(lo[0].loNo) < 11 ? 'main' : 'ext' : null;
 
     switch (data.losType) {
         case 'year-end':
-            await saveUpdateYearEnd(data);
+            await saveUpdateYearEnd(data, officeType);
             break;
         case 'daily':
             const filter = data.data.day === data.currentDate ? false : true;
-            const cashCollections = await db.collection('cashCollections').find({ loId: data.userId, dateAdded: data.data.day, occurence: data.occurence }).toArray();
+            const cashCollections = await db.collection('cashCollections').find({ loId: data.userId, dateAdded: data.data.day, occurence: data.occurence, officeType: officeType }).toArray();
 
             if (cashCollections.length === 0) {
                 response = { error: true, message: "One or more group/s have no transaction for today."};
             } else {
-                await saveUpdateDaily(data, filter);
+                await saveUpdateDaily(data, filter, officeType);
             }
             break;
         case 'commulative':
-            await saveUpdateCommulative(data);
+            await saveUpdateCommulative(data, officeType);
             break;
         default:
             break;
@@ -41,7 +45,7 @@ async function processLOSTotals(req, res) {
 }
 
 
-async function saveUpdateYearEnd(total) {
+async function saveUpdateYearEnd(total, officeType) {
     const { db } = await connectToDatabase();
     const currentDateStr = total.currentDate;
     let resp;
@@ -62,7 +66,7 @@ async function saveUpdateYearEnd(total) {
         const finalData = {...total};
         delete finalData.currentDate;
         resp = await db.collection('losTotals').insertOne(
-            { ...finalData, dateAdded: currentDateStr }
+            { ...finalData, dateAdded: currentDateStr, officeType: officeType }
         );
     }
 
@@ -70,7 +74,7 @@ async function saveUpdateYearEnd(total) {
 }
 
 
-async function saveUpdateDaily(total, filter) {
+async function saveUpdateDaily(total, filter, officeType) {
     const { db } = await connectToDatabase();
     const currentDateStr = total.currentDate;
     let resp;
@@ -98,7 +102,8 @@ async function saveUpdateDaily(total, filter) {
                     ...finalData, 
                     dateAdded: total.data.day, 
                     insertedBy: 'admin',
-                    insertedDate: currentDateStr
+                    insertedDate: currentDateStr,
+                    officeType: officeType
                 }
             );
         }
@@ -117,7 +122,7 @@ async function saveUpdateDaily(total, filter) {
             const finalData = {...total};
             delete finalData.currentDate;
             await db.collection('losTotals').insertOne(
-                { ...finalData, dateAdded: currentDateStr }
+                { ...finalData, dateAdded: currentDateStr, officeType: officeType }
             );
         }
     }
@@ -125,12 +130,17 @@ async function saveUpdateDaily(total, filter) {
     response = { success: true, response: resp };
 }
 
-async function saveUpdateCommulative(total) {
+async function saveUpdateCommulative(total, officeType) {
     const { db } = await connectToDatabase();
     const currentDateStr = total.currentDate;
     let resp;
+    let loGroup = officeType;
 
-    let losTotal = await db.collection('losTotals').find({ userId: total.userId, month: total.month, year: total.year, losType: 'commulative', occurence: total.occurence }).toArray();
+    if (officeType == null) { // it means it is BM
+        loGroup = total.officeType;
+    }
+
+    let losTotal = await db.collection('losTotals').find({ userId: total.userId, month: total.month, year: total.year, losType: 'commulative', occurence: total.occurence, officeType: loGroup }).toArray();
 
     if (losTotal.length > 0) {
         losTotal = losTotal[0];

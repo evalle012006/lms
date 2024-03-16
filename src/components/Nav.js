@@ -276,7 +276,7 @@ const MenuItems = [
             },
             {
                 label: "Loan Officer Summary",
-                url: "/transactions/loan-officer-summary?type=daily", 
+                url: "/transactions/loan-officer-summary", 
                 icon: {
                     active: (
                         <ChartBarSquareIcon className="text-gray-800 w-5 h-5" />
@@ -366,7 +366,7 @@ const MenuItems = [
             },
             {
                 label: "Loan Officer Summary",
-                url: "/transactions/loan-officer-summary?type=weekly", 
+                url: "/transactions/loan-officer-summary", 
                 icon: {
                     active: (
                         <ChartBarSquareIcon className="text-gray-800 w-5 h-5" />

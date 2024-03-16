@@ -28,6 +28,7 @@ import { PrinterIcon } from '@heroicons/react/24/outline';
 import { useRef } from "react";
 import LDFListPage from "@/components/transactions/loan-application/LDFList";
 import RadioButton from "@/lib/ui/radio-button";
+import CheckBox from "@/lib/ui/checkbox";
 
 const LoanApplicationPage = () => {
     const isHoliday = useSelector(state => state.systemSettings.holiday);
@@ -79,6 +80,7 @@ const LoanApplicationPage = () => {
 
     const [ldfFilter, setLdfFilter] = useState('all');
     const [ldfOccurenceFilter, setLdfOccurenceFilter] = useState('all');
+    const [showTomorrowRelease, setShowTomorrowRelease] = useState(true);
 
     const ndsFormRef = useRef();
 
@@ -125,8 +127,17 @@ const LoanApplicationPage = () => {
         }
     }
 
+    const handleShowTomorrowReleaseChange = (name, value) => {
+        setShowTomorrowRelease(value);
+        if (selectedTab == 'ldf') {
+            handleFilter('tomorrow', value, list);
+        } else if (selectedTab == 'application') {
+            handleFilter('tomorrow', value, pendingList);
+        }
+    }
+
     const handleFilter = (field, value, dataArr) => {
-        if (value) {
+        if (value || field == 'tomorrow') {
           let searchResult = [];
           if (field === 'branch') {
             searchResult = dataArr.filter(b => b.branchId === value);
@@ -134,6 +145,12 @@ const LoanApplicationPage = () => {
             searchResult = dataArr.filter(b => b.loId === value);
           } else if (field === 'group') {
             searchResult = dataArr.filter(b => b.groupId === value);
+          } else if (field === 'tomorrow') {
+            if (value == true) {
+                searchResult = dataArr;
+            } else if (value == false) {
+                searchResult = dataArr.filter(b => !b?.hasOwnProperty('dateOfRelease'));
+            }
           }
 
           if (selectedTab == 'ldf') {
@@ -756,6 +773,10 @@ const LoanApplicationPage = () => {
             if (loan.pnNumber == null || !loan.pnNumber) {
                 errorMsg.add(`${clientName} in group ${groupName} don't have PN Number.`);
             }
+
+            if (loan.hasOwnProperty('dateOfRelease')) {
+                errorMsg.add(`${clientName} in group ${groupName} if for tomorrow release.`);
+            }
         });
 
         return Array.from(errorMsg);
@@ -1092,7 +1113,9 @@ const LoanApplicationPage = () => {
     useEffect(() => {
         if (branchList && currentDate) {
             getListLoan();
-            // getHistoyListLoan();
+            if (currentUser.role.rep == 3 || currentUser.role.rep == 4) {
+                getHistoyListLoan();
+            }
         }
     }, [branchList]);
 
@@ -1328,19 +1351,24 @@ const LoanApplicationPage = () => {
                                                     placeholder={'Group Filter'}/>
                                             </div>
                                             {currentUser.role.rep < 4 && (
-                                                <React.Fragment>
-                                                    <div className="mt-4 flex flex-row border border-zinc-200 rounded-lg mr-4 pl-4">
+                                                <div className="flex flex-col">
+                                                    <div className="flex flex-row border border-zinc-200 rounded-lg pl-4 pb-2">
                                                         <RadioButton id={"radio_main"} name="radio-lo-type" label={"All"} checked={ldfFilter === 'all'} value="all" onChange={handleLoTypeChange} />
                                                         <RadioButton id={"radio_mother"} name="radio-lo-type" label={"Main"} checked={ldfFilter === 'main'} value="main" onChange={handleLoTypeChange} />
                                                         <RadioButton id={"radio_ext"} name="radio-lo-type" label={"Ext"} checked={ldfFilter === 'ext'} value="ext" onChange={handleLoTypeChange} />
                                                     </div>
-                                                    <div className="mt-4 flex flex-row border border-zinc-200 rounded-lg pl-4">
+                                                    <div className="mt-2 flex flex-row border border-zinc-200 rounded-lg pl-4 pb-2">
                                                         <RadioButton id={"radio_occurence_main"} name="radio-occurence" label={"All"} checked={ldfOccurenceFilter === 'all'} value="all" onChange={handleLoOccurenceChange} />
                                                         <RadioButton id={"radio_occurence_daily"} name="radio-occurence" label={"Daily"} checked={ldfOccurenceFilter === 'daily'} value="daily" onChange={handleLoOccurenceChange} />
                                                         <RadioButton id={"radio_occurence_weekly"} name="radio-occurence" label={"Weekly"} checked={ldfOccurenceFilter === 'weekly'} value="weekly" onChange={handleLoOccurenceChange} />
                                                     </div>
-                                                </React.Fragment>
+                                                </div>
                                             )}
+                                            <div className='flex flex-col mx-4'>
+                                                <div className="flex flex-row border border-zinc-200 rounded-lg p-2">
+                                                    <CheckBox name="showTomorrowRelease" value={showTomorrowRelease} label="Show Tomorrow Release" onChange={handleShowTomorrowReleaseChange} size={"md"} /> 
+                                                </div>
+                                            </div>
                                         </div>
                                         {currentUser.role.rep === 3 && (
                                             <div className='flex justify-end ml-4 h-10 my-auto'>
@@ -1440,7 +1468,7 @@ const LoanApplicationPage = () => {
                                     </footer>
                                 </TabPanel>
                                 <TabPanel hidden={selectedTab !== 'history'}>
-                                    <TableComponent columns={columns} data={historyList} hasActionButtons={false} showFilters={false} />
+                                    <TableComponent columns={columns} data={historyList} hasActionButtons={false} showFilters={false} pageSize={500} />
                                 </TabPanel>
                             </div>
                         </React.Fragment>

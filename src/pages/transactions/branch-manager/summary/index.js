@@ -11,17 +11,22 @@ import { toast } from "react-toastify";
 import LOSHeader from "@/components/transactions/los/Header";
 import { formatPricePhp, getDaysOfMonth } from "@/lib/utils";
 import { useRouter } from "node_modules/next/router";
+import { setBranch } from "@/redux/actions/branchActions";
+import { setUserList } from "@/redux/actions/userActions";
 
 const BranchManagerSummary = () => {
     const dispatch = useDispatch();
-    const [loading, setLoading] = useState(true);
+    const router = useRouter();
+    const [loading, setLoading] = useState(false);
     const currentUser = useSelector(state => state.user.data);
     const list = useSelector(state => state.los.list);
     const currentDate = useSelector(state => state.systemSettings.currentDate);
-    const [selectedBranch, setSelectedBranch] = useState();
+    const currentBranch = useSelector(state => state.branch.data);
     const [days, setDays] = useState([]);
-    const [selectedMonth, setSelectedMonth] = useState(moment(currentDate).month() + 1);
-    const [selectedYear, setSelectedYear] = useState(moment(currentDate).year());
+    const [selectedMonth, setSelectedMonth] = useState();
+    const [selectedYear, setSelectedYear] = useState();
+    const [selectedLoGroup, setSelectedLoGroup] = useState('all');
+    const [selectedLo, setSelectedLo] = useState();
 
     const handleMonthFilter = (selected) => {
         setSelectedMonth(selected.value);
@@ -29,6 +34,19 @@ const BranchManagerSummary = () => {
 
     const handleYearFilter = (selected) => {
         setSelectedYear(selected.value);
+    }
+
+    const handleSelectedLoGroupChange = (value) => {
+        if (value == 'all') {
+            setSelectedLo(null);
+        }
+
+        setSelectedLoGroup(value);
+    }
+
+    const handleSelectedLoChange = (selected) => {
+        setSelectedLo(selected);
+        router.push(`/transactions/loan-officer-summary?uuid=${selected._id}`);
     }
 
     const getListLos = async (date) => {
@@ -1519,28 +1537,32 @@ const BranchManagerSummary = () => {
     const saveLosTotals = async (total, filter, date) => {
         let losTotals = {
             userId: currentUser._id,
-            branchId: selectedBranch && selectedBranch._id,
+            branchId: currentBranch && currentBranch._id,
             month: filter ? moment(date).month() + 1 : moment(currentDate).month() + 1,
             year: filter ? moment(date).year() : moment(currentDate).year(),
             data: total,
             losType: 'commulative',
-            currentDate: currentDate
+            currentDate: currentDate,
+            officeType: selectedLoGroup
         }
 
-        if (currentUser.role.rep === 4) {
-            if (currentUser.transactionType === 'daily') {
-                losTotals = {...losTotals, occurence: 'daily'};
-            } else {
-                losTotals = {...losTotals, occurence: 'weekly'};
-            }
-        }
+        // if (currentUser.role.rep === 4) {
+        //     if (currentUser.transactionType === 'daily') {
+        //         losTotals = {...losTotals, occurence: 'daily'};
+        //     } else {
+        //         losTotals = {...losTotals, occurence: 'weekly'};
+        //     }
+        // }
 
         await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collection-summary/save-update-totals', losTotals);
     }
 
     useEffect(() => {
-        setDays(getDaysOfMonth(selectedYear, selectedMonth));
-    }, [selectedMonth, selectedYear]);
+        if (currentDate) {
+            setSelectedMonth(moment(currentDate).month() + 1);
+            setSelectedYear(moment(currentDate).year());
+        }
+    }, [currentDate]);
 
     useEffect(() => {
         let mounted = true;
@@ -1551,7 +1573,7 @@ const BranchManagerSummary = () => {
                 const params = { code: currentUser.designatedBranch };
                 const response = await fetchWrapper.get(apiUrl + new URLSearchParams(params));
                 if (response.success) {
-                    setSelectedBranch(response.branch);
+                    dispatch(setBranch(response.branch))
                 } else {
                     toast.error('Error while loading data');
                 }
@@ -1562,16 +1584,53 @@ const BranchManagerSummary = () => {
             // selectedBranchSubject
         }
 
-        if (days.length > 0) {
+        return (() => {
+            mounted = false;
+        })
+    }, [currentUser]);
+
+    useEffect(() => {
+        setDays(getDaysOfMonth(selectedYear, selectedMonth));
+    }, [selectedMonth, selectedYear]);
+
+    useEffect(() => {
+        let mounted = true;
+        if (days && days.length > 0) {
             const fMonth = (typeof selectedMonth === 'number' && selectedMonth < 10) ? '0' + selectedMonth : selectedMonth;
             mounted && getListLos(`${selectedYear}-${fMonth}-01`);
-            mounted && setLoading(false);
         }
 
         return (() => {
             mounted = false;
         })
     }, [days]);
+
+    useEffect(() => {
+        const getListUser = async () => {
+            let url = process.env.NEXT_PUBLIC_API_URL + 'users/list?' + new URLSearchParams({ loOnly: true, branchCode: currentBranch?.code, selectedLoGroup: selectedLoGroup });
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                const userListArr = [];
+                response.users && response.users.map(u => {
+                    const name = `${u.firstName} ${u.lastName}`;
+                    userListArr.push({
+                        ...u,
+                        name: name,
+                        label: name,
+                        value: u._id
+                    });
+                });
+                userListArr.sort((a, b) => { return a.loNo - b.loNo; });
+                dispatch(setUserList(userListArr));
+            } else {
+                toast.error('Error retrieving user list.');
+            }
+        }
+
+        if (currentBranch && selectedLoGroup) {
+            getListUser();
+        }
+    }, [selectedLoGroup, currentBranch]);
 
     return (
         <Layout header={false} noPad={false} hScroll={false}>
@@ -1581,9 +1640,11 @@ const BranchManagerSummary = () => {
                 </div>
             ) : (
                 <div className="flex flex-col">
-                    <LOSHeader page={1} pageTitle="Branch Manager Summary" selectedBranch={selectedBranch} 
+                    <LOSHeader page={1} pageTitle="Branch Manager Summary" selectedBranch={currentBranch} 
                             selectedMonth={selectedMonth} setSelectedMonth={setSelectedMonth} handleMonthFilter={handleMonthFilter}
-                            selectedYear={selectedYear} setSelectedYear={setSelectedYear} handleYearFilter={handleYearFilter}/>
+                            selectedYear={selectedYear} setSelectedYear={setSelectedYear} handleYearFilter={handleYearFilter}
+                            selectedLoGroup={selectedLoGroup} handleSelectedLoGroupChange={handleSelectedLoGroupChange}
+                            selectedLo={selectedLo} handleSelectedLoChange={handleSelectedLoChange} />
                     <div className="flex flex-col min-h-[55rem] mt-40 pl-6 pr-2 overflow-y-auto">
                         <div className="block rounded-xl overflow-auto h-screen">
                             <table className="relative w-full table-auto border-collapse text-sm bg-white" style={{ marginBottom: "14em" }}>

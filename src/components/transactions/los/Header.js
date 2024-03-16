@@ -9,12 +9,14 @@ import Select from 'react-select';
 import moment from 'moment';
 import { useRouter } from 'next/router';
 import { ArrowLeftCircleIcon } from '@heroicons/react/24/solid';
+import RadioButton from "@/lib/ui/radio-button";
 
-const LOSHeader = ({ pageTitle, page, selectedMonth, handleMonthFilter, selectedYear, handleYearFilter, selectedBranch }) => {
+const LOSHeader = ({ pageTitle, page, selectedMonth, handleMonthFilter, selectedYear, handleYearFilter, selectedBranch, 
+                        selectedLoGroup, handleSelectedLoGroupChange, selectedLo, handleSelectedLoChange }) => {
     const router = useRouter();
     const currentUser = useSelector(state => state.user.data);
-    const [currentDate, setCurrentDate] = useState(moment(new Date()).format('YYYY-MM-DD'));
-    const [showCalendar, setShowCalendar] = useState(false);
+    const currentBranch = useSelector(state => state.branch.data);
+    const userList = useSelector(state => state.user.list);
     const [loanOfficer, setLoanOfficer] = useState();
     const months = getMonths();
     const years = getYears();
@@ -24,12 +26,18 @@ const LOSHeader = ({ pageTitle, page, selectedMonth, handleMonthFilter, selected
     };
 
     const handleBack = () => {
-        router.back();
+        if (currentUser.role.rep == 3) {
+            router.push('/transactions/branch-manager/summary');
+        } else {
+            router.back();
+        }
     }
 
     useEffect(() => {
         if (currentUser.role.rep === 4) {
             setLoanOfficer(currentUser);
+        } else {
+            setLoanOfficer(selectedLo)
         }
     }, [currentUser]);
 
@@ -40,6 +48,14 @@ const LOSHeader = ({ pageTitle, page, selectedMonth, handleMonthFilter, selected
                     <div className="page-title">
                         {pageTitle} 
                     </div>
+                    {(currentUser.role.rep < 4 && (selectedLo != undefined && selectedLo != null)) && (
+                        <div className="flex justify-between w-11/12 my-2">
+                            <div className="page-title flex-row">
+                                <span><ArrowLeftCircleIcon className="w-5 h-5 mr-2 cursor-pointer" title="Back" onClick={handleBack} /></span>
+                                <span className="text-lg mt-1">Go back</span>
+                            </div>
+                        </div>
+                    )}
                     {loanOfficer && (
                         <div className="flex justify-between w-11/12">
                             <div className="flex flex-row justify-items-start space-x-5 py-4" style={{ height: '40px' }}>
@@ -81,7 +97,7 @@ const LOSHeader = ({ pageTitle, page, selectedMonth, handleMonthFilter, selected
                             <Select 
                                 options={months}
                                 value={selectedMonth && months.find(m => {
-                                    return parseInt(m.value) === selectedMonth
+                                    return parseInt(m.value) === parseInt(selectedMonth)
                                 })}
                                 styles={borderStyles}
                                 components={{ DropdownIndicator }}
@@ -103,11 +119,30 @@ const LOSHeader = ({ pageTitle, page, selectedMonth, handleMonthFilter, selected
                                 closeMenuOnSelect={true}
                                 placeholder={'Year Filter'}/>
                         </div>
-                        {/* <div className="ml-6 flex w-64">
-                            <div className="relative w-full" onClick={openCalendar}>
-                                <DatePicker name="dateFilter" value={moment(dateFilter).format('YYYY-MM-DD')} maxDate={moment(new Date()).format('YYYY-MM-DD')} onChange={handleDateFilter} />
-                            </div>
-                        </div> */}
+                        {(currentUser.role.rep < 4) && (
+                            <React.Fragment>
+                                { (currentBranch?.noOfLO?.count > 10 && pageTitle == "Branch Manager Summary") && (
+                                    <div className="flex flex-row ml-4">
+                                        <RadioButton id={"radio_all"} name="radio-lo" label={"All"} checked={selectedLoGroup === 'all'} value="all" onChange={handleSelectedLoGroupChange} />
+                                        <RadioButton id={"radio_main"} name="radio-lo" label={"Main"} checked={selectedLoGroup === 'main'} value="main" onChange={handleSelectedLoGroupChange} />
+                                        <RadioButton id={"radio_ext"} name="radio-lo" label={"Extension"} checked={selectedLoGroup === 'ext'} value="ext" onChange={handleSelectedLoGroupChange} />
+                                    </div>
+                                ) }
+                                <div className="ml-4 flex">
+                                    <Select 
+                                        options={userList}
+                                        value={selectedLo && userList.find(user => {
+                                            return user.value === selectedLo._id
+                                        })}
+                                        styles={borderStyles}
+                                        components={{ DropdownIndicator }}
+                                        onChange={handleSelectedLoChange}
+                                        isSearchable={true}
+                                        closeMenuOnSelect={true}
+                                        placeholder={'LO Filter'}/>
+                                </div>
+                            </React.Fragment>
+                        )}
                     </div>
                 </div>
             )}
