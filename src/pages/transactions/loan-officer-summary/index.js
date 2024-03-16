@@ -12,19 +12,23 @@ import LOSHeader from "@/components/transactions/los/Header";
 import { formatPricePhp, getDaysOfMonth } from "@/lib/utils";
 import { useRouter } from "node_modules/next/router";
 import { setBranch } from "@/redux/actions/branchActions";
+import { setUserList } from "@/redux/actions/userActions";
 
 const LoanOfficerSummary = () => {
     const router = useRouter();
     const dispatch = useDispatch();
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
+    const currentBranch = useSelector(state => state.branch.data);
     const currentUser = useSelector(state => state.user.data);
     const list = useSelector(state => state.los.list);
     const currentDate = useSelector(state => state.systemSettings.currentDate);
     const selectedBranch = useSelector(state => state.branch.data);
     const [days, setDays] = useState([]);
-    const [selectedMonth, setSelectedMonth] = useState(moment(currentDate).month() + 1);
-    const [selectedYear, setSelectedYear] = useState(moment(currentDate).year());
-    const { type } = router.query;
+    const [selectedMonth, setSelectedMonth] = useState();
+    const [selectedYear, setSelectedYear] = useState();
+    const [selectedLoGroup, setSelectedLoGroup] = useState('all');
+    const [selectedLo, setSelectedLo] = useState();
+    const { uuid } = router.query;
 
     const handleMonthFilter = (selected) => {
         setSelectedMonth(selected.value);
@@ -32,6 +36,21 @@ const LoanOfficerSummary = () => {
 
     const handleYearFilter = (selected) => {
         setSelectedYear(selected.value);
+    }
+
+    const handleSelectedLoGroupChange = (value) => {
+        if (value == 'all') {
+            setSelectedLo(null);
+        } else {
+            router.push('/transactions/branch-manager/summary');
+        }
+
+        setSelectedLoGroup(value);
+    }
+
+    const handleSelectedLoChange = (selected) => {
+        setSelectedLo(selected);
+        router.push(`/transactions/loan-officer-summary?uuid=${selected._id}`);
     }
 
     const getListLos = async (date) => {
@@ -178,94 +197,97 @@ const LoanOfficerSummary = () => {
                 });
             }
         });
+        
+        if (currentUser.role.rep == 4) {
+            url = url + '?' + new URLSearchParams({ userId: currentUser._id, date: date ? date : currentDate });
+        } else if (currentUser.role.rep == 3 && uuid) {
+            url = url + '?' + new URLSearchParams({ userId: uuid, date: date ? date : currentDate });
+        }
 
-        if (currentUser.role.rep === 4) {
-            url = url + '?' + new URLSearchParams({ userId: currentUser._id, date: date ? date : currentDate, occurence: type });
-            const response = await fetchWrapper.get(url);
-            if (response.success) {
-                let fBal = response.data.fBalance;
-                if (fBal.length > 0) {
-                    fBal = fBal[0].data;
-                    const activeClients = fBal.activeClients;
-                    losList[0] = {
-                        day: 'F / Balance',
-                        transfer: activeClients > 0 ? fBal.transfer : 0,
-                        newMember: activeClients > 0 ? fBal.newMember : 0,
-                        mcbuTarget: activeClients > 0 ? fBal.mcbuTarget : 0,
-                        mcbuTargetStr: activeClients > 0 ? formatPricePhp(fBal.mcbuTarget) : '-',
-                        mcbuActual: activeClients > 0 ? fBal.mcbuActual : 0,
-                        mcbuActualStr: activeClients > 0 ? formatPricePhp(fBal.mcbuActual) : '-',
-                        mcbuWithdrawal: activeClients > 0 ? fBal.mcbuWithdrawal : 0,
-                        mcbuWithdrawalStr: activeClients > 0 ? formatPricePhp(fBal.mcbuWithdrawal) : '-',
-                        mcbuInterest: activeClients > 0 ? fBal.mcbuInterest : 0,
-                        mcbuInterestStr: activeClients > 0 ? formatPricePhp(fBal.mcbuInterest) : '-',
-                        noMcbuReturn: activeClients > 0 ? fBal.noMcbuReturn : 0,
-                        mcbuReturnAmt: activeClients > 0 ? fBal.mcbuReturnAmt : 0,
-                        mcbuReturnAmtStr: activeClients > 0 ? formatPricePhp(fBal.mcbuReturnAmt) : '-',
-                        mcbuBalance: activeClients > 0 ? fBal.mcbuBalance : 0,
-                        mcbuBalanceStr: activeClients > 0 ? formatPricePhp(fBal.mcbuBalance) : '-',
-                        offsetPerson: activeClients > 0 ? fBal.offsetPerson : 0,
-                        activeClients: activeClients,
-                        loanReleasePerson: activeClients > 0 ? fBal.loanReleasePerson : 0,
-                        loanReleaseAmount: activeClients > 0 ? fBal.loanReleaseAmount : 0,
-                        loanReleaseAmountStr: activeClients > 0 ? formatPricePhp(fBal.loanReleaseAmount) : '-',
-                        activeLoanReleasePerson: activeClients > 0 ? fBal.activeLoanReleasePerson : 0,
-                        activeLoanReleaseAmount: activeClients > 0 ? fBal.activeLoanReleaseAmount : 0,
-                        activeLoanReleaseAmountStr: activeClients > 0 ? formatPricePhp(fBal.activeLoanReleaseAmount) : '-',
-                        collectionAdvancePayment: activeClients > 0 ? fBal.collectionAdvancePayment : 0,
-                        collectionAdvancePaymentStr: activeClients > 0 ? formatPricePhp(fBal.collectionAdvancePayment) : '-',
-                        collectionActual: activeClients > 0 ? fBal.collectionActual : 0,
-                        collectionActualStr: activeClients > 0 ? formatPricePhp(fBal.collectionActual) : '-',
-                        pastDuePerson: activeClients > 0 ? fBal.pastDuePerson : 0,
-                        pastDueAmount: activeClients > 0 ? fBal.pastDueAmount : 0,
-                        pastDueAmountStr: activeClients > 0 ? formatPricePhp(fBal.pastDueAmount) : '-',
-                        mispaymentPerson: activeClients > 0 ? fBal.mispaymentPerson : 0,
-                        fullPaymentPerson: activeClients > 0 ? fBal.fullPaymentPerson : 0,
-                        fullPaymentAmount: activeClients > 0 ? fBal.fullPaymentAmount : 0,
-                        fullPaymentAmountStr: activeClients > 0 ? formatPricePhp(fBal.fullPaymentAmount) : '-',
-                        activeBorrowers: activeClients > 0 ? fBal.activeBorrowers : 0,
-                        loanBalance: activeClients > 0 ? fBal.loanBalance : 0,
-                        loanBalanceStr: activeClients > 0 ? formatPricePhp(fBal.loanBalance) : '-',
-                        fBalance: true
+        const response = await fetchWrapper.get(url);
+        if (response.success) {
+            let fBal = response.data.fBalance;
+            if (fBal.length > 0) {
+                fBal = fBal[0].data;
+                const activeClients = fBal.activeClients;
+                losList[0] = {
+                    day: 'F / Balance',
+                    transfer: activeClients > 0 ? fBal.transfer : 0,
+                    newMember: activeClients > 0 ? fBal.newMember : 0,
+                    mcbuTarget: activeClients > 0 ? fBal.mcbuTarget : 0,
+                    mcbuTargetStr: activeClients > 0 ? formatPricePhp(fBal.mcbuTarget) : '-',
+                    mcbuActual: activeClients > 0 ? fBal.mcbuActual : 0,
+                    mcbuActualStr: activeClients > 0 ? formatPricePhp(fBal.mcbuActual) : '-',
+                    mcbuWithdrawal: activeClients > 0 ? fBal.mcbuWithdrawal : 0,
+                    mcbuWithdrawalStr: activeClients > 0 ? formatPricePhp(fBal.mcbuWithdrawal) : '-',
+                    mcbuInterest: activeClients > 0 ? fBal.mcbuInterest : 0,
+                    mcbuInterestStr: activeClients > 0 ? formatPricePhp(fBal.mcbuInterest) : '-',
+                    noMcbuReturn: activeClients > 0 ? fBal.noMcbuReturn : 0,
+                    mcbuReturnAmt: activeClients > 0 ? fBal.mcbuReturnAmt : 0,
+                    mcbuReturnAmtStr: activeClients > 0 ? formatPricePhp(fBal.mcbuReturnAmt) : '-',
+                    mcbuBalance: activeClients > 0 ? fBal.mcbuBalance : 0,
+                    mcbuBalanceStr: activeClients > 0 ? formatPricePhp(fBal.mcbuBalance) : '-',
+                    offsetPerson: activeClients > 0 ? fBal.offsetPerson : 0,
+                    activeClients: activeClients,
+                    loanReleasePerson: activeClients > 0 ? fBal.loanReleasePerson : 0,
+                    loanReleaseAmount: activeClients > 0 ? fBal.loanReleaseAmount : 0,
+                    loanReleaseAmountStr: activeClients > 0 ? formatPricePhp(fBal.loanReleaseAmount) : '-',
+                    activeLoanReleasePerson: activeClients > 0 ? fBal.activeLoanReleasePerson : 0,
+                    activeLoanReleaseAmount: activeClients > 0 ? fBal.activeLoanReleaseAmount : 0,
+                    activeLoanReleaseAmountStr: activeClients > 0 ? formatPricePhp(fBal.activeLoanReleaseAmount) : '-',
+                    collectionAdvancePayment: activeClients > 0 ? fBal.collectionAdvancePayment : 0,
+                    collectionAdvancePaymentStr: activeClients > 0 ? formatPricePhp(fBal.collectionAdvancePayment) : '-',
+                    collectionActual: activeClients > 0 ? fBal.collectionActual : 0,
+                    collectionActualStr: activeClients > 0 ? formatPricePhp(fBal.collectionActual) : '-',
+                    pastDuePerson: activeClients > 0 ? fBal.pastDuePerson : 0,
+                    pastDueAmount: activeClients > 0 ? fBal.pastDueAmount : 0,
+                    pastDueAmountStr: activeClients > 0 ? formatPricePhp(fBal.pastDueAmount) : '-',
+                    mispaymentPerson: activeClients > 0 ? fBal.mispaymentPerson : 0,
+                    fullPaymentPerson: activeClients > 0 ? fBal.fullPaymentPerson : 0,
+                    fullPaymentAmount: activeClients > 0 ? fBal.fullPaymentAmount : 0,
+                    fullPaymentAmountStr: activeClients > 0 ? formatPricePhp(fBal.fullPaymentAmount) : '-',
+                    activeBorrowers: activeClients > 0 ? fBal.activeBorrowers : 0,
+                    loanBalance: activeClients > 0 ? fBal.loanBalance : 0,
+                    loanBalanceStr: activeClients > 0 ? formatPricePhp(fBal.loanBalance) : '-',
+                    fBalance: true
+                };
+            }
+            
+            response.data.current.map(los => {
+                const index = losList.findIndex(d => d.day === los.dateAdded);
+                if (index > -1) {
+                    losList[index] = {
+                        ...los.data,
+                        day: los.dateAdded,
+                        prevMcbuBalance: los.data.prevMcbuBalance,
+                        mcbuTarget: currentUser.transactionType === 'daily' ? 0 : los.data.mcbuTarget,
+                        mcbuTargetStr: currentUser.transactionType === 'daily' ? '-' : formatPricePhp(los.data.mcbuTarget),
+                        mcbuActualStr: formatPricePhp(los.data.mcbuActual),
+                        mcbuWithdrawalStr: formatPricePhp(los.data.mcbuWithdrawal),
+                        mcbuInterestStr: formatPricePhp(los.data.mcbuInterest),
+                        mcbuReturnAmtStr: formatPricePhp(los.data.mcbuReturnAmt),
+                        loanReleaseAmountStr: formatPricePhp(los.data.loanReleaseAmount),
+                        activeLoanReleaseAmountStr: formatPricePhp(los.data.activeLoanReleaseAmount),
+                        collectionTargetStr: formatPricePhp(los.data.collectionTarget),
+                        collectionAdvancePaymentStr: formatPricePhp(los.data.collectionAdvancePayment),
+                        collectionActualStr: formatPricePhp(los.data.collectionActual),
+                        pastDueAmountStr: formatPricePhp(los.data.pastDueAmount),
+                        fullPaymentAmountStr: formatPricePhp(los.data.fullPaymentAmount),
+                        loanBalance: los.data.loanBalance,
+                        loanBalanceStr: formatPricePhp(los.data.loanBalance)
                     };
                 }
-                
-                response.data.current.map(los => {
-                    const index = losList.findIndex(d => d.day === los.dateAdded);
-                    if (index > -1) {
-                        losList[index] = {
-                            ...los.data,
-                            day: los.dateAdded,
-                            prevMcbuBalance: los.data.prevMcbuBalance,
-                            mcbuTarget: type === 'daily' ? 0 : los.data.mcbuTarget,
-                            mcbuTargetStr: type === 'daily' ? '-' : formatPricePhp(los.data.mcbuTarget),
-                            mcbuActualStr: formatPricePhp(los.data.mcbuActual),
-                            mcbuWithdrawalStr: formatPricePhp(los.data.mcbuWithdrawal),
-                            mcbuInterestStr: formatPricePhp(los.data.mcbuInterest),
-                            mcbuReturnAmtStr: formatPricePhp(los.data.mcbuReturnAmt),
-                            loanReleaseAmountStr: formatPricePhp(los.data.loanReleaseAmount),
-                            activeLoanReleaseAmountStr: formatPricePhp(los.data.activeLoanReleaseAmount),
-                            collectionTargetStr: formatPricePhp(los.data.collectionTarget),
-                            collectionAdvancePaymentStr: formatPricePhp(los.data.collectionAdvancePayment),
-                            collectionActualStr: formatPricePhp(los.data.collectionActual),
-                            pastDueAmountStr: formatPricePhp(los.data.pastDueAmount),
-                            fullPaymentAmountStr: formatPricePhp(los.data.fullPaymentAmount),
-                            loanBalance: los.data.loanBalance,
-                            loanBalanceStr: formatPricePhp(los.data.loanBalance)
-                        };
-                    }
-                });
+            });
 
-                losList = calculatePersons(losList);
-                losList = calculateWeeklyTotals(losList);
-                losList.push(calculateMonthlyTotals(losList[0], losList.filter(los => los.weekTotal)));
-                losList.push(calculateGrandTotals(losList.filter(los => !los.hasOwnProperty('flag')), filter, date));
-                dispatch(setLosList(losList));
-                setLoading(false);
-            } else if (response.error) {
-                setLoading(false);
-                toast.error(response.message);
-            }
+            losList = calculatePersons(losList);
+            losList = calculateWeeklyTotals(losList);
+            losList.push(calculateMonthlyTotals(losList[0], losList.filter(los => los.weekTotal)));
+            losList.push(calculateGrandTotals(losList.filter(los => !los.hasOwnProperty('flag')), filter, date));
+            dispatch(setLosList(losList));
+            setLoading(false);
+        } else if (response.error) {
+            setLoading(false);
+            toast.error(response.message);
         }
     }
 
@@ -1086,6 +1108,13 @@ const LoanOfficerSummary = () => {
     }
 
     useEffect(() => {
+        if (currentDate) {
+            setSelectedMonth(moment(currentDate).month() + 1);
+            setSelectedYear(moment(currentDate).year());
+        }
+    }, [currentDate]);
+
+    useEffect(() => {
         setDays(getDaysOfMonth(selectedYear, selectedMonth));
     }, [selectedMonth, selectedYear]);
 
@@ -1107,16 +1136,56 @@ const LoanOfficerSummary = () => {
             mounted && getCurrentBranch();
         }
 
-        if (mounted && type && days && days.length > 0) {
+        return (() => {
+            mounted = false;
+        });
+    }, [currentUser]);
+
+    useEffect(() => {
+        let mounted = true;
+
+        if (days && days.length > 0) {
             const fMonth = (typeof selectedMonth === 'number' && selectedMonth < 10) ? '0' + selectedMonth : selectedMonth;
-            getListLos(`${selectedYear}-${fMonth}-01`);
-            setLoading(false);
+            if (uuid) {
+                mounted && getListLos(`${selectedYear}-${fMonth}-01`, uuid);
+            } else {
+                mounted && getListLos(`${selectedYear}-${fMonth}-01`);
+            }
         }
 
         return (() => {
             mounted = false;
-        })
-    }, [days]);
+        });
+    }, [days, uuid]);
+
+    useEffect(() => {
+        const getListUser = async () => {
+            let url = process.env.NEXT_PUBLIC_API_URL + 'users/list?' + new URLSearchParams({ loOnly: true, branchCode: currentBranch?.code, selectedLoGroup: selectedLoGroup });
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                const userListArr = [];
+                response.users && response.users.map(u => {
+                    const name = `${u.firstName} ${u.lastName}`;
+                    userListArr.push({
+                        ...u,
+                        name: name,
+                        label: name,
+                        value: u._id
+                    });
+                });
+                userListArr.sort((a, b) => { return a.loNo - b.loNo; });
+                dispatch(setUserList(userListArr));
+
+                setSelectedLo(userListArr.find(user => user._id == uuid));
+            } else {
+                toast.error('Error retrieving user list.');
+            }
+        }
+
+        if (currentUser.role.rep == 3 && currentBranch && selectedLoGroup) {
+            getListUser();
+        }
+    }, [selectedLoGroup, currentBranch]);
 
     return (
         <Layout header={false} noPad={false} hScroll={false}>
@@ -1128,8 +1197,10 @@ const LoanOfficerSummary = () => {
                 <div className="flex flex-col">
                     <LOSHeader page={1} pageTitle="Loan Officers Summary" selectedBranch={selectedBranch} 
                             selectedMonth={selectedMonth} setSelectedMonth={setSelectedMonth} handleMonthFilter={handleMonthFilter}
-                            selectedYear={selectedYear} setSelectedYear={setSelectedYear} handleYearFilter={handleYearFilter}/>
-                    <div className="flex flex-col min-h-[55rem] mt-40 pl-6 pr-2 overflow-y-auto">
+                            selectedYear={selectedYear} setSelectedYear={setSelectedYear} handleYearFilter={handleYearFilter}
+                            selectedLoGroup={selectedLoGroup} handleSelectedLoGroupChange={handleSelectedLoGroupChange}
+                            selectedLo={selectedLo} handleSelectedLoChange={handleSelectedLoChange} />
+                    <div className={`flex flex-col min-h-[55rem] mt-40 pl-6 pr-2 overflow-y-auto ${currentUser.role.rep == 3 && 'mt-56'}`}>
                         <div className="block rounded-xl overflow-auto h-screen">
                             <table className="relative w-full table-auto border-collapse text-sm bg-white" style={{ marginBottom: "14em", marginRight: "2em" }}>
                                 <thead>
