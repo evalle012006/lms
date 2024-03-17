@@ -49,7 +49,7 @@ const BranchManagerSummary = () => {
         router.push(`/transactions/loan-officer-summary?uuid=${selected._id}`);
     }
 
-    const getListLos = async (date) => {
+    const getListLos = async (date, loGroup) => {
         setLoading(true);
 
         let filter = false;
@@ -253,7 +253,7 @@ const BranchManagerSummary = () => {
         });
 
         if (currentUser.role.rep === 3) {
-            url = url + '?' + new URLSearchParams({ userId: currentUser._id, branchId: currentUser.designatedBranchId, date: date ? date : currentDate });
+            url = url + '?' + new URLSearchParams({ userId: currentUser._id, branchId: currentUser.designatedBranchId, date: date ? date : currentDate, loGroup: loGroup });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let fBal = response.data.fBalance;
@@ -1597,13 +1597,13 @@ const BranchManagerSummary = () => {
         let mounted = true;
         if (days && days.length > 0) {
             const fMonth = (typeof selectedMonth === 'number' && selectedMonth < 10) ? '0' + selectedMonth : selectedMonth;
-            mounted && getListLos(`${selectedYear}-${fMonth}-01`);
+            mounted && getListLos(`${selectedYear}-${fMonth}-01`, selectedLoGroup);
         }
 
         return (() => {
             mounted = false;
         })
-    }, [days]);
+    }, [days, selectedLoGroup]);
 
     useEffect(() => {
         const getListUser = async () => {

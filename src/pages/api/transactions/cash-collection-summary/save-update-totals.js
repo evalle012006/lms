@@ -24,7 +24,7 @@ async function processLOSTotals(req, res) {
             break;
         case 'daily':
             const filter = data.data.day === data.currentDate ? false : true;
-            const cashCollections = await db.collection('cashCollections').find({ loId: data.userId, dateAdded: data.data.day, occurence: data.occurence, officeType: officeType }).toArray();
+            const cashCollections = await db.collection('cashCollections').find({ loId: data.userId, dateAdded: data.data.day, occurence: data.occurence }).toArray();
 
             if (cashCollections.length === 0) {
                 response = { error: true, message: "One or more group/s have no transaction for today."};

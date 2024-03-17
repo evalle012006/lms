@@ -12,7 +12,7 @@ export default apiHandler({
 
 async function processLOSummary(req, res) {
     const { db } = await connectToDatabase();
-    const { loId, mode, currentDate } = req.body;
+    const { loId, mode, currentDate, currentTime } = req.body;
 
     if (loId) {
         const cashCollectionCounts = await checkLoTransactions(loId, currentDate);
@@ -28,18 +28,35 @@ async function processLOSummary(req, res) {
                 }
             });
 
+            const hasClosingTime = cashCollectionCounts.filter(cc => { 
+                if ( cc.cashCollections.length > 0 && cc.cashCollections[0].hasClosingTime.length > 0 ) {
+                    return cc;
+                }
+            });
+
             if (mode === 'close' && noCollections?.length > 0) {
                 response = { error: true, message: "Some groups have no current transactions for the selected Loan Officer." };
             } else if (mode === 'close' && hasDrafts?.length > 0) {
                 response = { error: true, message: "Some groups have draft transactions for the selected Loan Officer." };
             } else {
-                const result = await db.collection('cashCollections').updateMany(
-                    {
-                        loId: loId,
-                        dateAdded: currentDate
-                    }, {
-                        $set: { groupStatus: mode === 'close' ? 'closed' : 'pending' }
-                    });
+                let result;
+                if (mode == 'close' && hasClosingTime.length == 0) {
+                    result = await db.collection('cashCollections').updateMany(
+                        {
+                            loId: loId,
+                            dateAdded: currentDate
+                        }, {
+                            $set: { groupStatus: 'closed', closingTime: currentTime  }
+                        });
+                } else {
+                    result = await db.collection('cashCollections').updateMany(
+                        {
+                            loId: loId,
+                            dateAdded: currentDate
+                        }, {
+                            $set: { groupStatus: mode === 'close' ? 'closed' : 'pending' }
+                        });
+                }
         
                 if (result.modifiedCount === 0) {
                     response = { error: true, message: "No transactions found for this Loan Officer." };
@@ -101,7 +118,8 @@ const checkLoTransactions = async (loId, currentDate) => {
                                                 then: 1,
                                                 else: 0
                                             }
-                                        } }
+                                        } },
+                                        hasClosingTime: { $addToSet: '$closingTime' }
                                     } }
                                 ],
                                 as: "cashCollections"

@@ -24,6 +24,7 @@ const TransferClientPage = () => {
     const lastMonthDate = useSelector(state => state.systemSettings.lastDay);
     const isHoliday = useSelector(state => state.systemSettings.holiday);
     const isWeekend = useSelector(state => state.systemSettings.weekend);
+    const currentTime = useSelector(state => state.systemSettings.currentTime);
     const [loading, setLoading] = useState(true);
     const router = useRouter();
     const dispatch = useDispatch();
@@ -109,14 +110,13 @@ const TransferClientPage = () => {
         let errorMsg;
         const url = process.env.NEXT_PUBLIC_API_URL 
                     + 'transactions/cash-collections/update-group-transaction-status?' 
-                    + new URLSearchParams({ groupIds: groupIds, currentDate: currentDate });
+                    + new URLSearchParams({ groupIds: groupIds, currentDate: currentDate, currentTime: currentTime });
         const response = await fetchWrapper.get(url);
             
         if (response.success) {
             const data = response.data;
             if (data.length > 0) {
                 const pendings = data.filter(cc => cc.groupStatus === 'pending');
-                console.log(pendings)
                 if (pendings.length > 0) {
                     errorMsg = "One or more group transactions are not yet closed!";
                 }
