@@ -127,15 +127,6 @@ const LoanApplicationPage = () => {
         }
     }
 
-    const handleShowTomorrowReleaseChange = (name, value) => {
-        setShowTomorrowRelease(value);
-        if (selectedTab == 'ldf') {
-            handleFilter('tomorrow', value, list);
-        } else if (selectedTab == 'application') {
-            handleFilter('tomorrow', value, pendingList);
-        }
-    }
-
     const handleFilter = (field, value, dataArr) => {
         if (value || field == 'tomorrow') {
           let searchResult = [];
@@ -145,12 +136,6 @@ const LoanApplicationPage = () => {
             searchResult = dataArr.filter(b => b.loId === value);
           } else if (field === 'group') {
             searchResult = dataArr.filter(b => b.groupId === value);
-          } else if (field === 'tomorrow') {
-            if (value == true) {
-                searchResult = dataArr;
-            } else if (value == false) {
-                searchResult = dataArr.filter(b => !b?.hasOwnProperty('dateOfRelease'));
-            }
           }
 
           if (selectedTab == 'ldf') {
@@ -774,9 +759,9 @@ const LoanApplicationPage = () => {
                 errorMsg.add(`${clientName} in group ${groupName} don't have PN Number.`);
             }
 
-            if (loan.hasOwnProperty('dateOfRelease')) {
-                errorMsg.add(`${clientName} in group ${groupName} if for tomorrow release.`);
-            }
+            // if (loan.hasOwnProperty('dateOfRelease')) {
+            //     errorMsg.add(`${clientName} in group ${groupName} if for tomorrow release.`);
+            // }
         });
 
         return Array.from(errorMsg);
@@ -1364,11 +1349,6 @@ const LoanApplicationPage = () => {
                                                     </div>
                                                 </div>
                                             )}
-                                            <div className='flex flex-col mx-4'>
-                                                <div className="flex flex-row border border-zinc-200 rounded-lg p-2">
-                                                    <CheckBox name="showTomorrowRelease" value={showTomorrowRelease} label="Show Tomorrow Release" onChange={handleShowTomorrowReleaseChange} size={"md"} /> 
-                                                </div>
-                                            </div>
                                         </div>
                                         {currentUser.role.rep === 3 && (
                                             <div className='flex justify-end ml-4 h-10 my-auto'>

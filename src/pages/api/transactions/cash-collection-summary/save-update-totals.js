@@ -16,7 +16,12 @@ async function processLOSTotals(req, res) {
     const data = req.body;
 
     const lo = await db.collection('users').find({ _id: new ObjectId(data.userId) }).toArray();
-    const officeType = lo.length > 0 ? parseInt(lo[0].loNo) < 11 ? 'main' : 'ext' : null;
+    let officeType;
+    if (lo.length > 0) {
+        if (lo[0].role.rep == 4) {
+            officeType = parseInt(lo[0].loNo) < 11 ? 'main' : 'ext';
+        }
+    }
 
     switch (data.losType) {
         case 'year-end':
@@ -136,11 +141,11 @@ async function saveUpdateCommulative(total, officeType) {
     let resp;
     let loGroup = officeType;
 
-    if (officeType == null) { // it means it is BM
+    if (officeType == null || officeType == undefined) { // it means it is BM
         loGroup = total.officeType;
     }
 
-    let losTotal = await db.collection('losTotals').find({ userId: total.userId, month: total.month, year: total.year, losType: 'commulative', occurence: total.occurence, officeType: loGroup }).toArray();
+    let losTotal = await db.collection('losTotals').find({ userId: total.userId, month: total.month, year: total.year, losType: 'commulative', officeType: loGroup }).toArray();
 
     if (losTotal.length > 0) {
         losTotal = losTotal[0];
