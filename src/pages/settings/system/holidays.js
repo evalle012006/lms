@@ -11,6 +11,7 @@ import ButtonOutline from '@/lib/ui/ButtonOutline';
 import AddUpdateHoliday from '@/components/settings/holidays/AddUpdateHoliday';
 import TableComponent, { SelectColumnFilter } from '@/lib/table';
 import moment from 'moment';
+import { getApiBaseUrl } from '@/lib/constants';
 
 const HolidaysSettingsPage = (props) => {
     const currentUser = useSelector(state => state.user.data);
@@ -76,7 +77,7 @@ const HolidaysSettingsPage = (props) => {
     const handleDelete = () => {
         if (holiday) {
             setLoading(true);
-            fetchWrapper.postCors(process.env.NEXT_PUBLIC_API_URL + 'settings/holidays/delete', holiday)
+            fetchWrapper.postCors(getApiBaseUrl() + 'settings/holidays/delete', holiday)
                 .then(response => {
                     if (response.success) {
                         setShowDeleteDialog(false);
@@ -100,7 +101,7 @@ const HolidaysSettingsPage = (props) => {
     }, []);
 
     const getListHoliday = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'settings/holidays/list';
+        let url = getApiBaseUrl() + 'settings/holidays/list';
         const response = await fetchWrapper.get(url);
         if (response.success) {
             const holidays = response.holidays.map(h => {

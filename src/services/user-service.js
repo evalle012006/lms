@@ -26,6 +26,7 @@ function login(username, password) {
             } else {
                 // save to local storage
                 localStorage.setItem('acuser', JSON.stringify(data.user));
+                localStorage.setItem('api_version', data.user.__api_version ?? '');
 
                 // set subject 
                 userSubject.next(data);
@@ -42,6 +43,7 @@ function logout() {
     localStorage.removeItem('selectedLO');
     localStorage.removeItem('cashCollectionDateFilter');
     localStorage.removeItem('acuser');
+    localStorage.removeItem('api_version');
     userSubject.next(null);
     Router.push('/login');
 }

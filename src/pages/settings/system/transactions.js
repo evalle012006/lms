@@ -7,6 +7,7 @@ import { toast } from "react-toastify";
 import InputText from '@/lib/ui/InputText';
 import Spinner from '@/components/Spinner';
 import { setTransactionSettings } from '@/redux/actions/transactionsActions';
+import { getApiBaseUrl } from '@/lib/constants';
 
 const TransactionsSettingsPage = (props) => {
     const currentUser = useSelector(state => state.user.data);
@@ -30,7 +31,7 @@ const TransactionsSettingsPage = (props) => {
         values.loanDailyLimit = parseFloat(values.loanDailyLimit);
         values.loanWeeklyLimit = parseFloat(values.loanWeeklyLimit);
 
-        const apiURL = `${process.env.NEXT_PUBLIC_API_URL}settings/transactions`;
+        const apiURL = `${getApiBaseUrl()}settings/transactions`;
         const response = await fetchWrapper.post(apiURL, values);
 
         if (response.success) {

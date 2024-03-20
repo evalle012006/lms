@@ -7,6 +7,7 @@ import { setTransactionSettings } from "@/redux/actions/transactionsActions";
 import { setHolidayList } from "@/redux/actions/holidayActions";
 import moment from 'moment';
 import { getLastWeekdayOfTheMonth } from "@/lib/utils";
+import { getApiBaseUrl } from '@/lib/constants';
 
 const Layout = ({ children, bgwhite = false, header = true, noPad = false, actionButtons = [], hScroll = true }) => {
     const state = useSelector(state => state.global);
@@ -16,7 +17,7 @@ const Layout = ({ children, bgwhite = false, header = true, noPad = false, actio
     const holidayList = useSelector(state => state.holidays.list);
 
     const getCurrentDate = async () => {
-        const apiURL = `${process.env.NEXT_PUBLIC_API_URL}settings/current-date`;
+        const apiURL = `${getApiBaseUrl()}settings/current-date`;
         const response = await fetchWrapper.get(apiURL);
         if (response.success) {
             dispatch(setCurrentDate(response.currentDate));
@@ -25,7 +26,7 @@ const Layout = ({ children, bgwhite = false, header = true, noPad = false, actio
     }
 
     const getTransactionSettings = async () => {
-        const apiURL = `${process.env.NEXT_PUBLIC_API_URL}settings/transactions`;
+        const apiURL = `${getApiBaseUrl()}settings/transactions`;
         const response = await fetchWrapper.get(apiURL);
         if (response.success) {
             dispatch(setTransactionSettings(response.transactions));
@@ -40,7 +41,7 @@ const Layout = ({ children, bgwhite = false, header = true, noPad = false, actio
     useEffect(() => {
         if (currentDate) {
             const getListHoliday = async () => {
-                let url = process.env.NEXT_PUBLIC_API_URL + 'settings/holidays/list';
+                let url = getApiBaseUrl() + 'settings/holidays/list';
                 const response = await fetchWrapper.get(url);
                 if (response.success) {
                     const holidays = response.holidays.map(h => {
