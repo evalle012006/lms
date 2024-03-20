@@ -1,3 +1,6 @@
+export const getApiBaseUrl = () => process.env.NEXT_PUBLIC_API_URL +
+    (localStorage.getItem('api_version') ? localStorage.getItem('api_version') + '/' : '');
+
 export const LOR_DAILY_REMARKS = [
     { label: 'Remarks', value: ''},
     { label: 'Advance Payment', value: 'advance payment'},

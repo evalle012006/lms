@@ -5,6 +5,7 @@ import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { setSystemSettings } from '@/redux/actions/systemActions';
 import { useState } from 'react';
 import DashboardPage from '@/components/dashboard/DashboardPage';
+import { getApiBaseUrl } from '@/lib/constants';
 
 const Index = () => {
     const dispatch = useDispatch();
@@ -17,7 +18,7 @@ const Index = () => {
         let mounted = true;
 
         const getSystemSettings = async () => {
-            const apiURL = `${process.env.NEXT_PUBLIC_API_URL}settings/system`;
+            const apiURL = `${getApiBaseUrl()}settings/system`;
             const response = await fetchWrapper.get(apiURL);
             if (response.success) {
                 dispatch(setSystemSettings(response.system));

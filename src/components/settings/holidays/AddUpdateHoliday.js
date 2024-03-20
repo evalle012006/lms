@@ -10,6 +10,7 @@ import ButtonSolid from "@/lib/ui/ButtonSolid";
 import SideBar from "@/lib/ui/SideBar";
 import Spinner from "@/components/Spinner";
 import { UppercaseFirstLetter } from "@/lib/utils";
+import { getApiBaseUrl } from '@/lib/constants';
 
 const AddUpdateHoliday = ({ mode = 'add', holiday={}, showSidebar, setShowSidebar, onClose }) => {
     const formikRef = useRef();
@@ -38,7 +39,7 @@ const AddUpdateHoliday = ({ mode = 'add', holiday={}, showSidebar, setShowSideba
             toast.error('Invalid date entered.');
         } else {
             if (mode === 'add') {
-                const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'settings/holidays/save/';
+                const apiUrl = getApiBaseUrl() + 'settings/holidays/save/';
     
                 fetchWrapper.post(apiUrl, values)
                     .then(response => {
@@ -57,7 +58,7 @@ const AddUpdateHoliday = ({ mode = 'add', holiday={}, showSidebar, setShowSideba
                         console.log(error)
                     });
             } else if (mode === 'edit') {
-                const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'settings/holidays';
+                const apiUrl = getApiBaseUrl() + 'settings/holidays';
                 values._id = holiday._id;
                 fetchWrapper.post(apiUrl, values)
                     .then(response => {
