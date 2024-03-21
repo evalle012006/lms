@@ -776,7 +776,13 @@ const CashCollectionDetailsPage = () => {
                 const currentLoan = cashCollection.find(l => l.slotNo === loan.slotNo);
                 if (currentLoan && currentLoan.status !== 'pending') {
                     const index = cashCollection.indexOf(currentLoan);
-                    if ((currentLoan.fullPaymentDate === currentDate)) { // fullpayment with pending/tomorrow
+                    const dateOfRelease = loan?.dateOfRelease ? loan?.dateOfRelease : null;
+                    let diff = 0;
+                    if (dateOfRelease) {
+                        diff = moment(currentDate).diff(dateOfRelease);
+                    }
+                    
+                    if ((currentLoan.fullPaymentDate === currentDate && (loan?.loanFor == 'today' || (loan?.loanFor == 'tomorrow' && diff >= 0)))) { // fullpayment with pending/tomorrow
                         cashCollection[index] = {
                             client: currentLoan.client,
                             coMaker: (loan.coMaker && typeof loan.coMaker == 'number') ? loan.coMaker : '-',
@@ -844,7 +850,7 @@ const CashCollectionDetailsPage = () => {
                             cashCollection[index].mcbuCol = loan.current[0].mcbuCol;
                             cashCollection[index].mcbuColStr = loan.current[0].mcbuCol > 0 ? formatPricePhp(loan.current[0].mcbuCol) : '-';
                         }
-                    } else if (currentLoan.status !== 'active' && (currentLoan.status == 'completed' && !currentLoan?.advance)) {
+                    } else if (currentLoan.status !== 'active' && (currentLoan.status == 'completed' && !currentLoan?.advance  && (loan?.loanFor == 'today' || (loan?.loanFor == 'tomorrow' && diff >= 0)))) {
                         cashCollection[index] = {
                             client: currentLoan.client,
                             coMaker: (loan.coMaker && typeof loan.coMaker == 'number') ? loan.coMaker : '-',
@@ -899,6 +905,8 @@ const CashCollectionDetailsPage = () => {
                             cashCollection[index].mcbuColStr = loan.current[0].mcbuCol > 0 ? formatPricePhp(loan.current[0].mcbuCol) : '-';
                         }
                     }
+                    
+                    cashCollection[index] = {...cashCollection[index], loanFor: loan?.loanFor, dateOfRelease: loan?.dateOfRelease};
                 } else {
                     const prevLoan = loan.prevLoans.length > 0 ? loan.prevLoans[loan.prevLoans.length - 1] : null;
                     let pendingTomorrow = {
@@ -941,7 +949,9 @@ const CashCollectionDetailsPage = () => {
                         fullPaymentStr: '-',
                         loanTerms: loan.loanTerms,
                         status: loan.status === 'active' ? 'tomorrow' : 'pending',
-                        selected: false
+                        selected: false,
+                        loanFor: loan.hasOwnProperty('loanFor') ? loan.loanFor : 'today',
+                        dateOfRelease: loan.hasOwnProperty('dateOfRelease') ? loan.dateOfRelease : null
                     };
 
                     if (prevLoan) {
@@ -1281,6 +1291,18 @@ const CashCollectionDetailsPage = () => {
 
                         if (temp.paymentCollection > 0) {
                             temp.fullPaymentDate = currentDate;
+                        }
+                    }
+
+                    if (temp?.advance && temp?.status == 'pending' && temp?.loanFor == 'tomorrow' && temp?.dateOfRelease != currentDate) {
+                        const dateOfRelease = temp?.dateOfRelease ? temp?.dateOfRelease : null;
+                        let diff = 0;
+                        if (dateOfRelease) {
+                            diff = moment(currentDate).diff(dateOfRelease);
+                        }
+
+                        if (diff < 0) {
+                            temp.status = 'completed';
                         }
                     }
 

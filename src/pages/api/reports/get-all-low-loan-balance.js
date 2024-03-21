@@ -10,8 +10,10 @@ async function allLoans(req, res) {
     let response;
     let statusCode = 200;
 
-    const { loId, branchIds, branchId, amount, operator } = req.query;
+    const { loId, branchIds, branchId, amountOption, noOfPaymentsOption } = req.query;
     let data = [];
+    const amountOptionObj = JSON.parse(amountOption);
+    const noOfPaymentsOptionObj = JSON.parse(noOfPaymentsOption);
 
     if (loId) {
         data = await db.collection('groups')
@@ -31,18 +33,35 @@ async function allLoans(req, res) {
                                     {$eq: ['$status', 'active']},
                                     { $or: [
                                         {$cond: {
-                                            if: { $eq: [operator, 'less_than_equal'] },
-                                            then: {$lte: ['$loanBalance', parseInt(amount)]},
+                                            if: { $eq: [amountOptionObj.operator, 'less_than_equal'] },
+                                            then: {$lte: ['$loanBalance', parseInt(amountOptionObj.amount)]},
                                             else: null
                                         }},
                                         {$cond: {
-                                            if: { $eq: [operator, 'greater_than_equal'] },
-                                            then: {$gte: ['$loanBalance', parseInt(amount)]},
+                                            if: { $eq: [amountOptionObj.operator, 'greater_than_equal'] },
+                                            then: {$gte: ['$loanBalance', parseInt(amountOptionObj.amount)]},
                                             else: null
                                         }},
                                         {$cond: {
-                                            if: { $eq: [operator, 'equal'] },
-                                            then: {$eq: ['$loanBalance', parseInt(amount)]},
+                                            if: { $eq: [amountOptionObj.operator, 'equal'] },
+                                            then: {$eq: ['$loanBalance', parseInt(amountOptionObj.amount)]},
+                                            else: null
+                                        }}
+                                    ] },
+                                    { $or: [
+                                        {$cond: {
+                                            if: { $eq: [noOfPaymentsOptionObj.operator, 'less_than_equal'] },
+                                            then: {$lte: ['$noOfPayments', parseInt(noOfPaymentsOptionObj.noOfPayments)]},
+                                            else: null
+                                        }},
+                                        {$cond: {
+                                            if: { $eq: [noOfPaymentsOptionObj.operator, 'greater_than_equal'] },
+                                            then: {$gte: ['$noOfPayments', parseInt(noOfPaymentsOptionObj.noOfPayments)]},
+                                            else: null
+                                        }},
+                                        {$cond: {
+                                            if: { $eq: [noOfPaymentsOptionObj.operator, 'equal'] },
+                                            then: {$eq: ['$noOfPayments', parseInt(noOfPaymentsOptionObj.noOfPayments)]},
                                             else: null
                                         }}
                                     ] }
@@ -50,13 +69,13 @@ async function allLoans(req, res) {
                             } } },
                             { $project: {
                                 clientId: '$clientId',
-                                clientName: '$fullName',
                                 slotNo: '$slotNo',
                                 loanBalance: '$loanBalance',
                                 amountRelease: '$amountRelease',
                                 loanCycle: '$loanCycle',
                                 mcbu: '$mcbu',
-                                noOfMisPayments: '$mispayment'
+                                noOfMisPayments: '$mispayment',
+                                noOfPayments: '$noOfPayments'
                             } },
                             {
                                 $addFields: {
@@ -71,11 +90,14 @@ async function allLoans(req, res) {
                                     pipeline: [
                                         {
                                             $project: {
+                                                firstName: '$firstName',
+                                                lastName: '$lastName',
+                                                fullName: '$fullName',
                                                 delinquent: '$delinquent'
                                             }
                                         }
                                     ],
-                                    as: 'clientStatus'
+                                    as: 'client'
                                 }
                             }
                         ],
@@ -108,18 +130,35 @@ async function allLoans(req, res) {
                                     {$eq: ['$status', 'active']},
                                     { $or: [
                                         {$cond: {
-                                            if: { $eq: [operator, 'less_than_equal'] },
-                                            then: {$lte: ['$loanBalance', parseInt(amount)]},
+                                            if: { $eq: [amountOptionObj.operator, 'less_than_equal'] },
+                                            then: {$lte: ['$loanBalance', parseInt(amountOptionObj.amount)]},
                                             else: null
                                         }},
                                         {$cond: {
-                                            if: { $eq: [operator, 'greater_than_equal'] },
-                                            then: {$gte: ['$loanBalance', parseInt(amount)]},
+                                            if: { $eq: [amountOptionObj.operator, 'greater_than_equal'] },
+                                            then: {$gte: ['$loanBalance', parseInt(amountOptionObj.amount)]},
                                             else: null
                                         }},
                                         {$cond: {
-                                            if: { $eq: [operator, 'equal'] },
-                                            then: {$eq: ['$loanBalance', parseInt(amount)]},
+                                            if: { $eq: [amountOptionObj.operator, 'equal'] },
+                                            then: {$eq: ['$loanBalance', parseInt(amountOptionObj.amount)]},
+                                            else: null
+                                        }}
+                                    ] },
+                                    { $or: [
+                                        {$cond: {
+                                            if: { $eq: [noOfPaymentsOptionObj.operator, 'less_than_equal'] },
+                                            then: {$lte: ['$noOfPayments', parseInt(noOfPaymentsOptionObj.noOfPayments)]},
+                                            else: null
+                                        }},
+                                        {$cond: {
+                                            if: { $eq: [noOfPaymentsOptionObj.operator, 'greater_than_equal'] },
+                                            then: {$gte: ['$noOfPayments', parseInt(noOfPaymentsOptionObj.noOfPayments)]},
+                                            else: null
+                                        }},
+                                        {$cond: {
+                                            if: { $eq: [noOfPaymentsOptionObj.operator, 'equal'] },
+                                            then: {$eq: ['$noOfPayments', parseInt(noOfPaymentsOptionObj.noOfPayments)]},
                                             else: null
                                         }}
                                     ] }
@@ -161,7 +200,7 @@ async function allLoans(req, res) {
         const branchData = [];
         const promise = await new Promise(async (resolve) => {
             const response = await Promise.all(branchIdsObj.map(async (branchId) => {
-                branchData.push.apply(branchData, await getByBranch(db, branchId, amount, operator));
+                branchData.push.apply(branchData, await getByBranch(db, branchId, amountOptionObj, noOfPaymentsOptionObj));
             }));
 
             resolve(response);
@@ -180,7 +219,7 @@ async function allLoans(req, res) {
 }
 
 
-const getByBranch = async (db, branchId, amount, operator) => {
+const getByBranch = async (db, branchId, amountOptionObj, noOfPaymentsOptionObj) => {
     const ObjectId = require('mongodb').ObjectId;
 
     return await db.collection('branches')
@@ -200,18 +239,35 @@ const getByBranch = async (db, branchId, amount, operator) => {
                                 {$eq: ['$status', 'active']},
                                 { $or: [
                                     {$cond: {
-                                        if: { $eq: [operator, 'less_than_equal'] },
-                                        then: {$lte: ['$loanBalance', parseInt(amount)]},
+                                        if: { $eq: [amountOptionObj.operator, 'less_than_equal'] },
+                                        then: {$lte: ['$loanBalance', parseInt(amountOptionObj.amount)]},
                                         else: null
                                     }},
                                     {$cond: {
-                                        if: { $eq: [operator, 'greater_than_equal'] },
-                                        then: {$gte: ['$loanBalance', parseInt(amount)]},
+                                        if: { $eq: [amountOptionObj.operator, 'greater_than_equal'] },
+                                        then: {$gte: ['$loanBalance', parseInt(amountOptionObj.amount)]},
                                         else: null
                                     }},
                                     {$cond: {
-                                        if: { $eq: [operator, 'equal'] },
-                                        then: {$eq: ['$loanBalance', parseInt(amount)]},
+                                        if: { $eq: [amountOptionObj.operator, 'equal'] },
+                                        then: {$eq: ['$loanBalance', parseInt(amountOptionObj.amount)]},
+                                        else: null
+                                    }}
+                                ] },
+                                { $or: [
+                                    {$cond: {
+                                        if: { $eq: [noOfPaymentsOptionObj.operator, 'less_than_equal'] },
+                                        then: {$lte: ['$noOfPayments', parseInt(noOfPaymentsOptionObj.noOfPayments)]},
+                                        else: null
+                                    }},
+                                    {$cond: {
+                                        if: { $eq: [noOfPaymentsOptionObj.operator, 'greater_than_equal'] },
+                                        then: {$gte: ['$noOfPayments', parseInt(noOfPaymentsOptionObj.noOfPayments)]},
+                                        else: null
+                                    }},
+                                    {$cond: {
+                                        if: { $eq: [noOfPaymentsOptionObj.operator, 'equal'] },
+                                        then: {$eq: ['$noOfPayments', parseInt(noOfPaymentsOptionObj.noOfPayments)]},
                                         else: null
                                     }}
                                 ] }

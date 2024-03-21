@@ -10,7 +10,7 @@ import { setBranch, setBranchList } from "@/redux/actions/branchActions";
 import Dialog from "@/lib/ui/Dialog";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
-import { setFilteredLoanList, setFilteredPendingLoanList, setLoanList, setPendingLoanList } from "@/redux/actions/loanActions";
+import { setFilteredLoanList, setFilteredPendingLoanList, setFilteredTomorrowLoanList, setLoanList, setPendingLoanList, setTomorrowLoanList } from "@/redux/actions/loanActions";
 import { setGroupList } from "@/redux/actions/groupActions";
 import { setClient, setClientList } from "@/redux/actions/clientActions";
 import { formatPricePhp, getEndDate, getTotal, UppercaseFirstLetter } from "@/lib/utils";
@@ -37,17 +37,21 @@ const LoanApplicationPage = () => {
     const currentUser = useSelector(state => state.user.data);
     const list = useSelector(state => state.loan.list);
     const pendingList = useSelector(state => state.loan.pendingList);
+    const tomorrowList = useSelector(state => state.loan.tomorrowList);
     const filteredList = useSelector(state => state.loan.filteredList);
     const filteredPendingList = useSelector(state => state.loan.filteredPendingList);
+    const filteredTomorrowList = useSelector(state => state.loan.filteredTomorrowList);
     const branchList = useSelector(state => state.branch.list);
     const userList = useSelector(state => state.user.list);
     const groupList = useSelector(state => state.group.list);
     const clientList = useSelector(state => state.client.list);
     const [data, setData] = useState(list);
     const [pendingData, setPendingData] = useState(pendingList);
+    const [tomorrowData, setTomorrowData] = useState(tomorrowList);
     const [loading, setLoading] = useState(true);
     const [isFiltering, setIsFiltering] = useState(false);
     const [isPendingFiltering, setIsPendingFiltering] = useState(false);
+    const [isTomorrowFiltering, setIsTomorrowFiltering] = useState(false);
 
     const [showAddDrawer, setShowAddDrawer] = useState(false);
     const [mode, setMode] = useState('add');
@@ -61,6 +65,7 @@ const LoanApplicationPage = () => {
     const [historyList, setHistoryList] = useState([]);
     const [selectedTab, setSelectedTab] = useTabs([
         'ldf',
+        'tomorrow',
         'application',
         'history'
     ]);
@@ -69,6 +74,8 @@ const LoanApplicationPage = () => {
     const [totalLDFAmountRelease, setTotalLDFAmountRelease] = useState(0);
     const [noOfPendingLoans, setNoOfPendingLoans] = useState(0);
     const [totalAmountRelease, setTotalAmountRelease] = useState(0);
+    const [noOfTomorrowLoans, setNoOfTomorrowLoans] = useState(0);
+    const [totalTomorrowAmountRelease, setTotalTomorrowAmountRelease] = useState(0);
 
     const [selectedFilterBranch, setSelectedFilterBranch] = useState();
     const [selectedFilterUser, setSelectedFilterUser] = useState();
@@ -80,7 +87,6 @@ const LoanApplicationPage = () => {
 
     const [ldfFilter, setLdfFilter] = useState('all');
     const [ldfOccurenceFilter, setLdfOccurenceFilter] = useState('all');
-    const [showTomorrowRelease, setShowTomorrowRelease] = useState(true);
 
     const ndsFormRef = useRef();
 
@@ -104,6 +110,8 @@ const LoanApplicationPage = () => {
             handleFilter('branch', selected.value, data);
         } else if (selectedTab == 'application') {
             handleFilter('branch', selected.value, pendingData);
+        } else if (selectedTab == 'tomorrow') {
+            handleFilter('branch', selected.value, tomorrowData);
         }
     }
 
@@ -115,6 +123,8 @@ const LoanApplicationPage = () => {
             handleFilter('user', selected.value, data);
         } else if (selectedTab == 'application') {
             handleFilter('user', selected.value, pendingData);
+        } else if (selectedTab == 'tomorrow') {
+            handleFilter('user', selected.value, tomorrowData);
         }
     }
 
@@ -124,6 +134,8 @@ const LoanApplicationPage = () => {
             handleFilter('group', selected.value, list);
         } else if (selectedTab == 'application') {
             handleFilter('group', selected.value, pendingList);
+        } else if (selectedTab == 'tomorrow') {
+            handleFilter('group', selected.value, tomorrowData);
         }
     }
 
@@ -144,6 +156,9 @@ const LoanApplicationPage = () => {
           } else if (selectedTab == 'application') {
             dispatch(setFilteredPendingLoanList(searchResult));
             setIsPendingFiltering(true);
+          } else if (selectedTab == 'tomorrow') {
+            dispatch(setFilteredTomorrowLoanList(searchResult));
+            setIsTomorrowFiltering(true);
           }
         } else {
           if (selectedTab == 'ldf') {
@@ -152,6 +167,9 @@ const LoanApplicationPage = () => {
           } else if (selectedTab == 'application') {
             setPendingData(pendingList);
             setIsPendingFiltering(false);
+          } else if (selectedTab == 'tomorrow') {
+            setTomorrowData(tomorrowList);
+            setIsTomorrowFiltering(false);
           }
         }
     }
@@ -292,8 +310,31 @@ const LoanApplicationPage = () => {
 
                     return 0;
                 } );
-                dispatch(setLoanList(loanList));
+                const ldfList = loanList.filter(l => {
+                    const dateOfRelease = l?.dateOfRelease ? l?.dateOfRelease : null;
+                    let diff = 0;
+                    if (dateOfRelease) {
+                        diff = moment(currentDate).diff(dateOfRelease);
+                    }
+
+                    if (l?.loanFor == 'today' || diff >= 0) {
+                        return l;
+                    }
+                });
+
+                dispatch(setLoanList(ldfList));
                 dispatch(setPendingLoanList(loanList.filter(l => l.ldfApproved)));
+                const tomList = loanList.filter(l => {
+                    const dateOfRelease = l?.dateOfRelease ? l?.dateOfRelease : null;
+                    let diff = 0;
+                    if (dateOfRelease) {
+                        diff = moment(currentDate).diff(dateOfRelease);
+                    }
+                    if (l?.loanFor == 'tomorrow' && diff < 0) {
+                        return l;
+                    }
+                });
+                dispatch(setTomorrowLoanList(tomList));
                 setLoading(false);
             } else if (response.error) {
                 setLoading(false);
@@ -357,8 +398,31 @@ const LoanApplicationPage = () => {
 
                     return 0;
                 } );
-                dispatch(setLoanList(loanList));
+                const ldfList = loanList.filter(l => {
+                    const dateOfRelease = l?.dateOfRelease ? l?.dateOfRelease : null;
+                    let diff = 0;
+                    if (dateOfRelease) {
+                        diff = moment(currentDate).diff(dateOfRelease);
+                    }
+
+                    if (l?.loanFor == 'today' || diff >= 0) {
+                        return l;
+                    }
+                });
+
+                dispatch(setLoanList(ldfList));
                 dispatch(setPendingLoanList(loanList.filter(l => l.ldfApproved)));
+                const tomList = loanList.filter(l => {
+                    const dateOfRelease = l?.dateOfRelease ? l?.dateOfRelease : null;
+                    let diff = 0;
+                    if (dateOfRelease) {
+                        diff = moment(currentDate).diff(dateOfRelease);
+                    }
+                    if (l?.loanFor == 'tomorrow' && diff < 0) {
+                        return l;
+                    }
+                });
+                dispatch(setTomorrowLoanList(tomList));
                 setLoading(false);
             } else if (response.error) {
                 setLoading(false);
@@ -415,8 +479,31 @@ const LoanApplicationPage = () => {
 
                     return 0;
                 } );
-                dispatch(setLoanList(loanList));
+                const ldfList = loanList.filter(l => {
+                    const dateOfRelease = l?.dateOfRelease ? l?.dateOfRelease : null;
+                    let diff = 0;
+                    if (dateOfRelease) {
+                        diff = moment(currentDate).diff(dateOfRelease);
+                    }
+
+                    if (l?.loanFor == 'today' || diff >= 0) {
+                        return l;
+                    }
+                });
+
+                dispatch(setLoanList(ldfList));
                 dispatch(setPendingLoanList(loanList.filter(l => l.ldfApproved)));
+                const tomList = loanList.filter(l => {
+                    const dateOfRelease = l?.dateOfRelease ? l?.dateOfRelease : null;
+                    let diff = 0;
+                    if (dateOfRelease) {
+                        diff = moment(currentDate).diff(dateOfRelease);
+                    }
+                    if (l?.loanFor == 'tomorrow' && diff < 0) {
+                        return l;
+                    }
+                });
+                dispatch(setTomorrowLoanList(tomList));
                 setLoading(false);
             } else if (response.error) {
                 setLoading(false);
@@ -473,8 +560,31 @@ const LoanApplicationPage = () => {
 
                     return 0;
                 } );
-                dispatch(setLoanList(loanList));
+                const ldfList = loanList.filter(l => {
+                    const dateOfRelease = l?.dateOfRelease ? l?.dateOfRelease : null;
+                    let diff = 0;
+                    if (dateOfRelease) {
+                        diff = moment(currentDate).diff(dateOfRelease);
+                    }
+
+                    if (l?.loanFor == 'today' || diff >= 0) {
+                        return l;
+                    }
+                });
+
+                dispatch(setLoanList(ldfList));
                 dispatch(setPendingLoanList(loanList.filter(l => l.ldfApproved)));
+                const tomList = loanList.filter(l => {
+                    const dateOfRelease = l?.dateOfRelease ? l?.dateOfRelease : null;
+                    let diff = 0;
+                    if (dateOfRelease) {
+                        diff = moment(currentDate).diff(dateOfRelease);
+                    }
+                    if (l?.loanFor == 'tomorrow' && diff < 0) {
+                        return l;
+                    }
+                });
+                dispatch(setTomorrowLoanList(tomList));
 
                 setLoading(false);
             } else if (response.error) {
@@ -1121,6 +1231,14 @@ const LoanApplicationPage = () => {
     }, [isPendingFiltering, filteredPendingList, pendingList]);
 
     useEffect(() => {
+        if (isTomorrowFiltering) {
+            setTomorrowData(filteredTomorrowList);
+        } else {
+            setTomorrowData(tomorrowList);
+        }
+    }, [isTomorrowFiltering, filteredTomorrowList, tomorrowList]);
+
+    useEffect(() => {
         if (groupList) {
             let cols = [
                 {
@@ -1246,6 +1364,11 @@ const LoanApplicationPage = () => {
     }, [pendingData]);
 
     useEffect(() => {
+        setNoOfTomorrowLoans(tomorrowData.length);
+        setTotalTomorrowAmountRelease(getTotal(tomorrowData, 'principalLoan'));
+    }, [tomorrowData]);
+
+    useEffect(() => {
         let actBtns = [ <ButtonSolid label="Add Loan" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} /> ];
         if (currentUser.role.rep < 4) {
             actBtns = [
@@ -1254,14 +1377,14 @@ const LoanApplicationPage = () => {
                 <ButtonSolid label="Add Loan" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
             ];
 
-            if (selectedTab == 'application' && !isWeekend && !isHoliday) {
+            if ((selectedTab == 'application' || selectedTab == 'tomorrow') && !isWeekend && !isHoliday) {
                 // actBtns.splice(0, 1);
                 actBtns.splice(0, 2);
-                actBtns.unshift(
-                    <ButtonOutline label="Approved Selected Loans" type="button" className="p-2 mr-3" onClick={() => handleMultiApprove('application')} />,
-                );
-            } else if (selectedTab == 'history') {
-                actBtns.splice(0, 1);
+                if (selectedTab == 'application') {
+                    actBtns.unshift(
+                        <ButtonOutline label="Approved Selected Loans" type="button" className="p-2 mr-3" onClick={() => handleMultiApprove('application')} />,
+                    );
+                }
             }
         }
         
@@ -1269,7 +1392,7 @@ const LoanApplicationPage = () => {
     }, [selectedTab, list, pendingList]);
 
     return (
-        <Layout actionButtons={currentUser.role.rep > 2 && actionButtons}>
+        <Layout actionButtons={(currentUser.role.rep > 2 && selectedTab !== 'history') && actionButtons}>
             <div className="pb-4">
                 {loading ?
                     (
@@ -1283,6 +1406,11 @@ const LoanApplicationPage = () => {
                                     isActive={selectedTab === "ldf"}
                                     onClick={() => handleSelectTab("ldf")}>
                                     Loan Disbursement Form
+                                </TabSelector>
+                                <TabSelector
+                                    isActive={selectedTab === "tomorrow"}
+                                    onClick={() => handleSelectTab("tomorrow")}>
+                                    Tomorrow Applications
                                 </TabSelector>
                                 <TabSelector
                                     isActive={selectedTab === "application"}
@@ -1380,6 +1508,69 @@ const LoanApplicationPage = () => {
                                             <div className="flex flex-row">
                                                 <span className="pr-6">Total Amount Release: </span>
                                                 <span className="pr-6">{ formatPricePhp(totalLDFAmountRelease) }</span>
+                                            </div>
+                                        </div>
+                                    </footer>
+                                </TabPanel>
+                                <TabPanel hidden={selectedTab !== "tomorrow"}>
+                                    <div className="flex flex-row bg-white p-4">
+                                        <div className='flex flex-col ml-4'>
+                                            <span className='text-zinc-400 mb-1'>Branch:</span>
+                                            <Select 
+                                                options={branchList}
+                                                value={branchList && branchList.find(branch => { return branch.value === selectedFilterBranch } )}
+                                                styles={borderStyles}
+                                                components={{ DropdownIndicator }}
+                                                onChange={handleBranchChange}
+                                                isSearchable={true}
+                                                closeMenuOnSelect={true}
+                                                placeholder={'Branch Filter'}/>
+                                        </div>
+                                        <div className='flex flex-col ml-4'>
+                                            <span className='text-zinc-400 mb-1'>Loan Officer:</span>
+                                            <Select 
+                                                options={userList}
+                                                value={userList && userList.find(user => { return user.value === selectedFilterUser } )}
+                                                styles={borderStyles}
+                                                components={{ DropdownIndicator }}
+                                                onChange={handleUserChange}
+                                                isSearchable={true}
+                                                closeMenuOnSelect={true}
+                                                placeholder={'LO Filter'}/>
+                                        </div>
+                                        <div className='flex flex-col ml-4'>
+                                            <span className='text-zinc-400 mb-1'>Group:</span>
+                                            <Select 
+                                                options={groupList}
+                                                value={groupList && groupList.find(group => { return group.value === selectedFilterGroup } )}
+                                                styles={borderStyles}
+                                                components={{ DropdownIndicator }}
+                                                onChange={handleGroupChange}
+                                                isSearchable={true}
+                                                closeMenuOnSelect={true}
+                                                placeholder={'Group Filter'}/>
+                                        </div>
+                                    </div>
+                                    <TableComponent 
+                                        columns={columns} 
+                                        data={tomorrowData} 
+                                        pageSize={50} 
+                                        hasActionButtons={currentUser.role.rep > 2 ? true : false} 
+                                        rowActionButtons={rowActionButtons} 
+                                        showFilters={false} 
+                                        multiSelect={currentUser.role.rep === 3 ? true : false} 
+                                        multiSelectActionFn={handleMultiSelect} 
+                                        rowClick={handleShowClientInfoModal}
+                                    />
+                                    <footer className="pl-64 text-md font-bold text-center fixed inset-x-0 bottom-0 text-red-400">
+                                        <div className="flex flex-row justify-center bg-white px-4 py-2 shadow-inner border-t-4 border-zinc-200">
+                                            <div className="flex flex-row">
+                                                <span className="pr-6">No. of Tomorrow Loans: </span>
+                                                <span className="pr-6">{ noOfTomorrowLoans }</span>
+                                            </div>
+                                            <div className="flex flex-row">
+                                                <span className="pr-6">Total Amount Release: </span>
+                                                <span className="pr-6">{ formatPricePhp(totalTomorrowAmountRelease) }</span>
                                             </div>
                                         </div>
                                     </footer>

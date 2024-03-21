@@ -516,36 +516,6 @@ const MenuItems = [
             }
         ]
     },
-    // {
-    //     label: "Other Transactions",
-    //     url: "#other-transactions",
-    //     subMenuIndex: 0,
-    //     icon: {
-    //         active: <ClipboardDocumentListIcon className="text-gray-800 w-6 h-6" />,
-    //         notActive: <ClipboardDocumentListIcon className="text-white w-6 h-6" />,
-    //     },
-    //     active: false,
-    //     borderBottom: true,
-    //     hasSub: true,
-    //     hidden: false,
-    //     subMenuItems: [
-    //         {
-    //             label: "Bad Debts",
-    //             url: "/other-transactions/baddebt-collection",
-    //             icon: {
-    //                 active: (
-    //                     <UserMinusIcon className="text-gray-800 w-5 h-5" />
-    //                 ),
-    //                 notActive: (
-    //                     <UserMinusIcon className="text-white w-5 h-5" />
-    //                 ),
-    //             },
-    //             active: false,
-    //             hasSub: false,
-    //             hidden: false
-    //         }
-    //     ]
-    // },
     {
         label: "Reports",
         url: "#reports",
@@ -573,7 +543,7 @@ const MenuItems = [
                 hasSub: false
             },
             {
-                label: "Low Loan Balance List",
+                label: "Query Loan Balance",
                 url: "/reports/low-loan-balance",
                 icon: {
                     active: (
