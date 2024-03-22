@@ -1,7 +1,18 @@
+import { GraphProvider } from '@/lib/graph/graph.provider';
+import { createGraphType, insertQl, queryQl } from '@/lib/graph/graph.util';
 import { apiHandler } from '@/services/api-handler';
-import { connectToDatabase } from '@/lib/mongodb';
-import { getCurrentDate } from '@/lib/utils';
-import moment from 'moment'
+
+const graph = new GraphProvider();
+const BRANCH_TYPE = createGraphType('branches', `
+    _id
+    address
+    code
+    dateAdded
+    email
+    name
+    phoneNumber
+`)('branches');
+
 
 export default apiHandler({
     post: save
@@ -9,37 +20,37 @@ export default apiHandler({
 
 async function save(req, res) {
     const { name, code, phoneNumber, email, address } = req.body;
-
-    const { db } = await connectToDatabase();
-
-    const branches = await db
-        .collection('branches')
-        .find({ code: code })
-        .toArray();
-
     let response = {};
     let statusCode = 200;
 
-    if (branches.length > 0) {
+    let [branch] = await graph.query(
+        queryQl(BRANCH_TYPE, {
+            where: {
+                code: { _eq: code }
+            }
+        })
+    ).then(res => res.branches);
+
+    if(branch) {
         response = {
             error: true,
             fields: ['code'],
             message: `Branch with the code "${code}" already exists`
         };
     } else {
-        const branch = await db.collection('branches').insertOne({
-            name: name,
-            code: code,
-            email: email,
-            phoneNumber: phoneNumber,
-            address: address,
-            dateAdded: moment(getCurrentDate()).format('YYYY-MM-DD')
-        });
-
-        response = {
-            success: true,
-            branch: branch
-        }
+        branch = await graph.mutation(
+            insertQl(BRANCH_TYPE, {
+                objects: [{
+                    _id: '', // todo: generate id here
+                    name: name,
+                    code: code,
+                    email: email,
+                    phoneNumber: phoneNumber,
+                    address: address,
+                    dateAdded: 'now()'
+                }]
+            })
+        ).then(res => res.data.returning?.[0]);
     }
 
     res.status(statusCode)

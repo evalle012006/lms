@@ -1,45 +1,54 @@
 import { apiHandler } from '@/services/api-handler';
-import { connectToDatabase } from '@/lib/mongodb';
+import { GraphProvider } from '@/lib/graph/graph.provider';
+import { createGraphType, deleteQl, queryQl } from '@/lib/graph/graph.util';
+
+const graph = new GraphProvider();
+const BRANCH_TYPE = createGraphType('branches', `_id code`)('branches');
+const GROUP_TYPE = createGraphType('groups', `_id`)('groups');
 
 export default apiHandler({
     post: deleteBranch
 });
 
 async function deleteBranch(req, res) {
-    const { db } = await connectToDatabase();
-    const ObjectId = require('mongodb').ObjectId;
     const { _id } = req.body;
-
-    let statusCode = 200;
+    const statusCode = 200;
     let response = {};
 
-    const branches = await db
-        .collection('branches')
-        .find({ _id: new ObjectId(_id) })
-        .toArray();
+    const [branch] = await graph.query(
+        queryQl(BRANCH_TYPE, {
+            where: {
+                _id: { _eq: _id }
+            }
+        })
+    ).then(res => res.data.branches);
 
-    if (branches.length > 0) {
-        const groups = await db.collection('groups').find({ branchId: branches[0]._id + '' }).toArray();
-
-        if (groups.length > 0) {
+    if(!branch) {
+        response = {
+            error: true,
+            message: `Branch with id: "${_id}" not exists`
+        };
+    } else {
+        const [group] = await graph.query(GROUP_TYPE, { branchId: { _eq: branch._id } })
+                .then(res => res.data.groups);
+        if(group) {
             response = {
                 error: true,
                 message: `Can't delete branch ${branches[0].name} it is currently used in groups.`
             };
         } else {
-            await db
-                .collection('branches')
-                .deleteOne({ _id: new ObjectId(_id) });
+            await graph.mutation(
+                deleteQl(BRANCH_TYPE, {
+                    where: {
+                        _id: { _eq: _id }
+                    }
+                })
+            );
 
             response = {
                 success: true
             }
         }
-    } else {
-        response = {
-            error: true,
-            message: `Branch with id: "${_id}" not exists`
-        };
     }
 
     res.status(statusCode)
