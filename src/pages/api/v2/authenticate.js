@@ -1,8 +1,9 @@
 import getConfig from 'next/config';
-import { errorHandler } from '@/services/error-handler';
 import { apiHandler } from '@/services/api-handler';
-import { connectToDatabase } from '@/lib/mongodb';
 import logger from '@/logger';
+
+import { GraphProvider } from '@/lib/graph/graph.provider';
+import { createGraphType, queryQl, updateQl } from '@/lib/graph/graph.util';
 
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
@@ -16,15 +17,36 @@ export default apiHandler({
 let response = {};
 let statusCode = 200;
 
-async function authenticate(req, res) {
-    const { db } = await connectToDatabase();
-    const { username, password } = req.body;
-    const users = await db
-        .collection('users')
-        .find({ email: username })
-        .toArray();
+const graph = new GraphProvider();
+const USER_TYPE = createGraphType('users', `
+_id 
+password
+firstName
+lastName
+email
+number
+position
+logged
+status
+lastLogin
+dateAdded
+role
+root
+dateModified
+`)('users');
 
-    const user = users.length > 0 ? users[0] : null;
+async function authenticate(req, res) {
+
+    console.log('calling v2')
+    const { username, password } = req.body;
+    const [ user ] = await graph.query(
+        queryQl(USER_TYPE, {
+            where: {
+                email: { _eq: username },
+                status: { _eq: 'active' }
+            }
+        })
+    ).then(res => res.data.users);
 
     if (user && !user.password) {
         response = { success: false, error: 'NO_PASS', user: user._id };
@@ -47,19 +69,25 @@ async function authenticate(req, res) {
     if (success) {
         const token = jwt.sign({ sub: user._id }, serverRuntimeConfig.secret, { expiresIn: '4h' });
         delete user.password;
-        const query = await db
-            .collection('users')
-            .updateOne(
-                { _id: user._id },
-                {
-                    $set: { logged: true },
-                    $currentDate: { lastLogin: true }
+        await graph.mutation(
+            updateQl(USER_TYPE, {
+                set: {
+                    logged: true,
+                    lastLogin: 'now()'
                 },
-            );
+                where: {
+                    _id: { _eq: user._id }
+                }
+            })
+        );
 
         response = {
             success: true,
-            user: { ...user, token }
+            user: { 
+                ...user, 
+                __api_version: 'v2',
+                token,
+            }
         }
 
         logger.debug(response);
@@ -77,18 +105,20 @@ async function authenticate(req, res) {
 }
 
 async function logout(req, res) {
-    const { db } = await connectToDatabase();
     const { user } = req.query;
-    const ObjectId = require('mongodb').ObjectId;
 
-    const query = await db
-        .collection('users')
-        .updateOne(
-            { _id: new ObjectId(user) },
-            { $set: { logged: false } }
-        );
+    await graph.mutation(
+        updateQl(USER_TYPE, {
+            set: {
+                logged: false
+            },
+            where: {
+                _id: { _eq: user }
+            }
+        })
+    );
 
-    response = { success: true, query, user };
+    response = { success: true, query: { acknowledged: true }, user };
     logger.debug({page: 'login', message: 'User succcessfuly logout!'});
 
     res.status(statusCode)
