@@ -1,16 +1,12 @@
+import { BRANCH_FIELDS } from '@/lib/graph.fields';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, insertQl, queryQl } from '@/lib/graph/graph.util';
 import { apiHandler } from '@/services/api-handler';
+import { v4 as uuidv4 } from 'uuid';
 
 const graph = new GraphProvider();
 const BRANCH_TYPE = createGraphType('branches', `
-    _id
-    address
-    code
-    dateAdded
-    email
-    name
-    phoneNumber
+    ${BRANCH_FIELDS}
 `)('branches');
 
 
@@ -19,7 +15,7 @@ export default apiHandler({
 });
 
 async function save(req, res) {
-    const { name, code, phoneNumber, email, address } = req.body;
+    const { name = null, code = null, phoneNumber = null, email = null, address = null } = req.body;
     let response = {};
     let statusCode = 200;
 
@@ -41,7 +37,7 @@ async function save(req, res) {
         branch = await graph.mutation(
             insertQl(BRANCH_TYPE, {
                 objects: [{
-                    _id: '', // todo: generate id here
+                    _id: uuidv4(), // todo: generate id here
                     name: name,
                     code: code,
                     email: email,

@@ -1,3 +1,4 @@
+import { BRANCH_FIELDS, USER_FIELDS } from '@/lib/graph.fields';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl } from '@/lib/graph/graph.util';
 import { connectToDatabase } from '@/lib/mongodb';
@@ -5,13 +6,7 @@ import { apiHandler } from '@/services/api-handler';
 
 const graph = new GraphProvider();
 const BRANCH_TYPE = createGraphType('branches', `
-    _id
-    address
-    code
-    dateAdded
-    email
-    name
-    phoneNumber
+    ${BRANCH_FIELDS}
     branchManager: users (where: {
         role: {
           _contains: {
@@ -19,20 +14,7 @@ const BRANCH_TYPE = createGraphType('branches', `
           }
         }
       }) {
-        _id 
-        firstName
-        lastName
-        email
-        number
-        position
-        logged
-        status
-        lastLogin
-        dateAdded
-        role
-        root
-        dateModified
-        designatedBranch
+        ${USER_FIELDS}
     },
     noOfLO: users_aggregate(where: {
         role: {
@@ -51,11 +33,11 @@ export default apiHandler({
 });
 
 async function getBranch(req, res) {
-    const { _id, code } = req.query;
+    const { _id = null, code = null } = req.query;
 
     let statusCode = 200;
     let response = {};
-    const where = _id ? { _id: { _eq: _id ?? null } } : { code: { _eq: code ?? null } }
+    const where = _id ? { _id: { _eq: _id } } : { code: { _eq: code } }
 
     const branch = await graph.query(
         queryQl(BRANCH_TYPE, {

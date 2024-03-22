@@ -1,17 +1,12 @@
 import { apiHandler } from '@/services/api-handler';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl } from '@/lib/graph/graph.util';
+import { BRANCH_FIELDS } from '@/lib/graph.fields';
 
 
 const graph = new GraphProvider();
 const BRANCH_TYPE = createGraphType('branches', `
-    _id
-    address
-    code
-    dateAdded
-    email
-    name
-    phoneNumber
+    ${BRANCH_FIELDS}
     noOfLO: users_aggregate(where: {
         role: {
             _contains: {
@@ -31,7 +26,7 @@ async function list(req, res) {
     let statusCode = 200;
     let response = {};
 
-    const { branchCode, branchCodes } = req.query;
+    const { branchCode = null, branchCodes = null } = req.query;
 
     const codes = [branchCode, ... (branchCodes?.split(',') ?? [])].filter(code => !!code);
     const where = codes.length ? { codes: { _in: codes } } : { code: { _is_null: false } };

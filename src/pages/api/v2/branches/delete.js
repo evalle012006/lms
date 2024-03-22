@@ -11,7 +11,7 @@ export default apiHandler({
 });
 
 async function deleteBranch(req, res) {
-    const { _id } = req.body;
+    const { _id = null } = req.body;
     const statusCode = 200;
     let response = {};
 
