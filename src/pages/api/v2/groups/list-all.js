@@ -19,9 +19,10 @@ async function list(req, res) {
 
     const codes = await graph.query(
         queryQl(USER_TYPE, {
-            where: { _id: { _eq: areaManagerId } }
+            where: { _id: areaManagerId ? { _eq: areaManagerId } : { _eq: 'null' } }
         })
-    ).then(res => res.users
+    )
+    .then(res => res.data.users
             .map(u => jsonTryParse(u.designatedBranch, [u.designatedBranch]))
             .reduce((groups, codes) => [... groups, ... codes], [])
     );
@@ -36,9 +37,10 @@ async function list(req, res) {
                 },
                 status: (branchId && loId && code.length) ? { _eq: 'available' } : { _neq: 'null' }
             },
-            order_by: [{ groupNo: 'asc' }]
+            order_by: [{ groupNo: 'asc' }],
+            limit: 10,
         })
-    );
+    ).then(res => res.data.groups)
     
     response = {
         success: true,
