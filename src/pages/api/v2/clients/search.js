@@ -28,7 +28,7 @@ async function list(req, res) {
     const clients = await graph.query(
         queryQl(CLIENT_TYPE, {
             where: {
-                status: mode === 'offset' ? {  _eq: 'offset' } : { _is_null: false },
+                status: mode === 'offset' ? {  _eq: 'offset' } : { _neq: 'null' },
                 fullName: { _ilike: fullNameCondition }
             }
         })

@@ -30,8 +30,8 @@ async function list(req, res) {
                         status: { _eq: 'active' },
                         delinquent: { _eq: true },
                         loans: {
-                            groupId: groupId ? { _eq: groupId } : { _is_null: false },
-                            branchId: branchId ? { _eq: branchId } : { _is_null: false },
+                            groupId: groupId ? { _eq: groupId } : { _neq: 'null' },
+                            branchId: branchId ? { _eq: branchId } : { _neq: 'null' },
                             status: { _eq: 'active' }
                         }
                     }
