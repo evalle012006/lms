@@ -294,3 +294,11 @@ export const getPrevousWorkday = () => {
             return moment().day(today - 1);
     }
 }
+
+export const jsonTryParse = (str, defVal) => {
+    try {
+        return JSON.parse(str)
+    } catch(e) {
+        return defVal ?? str;
+    }
+}

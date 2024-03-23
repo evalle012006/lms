@@ -29,7 +29,7 @@ async function list(req, res) {
     const { branchCode = null, branchCodes = null } = req.query;
 
     const codes = [branchCode, ... (branchCodes?.split(',') ?? [])].filter(code => !!code);
-    const where = codes.length ? { codes: { _in: codes } } : { code: { _is_null: false } };
+    const where = codes.length ? { code: { _in: codes } } : { code: { _neq: 'null' } };
 
     const branches = await graph.query(
         queryQl(BRANCH_TYPE, { where })
