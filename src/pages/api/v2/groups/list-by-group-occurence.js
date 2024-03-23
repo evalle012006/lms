@@ -1,8 +1,7 @@
-import { apiHandler } from '@/services/api-handler';
-import { connectToDatabase } from '@/lib/mongodb';
+import { GROUP_FIELDS } from '@/lib/graph.fields';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType } from '@/lib/graph/graph.util';
-import { GROUP_FIELDS } from '@/lib/graph.fields';
+import { apiHandler } from '@/services/api-handler';
 
 const graph = new GraphProvider();
 const GROUP_TYPE = createGraphType('groups', GROUP_FIELDS)('groups');
