@@ -1,4 +1,5 @@
 import moment from 'moment';
+import { v4 as uuidv4 } from 'uuid';
 
 export const FileExists = (url) => {
     if (!url) {
@@ -302,3 +303,5 @@ export const jsonTryParse = (str, defVal) => {
         return defVal ?? str;
     }
 }
+
+export const generateUUID = () => uuidv4();

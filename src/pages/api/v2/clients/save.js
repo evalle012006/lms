@@ -1,8 +1,8 @@
 import { CLIENT_FIELDS } from "@/lib/graph.fields";
 import { GraphProvider } from "@/lib/graph/graph.provider";
 import { createGraphType, insertQl } from "@/lib/graph/graph.util";
+import { generateUUID } from "@/lib/utils";
 import { apiHandler } from "@/services/api-handler";
-import { v4 as uuidv4 } from 'uuid';
 
 const graph = new GraphProvider();
 const CLIENT_TYPE = createGraphType('clients', `
@@ -24,7 +24,7 @@ async function save(req, res) {
   await graph.mutation(
     insertQl(CLIENT_TYPE, {
       objects: [{
-        _id: uuidv4(),
+        _id: generateUUID(),
         ... clientData,
         dateAdded: 'now()',
       }]
