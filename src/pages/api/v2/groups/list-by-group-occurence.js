@@ -1,7 +1,8 @@
-import { GROUP_FIELDS } from '@/lib/graph.fields';
-import { GraphProvider } from '@/lib/graph/graph.provider';
-import { createGraphType, queryQl } from '@/lib/graph/graph.util';
 import { apiHandler } from '@/services/api-handler';
+import { connectToDatabase } from '@/lib/mongodb';
+import { GraphProvider } from '@/lib/graph/graph.provider';
+import { createGraphType } from '@/lib/graph/graph.util';
+import { GROUP_FIELDS } from '@/lib/graph.fields';
 
 const graph = new GraphProvider();
 const GROUP_TYPE = createGraphType('groups', GROUP_FIELDS)('groups');
@@ -15,8 +16,7 @@ async function list(req, res) {
     let statusCode = 200;
     let response = {};
 
-    const { branchId = null, loId = null, areaManagerId = null } = req.query;
-
+    const { areaManagerId, branchId, loId, occurence, mode } = req.query;
     const codes = await graph.query(
         queryQl(USER_TYPE, {
             where: { _id: areaManagerId ? { _eq: areaManagerId } : { _eq: 'null' } } // fetch non existing user if areaManagerId is null
@@ -35,7 +35,8 @@ async function list(req, res) {
                 branch: {
                     code: codes.length ? { _in: codes } : { _neq: 'null' },
                 },
-                status: (!branchId && !loId && !codes.length) ? { _eq: 'available' } : { _neq: 'null' }
+                occurence: { _eq: occurence },
+                status: (!branchId && !loId && !codes.length) || mode !== 'filter' ? { _eq: 'available' } : { _neq: 'null' }
             },
             order_by: [{ groupNo: 'asc' }]
         })
