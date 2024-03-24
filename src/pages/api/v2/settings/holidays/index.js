@@ -1,5 +1,9 @@
-import { apiHandler } from '@/services/api-handler';
-import { connectToDatabase } from '@/lib/mongodb';
+import { apiHandler } from "@/services/api-handler";
+import { GraphProvider } from "@/lib/graph/graph.provider";
+import { queryQl, updateQl } from "@/lib/graph/graph.util";
+import { holidayType } from "@/pages/api/v2/settings/holidays/common";
+
+const graph = new GraphProvider();
 
 export default apiHandler({
     get: getHoliday,
@@ -7,44 +11,31 @@ export default apiHandler({
 });
 
 async function getHoliday(req, res) {
-    const { db } = await connectToDatabase();
-    const ObjectId = require('mongodb').ObjectId;
     const { _id } = req.query;
-    let statusCode = 200;
-    let response = {};
 
-    let holiday = await db.collection('holidays')
-            .find({ _id: new ObjectId(_id)})
-            .toArray();
-    
-    response = { success: true, holiday: holiday[0] };
-    res.status(statusCode)
-        .setHeader('Content-Type', 'application/json')
-        .end(JSON.stringify(response));
+    const { data } = await graph.query(
+      queryQl(holidayType, { where: { _id: { _eq: _id } } })
+    );
+
+    res.send({ success: true, holiday: data?.holidays?.[0] });
 }
 
 async function updateHoliday(req, res) {
-    const { db } = await connectToDatabase();
-    const ObjectId = require('mongodb').ObjectId;
-    let statusCode = 200;
-    let response = {};
+    const { _id, ...holiday } = req.body;
+    let response;
 
-    const holiday = req.body;
-    const holidayId = holiday._id;
-    delete holiday._id;
-
-    const holidayResp = await db
-        .collection('holidays')
-        .updateOne(
-            { _id: new ObjectId(holidayId) }, 
+    try {
+        const {data} = await graph.mutation(updateQl(
+            holidayType,
             {
-                $set: { ...holiday }
-            }, 
-            { upsert: false });
+                set: holiday,
+                where: {_id: {_eq: _id}},
+            }
+        ));
+        response = { success: true, holiday: data?.holidays?.returning?.[0] };
+    } catch (e) {
+        response = { error: true, fields: ['date'], message: `Holiday with date "${holiday.date}" already exists.`};
+    }
 
-    response = { success: true, holiday: holidayResp };
-
-    res.status(statusCode)
-        .setHeader('Content-Type', 'application/json')
-        .end(JSON.stringify(response));
+    res.send(response);
 }

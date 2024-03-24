@@ -1,44 +1,36 @@
-import { apiHandler } from '@/services/api-handler';
-import { connectToDatabase } from '@/lib/mongodb';
-import { getCurrentDate } from '@/lib/utils';
-import moment from 'moment'
+import { apiHandler } from "@/services/api-handler";
+import { generateUUID, getCurrentDate } from "@/lib/utils";
+import moment from "moment";
+import { GraphProvider } from "@/lib/graph/graph.provider";
+import { insertQl } from "@/lib/graph/graph.util";
+import { holidayType } from "@/pages/api/v2/settings/holidays/common";
+
+const graph = new GraphProvider();
 
 export default apiHandler({
     post: save
 });
 
 async function save(req, res) {
-    const holidayData = req.body;
+    const holidayData = {
+        ...req.body,
+        _id: generateUUID(),
+        dateAdded: moment(getCurrentDate()).format('YYYY-MM-DD')
+    };
 
-    const { db } = await connectToDatabase();
-
-    const holiday = await db
-        .collection('holiday')
-        .find({ date: holidayData.date })
-        .toArray();
-
-    let response = {};
-    let statusCode = 200;
-
-    if (holiday.length > 0) {
-        response = {
-            error: true,
-            fields: ['date'],
-            message: `Holiday with date "${holidayData.date}" already exists`
-        };
-    } else {
-        const holiday = await db.collection('holidays').insertOne({
-            ...holidayData,
-            dateAdded: moment(getCurrentDate()).format('YYYY-MM-DD')
-        });
-
-        response = {
-            success: true,
-            holiday: holiday
-        }
+    let data, errors;
+    try {
+        ({data, errors} = await graph.mutation(insertQl(holidayType, {objects: [holidayData]})))
+    } catch (e) {
+        errors = [e];
     }
 
-    res.status(statusCode)
-        .setHeader('Content-Type', 'application/json')
-        .end(JSON.stringify(response));
+    let response;
+    if (errors?.length) {
+        response = { error: true, fields: ['date'], message: `Holiday with date "${holidayData.date}" already exists.`};
+    } else {
+        response = { success: true, holiday: data?.holidays?.returning?.[0] };
+    }
+
+    res.send(response);
 }

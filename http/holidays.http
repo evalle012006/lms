@@ -1,0 +1,42 @@
+@apiUrl=http://localhost:3000/api/
+@token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2MzllODQ4MDkyNzMxZTFkMTFmYjZmZDIiLCJpYXQiOjE3MTEyODEyODAsImV4cCI6MTcxMTI5NTY4MH0.YTlmuilL3Zm1ePzcRz0KUSB9vDvR3mlYUS0g0AdpoEQ
+
+### Get Holiday
+GET {{apiUrl}}/v2/settings/holidays?_id=64f1794d0336c342acde9a53
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+### Update Holiday
+POST {{apiUrl}}/v2/settings/holidays
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "_id": "64f1794d0336c342acde9a53",
+  "date": "08-21",
+  "description": null,
+  "name": "ninoy aquino day"
+}
+
+### Holiday List
+GET {{apiUrl}}/v2/settings/holidays/list
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+### Save Holiday
+POST {{apiUrl}}/v2/settings/holidays/save
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "EID-AL-ADH",
+  "description": "EID-AL-ADHxx",
+  "date": "06-28"
+}
+
+### Delete Holiday
+POST {{apiUrl}}/v2/settings/holidays/delete
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{ "_id": "28afaa9a-4c58-4272-a6be-5d9fa68093f5" }

@@ -1,6 +1,8 @@
 import { _ApolloClient as ApolloClient, _InMemoryCache as InMemoryCache, _HttpLink as HttpLink, _gql as gql } from './apollo';
 import { GraphQLStatement, MutationQLStatementFunction, QueryQLStatementFunction } from './graph.util';
 
+export type GraphResult = Promise<{ data?: any, errors?: any[] }>;
+
 export class GraphProvider {
 
     public readonly apollo: any;
@@ -45,8 +47,8 @@ export class GraphProvider {
             context,
         }
     }
-    
-    query(... statements: QueryQLStatementFunction[]) {
+
+    query(... statements: QueryQLStatementFunction[]): GraphResult {
         const resp = this.statement(statements);
         return this.apollo.query({
             query: gql`
@@ -64,7 +66,7 @@ export class GraphProvider {
         })
     }
 
-    mutation(... statements: MutationQLStatementFunction[]) {
+    mutation(... statements: MutationQLStatementFunction[]): GraphResult {
         const resp = this.statement(statements);
         return this.apollo.mutate({
             mutation: gql`

@@ -6,18 +6,13 @@ export default apiHandler({
 });
 
 async function getSystemCurrentDate(req, res) {
-    let statusCode = 200;
-    let response = {};
-    let currentDate = new Date().toLocaleDateString({}, { timeZone: 'Asia/Manila' });
-    let currentTime = new Date().toLocaleTimeString({}, { timeZone: 'Asia/Manila' });
-
-    response = {
+    const currentDate = new Date().toLocaleDateString({}, { timeZone: 'Asia/Manila' });
+    const currentTime = new Date().toLocaleTimeString({}, { timeZone: 'Asia/Manila' });
+    const response = {
         success: true,
         currentDate: moment(currentDate).format('YYYY-MM-DD'),
         currentTime: currentTime
     }
 
-    res.status(statusCode)
-        .setHeader('Content-Type', 'application/json')
-        .end(JSON.stringify(response));
+    res.send(response);
 }

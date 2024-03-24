@@ -1,5 +1,10 @@
-import { apiHandler } from '@/services/api-handler';
-import { connectToDatabase } from '@/lib/mongodb';
+import { apiHandler } from "@/services/api-handler";
+import { GraphProvider } from "@/lib/graph/graph.provider";
+import { createGraphType, queryQl, updateQl } from "@/lib/graph/graph.util";
+import { TRANSACTION_SETTINGS_FIELDS } from "@/lib/graph.fields";
+
+const graph = new GraphProvider();
+const txnSettingsType = createGraphType('transactionSettings', TRANSACTION_SETTINGS_FIELDS)('txn_settings');
 
 export default apiHandler({
     post: updateTransactionsSettings,
@@ -7,43 +12,21 @@ export default apiHandler({
 });
 
 async function getTransactionsSettings(req, res) {
-    const { db } = await connectToDatabase();
-    let statusCode = 200;
-    let response = {};
-    const transactions = await db.collection('transactionSettings').find().toArray();
-
-    response = {
-        success: true,
-        transactions: transactions[0]
-    }
-
-    res.status(statusCode)
-        .setHeader('Content-Type', 'application/json')
-        .end(JSON.stringify(response));
+    const { data } = await graph.query(queryQl(txnSettingsType));
+    res.send({ success: true, transactions: data?.txn_settings?.[0] });
 }
 
 async function updateTransactionsSettings(req, res) {
-    const { db } = await connectToDatabase();
-    const ObjectId = require('mongodb').ObjectId;
-    let statusCode = 200;
-    let response = {};
+    const { _id, ...transactions } = req.body;
+    const { data } = await graph.mutation(
+      updateQl(txnSettingsType, {
+        set: transactions,
+        where: { _id: { _eq: _id } },
+      })
+    );
 
-    const transactions = req.body;
-    const transactionId = transactions._id;
-    delete transactions._id;
-
-    const transactionsResp = await db
-        .collection('transactionSettings')
-        .updateOne(
-            { _id: new ObjectId(transactionId) }, 
-            {
-                $set: { ...transactions }
-            }, 
-            { upsert: true });
-
-    response = { success: true, transactions: transactionsResp };
-
-    res.status(statusCode)
-        .setHeader('Content-Type', 'application/json')
-        .end(JSON.stringify(response));
+    res.send({
+      success: true,
+      transactions: data?.txn_settings?.returning?.[0],
+    });
 }
