@@ -1,6 +1,8 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
 import logger from '@/logger';
+import moment from 'moment';
+import { getCurrentDate } from '@/lib/utils';
 
 export default apiHandler({
     get: getLoan,
@@ -75,14 +77,32 @@ async function updateLoan(req, res) {
     delete loan._id;
     delete loan.group;
     logger.debug({page: `Updating Loan: ${loan.clientId}`, data: loan});
-    const loanResp = await db
-        .collection('loans')
-        .updateOne(
-            { _id: new ObjectId(loanId) }, 
-            {
-                $set: { ...loan }
-            }, 
-            { upsert: false });
+    let loanResp;
+    const currentDate = moment(getCurrentDate()).format('YYYY-MM-DD');
+
+    if (loan?.loanFor == 'tomorrow') {
+        const tomorrowDate = moment(currentDate).add(1, 'days').format('YYYY-MM-DD');
+        loan.dateOfRelease = tomorrowDate;
+        
+        loanResp = await db
+            .collection('loans')
+            .updateOne(
+                { _id: new ObjectId(loanId) }, 
+                {
+                    $set: { ...loan }
+                }, 
+                { upsert: false });
+    } else {
+        loanResp = await db
+            .collection('loans')
+            .updateOne(
+                { _id: new ObjectId(loanId) }, 
+                {
+                    $unset: { dateOfRelease: 1 },
+                    $set: { ...loan }
+                }, 
+                { upsert: false });
+    }
 
     await db.collection('cashCollections').updateMany({ loanId: loanId, status: { $in: ['tomorrow', 'pending'] } }, { $set: {currentReleaseAmount: loan.amountRelease} });
 

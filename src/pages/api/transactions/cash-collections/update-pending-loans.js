@@ -10,13 +10,19 @@ export default apiHandler({
 
 async function save(req, res) {
     const { db } = await connectToDatabase();
+    const ObjectId = require('mongodb').ObjectId;
     let response = {};
     let statusCode = 200;
     let data = req.body;
     logger.debug({page: `Update Cash Collection For Pending Loans - Group ID: ${data[0].groupId}`});
     const currentDate = moment(getCurrentDate()).format('YYYY-MM-DD');
     data.map(async cc => {
-        await updatePendingLoan(db, cc, currentDate);
+        if ((cc?.loanFor == 'today' || (cc?.loanFor == 'tomorrow' && cc?.dateOfRelease == currentDate))) {
+            await updatePendingLoan(db, cc, currentDate);
+        } else {
+            await db.collection('loans').updateOne({ _id: new ObjectId(cc.loanId) }, { $set: { status: 'completed' } });
+            await db.collection('cashCollections').updateOne({ clientId: cc.clientId, dateAdded: currentDate }, { $set: { status: 'completed' } });
+        }
     });
 
     response = {success: true};

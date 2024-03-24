@@ -16,11 +16,16 @@ const LowLoanBalanceByGroupPage = () => {
     const userList = useSelector(state => state.user.list);
     const selectedBranchSubject = new BehaviorSubject(process.browser && localStorage.getItem('selectedBranch'));
     const amountSubject = new BehaviorSubject(process.browser && localStorage.getItem('filterLowBalanceAmount'));
-    const operatorSubject = new BehaviorSubject(process.browser && localStorage.getItem('filterLowBalanceAmountOperator'));
+    const amountOperatorSubject = new BehaviorSubject(process.browser && localStorage.getItem('filterLowBalanceAmountOperator'));
+    const noOfPaymentsSubject = new BehaviorSubject(process.browser && localStorage.getItem('filterLowBalanceNoOfPayments'));
+    const noOfPaymentsOperatorSubject = new BehaviorSubject(process.browser && localStorage.getItem('filterLowBalanceNoOfPaymentsOperator'));
     const pageNoSubject = new BehaviorSubject(process.browser && localStorage.getItem('pageNo'));
     const [currentLO, setCurrentLO] = useState();
     const [amount, setAmount] = useState(amountSubject.value ? amountSubject.value : 1000);
-    const [operator, setOperator] = useState(operatorSubject.value ? operatorSubject.value : 'less_than_equal');
+    const [amountOperator, setAmountOperator] = useState(amountOperatorSubject.value ? amountOperatorSubject.value : 'less_than_equal');
+    const [noOfPayments, setNoOfPayments] = useState(noOfPaymentsSubject.value ? noOfPaymentsSubject.value : 0);
+    const [noOfPaymentsOperator, setNoOfPaymentsOperator] = useState(noOfPaymentsOperatorSubject.value ? noOfPaymentsOperatorSubject.value : 'greater_than_equal');
+    const [includeDelinquent, setIncludeDelinquent] = useState(true);
     const { uuid } = router.query;
 
     const handleLOFilter = (selected) => {
@@ -56,9 +61,24 @@ const LowLoanBalanceByGroupPage = () => {
         setAmount(value);
     }
 
-    const handleOperatorChange = (selected) => {
+    const handleAmountOperatorChange = (selected) => {
         localStorage.setItem('filterLowBalanceAmountOperator', selected.value);
-        setOperator(selected.value);
+        setAmountOperator(selected.value);
+    }
+
+    const handleNoOfPaymentsChange = (value) => {
+        localStorage.setItem('filterLowBalanceNoOfPayments', value);
+        setNoOfPayments(value);
+    }
+
+    const handleNoOfPaymentsOperatorChange = (selected) => {
+        localStorage.setItem('filterLowBalanceNoOfPaymentsOperator', selected.value);
+        setNoOfPaymentsOperator(selected.value);
+    }
+
+    const handleIncludeDelinquentChange = (name, value) => {
+        localStorage.setItem('filterLowBalanceIncludeDelinquent', value);
+        setIncludeDelinquent(value);
     }
 
     useEffect(() => {
@@ -66,8 +86,20 @@ const LowLoanBalanceByGroupPage = () => {
     }, [amount]);
 
     useEffect(() => {
-        localStorage.setItem('filterLowBalanceAmountOperator', operator);
-    }, [operator]);
+        localStorage.setItem('filterLowBalanceAmountOperator', amountOperator);
+    }, [amountOperator]);
+    
+    useEffect(() => {
+        localStorage.setItem('filterLowBalanceNoOfPayments', noOfPayments);
+    }, [noOfPayments]);
+
+    useEffect(() => {
+        localStorage.setItem('filterLowBalanceNoOfPaymentsOperator', noOfPaymentsOperator);
+    }, [noOfPaymentsOperator]);
+
+    useEffect(() => {
+        localStorage.setItem('filterLowBalanceIncludeDelinquent', includeDelinquent);
+    }, [includeDelinquent]);
 
     useEffect(() => {
         let mounted = true;
@@ -91,8 +123,10 @@ const LowLoanBalanceByGroupPage = () => {
 
     return (
         <Layout noPad={true} header={false}>
-            <Header pageNo={pageNoSubject.value} pageTitle="Low Loan Balance List" pageName="group-view" amount={amount} handleAmountChange={handleAmountChange} operator={operator} handleOperatorChange={handleOperatorChange} currentLO={currentLO} handleLOFilter={handleLOFilter} />
-            <ViewLowBalanceByGroupsPage amount={amount} operator={operator} />
+            <Header pageNo={pageNoSubject.value} pageTitle="Loan Balance List" pageName="group-view" amount={amount} handleAmountChange={handleAmountChange} amountOperator={amountOperator} handleAmountOperatorChange={handleAmountOperatorChange} 
+                        noOfPayments={noOfPayments} handleNoOfPaymentsChange={handleNoOfPaymentsChange} noOfPaymentsOperator={noOfPaymentsOperator} handleNoOfPaymentsOperatorChange={handleNoOfPaymentsOperatorChange}
+                        includeDelinquent={includeDelinquent} handleIncludeDelinquentChange={handleIncludeDelinquentChange} currentLO={currentLO} handleLOFilter={handleLOFilter} />
+            <ViewLowBalanceByGroupsPage amount={amount} amountOperator={amountOperator} noOfPayments={noOfPayments} noOfPaymentsOperator={noOfPaymentsOperator} includeDelinquent={includeDelinquent} />
         </Layout>
     )
 }

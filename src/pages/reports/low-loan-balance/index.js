@@ -10,16 +10,35 @@ import { useSelector } from "react-redux";
 const IncomingReloanPage = () => {
     const currentUser = useSelector(state => state.user.data);
     const [amount, setAmount] = useState(1000);
-    const [operator, setOperator] = useState('less_than_equal');
+    const [amountOperator, setAmountOperator] = useState('less_than_equal');
+    const [noOfPayments, setNoOfPayments] = useState(0);
+    const [noOfPaymentsOperator, setNoOfPaymentsOperator] = useState('greater_than_equal');
+    const [includeDelinquent, setIncludeDelinquent] = useState(true);
 
     const handleAmountChange = (value) => {
         localStorage.setItem('filterLowBalanceAmount', value);
         setAmount(value);
     }
 
-    const handleOperatorChange = (selected) => {
+    const handleAmountOperatorChange = (selected) => {
+        console.log(selected)
         localStorage.setItem('filterLowBalanceAmountOperator', selected.value);
-        setOperator(selected.value);
+        setAmountOperator(selected.value);
+    }
+
+    const handleNoOfPaymentsChange = (value) => {
+        localStorage.setItem('filterLowBalanceNoOfPayments', value);
+        setNoOfPayments(value);
+    }
+
+    const handleNoOfPaymentsOperatorChange = (selected) => {
+        localStorage.setItem('filterLowBalanceNoOfPaymentsOperator', selected.value);
+        setNoOfPaymentsOperator(selected.value);
+    }
+
+    const handleIncludeDelinquentChange = (name, value) => {
+        localStorage.setItem('filterLowBalanceIncludeDelinquent', value);
+        setIncludeDelinquent(value);
     }
 
     useEffect(() => {
@@ -27,15 +46,29 @@ const IncomingReloanPage = () => {
     }, [amount]);
 
     useEffect(() => {
-        localStorage.setItem('filterLowBalanceAmountOperator', operator);
-    }, [operator]);
+        localStorage.setItem('filterLowBalanceAmountOperator', amountOperator);
+    }, [amountOperator]);
+
+    useEffect(() => {
+        localStorage.setItem('filterLowBalanceNoOfPayments', noOfPayments);
+    }, [noOfPayments]);
+
+    useEffect(() => {
+        localStorage.setItem('filterLowBalanceNoOfPaymentsOperator', noOfPaymentsOperator);
+    }, [noOfPaymentsOperator]);
+
+    useEffect(() => {
+        localStorage.setItem('filterLowBalanceIncludeDelinquent', includeDelinquent);
+    }, [includeDelinquent]);
     
     return (
-        <Layout header={false} noPad={true}>
-            <Header pageNo={1} pageTitle={'Low Loan Balance List'} amount={amount} handleAmountChange={handleAmountChange} operator={operator} handleOperatorChange={handleOperatorChange} />
-            { currentUser.role.rep < 3 && <ViewLowBalanceByBranchPage amount={amount} operator={operator} /> }
-            { currentUser.role.rep == 3 && <ViewLowBalanceByLOPage amount={amount} operator={operator} /> }
-            { currentUser.role.rep == 4 && <ViewLowBalanceByGroupsPage amount={amount} operator={operator} /> }
+        <Layout header={false}>
+            <Header pageNo={1} pageTitle={'Loan Balance List'} amount={amount} handleAmountChange={handleAmountChange} amountOperator={amountOperator} handleAmountOperatorChange={handleAmountOperatorChange} 
+                    noOfPayments={noOfPayments} handleNoOfPaymentsChange={handleNoOfPaymentsChange} noOfPaymentsOperator={noOfPaymentsOperator} handleNoOfPaymentsOperatorChange={handleNoOfPaymentsOperatorChange}
+                    includeDelinquent={includeDelinquent} handleIncludeDelinquentChange={handleIncludeDelinquentChange} />
+            { currentUser.role.rep < 3 && <ViewLowBalanceByBranchPage amount={amount} amountOperator={amountOperator} noOfPayments={noOfPayments} noOfPaymentsOperator={noOfPaymentsOperator} /> }
+            { currentUser.role.rep == 3 && <ViewLowBalanceByLOPage amount={amount} amountOperator={amountOperator} noOfPayments={noOfPayments} noOfPaymentsOperator={noOfPaymentsOperator} /> }
+            { currentUser.role.rep == 4 && <ViewLowBalanceByGroupsPage amount={amount} amountOperator={amountOperator} noOfPayments={noOfPayments} noOfPaymentsOperator={noOfPaymentsOperator} includeDelinquent={includeDelinquent} /> }
         </Layout>
     )
 }

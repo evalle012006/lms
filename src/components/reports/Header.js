@@ -5,10 +5,14 @@ import { useSelector } from "react-redux";
 import Select from 'react-select';
 import { styles, DropdownIndicator, borderStyles } from "@/styles/select";
 import { BehaviorSubject } from 'rxjs';
-import Dropdown from "@/lib/ui/dropdown";
+import CheckBox from "@/lib/ui/checkbox";
 
-const Header = ({ pageNo, pageTitle, pageName, amount, handleAmountChange, operator, handleOperatorChange, currentBranch, handleBranchFilter, currentLO, handleLOFilter }) => {
+const Header = ({ pageNo, pageTitle, pageName, amount, handleAmountChange, amountOperator, handleAmountOperatorChange, 
+                    noOfPayments, handleNoOfPaymentsChange, noOfPaymentsOperator, handleNoOfPaymentsOperatorChange,
+                    includeDelinquent, handleIncludeDelinquentChange,
+                    currentBranch, handleBranchFilter, currentLO, handleLOFilter }) => {
     const router = useRouter();
+    const currentUser = useSelector(state => state.user.data);
     const userList = useSelector(state => state.user.list);
     const branchList = useSelector(state => state.branch.list);
     const selectedBranchSubject = new BehaviorSubject(process.browser && localStorage.getItem('selectedBranch'));
@@ -31,7 +35,7 @@ const Header = ({ pageNo, pageTitle, pageName, amount, handleAmountChange, opera
     }
 
     return (
-        <div className="bg-white px-7 py-2 w-screen">
+        <div className="bg-white px-7 py-2 w-full">
             <div className="flex flex-col py-2 proxima-regular">
                 <div className="flex flex-row justify-between w-10/12">
                     <div className="page-title">
@@ -49,24 +53,53 @@ const Header = ({ pageNo, pageTitle, pageName, amount, handleAmountChange, opera
                 <div className="flex flex-row w-11/12 text-gray-400 text-sm justify-start align-middle">
                     <span className="text-zinc-500 text-sm font-bold mt-2">Filters:</span>
                     <div className="ml-6 flex w-[27rem]">
-                        <span className="text-sm mr-3 mt-2">Loan Balance: </span>
+                        <span className="text-sm mt-2">Loan Balance: </span>
                         <div className="ml-4 flex w-40">
                             <Select 
                                 options={operatorOptions}
-                                value={operator && operatorOptions.find(op => {
-                                    return op.value == operator
+                                value={amountOperator && operatorOptions.find(op => {
+                                    return op.value == amountOperator
                                 })}
                                 styles={borderStyles}
                                 components={{ DropdownIndicator }}
-                                onChange={handleOperatorChange}
+                                onChange={handleAmountOperatorChange}
                                 isSearchable={true}
                                 closeMenuOnSelect={true}
-                                placeholder={'Operator Filter'}/>
+                                placeholder={'Amount Operator Filter'}/>
                             <div className="ml-2">
-                                <InputNumber name="dayNo" value={amount} onChange={(val) => { handleAmountChange(val.target.value) }} className="w-14" />
+                                <InputNumber name="amount" value={amount} onChange={(val) => { handleAmountChange(val.target.value) }} className="w-14" />
                             </div>
                         </div>
                     </div>
+                    <div className="ml-6 flex w-[27rem]">
+                        <span className="text-sm mt-2">No Of Payments: </span>
+                        <div className="ml-4 flex w-40">
+                            <Select 
+                                options={operatorOptions}
+                                value={noOfPaymentsOperator && operatorOptions.find(op => {
+                                    return op.value == noOfPaymentsOperator
+                                })}
+                                styles={borderStyles}
+                                components={{ DropdownIndicator }}
+                                onChange={handleNoOfPaymentsOperatorChange}
+                                isSearchable={true}
+                                closeMenuOnSelect={true}
+                                placeholder={'No of Payments Operator Filter'}/>
+                            <div className="ml-2">
+                                <InputNumber name="noOfPayments" value={noOfPayments} onChange={(val) => { handleNoOfPaymentsChange(val.target.value) }} className="w-14" />
+                            </div>
+                        </div>
+                    </div>
+                    {(currentUser.role.rep == 4 || pageName == 'group-view') && (
+                        <div className="ml-12 flex w-[10rem]">
+                            <CheckBox name="includeDelinquent"
+                                value={includeDelinquent} 
+                                onChange={handleIncludeDelinquentChange}
+                                label="Include Delinquent"
+                                size={"md"} 
+                            />
+                        </div>
+                    )}
                     {pageName == 'group-view' && (
                         <div className="ml-4 flex w-40">
                             <Select 
@@ -83,7 +116,7 @@ const Header = ({ pageNo, pageTitle, pageName, amount, handleAmountChange, opera
                         </div>
                     )}
                     {pageName == 'lo-view' && (
-                        <div className="ml-4 flex w-40">
+                        <div className="ml-6 flex w-40">
                             <Select 
                                 options={branchList}
                                 value={currentBranch && branchList.find(branch => {

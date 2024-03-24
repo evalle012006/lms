@@ -87,8 +87,15 @@ async function save(req, res) {
             logger.debug({page: `Saving Loan: ${loanData.clientId}`, message: 'Final Data', data: finalData});
             delete finalData.currentReleaseAmount;
             delete finalData.currentDate;
-            if (groupStatus == 'closed') {
-                const tomorrowDate = moment(currentDate).add(1, 'days').format('YYYY-MM-DD');
+            if (finalData?.loanFor == 'tomorrow') {
+                let tomorrowDate = moment(currentDate).add(1, 'days').format('YYYY-MM-DD');
+                const dayName = moment(tomorrowDate).format('dddd');
+                if (dayName == 'Saturday') {
+                    tomorrowDate = moment(tomorrowDate).add(2, 'days').format('YYYY-MM-DD');
+                } else if (dayName == 'Sunday') {
+                    tomorrowDate = moment(tomorrowDate).add(1, 'days').format('YYYY-MM-DD');
+                }
+                
                 finalData.dateOfRelease = tomorrowDate;
             }
             const loan = await db.collection('loans').insertOne({
@@ -111,7 +118,7 @@ async function save(req, res) {
                 await updateGroup(loanData);
             }
 
-            if (mode != 'advance' && mode !== 'active' && groupStatus !== 'closed') {
+            if (mode != 'advance' && mode !== 'active' && finalData?.loanFor != 'tomorrow') {
                 await saveCashCollection(loanData, reloan, group, loanId, currentDate, groupStatus);
                 // await updateUser(loanData);
             }

@@ -7,7 +7,7 @@ import { formatPricePhp } from "@/lib/utils";
 import { useDispatch, useSelector } from "react-redux";
 import { setBranchList } from "@/redux/actions/branchActions";
 
-const ViewLowBalanceByBranchPage = ({ amount, operator }) => {
+const ViewLowBalanceByBranchPage = ({ amount, amountOperator, noOfPayments, noOfPaymentsOperator }) => {
     const dispatch = useDispatch();
     const router = useRouter();
     const currentUser = useSelector(state => state.user.data);
@@ -49,13 +49,15 @@ const ViewLowBalanceByBranchPage = ({ amount, operator }) => {
         }
     }
 
-    const getList = async (amount, operator) => {
+    const getList = async () => {
+        const amountOption = JSON.stringify({ amount: amount, operator: amountOperator });
+        const noOfPaymentsOption = JSON.stringify({ noOfPayments: noOfPayments, operator: noOfPaymentsOperator });
         let url = process.env.NEXT_PUBLIC_API_URL + 'reports/get-all-low-loan-balance';
         if (currentUser.role.rep == 2 && branchList.length > 0) {
             const branchIds = branchList.filter(branch => currentUser.designatedBranch.includes(branch.code)).map(branch => branch._id);
-            url = url + '?' + new URLSearchParams({ branchIds: JSON.stringify(branchIds), amount: amount, operator: operator });
+            url = url + '?' + new URLSearchParams({ branchIds: JSON.stringify(branchIds), amountOption: amountOption, noOfPaymentsOption: noOfPaymentsOption });
         } else {
-            url = url + '?' + new URLSearchParams({ amount: amount, operator: operator });
+            url = url + '?' + new URLSearchParams({ amountOption: amountOption, noOfPaymentsOption: noOfPaymentsOption });
         }
         const response = await fetchWrapper.get(url);
         if (response.success) {
@@ -142,12 +144,12 @@ const ViewLowBalanceByBranchPage = ({ amount, operator }) => {
     useEffect(() => {
         let mounted = true;
 
-        mounted && getList(amount, operator);
+        mounted && getList();
 
         return (() => {
             mounted = false;
         });
-    }, [branchList, amount, operator]);
+    }, [branchList, amount, amountOperator, noOfPayments, noOfPaymentsOperator]);
 
     return (
         <React.Fragment>

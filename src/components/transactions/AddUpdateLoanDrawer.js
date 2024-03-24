@@ -52,6 +52,8 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     const [oldGroupList, setOldGroupList] = useState();
     const [selectedLoanId, setSelectedLoanId] = useState();
 
+    const [loanFor, setLoanFor] = useState('today');
+
     const initialValues = {
         branchId: loan.branchId,
         loId: loan.loId,
@@ -73,7 +75,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         guarantorFirstName: loan.guarantorFirstName,
         guarantorMiddleName: loan.guarantorMiddleName,
         guarantorLastName: loan.guarantorLastName,
-        status: mode !== 'reloan' ? loan.status : 'pending',
+        status: mode !== 'reloan' ? loan.status : 'pending'
     }
 
     const validationSchema = yup.object().shape({
@@ -109,6 +111,10 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             .string()
             .required('Please enter guarantor last name')
     });
+
+    const handleLoanForChange = (value) => {
+        setLoanFor(value);
+    }
 
     const handleLoIdChange = (field, value) => {
         setLoading(true);
@@ -232,6 +238,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         let group;
         values.currentDate = currentDate;
         values.clientId = clientId;
+        values.loanFor = loanFor;
 
         if (mode !== 'reloan') {
             values.groupId = selectedGroup;
@@ -638,6 +645,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             setSelectedGroup(loan.groupId);
             setSlotNo(loan.slotNo);
             setSelectedCoMaker(loan.coMaker);
+            setLoanFor(loan?.loanFor);
 
             form.setFieldValue('clientId', loan.clientId);
             form.setFieldValue('groupId', loan.groupId);
@@ -707,6 +715,13 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                 setFieldTouched
                             }) => (
                                 <form onSubmit={handleSubmit} autoComplete="off">
+                                    <div className="flex flex-col mt-4 text-gray-500">
+                                        <div>Loan for</div>
+                                        <div className="flex flex-row ml-4">
+                                            <RadioButton id={"radio_today"} name="radio-loan-type" label={"Today"} checked={loanFor === 'today'} value="today" onChange={() => setLoanFor('today')} />
+                                            <RadioButton id={"radio_tomorrow"} name="radio-loan-type" label={"Tomorrow"} checked={loanFor === 'tomorrow'} value="tomorrow" onChange={() => setLoanFor('tomorrow')} />
+                                        </div>
+                                    </div>
                                     {mode === 'add' ? (
                                         <React.Fragment>
                                             <div className="mt-4 flex flex-row">
