@@ -160,7 +160,7 @@ const ViewLowBalanceByGroupsPage = ({ amount, amountOperator, noOfPayments, noOf
                 <div className='flex flex-col mt-2 p-4'>
                     <div className='flex justify-end mr-6 h-10 my-auto'>
                         <ReactToPrint
-                            trigger={() => <ButtonSolid label="Print LDF" icon={[<PrinterIcon className="w-5 h-5" />, 'left']} width='!w-28'/> }
+                            trigger={() => <ButtonSolid label="Print" icon={[<PrinterIcon className="w-5 h-5" />, 'left']} width='!w-22'/> }
                             content={() => printRef.current }
                         />
                     </div>
@@ -182,7 +182,7 @@ const ViewLowBalanceByGroupsPage = ({ amount, amountOperator, noOfPayments, noOf
                             </div>
                             <div className='flex flex-row ml-2'>
                                 <span>Loan Officer: </span>
-                                <span className='underline font-bold ml-2'>{ currentUser.role.rep == 4 ? `${currentUser.firstName} ${currentUser.lastName}` : `${selectedLO.firstName} ${selectedLO.lastName}` }</span>
+                                <span className='underline font-bold ml-2'>{ currentUser.role.rep == 4 ? `${currentUser.firstName} ${currentUser.lastName}` : `${selectedLO?.firstName} ${selectedLO?.lastName}` }</span>
                             </div>
                             <div className='flex flex-row justify-center w-full'>
                                 <div className='flex flex-col p-2'>

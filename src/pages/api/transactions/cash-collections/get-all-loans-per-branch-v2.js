@@ -673,34 +673,40 @@ async function getAllLoanTransactionsByBranch(branchId, date, dayName, currentDa
                                         $sum: { 
                                             $cond: {
                                                 if: { $and: [{ $ne: ['$status', 'pending'] }, { $ne: ['$transfer', true] }] },
-                                                then: { 
+                                                then: { // weekly not properly queried got all instead per day
                                                     $cond: {
-                                                        if: { $and: [{$eq: ['$activeLoan', 0]}, {$eq: ['$fullPaymentDate', date]}] },
-                                                        then: '$history.activeLoan',
-                                                        else: {
+                                                        if: { $or: [{$eq: ['$occurence', 'daily']}, {$and: [{ $and: [{ $eq: ['$occurence', 'weekly'] }, { $eq: ['$groupDay', dayName] }] }]}] },
+                                                        then: {
                                                             $cond: {
-                                                                if: { $or: [
-                                                                    {$eq: ['$remarks.value', 'delinquent']},
-                                                                    {$eq: ['$remarks.value', 'delinquent-mcbu']},
-                                                                    {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
-                                                                ] },
-                                                                then: 0,
+                                                                if: { $and: [{$eq: ['$activeLoan', 0]}, {$eq: ['$fullPaymentDate', date]}] },
+                                                                then: '$history.activeLoan',
                                                                 else: {
                                                                     $cond: {
-                                                                        if: {$eq: ['$status', 'tomorrow']},
-                                                                        then: {
+                                                                        if: { $or: [
+                                                                            {$eq: ['$remarks.value', 'delinquent']},
+                                                                            {$eq: ['$remarks.value', 'delinquent-mcbu']},
+                                                                            {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                                                                        ] },
+                                                                        then: 0,
+                                                                        else: {
                                                                             $cond: {
-                                                                                if: { $gt: ['$activeLoan', 0] },
-                                                                                then: '$history.activeLoan',
-                                                                                else: 0
+                                                                                if: {$eq: ['$status', 'tomorrow']},
+                                                                                then: {
+                                                                                    $cond: {
+                                                                                        if: { $gt: ['$activeLoan', 0] },
+                                                                                        then: '$history.activeLoan',
+                                                                                        else: 0
+                                                                                    }
+                                                                                },
+                                                                                else: '$activeLoan'
                                                                             }
-                                                                        },
-                                                                        else: '$activeLoan'
+                                                                        }
                                                                     }
                                                                 }
                                                             }
-                                                        }
-                                                    } 
+                                                        },
+                                                        else: 0
+                                                    }
                                                 }, 
                                                 else: 0
                                             } 
