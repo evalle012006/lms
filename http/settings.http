@@ -1,0 +1,37 @@
+@apiUrl=http://localhost:3000/api/
+@token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2MzllODQ4MDkyNzMxZTFkMTFmYjZmZDIiLCJpYXQiOjE3MTEyODEyODAsImV4cCI6MTcxMTI5NTY4MH0.YTlmuilL3Zm1ePzcRz0KUSB9vDvR3mlYUS0g0AdpoEQ
+
+### Current Date
+GET {{apiUrl}}/v2/settings/current-date
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+### System Settings
+GET {{apiUrl}}/v2/settings/system
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+### Update System Settings
+POST {{apiUrl}}/v2/settings/system
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "_id": "639d2d55e4d49471b7cb9316",
+  "branchAddress": "Testing"
+}
+
+### Transaction Settings
+GET {{apiUrl}}/v2/settings/transactions
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+### Update Transaction Settings
+POST {{apiUrl}}/v2/settings/transactions
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "_id": "63fb63d8fd0e3c41e7d440dc",
+  "loanDailyLimit": 20000
+}

@@ -160,3 +160,30 @@ occurence
 status
 time
 `;
+
+export const HOLIDAY_FIELDS = `
+_id
+date
+dateAdded
+description
+name
+`;
+
+export const SETTINGS_FIELDS = `
+_id
+branchAddress
+branchName
+companyAddress
+branchCode
+branchPhoneNumber
+companyEmail
+companyName
+companyPhoneNumber
+`;
+
+export const TRANSACTION_SETTINGS_FIELDS = `
+_id
+loanDailyLimit
+loanWeeklyLimit
+mcbuRate
+`;

@@ -1,5 +1,10 @@
-import { apiHandler } from '@/services/api-handler';
-import { connectToDatabase } from '@/lib/mongodb';
+import { apiHandler } from "@/services/api-handler";
+import { GraphProvider } from "@/lib/graph/graph.provider";
+import { createGraphType, queryQl, updateQl } from "@/lib/graph/graph.util";
+import { SETTINGS_FIELDS } from "@/lib/graph.fields";
+
+const graph = new GraphProvider();
+const settingsType = createGraphType('settings', SETTINGS_FIELDS)();
 
 export default apiHandler({
     post: updateSystemSettings,
@@ -7,43 +12,17 @@ export default apiHandler({
 });
 
 async function getSystemSettings(req, res) {
-    const { db } = await connectToDatabase();
-    let statusCode = 200;
-    let response = {};
-    const system = await db.collection('settings').find().toArray();
-
-    response = {
-        success: true,
-        system: system[0]
-    }
-
-    res.status(statusCode)
-        .setHeader('Content-Type', 'application/json')
-        .end(JSON.stringify(response));
+    const { data } = await graph.query(queryQl(settingsType));
+    res.send({ success: true, system: data?.settings?.[0] });
 }
 
 async function updateSystemSettings(req, res) {
-    const { db } = await connectToDatabase();
-    const ObjectId = require('mongodb').ObjectId;
-    let statusCode = 200;
-    let response = {};
-
-    const system = req.body;
-    const systemId = system._id;
-    delete system._id;
-
-    const systemResp = await db
-        .collection('settings')
-        .updateOne(
-            { _id: new ObjectId(systemId) }, 
-            {
-                $set: { ...system }
-            }, 
-            { upsert: false });
-
-    response = { success: true, system: systemResp };
-
-    res.status(statusCode)
-        .setHeader('Content-Type', 'application/json')
-        .end(JSON.stringify(response));
+    const { _id, ...system } = req.body;
+    const { data } = await graph.mutation(
+      updateQl(settingsType, {
+        set: system,
+        where: { _id: { _eq: _id } },
+      })
+    );
+    res.send({ success: true, system: data?.settings?.returning?.[0] });
 }

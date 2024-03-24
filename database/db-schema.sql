@@ -186,6 +186,9 @@ create table "holidays" (
   "name" varchar
 );
 
+create unique index "holidays__uix_date" on "holidays" (date);
+
+
 -- drop table "loans"
 create table "loans" (
   "_id" varchar primary key,
