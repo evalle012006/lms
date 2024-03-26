@@ -97,6 +97,8 @@ async function save(req, res) {
                 }
                 
                 finalData.dateOfRelease = tomorrowDate;
+                finalData.admissionDate = tomorrowDate;
+                finalData.dateGranted = tomorrowDate;
             }
             const loan = await db.collection('loans').insertOne({
                 ...finalData,

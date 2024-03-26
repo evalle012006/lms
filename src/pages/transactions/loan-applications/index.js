@@ -915,13 +915,13 @@ const LoanApplicationPage = () => {
                 const lo = loan.loanOfficer;
 
                 if (!client.firstName || !client.lastName || client.firstName == 'null' || client.lastName == 'null') {
-                    errorMsg += <span>{`First and/or Last Name of slot no ${loan.slotNo} from group ${group.name} is missing!`}<br/><br/></span>;
+                    errorMsg += `First and/or Last Name of slot no ${loan.slotNo} from group ${group.name} is missing!`;
                 }
                 if ((!client.fullName && (client.fullName && !client.fullName.length === 0))) {
-                    errorMsg += <span>{`There are missing info for slot no ${loan.slotNo} from group ${group.name}!`}<br/><br/></span>;
+                    errorMsg += `There are missing info for slot no ${loan.slotNo} from group ${group.name}!`;
                 }
                 if (!client.hasOwnProperty('profile') && !client.profile) {
-                    errorMsg += <span>{`Slot no ${loan.slotNo} from group ${group.name} don't have photo uploaded!`}<br/><br/></span>;
+                    errorMsg += `Slot no ${loan.slotNo} from group ${group.name} don't have photo uploaded!`;
                 }
 
                 delete temp.group;
@@ -954,7 +954,7 @@ const LoanApplicationPage = () => {
 
                 return temp;
             });
-
+            console.log(errorMsg)
             // let pendingCoMaker = [];
             // const coMakerStatus = checkCoMakerLoanStatus(coMakerList);
             // if (coMakerStatus.length > 0) {
