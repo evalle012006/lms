@@ -1964,8 +1964,8 @@ const CashCollectionDetailsPage = () => {
                                         temp.loanBalance += temp.paymentCollection;
                                         temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
                                     }
-                                    temp.mispayment = false;
-                                    temp.mispaymentStr = 'No';
+                                    temp.mispayment = true;
+                                    temp.mispaymentStr = 'Yes';
                                     temp.activeLoan = 0;
                                     temp.targetCollection = 0;
                                     temp.targetCollectionStr = '-';
