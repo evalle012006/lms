@@ -869,9 +869,9 @@ const LoanApplicationPage = () => {
                 errorMsg.add(`${clientName} in group ${groupName} don't have PN Number.`);
             }
 
-            // if (loan.hasOwnProperty('dateOfRelease')) {
-            //     errorMsg.add(`${clientName} in group ${groupName} if for tomorrow release.`);
-            // }
+            if (loan.hasOwnProperty('dateOfRelease')) {
+                errorMsg.add(`${clientName} in group ${groupName} if for tomorrow release.`);
+            }
         });
 
         return Array.from(errorMsg);
@@ -915,13 +915,13 @@ const LoanApplicationPage = () => {
                 const lo = loan.loanOfficer;
 
                 if (!client.firstName || !client.lastName || client.firstName == 'null' || client.lastName == 'null') {
-                    errorMsg += `First and/or Last Name of slot no ${loan.slotNo} from group ${group.name} is missing! \n`;
+                    errorMsg += <span>{`First and/or Last Name of slot no ${loan.slotNo} from group ${group.name} is missing!`}<br/><br/></span>;
                 }
                 if ((!client.fullName && (client.fullName && !client.fullName.length === 0))) {
-                    errorMsg += `There are missing info for slot no ${loan.slotNo} from group ${group.name}! \n`;
+                    errorMsg += <span>{`There are missing info for slot no ${loan.slotNo} from group ${group.name}!`}<br/><br/></span>;
                 }
                 if (!client.hasOwnProperty('profile') && !client.profile) {
-                    errorMsg += `Slot no ${loan.slotNo} from group ${group.name} don't have photo uploaded! \n`;
+                    errorMsg += <span>{`Slot no ${loan.slotNo} from group ${group.name} don't have photo uploaded!`}<br/><br/></span>;
                 }
 
                 delete temp.group;
@@ -981,16 +981,36 @@ const LoanApplicationPage = () => {
 
                     if (response.success) {
                         setLoading(false);
-                        if (origin == 'ldf') {
-                            toast.success('Selected loans successfully updated');
-                        } else {
-                            toast.success('Selected loans successfully approved.');
-                        }
+                        if (response.withError) {
+                            let errors = '';
+                            if (selectedLoanList.length > response.errorMsg.length) {
+                                errors = <span>Some selected loan list have errors:<br/><br/></span>; 
+                            }
+                            response.errorMsg.map((err, index) => {
+                                if (response.errorMsg.length - 1 == index) {
+                                    errors += err;
+                                } else {
+                                    errors += <span>{ err }<br/><br/></span>
+                                }
+                            });
 
-                        setTimeout(() => {
-                            getListLoan();
-                            window.location.reload();
-                        }, 1000);
+                            toast.error(errors);
+                            setTimeout(() => {
+                                getListLoan();
+                                window.location.reload();
+                            }, 4000);
+                        } else {
+                            if (origin == 'ldf') {
+                                toast.success('Selected loans successfully updated');
+                            } else {
+                                toast.success('Selected loans successfully approved.');
+                            }
+    
+                            setTimeout(() => {
+                                getListLoan();
+                                window.location.reload();
+                            }, 1000);
+                        }
                     }
                 }
             // }

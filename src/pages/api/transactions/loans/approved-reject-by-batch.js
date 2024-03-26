@@ -11,93 +11,119 @@ async function processData(req, res) {
     const ObjectId = require('mongodb').ObjectId;
     let statusCode = 200;
     let response = {};
-    let errorMsg = [];
+    const errorMsg = [];
 
     let loanData = req.body;
 
     const origin = (loanData && loanData.length > 0) && loanData[0].origin;
 
     if (origin == 'ldf') {
-        loanData.map(async loan => {
-            const loanId = loan._id;
-            logger.debug({page: `LDF Approved Loan: ${loanId}`});
-            delete loan._id;
-            delete loan.loanOfficer;
-            delete loan.groupCashCollections;
-            delete loan.loanReleaseStr;
-            delete loan.allowApproved;
-            delete loan.currentDate;
-            delete loan.groupStatus;
-            delete loan.pendings;
-            delete loan.origin;
-            delete loan.hasActiveLoan;
+        const promise = await new Promise(async (resolve) => {
+            const response = await Promise.all(loanData.map(async (loan) => {
+                const loanId = loan._id;
+                logger.debug({page: `LDF Approved Loan: ${loanId}`});
+                delete loan._id;
+                delete loan.loanOfficer;
+                delete loan.groupCashCollections;
+                delete loan.loanReleaseStr;
+                delete loan.allowApproved;
+                delete loan.currentDate;
+                delete loan.groupStatus;
+                delete loan.pendings;
+                delete loan.origin;
+                delete loan.hasActiveLoan;
 
-            await db.collection('loans').updateOne({ _id: new ObjectId(loanId) }, { $set: {...loan} });
+                const active = await db.collection('loans').find({ clientId: loan.clientId, status: 'active' }).toArray();
+                if (active.length > 0) {
+                    const error = `Client ${active[0].fullName} with slot ${active[0].slotNo} of group ${active[0].groupName}, still have active loan.`;
+                    errorMsg.push(error);
+                } else {
+                    await db.collection('loans').updateOne({ _id: new ObjectId(loanId) }, { $set: {...loan} });
+                }
+            }));
+
+            resolve(response);
         });
+
+        if (promise) {
+            response = { success: true, withError: errorMsg.length > 0 ? true : false, errorMsg: errorMsg };   
+        }
     } else {
-        loanData.map(async loan => {
-            const loanId = loan._id;
-            const currentDate = loan.currentDate;
-            logger.debug({page: `Approving Loan: ${loanId}`, data: loan});
-            delete loan._id;
-            delete loan.loanOfficer;
-            delete loan.groupCashCollections;
-            delete loan.loanReleaseStr;
-            delete loan.allowApproved;
-            delete loan.currentDate;
-            delete loan.groupStatus;
-            delete loan.pendings;
-            delete loan.origin;
-            delete loan.hasActiveLoan;
-    
-            let groupData = await checkGroupStatus(loan.groupId);
-            if (groupData.length > 0) {
-                groupData = groupData[0];
-    
-                if (loan.status === 'active') {
-                    await updateClient(loan);
-                    if (loan.coMaker) {
-                        if (typeof loan.coMaker === 'string') {
-                            loan.coMakerId = loan.coMaker;
-                            const coMakerResp = await getCoMakerInfo(loan.coMaker, loan.groupId);
-                            if (coMakerResp.success) {
-                                loan.coMaker = coMakerResp.client;
+        const promise = await new Promise(async (resolve) => {
+            const response = await Promise.all(loanData.map(async (loan) => {
+                const active = await db.collection('loans').find({ clientId: loan.clientId, status: 'active' }).toArray();
+                if (active.length > 0) {
+                    const error = `Client ${active[0].fullName} with slot ${active[0].slotNo} of group ${active[0].groupName}, still have active loan.`;
+                    errorMsg.push(error);
+                } else {
+                    const loanId = loan._id;
+                    const currentDate = loan.currentDate;
+                    logger.debug({page: `Approving Loan: ${loanId}`, data: loan});
+                    delete loan._id;
+                    delete loan.loanOfficer;
+                    delete loan.groupCashCollections;
+                    delete loan.loanReleaseStr;
+                    delete loan.allowApproved;
+                    delete loan.currentDate;
+                    delete loan.groupStatus;
+                    delete loan.pendings;
+                    delete loan.origin;
+                    delete loan.hasActiveLoan;
+            
+                    let groupData = await checkGroupStatus(loan.groupId);
+                    if (groupData.length > 0) {
+                        groupData = groupData[0];
+            
+                        if (loan.status === 'active') {
+                            await updateClient(loan);
+                            if (loan.coMaker) {
+                                if (typeof loan.coMaker === 'string') {
+                                    loan.coMakerId = loan.coMaker;
+                                    const coMakerResp = await getCoMakerInfo(loan.coMaker, loan.groupId);
+                                    if (coMakerResp.success) {
+                                        loan.coMaker = coMakerResp.client;
+                                    }
+                                } else if (typeof loan.coMaker === 'number') {
+                                    const coMakerResp = await getCoMakerInfo(loan.coMaker, loan.groupId);
+                                    if (coMakerResp.success) {
+                                        loan.coMakerId = coMakerResp.client;
+                                    }
+                                }
                             }
-                        } else if (typeof loan.coMaker === 'number') {
-                            const coMakerResp = await getCoMakerInfo(loan.coMaker, loan.groupId);
-                            if (coMakerResp.success) {
-                                loan.coMakerId = coMakerResp.client;
+                        }  else if (loan.status === 'reject') {
+                            if (!groupData.availableSlots.includes(loan.slotNo)) {
+                                groupData.availableSlots.push(loan.slotNo);
+                                groupData.availableSlots.sort((a, b) => { return a - b; });
+                                groupData.noOfClients = groupData.noOfClients - 1;
+                                groupData.status = groupData.status === 'full' ? 'available' : groupData.status;
+                                await updateGroup(groupData);
                             }
                         }
-                    }
-                }  else if (loan.status === 'reject') {
-                    if (!groupData.availableSlots.includes(loan.slotNo)) {
-                        groupData.availableSlots.push(loan.slotNo);
-                        groupData.availableSlots.sort((a, b) => { return a - b; });
-                        groupData.noOfClients = groupData.noOfClients - 1;
-                        groupData.status = groupData.status === 'full' ? 'available' : groupData.status;
-                        await updateGroup(groupData);
+            
+                        if (loan.status === 'active' || loan.status === 'reject') {
+                            logger.debug({page: `Loan: ${loan._id}`, message: 'Updating loan data.', status: loan.status});
+                            await db.collection('loans')
+                                .updateOne(
+                                    { _id: new ObjectId(loanId) }, 
+                                    {
+                                        $set: { ...loan }
+                                    }, 
+                                    { upsert: false });
+                            
+                            loan._id = loanId;
+                            await saveCashCollection(loan, groupData, currentDate);
+                        }
                     }
                 }
-    
-                if (loan.status === 'active' || loan.status === 'reject') {
-                    logger.debug({page: `Loan: ${loan._id}`, message: 'Updating loan data.', status: loan.status});
-                    await db.collection('loans')
-                        .updateOne(
-                            { _id: new ObjectId(loanId) }, 
-                            {
-                                $set: { ...loan }
-                            }, 
-                            { upsert: false });
-                    
-                    loan._id = loanId;
-                    await saveCashCollection(loan, groupData, currentDate);
-                }
-            }
-        });
-    }
+            }));
 
-    response = { success: true, error: errorMsg };
+            resolve(response);
+        });
+
+        if (promise) {
+            response = { success: true, withError: errorMsg.length > 0 ? true : false, errorMsg: errorMsg };   
+        }
+    }
 
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')
