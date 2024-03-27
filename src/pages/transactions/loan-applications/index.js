@@ -868,10 +868,6 @@ const LoanApplicationPage = () => {
             if (loan.pnNumber == null || !loan.pnNumber) {
                 errorMsg.add(`${clientName} in group ${groupName} don't have PN Number.`);
             }
-
-            if (loan.hasOwnProperty('dateOfRelease')) {
-                errorMsg.add(`${clientName} in group ${groupName} if for tomorrow release.`);
-            }
         });
 
         return Array.from(errorMsg);
