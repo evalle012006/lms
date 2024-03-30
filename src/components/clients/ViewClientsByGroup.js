@@ -145,7 +145,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                     }
                 }
             } else if (branchList.length > 0) {
-                url = url + '?' + new URLSearchParams({ mode: "view_all_by_branch_codes", branchCodes: currentUser.designatedBranch, status: status });
+                url = url + '?' + new URLSearchParams({ mode: "view_all_by_branch_codes", currentUserId: currentUser._id, status: status });
                 const response = await fetchWrapper.get(url);
                 if (response.success) {
                     let clients = [];
@@ -203,8 +203,6 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                 toast.error(response.message);
             }
         }
-
-        setLoading(false);
     }
 
     const [columns, setColumns] = useState([]);
@@ -272,11 +270,22 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
         }
     }
 
+    const fetchData = async () => {
+        const promise = await new Promise(async (resolve) => {
+            const response = await Promise.all([getListClient()]);
+            resolve(response);
+        });
+
+        if (promise) {
+            setLoading(false);
+        }
+    }
+
     useEffect(() => {
         let mounted = true;
 
-        mounted && getListClient();
-
+        mounted && fetchData();
+        
         return () => {
             mounted = false;
         };

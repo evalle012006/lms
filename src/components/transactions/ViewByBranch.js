@@ -27,7 +27,9 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup}) => {
         setLoading(true);
         const filter = date ? true : false;
 
-        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/get-all-loans-per-branch-v2?' + new URLSearchParams({ date: date ? date : currentDate, branchIds: JSON.stringify(selectedBranches), dayName: dayName, currentDate: currentDate }));
+        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 
+                            'transactions/cash-collections/get-all-loans-per-branch-v2?' 
+                            + new URLSearchParams({ date: date ? date : currentDate, currentUserId: currentUser._id, selectedBranchGroup: selectedBranchGroup, dayName: dayName, currentDate: currentDate }));
         if (response.success) {
             const collectionDailyTransferred = [];
             const collectionDailyReceived = [];
@@ -891,37 +893,23 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup}) => {
     }, []);
 
     useEffect(() => {
-        if (branchList) {
-            let branchIds = branchList.map(branch =>  branch._id );
-
-            if (currentUser.role.rep == 2 && selectedBranchGroup == 'mine') {
-                branchIds = branchList.filter(branch => currentUser.designatedBranch.includes(branch.code)).map(branch => branch._id);
-            }
-            
-            setSelectedBranches(branchIds);
-        }
-    }, [branchList, selectedBranchGroup]);
-
-    useEffect(() => {
         let mounted = true;
 
-        if (selectedBranches.length > 0) {
-            if (dateFilter) {
-                const date = moment(dateFilter).format('YYYY-MM-DD');
-                if (date !== currentDate) {
-                    mounted && getBranchCashCollections(date);
-                } else {
-                    mounted && getBranchCashCollections();
-                }
+        if (dateFilter) {
+            const date = moment(dateFilter).format('YYYY-MM-DD');
+            if (date !== currentDate) {
+                mounted && getBranchCashCollections(date);
             } else {
                 mounted && getBranchCashCollections();
             }
+        } else {
+            mounted && getBranchCashCollections();
         }
 
         return () => {
             mounted = false;
         };
-    }, [dateFilter, selectedBranches]);
+    }, [dateFilter, selectedBranchGroup]);
     
 
     return (

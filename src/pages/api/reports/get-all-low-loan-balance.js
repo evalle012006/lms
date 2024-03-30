@@ -7,10 +7,11 @@ export default apiHandler({
 
 async function allLoans(req, res) {
     const { db } = await connectToDatabase();
+    const ObjectId = require('mongodb').ObjectId;
     let response;
     let statusCode = 200;
 
-    const { loId, branchIds, branchId, amountOption, noOfPaymentsOption } = req.query;
+    const { loId, currentUserId, branchId, amountOption, noOfPaymentsOption } = req.query;
     let data = [];
     const amountOptionObj = JSON.parse(amountOption);
     const noOfPaymentsOptionObj = JSON.parse(noOfPaymentsOption);
@@ -190,8 +191,20 @@ async function allLoans(req, res) {
             ]).toArray();
     } else {
         let branchIdsObj;
-        if (branchIds) {
-            branchIdsObj = JSON.parse(branchIds);
+        if (currentUserId) {
+            const user = await db.collection('users').find({ _id: new ObjectId(currentUserId) }).toArray();
+            if (user.length > 0) {
+                if (user[0].areaId && user[0].role.shortCode === 'area_admin') {
+                    const branches = await db.collection('branches').find({ areaId: user[0].areaId }).toArray();
+                    branchIdsObj = branches.map(branch => branch._id.toString());
+                } else if (user[0].regionId && user[0].role.shortCode === 'regional_manager') {
+                    const branches = await db.collection('branches').find({ regionId: user[0].regionId }).toArray();
+                    branchIdsObj = branches.map(branch => branch._id.toString());
+                } else if (user[0].divisionId && user[0].role.shortCode === 'deputy_director') {
+                    const branches = await db.collection('branches').find({ divisionId: user[0].divisionId }).toArray();
+                    branchIdsObj = branches.map(branch => branch._id.toString());
+                }
+            }
         } else {
             const branches = await db.collection('branches').find({}).toArray();
             branchIdsObj = branches.map(branch => branch._id + '');

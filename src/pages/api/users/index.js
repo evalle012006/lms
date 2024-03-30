@@ -42,9 +42,9 @@ async function updateUser(req, res) {
             const profile = file ? file : userData.profile;
             const role = JSON.parse(fields.role);
             let designatedBranch = fields.designatedBranch;
-            if (role.rep === 2) {
-                designatedBranch = JSON.parse(fields.designatedBranch);
-            }
+            // if (role.rep === 2) {
+            //     designatedBranch = JSON.parse(fields.designatedBranch);
+            // }
 
             if (role.rep === 3) {
                 await db

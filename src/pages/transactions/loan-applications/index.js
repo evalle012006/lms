@@ -428,8 +428,8 @@ const LoanApplicationPage = () => {
                 setLoading(false);
                 toast.error(response.message);
             }
-        } else if (currentUser.role.rep === 2 && branchList.length > 0) {
-            url = url + '?' + new URLSearchParams({ status: 'pending', areaManagerId: currentUser._id, currentDate: currentDate });
+        } else if (currentUser.role.rep === 2) {
+            url = url + '?' + new URLSearchParams({ status: 'pending', currentUserId: currentUser._id, currentDate: currentDate });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let loanList = [];
@@ -1222,13 +1222,13 @@ const LoanApplicationPage = () => {
     }, []);
 
     useEffect(() => {
-        if (branchList && currentDate) {
+        if (currentDate) {
             getListLoan();
             if (currentUser.role.rep == 3 || currentUser.role.rep == 4) {
                 getHistoyListLoan();
             }
         }
-    }, [branchList]);
+    }, []);
 
     useEffect(() => {
         if (isFiltering) {
@@ -1433,11 +1433,13 @@ const LoanApplicationPage = () => {
                                     onClick={() => handleSelectTab("application")}>
                                     Pending Applications
                                 </TabSelector>
-                                <TabSelector
-                                    isActive={selectedTab === "history"}
-                                    onClick={() => handleSelectTab("history")}>
-                                    History
-                                </TabSelector>
+                                {currentUser.role > 2 && (
+                                    <TabSelector
+                                        isActive={selectedTab === "history"}
+                                        onClick={() => handleSelectTab("history")}>
+                                        History
+                                    </TabSelector>
+                                )}
                             </nav>
                             <div>
                             <TabPanel hidden={selectedTab !== "ldf"}>
@@ -1654,9 +1656,11 @@ const LoanApplicationPage = () => {
                                         </div>
                                     </footer>
                                 </TabPanel>
-                                <TabPanel hidden={selectedTab !== 'history'}>
-                                    <TableComponent columns={columns} data={historyList} hasActionButtons={false} showFilters={false} pageSize={500} />
-                                </TabPanel>
+                                {currentUser.role > 2 && (
+                                    <TabPanel hidden={selectedTab !== 'history'}>
+                                        <TableComponent columns={columns} data={historyList} hasActionButtons={false} showFilters={false} pageSize={500} />
+                                    </TabPanel>
+                                )}
                             </div>
                         </React.Fragment>
                     )

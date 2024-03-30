@@ -9,7 +9,7 @@ async function list(req, res) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
 
-    const {mode, groupId, branchId, loId, status, branchCodes, currentDate} = req.query;
+    const {mode, groupId, branchId, loId, status, branchCodes, currentUserId, currentDate} = req.query;
 
     let statusCode = 200;
     let response = {};
@@ -239,64 +239,77 @@ async function list(req, res) {
                 { $project: { clientId: 0, loIdObj: 0, groupIdObj: 0 } }
             ])
             .toArray();
-    } else if (mode === 'view_all_by_branch_codes' && branchCodes) {
-        const codes = branchCodes.trim().split(",");
-        clients = await db
-            .collection('branches')
-            .aggregate([
-                // { $match: { $expr: { $and: [{$eq: ["$status", status]}, {$in: ["$code", codes]}] } } },
-                { $match: { $expr: { $in: ["$code", codes] } } },
-                {
-                    $addFields: {
-                        "branchIdStr": {$toString: "$_id"}
-                    }
-                },
-                {
-                    $lookup: {
-                        from: "client",
-                        localField: "branchIdStr",
-                        foreignField: "branchId",
-                        pipeline: [
-                            { $match: { status: status } },
-                            {
-                                $addFields: {
-                                    "clientId": { $toString: "$_id" },
-                                    "loIdObj": {$toObjectId: "$loId"},
-                                    "groupIdObj": {$toObjectId: "$groupId"}
-                                }
-                            },
-                            {
-                                $lookup: {
-                                    from: "users",
-                                    localField: "loIdObj",
-                                    foreignField: "_id",
-                                    as: "lo"
-                                }
-                            },
-                            {
-                                $lookup: {
-                                    from: "groups",
-                                    localField: "groupIdObj",
-                                    foreignField: "_id",
-                                    as: "group"
-                                }
-                            },
-                            {
-                                $lookup: {
-                                    from: "loans",
-                                    localField: "clientId",
-                                    foreignField: "clientId",
-                                    as: "loans"
-                                }
-                            },
-                            { $project: { clientId: 0, loIdObj: 0, groupIdObj: 0 } }
-                        ],
-                        as: "clients"
-                    }
-                },
-                { $project: { branchIdStr: 0 } }
-            ])
-            .toArray();
+    } else if (mode === 'view_all_by_branch_codes' && currentUserId) {
+        const user = await db.collection('users').find({ _id: new ObjectId(currentUserId) }).toArray();
+        if (user.length > 0) {
+            let branchCodes = [];
+            if (user[0].areaId && user[0].role.shortCode === 'area_admin') {
+                const branches = await db.collection('branches').find({ areaId: user[0].areaId }).toArray();
+                branchCodes = branches.map(branch => branch.code);
+            } else if (user[0].regionId && user[0].role.shortCode === 'regional_manager') {
+                const branches = await db.collection('branches').find({ regionId: user[0].regionId }).toArray();
+                branchCodes = branches.map(branch => branch.code);
+            } else if (user[0].divisionId && user[0].role.shortCode === 'deputy_director') {
+                const branches = await db.collection('branches').find({ divisionId: user[0].divisionId }).toArray();
+                branchCodes = branches.map(branch => branch.code);
+            }
+
+            clients = await db
+                .collection('branches')
+                .aggregate([
+                    { $match: { $expr: { $in: ["$code", branchCodes] } } },
+                    {
+                        $addFields: {
+                            "branchIdStr": {$toString: "$_id"}
+                        }
+                    },
+                    {
+                        $lookup: {
+                            from: "client",
+                            localField: "branchIdStr",
+                            foreignField: "branchId",
+                            pipeline: [
+                                { $match: { status: status } },
+                                {
+                                    $addFields: {
+                                        "clientId": { $toString: "$_id" },
+                                        "loIdObj": {$convert: {input: '$loId', to : 'objectId', onError: '',onNull: ''}},
+                                        "groupIdObj": {$convert: {input: '$groupId', to : 'objectId', onError: '',onNull: ''}}
+                                    }
+                                },
+                                {
+                                    $lookup: {
+                                        from: "users",
+                                        localField: "loIdObj",
+                                        foreignField: "_id",
+                                        as: "lo"
+                                    }
+                                },
+                                {
+                                    $lookup: {
+                                        from: "groups",
+                                        localField: "groupIdObj",
+                                        foreignField: "_id",
+                                        as: "group"
+                                    }
+                                },
+                                {
+                                    $lookup: {
+                                        from: "loans",
+                                        localField: "clientId",
+                                        foreignField: "clientId",
+                                        as: "loans"
+                                    }
+                                },
+                                { $project: { clientId: 0, loIdObj: 0, groupIdObj: 0 } }
+                            ],
+                            as: "clients"
+                        }
+                    },
+                    { $project: { branchIdStr: 0 } }
+                ])
+                .toArray();
+        }
     } else if (mode === 'view_only_no_exist_loan') {
         if (status === 'active') {
             clients = await db

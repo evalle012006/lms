@@ -12,7 +12,7 @@ async function list(req, res) {
     let response = {};
     let loans;
 
-    const { branchId, groupId, loId, status, areaManagerId, mode, currentDate } = req.query;
+    const { branchId, groupId, loId, status, currentUserId, mode, currentDate } = req.query;
 
     if (status) {
         if (loId && branchId) { // lo
@@ -269,14 +269,22 @@ async function list(req, res) {
                     },
                     { $project: { branchIdObj: 0, groupIdObj: 0, clientIdObj: 0, loIdObj: 0, password: 0 } }
                 ]).toArray();
-        } else if (areaManagerId) {
-            const areaManager = await db.collection("users").find({ _id: new ObjectId(areaManagerId) }).toArray();
-            if (areaManager.length > 0) {
-                const branchCodes = typeof areaManager[0].designatedBranch === 'string' ? JSON.parse(areaManager[0].designatedBranch) : areaManager[0].designatedBranch;
-                const branches = await db.collection("branches").find({ $expr: { $in: ['$code', branchCodes] } }).toArray();
-                if (branches.length > 0) {
-                    const branchIds = branches.map(b => b._id + '');
-                    loans = await db
+        } else if (currentUserId) {
+            const user = await db.collection('users').find({ _id: new ObjectId(currentUserId) }).toArray();
+            if (user.length > 0) {
+                let branchIds = [];
+                if (user[0].areaId && user[0].role.shortCode === 'area_admin') {
+                    const branches = await db.collection('branches').find({ areaId: user[0].areaId }).toArray();
+                    branchIds = branches.map(branch => branch._id.toString());
+                } else if (user[0].regionId && user[0].role.shortCode === 'regional_manager') {
+                    const branches = await db.collection('branches').find({ regionId: user[0].regionId }).toArray();
+                    branchIds = branches.map(branch => branch._id.toString());
+                } else if (user[0].divisionId && user[0].role.shortCode === 'deputy_director') {
+                    const branches = await db.collection('branches').find({ divisionId: user[0].divisionId }).toArray();
+                    branchIds = branches.map(branch => branch._id.toString());
+                }
+
+                loans = await db
                         .collection('loans')
                         .aggregate([
                             { $match: { $expr: {$and: [{$eq: ['$status', 'pending']}, {$in: ['$branchId', branchIds]}]} } },
@@ -350,8 +358,7 @@ async function list(req, res) {
                             { $project: { branchIdObj: 0, groupIdObj: 0, clientIdObj: 0, loIdObj: 0, password: 0 } }
                         ])
                         .toArray();
-                    }
-                }
+            }
         } else {
             loans = await db
                 .collection('loans')

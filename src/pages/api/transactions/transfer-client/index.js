@@ -40,122 +40,127 @@ async function getList(req, res) {
     const { _id, branchId } = req.query;
 
     if (_id) {
-        const areaManager = await db.collection("users").find({ _id: new ObjectId(_id) }).toArray();
-        if (areaManager.length > 0) {
-            const branchCodes = typeof areaManager[0].designatedBranch === 'string' ? JSON.parse(areaManager[0].designatedBranch) : areaManager[0].designatedBranch;
-            const branches = await db.collection("branches").find({ $expr: { $in: ['$code', branchCodes] } }).toArray();
-            if (branches.length > 0) {
-                const branchIds = branches.map(b => b._id + '');
-                const transferClients = await db
-                    .collection('transferClients')
-                    .aggregate([
-                        { $match: { $expr: {$and: [{$eq: ['$status', 'pending']}, {$in: ['$sourceBranchId', branchIds]}]} } },
-                        {
-                            $addFields: {
-                                "clientIdObj": { $toObjectId: "$selectedClientId" },
-                                "loanIdObj": { $toObjectId: "$loanId" },
-                                "sourceGroupIdObj": { $toObjectId: "$sourceGroupId" },
-                                "targetGroupIdObj": { $toObjectId: "$targetGroupId" },
-                                "sourceBranchIdObj": { $toObjectId: "$sourceBranchId" },
-                                "targetBranchIdObj": { $toObjectId: "$targetBranchId" },
-                                "sourceUserIdObj": { $toObjectId: "$sourceUserId" },
-                                "targetUserIdObj": { $toObjectId: "$targetUserId" }
-                                
-                            }
-                        },
-                        {
-                            $lookup: {
-                                from: "client",
-                                localField: "clientIdObj",
-                                foreignField: "_id",
-                                as: "client"
-                            }
-                        },
-                        {
-                            $unwind: "$client"
-                        },
-                        {
-                            $lookup: {
-                                from: "loans",
-                                localField: 'loanIdObj',
-                                foreignField: '_id',
-                                as: 'loans'
-                            }
-                        },
-                        {
-                            $lookup: {
-                                from: "groups",
-                                localField: 'sourceGroupIdObj',
-                                foreignField: '_id',
-                                as: 'sourceGroup'
-                            }
-                        },
-                        {
-                            $unwind: "$sourceGroup"
-                        },
-                        {
-                            $lookup: {
-                                from: "groups",
-                                localField: 'targetGroupIdObj',
-                                foreignField: '_id',
-                                as: 'targetGroup'
-                            }
-                        },
-                        {
-                            $unwind: "$targetGroup"
-                        },
-                        {
-                            $lookup: {
-                                from: "branches",
-                                localField: 'sourceBranchIdObj',
-                                foreignField: '_id',
-                                as: 'sourceBranch'
-                            }
-                        },
-                        {
-                            $unwind: "$sourceBranch"
-                        },
-                        {
-                            $lookup: {
-                                from: "branches",
-                                localField: 'targetBranchIdObj',
-                                foreignField: '_id',
-                                as: 'targetBranch'
-                            }
-                        },
-                        {
-                            $unwind: "$targetBranch"
-                        },
-                        {
-                            $lookup: {
-                                from: "users",
-                                localField: 'sourceUserIdObj',
-                                foreignField: '_id',
-                                as: 'sourceUser'
-                            }
-                        },
-                        {
-                            $unwind: "$sourceUser"
-                        },
-                        {
-                            $lookup: {
-                                from: "users",
-                                localField: 'targetUserIdObj',
-                                foreignField: '_id',
-                                as: 'targetUser'
-                            }
-                        },
-                        {
-                            $unwind: "$targetUser"
-                        },
-                        { $project: { clientIdObj: 0, loanIdObj: 0, sourceGroupIdObj: 0, targetGroupIdObj: 0, sourceBranchIdObj: 0, targetBranchIdObj: 0, sourceUserIdObj: 0, targetUserIdObj: 0 } }
-                    ])
-                    .toArray();
-
-                    response = { success: true, data: transferClients };
-            } else {
-                response = { error: true, message: "No data found." };
+        const user = await db.collection('users').find({ _id: new ObjectId(_id) }).toArray();
+        if (user.length > 0) {
+            let branchIds = [];
+            if (user[0].areaId && user[0].role.shortCode === 'area_admin') {
+                const branches = await db.collection('branches').find({ areaId: user[0].areaId }).toArray();
+                branchIds = branches.map(branch => branch._id.toString());
+            } else if (user[0].regionId && user[0].role.shortCode === 'regional_manager') {
+                const branches = await db.collection('branches').find({ regionId: user[0].regionId }).toArray();
+                branchIds = branches.map(branch => branch._id.toString());
+            } else if (user[0].divisionId && user[0].role.shortCode === 'deputy_director') {
+                const branches = await db.collection('branches').find({ divisionId: user[0].divisionId }).toArray();
+                branchIds = branches.map(branch => branch._id.toString());
             }
+
+            const transferClients = await db
+                .collection('transferClients')
+                .aggregate([
+                    { $match: { $expr: {$and: [{$eq: ['$status', 'pending']}, {$in: ['$sourceBranchId', branchIds]}]} } },
+                    {
+                        $addFields: {
+                            "clientIdObj": { $toObjectId: "$selectedClientId" },
+                            "loanIdObj": { $toObjectId: "$loanId" },
+                            "sourceGroupIdObj": { $toObjectId: "$sourceGroupId" },
+                            "targetGroupIdObj": { $toObjectId: "$targetGroupId" },
+                            "sourceBranchIdObj": { $toObjectId: "$sourceBranchId" },
+                            "targetBranchIdObj": { $toObjectId: "$targetBranchId" },
+                            "sourceUserIdObj": { $toObjectId: "$sourceUserId" },
+                            "targetUserIdObj": { $toObjectId: "$targetUserId" }
+                            
+                        }
+                    },
+                    {
+                        $lookup: {
+                            from: "client",
+                            localField: "clientIdObj",
+                            foreignField: "_id",
+                            as: "client"
+                        }
+                    },
+                    {
+                        $unwind: "$client"
+                    },
+                    {
+                        $lookup: {
+                            from: "loans",
+                            localField: 'loanIdObj',
+                            foreignField: '_id',
+                            as: 'loans'
+                        }
+                    },
+                    {
+                        $lookup: {
+                            from: "groups",
+                            localField: 'sourceGroupIdObj',
+                            foreignField: '_id',
+                            as: 'sourceGroup'
+                        }
+                    },
+                    {
+                        $unwind: "$sourceGroup"
+                    },
+                    {
+                        $lookup: {
+                            from: "groups",
+                            localField: 'targetGroupIdObj',
+                            foreignField: '_id',
+                            as: 'targetGroup'
+                        }
+                    },
+                    {
+                        $unwind: "$targetGroup"
+                    },
+                    {
+                        $lookup: {
+                            from: "branches",
+                            localField: 'sourceBranchIdObj',
+                            foreignField: '_id',
+                            as: 'sourceBranch'
+                        }
+                    },
+                    {
+                        $unwind: "$sourceBranch"
+                    },
+                    {
+                        $lookup: {
+                            from: "branches",
+                            localField: 'targetBranchIdObj',
+                            foreignField: '_id',
+                            as: 'targetBranch'
+                        }
+                    },
+                    {
+                        $unwind: "$targetBranch"
+                    },
+                    {
+                        $lookup: {
+                            from: "users",
+                            localField: 'sourceUserIdObj',
+                            foreignField: '_id',
+                            as: 'sourceUser'
+                        }
+                    },
+                    {
+                        $unwind: "$sourceUser"
+                    },
+                    {
+                        $lookup: {
+                            from: "users",
+                            localField: 'targetUserIdObj',
+                            foreignField: '_id',
+                            as: 'targetUser'
+                        }
+                    },
+                    {
+                        $unwind: "$targetUser"
+                    },
+                    { $project: { clientIdObj: 0, loanIdObj: 0, sourceGroupIdObj: 0, targetGroupIdObj: 0, sourceBranchIdObj: 0, targetBranchIdObj: 0, sourceUserIdObj: 0, targetUserIdObj: 0 } }
+                ])
+                .toArray();
+
+            response = { success: true, data: transferClients };
         } else {
             response = { error: true, message: "No data found." };
         }
