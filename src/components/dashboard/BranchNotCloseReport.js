@@ -64,9 +64,10 @@ const BranchNotCloseTool = () => {
                 toast.error(response.message);
             }
         } else if (currentUser.role.rep === 2) {
-            const branchCodes = typeof currentUser.designatedBranch === 'string' ? JSON.parse(currentUser.designatedBranch) : currentUser.designatedBranch;
-            const branchIds = branchList.filter(branch => branchCodes.includes(branch.code)).map(branch => branch._id);
-            url = url + '?' + new URLSearchParams({ branchIds: JSON.stringify(branchIds) });
+            // const branchCodes = typeof currentUser.designatedBranch === 'string' ? JSON.parse(currentUser.designatedBranch) : currentUser.designatedBranch;
+            // const branchIds = branchList.filter(branch => branchCodes.includes(branch.code)).map(branch => branch._id);
+            // url = url + '?' + new URLSearchParams({ branchIds: JSON.stringify(branchIds) });
+            url = url + '?' + new URLSearchParams({ currentUserId: currentUser._id });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 const responseData = [];

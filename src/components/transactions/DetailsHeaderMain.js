@@ -17,7 +17,7 @@ import { setBranch } from "@/redux/actions/branchActions";
 
 const DetailsHeader = ({ pageTitle, page, pageName, currentDate, mode, selectedBranch, filter,
                             handleBranchFilter, selectedLO, handleLOFilter, dateFilter, handleDateFilter, weekend, holiday, handleSubmit, 
-                            selectedLoGroup, handleLoGroupChange, selectedBranchGroup, handleBranchGroup }) => {
+                            selectedLoGroup, handleLoGroupChange, selectedBranchGroup, handleBranchGroup, viewMode, handleViewModeChange }) => {
     const dispatch = useDispatch();
     const router = useRouter();
     const currentUser = useSelector(state => state.user.data);
@@ -146,10 +146,19 @@ const DetailsHeader = ({ pageTitle, page, pageName, currentDate, mode, selectedB
                             </div>
                         ) }
 
+                        {(currentUser.role.rep < 3 && currentUser.role.shortCode !== 'area_admin' && pageName == 'branch-view') && (
+                            <div className="flex flex-row ml-4">
+                                <RadioButton id={"radio_branch"} name="radio-branch" label={"View by Branch"} checked={viewMode === 'branch'} value="branch" onChange={handleViewModeChange} />
+                                <RadioButton id={"radio_area"} name="radio-area" label={"View by Area"} checked={viewMode === 'area'} value="area" onChange={handleViewModeChange} />
+                                <RadioButton id={"radio_region"} name="radio-region" label={"View by Region"} checked={viewMode === 'region'} value="region" onChange={handleViewModeChange} />
+                                <RadioButton id={"radio_division"} name="radio-division" label={"View by Division"} checked={viewMode === 'division'} value="division" onChange={handleViewModeChange} />
+                            </div>
+                        )}
+
                         { (currentUser.role.rep == 2 && currentUser.role.shortCode !== 'area_admin' && pageName == 'branch-view') && (
                             <div className="flex flex-row ml-4">
-                                <RadioButton id={"radio_mine"} name="radio-lo" label={"My Branches"} checked={selectedBranchGroup === 'mine'} value="mine" onChange={handleBranchGroup} />
-                                <RadioButton id={"radio_all"} name="radio-lo" label={"All Branch"} checked={selectedBranchGroup === 'all'} value="all" onChange={handleBranchGroup} />
+                                <RadioButton id={"radio_mine"} name="radio-lo" label={"Mine"} checked={selectedBranchGroup === 'mine'} value="mine" onChange={handleBranchGroup} />
+                                <RadioButton id={"radio_all"} name="radio-lo" label={"All"} checked={selectedBranchGroup === 'all'} value="all" onChange={handleBranchGroup} />
                             </div>
                         ) }
                     </div>

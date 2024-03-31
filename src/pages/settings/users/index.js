@@ -16,6 +16,10 @@ import ButtonSolid from "@/lib/ui/ButtonSolid";
 import Dialog from "@/lib/ui/Dialog";
 import { styles, DropdownIndicator, borderStyles } from "@/styles/select";
 import Select from 'react-select';
+import { setDivisionList } from "@/redux/actions/divisionActions";
+import { setRegionList } from "@/redux/actions/regionActions";
+import { setAreaList } from "@/redux/actions/areaActions";
+import { setBranchList } from "@/redux/actions/branchActions";
 
 const TeamPage = () => {
     const dispatch = useDispatch();
@@ -33,28 +37,28 @@ const TeamPage = () => {
     const [platformRoles, setPlatformRoles] = useState([]);
     const [rootUser, setRootUser] = useState(currentUser.root ? currentUser.root : false);
     const router = useRouter();
-    const [branches, setBranches] = useState([]);
 
     const [searchFilter, setSearchFilter] = useState();
 
     const getListUsers = async () => {
         const imgpath = process.env.NEXT_PUBLIC_LOCAL_HOST !== 'local' && process.env.NEXT_PUBLIC_LOCAL_HOST;
         let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
+        // not in used since user list is for root user only
         if (currentUser.root !== true && currentUser.role.rep === 3) { 
             url = url + '?' + new URLSearchParams({ branchCode: currentUser.designatedBranch });
         } else if (currentUser.root !== true && currentUser.role.rep === 2) {
-            // url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id });
+            url = url + '?' + new URLSearchParams({ currentUserId: currentUser._id });
         }
 
         const response = await fetchWrapper.get(url);
         let users = [];
         response.users && response.users.filter(u => !u.root).map((user) => {
             let designatedBranch = user.designatedBranch;
-            if (user.role.rep === 2) {
-                if (typeof designatedBranch === 'string') {
-                    designatedBranch = JSON.parse(user.designatedBranch);
-                }
-            }
+            // if (user.role.rep === 2) {
+            //     if (typeof designatedBranch === 'string') {
+            //         designatedBranch = JSON.parse(user.designatedBranch);
+            //     }
+            // }
 
             users.push({
                 _id: user._id,
@@ -157,7 +161,7 @@ const TeamPage = () => {
                     }
                 );
             });
-            setBranches(branchList);
+            dispatch(setBranchList(branchList));
         } else {
             toast.error('Error retrieving branch list.');
         }
@@ -305,6 +309,66 @@ const TeamPage = () => {
         setSearchFilter(selected);
     }
 
+    const getListArea = async () => {
+        let url = process.env.NEXT_PUBLIC_API_URL + 'areas/list';
+        const response = await fetchWrapper.get(url);
+        if (response.success) {
+            const data = [];
+            response.areas.map(branch => {
+                data.push({
+                    ...branch,
+                    value: branch._id,
+                    label: branch.name
+                })
+            });
+            dispatch(setAreaList(data));
+            setLoading(false);
+        } else if (response.error) {
+            setLoading(false);
+            toast.error(response.message);
+        }
+    }
+
+    const getListRegion = async () => {
+        let url = process.env.NEXT_PUBLIC_API_URL + 'regions/list';
+        const response = await fetchWrapper.get(url);
+        if (response.success) {
+            const data = [];
+            response.regions.map(region => {
+                data.push({
+                    ...region,
+                    value: region._id,
+                    label: region.name
+                })
+            });
+            dispatch(setRegionList(data));
+            setLoading(false);
+        } else if (response.error) {
+            setLoading(false);
+            toast.error(response.message);
+        }
+    }
+
+    const getListDivision = async () => {
+        let url = process.env.NEXT_PUBLIC_API_URL + 'divisions/list';
+        const response = await fetchWrapper.get(url);
+        if (response.success) {
+            const data = [];
+            response.divisions.map(division => {
+                data.push({
+                    ...division,
+                    value: division._id,
+                    label: division.name
+                })
+            });
+            dispatch(setDivisionList(data));
+            setLoading(false);
+        } else if (response.error) {
+            setLoading(false);
+            toast.error(response.message);
+        }
+    }
+
     const handleKeyDown = (e) => {
         if (e.key === 'Escape') {
             setSearchFilter('');
@@ -326,7 +390,9 @@ const TeamPage = () => {
         mounted && getListUsers();
         mounted && getListPlatformRoles();
         mounted && getListBranch();
-
+        mounted && getListArea();
+        mounted && getListRegion();
+        mounted && getListDivision();
 
         return () => {
             mounted = false;
@@ -412,7 +478,7 @@ const TeamPage = () => {
                         </div>
                     )}
             </div>
-            <AddUpdateUser mode={mode} user={userData} roles={platformRoles} branches={branches} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
+            <AddUpdateUser mode={mode} user={userData} roles={platformRoles} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
             <Dialog show={showDeleteDialog}>
                 <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                     <div className="sm:flex sm:items-start justify-center">

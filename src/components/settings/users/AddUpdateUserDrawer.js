@@ -13,13 +13,10 @@ import SideBar from "@/lib/ui/SideBar";
 import placeholder from '/public/images/image-placeholder.png';
 import Image from 'next/image';
 import Spinner from "@/components/Spinner";
-import { multiStyles, DropdownIndicator } from "@/styles/select";
-import Select from 'react-select';
-import { setUser } from "@/redux/actions/userActions";
 import RadioButton from "@/lib/ui/radio-button";
 import { checkFileSize } from "@/lib/utils";
 
-const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], showSidebar, setShowSidebar, onClose }) => {    
+const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setShowSidebar, onClose }) => {    
     const hiddenInput = useRef(null);
     const formikRef = useRef();
     const dispatch = useDispatch();
@@ -31,16 +28,16 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
     const [selectedBranches, setSelectedBranches] = useState([]);
     const [occurence, setOccurence] = useState('daily');
     const currentDate = useSelector(state => state.systemSettings.currentDate);
-    const [role, setRole] = useState(user.roleId);
-    const [rep, setRep] = useState();
-
+    const [selectedRole, setSelectedRole] = useState();
+    const branchList = useSelector(state => state.branch.list);
+    
     const initialValues = {
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
         number: user.number,
         position: user.position,
-        designatedBranch: user.designatedBranch ? (user.roleId === 2 ? user.designatedBranch : user.designatedBranch) : 0,
+        designatedBranch: user.designatedBranch,
         role: user.role ? user.roleId : '',
         loNo: user.loNo ? parseInt(user.loNo) : null,
         transactionType: user.transactionType,
@@ -76,7 +73,9 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
 
     const handleRoleChange = (field, value) => {
         const form = formikRef.current;
-        setRole(value);
+        const roleArr = value.split('-');
+        const selected = roles.find(r => r.shortCode == roleArr[1]);
+        setSelectedRole(selected);
         form.setFieldValue(field, value);
     }
 
@@ -193,49 +192,41 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
 
     useEffect(() => {
         let mounted = true;
-
-        if (user.imgUrl) {
-            // setPhoto(`${imgpath}/${user.imgUrl}`);
-            mounted && setPhoto(`${user.imgUrl}`);
+        if (user) {
+            if (user.imgUrl) {
+                // setPhoto(`${imgpath}/${user.imgUrl}`);
+                mounted && setPhoto(`${user.imgUrl}`);
+            }
+    
+            if (user.roleId) {
+                setRole(user.roleId);
+            }
+    
+            if (user.hasOwnProperty('transactionType') && user.transactionType) {
+                mounted && setOccurence(user.transactionType);
+            }
+    
+            if (user?.roleId?.startsWith('2-')) {
+                const branchesCode = user.designatedBranch;
+                let selectedBranchesList = [];
+                branches && branches.map(branch => {
+                    branchesCode.map(b => {
+                        if (branch.code === b) {
+                            selectedBranchesList.push(branch);
+                        }
+                    })
+                });
+    
+                mounted && setSelectedBranches(selectedBranchesList);
+            } else {
+                setSelectedBranches([]);
+            }
         }
-
-        if (user.roleId) {
-            setRole(user.roleId);
-        }
-
-        if (user.hasOwnProperty('transactionType') && user.transactionType) {
-            mounted && setOccurence(user.transactionType);
-        }
-
-        if (user?.roleId?.startsWith('2-')) {
-            const branchesCode = user.designatedBranch;
-            let selectedBranchesList = [];
-            branches && branches.map(branch => {
-                branchesCode.map(b => {
-                    if (branch.code === b) {
-                        selectedBranchesList.push(branch);
-                    }
-                })
-            });
-
-            mounted && setSelectedBranches(selectedBranchesList);
-        } else {
-            setSelectedBranches([]);
-        }
-
-        setLoading(false);
 
         return () => {
             mounted = false;
         };
-    }, [user]);
-
-    useEffect(() => {
-        if (role) {
-            const roleArr = role.split('-'); 
-            setRep(parseInt(roleArr[0]));
-        }
-    }, [role]);
+    }, []);
 
     return (
         <React.Fragment>
@@ -352,8 +343,10 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
                                             errors={touched.role && errors.role ? errors.role : undefined}
                                         />
                                     </div>
-                                    {rep == 2 && (
+                                    {/* TO DO: need to incorporate area here
+                                    {selectedRole?.shortCode == 'area_admin' && (
                                         <div className="mt-4">
+                                            {}
                                             <div className={`flex flex-col border rounded-md px-4 py-2 bg-white ${selectedBranches?.length > 0 ? 'border-main' : 'border-slate-400'}`}>
                                                 <div className="flex justify-between">
                                                     <label htmlFor="designatedBranch" className={`font-proxima-bold text-xs font-bold  ${selectedBranches?.length > 0 ? 'text-main' : 'text-gray-500'}`}>
@@ -362,7 +355,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
                                                 </div>
                                                 <div className="block h-fit">
                                                     <Select 
-                                                        options={branches}
+                                                        options={branchList}
                                                         value={selectedBranches}
                                                         isMulti
                                                         styles={multiStyles}
@@ -375,7 +368,79 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
                                             </div>
                                         </div>
                                     )}
-                                    {rep >= 3 && (
+                                    {selectedRole?.shortCode == 'deputy_director' && (
+                                        <div className="mt-4">
+                                            {}
+                                            <div className={`flex flex-col border rounded-md px-4 py-2 bg-white ${selectedBranches?.length > 0 ? 'border-main' : 'border-slate-400'}`}>
+                                                <div className="flex justify-between">
+                                                    <label htmlFor="designatedBranch" className={`font-proxima-bold text-xs font-bold  ${selectedBranches?.length > 0 ? 'text-main' : 'text-gray-500'}`}>
+                                                        Designated Branches
+                                                    </label>
+                                                </div>
+                                                <div className="block h-fit">
+                                                    <Select 
+                                                        options={branchList}
+                                                        value={selectedBranches}
+                                                        isMulti
+                                                        styles={multiStyles}
+                                                        components={{ DropdownIndicator }}
+                                                        onChange={handleSelectBranch}
+                                                        isSearchable={true}
+                                                        closeMenuOnSelect={true}
+                                                        placeholder={'Select branches'}/>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {selectedRole?.shortCode == 'regional_manager' && (
+                                        <div className="mt-4">
+                                            {}
+                                            <div className={`flex flex-col border rounded-md px-4 py-2 bg-white ${selectedBranches?.length > 0 ? 'border-main' : 'border-slate-400'}`}>
+                                                <div className="flex justify-between">
+                                                    <label htmlFor="designatedBranch" className={`font-proxima-bold text-xs font-bold  ${selectedBranches?.length > 0 ? 'text-main' : 'text-gray-500'}`}>
+                                                        Designated Branches
+                                                    </label>
+                                                </div>
+                                                <div className="block h-fit">
+                                                    <Select 
+                                                        options={branchList}
+                                                        value={selectedBranches}
+                                                        isMulti
+                                                        styles={multiStyles}
+                                                        components={{ DropdownIndicator }}
+                                                        onChange={handleSelectBranch}
+                                                        isSearchable={true}
+                                                        closeMenuOnSelect={true}
+                                                        placeholder={'Select branches'}/>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {selectedRole?.shortCode == 'area_admin' && (
+                                        <div className="mt-4">
+                                            {}
+                                            <div className={`flex flex-col border rounded-md px-4 py-2 bg-white ${selectedBranches?.length > 0 ? 'border-main' : 'border-slate-400'}`}>
+                                                <div className="flex justify-between">
+                                                    <label htmlFor="designatedBranch" className={`font-proxima-bold text-xs font-bold  ${selectedBranches?.length > 0 ? 'text-main' : 'text-gray-500'}`}>
+                                                        Designated Branches
+                                                    </label>
+                                                </div>
+                                                <div className="block h-fit">
+                                                    <Select 
+                                                        options={branchList}
+                                                        value={selectedBranches}
+                                                        isMulti
+                                                        styles={multiStyles}
+                                                        components={{ DropdownIndicator }}
+                                                        onChange={handleSelectBranch}
+                                                        isSearchable={true}
+                                                        closeMenuOnSelect={true}
+                                                        placeholder={'Select branches'}/>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )} */}
+                                    {selectedRole?.rep >= 3 && (
                                         <React.Fragment>
                                             <div className="mt-4">
                                                 <InputText
@@ -393,7 +458,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
                                                     field="designatedBranch"
                                                     value={values.designatedBranch}
                                                     label="Designated Branch"
-                                                    options={branches}
+                                                    options={branchList}
                                                     onChange={setFieldValue}
                                                     onBlur={setFieldTouched}
                                                     placeholder="Select Branch"
@@ -402,7 +467,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], branches = [], sho
                                             </div>
                                         </React.Fragment>
                                     )}
-                                    {rep === 4 && (
+                                    {selectedRole?.rep === 4 && (
                                         <React.Fragment>
                                             <div className="mt-4">
                                                 <SelectDropdown

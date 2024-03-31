@@ -7,11 +7,12 @@ export default apiHandler({
 
 async function list(req, res) {
     const { db } = await connectToDatabase();
+    const ObjectId = require('mongodb').ObjectId;
     let statusCode = 200;
     let response = {};
     let badDebtCollection;
 
-    const { loId, branchId, branchIds } = req.query;
+    const { loId, branchId, branchIds, currentUserId } = req.query;
 
     if (loId) {
         badDebtCollection = await db
@@ -78,18 +79,49 @@ async function list(req, res) {
         if (branchId) {
             badDebtCollection = await getByBranch(branchId);
         } else {
-            const branchIdsObj = JSON.parse(branchIds);
-            const data = [];
-            const promise = await new Promise(async (resolve) => {
-                const response = await Promise.all(branchIdsObj.map(async (branchId) => {
-                    data.push.apply(data, await getByBranch(branchId));
-                }));
+            if (currentUserId) {
+                const user = await db.collection('users').find({ _id: new ObjectId(currentUserId) }).toArray();
+                if (user.length > 0) {
+                    let branchIds = [];
+                    if (user[0].areaId && user[0].role.shortCode === 'area_admin') {
+                        const branches = await db.collection('branches').find({ areaId: user[0].areaId }).toArray();
+                        branchIds = branches.map(branch => branch._id.toString());
+                    } else if (user[0].regionId && user[0].role.shortCode === 'regional_manager') {
+                        const branches = await db.collection('branches').find({ regionId: user[0].regionId }).toArray();
+                        branchIds = branches.map(branch => branch._id.toString());
+                    } else if (user[0].divisionId && user[0].role.shortCode === 'deputy_director') {
+                        const branches = await db.collection('branches').find({ divisionId: user[0].divisionId }).toArray();
+                        branchIds = branches.map(branch => branch._id.toString());
+                    }
 
-                resolve(response);
-            });
+                    const data = [];
+                    const promise = await new Promise(async (resolve) => {
+                        const response = await Promise.all(branchIds.map(async (branchId) => {
+                            data.push.apply(data, await getByBranch(branchId));
+                        }));
 
-            if (promise) {
-                badDebtCollection = data;
+                        resolve(response);
+                    });
+
+                    if (promise) {
+                        badDebtCollection = data;
+                    }
+                }
+            } else {
+                const branches = await db.collection('branches').find({ }).toArray();
+                const branchIds = branches.map(branch => branch._id.toString());
+                const data = [];
+                const promise = await new Promise(async (resolve) => {
+                    const response = await Promise.all(branchIds.map(async (branchId) => {
+                        data.push.apply(data, await getByBranch(branchId));
+                    }));
+
+                    resolve(response);
+                });
+
+                if (promise) {
+                    badDebtCollection = data;
+                }
             }
         }
     }

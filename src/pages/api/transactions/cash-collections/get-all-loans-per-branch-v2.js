@@ -7,39 +7,59 @@ export default apiHandler({
 });
 
 async function getData (req, res) {
+    const { db } = await connectToDatabase();
+    const ObjectId = require('mongodb').ObjectId;
     let statusCode = 200;
     let response = {};
 
-    const { date, branchIds, dayName, currentDate } = req.query;
+    const { date, currentUserId, selectedBranchGroup, dayName, currentDate } = req.query;
 
-    const branchIdsObj = JSON.parse(branchIds);
-    const data = [];
-    const promise = await new Promise(async (resolve) => {
-        const response = await Promise.all(branchIdsObj.map(async (branchId) => {
-            logger.debug({page: 'Branch Collections', message: `Getting data for branch id: ${branchId}`});
-            data.push.apply(data, await getAllLoanTransactionsByBranch(branchId, date, dayName, currentDate));
-        }));
-
-        resolve(response);
-    });
-
-    if (promise) {
-        data.sort((a, b) => {
-            if (a.code > b.code) {
-                return 1;
+    const user = await db.collection('users').find({ _id: new ObjectId(currentUserId) }).toArray();
+    if (user.length > 0) {
+        let branchIds = [];
+        if (selectedBranchGroup == 'mine') {
+            if (user[0].areaId && user[0].role.shortCode === 'area_admin') {
+                const branches = await db.collection('branches').find({ areaId: user[0].areaId }).toArray();
+                branchIds = branches.map(branch => branch._id.toString());
+            } else if (user[0].regionId && user[0].role.shortCode === 'regional_manager') {
+                const branches = await db.collection('branches').find({ regionId: user[0].regionId }).toArray();
+                branchIds = branches.map(branch => branch._id.toString());
+            } else if (user[0].divisionId && user[0].role.shortCode === 'deputy_director') {
+                const branches = await db.collection('branches').find({ divisionId: user[0].divisionId }).toArray();
+                branchIds = branches.map(branch => branch._id.toString());
             }
+        } else {
+            const branches = await db.collection('branches').find({ }).toArray();
+            branchIds = branches.map(branch => branch._id.toString());
+        }
+        
+        const data = [];
+        const promise = await new Promise(async (resolve) => {
+            const response = await Promise.all(branchIds.map(async (branchId) => {
+                logger.debug({page: 'Branch Collections', message: `Getting data for branch id: ${branchId}`});
+                data.push.apply(data, await getAllLoanTransactionsByBranch(db, branchId, date, dayName, currentDate));
+            }));
 
-            if (b.code > a.code) {
-                return -1;
-            }
-            
-            return 0;
+            resolve(response);
         });
-        response = { success: true, data: data };
-    }
-    else {
-        statusCode = 500;
-        response = { error: true, message: "Error fetching data" };
+
+        if (promise) {
+            data.sort((a, b) => {
+                if (a.code > b.code) {
+                    return 1;
+                }
+
+                if (b.code > a.code) {
+                    return -1;
+                }
+                
+                return 0;
+            });
+            response = { success: true, data: data };
+        } else {
+            statusCode = 500;
+            response = { error: true, message: "Error fetching data" };
+        }
     }
 
     res.status(statusCode)
@@ -47,8 +67,7 @@ async function getData (req, res) {
         .end(JSON.stringify(response));
 }
 
-async function getAllLoanTransactionsByBranch(branchId, date, dayName, currentDate) {
-    const { db } = await connectToDatabase();
+async function getAllLoanTransactionsByBranch(db, branchId, date, dayName, currentDate) {
     const ObjectId = require('mongodb').ObjectId;
 
     let cashCollection;

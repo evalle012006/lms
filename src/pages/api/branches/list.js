@@ -7,11 +7,12 @@ export default apiHandler({
 
 async function list(req, res) {
     const { db } = await connectToDatabase();
+    const ObjectId = require('mongodb').ObjectId;
     let statusCode = 200;
     let response = {};
     let branches;
 
-    const { branchCode, branchCodes } = req.query;
+    const { currentUserId, branchCode } = req.query;
 
     if (branchCode) {
         branches = await db
@@ -41,34 +42,47 @@ async function list(req, res) {
                 }
             ])
             .toArray();
-    } else if (branchCodes) {
-        const codes = branchCodes.trim().split(",");
-        branches = await db.collection('branches')
-            // .find({ $expr: {$in: ["$code", codes]} })
-            // .sort({ code: 1 })
-            .aggregate([
-                { $match: { $expr: {$in: ["$code", codes]} } },
-                {
-                    $lookup: {
-                        from: "users",
-                        localField: "code",
-                        foreignField: "designatedBranch",
-                        pipeline: [
-                            { $match: { $expr: {$eq: ['$role.rep', 4]} } },
-                            { $group: {
-                                _id: null,
-                                count: { $sum: 1 }
-                            } }
-                        ],
-                        as: "noOfLO"
+    } else if (currentUserId) {
+        // const codes = branchCodes.trim().split(",");
+        const user = await db.collection('users').find({ _id: new ObjectId(currentUserId) }).toArray();
+        if (user.length > 0) {
+            let codes = [];
+            if (user[0].areaId && user[0].role.shortCode === 'area_admin') {
+                const branches = await db.collection('branches').find({ areaId: user[0].areaId }).toArray();
+                codes = branches.map(branch => branch.code);
+            } else if (user[0].regionId && user[0].role.shortCode === 'regional_manager') {
+                const branches = await db.collection('branches').find({ regionId: user[0].regionId }).toArray();
+                codes = branches.map(branch => branch.code);
+            } else if (user[0].divisionId && user[0].role.shortCode === 'deputy_director') {
+                const branches = await db.collection('branches').find({ divisionId: user[0].divisionId }).toArray();
+                codes = branches.map(branch => branch.code);
+            }
+
+            branches = await db.collection('branches')
+                .aggregate([
+                    { $match: { $expr: {$in: ["$code", codes]} } },
+                    {
+                        $lookup: {
+                            from: "users",
+                            localField: "code",
+                            foreignField: "designatedBranch",
+                            pipeline: [
+                                { $match: { $expr: {$eq: ['$role.rep', 4]} } },
+                                { $group: {
+                                    _id: null,
+                                    count: { $sum: 1 }
+                                } }
+                            ],
+                            as: "noOfLO"
+                        }
+                    },
+                    { $unwind: '$noOfLO' },
+                    {
+                        $sort: { code: 1 }
                     }
-                },
-                { $unwind: '$noOfLO' },
-                {
-                    $sort: { code: 1 }
-                }
-            ])
-            .toArray();
+                ])
+                .toArray();
+        }
     } else {
         branches = await db
             .collection('branches')

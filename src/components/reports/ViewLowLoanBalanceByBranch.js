@@ -54,8 +54,9 @@ const ViewLowBalanceByBranchPage = ({ amount, amountOperator, noOfPayments, noOf
         const noOfPaymentsOption = JSON.stringify({ noOfPayments: noOfPayments, operator: noOfPaymentsOperator });
         let url = process.env.NEXT_PUBLIC_API_URL + 'reports/get-all-low-loan-balance';
         if (currentUser.role.rep == 2 && branchList.length > 0) {
-            const branchIds = branchList.filter(branch => currentUser.designatedBranch.includes(branch.code)).map(branch => branch._id);
-            url = url + '?' + new URLSearchParams({ branchIds: JSON.stringify(branchIds), amountOption: amountOption, noOfPaymentsOption: noOfPaymentsOption });
+            // const branchIds = branchList.filter(branch => currentUser.designatedBranch.includes(branch.code)).map(branch => branch._id);
+            // url = url + '?' + new URLSearchParams({ branchIds: JSON.stringify(branchIds), amountOption: amountOption, noOfPaymentsOption: noOfPaymentsOption });
+            url = url + '?' + new URLSearchParams({ currentUserId: currentUser._id, amountOption: amountOption, noOfPaymentsOption: noOfPaymentsOption });
         } else {
             url = url + '?' + new URLSearchParams({ amountOption: amountOption, noOfPaymentsOption: noOfPaymentsOption });
         }

@@ -38,8 +38,6 @@ export default function BadDebtCollectionPage() {
     const getList = async () => {
         let url = process.env.NEXT_PUBLIC_API_URL + 'other-transactions/badDebtCollection/list-bad-debts';
         if (currentUser.role.rep == 1) {
-            const branchIds = branchList.map(branch => branch._id);
-            url = url + '?' + new URLSearchParams({ branchIds: JSON.stringify(branchIds) });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 const responseData = [];
@@ -75,9 +73,10 @@ export default function BadDebtCollectionPage() {
                 toast.error(response.message);
             }
         } else if (currentUser.role.rep === 2) {
-            const branchCodes = typeof currentUser.designatedBranch === 'string' ? JSON.parse(currentUser.designatedBranch) : currentUser.designatedBranch;
-            const branchIds = branchList.filter(branch => branchCodes.includes(branch.code)).map(branch => branch._id);
-            url = url + '?' + new URLSearchParams({ branchIds: JSON.stringify(branchIds) });
+            // const branchCodes = typeof currentUser.designatedBranch === 'string' ? JSON.parse(currentUser.designatedBranch) : currentUser.designatedBranch;
+            // const branchIds = branchList.filter(branch => branchCodes.includes(branch.code)).map(branch => branch._id);
+            // url = url + '?' + new URLSearchParams({ branchIds: JSON.stringify(branchIds) });
+            url = url + '?' + new URLSearchParams({ currentUserId: currentUser._id });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 const responseData = [];
@@ -220,8 +219,6 @@ export default function BadDebtCollectionPage() {
     const getCollectionList = async () => {
         let url = process.env.NEXT_PUBLIC_API_URL + 'other-transactions/badDebtCollection/list';
         if (currentUser.role.rep == 1) {
-            const branchIds = branchList.map(branch => branch._id);
-            url = url + '?' + new URLSearchParams({ branchIds: JSON.stringify(branchIds) });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 const responseData = [];
@@ -252,9 +249,7 @@ export default function BadDebtCollectionPage() {
                 toast.error(response.message);
             }
         } else if (currentUser.role.rep === 2) {
-            const branchCodes = typeof currentUser.designatedBranch === 'string' ? JSON.parse(currentUser.designatedBranch) : currentUser.designatedBranch;
-            const branchIds = branchList.filter(branch => branchCodes.includes(branch.code)).map(branch => branch._id);
-            url = url + '?' + new URLSearchParams({ branchIds: JSON.stringify(branchIds) });
+            url = url + '?' + new URLSearchParams({ currentUserId: currentUser._id });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 const responseData = [];
@@ -397,8 +392,7 @@ export default function BadDebtCollectionPage() {
                 toast.error(response.message);
             }
         } else if (currentUser.role.rep === 2) {
-            const branchCodes = typeof currentUser.designatedBranch === 'string' ? JSON.parse(currentUser.designatedBranch) : currentUser.designatedBranch;
-            url = url + '?' + new URLSearchParams({ branchCodes: branchCodes });
+            url = url + '?' + new URLSearchParams({ currentUserId: currentUser._id });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 dispatch(setBranchList(response.branches));

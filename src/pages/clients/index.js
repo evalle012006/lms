@@ -29,7 +29,13 @@ const ClientsProspectPage = () => {
     const [client, setClient] = useState();
 
     const getListBranch = async () => {
-        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'branches/list');
+        let url = process.env.NEXT_PUBLIC_API_URL + 'branches/list';
+        
+        if (currentUser.role.rep == 2) {
+            url = url + '?' + new URLSearchParams({ currentUserId: currentUser._id });
+        }
+
+        const response = await fetchWrapper.get(url);
         if (response.success) {
             let branches = [];
             response.branches && response.branches.map(branch => {
@@ -44,9 +50,6 @@ const ClientsProspectPage = () => {
 
             if (currentUser.root !== true && (currentUser.role.rep === 3 || currentUser.role.rep === 4)) {
                 branches = [branches.find(b => b.code === currentUser.designatedBranch)];
-            } else if (currentUser.role.rep === 2) {
-                const branchCodes = typeof currentUser.designatedBranch === 'string' ? JSON.parse(currentUser.designatedBranch) : currentUser.designatedBranch;
-                branches = branches.filter(b => branchCodes.includes(b.code));
             }
 
             dispatch(setBranchList(branches));
@@ -106,9 +109,9 @@ const ClientsProspectPage = () => {
             }
         } else if (currentUser.role.rep === 2 && branchList.length > 0) {
             if (status == 'pending') {
-                url = url + '?' + new URLSearchParams({ areaManagerId: currentUser._id, mode: 'all' });
+                url = url + '?' + new URLSearchParams({ currentUserId: currentUser._id, mode: 'all' });
             } else {
-                url = url + '?' + new URLSearchParams({ areaManagerId: currentUser._id });
+                url = url + '?' + new URLSearchParams({ currentUserId: currentUser._id });
             }
             const response = await fetchWrapper.get(url);
             if (response.success) {
@@ -197,8 +200,8 @@ const ClientsProspectPage = () => {
             }
 
             setLoading(false);
-        } else if (currentUser.role.rep === 2 && branchList.length > 0) {
-            let url = process.env.NEXT_PUBLIC_API_URL + 'users/list?' + new URLSearchParams({ areaManagerId: currentUser._id, branchCode: branchList[0].code });;
+        } else if (currentUser.role.rep === 2) {
+            let url = process.env.NEXT_PUBLIC_API_URL + 'users/list?' + new URLSearchParams({ currentUserId: currentUser._id });;
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let userList = [];

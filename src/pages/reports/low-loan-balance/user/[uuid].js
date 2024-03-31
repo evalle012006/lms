@@ -35,8 +35,7 @@ const LowLoanBalanceByGroupPage = () => {
         let url = process.env.NEXT_PUBLIC_API_URL + 'branches/list';
 
         if (currentUser.role.rep == 2) {
-            const branchCodes = typeof currentUser.designatedBranch === 'string' ? JSON.parse(currentUser.designatedBranch) : currentUser.designatedBranch;
-            url = url + '?' + new URLSearchParams({ branchCodes: branchCodes });
+            url = url + '?' + new URLSearchParams({ currentUserId: currentUser._id });
         }
         
         const response = await fetchWrapper.get(url);

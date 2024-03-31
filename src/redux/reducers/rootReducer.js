@@ -13,6 +13,9 @@ import systemSettings from './systemReducer';
 import global from './globalReducer';
 import transfer from './transferReducer';
 import badDebtCollection from './badDebtCollectionReducer';
+import area from './areaReducer';
+import region from './regionReducer';
+import division from './divisionReducer';
 
 const rootReducer = combineReducers({
     badDebtCollection: badDebtCollection,
@@ -22,9 +25,12 @@ const rootReducer = combineReducers({
     loan: loan,
     client: client,
     group: group,
-    role: role,
+    division: division,
+    region: region,
+    area: area,
     branch: branch,
     user: user,
+    role: role,
     holidays: holidays,
     transactionsSettings: transactionsSettings,
     systemSettings: systemSettings,

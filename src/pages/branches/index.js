@@ -41,8 +41,9 @@ const BranchesPage = () => {
                 toast.error(response.message);
             }
         } else if (currentUser.role.rep === 2) {
-            const branchCodes = typeof currentUser.designatedBranch === 'string' ? JSON.parse(currentUser.designatedBranch) : currentUser.designatedBranch;
-            url = url + '?' + new URLSearchParams({ branchCodes: branchCodes });
+            // const branchCodes = typeof currentUser.designatedBranch === 'string' ? JSON.parse(currentUser.designatedBranch) : currentUser.designatedBranch;
+            // url = url + '?' + new URLSearchParams({ branchCodes: branchCodes });
+            url = url + '?' + new URLSearchParams({ currentUserId: currentUser._id });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 dispatch(setBranchList(response.branches));

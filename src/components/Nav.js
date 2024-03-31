@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import logo from "/public/images/logo.png";
 import { 
     Squares2X2Icon, 
+    BuildingStorefrontIcon,
+    BuildingOfficeIcon,
     BuildingOffice2Icon,
     ChartBarSquareIcon,
     ChartBarIcon,
@@ -18,6 +20,7 @@ import {
     BuildingLibraryIcon,
     ChevronDownIcon,
     UserCircleIcon,
+    CpuChipIcon,
     ArrowRightOnRectangleIcon,
     ArrowsRightLeftIcon,
     CloudArrowUpIcon
@@ -147,10 +150,55 @@ const MenuItems = [
         url: "/branches",
         icon: {
             active: (
+                <BuildingStorefrontIcon className="text-gray-800 w-5 h-5" />
+            ),
+            notActive: (
+                <BuildingStorefrontIcon className="text-white w-5 h-5" />
+            ),
+        },
+        active: false,
+        hasSub: false,
+        hidden: false
+    },
+    {
+        label: "Areas",
+        url: "/areas",
+        icon: {
+            active: (
+                <BuildingOfficeIcon className="text-gray-800 w-5 h-5" />
+            ),
+            notActive: (
+                <BuildingOfficeIcon className="text-white w-5 h-5" />
+            ),
+        },
+        active: false,
+        hasSub: false,
+        hidden: false
+    },
+    {
+        label: "Regions",
+        url: "/regions",
+        icon: {
+            active: (
                 <BuildingOffice2Icon className="text-gray-800 w-5 h-5" />
             ),
             notActive: (
                 <BuildingOffice2Icon className="text-white w-5 h-5" />
+            ),
+        },
+        active: false,
+        hasSub: false,
+        hidden: false
+    },
+    {
+        label: "Divisions",
+        url: "/divisions",
+        icon: {
+            active: (
+                <BuildingLibraryIcon className="text-gray-800 w-5 h-5" />
+            ),
+            notActive: (
+                <BuildingLibraryIcon className="text-white w-5 h-5" />
             ),
         },
         active: false,
@@ -603,10 +651,10 @@ const MenuItems = [
                 url: "/settings/system",
                 icon: {
                     active: (
-                        <BuildingLibraryIcon className="text-gray-800 w-5 h-5" />
+                        <CpuChipIcon className="text-gray-800 w-5 h-5" />
                     ),
                     notActive: (
-                        <BuildingLibraryIcon className="text-white w-5 h-5" />
+                        <CpuChipIcon className="text-white w-5 h-5" />
                     ),
                 },
                 active: false,
@@ -751,6 +799,18 @@ const NavComponent = () => {
                     temp.hidden = true;
                 }
             } else if (userState.role.rep === 2) {
+                if (menu.label === 'Divisions') {
+                    temp.hidden = true;
+                }
+
+                if (menu.label === 'Regions') {
+                    temp.hidden = true;
+                }
+
+                if (menu.label === 'Areas') {
+                    temp.hidden = true;
+                }
+                
                 if (menu.label === 'Settings') {
                     temp.hidden = true;
                 }
@@ -764,6 +824,17 @@ const NavComponent = () => {
                 }
 
             } else if (userState.role.rep === 3) {
+                if (menu.label === 'Divisions') {
+                    temp.hidden = true;
+                }
+
+                if (menu.label === 'Regions') {
+                    temp.hidden = true;
+                }
+
+                if (menu.label === 'Areas') {
+                    temp.hidden = true;
+                }
                 if (menu.label === 'Settings') {
                     temp.hidden = true;
                 }
@@ -776,6 +847,17 @@ const NavComponent = () => {
                     temp.hidden = true;
                 }
             }  else if (userState.role.rep === 4) {
+                if (menu.label === 'Divisions') {
+                    temp.hidden = true;
+                }
+
+                if (menu.label === 'Regions') {
+                    temp.hidden = true;
+                }
+
+                if (menu.label === 'Areas') {
+                    temp.hidden = true;
+                }
                 if (menu.label === 'Branches') {
                     temp.hidden = true;
                 }
