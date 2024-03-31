@@ -12,6 +12,10 @@ import ViewByBranchPage from "@/components/transactions/ViewByBranch";
 import Dialog from "@/lib/ui/Dialog";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
+import ViewByAreaPage from "@/components/transactions/ViewByArea";
+import { UppercaseFirstLetter } from "@/lib/utils";
+import ViewByRegionPage from "@/components/transactions/ViewByRegion";
+import ViewByDivisionPage from "@/components/transactions/ViewByDivision";
 
 const BranchCashCollectionPage = () => {
     const isHoliday = useSelector(state => state.systemSettings.holiday);
@@ -29,6 +33,11 @@ const BranchCashCollectionPage = () => {
     const [filter, setFilter] = useState(false);
     const [selectedLoGroup, setSelectedLoGroup] = useState('all');
     const [selectedBranchGroup, setSelectedBranchGroup] = useState('mine');
+    const [viewMode, setViewMode] = useState('branch');
+
+    const handleViewModeChange = (mode) => {
+        setViewMode(mode);
+    }
 
     const handleLoGroupChange = (value) => {
         setSelectedLoGroup(value);
@@ -166,14 +175,22 @@ const BranchCashCollectionPage = () => {
             ) : (
                 <React.Fragment>
                     <div className="overflow-x-auto">
-                        {branchList && <DetailsHeader pageTitle='Branch Cash Collections' pageName={currentUser.role.rep < 3 ? "branch-view" : ""}
+                        {branchList && <DetailsHeader pageTitle={`${UppercaseFirstLetter(viewMode)} Cash Collections`} pageName={currentUser.role.rep < 3 ? "branch-view" : ""}
                             page={1} currentDate={moment(currentDate).format('dddd, MMMM DD, YYYY')} weekend={isWeekend} holiday={isHoliday}
                             dateFilter={dateFilter} handleDateFilter={handleDateFilter} handleSubmit={handleShowSubmitDialog} filter={filter}
                             selectedLoGroup={selectedLoGroup} handleLoGroupChange={handleLoGroupChange}
                             selectedBranchGroup={selectedBranchGroup} handleBranchGroup={handleBranchGroup}
+                            viewMode={viewMode} handleViewModeChange={handleViewModeChange}
                         />}
                         <div className={`p-4 ${currentUser.role.rep < 4 ? 'mt-[8rem]' : 'mt-[6rem]'} `}>
-                            {currentUser.role.rep < 3 && <ViewByBranchPage dateFilter={dateFilter} selectedBranchGroup={selectedBranchGroup} />}
+                            {currentUser.role.rep < 3 && (
+                                <React.Fragment>
+                                    {viewMode == 'division' && <ViewByDivisionPage dateFilter={dateFilter} selectedBranchGroup={selectedBranchGroup} viewMode={viewMode} />}
+                                    {viewMode == 'region' && <ViewByRegionPage dateFilter={dateFilter} selectedBranchGroup={selectedBranchGroup} viewMode={viewMode} />}
+                                    {viewMode == 'area' && <ViewByAreaPage dateFilter={dateFilter} selectedBranchGroup={selectedBranchGroup} viewMode={viewMode} />}
+                                    {viewMode == 'branch' && <ViewByBranchPage dateFilter={dateFilter} selectedBranchGroup={selectedBranchGroup} viewMode={viewMode} />}
+                                </React.Fragment>
+                            )}
                             {currentUser.role.rep === 3 && <ViewByLoanOfficerPage pageNo={1} dateFilter={dateFilter} selectedLoGroup={selectedLoGroup} />}
                         </div>
                     </div>

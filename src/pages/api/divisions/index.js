@@ -105,6 +105,15 @@ async function updateDivision(req, res) {
 
                 const region = await db.collection('regions').findOne({ _id: new ObjectId(regionId) });
                 if (region) {
+                    const managerIds = region.managerIds;
+                    await Promise.all(managerIds.map(async (managerId) => {
+                        await db.collection('users').updateOne(
+                            { _id: new ObjectId(managerId) },
+                            { $set: { divisionId: divisionId } },
+                            { upsert: false }
+                        );
+                    }));
+
                     const areaIds = region.areaIds;
                     await Promise.all(areaIds.map(async (areaId) => {
                         await db.collection('areas').updateOne(
