@@ -21,8 +21,7 @@ async function getData (req, res) {
     const user = await db.collection('users').find({ _id: new ObjectId(currentUserId) }).toArray();
     if (user.length > 0) {
         let divisionIds = [];
-        if (selectedBranchGroup == 'mine') {
-            console.log(user[0].divisionId)
+        if (selectedBranchGroup == 'mine' && user[0].role.rep !== 1) {
             if (user[0].divisionId && user[0].role.shortCode === 'regional_manager') {
                 const divisions = await db.collection('divisions').find({ _id: new ObjectId(user[0].divisionId) }).toArray();
                 divisionIds = divisions.map(division => division._id.toString());
