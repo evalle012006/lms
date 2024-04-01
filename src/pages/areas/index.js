@@ -84,7 +84,7 @@ const AreasPage = () => {
                     label: branch.name
                 })
             });
-            branchList = branchList.filter(branch => !branch.hasOwnProperty('areaId'));
+
             dispatch(setBranchList(branchList));
         } else if (response.error) {
             setLoading(false);

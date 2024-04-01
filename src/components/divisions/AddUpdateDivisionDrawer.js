@@ -142,7 +142,6 @@ const AddUpdateDivision = ({ mode = 'add', division = {}, managerList=[], showSi
                                             label="Name"
                                             placeholder="Enter Name"
                                             setFieldValue={setFieldValue}
-                                            disabled={mode !== 'add'}
                                             errors={touched.name && errors.name ? errors.name : undefined} />
                                     </div>
                                     <div className="mt-4">

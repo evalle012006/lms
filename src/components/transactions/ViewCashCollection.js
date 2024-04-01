@@ -528,9 +528,9 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                             }
                         } else {
                             if (rcv.status !== 'pending') {
-                                if (rcv.status == "completed") {
-                                    collection.activeBorrowers -= 1;
-                                }
+                                // if (rcv.status == "completed") {
+                                //     collection.activeBorrowers -= 1;
+                                // }
                                 collection.loanTarget -= rcv.targetCollection;
                                 collection.loanTargetStr = formatPricePhp(collection.loanTarget);
 
@@ -542,7 +542,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                                     totalsLoanBalance += rcv.loanBalance ? rcv.loanBalance : 0;
                                 }
         
-                                targetLoanCollection -= rcv.targetCollection;
+                                // targetLoanCollection -= rcv.targetCollection;
                             }
                         }
                     });
@@ -573,7 +573,6 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 noOfClients += c.activeClients !== '-' ? c.activeClients : 0;
                 noOfBorrowers += c.activeBorrowers !== '-' ? c.activeBorrowers : 0;
             });
-
 
 
             if (collectionData.length > 0) {
@@ -708,7 +707,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
         let totalTargetCollection = totals.targetLoanCollection;
         let totalPastDue = totals.pastDue;
         let totalNoPastDue = totals.noPastDue;
-
+        console.log(totalTargetCollection)
         if (transferGvr) {
             let transfer = transferGvr.transfer;
 

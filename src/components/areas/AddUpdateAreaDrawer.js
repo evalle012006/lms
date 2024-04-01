@@ -91,12 +91,13 @@ const AddUpdateArea = ({ mode = 'add', area = {}, managerList=[], showSidebar, s
 
     useEffect(() => {
         let mounted = true;
-
+        console.log(area, mode, branchList.length)
         if (area && mode == 'edit' && branchList.length > 0) {
-            console.log('here....')
             const branches = branchList.filter(branch => area?.branchIds.includes(branch._id));
+            console.log(branches)
             setSelectedBranches(branches);
             const managers = managerList.filter(manager => area?.managerIds.includes(manager._id));
+            console.log(managers)
             setSelectedManagers(managers);
         }
 
@@ -105,7 +106,7 @@ const AddUpdateArea = ({ mode = 'add', area = {}, managerList=[], showSidebar, s
         return () => {
             mounted = false;
         };
-    }, [area, branchList]);
+    }, [area, mode, branchList]);
 
     return (
         <React.Fragment>
@@ -142,7 +143,6 @@ const AddUpdateArea = ({ mode = 'add', area = {}, managerList=[], showSidebar, s
                                             label="Name"
                                             placeholder="Enter Name"
                                             setFieldValue={setFieldValue}
-                                            disabled={mode !== 'add'}
                                             errors={touched.name && errors.name ? errors.name : undefined} />
                                     </div>
                                     <div className="mt-4">

@@ -141,7 +141,6 @@ const AddUpdateRegion = ({ mode = 'add', region = {}, managerList=[], showSideba
                                             label="Name"
                                             placeholder="Enter Name"
                                             setFieldValue={setFieldValue}
-                                            disabled={mode !== 'add'}
                                             errors={touched.name && errors.name ? errors.name : undefined} />
                                     </div>
                                     <div className="mt-4">
