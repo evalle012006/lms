@@ -343,7 +343,6 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
                                             errors={touched.role && errors.role ? errors.role : undefined}
                                         />
                                     </div>
-                                    {/* TO DO: need to incorporate area here
                                     {selectedRole?.shortCode == 'area_admin' && (
                                         <div className="mt-4">
                                             {}
@@ -368,78 +367,6 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
                                             </div>
                                         </div>
                                     )}
-                                    {selectedRole?.shortCode == 'deputy_director' && (
-                                        <div className="mt-4">
-                                            {}
-                                            <div className={`flex flex-col border rounded-md px-4 py-2 bg-white ${selectedBranches?.length > 0 ? 'border-main' : 'border-slate-400'}`}>
-                                                <div className="flex justify-between">
-                                                    <label htmlFor="designatedBranch" className={`font-proxima-bold text-xs font-bold  ${selectedBranches?.length > 0 ? 'text-main' : 'text-gray-500'}`}>
-                                                        Designated Branches
-                                                    </label>
-                                                </div>
-                                                <div className="block h-fit">
-                                                    <Select 
-                                                        options={branchList}
-                                                        value={selectedBranches}
-                                                        isMulti
-                                                        styles={multiStyles}
-                                                        components={{ DropdownIndicator }}
-                                                        onChange={handleSelectBranch}
-                                                        isSearchable={true}
-                                                        closeMenuOnSelect={true}
-                                                        placeholder={'Select branches'}/>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-                                    {selectedRole?.shortCode == 'regional_manager' && (
-                                        <div className="mt-4">
-                                            {}
-                                            <div className={`flex flex-col border rounded-md px-4 py-2 bg-white ${selectedBranches?.length > 0 ? 'border-main' : 'border-slate-400'}`}>
-                                                <div className="flex justify-between">
-                                                    <label htmlFor="designatedBranch" className={`font-proxima-bold text-xs font-bold  ${selectedBranches?.length > 0 ? 'text-main' : 'text-gray-500'}`}>
-                                                        Designated Branches
-                                                    </label>
-                                                </div>
-                                                <div className="block h-fit">
-                                                    <Select 
-                                                        options={branchList}
-                                                        value={selectedBranches}
-                                                        isMulti
-                                                        styles={multiStyles}
-                                                        components={{ DropdownIndicator }}
-                                                        onChange={handleSelectBranch}
-                                                        isSearchable={true}
-                                                        closeMenuOnSelect={true}
-                                                        placeholder={'Select branches'}/>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-                                    {selectedRole?.shortCode == 'area_admin' && (
-                                        <div className="mt-4">
-                                            {}
-                                            <div className={`flex flex-col border rounded-md px-4 py-2 bg-white ${selectedBranches?.length > 0 ? 'border-main' : 'border-slate-400'}`}>
-                                                <div className="flex justify-between">
-                                                    <label htmlFor="designatedBranch" className={`font-proxima-bold text-xs font-bold  ${selectedBranches?.length > 0 ? 'text-main' : 'text-gray-500'}`}>
-                                                        Designated Branches
-                                                    </label>
-                                                </div>
-                                                <div className="block h-fit">
-                                                    <Select 
-                                                        options={branchList}
-                                                        value={selectedBranches}
-                                                        isMulti
-                                                        styles={multiStyles}
-                                                        components={{ DropdownIndicator }}
-                                                        onChange={handleSelectBranch}
-                                                        isSearchable={true}
-                                                        closeMenuOnSelect={true}
-                                                        placeholder={'Select branches'}/>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )} */}
                                     {selectedRole?.rep >= 3 && (
                                         <React.Fragment>
                                             <div className="mt-4">
