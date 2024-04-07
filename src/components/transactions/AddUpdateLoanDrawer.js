@@ -338,6 +338,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                 setSlotNumber();
                                 setSelectedCoMaker();
                                 setGroupOccurence('daily');
+                                setLoanFor('today');
                                 onClose();
                             }
                         }).catch(error => {

@@ -190,6 +190,14 @@ async function updateLoan(db, collection, currentDate) {
             loan.mcbuWithdrawal = loan.mcbuWithdrawal ? loan.mcbuWithdrawal + parseFloat(collection.mcbuWithdrawal) : collection.mcbuWithdrawal ? parseFloat(collection.mcbuWithdrawal) : 0;
         }
 
+        if (collection?.mcbuDailyWithdrawal > 0) {
+            if (loan.hasOwnProperty('mcbuDailyWithdrawal')) {
+                loan.mcbuDailyWithdrawal += collection.mcbuDailyWithdrawal;
+            } else {
+                loan.mcbuDailyWithdrawal = collection.mcbuDailyWithdrawal;
+            }
+        }
+
         if (collection.hasOwnProperty('mcbuInterest')) {
             loan.mcbuInterest = loan.mcbuInterest ? loan.mcbuInterest + collection.mcbuInterest : collection.mcbuInterest !== '-' ? collection.mcbuInterest : 0;
         }
@@ -254,54 +262,6 @@ async function updateLoan(db, collection, currentDate) {
 
         return { success: true }
     }
-}
-
-async function updatePendingLoan(db, collection, currentDate) {
-    const ObjectId = require('mongodb').ObjectId;
-    logger.debug({page: `Saving Cash Collection - Updating Pending Loan: ${collection.loanId}`, currentDate: currentDate});
-    let currentLoan = await db.collection('loans').find({ _id: new ObjectId(collection.loanId) }).toArray();
-    let pendingLoan = await db.collection('loans').find({ clientId: collection.clientId, status: 'pending' }).toArray();
-    // let cashCollection = await db.collection('cashCollections').find({ clientId: collection.clientId, dateAdded: currentDate }).toArray();
-    logger.debug({page: `Saving Cash Collection - Updating Pending Loan: ${collection.loanId}`, currentLoanSize: currentLoan.length, pendingLoanSize: pendingLoan.length});
-    if (currentLoan.length > 0 && pendingLoan.length > 0) {
-        currentLoan = currentLoan[0];
-        pendingLoan = pendingLoan[0];
-        // cashCollection = cashCollection[0];
-
-        currentLoan.status = 'closed';
-        currentLoan.loanBalance = 0;
-        currentLoan.amountRelease = 0;
-        currentLoan.activeLoan = 0;
-        currentLoan.mcbu = 0;
-        currentLoan.mcbuCollection = collection.mcbu;
-        currentLoan.noOfPayments = collection.noOfPayments;
-        currentLoan.fullPaymentDate = collection.fullPaymentDate ? collection.fullPaymentDate : currentDate;
-        currentLoan.mcbuWithdrawal = collection.mcbuWithdrawal > 0 ? collection.mcbuWithdrawal : 0;
-        currentLoan.mcbuReturnAmt = collection.mcbuReturnAmt > 0 ? collection.mcbuReturnAmt : 0;
-        currentLoan.history = collection.history;
-
-        if (collection.remarks && (collection.remarks.value == 'reloaner-cont' || collection.remarks.value == 'reloaner')) {
-            pendingLoan.mcbu = collection.mcbu;
-        }
-
-        pendingLoan.prevLoanFullPaymentDate = currentDate;
-        pendingLoan.prevLoanFullPaymentAmount = collection.fullPayment;
-        collection.loanId = pendingLoan._id + "";
-        collection.currentReleaseAmount = pendingLoan.amountRelease;
-        collection.prevLoanId = currentLoan._id + "";
-
-        const currentLoanId = currentLoan._id;
-        const pendingLoanId = pendingLoan._id;
-        // const cashCollectionId = cashCollection._id;
-        delete currentLoan._id;
-        delete pendingLoan._id;
-        // delete cashCollection._id;
-        logger.debug({page: `Saving Cash Collection - Updating Pending Loan`, currentLoan: currentLoan, pendingLoan: pendingLoan, cashCollection: collection});
-        await db.collection('loans').updateOne({ _id: currentLoanId}, { $set: { ...currentLoan } });
-        await db.collection('loans').updateOne({ _id: pendingLoanId}, { $set: { ...pendingLoan } });
-        // await db.collection('cashCollections').updateOne({ _id: cashCollectionId}, { $set: { ...cashCollection } });
-    }
-    return collection;
 }
 
 async function updateClient(db, loan, currentDate) {

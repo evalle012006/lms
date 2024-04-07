@@ -74,6 +74,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
             let totalMcbuReturnNo = 0;
             let totalMcbuReturnAmt = 0;
             let totalMcbuInterest = 0;
+            let totalMcbuDailyWithdrawal = 0;
             let totalTransfer = 0;
 
             let selectedBranch;
@@ -99,6 +100,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
                     noMcbuReturn: '-',
                     mcbuReturnAmtStr: '-',
                     mcbuInterestStr: '-',
+                    mcbuDailyWithdrawalStr: '-',
                     excessStr: '-',
                     totalStr: '-',
                     mispaymentStr: '-',
@@ -163,6 +165,8 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
                         collection.mcbuColStr = '-';
                         collection.mcbuWithdrawal = 0;
                         collection.mcbuWithdrawalStr = '-';
+                        collection.mcbuDailyWithdrawal = 0;
+                        collection.mcbuDailyWithdrawalStr = '-';
                         collection.noMcbuReturn = 0;
                         collection.mcbuReturnAmt = 0;
                         collection.mcbuReturnAmtStr = '-';
@@ -218,6 +222,8 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
                         collection.mcbuColStr = collection.mcbuCol > 0 ? formatPricePhp(collection.mcbuCol) : '-';
                         collection.mcbuWithdrawal = draftCollection.mcbuWithdrawal;
                         collection.mcbuWithdrawalStr = collection.mcbuWithdrawal ? formatPricePhp(collection.mcbuWithdrawal) : '-';
+                        collection.mcbuDailyWithdrawal = branch.cashCollections[0].mcbuDailyWithdrawal;
+                        collection.mcbuDailyWithdrawalStr = collection.mcbuDailyWithdrawal ? formatPricePhp(collection.mcbuDailyWithdrawal) : '-';
                         collection.noMcbuReturn = draftCollection.mcbuReturnNo;
                         collection.mcbuReturnAmt = draftCollection.mcbuReturnAmt;
                         collection.mcbuReturnAmtStr = collection.mcbuReturnAmt ? formatPricePhp(collection.mcbuReturnAmt) : '-';
@@ -234,6 +240,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
                         offsetPerson += collection.offsetPerson;
                         totalMcbuCol += collection.mcbuCol ? collection.mcbuCol : 0;
                         totalMcbuWithdrawal += collection.mcbuWithdrawal ? collection.mcbuWithdrawal : 0;
+                        totalMcbuDailyWithdrawal += collection.mcbuDailyWithdrawal ? collection.mcbuDailyWithdrawal : 0;
                         totalMcbuReturnNo += collection.noMcbuReturn ? collection.noMcbuReturn : 0;
                         totalMcbuReturnAmt += collection.mcbuReturnAmt ? collection.mcbuReturnAmt : 0;
                         totalTransfer += collection.transfer !== '-' ? collection.transfer : 0;
@@ -260,6 +267,8 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
                         collection.mcbuReturnAmtStr = collection.mcbuReturnAmt ? formatPricePhp(collection.mcbuReturnAmt) : '-';
                         collection.mcbuInterest = lo.cashCollections[0].mcbuInterest;
                         collection.mcbuInterestStr = lo.cashCollections[0].mcbuInterest > 0 ? lo.cashCollections[0].mcbuInterest : '-';
+                        collection.mcbuDailyWithdrawal = lo.cashCollections[0].mcbuDailyWithdrawal;
+                        collection.mcbuDailyWithdrawalStr = collection.mcbuDailyWithdrawal ? formatPricePhp(collection.mcbuDailyWithdrawal) : '-';
                         collection.transfer = 0;
                         collection.transferStr = '-';
                         collection.status = groupStatus;
@@ -271,6 +280,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
                         offsetPerson += collection.offsetPerson;
                         totalMcbuCol += collection.mcbuCol ? collection.mcbuCol : 0;
                         totalMcbuWithdrawal += collection.mcbuWithdrawal ? collection.mcbuWithdrawal : 0;
+                        totalMcbuDailyWithdrawal += collection.mcbuDailyWithdrawal ? collection.mcbuDailyWithdrawal : 0;
                         totalMcbuReturnNo += collection.noMcbuReturn ? collection.noMcbuReturn : 0;
                         totalMcbuReturnAmt += collection.mcbuReturnAmt ? collection.mcbuReturnAmt : 0;
                         totalTransfer += collection.transfer !== '-' ? collection.transfer : 0;
@@ -343,6 +353,8 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
                         collection.mcbuReturnAmtStr = collection.mcbuReturnAmt > 0 ? formatPricePhp(collection.mcbuReturnAmt): '-';
                         collection.mcbuInterest = lo.cashCollections[0].mcbuInterest;
                         collection.mcbuInterestStr = lo.cashCollections[0].mcbuInterest > 0 ? lo.cashCollections[0].mcbuInterest : '-';
+                        collection.mcbuDailyWithdrawal = lo.cashCollections[0].mcbuDailyWithdrawal;
+                        collection.mcbuDailyWithdrawalStr = collection.mcbuDailyWithdrawal ? formatPricePhp(collection.mcbuDailyWithdrawal) : '-';
                         collection.status = groupStatus;
 
                         const newReleasePerson = lo.cashCollections[0].newCurrentRelease;
@@ -379,6 +391,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
                         // totalMcbu += collection.mcbu ? collection.mcbu : 0;
                         totalMcbuCol += collection.mcbuCol ? collection.mcbuCol : 0;
                         totalMcbuWithdrawal += collection.mcbuWithdrawal ? collection.mcbuWithdrawal: 0;
+                        totalMcbuDailyWithdrawal += collection.mcbuDailyWithdrawal ? collection.mcbuDailyWithdrawal : 0;
                         totalMcbuReturnNo += collection.noMcbuReturn ? collection.noMcbuReturn : 0;
                         totalMcbuReturnAmt += collection.mcbuReturnAmt ? collection.mcbuReturnAmt : 0;
                         totalMcbuInterest += collection.mcbuInterest ? collection.mcbuInterest : 0;
@@ -664,6 +677,8 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
                 mcbuColStr: formatPricePhp(totalMcbuCol),
                 mcbuWithdrawal: totalMcbuWithdrawal,
                 mcbuWithdrawalStr: formatPricePhp(totalMcbuWithdrawal),
+                mcbuDailyWithdrawal: totalMcbuDailyWithdrawal,
+                mcbuDailyWithdrawalStr: formatPricePhp(totalMcbuDailyWithdrawal),
                 noMcbuReturn: totalMcbuReturnNo,
                 mcbuReturnAmt: totalMcbuReturnAmt,
                 mcbuReturnAmtStr: formatPricePhp(totalMcbuReturnAmt),
@@ -1287,6 +1302,10 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
                 accessor: 'mcbuWithdrawalStr',
                 Filter: SelectColumnFilter,
                 filter: 'includes'
+            },
+            {
+                Header: "MCBU Withdrawal",
+                accessor: 'mcbuDailyWithdrawalStr'
             },
             {
                 Header: "MCBU Interest",
