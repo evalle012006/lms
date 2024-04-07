@@ -16,9 +16,6 @@ import ButtonSolid from "@/lib/ui/ButtonSolid";
 import Dialog from "@/lib/ui/Dialog";
 import { styles, DropdownIndicator, borderStyles } from "@/styles/select";
 import Select from 'react-select';
-import { setDivisionList } from "@/redux/actions/divisionActions";
-import { setRegionList } from "@/redux/actions/regionActions";
-import { setAreaList } from "@/redux/actions/areaActions";
 import { setBranchList } from "@/redux/actions/branchActions";
 
 const TeamPage = () => {
@@ -309,66 +306,6 @@ const TeamPage = () => {
         setSearchFilter(selected);
     }
 
-    const getListArea = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'areas/list';
-        const response = await fetchWrapper.get(url);
-        if (response.success) {
-            const data = [];
-            response.areas.map(branch => {
-                data.push({
-                    ...branch,
-                    value: branch._id,
-                    label: branch.name
-                })
-            });
-            dispatch(setAreaList(data));
-            setLoading(false);
-        } else if (response.error) {
-            setLoading(false);
-            toast.error(response.message);
-        }
-    }
-
-    const getListRegion = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'regions/list';
-        const response = await fetchWrapper.get(url);
-        if (response.success) {
-            const data = [];
-            response.regions.map(region => {
-                data.push({
-                    ...region,
-                    value: region._id,
-                    label: region.name
-                })
-            });
-            dispatch(setRegionList(data));
-            setLoading(false);
-        } else if (response.error) {
-            setLoading(false);
-            toast.error(response.message);
-        }
-    }
-
-    const getListDivision = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'divisions/list';
-        const response = await fetchWrapper.get(url);
-        if (response.success) {
-            const data = [];
-            response.divisions.map(division => {
-                data.push({
-                    ...division,
-                    value: division._id,
-                    label: division.name
-                })
-            });
-            dispatch(setDivisionList(data));
-            setLoading(false);
-        } else if (response.error) {
-            setLoading(false);
-            toast.error(response.message);
-        }
-    }
-
     const handleKeyDown = (e) => {
         if (e.key === 'Escape') {
             setSearchFilter('');
@@ -383,16 +320,21 @@ const TeamPage = () => {
         }
     }, []);
 
+    const fetchData = async () => {
+        const promise = await new Promise(async (resolve) => {
+            const response = await Promise.all([getListUsers(), getListPlatformRoles(), getListBranch()]);
+            resolve(response);
+        });
+
+        if (promise) {
+            setLoading(false);
+        }
+    }
 
     useEffect(() => {
         let mounted = true;
 
-        mounted && getListUsers();
-        mounted && getListPlatformRoles();
-        mounted && getListBranch();
-        mounted && getListArea();
-        mounted && getListRegion();
-        mounted && getListDivision();
+        mounted && fetchData();
 
         return () => {
             mounted = false;

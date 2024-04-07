@@ -15,6 +15,8 @@ import Image from 'next/image';
 import Spinner from "@/components/Spinner";
 import RadioButton from "@/lib/ui/radio-button";
 import { checkFileSize } from "@/lib/utils";
+import Select from 'react-select';
+import { multiStyles, DropdownIndicator } from "@/styles/select";
 
 const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setShowSidebar, onClose }) => {    
     const hiddenInput = useRef(null);
