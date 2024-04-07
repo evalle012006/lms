@@ -1,8 +1,8 @@
 import Layout from "@/components/Layout";
 import Header from "@/components/reports/Header";
-import ViewLowBalanceByBranchPage from "@/components/reports/ViewLowLoanBalanceByBranch";
-import ViewLowBalanceByGroupsPage from "@/components/reports/ViewLowLoanBalanceByGroup";
-import ViewLowBalanceByLOPage from "@/components/reports/ViewLowLoanBalanceByLO";
+import ViewLowBalanceByBranchPage from "@/components/reports/low-loan-balance/ViewLowLoanBalanceByBranch";
+import ViewLowBalanceByGroupsPage from "@/components/reports/low-loan-balance/ViewLowLoanBalanceByGroup";
+import ViewLowBalanceByLOPage from "@/components/reports/low-loan-balance/ViewLowLoanBalanceByLO";
 import { useEffect } from "react";
 import { useState } from "react";
 import { useSelector } from "react-redux";
