@@ -125,6 +125,7 @@ async function getAllLoanTransactionsByBranch(db, branchId, date, dayName, curre
                                     mcbu: { $sum: '$mcbu' },
                                     mcbuCol: { $sum: '$mcbuCol' },
                                     mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
+                                    mcbuDailyWithdrawal: { $sum: '$mcbuDailyWithdrawal' },
                                     mcbuReturnNo: { $sum: {
                                         $cond: {
                                             if: { $or: [
@@ -825,6 +826,7 @@ async function getAllLoanTransactionsByBranch(db, branchId, date, dayName, curre
                                     mcbu: { $sum: '$mcbu' },
                                     mcbuCol: { $sum: '$mcbuCol' },
                                     mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
+                                    mcbuDailyWithdrawal: { $sum: '$mcbuDailyWithdrawal' },
                                     mcbuReturnNo: { $sum: {
                                         $cond: {
                                             if: { $or: [

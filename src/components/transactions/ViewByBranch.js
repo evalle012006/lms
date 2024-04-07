@@ -59,6 +59,7 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup, viewMode}) => 
             let totalMcbuWithdrawal = 0;
             let totalMcbuReturnNo = 0;
             let totalMcbuReturnAmt = 0;
+            let totalMcbuDailyWithdrawal = 0;
             let totalTransfer = 0;
             
             response.data.map(branch => {
@@ -76,6 +77,7 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup, viewMode}) => 
                     mcbuStr: '-',
                     mcbuColStr: '-',
                     mcbuWithdrawalStr: '-',
+                    mcbuDailyWithdrawalStr: '-',
                     mcbuReturnAmtStr: '-',
                     excessStr: '-',
                     totalStr: '-',
@@ -134,6 +136,8 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup, viewMode}) => 
                         collection.mcbuColStr = '-';
                         collection.mcbuWithdrawal = 0;
                         collection.mcbuWithdrawalStr = '-';
+                        collection.mcbuDailyWithdrawal = 0;
+                        collection.mcbuDailyWithdrawalStr = '-';
                         collection.noMcbuReturn = 0;
                         collection.mcbuReturnAmt = 0;
                         collection.mcbuReturnAmtStr = '-';
@@ -192,6 +196,8 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup, viewMode}) => 
                         collection.mcbuColStr = collection.mcbuCol > 0 ? formatPricePhp(collection.mcbuCol) : '-';
                         collection.mcbuWithdrawal = branch.cashCollections[0].mcbuWithdrawal;
                         collection.mcbuWithdrawalStr = collection.mcbuWithdrawal ? formatPricePhp(collection.mcbuWithdrawal) : '-';
+                        collection.mcbuDailyWithdrawal = branch.cashCollections[0].mcbuDailyWithdrawal;
+                        collection.mcbuDailyWithdrawalStr = collection.mcbuDailyWithdrawal ? formatPricePhp(collection.mcbuDailyWithdrawal) : '-';
                         collection.noMcbuReturn = branch.cashCollections[0].mcbuReturnNo;
                         collection.mcbuReturnAmt = branch.cashCollections[0].mcbuReturnAmt;
                         collection.mcbuReturnAmtStr = collection.mcbuReturnAmt ? formatPricePhp(collection.mcbuReturnAmt) : '-';
@@ -203,6 +209,7 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup, viewMode}) => 
                         mispayment += branch.cashCollections[0].mispayment;
                         // totalMcbuCol += collection.mcbuCol ? collection.mcbuCol : 0;
                         totalMcbuWithdrawal += collection.mcbuWithdrawal ? collection.mcbuWithdrawal : 0;
+                        totalMcbuDailyWithdrawal += collection.mcbuDailyWithdrawal ? collection.mcbuDailyWithdrawal : 0;
                         totalMcbuReturnNo += collection.noMcbuReturn ? collection.noMcbuReturn : 0;
                         totalMcbuReturnAmt += collection.mcbuReturnAmt ? collection.mcbuReturnAmt : 0;
                         totalTransfer += collection.transfer !== '-' ? collection.transfer : 0;
@@ -263,6 +270,8 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup, viewMode}) => 
                         collection.noMcbuReturn = branch.cashCollections[0].mcbuReturnNo ? branch.cashCollections[0].mcbuReturnNo: 0;
                         collection.mcbuReturnAmt = branch.cashCollections[0].mcbuReturnAmt ? branch.cashCollections[0].mcbuReturnAmt: 0;
                         collection.mcbuReturnAmtStr = collection.mcbuReturnAmt > 0 ? formatPricePhp(collection.mcbuReturnAmt): '-';
+                        collection.mcbuDailyWithdrawal = branch.cashCollections[0].mcbuDailyWithdrawal;
+                        collection.mcbuDailyWithdrawalStr = collection.mcbuDailyWithdrawal ? formatPricePhp(collection.mcbuDailyWithdrawal) : '-';
 
                         const newReleasePerson = branch.cashCollections[0].newCurrentRelease;
                         const reReleasePerson = branch.cashCollections[0].reCurrentRelease;
@@ -295,6 +304,7 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup, viewMode}) => 
                         // totalMcbu += collection.mcbu ? collection.mcbu : 0;
                         // totalMcbuCol += collection.mcbuCol ? collection.mcbuCol : 0;
                         totalMcbuWithdrawal += collection.mcbuWithdrawal ? collection.mcbuWithdrawal : 0;
+                        totalMcbuDailyWithdrawal += collection.mcbuDailyWithdrawal ? collection.mcbuDailyWithdrawal : 0;
                         totalMcbuReturnNo += collection.noMcbuReturn ? collection.noMcbuReturn : 0;
                         totalMcbuReturnAmt += collection.mcbuReturnAmt ? collection.mcbuReturnAmt : 0;
                         totalTransfer += collection.transfer !== '-' ? collection.transfer : 0;
@@ -523,6 +533,8 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup, viewMode}) => 
                 mcbuColStr: formatPricePhp(totalMcbuCol),
                 mcbuWithdrawal: totalMcbuWithdrawal,
                 mcbuWithdrawalStr: formatPricePhp(totalMcbuWithdrawal),
+                mcbuDailyWithdrawal: totalMcbuDailyWithdrawal,
+                mcbuDailyWithdrawalStr: formatPricePhp(totalMcbuDailyWithdrawal),
                 noMcbuReturn: totalMcbuReturnNo,
                 mcbuReturnAmt: totalMcbuReturnAmt,
                 mcbuReturnAmtStr: formatPricePhp(totalMcbuReturnAmt),
@@ -722,6 +734,10 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup, viewMode}) => 
                     accessor: 'mcbuWithdrawalStr',
                     Filter: SelectColumnFilter,
                     filter: 'includes'
+                },
+                {
+                    Header: "MCBU Withdrawal",
+                    accessor: 'mcbuDailyWithdrawalStr'
                 },
                 {
                     Header: "# MCBU Return",

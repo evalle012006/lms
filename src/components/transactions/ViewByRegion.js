@@ -142,6 +142,10 @@ const ViewByRegionPage = ({dateFilter, type, selectedBranchGroup, viewMode}) => 
                     accessor: 'mcbuWithdrawalStr'
                 },
                 {
+                    Header: "MCBU Withdrawal",
+                    accessor: 'mcbuDailyWithdrawalStr'
+                },
+                {
                     Header: "# MCBU Return",
                     accessor: 'noMcbuReturn'
                 },

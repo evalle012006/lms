@@ -2798,11 +2798,6 @@ const CashCollectionDetailsPage = () => {
                                                         || (cc.offsetTransFlag && cc.otherDay)  
                                                        )
                                                     && (!cc.hasOwnProperty('transferStr') || cc?.transferStr == '-')
-                                                    // !isWeekend && !isHoliday && !filter && (currentUser.role.rep > 2 && (cc.status === 'active' || cc.status === 'completed') && (editMode && !groupSummaryIsClose) 
-                                                    // && ((cc?.origin && (cc?.origin === 'pre-save' || cc?.origin === 'automation-trf')) || cc.reverted)) || ((cc.remarks && cc.remarks.value === "reloaner" && cc.status !== "tomorrow") && !groupSummaryIsClose)
-                                                    // && (cc.remarks && cc.remarks.value === "reloaner" && cc.fullPaymentDate !== currentDate) && cc.status !== 'pending' || cc.draft || (cc.offsetTransFlag && cc.otherDay)
-                                                    // || (cc.remarks && (cc.remarks.value?.startsWith('collection-') || cc.remarks.value?.startsWith('offset-'))
-                                                    // || (cc.status == 'completed' && cc.remarks == ''))
                                                   ) ? (
                                                         <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">
                                                             { cc.remarks !== '-' ? (
