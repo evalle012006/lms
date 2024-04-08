@@ -884,6 +884,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
         let totalsCollectionTarget = totals.targetLoanCollection;
         let totalsCollectionExcess = totals.excess;
         let totalsCollectionActual = totals.collection;
+        const totalMcbuDailyWithdrawal = totals.mcbuDailyWithdrawal ? totals.mcbuDailyWithdrawal : 0;
 
         if ((transferGvr?.totalLoanRelease > 0 && transferGvr.totalLoanRelease !== transferGvrByGroup.totalLoanRelease) 
                 || (transferRcv?.totalLoanRelease > 0 && transferRcv.totalLoanRelease !== transferRcvByGroup.totalLoanRelease)) {
@@ -924,7 +925,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 mcbuTransfer: totalsMcbuTransfer,
                 mcbuTarget: totals.mcbuTarget,
                 mcbuActual: totalsMcbuCol,
-                mcbuWithdrawal: totals.mcbuWithdrawal + totals?.mcbuDailyWithdrawal ? totals.mcbuDailyWithdrawal : 0,
+                mcbuWithdrawal: totals.mcbuWithdrawal + totalMcbuDailyWithdrawal,
                 mcbuInterest: totals.mcbuInterest,
                 noMcbuReturn: totals.noMcbuReturn,
                 mcbuReturnAmt: totals.mcbuReturnAmt,
@@ -957,7 +958,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
             if (totalActiveBorrowers === 0 && totalActiveClients > 0) {
                 totalActiveBorrowers = totalActiveClients;
             }
-
+            console.log(totalMcbuDailyWithdrawal, totals.mcbuWithdrawal)
             grandTotal = {
                 day: selectedDate,
                 transfer: 0,
@@ -966,7 +967,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 mcbuTransfer: totalsMcbuTransfer,
                 mcbuTarget: totals.mcbuTarget,
                 mcbuActual: totalsMcbuCol,
-                mcbuWithdrawal: totals.mcbuWithdrawal + totals?.mcbuDailyWithdrawal ? totals.mcbuDailyWithdrawal : 0,
+                mcbuWithdrawal: totals.mcbuWithdrawal + totalMcbuDailyWithdrawal,
                 mcbuInterest: totals.mcbuInterest,
                 noMcbuReturn: totals.noMcbuReturn,
                 mcbuReturnAmt: totals.mcbuReturnAmt,
