@@ -7,7 +7,7 @@ import { formatPricePhp } from "@/lib/utils";
 import { useDispatch, useSelector } from "react-redux";
 import { setBranchList } from "@/redux/actions/branchActions";
 
-const ViewByBranchPage = ({ amount, amountOperator, noOfPayments, noOfPaymentsOperator }) => {
+const ViewByBranchPage = ({ dateFilter, remarks }) => {
     const dispatch = useDispatch();
     const router = useRouter();
     const currentUser = useSelector(state => state.user.data);
@@ -25,8 +25,8 @@ const ViewByBranchPage = ({ amount, amountOperator, noOfPayments, noOfPaymentsOp
             accessor: 'name'
         },
         {
-            Header: "# of Clients",
-            accessor: 'noOfClients'
+            Header: "# of Mispays",
+            accessor: 'noOfMispays'
         },
         {
             Header: "Total Amount Release",
@@ -54,61 +54,16 @@ const ViewByBranchPage = ({ amount, amountOperator, noOfPayments, noOfPaymentsOp
     }
 
     const getList = async () => {
-        const amountOption = JSON.stringify({ amount: amount, operator: amountOperator });
-        const noOfPaymentsOption = JSON.stringify({ noOfPayments: noOfPayments, operator: noOfPaymentsOperator });
+        setLoading(true);
         let url = process.env.NEXT_PUBLIC_API_URL + 'reports/get-all-mispays';
         if (currentUser.role.rep == 2 && branchList.length > 0) {
-            url = url + '?' + new URLSearchParams({ currentUserId: currentUser._id, amountOption: amountOption, noOfPaymentsOption: noOfPaymentsOption });
+            url = url + '?' + new URLSearchParams({ currentUserId: currentUser._id, date: dateFilter, remarks: remarks });
         } else {
-            url = url + '?' + new URLSearchParams({ amountOption: amountOption, noOfPaymentsOption: noOfPaymentsOption });
+            url = url + '?' + new URLSearchParams({ date: dateFilter, remarks: remarks });
         }
         const response = await fetchWrapper.get(url);
         if (response.success) {
-            const responseData = [];
-            response.data.map(branch => {
-                let temp = {
-                    _id: branch._id,
-                    code: branch.code,
-                    name: branch.name,
-                    noOfClients: 0,
-                    totalAmountRelease: 0,
-                    totalAmountReleaseStr: '-',
-                    totalLoanBalance: 0,
-                    totalLoanBalanceStr: '-',
-                    totalMCBU: 0,
-                    totalMCBUStr: '-',
-                    totalNet: 0,
-                    totalNetStr: '-'
-                }
-                branch.loans.map(loan => {
-                    temp = {
-                        ...temp,
-                        noOfClients: loan.totalClients,
-                        totalAmountRelease: loan.totalAmountRelease,
-                        totalAmountReleaseStr: formatPricePhp(loan.totalAmountRelease),
-                        totalLoanBalance: loan.totalLoanBalance,
-                        totalLoanBalanceStr: formatPricePhp(loan.totalLoanBalance),
-                        totalMCBU: loan.totalMCBU,
-                        totalMCBUStr: formatPricePhp(loan.totalMCBU),
-                        totalNet: loan.totalNetLoanBalance,
-                        totalNetStr: formatPricePhp(loan.totalNetLoanBalance),
-                    }
-                });
-
-                responseData.push(temp);
-            });
-
-            responseData.sort((a, b) => {
-                if (a.code < b.code) {
-                    return -1;
-                }
-
-                if (b.code < b.code) {
-                    return 1;
-                }
-
-                return 0;
-            } );
+            const responseData = response.data;
             setList(responseData);
             setLoading(false);
         }
@@ -132,8 +87,6 @@ const ViewByBranchPage = ({ amount, amountOperator, noOfPayments, noOfPaymentsOp
         } else {
             toast.error('Error retrieving branches list.');
         }
-
-        setLoading(false);
     }
 
     useEffect(() => {
@@ -156,7 +109,7 @@ const ViewByBranchPage = ({ amount, amountOperator, noOfPayments, noOfPaymentsOp
         return (() => {
             mounted = false;
         });
-    }, [branchList, amount, amountOperator, noOfPayments, noOfPaymentsOperator]);
+    }, [branchList, dateFilter, remarks]);
 
     return (
         <React.Fragment>

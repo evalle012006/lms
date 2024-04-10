@@ -287,7 +287,7 @@ const getByBranch = async (db, branchId, amountOptionObj, noOfPaymentsOptionObj)
                             ] 
                         } } },
                         { $group: {
-                            _id: '$branchid',
+                            _id: '$branchId',
                             totalClients: { $sum: 1 },
                             totalAmountRelease: { $sum: '$amountRelease' },
                             totalLoanBalance: { $sum: '$loanBalance' },

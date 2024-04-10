@@ -69,6 +69,16 @@ export const LOR_ONLY_OFFSET_REMARKS = [
     { label: 'For Close/Offset - Unclaimed Amount', value: 'offset-unclaimed'}
 ];
 
+export const LOR_MISPAY_REMARKS = [
+    { label: 'Past Due', value: 'past due'},
+    { label: 'Matured Past Due', value: 'matured-past due'},
+    { label: 'Delinquent', value: 'delinquent'},
+    { label: 'Delinquent Client for MCBU', value: 'delinquent-mcbu'},
+    { label: 'Excused Due to Calamity', value: 'excused-calamity'},
+    { label: 'Excused - Hospitalization', value: 'excused-hospital'},
+    { label: 'Excused - Death of Clients/Family Member', value: 'excused-death'}
+];
+
 export const WEEKLY_GROUPS = [
     "APPLE", "BANANA", "CHERRY", "MANGO", "PINEAPPLE", "WATERMELON", "GRAPES", "KIWI", "PEAR", "PEACH", "STRAWBERRY", "BLUEBERRY", "RASPBERRY", "LEMON", "LIME"
 ];

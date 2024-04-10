@@ -82,6 +82,7 @@ const ViewLowBalanceByGroupsPage = ({ amount, amountOperator, noOfPayments, noOf
     }
 
     const getList = async (loId) => {
+        setLoading(true);
         const amountOption = JSON.stringify({ amount: amount, operator: amountOperator });
         const noOfPaymentsOption = JSON.stringify({ noOfPayments: noOfPayments, operator: noOfPaymentsOperator });
         let url = process.env.NEXT_PUBLIC_API_URL + 'reports/get-all-low-loan-balance?' + new URLSearchParams({ loId: currentUser.role.rep == 4 ? currentUser._id : loId, amountOption: amountOption, noOfPaymentsOption: noOfPaymentsOption });

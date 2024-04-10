@@ -2197,6 +2197,14 @@ const CashCollectionDetailsPage = () => {
                                         temp.mcbuColStr = formatPricePhp(temp.mcbuCol);
                                     }
 
+                                    // to make sure that the mcbu is not more than 600
+                                    if (temp.status == 'completed' && temp.noOfPayments == temp.loanTerms && temp?.prevData?.noOfPayments == temp.loanTerms && temp.mcbuCol > 0) {
+                                        temp.mcbu = temp.mcbu - temp.mcbuCol;
+                                        temp.mcbuStr = formatPricePhp(temp.mcbu);
+                                        temp.mcbuCol = 0;
+                                        temp.mcbuColStr = '-';
+                                    }
+
                                     temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + temp.mcbuCol : 0 + temp.mcbuCol;
                                     temp.mcbuStr = formatPricePhp(temp.mcbu);
                                 }

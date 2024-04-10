@@ -1,74 +1,60 @@
 import Layout from "@/components/Layout";
-import Header from "@/components/reports/Header";
+import Header from "@/components/reports/mispays-list/Header";
 import ViewByBranchPage from "@/components/reports/mispays-list/ViewByBranch";
 import ViewByGroupsPage from "@/components/reports/mispays-list/ViewByGroup";
 import ViewByLOPage from "@/components/reports/mispays-list/ViewByLO";
 import { useEffect } from "react";
 import { useState } from "react";
 import { useSelector } from "react-redux";
+import moment from 'moment'
 
 const IncomingReloanPage = () => {
     const currentUser = useSelector(state => state.user.data);
-    const [amount, setAmount] = useState(0);
-    const [amountOperator, setAmountOperator] = useState('greater_than_equal');
-    const [noOfPayments, setNoOfPayments] = useState(0);
-    const [noOfPaymentsOperator, setNoOfPaymentsOperator] = useState('greater_than_equal');
-    const [includeDelinquent, setIncludeDelinquent] = useState(true);
+    const currentDate = useSelector(state => state.systemSettings.currentDate);
+    const [remarks, setRemarks] = useState('all');
+    const [dateFilter, setDateFilter] = useState();
 
-    const handleAmountChange = (value) => {
-        localStorage.setItem('filterMispaysAmount', value);
-        setAmount(value);
+    const handleDateFilter = (selected) => {
+        const filteredDate = selected.target.value;
+        localStorage.setItem('filterMispaysDate', filteredDate);
+        setDateFilter(filteredDate);
     }
 
-    const handleAmountOperatorChange = (selected) => {
-        console.log(selected)
-        localStorage.setItem('filterMispaysAmountOperator', selected.value);
-        setAmountOperator(selected.value);
+    const handleRemarksFilter = (selected) => {
+        const value = selected.value;
+        localStorage.setItem('filterMispaysRemarks', value);
+        setRemarks(value);
     }
 
-    const handleNoOfPaymentsChange = (value) => {
-        localStorage.setItem('filterMispaysNoOfPayments', value);
-        setNoOfPayments(value);
-    }
-
-    const handleNoOfPaymentsOperatorChange = (selected) => {
-        localStorage.setItem('filterMispaysNoOfPaymentsOperator', selected.value);
-        setNoOfPaymentsOperator(selected.value);
-    }
-
-    const handleIncludeDelinquentChange = (name, value) => {
-        localStorage.setItem('filterMispaysIncludeDelinquent', value);
-        setIncludeDelinquent(value);
+    const getYesterdayDate = () => {
+        let yesterday = moment(currentDate).subtract(1, 'days').format('YYYY-MM-DD');
+        const dayName = moment(currentDate).format('dddd');
+        if (dayName == 'Saturday') {
+            yesterday = moment(currentDate).subtract(1, 'days').format('YYYY-MM-DD');
+        } else if (dayName == 'Sunday') {
+            yesterday = moment(currentDate).subtract(2, 'days').format('YYYY-MM-DD');
+        }
+        return yesterday;
     }
 
     useEffect(() => {
-        localStorage.setItem('filterMispaysAmount', amount);
-    }, [amount]);
+        setDateFilter(getYesterdayDate());
+    }, [currentDate]);
 
     useEffect(() => {
-        localStorage.setItem('filterMispaysAmountOperator', amountOperator);
-    }, [amountOperator]);
+        localStorage.setItem('filterMispaysDate', dateFilter);
+    }, [dateFilter]);
 
     useEffect(() => {
-        localStorage.setItem('filterMispaysNoOfPayments', noOfPayments);
-    }, [noOfPayments]);
-
-    useEffect(() => {
-        localStorage.setItem('filterMispaysNoOfPaymentsOperator', noOfPaymentsOperator);
-    }, [noOfPaymentsOperator]);
-
-    useEffect(() => {
-        localStorage.setItem('filterMispaysIncludeDelinquent', includeDelinquent);
-    }, [includeDelinquent]);
+        localStorage.setItem('filterMispaysRemarks', remarks);
+    }, [remarks]);
     
     return (
         <Layout header={false}>
-            <Header pageNo={1} pageTitle={'Mispays List'} amount={amount} handleAmountChange={handleAmountChange} amountOperator={amountOperator} handleAmountOperatorChange={handleAmountOperatorChange} 
-                    noOfPayments={noOfPayments} handleNoOfPaymentsChange={handleNoOfPaymentsChange} noOfPaymentsOperator={noOfPaymentsOperator} handleNoOfPaymentsOperatorChange={handleNoOfPaymentsOperatorChange}
-                    includeDelinquent={includeDelinquent} handleIncludeDelinquentChange={handleIncludeDelinquentChange} />
-            { currentUser.role.rep < 3 && <ViewByBranchPage amount={amount} amountOperator={amountOperator} noOfPayments={noOfPayments} noOfPaymentsOperator={noOfPaymentsOperator} /> }
-            { currentUser.role.rep == 3 && <ViewByLOPage amount={amount} amountOperator={amountOperator} noOfPayments={noOfPayments} noOfPaymentsOperator={noOfPaymentsOperator} /> }
-            { currentUser.role.rep == 4 && <ViewByGroupsPage amount={amount} amountOperator={amountOperator} noOfPayments={noOfPayments} noOfPaymentsOperator={noOfPaymentsOperator} includeDelinquent={includeDelinquent} /> }
+            <Header pageNo={1} pageTitle={'Mispays List'} remarks={remarks} handleRemarksFilter={handleRemarksFilter} dateFilter={dateFilter} handleDateFilter={handleDateFilter} />
+            { currentUser.role.rep < 3 && <ViewByBranchPage remarks={remarks} dateFilter={dateFilter} /> }
+            { currentUser.role.rep == 3 && <ViewByLOPage remarks={remarks} dateFilter={dateFilter} /> }
+            { currentUser.role.rep == 4 && <ViewByGroupsPage remarks={remarks} dateFilter={dateFilter} /> }
         </Layout>
     )
 }

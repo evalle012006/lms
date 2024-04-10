@@ -1,5 +1,5 @@
 import Layout from "@/components/Layout";
-import Header from "@/components/reports/Header";
+import Header from "@/components/reports/low-loan-balance/Header";
 import ViewLowBalanceByGroupsPage from "@/components/reports/low-loan-balance/ViewLowLoanBalanceByGroup";
 import { BehaviorSubject } from 'rxjs';
 import { fetchWrapper } from "@/lib/fetch-wrapper";

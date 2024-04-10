@@ -23,26 +23,14 @@ const Header = ({ pageNo, pageTitle, pageName, amount, handleAmountChange, amoun
     ];
 
     const handleBack = () => {
-        if (pageTitle == 'Mispays List') {
-            if (pageName == 'group-view') {
-                if (pageNo == 2) {
-                    router.push(`/reports/mispay-list`);
-                } else {
-                    router.push(`/reports/mispay-list/user/${selectedBranchSubject.value}`);
-                }
-            } else if (pageName == 'lo-view') {
-                router.push(`/reports/mispay-list`);
-            }
-        } else {
-            if (pageName == 'group-view') {
-                if (pageNo == 2) {
-                    router.push(`/reports/low-loan-balance`);
-                } else {
-                    router.push(`/reports/low-loan-balance/user/${selectedBranchSubject.value}`);
-                }
-            } else if (pageName == 'lo-view') {
+        if (pageName == 'group-view') {
+            if (pageNo == 2) {
                 router.push(`/reports/low-loan-balance`);
+            } else {
+                router.push(`/reports/low-loan-balance/user/${selectedBranchSubject.value}`);
             }
+        } else if (pageName == 'lo-view') {
+            router.push(`/reports/low-loan-balance`);
         }
     }
 
@@ -65,11 +53,7 @@ const Header = ({ pageNo, pageTitle, pageName, amount, handleAmountChange, amoun
                 <div className="flex flex-row w-11/12 text-gray-400 text-sm justify-start align-middle">
                     <span className="text-zinc-500 text-sm font-bold mt-2">Filters:</span>
                     <div className="ml-6 flex w-[27rem]">
-                        {pageTitle == 'Mispays List' ? (
-                            <span className="text-sm mt-2">Mispays: </span>
-                        ) : (
-                            <span className="text-sm mt-2">Loan Balance: </span>
-                        )}
+                        <span className="text-sm mt-2">Loan Balance: </span>
                         <div className="ml-4 flex w-40">
                             <Select 
                                 options={operatorOptions}
@@ -106,7 +90,7 @@ const Header = ({ pageNo, pageTitle, pageName, amount, handleAmountChange, amoun
                             </div>
                         </div>
                     </div>
-                    {((currentUser.role.rep == 4 || pageName == 'group-view') && pageTitle != 'Mispays List') && (
+                    {(currentUser.role.rep == 4 || pageName == 'group-view') && (
                         <div className="ml-12 flex w-[10rem]">
                             <CheckBox name="includeDelinquent"
                                 value={includeDelinquent} 

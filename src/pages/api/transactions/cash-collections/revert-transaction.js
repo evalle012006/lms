@@ -207,10 +207,11 @@ async function revert(req, res) {
 }
 
 async function updateGroup(db, groupData, slotNo) {
+    const ObjectId = require('mongodb').ObjectId;
     let group = {...groupData};
     group.availableSlots = group.availableSlots.filter(s => s !== slotNo);
     group.noOfClients = group.noOfClients + 1;
-    if (group.noOfClients == group.noOfClients) {
+    if (group.capacity == group.noOfClients) {
         group.status = 'full';
     } else {
         group.status = 'available';

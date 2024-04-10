@@ -13,7 +13,7 @@ import { useRef } from "react";
 import logo from "/public/images/logo.png";
 import Image from 'next/image';
 
-const ViewByGroupsPage = ({ amount, amountOperator, noOfPayments, noOfPaymentsOperator, includeDelinquent }) => {
+const ViewByGroupsPage = ({ dateFilter, remarks }) => {
     const router = useRouter();
     const printRef = useRef();
     const [loading, setLoading] = useState(true);
@@ -63,12 +63,12 @@ const ViewByGroupsPage = ({ amount, amountOperator, noOfPayments, noOfPaymentsOp
             accessor: 'noOfPayments'
         },
         {
-            Header: "Mispayments",
-            accessor: 'noOfMispayments'
-        },
-        {
             Header: "Delinquent",
             accessor: 'delinquent'
+        },
+        {
+            Header: "Remarks",
+            accessor: 'remarks'
         }
     ]);
 
@@ -86,43 +86,12 @@ const ViewByGroupsPage = ({ amount, amountOperator, noOfPayments, noOfPaymentsOp
     }
 
     const getList = async (loId) => {
-        const amountOption = JSON.stringify({ amount: amount, operator: amountOperator });
-        const noOfPaymentsOption = JSON.stringify({ noOfPayments: noOfPayments, operator: noOfPaymentsOperator });
-        let url = process.env.NEXT_PUBLIC_API_URL + 'reports/get-all-mispays?' + new URLSearchParams({ loId: currentUser.role.rep == 4 ? currentUser._id : loId, amountOption: amountOption, noOfPaymentsOption: noOfPaymentsOption });
+        setLoading(true);
+        let url = process.env.NEXT_PUBLIC_API_URL + 'reports/get-all-mispays?' + new URLSearchParams({ loId: currentUser.role.rep == 4 ? currentUser._id : loId, date: dateFilter, remarks: remarks});
         const response = await fetchWrapper.get(url);
         if (response.success) {
-            const responseData = [];
-            response.data.map(group => {
-                group.loans.map(loan => {
-                    const delinquent = loan.client.length > 0 ? loan.client[0].delinquent == true ? 'Yes' : 'No' : 'No';
-                    let fullName = loan.client.length > 0 ? loan.client[0].fullName : null;
-                    if (loan.client.length > 0 && fullName == null) {
-                        fullName = `${loan.client[0].lastName}, ${loan.client[0].firstName}`;
-                    }
-                    responseData.push({
-                        groupId: group._id,
-                        groupName: group.name,
-                        slotNo: loan.slotNo,
-                        clientName: fullName,
-                        loanCycle: loan.loanCycle,
-                        amountRelease: loan.amountRelease,
-                        amountReleaseStr: formatPricePhp(loan.amountRelease),
-                        loanBalance: loan.loanBalance,
-                        loanBalanceStr: formatPricePhp(loan.loanBalance),
-                        mcbu: loan.mcbu,
-                        mcbuStr: formatPricePhp(loan.mcbu),
-                        netLoanBalance: loan.netLoanBalance,
-                        netLoanBalanceStr: formatPricePhp(loan.netLoanBalance),
-                        noOfPayments: loan.noOfPayments,
-                        noOfMispayments: loan.noOfMisPayments,
-                        delinquent: delinquent
-                    });
-                });
-            });
-
-            responseData.sort((a, b) => { return a.loanBalance - b.loanBalance });
-            setList(responseData);
-            setData(responseData);
+            setList(response.data);
+            setData(response.data);
             setLoading(false);
         }
     }
@@ -139,16 +108,7 @@ const ViewByGroupsPage = ({ amount, amountOperator, noOfPayments, noOfPaymentsOp
         return (() => {
             mounted = false;
         });
-    }, [uuid, amount, amountOperator, noOfPayments, noOfPaymentsOperator]);
-
-    useEffect(() => {
-        if (!includeDelinquent) {
-            const filteredList = list.filter(loan => loan.delinquent != 'Yes');
-            setData(filteredList);
-        } else {
-            setData(list);
-        }
-    }, [list, includeDelinquent]);
+    }, [uuid, remarks, dateFilter]);
 
     useEffect(() => {
         if (uuid && userList.length > 0) {
@@ -205,8 +165,8 @@ const ViewByGroupsPage = ({ amount, amountOperator, noOfPayments, noOfPaymentsOp
                                                     <th className='border border-gray-900 w-10'>MCBU</th>
                                                     <th className='border border-gray-900 w-10'>Net Loan Balance</th>
                                                     <th className='border border-gray-900 w-10'># Of Payments</th>
-                                                    <th className='border border-gray-900 w-10'>Mispayments</th>
                                                     <th className='border border-gray-900 w-10'>Delinquent</th>
+                                                    <th className='border border-gray-900 w-10'>Remarks</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -222,8 +182,8 @@ const ViewByGroupsPage = ({ amount, amountOperator, noOfPayments, noOfPaymentsOp
                                                             <td className='border border-gray-900 text-left'>{ loan.mcbuStr }</td>
                                                             <td className='border border-gray-900 text-left'>{ loan.netLoanBalanceStr }</td>
                                                             <td className='border border-gray-900 text-left'>{ loan.noOfPayments }</td>
-                                                            <td className='border border-gray-900 text-left'>{ loan.noOfMispayments }</td>
                                                             <td className='border border-gray-900 text-left'>{ loan.delinquent }</td>
+                                                            <td className='border border-gray-900 text-left'>{ loan.remarks }</td>
                                                         </tr>
                                                     )
                                                 }) }

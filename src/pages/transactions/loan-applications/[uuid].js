@@ -108,14 +108,22 @@ const NDSForm = React.forwardRef((props, ref) => {
             const loanTerms = loanData.loanTerms;
             const interest = (loanData.principalLoan * 0.2);
 
-            sched.push({ installment: '', loanRelease: loanData.principalLoan, serviceCharge: '', total: '', balance: loanData.principalLoan, interest: interest });
+            const initialBalance = loanData.occurence == 'daily' ? loanData.principalLoan : loanData.principalLoan * 1.2;
+
+            sched.push({ installment: '', loanRelease: loanData.principalLoan, serviceCharge: '', total: '', balance: initialBalance, balanceStr: Math.round(initialBalance).toFixed(0), interest: interest });
             let totalServiceCharge = 0;
             for (let i = 1; i <= loanTerms; i++) {
                 const prev = sched[i - 1];
                 const total = (loanData.principalLoan * 1.2) / loanTerms;
-                const serviceCharge = (prev.balance * 0.2) / 32.3339;
-                const principal = total - serviceCharge;
-                const balance = prev.balance - principal;
+                let serviceCharge = i == loanTerms ? 0 : (prev.balance * 0.2) / 32.3339;
+                let principal = i == loanTerms ? total :  total - serviceCharge;
+                let balance =  prev.balance - principal;
+
+                if (loanData.occurence == 'weekly') {
+                    principal = loanData.principalLoan / loanTerms;
+                    serviceCharge = total - principal;
+                    balance =  prev.balance - principal - serviceCharge;
+                }
                 
                 totalServiceCharge += serviceCharge;
 
@@ -125,7 +133,8 @@ const NDSForm = React.forwardRef((props, ref) => {
                     principal: Math.round(principal).toFixed(0),
                     serviceCharge: Math.round(serviceCharge).toFixed(0),
                     total: Math.round(total).toFixed(0),
-                    balance: Math.round(balance).toFixed(0),
+                    balance: balance,
+                    balanceStr: Math.round(balance).toFixed(0),
                     interest: ''
                 }
 
@@ -236,7 +245,7 @@ const NDSForm = React.forwardRef((props, ref) => {
                                                 <td className='border border-gray-900'>{ am.principal }</td>
                                                 <td className='border border-gray-900'>{ am.serviceCharge }</td>
                                                 <td className='border border-gray-900'>{ am.total }</td>
-                                                <td className='border border-gray-900'>{ am.balance }</td>
+                                                <td className='border border-gray-900'>{ am.balanceStr }</td>
                                                 <td>{ am.interest }</td>
                                             </tr>
                                         )
@@ -341,7 +350,7 @@ const NDSForm = React.forwardRef((props, ref) => {
                                                 <td className='border border-gray-900'>{ am.principal }</td>
                                                 <td className='border border-gray-900'>{ am.serviceCharge }</td>
                                                 <td className='border border-gray-900'>{ am.total }</td>
-                                                <td className='border border-gray-900'>{ am.balance }</td>
+                                                <td className='border border-gray-900'>{ am.balanceStr }</td>
                                                 <td></td>
                                             </tr>
                                         )

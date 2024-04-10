@@ -1,5 +1,6 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
+import { formatPricePhp } from '@/lib/utils';
 
 export default apiHandler({
     get: allLoans
@@ -11,13 +12,11 @@ async function allLoans(req, res) {
     let response;
     let statusCode = 200;
 
-    const { loId, currentUserId, branchId, amountOption, noOfPaymentsOption } = req.query;
+    const { loId, currentUserId, branchId, date, remarks } = req.query;
     let data = [];
-    const amountOptionObj = JSON.parse(amountOption);
-    const noOfPaymentsOptionObj = JSON.parse(noOfPaymentsOption);
 
     if (loId) {
-        data = await db.collection('groups')
+        const groupData = await db.collection('groups')
             .aggregate([
                 { $match: { loanOfficerId: loId, noOfClients: { $ne: 0 } } },
                 { $addFields: {
@@ -25,45 +24,26 @@ async function allLoans(req, res) {
                 } },
                 {
                     $lookup: {
-                        from: 'loans',
+                        from: 'cashCollections',
                         localField: 'groupIdStr',
                         foreignField: 'groupId',
                         pipeline: [
                             { $match: { $expr: { 
                                 $and: [ 
-                                    {$eq: ['$status', 'active']},
+                                    {$eq: ['$dateAdded', date]},
                                     { $or: [
                                         {$cond: {
-                                            if: { $eq: [amountOptionObj.operator, 'less_than_equal'] },
-                                            then: {$lte: ['$mispayment', parseInt(amountOptionObj.amount)]},
-                                            else: null
-                                        }},
-                                        {$cond: {
-                                            if: { $eq: [amountOptionObj.operator, 'greater_than_equal'] },
-                                            then: {$gte: ['$mispayment', parseInt(amountOptionObj.amount)]},
-                                            else: null
-                                        }},
-                                        {$cond: {
-                                            if: { $eq: [amountOptionObj.operator, 'equal'] },
-                                            then: {$eq: ['$mispayment', parseInt(amountOptionObj.amount)]},
-                                            else: null
-                                        }}
-                                    ] },
-                                    { $or: [
-                                        {$cond: {
-                                            if: { $eq: [noOfPaymentsOptionObj.operator, 'less_than_equal'] },
-                                            then: {$lte: ['$noOfPayments', parseInt(noOfPaymentsOptionObj.noOfPayments)]},
-                                            else: null
-                                        }},
-                                        {$cond: {
-                                            if: { $eq: [noOfPaymentsOptionObj.operator, 'greater_than_equal'] },
-                                            then: {$gte: ['$noOfPayments', parseInt(noOfPaymentsOptionObj.noOfPayments)]},
-                                            else: null
-                                        }},
-                                        {$cond: {
-                                            if: { $eq: [noOfPaymentsOptionObj.operator, 'equal'] },
-                                            then: {$eq: ['$noOfPayments', parseInt(noOfPaymentsOptionObj.noOfPayments)]},
-                                            else: null
+                                            if: { $eq: [remarks, 'all'] },
+                                            then: {
+                                                $or: [
+                                                    {$eq: ['$remarks.value', 'past due'] },
+                                                    {$eq: ['$remarks.value', 'matured-past due'] },
+                                                    {$eq: ['$remarks.value', 'delinquent'] },
+                                                    {$eq: ['$remarks.value', 'delinquent-mcbu'] },
+                                                    {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                                                ]
+                                            },
+                                            else: {$eq: ['$remarks.value', remarks]}
                                         }}
                                     ] }
                                 ] 
@@ -76,8 +56,8 @@ async function allLoans(req, res) {
                                 amountRelease: '$amountRelease',
                                 loanCycle: '$loanCycle',
                                 mcbu: '$mcbu',
-                                noOfMisPayments: '$mispayment',
-                                noOfPayments: '$noOfPayments'
+                                noOfPayments: '$noOfPayments',
+                                remarks: '$remarks.label'
                             } },
                             {
                                 $addFields: {
@@ -114,8 +94,68 @@ async function allLoans(req, res) {
                     }
                 }
             ]).toArray();
+
+            if (groupData) {
+                let totalClients = 0;
+                let totalAmountRelease = 0;
+                let totalLoanBalance = 0;
+                let totalMCBU = 0;
+                let totalNetLoanBalance = 0;
+
+                groupData.map(group => {
+                    group.loans.map(loan => {
+                        const delinquent = loan.client.length > 0 ? loan.client[0].delinquent == true ? 'Yes' : 'No' : 'No';
+                        let fullName = loan.client.length > 0 ? loan.client[0].fullName : null;
+                        if (loan.client.length > 0 && fullName == null) {
+                            fullName = `${loan.client[0].lastName}, ${loan.client[0].firstName}`;
+                        }
+                        data.push({
+                            groupId: group._id,
+                            groupName: group.name,
+                            slotNo: loan.slotNo,
+                            clientName: fullName,
+                            loanCycle: loan.loanCycle,
+                            amountRelease: loan.amountRelease,
+                            amountReleaseStr: formatPricePhp(loan.amountRelease),
+                            loanBalance: loan.loanBalance,
+                            loanBalanceStr: formatPricePhp(loan.loanBalance),
+                            mcbu: loan.mcbu,
+                            mcbuStr: formatPricePhp(loan.mcbu),
+                            netLoanBalance: loan.netLoanBalance,
+                            netLoanBalanceStr: formatPricePhp(loan.netLoanBalance),
+                            noOfPayments: loan.noOfPayments,
+                            delinquent: delinquent,
+                            remarks: loan.remarks
+                        });
+    
+                        totalClients += 1;
+                        totalAmountRelease += loan.amountRelease;
+                        totalLoanBalance += loan.loanBalance;
+                        totalMCBU += loan.mcbu;
+                        totalNetLoanBalance += loan.netLoanBalance;
+                    });
+                });
+
+                data.sort((a, b) => { return a.loanBalance - b.loanBalance });
+
+                data.push({
+                    groupId: "TOTALS",
+                    groupName: "TOTALS",
+                    slotNo: '-',
+                    clientName: totalClients,
+                    loanCycle: '-',
+                    amountReleaseStr: formatPricePhp(totalAmountRelease),
+                    loanBalanceStr: formatPricePhp(totalLoanBalance),
+                    mcbuStr: formatPricePhp(totalMCBU),
+                    netLoanBalanceStr: formatPricePhp(totalNetLoanBalance),
+                    noOfPayments: '-',
+                    delinquent: '-',
+                    remarks: '-',
+                    totalData: true
+                });
+            }
     }  else if (branchId) {
-        data = await db.collection('users')
+        const loData = await db.collection('users')
             .aggregate([
                 { $match: { "role.rep": 4, designatedBranchId: branchId } },
                 { $addFields: {
@@ -123,45 +163,26 @@ async function allLoans(req, res) {
                 } },
                 {
                     $lookup: {
-                        from: 'loans',
+                        from: 'cashCollections',
                         localField: 'loId',
                         foreignField: 'loId',
                         pipeline: [
                             { $match: { $expr: { 
                                 $and: [ 
-                                    {$eq: ['$status', 'active']},
+                                    {$eq: ['$dateAdded', date]},
                                     { $or: [
                                         {$cond: {
-                                            if: { $eq: [amountOptionObj.operator, 'less_than_equal'] },
-                                            then: {$lte: ['$mispayment', parseInt(amountOptionObj.amount)]},
-                                            else: null
-                                        }},
-                                        {$cond: {
-                                            if: { $eq: [amountOptionObj.operator, 'greater_than_equal'] },
-                                            then: {$gte: ['$mispayment', parseInt(amountOptionObj.amount)]},
-                                            else: null
-                                        }},
-                                        {$cond: {
-                                            if: { $eq: [amountOptionObj.operator, 'equal'] },
-                                            then: {$eq: ['$mispayment', parseInt(amountOptionObj.amount)]},
-                                            else: null
-                                        }}
-                                    ] },
-                                    { $or: [
-                                        {$cond: {
-                                            if: { $eq: [noOfPaymentsOptionObj.operator, 'less_than_equal'] },
-                                            then: {$lte: ['$noOfPayments', parseInt(noOfPaymentsOptionObj.noOfPayments)]},
-                                            else: null
-                                        }},
-                                        {$cond: {
-                                            if: { $eq: [noOfPaymentsOptionObj.operator, 'greater_than_equal'] },
-                                            then: {$gte: ['$noOfPayments', parseInt(noOfPaymentsOptionObj.noOfPayments)]},
-                                            else: null
-                                        }},
-                                        {$cond: {
-                                            if: { $eq: [noOfPaymentsOptionObj.operator, 'equal'] },
-                                            then: {$eq: ['$noOfPayments', parseInt(noOfPaymentsOptionObj.noOfPayments)]},
-                                            else: null
+                                            if: { $eq: [remarks, 'all'] },
+                                            then: {
+                                                $or: [
+                                                    {$eq: ['$remarks.value', 'past due'] },
+                                                    {$eq: ['$remarks.value', 'matured-past due'] },
+                                                    {$eq: ['$remarks.value', 'delinquent'] },
+                                                    {$eq: ['$remarks.value', 'delinquent-mcbu'] },
+                                                    {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                                                ]
+                                            },
+                                            else: {$eq: ['$remarks.value', remarks]}
                                         }}
                                     ] }
                                 ] 
@@ -172,7 +193,11 @@ async function allLoans(req, res) {
                             } },
                             { $group: {
                                 _id: '$loId',
-                                totalClients: { $sum: 1 },
+                                totalMispayments: { $sum: { $cond: {
+                                    if: { $eq: ['$mispayment', true] },
+                                    then: 1,
+                                    else: 0
+                                } } },
                                 totalAmountRelease: { $sum: '$amountRelease' },
                                 totalLoanBalance: { $sum: '$loanBalance' },
                                 totalMCBU: { $sum: '$mcbu' },
@@ -195,6 +220,56 @@ async function allLoans(req, res) {
                     $sort: { loNo: 1 }
                 }
             ]).toArray();
+
+        if (loData) {
+            let totalMispays = 0;
+            let totalAmountRelease = 0;
+            let totalLoanBalance = 0;
+            let totalMCBU = 0;
+            let totalNetLoanBalance = 0;
+
+            loData.map(lo => {
+                let temp = {
+                    _id: lo._id,
+                    loName: `${lo.firstName} ${lo.lastName}`
+                }
+                lo.loans.map(loan => {
+                    temp = {
+                        ...temp,
+                        noOfMispays: loan.totalMispayments,
+                        totalAmountRelease: loan.totalAmountRelease,
+                        totalAmountReleaseStr: formatPricePhp(loan.totalAmountRelease),
+                        totalLoanBalance: loan.totalLoanBalance,
+                        totalLoanBalanceStr: formatPricePhp(loan.totalLoanBalance),
+                        totalMCBU: loan.totalMCBU,
+                        totalMCBUStr: formatPricePhp(loan.totalMCBU),
+                        totalNet: loan.totalNetLoanBalance,
+                        totalNetStr: formatPricePhp(loan.totalNetLoanBalance)
+                    };
+
+                    totalMispays += loan.totalMispayments;
+                    totalAmountRelease += loan.totalAmountRelease;
+                    totalLoanBalance += loan.totalLoanBalance;
+                    totalMCBU += loan.totalMCBU;
+                    totalNetLoanBalance += loan.totalNetLoanBalance;
+                });
+
+                data.push(temp);
+            });
+
+            data.sort((a, b) => { return a.loanBalance - b.loanBalance });
+
+            data.push({
+                _id: 'TOTALS',
+                loName: 'TOTALS',
+                noOfMispays: totalMispays,
+                totalAmountReleaseStr: formatPricePhp(totalAmountRelease),
+                totalLoanBalanceStr: formatPricePhp(totalLoanBalance),
+                totalMCBUStr: formatPricePhp(totalMCBU),
+                totalNetStr: formatPricePhp(totalNetLoanBalance),
+                totalData: true
+            });
+        }
     } else {
         let branchIdsObj;
         if (currentUserId) {
@@ -219,14 +294,74 @@ async function allLoans(req, res) {
         const branchData = [];
         const promise = await new Promise(async (resolve) => {
             const response = await Promise.all(branchIdsObj.map(async (branchId) => {
-                branchData.push.apply(branchData, await getByBranch(db, branchId, amountOptionObj, noOfPaymentsOptionObj));
+                branchData.push.apply(branchData, await getByBranch(db, branchId, remarks, date));
             }));
 
             resolve(response);
         });
 
         if (promise) {
-            data = branchData;
+            let totalMispays = 0;
+            let totalAmountRelease = 0;
+            let totalLoanBalance = 0;
+            let totalMCBU = 0;
+            let totalNetLoanBalance = 0;
+
+            branchData.map(branch => {
+                let temp = {
+                    _id: branch._id,
+                    code: branch.code,
+                    name: branch.name,
+                    noOfMispays: 0,
+                    totalAmountRelease: 0,
+                    totalAmountReleaseStr: '-',
+                    totalLoanBalance: 0,
+                    totalLoanBalanceStr: '-',
+                    totalMCBU: 0,
+                    totalMCBUStr: '-',
+                    totalNet: 0,
+                    totalNetStr: '-'
+                }
+                branch.loans.map(loan => {
+                    temp = {
+                        ...temp,
+                        noOfMispays: loan.totalMispayments,
+                        totalAmountRelease: loan.totalAmountRelease,
+                        totalAmountReleaseStr: formatPricePhp(loan.totalAmountRelease),
+                        totalLoanBalance: loan.totalLoanBalance,
+                        totalLoanBalanceStr: formatPricePhp(loan.totalLoanBalance),
+                        totalMCBU: loan.totalMCBU,
+                        totalMCBUStr: formatPricePhp(loan.totalMCBU),
+                        totalNet: loan.totalNetLoanBalance,
+                        totalNetStr: formatPricePhp(loan.totalNetLoanBalance),
+                    }
+                });
+
+                data.push(temp);
+            });
+
+            data.sort((a, b) => {
+                if (a.code < b.code) {
+                    return -1;
+                }
+
+                if (b.code < b.code) {
+                    return 1;
+                }
+
+                return 0;
+            });
+
+            data.push({
+                _id: 'TOTALS',
+                loName: 'TOTALS',
+                noOfMispays: totalMispays,
+                totalAmountReleaseStr: formatPricePhp(totalAmountRelease),
+                totalLoanBalanceStr: formatPricePhp(totalLoanBalance),
+                totalMCBUStr: formatPricePhp(totalMCBU),
+                totalNetStr: formatPricePhp(totalNetLoanBalance),
+                totalData: true
+            });
         }
     }
 
@@ -238,7 +373,7 @@ async function allLoans(req, res) {
 }
 
 
-const getByBranch = async (db, branchId, amountOptionObj, noOfPaymentsOptionObj) => {
+const getByBranch = async (db, branchId, remarks, date) => {
     const ObjectId = require('mongodb').ObjectId;
 
     return await db.collection('branches')
@@ -249,45 +384,26 @@ const getByBranch = async (db, branchId, amountOptionObj, noOfPaymentsOptionObj)
             } },
             {
                 $lookup: {
-                    from: 'loans',
+                    from: 'cashCollections',
                     localField: 'branchIdStr',
                     foreignField: 'branchId',
                     pipeline: [
                         { $match: { $expr: { 
                             $and: [ 
-                                {$eq: ['$status', 'active']},
+                                {$eq: ['$dateAdded', date]},
                                 { $or: [
                                     {$cond: {
-                                        if: { $eq: [amountOptionObj.operator, 'less_than_equal'] },
-                                        then: {$lte: ['$mispayment', parseInt(amountOptionObj.amount)]},
-                                        else: null
-                                    }},
-                                    {$cond: {
-                                        if: { $eq: [amountOptionObj.operator, 'greater_than_equal'] },
-                                        then: {$gte: ['$mispayment', parseInt(amountOptionObj.amount)]},
-                                        else: null
-                                    }},
-                                    {$cond: {
-                                        if: { $eq: [amountOptionObj.operator, 'equal'] },
-                                        then: {$eq: ['$mispayment', parseInt(amountOptionObj.amount)]},
-                                        else: null
-                                    }}
-                                ] },
-                                { $or: [
-                                    {$cond: {
-                                        if: { $eq: [noOfPaymentsOptionObj.operator, 'less_than_equal'] },
-                                        then: {$lte: ['$noOfPayments', parseInt(noOfPaymentsOptionObj.noOfPayments)]},
-                                        else: null
-                                    }},
-                                    {$cond: {
-                                        if: { $eq: [noOfPaymentsOptionObj.operator, 'greater_than_equal'] },
-                                        then: {$gte: ['$noOfPayments', parseInt(noOfPaymentsOptionObj.noOfPayments)]},
-                                        else: null
-                                    }},
-                                    {$cond: {
-                                        if: { $eq: [noOfPaymentsOptionObj.operator, 'equal'] },
-                                        then: {$eq: ['$noOfPayments', parseInt(noOfPaymentsOptionObj.noOfPayments)]},
-                                        else: null
+                                        if: { $eq: [remarks, 'all'] },
+                                        then: {
+                                            $or: [
+                                                {$eq: ['$remarks.value', 'past due'] },
+                                                {$eq: ['$remarks.value', 'matured-past due'] },
+                                                {$eq: ['$remarks.value', 'delinquent'] },
+                                                {$eq: ['$remarks.value', 'delinquent-mcbu'] },
+                                                {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                                            ]
+                                        },
+                                        else: {$eq: ['$remarks.value', remarks]}
                                     }}
                                 ] }
                             ] 
@@ -297,8 +413,12 @@ const getByBranch = async (db, branchId, amountOptionObj, noOfPaymentsOptionObj)
                             mcbuInt: {$convert: {input: '$mcbu', to : 'int', onError: 0, onNull: 0}}
                         } },
                         { $group: {
-                            _id: '$branchid',
-                            totalClients: { $sum: 1 },
+                            _id: '$branchId',
+                            totalMispayments: { $sum: { $cond: {
+                                if: { $eq: ['$mispayment', true] },
+                                then: 1,
+                                else: 0
+                            } } },
                             totalAmountRelease: { $sum: '$amountRelease' },
                             totalLoanBalance: { $sum: '$loanBalance' },
                             totalMCBU: { $sum: '$mcbu' },

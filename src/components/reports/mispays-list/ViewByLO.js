@@ -7,7 +7,7 @@ import TableComponent from "@/lib/table";
 import { useRouter } from "node_modules/next/router";
 import { formatPricePhp } from "@/lib/utils";
 
-const ViewByLOPage = ({ amount, amountOperator, noOfPayments, noOfPaymentsOperator }) => {
+const ViewByLOPage = ({ dateFilter, remarks }) => {
     const router = useRouter();
     const [loading, setLoading] = useState(true);
     const currentUser = useSelector(state => state.user.data);
@@ -21,8 +21,8 @@ const ViewByLOPage = ({ amount, amountOperator, noOfPayments, noOfPaymentsOperat
             accessor: 'loName'
         },
         {
-            Header: "# of Clients",
-            accessor: 'noOfClients'
+            Header: "# of Mispays",
+            accessor: 'noOfMispays'
         },
         {
             Header: "Total Amount Release",
@@ -50,35 +50,11 @@ const ViewByLOPage = ({ amount, amountOperator, noOfPayments, noOfPaymentsOperat
     }
 
     const getList = async (branchId) => {
-        const amountOption = JSON.stringify({ amount: amount, operator: amountOperator });
-        const noOfPaymentsOption = JSON.stringify({ noOfPayments: noOfPayments, operator: noOfPaymentsOperator });
-        let url = process.env.NEXT_PUBLIC_API_URL + 'reports/get-all-mispays?' + new URLSearchParams({ branchId: currentUser.role.rep == 3 ? currentUser.designatedBranchId : branchId, amountOption: amountOption, noOfPaymentsOption: noOfPaymentsOption });
+        setLoading(true);
+        let url = process.env.NEXT_PUBLIC_API_URL + 'reports/get-all-mispays?' + new URLSearchParams({ branchId: currentUser.role.rep == 3 ? currentUser.designatedBranchId : branchId, date: dateFilter, remarks: remarks});
         const response = await fetchWrapper.get(url);
         if (response.success) {
-            const responseData = [];
-            response.data.map(lo => {
-                let temp = {
-                    _id: lo._id,
-                    loName: `${lo.firstName} ${lo.lastName}`
-                }
-                lo.loans.map(loan => {
-                    temp = {
-                        ...temp,
-                        noOfClients: loan.totalClients,
-                        totalAmountRelease: loan.totalAmountRelease,
-                        totalAmountReleaseStr: formatPricePhp(loan.totalAmountRelease),
-                        totalLoanBalance: loan.totalLoanBalance,
-                        totalLoanBalanceStr: formatPricePhp(loan.totalLoanBalance),
-                        totalMCBU: loan.totalMCBU,
-                        totalMCBUStr: formatPricePhp(loan.totalMCBU),
-                        totalNet: loan.totalNetLoanBalance,
-                        totalNetStr: formatPricePhp(loan.totalNetLoanBalance)
-                    };
-                });
-                responseData.push(temp);
-            });
-
-            responseData.sort((a, b) => { return a.loanBalance - b.loanBalance });
+            const responseData = response.data;
             setList(responseData);
             setLoading(false);
         }
@@ -96,7 +72,7 @@ const ViewByLOPage = ({ amount, amountOperator, noOfPayments, noOfPaymentsOperat
         return (() => {
             mounted = false;
         });
-    }, [uuid, amount, amountOperator, noOfPayments, noOfPaymentsOperator]);
+    }, [uuid, dateFilter, remarks]);
 
     return (
         <React.Fragment>
