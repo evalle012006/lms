@@ -50,6 +50,7 @@ const ViewLowBalanceByBranchPage = ({ amount, amountOperator, noOfPayments, noOf
     }
 
     const getList = async () => {
+        setLoading(true);
         const amountOption = JSON.stringify({ amount: amount, operator: amountOperator });
         const noOfPaymentsOption = JSON.stringify({ noOfPayments: noOfPayments, operator: noOfPaymentsOperator });
         let url = process.env.NEXT_PUBLIC_API_URL + 'reports/get-all-low-loan-balance';

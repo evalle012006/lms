@@ -1,5 +1,4 @@
 import Layout from "@/components/Layout";
-import Header from "@/components/reports/Header";
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { useRouter } from "node_modules/next/router";
 import { useState } from "react";
@@ -8,21 +7,19 @@ import { useDispatch, useSelector } from "react-redux";
 import { setBranchList } from "@/redux/actions/branchActions";
 import { BehaviorSubject } from 'rxjs';
 import ViewByLOPage from "@/components/reports/mispays-list/ViewByLO";
+import Header from "@/components/reports/mispays-list/Header";
 
 const MispaysByGroupPage = () => {
     const dispatch = useDispatch();
     const router = useRouter();
-    const amountSubject = new BehaviorSubject(process.browser && localStorage.getItem('filterMispaysAmount'));
-    const amountOperatorSubject = new BehaviorSubject(process.browser && localStorage.getItem('filterMispaysAmountOperator'));
-    const noOfPaymentsSubject = new BehaviorSubject(process.browser && localStorage.getItem('filterMispaysNoOfPayments'));
-    const noOfPaymentsOperatorSubject = new BehaviorSubject(process.browser && localStorage.getItem('filterMispaysNoOfPaymentsOperator'));
+    const currentDate = useSelector(state => state.systemSettings.currentDate);
+    const remarksSubject = new BehaviorSubject(process.browser && localStorage.getItem('filterMispaysRemarks'));
+    const dateFilterSubject = new BehaviorSubject(process.browser && localStorage.getItem('filterMispaysDate'));
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
     const [currentBranch, setCurrentBranch] = useState();
-    const [amount, setAmount] = useState(amountSubject.value ? amountSubject.value : 0);
-    const [amountOperator, setAmountOperator] = useState(amountOperatorSubject.value ? amountOperatorSubject.value : 'greater_than_equal');
-    const [noOfPayments, setNoOfPayments] = useState(noOfPaymentsSubject.value ? noOfPaymentsSubject.value : 0);
-    const [noOfPaymentsOperator, setNoOfPaymentsOperator] = useState(noOfPaymentsOperatorSubject.value ? noOfPaymentsOperatorSubject.value : 'greater_than_equal');
+    const [remarks, setRemarks] = useState(remarksSubject.value ? remarksSubject.value : 'all');
+    const [dateFilter, setDateFilter] = useState(dateFilterSubject.value ? dateFilterSubject.value : currentDate);
     const { uuid } = router.query;
 
     const handleBranchFilter = (selected) => {
@@ -57,41 +54,25 @@ const MispaysByGroupPage = () => {
         }
     }
 
-    const handleAmountChange = (value) => {
-        localStorage.setItem('filterMispaysAmount', value);
-        setAmount(value);
+    const handleDateFilter = (selected) => {
+        const filteredDate = selected.target.value;
+        localStorage.setItem('filterMispaysDate', filteredDate);
+        setDateFilter(filteredDate);
     }
 
-    const handleAmountOperatorChange = (selected) => {
-        localStorage.setItem('filterMispaysAmountOperator', selected.value);
-        setAmountOperator(selected.value);
-    }
-
-    const handleNoOfPaymentsChange = (value) => {
-        localStorage.setItem('filterMispaysNoOfPayments', value);
-        setNoOfPayments(value);
-    }
-
-    const handleNoOfPaymentsOperatorChange = (selected) => {
-        localStorage.setItem('filterMispaysNoOfPaymentsOperator', selected.value);
-        setNoOfPaymentsOperator(selected.value);
+    const handleRemarksFilter = (selected) => {
+        const value = selected.value;
+        localStorage.setItem('filterMispaysRemarks', value);
+        setRemarks(value);
     }
 
     useEffect(() => {
-        localStorage.setItem('filterMispaysAmount', amount);
-    }, [amount]);
+        localStorage.setItem('filterMispaysDate', dateFilter);
+    }, [dateFilter]);
 
     useEffect(() => {
-        localStorage.setItem('filterMispaysAmountOperator', amountOperator);
-    }, [amountOperator]);
-    
-    useEffect(() => {
-        localStorage.setItem('filterMispaysNoOfPayments', noOfPayments);
-    }, [noOfPayments]);
-
-    useEffect(() => {
-        localStorage.setItem('filterMispaysNoOfPaymentsOperator', noOfPaymentsOperator);
-    }, [noOfPaymentsOperator]);
+        localStorage.setItem('filterMispaysRemarks', remarks);
+    }, [remarks]);
 
     useEffect(() => {
         let mounted = true;
@@ -111,10 +92,9 @@ const MispaysByGroupPage = () => {
 
     return (
         <Layout noPad={true} header={false}>
-            <Header pageNo={2} pageTitle="Mispays List" pageName="lo-view" amount={amount} handleAmountChange={handleAmountChange} amountOperator={amountOperator} handleAmountOperatorChange={handleAmountOperatorChange} 
-                    noOfPayments={noOfPayments} handleNoOfPaymentsChange={handleNoOfPaymentsChange} noOfPaymentsOperator={noOfPaymentsOperator} handleNoOfPaymentsOperatorChange={handleNoOfPaymentsOperatorChange}
+            <Header pageNo={2} pageTitle="Mispays List" pageName="lo-view" remarks={remarks} handleRemarksFilter={handleRemarksFilter} dateFilter={dateFilter} handleDateFilter={handleDateFilter}
                     currentBranch={currentBranch} handleBranchFilter={handleBranchFilter} />
-            <ViewByLOPage amount={amount} amountOperator={amountOperator} noOfPayments={noOfPayments} noOfPaymentsOperator={noOfPaymentsOperator} />
+            <ViewByLOPage remarks={remarks} dateFilter={dateFilter} />
         </Layout>
     )
 }

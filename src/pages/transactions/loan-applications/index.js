@@ -193,9 +193,10 @@ const LoanApplicationPage = () => {
             if (branches.length > 0 && (currentUser.role.rep === 3 || currentUser.role.rep === 4)) {
                 const currentBranch = branches.find(b => b._id == currentUser.designatedBranchId);
                 dispatch(setBranch(currentBranch));
+                dispatch(setBranchList([currentBranch]));
+            } else {
+                dispatch(setBranchList(branches));
             }
-            
-            dispatch(setBranchList(branches));
         } else {
             toast.error('Error retrieving branches list.');
         }
@@ -230,10 +231,14 @@ const LoanApplicationPage = () => {
                 });
             }
 
-            dispatch(setUserList(userList));
-
             if (currentUser.role.rep === 4) {
                 setSelectedFilterUser(currentUser._id);
+            }
+
+            if (currentUser.role.rep == 3) {
+                dispatch(setUserList(userList));
+            } else {
+                dispatch(setUserList(userList));
             }
         } else {
             toast.error('Error retrieving user list.');
@@ -1433,7 +1438,7 @@ const LoanApplicationPage = () => {
                                     onClick={() => handleSelectTab("application")}>
                                     Pending Applications
                                 </TabSelector>
-                                {currentUser.role > 2 && (
+                                {currentUser.role.rep > 2 && (
                                     <TabSelector
                                         isActive={selectedTab === "history"}
                                         onClick={() => handleSelectTab("history")}>
@@ -1445,30 +1450,34 @@ const LoanApplicationPage = () => {
                             <TabPanel hidden={selectedTab !== "ldf"}>
                                     <div className="flex flex-row justify-between w-full bg-white p-4">
                                         <div className="flex flex-row">
-                                            <div className='flex flex-col ml-4'>
-                                                <span className='text-zinc-400 mb-1'>Branch:</span>
-                                                <Select 
-                                                    options={branchList}
-                                                    value={branchList && branchList.find(branch => { return branch.value === selectedFilterBranch } )}
-                                                    styles={borderStyles}
-                                                    components={{ DropdownIndicator }}
-                                                    onChange={handleBranchChange}
-                                                    isSearchable={true}
-                                                    closeMenuOnSelect={true}
-                                                    placeholder={'Branch Filter'}/>
-                                            </div>
-                                            <div className='flex flex-col ml-4'>
-                                                <span className='text-zinc-400 mb-1'>Loan Officer:</span>
-                                                <Select 
-                                                    options={userList}
-                                                    value={userList && userList.find(user => { return user.value === selectedFilterUser } )}
-                                                    styles={borderStyles}
-                                                    components={{ DropdownIndicator }}
-                                                    onChange={handleUserChange}
-                                                    isSearchable={true}
-                                                    closeMenuOnSelect={true}
-                                                    placeholder={'LO Filter'}/>
-                                            </div>
+                                            {currentUser.role.rep < 3 && (
+                                                <div className='flex flex-col ml-4'>
+                                                    <span className='text-zinc-400 mb-1'>Branch:</span>
+                                                    <Select 
+                                                        options={branchList}
+                                                        value={branchList && branchList.find(branch => { return branch.value === selectedFilterBranch } )}
+                                                        styles={borderStyles}
+                                                        components={{ DropdownIndicator }}
+                                                        onChange={handleBranchChange}
+                                                        isSearchable={true}
+                                                        closeMenuOnSelect={true}
+                                                        placeholder={'Branch Filter'}/>
+                                                </div>
+                                            )}
+                                            {currentUser.role.rep <= 3 && (
+                                                <div className='flex flex-col ml-4'>
+                                                    <span className='text-zinc-400 mb-1'>Loan Officer:</span>
+                                                    <Select 
+                                                        options={userList}
+                                                        value={userList && userList.find(user => { return user.value === selectedFilterUser } )}
+                                                        styles={borderStyles}
+                                                        components={{ DropdownIndicator }}
+                                                        onChange={handleUserChange}
+                                                        isSearchable={true}
+                                                        closeMenuOnSelect={true}
+                                                        placeholder={'LO Filter'}/>
+                                                </div>
+                                            )}
                                             <div className='flex flex-col ml-4 mr-4'>
                                                 <span className='text-zinc-400 mb-1'>Group:</span>
                                                 <Select 
@@ -1532,30 +1541,34 @@ const LoanApplicationPage = () => {
                                 </TabPanel>
                                 <TabPanel hidden={selectedTab !== "tomorrow"}>
                                     <div className="flex flex-row bg-white p-4">
-                                        <div className='flex flex-col ml-4'>
-                                            <span className='text-zinc-400 mb-1'>Branch:</span>
-                                            <Select 
-                                                options={branchList}
-                                                value={branchList && branchList.find(branch => { return branch.value === selectedFilterBranch } )}
-                                                styles={borderStyles}
-                                                components={{ DropdownIndicator }}
-                                                onChange={handleBranchChange}
-                                                isSearchable={true}
-                                                closeMenuOnSelect={true}
-                                                placeholder={'Branch Filter'}/>
-                                        </div>
-                                        <div className='flex flex-col ml-4'>
-                                            <span className='text-zinc-400 mb-1'>Loan Officer:</span>
-                                            <Select 
-                                                options={userList}
-                                                value={userList && userList.find(user => { return user.value === selectedFilterUser } )}
-                                                styles={borderStyles}
-                                                components={{ DropdownIndicator }}
-                                                onChange={handleUserChange}
-                                                isSearchable={true}
-                                                closeMenuOnSelect={true}
-                                                placeholder={'LO Filter'}/>
-                                        </div>
+                                        {currentUser.role.rep < 3 && (
+                                            <div className='flex flex-col ml-4'>
+                                                <span className='text-zinc-400 mb-1'>Branch:</span>
+                                                <Select 
+                                                    options={branchList}
+                                                    value={branchList && branchList.find(branch => { return branch.value === selectedFilterBranch } )}
+                                                    styles={borderStyles}
+                                                    components={{ DropdownIndicator }}
+                                                    onChange={handleBranchChange}
+                                                    isSearchable={true}
+                                                    closeMenuOnSelect={true}
+                                                    placeholder={'Branch Filter'}/>
+                                            </div>
+                                        )}
+                                        {currentUser.role.rep <= 3 && (
+                                            <div className='flex flex-col ml-4'>
+                                                <span className='text-zinc-400 mb-1'>Loan Officer:</span>
+                                                <Select 
+                                                    options={userList}
+                                                    value={userList && userList.find(user => { return user.value === selectedFilterUser } )}
+                                                    styles={borderStyles}
+                                                    components={{ DropdownIndicator }}
+                                                    onChange={handleUserChange}
+                                                    isSearchable={true}
+                                                    closeMenuOnSelect={true}
+                                                    placeholder={'LO Filter'}/>
+                                            </div>
+                                        )}
                                         <div className='flex flex-col ml-4'>
                                             <span className='text-zinc-400 mb-1'>Group:</span>
                                             <Select 
@@ -1595,30 +1608,34 @@ const LoanApplicationPage = () => {
                                 </TabPanel>
                                 <TabPanel hidden={selectedTab !== "application"}>
                                     <div className="flex flex-row bg-white p-4">
-                                        <div className='flex flex-col ml-4'>
-                                            <span className='text-zinc-400 mb-1'>Branch:</span>
-                                            <Select 
-                                                options={branchList}
-                                                value={branchList && branchList.find(branch => { return branch.value === selectedFilterBranch } )}
-                                                styles={borderStyles}
-                                                components={{ DropdownIndicator }}
-                                                onChange={handleBranchChange}
-                                                isSearchable={true}
-                                                closeMenuOnSelect={true}
-                                                placeholder={'Branch Filter'}/>
-                                        </div>
-                                        <div className='flex flex-col ml-4'>
-                                            <span className='text-zinc-400 mb-1'>Loan Officer:</span>
-                                            <Select 
-                                                options={userList}
-                                                value={userList && userList.find(user => { return user.value === selectedFilterUser } )}
-                                                styles={borderStyles}
-                                                components={{ DropdownIndicator }}
-                                                onChange={handleUserChange}
-                                                isSearchable={true}
-                                                closeMenuOnSelect={true}
-                                                placeholder={'LO Filter'}/>
-                                        </div>
+                                        {currentUser.role.rep < 3 && (
+                                            <div className='flex flex-col ml-4'>
+                                                <span className='text-zinc-400 mb-1'>Branch:</span>
+                                                <Select 
+                                                    options={branchList}
+                                                    value={branchList && branchList.find(branch => { return branch.value === selectedFilterBranch } )}
+                                                    styles={borderStyles}
+                                                    components={{ DropdownIndicator }}
+                                                    onChange={handleBranchChange}
+                                                    isSearchable={true}
+                                                    closeMenuOnSelect={true}
+                                                    placeholder={'Branch Filter'}/>
+                                            </div>
+                                        )}
+                                        {currentUser.role.rep <= 3 && (
+                                            <div className='flex flex-col ml-4'>
+                                                <span className='text-zinc-400 mb-1'>Loan Officer:</span>
+                                                <Select 
+                                                    options={userList}
+                                                    value={userList && userList.find(user => { return user.value === selectedFilterUser } )}
+                                                    styles={borderStyles}
+                                                    components={{ DropdownIndicator }}
+                                                    onChange={handleUserChange}
+                                                    isSearchable={true}
+                                                    closeMenuOnSelect={true}
+                                                    placeholder={'LO Filter'}/>
+                                            </div>
+                                        )}
                                         <div className='flex flex-col ml-4'>
                                             <span className='text-zinc-400 mb-1'>Group:</span>
                                             <Select 
@@ -1656,7 +1673,7 @@ const LoanApplicationPage = () => {
                                         </div>
                                     </footer>
                                 </TabPanel>
-                                {currentUser.role > 2 && (
+                                {currentUser.role.rep > 2 && (
                                     <TabPanel hidden={selectedTab !== 'history'}>
                                         <TableComponent columns={columns} data={historyList} hasActionButtons={false} showFilters={false} pageSize={500} />
                                     </TabPanel>

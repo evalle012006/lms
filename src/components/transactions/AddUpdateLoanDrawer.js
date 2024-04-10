@@ -21,6 +21,8 @@ import { UppercaseFirstLetter, formatPricePhp } from "@/lib/utils";
 const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, onClose, type }) => {
     const formikRef = useRef();
     const dispatch = useDispatch();
+    const isHoliday = useSelector(state => state.systemSettings.holiday);
+    const isWeekend = useSelector(state => state.systemSettings.weekend);
     const list = useSelector(state => state.loan.list);
     const currentUser = useSelector(state => state.user.data);
     const transactionSettings = useSelector(state => state.transactionsSettings.data);
@@ -53,6 +55,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     const [selectedLoanId, setSelectedLoanId] = useState();
 
     const [loanFor, setLoanFor] = useState('today');
+    const [loStatus, setLoStatus] = useState();
 
     const initialValues = {
         branchId: loan.branchId,
@@ -688,6 +691,32 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             setSlotNumbers();
         }
     }, [list, selectedGroup, mode]);
+
+    useEffect(() => {
+        const getLOStatus = async (loId) => {
+            const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/get-lo-status?' + new URLSearchParams({ loId: loId, currentDate: currentDate }));
+            if (response.success) {
+                setLoStatus(response.status);
+
+                if (response.status === 'open') {
+                    setLoanFor('today');
+                } else {
+                    setLoanFor('tomorrow');
+                }
+
+                if (isHoliday || isWeekend) {
+                    setLoanFor('tomorrow');
+                }
+            }
+        }
+
+        if (currentUser.role.rep == 4) {
+            getLOStatus(currentUser._id);
+        } else if (selectedLo){
+            getLOStatus(selectedLo);
+        }
+        
+    }, [currentUser, selectedLo]);;
 
     return (
         <React.Fragment>

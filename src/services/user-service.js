@@ -36,6 +36,11 @@ function login(username, password) {
 
 function logout() {
     // localStorage.removeItem('selectedBranch');
+    localStorage.removeItem('filterMispaysDate');
+    localStorage.removeItem('filterMispaysRemarks');
+    localStorage.removeItem('filterLowBalanceIncludeDelinquent');
+    localStorage.removeItem('filterLowBalanceNoOfPaymentsOperator');
+    localStorage.removeItem('filterLowBalanceNoOfPayments');
     localStorage.removeItem('filterLowBalanceAmountOperator');
     localStorage.removeItem('filterLowBalanceAmount');
     localStorage.removeItem('pageNo');
