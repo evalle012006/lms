@@ -187,3 +187,19 @@ loanDailyLimit
 loanWeeklyLimit
 mcbuRate
 `;
+
+export const BAD_DEBT_COLLECTIONS_FIELDS = `
+_id
+branchId
+clientId
+dateAdded
+groupId
+insertedBy
+insertedDate
+loId
+loanId
+loanRelease
+maturedPastDue
+paymentCollection
+mcbu
+`;
