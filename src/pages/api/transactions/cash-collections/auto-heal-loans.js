@@ -1,6 +1,5 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
-import moment from 'moment'
 
 let response = {};
 let statusCode = 200;
@@ -17,15 +16,20 @@ async function autoHealLoans(req, res) {
 
     const groups = await db.collection('groups').find({ $expr: { $and: [ {$eq: ['$loanOfficerId', loId]}, {$gt: ['$noOfClients', 0]} ] } }).toArray();
 
-    groups.map(async group => {
-        const groupIdStr = group._id + '';
-        await removedDoubleCC(groupIdStr, currentDate);
-    });
-    // setTimeout(async () => {
-    //     await syncLoansCashCollections(groupId, currentDate);
-    // }, 1000);
+    const promise = await new Promise(async (resolve) => {
+        const response = await Promise.all(groups.map(async (group) => {
+            const groupIdStr = group._id + '';
+            await removedDoubleCC(groupIdStr, currentDate);
+            // await syncLoansCashCollections(groupId, currentDate);
+            // await removeMultiLoanOpen(groupIdStr);
+        }));
 
-    response = { success: true };
+        resolve(response);
+    });
+
+    if (promise) {
+        response = { success: true };
+    }
 
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')
@@ -91,5 +95,21 @@ async function syncLoansCashCollections(groupId, currentDate) {
                 }
             }
         });
+    }
+}
+
+async function removeMultiLoanOpen(groupId) {
+    const { db } = await connectToDatabase();
+    
+    const loans = await db.collection('loans').find({ groupId: groupId, status: { $ne: ['closed'] } }).toArray();
+
+    if (loans.length > 0) {
+        const activeLoans = loans.filter(l => l.status == 'active');
+        if (activeLoans.length > 1) {
+            const sortedLoans = activeLoans.sort((a, b) => { return a.loanCycle - b.loanCycle });
+
+            const loanToClose = sortedLoans[0];
+            await db.collection('loans').updateOne({ _id: loanToClose._id }, { $set: { status: 'closed', autoClosed: true } });
+        }
     }
 }

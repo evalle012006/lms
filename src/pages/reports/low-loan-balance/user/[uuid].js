@@ -1,5 +1,5 @@
 import Layout from "@/components/Layout";
-import Header from "@/components/reports/Header";
+import Header from "@/components/reports/low-loan-balance/Header";
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { useRouter } from "node_modules/next/router";
 import { useState } from "react";

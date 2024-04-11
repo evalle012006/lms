@@ -1,5 +1,5 @@
 import Layout from "@/components/Layout";
-import Header from "@/components/reports/Header";
+import Header from "@/components/reports/low-loan-balance/Header";
 import ViewLowBalanceByBranchPage from "@/components/reports/low-loan-balance/ViewLowLoanBalanceByBranch";
 import ViewLowBalanceByGroupsPage from "@/components/reports/low-loan-balance/ViewLowLoanBalanceByGroup";
 import ViewLowBalanceByLOPage from "@/components/reports/low-loan-balance/ViewLowLoanBalanceByLO";
@@ -21,7 +21,6 @@ const IncomingReloanPage = () => {
     }
 
     const handleAmountOperatorChange = (selected) => {
-        console.log(selected)
         localStorage.setItem('filterLowBalanceAmountOperator', selected.value);
         setAmountOperator(selected.value);
     }

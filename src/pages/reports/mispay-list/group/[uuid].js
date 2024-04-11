@@ -1,5 +1,5 @@
 import Layout from "@/components/Layout";
-import Header from "@/components/reports/Header";
+import Header from "@/components/reports/mispays-list/Header";
 import { BehaviorSubject } from 'rxjs';
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { setUserList } from "@/redux/actions/userActions";
@@ -13,19 +13,15 @@ const MispaysByGroupPage = () => {
     const dispatch = useDispatch();
     const router = useRouter();
     const currentUser = useSelector(state => state.user.data);
+    const currentDate = useSelector(state => state.systemSettings.currentDate);
     const userList = useSelector(state => state.user.list);
     const selectedBranchSubject = new BehaviorSubject(process.browser && localStorage.getItem('selectedBranch'));
-    const amountSubject = new BehaviorSubject(process.browser && localStorage.getItem('filterMispaysAmount'));
-    const amountOperatorSubject = new BehaviorSubject(process.browser && localStorage.getItem('filterMispaysAmountOperator'));
-    const noOfPaymentsSubject = new BehaviorSubject(process.browser && localStorage.getItem('filterMispaysNoOfPayments'));
-    const noOfPaymentsOperatorSubject = new BehaviorSubject(process.browser && localStorage.getItem('filterMispaysNoOfPaymentsOperator'));
+    const remarksSubject = new BehaviorSubject(process.browser && localStorage.getItem('filterMispaysRemarks'));
+    const dateFilterSubject = new BehaviorSubject(process.browser && localStorage.getItem('filterMispaysDate'));
     const pageNoSubject = new BehaviorSubject(process.browser && localStorage.getItem('pageNo'));
     const [currentLO, setCurrentLO] = useState();
-    const [amount, setAmount] = useState(amountSubject.value ? amountSubject.value : 0);
-    const [amountOperator, setAmountOperator] = useState(amountOperatorSubject.value ? amountOperatorSubject.value : 'greater_than_equal');
-    const [noOfPayments, setNoOfPayments] = useState(noOfPaymentsSubject.value ? noOfPaymentsSubject.value : 0);
-    const [noOfPaymentsOperator, setNoOfPaymentsOperator] = useState(noOfPaymentsOperatorSubject.value ? noOfPaymentsOperatorSubject.value : 'greater_than_equal');
-    const [includeDelinquent, setIncludeDelinquent] = useState(true);
+    const [remarks, setRemarks] = useState(remarksSubject.value ? remarksSubject.value : 'all');
+    const [dateFilter, setDateFilter] = useState(dateFilterSubject.value ? dateFilterSubject.value : currentDate);
     const { uuid } = router.query;
 
     const handleLOFilter = (selected) => {
@@ -56,50 +52,25 @@ const MispaysByGroupPage = () => {
             }
     }
 
-    const handleAmountChange = (value) => {
-        localStorage.setItem('filterMispaysAmount', value);
-        setAmount(value);
+    const handleDateFilter = (selected) => {
+        const filteredDate = selected.target.value;
+        localStorage.setItem('filterMispaysDate', filteredDate);
+        setDateFilter(filteredDate);
     }
 
-    const handleAmountOperatorChange = (selected) => {
-        localStorage.setItem('filterMispaysAmountOperator', selected.value);
-        setAmountOperator(selected.value);
-    }
-
-    const handleNoOfPaymentsChange = (value) => {
-        localStorage.setItem('filterMispaysNoOfPayments', value);
-        setNoOfPayments(value);
-    }
-
-    const handleNoOfPaymentsOperatorChange = (selected) => {
-        localStorage.setItem('filterMispaysNoOfPaymentsOperator', selected.value);
-        setNoOfPaymentsOperator(selected.value);
-    }
-
-    const handleIncludeDelinquentChange = (name, value) => {
-        localStorage.setItem('filterMispaysIncludeDelinquent', value);
-        setIncludeDelinquent(value);
+    const handleRemarksFilter = (selected) => {
+        const value = selected.value;
+        localStorage.setItem('filterMispaysRemarks', value);
+        setRemarks(value);
     }
 
     useEffect(() => {
-        localStorage.setItem('filterMispaysAmount', amount);
-    }, [amount]);
+        localStorage.setItem('filterMispaysDate', dateFilter);
+    }, [dateFilter]);
 
     useEffect(() => {
-        localStorage.setItem('filterMispaysAmountOperator', amountOperator);
-    }, [amountOperator]);
-    
-    useEffect(() => {
-        localStorage.setItem('filterMispaysNoOfPayments', noOfPayments);
-    }, [noOfPayments]);
-
-    useEffect(() => {
-        localStorage.setItem('filterMispaysNoOfPaymentsOperator', noOfPaymentsOperator);
-    }, [noOfPaymentsOperator]);
-
-    useEffect(() => {
-        localStorage.setItem('filterMispaysIncludeDelinquent', includeDelinquent);
-    }, [includeDelinquent]);
+        localStorage.setItem('filterMispaysRemarks', remarks);
+    }, [remarks]);
 
     useEffect(() => {
         let mounted = true;
@@ -123,10 +94,9 @@ const MispaysByGroupPage = () => {
 
     return (
         <Layout noPad={true} header={false}>
-            <Header pageNo={pageNoSubject.value} pageTitle="Mispays List" pageName="group-view" amount={amount} handleAmountChange={handleAmountChange} amountOperator={amountOperator} handleAmountOperatorChange={handleAmountOperatorChange} 
-                        noOfPayments={noOfPayments} handleNoOfPaymentsChange={handleNoOfPaymentsChange} noOfPaymentsOperator={noOfPaymentsOperator} handleNoOfPaymentsOperatorChange={handleNoOfPaymentsOperatorChange}
-                        includeDelinquent={includeDelinquent} handleIncludeDelinquentChange={handleIncludeDelinquentChange} currentLO={currentLO} handleLOFilter={handleLOFilter} />
-            <ViewByGroupsPage amount={amount} amountOperator={amountOperator} noOfPayments={noOfPayments} noOfPaymentsOperator={noOfPaymentsOperator} includeDelinquent={includeDelinquent} />
+            <Header pageNo={pageNoSubject.value} pageTitle="Mispays List" pageName="group-view" remarks={remarks} handleRemarksFilter={handleRemarksFilter} dateFilter={dateFilter} handleDateFilter={handleDateFilter}
+                    currentLO={currentLO} handleLOFilter={handleLOFilter} />
+            <ViewByGroupsPage remarks={remarks} dateFilter={dateFilter} />
         </Layout>
     )
 }
