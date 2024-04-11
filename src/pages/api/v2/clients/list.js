@@ -1,4 +1,4 @@
-import { CASH_COLLECTIONS_FIELDS, GROUP_FIELDS, LOAN_FIELDS, USER_FIELDS } from '@/lib/graph.fields';
+import { GROUP_FIELDS, LOAN_FIELDS, USER_FIELDS } from '@/lib/graph.fields';
 import { queryQl } from '@/lib/graph/graph.util';
 import { apiHandler } from '@/services/api-handler';
 
