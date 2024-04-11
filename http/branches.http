@@ -1,20 +1,33 @@
+@apiKey=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2MzllODQ4MDkyNzMxZTFkMTFmYjZmZDIiLCJpYXQiOjE3MTE1NDY1OTgsImV4cCI6MTcxMTU2MDk5OH0.ITuqrfs_LhRBEAIcA3wwGEmm6I1DjEz_uB5Kccxu5XU
+
 GET http://localhost:3000/api/branches/list
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2MzllODQ4MDkyNzMxZTFkMTFmYjZmZDIiLCJpYXQiOjE3MTExMTQyOTAsImV4cCI6MTcxMTEyODY5MH0.VqcJ090NTvG2fQrTdjmYj7wFijp9onsaKL2_EqTntGc
+Authorization: Bearer {{apiKey}}
 
 ### v1
 GET http://localhost:3000/api/branches?code=B001
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2MzllODQ4MDkyNzMxZTFkMTFmYjZmZDIiLCJpYXQiOjE3MTExMTQyOTAsImV4cCI6MTcxMTEyODY5MH0.VqcJ090NTvG2fQrTdjmYj7wFijp9onsaKL2_EqTntGc
+Authorization: Bearer {{apiKey}}
 
 ### v2
 GET http://localhost:3000/api/v2/branches/list
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2MzllODQ4MDkyNzMxZTFkMTFmYjZmZDIiLCJpYXQiOjE3MTExMTQyOTAsImV4cCI6MTcxMTEyODY5MH0.VqcJ090NTvG2fQrTdjmYj7wFijp9onsaKL2_EqTntGc
-
+Authorization: Bearer {{apiKey}}
 
 ### v2
 GET http://localhost:3000/api/v2/branches?code=B001
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2MzllODQ4MDkyNzMxZTFkMTFmYjZmZDIiLCJpYXQiOjE3MTExMTQyOTAsImV4cCI6MTcxMTEyODY5MH0.VqcJ090NTvG2fQrTdjmYj7wFijp9onsaKL2_EqTntGc
+Authorization: Bearer {{apiKey}}
 
+###
+POST http://localhost:3000/api/v2/branches
+Content-Type: application/json
+Authorization: Bearer {{apiKey}}
+
+{
+    "name": "Test Zamboanga I (Guiwan)",
+    "code": "B001",
+    "email": "aczamboanga1@ambercashph.com",
+    "phoneNumber": "123",
+    "address": "Zamboanga del Sur"
+}

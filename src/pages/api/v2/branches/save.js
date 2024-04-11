@@ -3,6 +3,7 @@ import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, insertQl, queryQl } from '@/lib/graph/graph.util';
 import { generateUUID } from '@/lib/utils';
 import { apiHandler } from '@/services/api-handler';
+import moment from 'moment'
 
 const graph = new GraphProvider();
 const BRANCH_TYPE = createGraphType('branches', `
@@ -43,7 +44,7 @@ async function save(req, res) {
                     email: email,
                     phoneNumber: phoneNumber,
                     address: address,
-                    dateAdded: 'now()'
+                    dateAdded: moment(getCurrentDate()).format('YYYY-MM-DD')
                 }]
             })
         ).then(res => res.data.returning?.[0]);
