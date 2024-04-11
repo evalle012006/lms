@@ -1,7 +1,8 @@
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, insertQl, queryQl } from '@/lib/graph/graph.util';
-import { generateUUID } from '@/lib/utils';
+import { generateUUID, getCurrentDate } from '@/lib/utils';
 import { apiHandler } from '@/services/api-handler';
+import moment from 'moment';
 
 
 const graph = new GraphProvider();
@@ -41,7 +42,7 @@ async function save(req, res) {
                     {
                         ... groupData,
                         _id: generateUUID(),
-                        dateAdded: 'now()'
+                        dateAdded: moment(getCurrentDate()).format('YYYY-MM-DD')
                     }
                 ]
             })
