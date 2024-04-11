@@ -109,7 +109,7 @@ async function removeMultiLoanOpen(groupId) {
             const sortedLoans = activeLoans.sort((a, b) => { return a.loanCycle - b.loanCycle });
 
             const loanToClose = sortedLoans[0];
-            await db.collection('loans').updateOne({ _id: loanToClose._id }, { $set: { status: 'closed' } });
+            await db.collection('loans').updateOne({ _id: loanToClose._id }, { $set: { status: 'closed', autoClosed: true } });
         }
     }
 }
