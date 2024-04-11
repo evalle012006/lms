@@ -302,3 +302,25 @@ transferred
 updateMessage
 value
 `;
+
+export const LOS_TOTALS_FIELDS = `
+_id
+branchId
+currentDate
+data
+dateAdded
+dateApproved
+dateModified
+insertedBy
+insertedDate
+insertedDateTime
+losType
+modifiedBy
+modifiedDate
+month
+occurence
+status
+userId
+userType
+year
+`;
