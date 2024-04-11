@@ -21,7 +21,7 @@ async function autoHealLoans(req, res) {
             const groupIdStr = group._id + '';
             await removedDoubleCC(groupIdStr, currentDate);
             // await syncLoansCashCollections(groupId, currentDate);
-            await removeMultiLoanOpen(groupIdStr);
+            // await removeMultiLoanOpen(groupIdStr);
         }));
 
         resolve(response);
