@@ -13,6 +13,7 @@ import ButtonSolid from "@/lib/ui/ButtonSolid";
 import AddUpdateRole from "@/components/settings/roles/AddUpdateRoleDrawer";
 import { setAddUpdateRole, setRoleList } from "@/redux/actions/roleActions";
 import { UppercaseFirstLetter } from "@/lib/utils";
+import { getApiBaseUrl } from "@/lib/constants";
 
 const RolesPage = () => {
     const dispatch = useDispatch();
@@ -31,7 +32,7 @@ const RolesPage = () => {
     const router = useRouter();
 
     const getListRoles = async () => {
-        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'roles/list');
+        const response = await fetchWrapper.get(getApiBaseUrl() + 'roles/list');
         if (response.success) {
             const roleList = response.roles.map(r => {
                 r.name = UppercaseFirstLetter(r.name);

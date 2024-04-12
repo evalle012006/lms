@@ -324,3 +324,18 @@ userId
 userType
 year
 `;
+
+export const ROLE_FIELDS = `
+_id
+name
+order
+rep
+shortCode
+system
+`;
+
+export const ROLE_PERMISSION_FIELD = `
+_id
+permissions
+role
+`

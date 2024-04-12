@@ -36,6 +36,7 @@ async function updateUser(req, res) {
     const form = new formidable.IncomingForm({ keepExtensions: true });
     const promise = await new Promise((resolve, reject) => {
         form.parse(req, async function (err, fields, files) {
+            console.log(fields.email);
             const userData = await findUserByEmail(fields.email);
 
             let file;
@@ -85,7 +86,7 @@ async function updateUser(req, res) {
                         branchManagerName: fields.branchManagerName
                     },
                     where: {
-                        _id: { _eq: fields.email }
+                        email: { _eq: fields.email }
                     }
                 })
             );
@@ -138,7 +139,9 @@ const saveFile = async (file, uid) => {
 const findUserByID = async (id) => {
     const [user] = await graph.query(
         queryQl(USER_TYPE, {
-            _id: { _eq: id }
+            where: {
+                _id: { _eq: id }
+            }
         })
     ).then(res => res.data.users);
     
@@ -148,11 +151,13 @@ const findUserByID = async (id) => {
 const findUserByEmail = async (email) => {
     const [user] = await graph.query(
         queryQl(USER_TYPE, {
-            email: { _eq: email }
+            where: {
+                email: { _eq: email }
+            }
         })
     ).then(res => res.data.users);
     
-    return user;
+    return users
 }
 
 export const config = {

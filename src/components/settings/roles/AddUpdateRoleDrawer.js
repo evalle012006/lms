@@ -11,6 +11,7 @@ import SideBar from "@/lib/ui/SideBar";
 import Spinner from "@/components/Spinner";
 import CheckBox from "@/lib/ui/checkbox";
 import { UppercaseFirstLetter } from "@/lib/utils";
+import { getApiBaseUrl } from "@/lib/constants";
 
 const AddUpdateRole = ({ mode = 'add', permissions=[], showSidebar, setShowSidebar, onClose }) => {
     const formikRef = useRef();
@@ -49,8 +50,8 @@ const AddUpdateRole = ({ mode = 'add', permissions=[], showSidebar, setShowSideb
         rolePermissionsValues.permissions = rolePermissions;
 
         if (mode === 'add') {
-            const roleApiUrl = process.env.NEXT_PUBLIC_API_URL + 'roles/save/';
-            const rolePermissionsApiUrl = process.env.NEXT_PUBLIC_API_URL + 'rolesPermissions/save/';
+            const roleApiUrl = getApiBaseUrl() + 'roles/save/';
+            const rolePermissionsApiUrl = getApiBaseUrl() + 'rolesPermissions/save/';
 
             fetchWrapper.post(roleApiUrl, values)
                 .then(response => {
@@ -73,8 +74,8 @@ const AddUpdateRole = ({ mode = 'add', permissions=[], showSidebar, setShowSideb
                     console.log(error)
                 });
         } else if (mode === 'edit') {
-            const roleApiUrl = process.env.NEXT_PUBLIC_API_URL + 'roles';
-            const rolePermissionsApiUrl = process.env.NEXT_PUBLIC_API_URL + 'rolesPermissions';
+            const roleApiUrl = getApiBaseUrl() + 'roles';
+            const rolePermissionsApiUrl = getApiBaseUrl() + 'rolesPermissions';
             values._id = role._id;
             fetchWrapper.post(roleApiUrl, values)
                 .then(response => {

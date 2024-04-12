@@ -33,6 +33,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
     const currentDate = useSelector(state => state.systemSettings.currentDate);
     const [selectedRole, setSelectedRole] = useState();
     const branchList = useSelector(state => state.branch.list);
+    const branches = branchList;
     
     const initialValues = {
         firstName: user.firstName,
@@ -133,7 +134,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
         } else if (mode === 'edit') {
             setLoading(false);
             values.file = image;
-            fetchWrapper.sendData(process.env.NEXT_PUBLIC_API_URL + 'users/', values)
+            fetchWrapper.sendData(getApiBaseUrl() + 'users/', values)
                 .then(response => {
                     setLoading(false);
                     setShowSidebar(false);

@@ -126,7 +126,7 @@ const TeamPage = () => {
     }
 
     const getListPlatformRoles = async () => {
-        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'roles/list');
+        const response = await fetchWrapper.get(getApiBaseUrl() + 'roles/list');
         if (response.success) {
             let roles = [];
             response.roles && response.roles.map(role => {

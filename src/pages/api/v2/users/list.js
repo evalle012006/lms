@@ -18,8 +18,11 @@ async function list(req, res) {
 
     const { branchCode, branchId, loOnly, selectedLoGroup, page = 1, size = 20, } = req.query;
 
-    const offset = (page * size) - size;
-    const limit = size;
+    // const offset = (page * size) - size;
+    // const limit = size;
+
+    const offset = undefined;
+    const limit = undefined;
 
     let users;
 

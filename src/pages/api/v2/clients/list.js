@@ -20,22 +20,6 @@ const CLIENT_TYPE = (... additionalFields) => {
         ${additionalFields.join('\n')}
     `)('clients');
 }
-/*
-const CLIENT_TYPE = (... additionalFields) => {
-    return createGraphType('client', `
-        ${CLIENT_FIELDS}
-        loans (where: { status: { _in: ["active", "completed"] } }) {
-            ${LOAN_FIELDS}
-        }
-        lo {
-            ${USER_FIELDS}
-        }
-        group {
-            ${GROUP_FIELDS}
-        }
-        ${additionalFields.join('\n')}
-`)('clients');
-}*/
 
 export default apiHandler({
     get: list
