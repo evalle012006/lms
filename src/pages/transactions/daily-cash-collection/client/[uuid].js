@@ -23,7 +23,7 @@ import { BehaviorSubject } from 'rxjs';
 import Modal from '@/lib/ui/Modal';
 import ClientDetailPage from '@/components/clients/ClientDetailPage';
 import { setClient } from '@/redux/actions/clientActions';
-import { LOR_DAILY_REMARKS } from '@/lib/constants';
+import { LOR_DAILY_REMARKS, getApiBaseUrl } from '@/lib/constants';
 import CheckBox from '@/lib/ui/checkbox';
 
 const CashCollectionDetailsPage = () => {
@@ -2508,7 +2508,7 @@ const CashCollectionDetailsPage = () => {
 
     useEffect(() => {
         const getListBranch = async () => {
-            let url = process.env.NEXT_PUBLIC_API_URL + 'branches/list';
+            let url = getApiBaseUrl() + 'branches/list';
 
             if (currentUser.role.rep === 3 || currentUser.role.rep === 4) {
                 url = url + '?' + new URLSearchParams({ branchCode: currentUser.designatedBranch });
@@ -2545,7 +2545,7 @@ const CashCollectionDetailsPage = () => {
 
         const getCurrentGroup = async () => {
             if (uuid) {
-                const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}groups?`;
+                const apiUrl = `${getApiBaseUrl()}groups?`;
                 const params = { _id: uuid };
                 const response = await fetchWrapper.get(apiUrl + new URLSearchParams(params));
                 if (response.success) {
@@ -2572,7 +2572,7 @@ const CashCollectionDetailsPage = () => {
 
     useEffect(() => {
         const getListGroup = async (selectedLO) => {
-            let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list-by-group-occurence?' + new URLSearchParams({ mode: "filter", occurence: 'daily', loId: selectedLO });
+            let url = getApiBaseUrl() + 'groups/list-by-group-occurence?' + new URLSearchParams({ mode: "filter", occurence: 'daily', loId: selectedLO });
 
             const response = await fetchWrapper.get(url);
             if (response.success) {

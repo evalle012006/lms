@@ -26,7 +26,7 @@ async function getClient(req, res) {
     let statusCode = 200;
     let response = {};
 
-    const clients = await graph.query(
+    const client = await graph.query(
         queryQl(CLIENT_TYPE, {
             where: {
                 _id: { _eq: clientId }
@@ -37,7 +37,7 @@ async function getClient(req, res) {
 
     response = {
         success: true,
-        client: clients
+        client: client
     }
 
     res.status(statusCode)

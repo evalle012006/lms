@@ -16,6 +16,7 @@ import AddUpdateDebtCollection from "@/components/other-transactions/badDebtColl
 import { formatPricePhp } from "@/lib/utils";
 import { TabPanel, useTabs } from "react-headless-tabs";
 import { TabSelector } from "@/lib/ui/tabSelector";
+import { getApiBaseUrl } from "@/lib/constants";
 
 export default function BadDebtCollectionPage() {
     const dispatch = useDispatch();
@@ -381,7 +382,7 @@ export default function BadDebtCollectionPage() {
     }
 
     const getListBranch = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'branches/list';
+        let url = getApiBaseUrl() + 'branches/list';
         if (currentUser.role.rep === 1) {
             const response = await fetchWrapper.get(url);
             if (response.success) {

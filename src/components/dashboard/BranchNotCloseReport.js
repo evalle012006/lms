@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import { setBranchList } from '@/redux/actions/branchActions';
 import Spinner from '../Spinner';
 import TableComponent from '@/lib/table';
+import { getApiBaseUrl } from '@/lib/constants';
 
 const BranchNotCloseTool = () => {
     const dispatch = useDispatch();
@@ -169,7 +170,7 @@ const BranchNotCloseTool = () => {
     }
 
     const getListBranch = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'branches/list';
+        let url = getApiBaseUrl() + 'branches/list';
         if (currentUser.role.rep === 1) {
             const response = await fetchWrapper.get(url);
             if (response.success) {

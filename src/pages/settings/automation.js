@@ -12,6 +12,7 @@ import { styles, DropdownIndicator, borderStyles } from "@/styles/select";
 import { useSelector } from 'react-redux';
 import { UppercaseFirstLetter } from '@/lib/utils';
 import InputPassword from '@/lib/ui/InputPassword';
+import { getApiBaseUrl } from '@/lib/constants';
 
 const AutomationPage = () => {
     const router = useRouter();
@@ -172,7 +173,7 @@ const AutomationPage = () => {
 
 
     const getListBranch = async () => {
-        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'branches/list');
+        const response = await fetchWrapper.get(getApiBaseUrl() + 'branches/list');
         if (response.success) {
             let branches = [];
             response.branches && response.branches.map(branch => {
@@ -223,7 +224,7 @@ const AutomationPage = () => {
     const getListGroup = async (branch, user) => {
         setLoading(true);
         if (branch && user) {
-            let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list'
+            let url = getApiBaseUrl() + 'groups/list'
             url = url + '?' + new URLSearchParams({ branchId: branch._id, loId: user._id });
             const response = await fetchWrapper.get(url);
             if (response.success) {

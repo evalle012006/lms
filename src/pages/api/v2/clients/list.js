@@ -1,12 +1,14 @@
-import { GROUP_FIELDS, LOAN_FIELDS, USER_FIELDS } from '@/lib/graph.fields';
-import { queryQl } from '@/lib/graph/graph.util';
+import { CLIENT_FIELDS, GROUP_FIELDS, LOAN_FIELDS, USER_FIELDS } from '@/lib/graph.fields';
+import { GraphProvider } from '@/lib/graph/graph.provider';
+import { createGraphType, queryQl } from '@/lib/graph/graph.util';
 import { apiHandler } from '@/services/api-handler';
 
 const graph = new GraphProvider();
+
 const CLIENT_TYPE = (... additionalFields) => {
     return createGraphType('client', `
         ${CLIENT_FIELDS}
-        loans (where: { status: { _in: ['active', 'completed'] } }) {
+        loans (where: { status: { _in: ["active", "completed"] } }, limit: 1) {
             ${LOAN_FIELDS}
         }
         lo {
@@ -15,9 +17,25 @@ const CLIENT_TYPE = (... additionalFields) => {
         group {
             ${GROUP_FIELDS}
         }
-        ${additionalFields.join(',')}
-`)('clients');
+        ${additionalFields.join('\n')}
+    `)('clients');
 }
+/*
+const CLIENT_TYPE = (... additionalFields) => {
+    return createGraphType('client', `
+        ${CLIENT_FIELDS}
+        loans (where: { status: { _in: ["active", "completed"] } }) {
+            ${LOAN_FIELDS}
+        }
+        lo {
+            ${USER_FIELDS}
+        }
+        group {
+            ${GROUP_FIELDS}
+        }
+        ${additionalFields.join('\n')}
+`)('clients');
+}*/
 
 export default apiHandler({
     get: list
@@ -25,11 +43,16 @@ export default apiHandler({
 
 async function list(req, res) {
 
-    const {mode = null, groupId = null, branchId = null, loId = null, status = null, branchCodes = null, currentDate = null} = req.query;
+    const {mode = null, groupId = null, branchId = null, loId = null, status = null, branchCodes = null, currentDate = null, page = 1, size = 20} = req.query;
 
     let statusCode = 200;
     let response = {};
     let clients;
+
+    const offset = (page * size) - size;
+    const limit = size;
+
+    console.log(req.query);
 
 
     if (mode === 'view_offset' && status === 'offset') {
@@ -157,10 +180,12 @@ async function list(req, res) {
         ).then(res => res.data.clients);
     } else {
         clients = await graph.query(
-            queryQl(CLIENT_TYPE(), {
+            queryQl(CLIENT_TYPE(''), {
                 where: {
                     status: { _eq: status }
-                }
+                },
+                limit,
+                offset
             })
         ).then(res => res.data.clients);
     }

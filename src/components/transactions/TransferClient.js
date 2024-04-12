@@ -10,6 +10,7 @@ import { setGroupList } from "@/redux/actions/groupActions";
 import Select from 'react-select';
 import { styles, DropdownIndicator, borderStyles } from "@/styles/select";
 import TableComponent, { AvatarCell, SelectCell } from "@/lib/table";
+import { getApiBaseUrl } from "@/lib/constants";
 
 
 // unused
@@ -35,7 +36,7 @@ const TransferClientTransactionPage = ({ mode = "group", setLoading }) => {
     const [slotNumbers, setSelectedSlotNumbers] = useState([]);
 
     const getListBranch = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'branches/list';
+        let url = getApiBaseUrl() + 'branches/list';
         if (currentUser.role.rep === 1) {
             const response = await fetchWrapper.get(url);
             if (response.success) {
@@ -116,7 +117,7 @@ const TransferClientTransactionPage = ({ mode = "group", setLoading }) => {
     }
 
     const getListGroup = async (selectedUser, type) => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list';
+        let url = getApiBaseUrl() + 'groups/list';
         let selectedBranch = {};
         if (type === "source") {
             selectedBranch = selectedSourceBranch;
@@ -155,7 +156,7 @@ const TransferClientTransactionPage = ({ mode = "group", setLoading }) => {
 
     const getListClient = async (groupId) => {
         setLoading(true);
-        let url = process.env.NEXT_PUBLIC_API_URL + 'clients/list?' + new URLSearchParams({ mode: "view_all_by_group_for_transfer", groupId: groupId });;
+        let url = getApiBaseUrl() + 'clients/list?' + new URLSearchParams({ mode: "view_all_by_group_for_transfer", groupId: groupId });;
 
         const response = await fetchWrapper.get(url);
         if (response.success) {

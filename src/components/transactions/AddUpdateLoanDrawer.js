@@ -17,6 +17,7 @@ import RadioButton from "@/lib/ui/radio-button";
 import { setGroup, setGroupList } from "@/redux/actions/groupActions";
 import { setClientList, setComakerList } from "@/redux/actions/clientActions";
 import { UppercaseFirstLetter, formatPricePhp } from "@/lib/utils";
+import { getApiBaseUrl } from "@/lib/constants";
 
 const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, onClose, type }) => {
     const formikRef = useRef();
@@ -359,7 +360,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                 if (values.status === 'active' && values.groupId !== loan.groupId) {
                                     let params = { groupId: values.groupId, oldGroupId: loan.groupId };
                                     
-                                    fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'groups/update-group', params)
+                                    fetchWrapper.post(getApiBaseUrl() + 'groups/update-group', params)
                                         .then(response => {
                                             if (response.error) {
                                                 setLoading(false);
@@ -440,7 +441,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
 
     const getListGroup = async (occurence, loId, mode, origin) => {
         setLoading(true);
-        let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list-by-group-occurence';
+        let url = getApiBaseUrl() + 'groups/list-by-group-occurence';
         if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
             let branchId = origin == 'old' ? selectedOldBranch : currentUser.designatedBranchId;
             if (mode == 'filter') {
@@ -486,7 +487,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
 
     const getListClient = async (status, groupId, origin) => {
         setLoading(true);
-        let url = process.env.NEXT_PUBLIC_API_URL + 'clients/list';
+        let url = getApiBaseUrl() + 'clients/list';
         if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) {
             if (status === 'active') {
                 url = url + '?' + new URLSearchParams({ mode: "view_only_no_exist_loan", branchId: currentUser.designatedBranchId, groupId: groupId, status: status });
@@ -545,7 +546,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
 
     const getListCoMaker = async (groupId) => {
         setLoading(true);
-        let url = process.env.NEXT_PUBLIC_API_URL + 'clients/list';
+        let url = getApiBaseUrl() + 'clients/list';
         if (currentUser.role.rep == 3 || currentUser.role.rep === 4) {
             url = url + '?' + new URLSearchParams({ mode: "view_by_group", groupId: groupId });
             const response = await fetchWrapper.get(url);

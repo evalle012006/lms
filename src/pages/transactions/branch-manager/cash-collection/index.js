@@ -16,6 +16,7 @@ import ViewByAreaPage from "@/components/transactions/ViewByArea";
 import { UppercaseFirstLetter } from "@/lib/utils";
 import ViewByRegionPage from "@/components/transactions/ViewByRegion";
 import ViewByDivisionPage from "@/components/transactions/ViewByDivision";
+import { getApiBaseUrl } from "@/lib/constants";
 
 const BranchCashCollectionPage = () => {
     const isHoliday = useSelector(state => state.systemSettings.holiday);
@@ -111,7 +112,7 @@ const BranchCashCollectionPage = () => {
     }
 
     const getListBranch = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'branches/list';
+        let url = getApiBaseUrl() + 'branches/list';
 
         if (currentUser.role.rep === 3) {
             url = url + '?' + new URLSearchParams({ branchCode: currentUser.designatedBranch });

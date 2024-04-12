@@ -10,6 +10,7 @@ import DetailsHeader from '@/components/transactions/DetailsHeaderMain';
 import { BehaviorSubject } from 'rxjs';
 import { setBranch, setBranchList } from '@/redux/actions/branchActions';
 import ViewByLoanOfficerPage from '@/components/transactions/ViewByLoanOfficer';
+import { getApiBaseUrl } from '@/lib/constants';
 
 const WeeklyCashCollectionDetailsPage = () => {
     const [loading, setLoading] = useState(true);
@@ -38,7 +39,7 @@ const WeeklyCashCollectionDetailsPage = () => {
 
     const getListBranch = async () => {
         setLoading(true);
-        let url = process.env.NEXT_PUBLIC_API_URL + 'branches/list';
+        let url = getApiBaseUrl() + 'branches/list';
         if (currentUser.role.rep === 1) {
             const response = await fetchWrapper.get(url);
             if (response.success) {
@@ -89,7 +90,7 @@ const WeeklyCashCollectionDetailsPage = () => {
         let mounted = true;
 
         const getCurrentBranch = async () => {
-            const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}branches?`;
+            const apiUrl = `${getApiBaseUrl()}branches?`;
             const params = { _id: uuid };
             const response = await fetchWrapper.get(apiUrl + new URLSearchParams(params));
             if (response.success) {

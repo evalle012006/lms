@@ -6,6 +6,7 @@ import Spinner from "@/components/Spinner";
 import { toast } from "react-toastify";
 import { useRouter } from "node_modules/next/router";
 import { setBranchList } from "@/redux/actions/branchActions";
+import { getApiBaseUrl } from "@/lib/constants";
 
 const ViewGroupsByBranchPage = () => {
     const dispatch = useDispatch();
@@ -16,7 +17,7 @@ const ViewGroupsByBranchPage = () => {
     const router = useRouter();
 
     const getListBranch = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'branches/list';
+        let url = getApiBaseUrl() + 'branches/list';
         if (currentUser.role.rep === 1) {
             const response = await fetchWrapper.get(url);
             if (response.success) {

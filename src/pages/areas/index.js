@@ -13,6 +13,7 @@ import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 import AddUpdateArea from "@/components/areas/AddUpdateAreaDrawer";
 import { setAreaList } from "@/redux/actions/areaActions";
+import { getApiBaseUrl } from "@/lib/constants";
 
 const AreasPage = () => {
     const dispatch = useDispatch();
@@ -73,7 +74,7 @@ const AreasPage = () => {
     }
 
     const getListBranch = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'branches/list';
+        let url = getApiBaseUrl() + 'branches/list';
         const response = await fetchWrapper.get(url);
         if (response.success) {
             let branchList = [];

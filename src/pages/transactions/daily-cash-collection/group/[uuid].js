@@ -15,6 +15,7 @@ import Dialog from '@/lib/ui/Dialog';
 import ButtonOutline from '@/lib/ui/ButtonOutline';
 import ButtonSolid from '@/lib/ui/ButtonSolid';
 import Spinner from '@/components/Spinner';
+import { getApiBaseUrl } from '@/lib/constants';
 
 const CashCollectionDetailsPage = () => {
     const [loading, setLoading] = useState(false);
@@ -82,7 +83,7 @@ const CashCollectionDetailsPage = () => {
     }
 
     const getListBranch = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'branches/list';
+        let url = getApiBaseUrl() + 'branches/list';
 
         if (currentUser.role.rep === 3 || currentUser.role.rep === 4) {
             url = url + '?' + new URLSearchParams({ branchCode: currentUser.designatedBranch });

@@ -17,6 +17,7 @@ import Dialog from "@/lib/ui/Dialog";
 import { styles, DropdownIndicator, borderStyles } from "@/styles/select";
 import Select from 'react-select';
 import { setBranchList } from "@/redux/actions/branchActions";
+import { getApiBaseUrl } from "@/lib/constants";
 
 const TeamPage = () => {
     const dispatch = useDispatch();
@@ -146,7 +147,7 @@ const TeamPage = () => {
     }
 
     const getListBranch = async () => {
-        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'branches/list');
+        const response = await fetchWrapper.get(getApiBaseUrl() + 'branches/list');
         if (response.success) {
             let branchList = [];
             response.branches && response.branches.map(branch => {

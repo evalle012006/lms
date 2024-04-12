@@ -11,6 +11,7 @@ import { setClient, setClientList } from "@/redux/actions/clientActions";
 import Modal from "@/lib/ui/Modal";
 import ClientDetailPage from "./ClientDetailPage";
 import { formatPricePhp } from "@/lib/utils";
+import { getApiBaseUrl } from "@/lib/constants";
 
 const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMode, handleShowAddDrawer, handleShowCoMakerDrawer}) => {
     const dispatch = useDispatch();
@@ -29,7 +30,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
     // lo: assigned groups -> clients
     const getListClient = async () => {
         const imgpath = process.env.NEXT_PUBLIC_LOCAL_HOST !== 'local' && process.env.NEXT_PUBLIC_LOCAL_HOST;
-        let url = process.env.NEXT_PUBLIC_API_URL + 'clients/list';
+        let url = getApiBaseUrl() + 'clients/list';
         if (groupId) {
             url = url + '?' + new URLSearchParams({ mode: "view_by_group", groupId: groupId });
             const response = await fetchWrapper.get(url);
@@ -194,7 +195,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                         missPayments: client.loans.length > 0 ?  client.loans[0].missPayments : 0,
                         noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
                         delinquent: client.delinquent === true ? 'Yes' : 'No',
-                        loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : '',
+                        loName: (client.lo?.length ?? 0) > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : '',
                         coMaker: (client.loans?.coMaker && typeof client?.loans.coMaker === 'number') ? client.loans.coMaker : ''
                     });
                 });

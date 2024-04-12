@@ -1,6 +1,6 @@
 import { GROUP_FIELDS } from '@/lib/graph.fields';
 import { GraphProvider } from '@/lib/graph/graph.provider';
-import { createGraphType } from '@/lib/graph/graph.util';
+import { createGraphType, queryQl } from '@/lib/graph/graph.util';
 import { apiHandler } from '@/services/api-handler';
 
 const graph = new GraphProvider();

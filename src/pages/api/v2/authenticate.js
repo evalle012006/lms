@@ -39,7 +39,6 @@ dateModified
 
 async function authenticate(req, res) {
 
-    console.log('calling v2')
     const { username, password } = req.body;
     const [ user ] = await graph.query(
         queryQl(USER_TYPE, {

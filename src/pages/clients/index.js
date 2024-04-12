@@ -14,6 +14,7 @@ import { setGroupList } from "@/redux/actions/groupActions";
 import { setUserList } from "@/redux/actions/userActions";
 import Spinner from "@/components/Spinner";
 import AddUpdateClientCoMaker from "@/components/transactions/AddUpdateClientCoMakerDrawer";
+import { getApiBaseUrl } from "@/lib/constants";
 
 const ClientsProspectPage = () => {
     const router = useRouter();
@@ -29,7 +30,7 @@ const ClientsProspectPage = () => {
     const [client, setClient] = useState();
 
     const getListBranch = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'branches/list';
+        let url = getApiBaseUrl() + 'branches/list';
         
         if (currentUser.role.rep == 2) {
             url = url + '?' + new URLSearchParams({ currentUserId: currentUser._id });
@@ -61,7 +62,7 @@ const ClientsProspectPage = () => {
     }
 
     const getListGroup = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list'
+        let url = getApiBaseUrl() + 'groups/list'
         if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
             if (status == 'pending') {
                 url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id, mode: 'all' });
