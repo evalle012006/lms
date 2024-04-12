@@ -1,16 +1,19 @@
 const { MongoClient } = require('mongodb');
 const { Pool } = require('postgresql-client');
+const env = require('@next/env');
+
+env.loadEnvConfig('../');
 
 const MIGRATION_KEY = '__migrated';
 const MIGRATION_ID = 0;
-const MONGODB_URL = 'mongodb://root:example@localhost:27017';
-const MONGODB_NAME = 'acloandb';
-const PG_URL = 'postgres://postgres:@localhost:5432/acloandb';
+const MONGODB_URL = process.env.LOCAL_DB_URL;
+const MONGODB_NAME = process.env.LOCAL_DB_NAME;
+const PG_URL = process.env.HASURA_DB_URL;
 const BATCH_SIZE = 100;
 
 // run migration
-migrate();
-// showDistinctColumnNames('client');
+migrate(['areas', 'regions']);
+// showDistinctColumnNames('regions');
 
 async function migrate(collectionNamesFilter = []) {
     const mClient = await MongoClient.connect(MONGODB_URL);
@@ -26,20 +29,22 @@ async function migrate(collectionNamesFilter = []) {
 
 
     const collectionNames = [
-        "badDebtCollections",
-        "branches",
-        "cashCollections",
-        "client",
-        "groups",
-        "holidays",
-        "loans",
-        "losTotals",
-        "roles",
-        "rolesPermissions",
-        "settings",
-        "transactionSettings",
-        "transferClients",
-        "users",
+        'badDebtCollections',
+        'branches',
+        'cashCollections',
+        'client',
+        'groups',
+        'holidays',
+        'loans',
+        'losTotals',
+        'roles',
+        'rolesPermissions',
+        'settings',
+        'transactionSettings',
+        'transferClients',
+        'users',
+        'areas',
+        'regions'
     ];
 
     doMigrate: for (const tableName of collectionNames) {

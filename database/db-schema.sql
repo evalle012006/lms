@@ -375,3 +375,22 @@ create table "users" (
   "root" boolean,
   "branchManagerName" varchar
 );
+
+-- drop table "areas"
+create table "areas" (
+  "_id" varchar primary key,
+  "branchIds" varchar,
+  "dateAdded" timestamptz,
+  "managerIds" varchar,
+  "name" varchar,
+  "regionId" varchar
+);
+
+-- drop table "regions"
+create table "regions" (
+  "_id" varchar primary key,
+  "areaIds" varchar,
+  "dateAdded" timestamptz,
+  "managerIds" varchar,
+  "name" varchar
+);
