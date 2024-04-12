@@ -86,7 +86,7 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
 
     const getListUser = async (selectedBranch, type) => {
         if (selectedBranch) {
-            let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
+            let url = getApiBaseUrl() + 'users/list';
 
             url = url + '?' + new URLSearchParams({ branchCode: selectedBranch?.code });
             const response = await fetchWrapper.get(url);

@@ -197,7 +197,7 @@ const AutomationPage = () => {
     const getListUser = async (branch) => {
         setLoading(true);
         if (branchList.length > 0 && branch) {
-            let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
+            let url = getApiBaseUrl() + 'users/list';
             url = url + '?' + new URLSearchParams({ branchCode: branch.code });
             const response = await fetchWrapper.get(url);
             if (response.success) {

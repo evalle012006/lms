@@ -17,6 +17,7 @@ import RadioButton from "@/lib/ui/radio-button";
 import { checkFileSize } from "@/lib/utils";
 import Select from 'react-select';
 import { multiStyles, DropdownIndicator } from "@/styles/select";
+import { getApiBaseUrl } from "@/lib/constants";
 
 const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setShowSidebar, onClose }) => {    
     const hiddenInput = useRef(null);
@@ -111,7 +112,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
         values.currentDate = currentDate;
 
         if (mode === 'add') {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'users/save/';
+            const apiUrl = getApiBaseUrl() + 'users/save/';
 
             fetchWrapper.post(apiUrl, values)
                 .then(response => {

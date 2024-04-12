@@ -207,7 +207,7 @@ const MigrationPage = () => {
     useEffect(() => {
         if (selectedBranch) {
             const getListUser = async () => {
-                let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
+                let url = getApiBaseUrl() + 'users/list';
     
                 url = url + '?' + new URLSearchParams({ branchCode: selectedBranch.code });
                 const response = await fetchWrapper.get(url);

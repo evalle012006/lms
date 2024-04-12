@@ -13,6 +13,7 @@ import ButtonSolid from "@/lib/ui/ButtonSolid";
 import { setAreaList } from "@/redux/actions/areaActions";
 import { setRegionList } from "@/redux/actions/regionActions";
 import AddUpdateRegion from "@/components/regions/AddUpdateRegionDrawer";
+import { getApiBaseUrl } from "@/lib/constants";
 
 const RegionsPage = () => {
     const dispatch = useDispatch();
@@ -92,7 +93,7 @@ const RegionsPage = () => {
     }
 
     const getListManager = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'users/list-by-user-type?' + new URLSearchParams({ userType: 'region' });
+        let url = getApiBaseUrl() + 'users/list-by-user-type?' + new URLSearchParams({ userType: 'region' });
         const response = await fetchWrapper.get(url);
         if (response.success) {
             const data = [];

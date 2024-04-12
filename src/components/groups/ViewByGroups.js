@@ -62,7 +62,7 @@ const ViewByGroupsPage = () => {
 
     const getListUser = async () => {
         if (currentUser.root !== true && (currentUser.role.rep === 3 || currentUser.role.rep === 4) && branchList.length > 0) {
-            let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
+            let url = getApiBaseUrl() + 'users/list';
             url = url + '?' + new URLSearchParams({ branchCode: branchList[0].code });
             const response = await fetchWrapper.get(url);
             if (response.success) {
@@ -84,7 +84,7 @@ const ViewByGroupsPage = () => {
 
             setLoading(false);
         } else if (branchList.length > 0) {
-            let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
+            let url = getApiBaseUrl() + 'users/list';
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let userList = [];

@@ -79,7 +79,7 @@ const TransferClientTransactionPage = ({ mode = "group", setLoading }) => {
 
     const getListUser = async (selectedBranch, type) => {
         if (selectedBranch) {
-            let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
+            let url = getApiBaseUrl() + 'users/list';
             let selectedBranch = {};
             if (type === "source") {
                 selectedBranch = selectedSourceBranch;

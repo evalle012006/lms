@@ -13,6 +13,7 @@ import ButtonSolid from "@/lib/ui/ButtonSolid";
 import { setRegionList } from "@/redux/actions/regionActions";
 import { setDivisionList } from "@/redux/actions/divisionActions";
 import AddUpdateDivision from "@/components/divisions/AddUpdateDivisionDrawer";
+import { getApiBaseUrl } from "@/lib/constants";
 
 const DivisionsPage = () => {
     const dispatch = useDispatch();
@@ -92,7 +93,7 @@ const DivisionsPage = () => {
     }
 
     const getListManager = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'users/list-by-user-type?' + new URLSearchParams({ userType: 'deputy' });
+        let url = getApiBaseUrl() + 'users/list-by-user-type?' + new URLSearchParams({ userType: 'deputy' });
         const response = await fetchWrapper.get(url);
         if (response.success) {
             const data = [];

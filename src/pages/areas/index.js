@@ -94,7 +94,7 @@ const AreasPage = () => {
     }
 
     const getListManager = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'users/list-by-user-type?' + new URLSearchParams({ userType: 'area' });
+        let url = getApiBaseUrl() + 'users/list-by-user-type?' + new URLSearchParams({ userType: 'area' });
         const response = await fetchWrapper.get(url);
         if (response.success) {
             const data = [];

@@ -55,7 +55,7 @@ const Breadcrumbs = () => {
                     let labels;
                     let links;
                     if (paths[2] === 'group') {
-                        response = await fetchWrapper.get(`${process.env.NEXT_PUBLIC_API_URL}users?` + new URLSearchParams(params));
+                        response = await fetchWrapper.get(`${getApiBaseUrl()}users?` + new URLSearchParams(params));
                         data = response.user;
                         labels = [title, `${data.lastName}, ${data.firstName}`];
                         links = [
