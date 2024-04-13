@@ -215,6 +215,11 @@ async function saveCashCollection(transfer, client, loan, sourceGroup, targetGro
             data.remarks = existingCashCollection.length > 0 ? existingCashCollection[0].remarks : null;
             data.status = existingCashCollection.length > 0 ? existingCashCollection[0].status : null;
 
+            if (data.status == 'tomorrow')  {
+                data.amountRelease = 0;
+                data.loanBalance = 0;
+            }
+
             if (data.occurence === 'weekly') {
                 // data.mcbuTarget = 50;
                 data.groupDay = targetGroup.groupDay;

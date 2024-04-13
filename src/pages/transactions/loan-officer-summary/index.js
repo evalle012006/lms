@@ -417,7 +417,7 @@ const LoanOfficerSummary = () => {
                     totalMcbuNoReturn = transferGvr?.noMcbuReturn;
                     totalMcbuReturnAmt = transferGvr?.mcbuReturnAmt;
                     totalMcbuBalance = transferGvr?.mcbuBalance;
-                    totalLoanRelease = transferGvr?.loanReleaseAmount + transferGvr?.currentReleaseAmount;
+                    totalLoanRelease = transferGvr?.loanReleaseAmount;
                     totalTargetCollection = transferGvr?.collectionTarget;
                     totalActualCollection = transferGvr?.collectionActual;
                     totalPastDue = transferGvr?.pastDueAmount > 0 ? transferGvr?.pastDueAmount : 0;
@@ -434,7 +434,7 @@ const LoanOfficerSummary = () => {
                     totalMcbuNoReturn += transferRcv?.noMcbuReturn;
                     totalMcbuReturnAmt += transferRcv.mcbuReturnAmt;
                     totalMcbuBalance += transferRcv?.mcbuBalance;
-                    totalLoanRelease += transferRcv?.loanReleaseAmount + transferRcv?.currentReleaseAmount;
+                    totalLoanRelease += transferRcv?.loanReleaseAmount;
                     totalTargetCollection += transferRcv?.collectionTarget;
                     totalActualCollection += transferRcv?.collectionActual;
                     totalPastDue += transferRcv?.pastDueAmount > 0 ? transferRcv?.pastDueAmount : 0;
@@ -442,6 +442,7 @@ const LoanOfficerSummary = () => {
                     // totalExcess += transferRcv?.excess;
                 }
 
+                activeLoanReleaseAmount += Math.abs(transferGvr?.currentReleaseAmount);
 
                 if (totalMcbuBalance !== 0) {
                     mcbuBalance = temp.mcbuBalance ? temp.mcbuBalance : 0 //+ totalMcbuBalance;
