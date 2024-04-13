@@ -11,3 +11,8 @@ Authorization: Bearer {{auth_token}}
 GET {{apiUrl}}/v2/other-transactions/badDebtCollection/list
 Content-Type: application/json
 Authorization: Bearer {{auth_token}}
+
+### Get List - area_admin
+GET {{apiUrl}}/v2/other-transactions/badDebtCollection/list?currentUserId=63ad49553a21935d116c87b5
+Content-Type: application/json
+Authorization: Bearer {{auth_token}}

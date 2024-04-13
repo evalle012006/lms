@@ -1,12 +1,12 @@
-import { apiHandler } from '@/services/api-handler';
-import { connectToDatabase } from '@/lib/mongodb';
-import { GraphProvider } from '@/lib/graph/graph.provider'
-import { queryQl } from '@/lib/graph/graph.util'
+import { apiHandler } from "@/services/api-handler";
+import { GraphProvider } from "@/lib/graph/graph.provider";
+import { queryQl } from "@/lib/graph/graph.util";
 import {
   createBadDebtCollectionsType,
   fieldsForList,
-  toDto
-} from '@/pages/api/v2/other-transactions/badDebtCollection/common'
+  toDto,
+} from "@/pages/api/v2/other-transactions/badDebtCollection/common";
+import { findUserById } from "@/lib/graph.functions";
 
 const graph = new GraphProvider();
 
@@ -33,31 +33,23 @@ async function list(req, res) {
           );
         } else {
             if (currentUserId) {
-                const user = await db.collection('users').find({ _id: new ObjectId(currentUserId) }).toArray();
-                if (user.length > 0) {
-                    let branchIds = [];
-                    if (user[0].areaId && user[0].role.shortCode === 'area_admin') {
-                        const branches = await db.collection('branches').find({ areaId: user[0].areaId }).toArray();
-                        branchIds = branches.map(branch => branch._id.toString());
-                    } else if (user[0].regionId && user[0].role.shortCode === 'regional_manager') {
-                        const branches = await db.collection('branches').find({ regionId: user[0].regionId }).toArray();
-                        branchIds = branches.map(branch => branch._id.toString());
-                    } else if (user[0].divisionId && user[0].role.shortCode === 'deputy_director') {
-                        const branches = await db.collection('branches').find({ divisionId: user[0].divisionId }).toArray();
-                        branchIds = branches.map(branch => branch._id.toString());
+                const user = await findUserById(currentUserId);
+                if (user) {
+                    const filter = {};
+                    if (user.areaId && user.role.shortCode === 'area_admin') {
+                        filter.branch = { areaId: { _eq: user.areaId } };
+                    } else if (user.regionId && user.role.shortCode === 'regional_manager') {
+                        filter.branch = { regionId: { _eq: user.regionId } };
+                    } else if (user.divisionId && user.role.shortCode === 'deputy_director') {
+                        filter.branch = { divisionId: { _eq: user.divisionId } };
                     }
 
-                    const data = [];
-                    const promise = await new Promise(async (resolve) => {
-                        const response = await Promise.all(branchIds.map(async (branchId) => {
-                            data.push.apply(data, await getByBranch(branchId));
-                        }));
-
-                        resolve(response);
-                    });
-
-                    if (promise) {
-                        graphRes = data;
+                    if (Object.keys(filter).length) {
+                      graphRes = await graph.query(
+                        queryQl(createBadDebtCollectionsType(fieldsForList), {
+                          where: filter,
+                        })
+                      );
                     }
                 }
             } else {
@@ -70,5 +62,5 @@ async function list(req, res) {
         }
     }
     
-    res.send({ success: true, data: graphRes?.data?.badDebtCollections?.map(toDto) });
+    res.send({ success: true, data: graphRes?.data?.badDebtCollections?.map(toDto) ?? [] });
 }
