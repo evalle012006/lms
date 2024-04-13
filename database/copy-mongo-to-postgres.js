@@ -44,7 +44,8 @@ async function migrate(collectionNamesFilter = []) {
         'transferClients',
         'users',
         'areas',
-        'regions'
+        'regions',
+        'divisions'
     ];
 
     doMigrate: for (const tableName of collectionNames) {

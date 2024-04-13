@@ -1,5 +1,5 @@
 @apiUrl=http://localhost:3000/api/
-@token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2MzllODQ4MDkyNzMxZTFkMTFmYjZmZDIiLCJpYXQiOjE3MTI5Mjc1ODUsImV4cCI6MTcxMjk0MTk4NX0.1QznK3_laJXRAU6WCd60efpy-v6yLw4GgFuAvYmZynE
+@token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2MzllODQ4MDkyNzMxZTFkMTFmYjZmZDIiLCJpYXQiOjE3MTI5NzU1MDAsImV4cCI6MTcxMjk4OTkwMH0.Syjc7WZKT-heSOENSD4ZS-4Ko23jM2FHBIqqg5VQ160
 
 ### Get Data
 GET {{apiUrl}}/other-transactions/badDebtCollection?_id=65cc3dc8ecc5a117cc1b494c

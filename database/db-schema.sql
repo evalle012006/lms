@@ -394,3 +394,11 @@ create table "regions" (
   "managerIds" varchar,
   "name" varchar
 );
+
+create table "divisions" (
+  "_id" varchar primary key,
+  "name" varchar,
+  "managerIds" jsonb,
+  "regionIds" jsonb,
+  "dateAdded" timestamptz
+);
