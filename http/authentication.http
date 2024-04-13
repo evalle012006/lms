@@ -7,6 +7,8 @@ Content-Type: application/json
   "password": "superAmber09876"
 }
 
+> {% client.global.set("auth_token", response.body.user.token); %}
+
 ### v1 logout
 GET http://localhost:3000/api/authenticate?user=639e848092731e1d11fb6fd2
 Content-Type: application/json
