@@ -6,3 +6,8 @@
 GET {{apiUrl}}/other-transactions/badDebtCollection?_id=65cc3dc8ecc5a117cc1b494c
 Content-Type: application/json
 Authorization: Bearer {{auth_token}}
+
+### Get List
+GET {{apiUrl}}/other-transactions/badDebtCollection/list
+Content-Type: application/json
+Authorization: Bearer {{auth_token}}

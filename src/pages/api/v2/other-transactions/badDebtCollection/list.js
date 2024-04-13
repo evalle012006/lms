@@ -1,83 +1,36 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
+import { GraphProvider } from '@/lib/graph/graph.provider'
+import { queryQl } from '@/lib/graph/graph.util'
+import {
+  createBadDebtCollectionsType,
+  fieldsForList,
+  toDto
+} from '@/pages/api/v2/other-transactions/badDebtCollection/common'
+
+const graph = new GraphProvider();
 
 export default apiHandler({
     get: list
 });
 
 async function list(req, res) {
-    const { db } = await connectToDatabase();
-    const ObjectId = require('mongodb').ObjectId;
-    let statusCode = 200;
-    let response = {};
-    let badDebtCollection;
-
-    const { loId, branchId, branchIds, currentUserId } = req.query;
+    let graphRes;
+    const { loId, branchId, currentUserId } = req.query;
 
     if (loId) {
-        badDebtCollection = await db
-            .collection('badDebtCollections')
-            .aggregate([
-                { $match: { loId: loId } },
-                {
-                    $addFields: {
-                        clientIdObj: { $toObjectId: '$clientId' },
-                        loIdObj: { $toObjectId: '$loId' },
-                        branchIdObj: { $toObjectId: '$branchId' },
-                        groupIdObj: { $toObjectId: '$groupId' },
-                        loanIdObj: { $toObjectId: '$loanId' }
-                    }
-                },
-                {
-                    $lookup: {
-                        from: 'client',
-                        localField: 'clientIdObj',
-                        foreignField: '_id',
-                        pipeline: [
-                            { $project: { name: '$fullName' } }
-                        ],
-                        as: 'client'
-                    }
-                },
-                {
-                    $lookup: {
-                        from: "users",
-                        localField: "loIdObj",
-                        foreignField: "_id",
-                        pipeline: [
-                            { $project: { firstName: '$firstName', lastName: '$lastName' } }
-                        ],
-                        as: "lo"
-                    }
-                },
-                {
-                    $lookup: {
-                        from: "branches",
-                        localField: "branchIdObj",
-                        foreignField: "_id",
-                        pipeline: [
-                            { $project: { name: '$name' } }
-                        ],
-                        as: "branch"
-                    }
-                },
-                {
-                    $lookup: {
-                        from: "groups",
-                        localField: "groupIdObj",
-                        foreignField: "_id",
-                        pipeline: [
-                            { $project: { name: '$name' } }
-                        ],
-                        as: "group"
-                    }
-                },
-                { $project: { clientIdObj: 0, branchIdObj: 0, loIdObj: 0, groupIdObj: 0 } }
-            ])
-            .toArray();
+      graphRes = await graph.query(
+        queryQl(createBadDebtCollectionsType(fieldsForList), {
+          where: { loId: { _eq: loId } },
+        })
+      );
     } else {
         if (branchId) {
-            badDebtCollection = await getByBranch(branchId);
+          graphRes = await graph.query(
+            queryQl(createBadDebtCollectionsType(fieldsForList), {
+              where: { branchId: { _eq: branchId } },
+            })
+          );
         } else {
             if (currentUserId) {
                 const user = await db.collection('users').find({ _id: new ObjectId(currentUserId) }).toArray();
@@ -104,98 +57,18 @@ async function list(req, res) {
                     });
 
                     if (promise) {
-                        badDebtCollection = data;
+                        graphRes = data;
                     }
                 }
             } else {
-                const branches = await db.collection('branches').find({ }).toArray();
-                const branchIds = branches.map(branch => branch._id.toString());
-                const data = [];
-                const promise = await new Promise(async (resolve) => {
-                    const response = await Promise.all(branchIds.map(async (branchId) => {
-                        data.push.apply(data, await getByBranch(branchId));
-                    }));
-
-                    resolve(response);
-                });
-
-                if (promise) {
-                    badDebtCollection = data;
-                }
+              graphRes = await graph.query(
+                queryQl(createBadDebtCollectionsType(fieldsForList), {
+                  where: { branch: { _id: { _is_null: false } } },
+                })
+              );
             }
         }
     }
     
-    response = {
-        success: true,
-        data: badDebtCollection
-    }
-
-    res.status(statusCode)
-        .setHeader('Content-Type', 'application/json')
-        .end(JSON.stringify(response));
-}
-
-const getByBranch = async (branchId) => {
-    const { db } = await connectToDatabase();
-
-    return await db
-        .collection('badDebtCollections')
-        .aggregate([
-            { $match: { branchId: branchId } },
-            {
-                $addFields: {
-                    clientIdObj: { $toObjectId: '$clientId' },
-                    loIdObj: { $toObjectId: '$loId' },
-                    branchIdObj: { $toObjectId: '$branchId' },
-                    groupIdObj: { $toObjectId: '$groupId' }
-                }
-            },
-            {
-                $lookup: {
-                    from: 'client',
-                    localField: 'clientIdObj',
-                    foreignField: '_id',
-                    pipeline: [
-                        { $project: { name: '$fullName' } }
-                    ],
-                    as: 'client'
-                }
-            },
-            {
-                $lookup: {
-                    from: "users",
-                    localField: "loIdObj",
-                    foreignField: "_id",
-                    pipeline: [
-                        { $project: { firstName: '$firstName', lastName: '$lastName' } }
-                    ],
-                    as: "lo"
-                }
-            },
-            {
-                $lookup: {
-                    from: "branches",
-                    localField: "branchIdObj",
-                    foreignField: "_id",
-                    pipeline: [
-                        { $project: { name: '$name' } }
-                    ],
-                    as: "branch"
-                }
-            },
-            {
-                $lookup: {
-                    from: "groups",
-                    localField: "groupIdObj",
-                    foreignField: "_id",
-                    pipeline: [
-                        { $project: { name: '$name' } }
-                    ],
-                    as: "group"
-                }
-            },
-            { $project: { clientIdObj: 0, branchIdObj: 0, loIdObj: 0, groupIdObj: 0 } }
-        ])
-        .toArray();
+    res.send({ success: true, data: graphRes?.data?.badDebtCollections?.map(toDto) });
 }
