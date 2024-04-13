@@ -31,6 +31,10 @@ async function getData(req, res) {
   const { client, loanOfficer, branch, group, loan, ...data } =
     graphData.badDebtCollections?.[0] ?? {};
 
+  if (loan) {
+    loan.pastDue = loan.pastDue ?? 0;
+  }
+
   res.send({
     success: true,
     data: {
