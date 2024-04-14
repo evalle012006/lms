@@ -34,7 +34,6 @@ async function list(req, res) {
                         as: "noOfLO"
                     }
                 },
-                { $unwind: '$noOfLO' },
                 {
                     $sort: { code: 1 }
                 }
