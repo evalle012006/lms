@@ -16,3 +16,8 @@ Authorization: Bearer {{auth_token}}
 GET {{apiUrl}}/v2/other-transactions/badDebtCollection/list?currentUserId=64f91c5519f25bfc17a7b19b
 Content-Type: application/json
 Authorization: Bearer {{auth_token}}
+
+### Get List - bad debts
+GET {{apiUrl}}/v2/other-transactions/badDebtCollection/list-bad-debts
+Content-Type: application/json
+Authorization: Bearer {{auth_token}}

@@ -1,83 +1,32 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
+import { GraphProvider } from '@/lib/graph/graph.provider'
+import { createGraphType, queryQl } from '@/lib/graph/graph.util'
+import { LOAN_FIELDS } from '@/lib/graph.fields'
+
+const graph = new GraphProvider();
+const loanType = createGraphType("loans", LOAN_FIELDS)();
 
 export default apiHandler({
     get: list
 });
 
 async function list(req, res) {
-    const { db } = await connectToDatabase();
-    const ObjectId = require('mongodb').ObjectId;
-    let statusCode = 200;
-    let response = {};
-    let badDebtCollection;
+    let graphRes;
 
-    const { loId, branchId, branchIds, currentUserId } = req.query;
+    const { loId, branchId, currentUserId } = req.query;
 
     if (loId) {
-        badDebtCollection = await db
-            .collection('loans')
-            .aggregate([
-                { $match: { loId: loId, maturedPD: true, status: "closed" } },
-                {
-                    $addFields: {
-                        clientIdObj: { $toObjectId: '$clientId' },
-                        loIdObj: { $toObjectId: '$loId' },
-                        branchIdObj: { $toObjectId: '$branchId' },
-                        groupIdObj: { $toObjectId: '$groupId' },
-                        loanIdObj: { $toObjectId: '$loanId' }
-                    }
-                },
-                {
-                    $lookup: {
-                        from: 'client',
-                        localField: 'clientIdObj',
-                        foreignField: '_id',
-                        pipeline: [
-                            { $project: { name: '$fullName' } }
-                        ],
-                        as: 'client'
-                    }
-                },
-                {
-                    $lookup: {
-                        from: "users",
-                        localField: "loIdObj",
-                        foreignField: "_id",
-                        pipeline: [
-                            { $project: { firstName: '$firstName', lastName: '$lastName' } }
-                        ],
-                        as: "lo"
-                    }
-                },
-                {
-                    $lookup: {
-                        from: "branches",
-                        localField: "branchIdObj",
-                        foreignField: "_id",
-                        pipeline: [
-                            { $project: { name: '$name' } }
-                        ],
-                        as: "branch"
-                    }
-                },
-                {
-                    $lookup: {
-                        from: "groups",
-                        localField: "groupIdObj",
-                        foreignField: "_id",
-                        pipeline: [
-                            { $project: { name: '$name' } }
-                        ],
-                        as: "group"
-                    }
-                },
-                { $project: { clientIdObj: 0, branchIdObj: 0, loIdObj: 0, groupIdObj: 0 } }
-            ])
-            .toArray();
+        graphRes = await graph.query(queryQl(loanType, {
+          where: {
+            loId: { _eq: loId },
+            maturedPD: { _eq: true },
+            status: { _eq: 'closed' },
+          }
+        }));
     } else {
         if (branchId) {
-            badDebtCollection = await getByBranch(branchId);
+            graphRes = await getByBranch(branchId);
         } else {
             if (currentUserId) {
                 const user = await db.collection('users').find({ _id: new ObjectId(currentUserId) }).toArray();
@@ -104,7 +53,7 @@ async function list(req, res) {
                     });
 
                     if (promise) {
-                        badDebtCollection = data;
+                        graphRes = data;
                     }
                 }
             } else {
@@ -120,7 +69,7 @@ async function list(req, res) {
                 });
 
                 if (promise) {
-                    badDebtCollection = data;
+                    graphRes = data;
                 }
             }
         }
@@ -128,7 +77,7 @@ async function list(req, res) {
     
     response = {
         success: true,
-        data: badDebtCollection
+        data: graphRes
     }
 
     res.status(statusCode)

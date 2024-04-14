@@ -11,56 +11,43 @@ import { findUserById } from "@/lib/graph.functions";
 const graph = new GraphProvider();
 
 export default apiHandler({
-    get: list
+  get: list,
 });
 
 async function list(req, res) {
-    let graphRes;
-    const { loId, branchId, currentUserId } = req.query;
+  const { loId, branchId, currentUserId } = req.query;
+  let filter;
 
-    if (loId) {
-      graphRes = await graph.query(
-        queryQl(createBadDebtCollectionsType(fieldsForList), {
-          where: { loId: { _eq: loId } },
-        })
-      );
-    } else {
-        if (branchId) {
-          graphRes = await graph.query(
-            queryQl(createBadDebtCollectionsType(fieldsForList), {
-              where: { branchId: { _eq: branchId } },
-            })
-          );
-        } else {
-            if (currentUserId) {
-                const user = await findUserById(currentUserId);
-                if (user) {
-                    const filter = {};
-                    if (user.areaId && user.role.shortCode === 'area_admin') {
-                        filter.branch = { areaId: { _eq: user.areaId } };
-                    } else if (user.regionId && user.role.shortCode === 'regional_manager') {
-                        filter.branch = { regionId: { _eq: user.regionId } };
-                    } else if (user.divisionId && user.role.shortCode === 'deputy_director') {
-                        filter.branch = { divisionId: { _eq: user.divisionId } };
-                    }
-
-                    if (Object.keys(filter).length) {
-                      graphRes = await graph.query(
-                        queryQl(createBadDebtCollectionsType(fieldsForList), {
-                          where: filter,
-                        })
-                      );
-                    }
-                }
-            } else {
-              graphRes = await graph.query(
-                queryQl(createBadDebtCollectionsType(fieldsForList), {
-                  where: { branch: { _id: { _is_null: false } } },
-                })
-              );
-            }
-        }
+  if (loId) {
+    filter = { loId: { _eq: loId } };
+  } else if (branchId) {
+    filter = { branchId: { _eq: branchId } };
+  } else if (currentUserId) {
+    const user = await findUserById(currentUserId);
+    if (user) {
+      if (user.areaId && user.role.shortCode === "area_admin") {
+        filter = { branch: { areaId: { _eq: user.areaId } } };
+      } else if (user.regionId && user.role.shortCode === "regional_manager") {
+        filter = { branch: { regionId: { _eq: user.regionId } } };
+      } else if (user.divisionId && user.role.shortCode === "deputy_director") {
+        filter = { branch: { divisionId: { _eq: user.divisionId } } };
+      }
     }
-    
-    res.send({ success: true, data: graphRes?.data?.badDebtCollections?.map(toDto) ?? [] });
+  } else {
+    filter = { branch: { _id: { _is_null: false } } };
+  }
+
+  let graphRes;
+  if (filter) {
+    graphRes = await graph.query(
+      queryQl(createBadDebtCollectionsType(fieldsForList), {
+        where: filter,
+      })
+    );
+  }
+
+  res.send({
+    success: true,
+    data: graphRes?.data?.badDebtCollections?.map(toDto) ?? [],
+  });
 }
