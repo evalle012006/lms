@@ -357,6 +357,7 @@ name
 export const REGION_FIELDS = `
 _id
 areaIds
+managerIds
 name
 dateAdded
 `;
