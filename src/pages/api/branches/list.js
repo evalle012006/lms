@@ -15,10 +15,8 @@ async function list(req, res) {
     const { currentUserId, branchCode } = req.query;
 
     if (branchCode) {
-        branches = await db
+        const data = await db
             .collection('branches')
-            // .find({ code: branchCode })
-            // .sort({ code: 1 })
             .aggregate([
                 { $match: { code: branchCode } },
                 {
@@ -42,6 +40,14 @@ async function list(req, res) {
                 }
             ])
             .toArray();
+
+        branches = data.map(branch => {
+            let temp = {...branch};
+            temp.noOfLO = temp.noOfLO.length > 0 ? temp.noOfLO[0] : {};
+            delete temp.noOfLO;
+
+            return temp;
+        });
     } else if (currentUserId) {
         // const codes = branchCodes.trim().split(",");
         const user = await db.collection('users').find({ _id: new ObjectId(currentUserId) }).toArray();
@@ -58,7 +64,7 @@ async function list(req, res) {
                 codes = branches.map(branch => branch.code);
             }
 
-            branches = await db.collection('branches')
+            const data = await db.collection('branches')
                 .aggregate([
                     { $match: { $expr: {$in: ["$code", codes]} } },
                     {
@@ -76,15 +82,22 @@ async function list(req, res) {
                             as: "noOfLO"
                         }
                     },
-                    { $unwind: '$noOfLO' },
                     {
                         $sort: { code: 1 }
                     }
                 ])
                 .toArray();
+
+            branches = data.map(branch => {
+                let temp = {...branch};
+                temp.noOfLO = temp.noOfLO.length > 0 ? temp.noOfLO[0] : {};
+                delete temp.noOfLO;
+    
+                return temp;
+            });
         }
     } else {
-        branches = await db
+        const data = await db
             .collection('branches')
             .aggregate([
                 {
@@ -102,14 +115,19 @@ async function list(req, res) {
                         as: "noOfLO"
                     }
                 },
-                { $unwind: '$noOfLO' },
                 {
                     $sort: { code: 1 }
                 }
             ])
-            // .find()
-            // .sort({ code: 1 })
             .toArray();
+
+        branches = data.map(branch => {
+            let temp = {...branch};
+            temp.noOfLO = temp.noOfLO.length > 0 ? temp.noOfLO[0] : {};
+            delete temp.noOfLO;
+
+            return temp;
+        });
 
     }
     
