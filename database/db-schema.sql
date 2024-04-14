@@ -395,7 +395,8 @@ create table "regions" (
   "areaIds" varchar,
   "dateAdded" timestamptz,
   "managerIds" varchar,
-  "name" varchar
+  "name" varchar,
+  "divisionId" varchar
 );
 
 create table "divisions" (

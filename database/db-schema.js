@@ -380,6 +380,7 @@ const tableNames = [
     'dateAdded',
     'managerIds',
     'name',
+    'divisionId',
   ]],
   ['divisions', [
     '_id',
