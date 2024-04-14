@@ -1329,8 +1329,8 @@ const CashCollectionDetailsPage = () => {
                             temp.activeLoan = 0;
                             temp.targetCollection = 0;
                             temp.targetCollectionStr = '-';
-                            temp.mispayment = false;
-                            temp.mispaymentStr = 'No';
+                            temp.mispayment = true;
+                            temp.mispaymentStr = 'Yes';
                         }
     
                         if (temp.loanBalance <= 0 && temp.remarks?.value !== 'offset-matured-pd') {
