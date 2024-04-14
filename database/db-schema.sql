@@ -21,7 +21,10 @@ create table "branches" (
   "dateAdded" timestamptz,
   "email" varchar,
   "name" varchar,
-  "phoneNumber" varchar
+  "phoneNumber" varchar,
+  "areaId" varchar,
+  "regionId" varchar,
+  "divisionId" varchar
 );
 
 -- drop table "cashCollections";
