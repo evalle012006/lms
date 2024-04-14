@@ -1,22 +1,27 @@
 export const USER_FIELDS = `
 _id
-branchManagerName
 dateAdded
 dateModified
 designatedBranch
-designatedBranchId
 email
 firstName
 lastLogin
-lastName
 loNo
+logged
 number
+password
 position
-role
 profile
+role
 status
 transactionType
+designatedBranchId
+lastName
 root
+branchManagerName
+areaId
+regionId
+divisionId
 `;
 
 export const BRANCH_FIELDS = `
