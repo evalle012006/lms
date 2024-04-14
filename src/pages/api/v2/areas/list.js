@@ -12,8 +12,8 @@ managers (where: {
             shortCode: "area_admin"
         }
     }
-}) { firstName lastName email }
-branches {  name code }
+}) { _id firstName lastName email }
+branches { _id name code }
 
 `)(alias ?? 'areas');
 
@@ -27,7 +27,11 @@ async function list(req, res) {
 
     const areas = await graph.query(
         queryQl(AREA_TYPE(), {})
-    ).then(res => res.data.areas)
+    ).then(res => res.data.areas.map(a => ({
+        ... a,
+        managerIds: a.managers.map(a => a._id),
+        branchIds: a.branches.map(b => b._id),
+    })))
     response = {
         success: true,
         areas: areas

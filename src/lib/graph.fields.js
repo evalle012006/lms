@@ -1,22 +1,27 @@
 export const USER_FIELDS = `
 _id
-branchManagerName
 dateAdded
 dateModified
 designatedBranch
-designatedBranchId
 email
 firstName
 lastLogin
-lastName
 loNo
+logged
 number
+password
 position
-role
 profile
+role
 status
 transactionType
+designatedBranchId
+lastName
 root
+branchManagerName
+areaId
+regionId
+divisionId
 `;
 
 export const BRANCH_FIELDS = `
@@ -338,4 +343,20 @@ export const ROLE_PERMISSION_FIELD = `
 _id
 permissions
 role
-`
+`;
+
+export const AREA_FIELDS = `
+_id
+branchIds
+dateAdded
+managerIds
+regionId
+name
+`;
+
+export const REGION_FIELDS = `
+_id
+areaIds
+name
+dateAdded
+`;

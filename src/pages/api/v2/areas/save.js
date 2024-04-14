@@ -9,7 +9,7 @@ import { AREA_FIELDS, BRANCH_FIELDS, USER_FIELDS } from '@/lib/graph.fields';
 
 const graph = new GraphProvider();
 
-const USER_TYPE = (alias) => createGraphType('users', '_idd')( alias ?? 'users');
+const USER_TYPE = (alias) => createGraphType('users', '_id')( alias ?? 'users');
 const BRANCH_TYPE = (alias) => createGraphType('branches', '_id')( alias ?? 'branches');
 
 const AREA_TYPE = (alias) => createGraphType('areas', `
@@ -35,11 +35,9 @@ export default apiHandler({
 
 async function save(req, res) {
     const area = req.body;
-    const ObjectId = require('mongodb').ObjectId;
-    const { db } = await connectToDatabase();
 
     const areas = await graph.query(
-        queryQl(AREA_TYPE, {
+        queryQl(AREA_TYPE(), {
             where: { name: { _eq: area.name } }
         })
     ).then(res => res.data.areas);
@@ -60,8 +58,6 @@ async function save(req, res) {
                 objects: [{
                     _id: areaId,
                     name: area.name,
-                    managerIds: area.managerIds,
-                    branchIds: area.branchIds,
                     dateAdded: moment(getCurrentDate()).format('YYYY-MM-DD')
                 }]
             }),

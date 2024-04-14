@@ -31,7 +31,7 @@ const AreasPage = () => {
     const router = useRouter();
 
     const getListArea = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'areas/list';
+        let url = getApiBaseUrl() + 'areas/list';
         const response = await fetchWrapper.get(url);
         if (response.success) {
             const data = [];
@@ -164,7 +164,7 @@ const AreasPage = () => {
     const handleDelete = () => {
         if (area) {
             setLoading(true);
-            fetchWrapper.postCors(process.env.NEXT_PUBLIC_API_URL + 'areas/delete', area)
+            fetchWrapper.postCors(getApiBaseUrl() + 'areas/delete', area)
                 .then(response => {
                     if (response.success) {
                         setShowDeleteDialog(false);

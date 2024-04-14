@@ -6,7 +6,7 @@ import { apiHandler } from '@/services/api-handler';
 
 const graph = new GraphProvider();
 
-const USER_TYPE = (alias) => createGraphType('users', '_idd')( alias ?? 'users');
+const USER_TYPE = (alias) => createGraphType('users', '_id')( alias ?? 'users');
 const BRANCH_TYPE = (alias) => createGraphType('branches', '_id')( alias ?? 'branches');
 
 const AREA_TYPE = (alias) => createGraphType('areas', `
@@ -45,7 +45,7 @@ async function getArea(req, res) {
     ).then(res => res.data.areas.map(area => ({
         ... area,
         managerIds: area.managers.map(u => u._id),
-        branchids: area.branches.map(b => b_id),
+        branchIds: area.branches.map(b => b._id),
     })));
 
     response = { success: true, area };
@@ -57,55 +57,33 @@ async function getArea(req, res) {
 async function updateArea(req, res) {
 
     const area = req.body;
-    const areaId = area._id;
-    delete area._id;
 
+    console.log(area)
 
     await graph.mutation(
-        updateQl(AREA_TYPE('update_area'), {
+        updateQl(AREA_TYPE(), {
             set: {
-                name: area.name,
-                regionId: area.regionId,
-                managerIds: area.managerIds,
-                branchIds: area.branchIds,
+                name: area.name
             },
-            where: {
-                _id: { _eq: _id }
-            }
+            where: { _id: { _eq: area._id } }
         }),
         updateQl(USER_TYPE('delete_area_users'), {
-            set: {
-                areaId: null
-            },
-            where: {
-                areaId: { _eq: areaId }
-            }
+            set: { areaId: null },
+            where: { areaId: { _eq: area._id } }
         }),
         updateQl(USER_TYPE('update_area_users'), {
-            set: {
-                areaId
-            },
-            where: {
-                _id: { _in: area.managerIds }
-            }
+            set: { areaId: area._id },
+            where: { _id: { _in: area.managerIds } }
         }),
-        updateQl(BRANCH_TYPE('delete_branch_users'), {
-            set: {
-                branchId: null
-            },
-            where: {
-                areaId: { _eq: areaId }
-            }
+        updateQl(BRANCH_TYPE('delete_area_branches'), {
+            set: { areaId: null },
+            where: { areaId: { _eq: area._id } }
         }),
-        updateQl(BRANCH_TYPE('update_branch_users'), {
-            set: {
-                branchId
-            },
-            where: {
-                _id: { _in: area.branchIds }
-            }
+        updateQl(BRANCH_TYPE('update_area_branches'), {
+            set: { areaId: area._id },
+            where: { _id: { _in: area.branchIds } }
         }),
     );
 
-    await getArea({ query: { _id: areaId } }, res);
+    await getArea({ query: { _id: area._id } }, res);
 }
