@@ -1282,8 +1282,8 @@ const CashCollectionDetailsPage = () => {
                         if (temp.remarks && (temp.remarks.value === 'excused advance payment' || temp.remarks.value === 'delinquent-mcbu')) {
                             temp.activeLoan = 0;
                             temp.targetCollection = 0;
-                            temp.mispayment = false;
-                            // temp.mispaymentStr = 'No';
+                            temp.mispayment = true;
+                            temp.mispaymentStr = 'Yes';
                         }
     
                         if (temp.loanBalance <= 0 && temp.remarks?.value !== 'offset-matured-pd') {
