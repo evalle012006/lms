@@ -57,7 +57,6 @@ const Header = ({ pageNo, pageTitle, pageName, remarks, handleRemarksFilter, dat
                 <div className="flex flex-row w-11/12 text-gray-400 text-sm justify-start align-middle">
                     <span className="text-zinc-500 text-sm font-bold mt-2">Filters:</span>
                     <div className="ml-24 flex w-64">
-                        {console.log(dateFilter)}
                         <div className="relative w-full" onClick={openCalendar}>
                             <DatePicker name="dateFilter" value={dateFilter} maxDate={moment(new Date()).format('YYYY-MM-DD')} onChange={handleDateFilter} />
                         </div>

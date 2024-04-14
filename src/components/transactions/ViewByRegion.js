@@ -163,7 +163,7 @@ const ViewByRegionPage = ({dateFilter, type, selectedBranchGroup, viewMode}) => 
                 },
                 {
                     Header: "Mispay",
-                    accessor: 'mispaymentStr'
+                    accessor: 'mispayment'
                 },
                 {
                     Header: "PD #",
