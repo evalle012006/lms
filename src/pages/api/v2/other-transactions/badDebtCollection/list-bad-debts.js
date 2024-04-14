@@ -6,13 +6,16 @@ import { findUserById } from "@/lib/graph.functions";
 import { toDto } from "@/pages/api/v2/other-transactions/badDebtCollection/common";
 
 const graph = new GraphProvider();
-const loanType = createGraphType("loans", `
+const loanType = createGraphType(
+  "loans",
+  `
   ${LOAN_FIELDS}
   client { _id, name:fullName }
   loanOfficer { _id, firstName, lastName }
   branch { _id, name }
   group { _id, name }
-  `)();
+  `
+)();
 
 export default apiHandler({
   get: list,
@@ -35,18 +38,11 @@ async function list(req, res) {
       if (currentUserId) {
         const user = await findUserById(currentUserId);
         if (user) {
-          let branchIds = [];
           if (user.areaId && user.role.shortCode === "area_admin") {
             filter = { branch: { areaId: { _eq: user.areaId } } };
-          } else if (
-            user.regionId &&
-            user.role.shortCode === "regional_manager"
-          ) {
+          } else if (user.regionId && user.role.shortCode === "regional_manager") {
             filter = { branch: { regionId: { _eq: user.areaId } } };
-          } else if (
-            user.divisionId &&
-            user.role.shortCode === "deputy_director"
-          ) {
+          } else if (user.divisionId && user.role.shortCode === "deputy_director") {
             filter = { branch: { divisionId: { _eq: user.divisionId } } };
           }
         }
