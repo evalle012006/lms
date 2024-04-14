@@ -74,7 +74,7 @@ const DivisionsPage = () => {
     }
 
     const getListRegion = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'regions/list';
+        let url = getApiBaseUrl() + 'regions/list';
         const response = await fetchWrapper.get(url);
         if (response.success) {
             const data = [];

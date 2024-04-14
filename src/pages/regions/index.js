@@ -163,7 +163,7 @@ const RegionsPage = () => {
     const handleDelete = () => {
         if (region) {
             setLoading(true);
-            fetchWrapper.postCors(process.env.NEXT_PUBLIC_API_URL + 'regions/delete', region)
+            fetchWrapper.postCors(getApiBaseUrl() + 'regions/delete', region)
                 .then(response => {
                     if (response.success) {
                         setShowDeleteDialog(false);
