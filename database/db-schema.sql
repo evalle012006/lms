@@ -301,7 +301,7 @@ create table "roles" (
   "_id" varchar primary key,
   "name" varchar,
   "order" int,
-  "rep" varchar,
+  "rep" int,
   "shortCode" varchar,
   "system" boolean
 );
