@@ -42,8 +42,8 @@ async function list(req, res) {
 
         branches = data.map(branch => {
             let temp = {...branch};
-            temp.noOfLO = temp.noOfLO.length > 0 ? temp.noOfLO[0] : {};
             delete temp.noOfLO;
+            temp.noOfLO = branch.noOfLO.length > 0 ? branch.noOfLO[0] : {};
 
             return temp;
         });
@@ -89,8 +89,8 @@ async function list(req, res) {
 
             branches = data.map(branch => {
                 let temp = {...branch};
-                temp.noOfLO = temp.noOfLO.length > 0 ? temp.noOfLO[0] : {};
                 delete temp.noOfLO;
+                temp.noOfLO = branch.noOfLO.length > 0 ? branch.noOfLO[0] : {};
     
                 return temp;
             });
@@ -122,8 +122,8 @@ async function list(req, res) {
 
         branches = data.map(branch => {
             let temp = {...branch};
-            temp.noOfLO = temp.noOfLO.length > 0 ? temp.noOfLO[0] : {};
             delete temp.noOfLO;
+            temp.noOfLO = branch.noOfLO.length > 0 ? branch.noOfLO[0] : {};
 
             return temp;
         });

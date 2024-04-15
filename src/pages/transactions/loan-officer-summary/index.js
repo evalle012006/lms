@@ -443,6 +443,7 @@ const LoanOfficerSummary = () => {
                 }
 
                 activeLoanReleaseAmount += Math.abs(transferGvr?.currentReleaseAmount);
+                loanBalance += Math.abs(transferGvr?.currentReleaseAmount);
 
                 if (totalMcbuBalance !== 0) {
                     mcbuBalance = temp.mcbuBalance ? temp.mcbuBalance : 0 //+ totalMcbuBalance;
