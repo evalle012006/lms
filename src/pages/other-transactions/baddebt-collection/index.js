@@ -37,7 +37,7 @@ export default function BadDebtCollectionPage() {
     ]);
 
     const getList = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'other-transactions/badDebtCollection/list-bad-debts';
+        let url = getApiBaseUrl() + 'other-transactions/badDebtCollection/list-bad-debts';
         if (currentUser.role.rep == 1) {
             const response = await fetchWrapper.get(url);
             if (response.success) {
@@ -218,7 +218,7 @@ export default function BadDebtCollectionPage() {
     }
 
     const getCollectionList = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'other-transactions/badDebtCollection/list';
+        let url = getApiBaseUrl() + 'other-transactions/badDebtCollection/list';
         if (currentUser.role.rep == 1) {
             const response = await fetchWrapper.get(url);
             if (response.success) {
@@ -526,7 +526,7 @@ export default function BadDebtCollectionPage() {
     const handleDelete = () => {
         if (data) {
             setLoading(true);
-            fetchWrapper.postCors(process.env.NEXT_PUBLIC_API_URL + 'branches/delete', branch)
+            fetchWrapper.postCors(getApiBaseUrl() + 'branches/delete', branch)
                 .then(response => {
                     if (response.success) {
                         setShowDeleteDialog(false);

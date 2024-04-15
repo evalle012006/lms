@@ -26,11 +26,7 @@ async function list(req, res) {
   const { loId, branchId, currentUserId } = req.query;
 
   if (loId) {
-    filter = {
-      loId: { _eq: loId },
-      maturedPD: { _eq: true },
-      status: { _eq: "closed" },
-    };
+    filter = { loId: { _eq: loId } };
   } else {
     if (branchId) {
       filter = { branchId: { _eq: branchId } };
@@ -56,7 +52,12 @@ async function list(req, res) {
   if (filter) {
     graphRes = await graph.query(
       queryQl(loanType, {
-        where: filter,
+        where: {
+          maturedPD: { _eq: true },
+          status: { _eq: "closed" },
+          ...filter
+        },
+        limit: 2000
       })
     );
   }
