@@ -12,6 +12,7 @@ import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 import SideBar from "@/lib/ui/SideBar";
 import Spinner from "../Spinner";
+import { getApiBaseUrl } from "@/lib/constants";
 
 const AddUpdateDivision = ({ mode = 'add', division = {}, managerList=[], showSidebar, setShowSidebar, onClose }) => {
     const formikRef = useRef();
@@ -46,7 +47,7 @@ const AddUpdateDivision = ({ mode = 'add', division = {}, managerList=[], showSi
         values.managerIds = selectedManagers.map(manager => manager._id);
         console.log(values.managerIds)
         if (mode === 'add') {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'divisions/save/';
+            const apiUrl = getApiBaseUrl() + 'divisions/save/';
 
             fetchWrapper.post(apiUrl, values)
                 .then(response => {
@@ -66,7 +67,7 @@ const AddUpdateDivision = ({ mode = 'add', division = {}, managerList=[], showSi
                     console.log(error)
                 });
         } else if (mode === 'edit') {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'divisions';
+            const apiUrl = getApiBaseUrl() + 'divisions';
             values._id = division._id;
             fetchWrapper.post(apiUrl, values)
                 .then(response => {

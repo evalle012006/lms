@@ -31,7 +31,7 @@ const DivisionsPage = () => {
     const router = useRouter();
 
     const getListDivision = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'divisions/list';
+        let url = getApiBaseUrl() + 'divisions/list';
         const response = await fetchWrapper.get(url);
         if (response.success) {
             const data = [];
@@ -163,7 +163,7 @@ const DivisionsPage = () => {
     const handleDelete = () => {
         if (division) {
             setLoading(true);
-            fetchWrapper.postCors(process.env.NEXT_PUBLIC_API_URL + 'divisions/delete', division)
+            fetchWrapper.postCors(getApiBaseUrl() + 'divisions/delete', division)
                 .then(response => {
                     if (response.success) {
                         setShowDeleteDialog(false);

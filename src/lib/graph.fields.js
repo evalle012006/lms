@@ -361,3 +361,9 @@ managerIds
 name
 dateAdded
 `;
+
+export const DIVISION_FIELDS = `
+_id
+name
+dateAdded
+`;
