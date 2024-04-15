@@ -1131,12 +1131,8 @@ const LoanApplicationPage = () => {
     }
     
     const handleShowWarningModal = (row) => {
-        if (row.original.allowApproved) {
-            setLoan(row.original);
-            setShowRejectModal(true);
-        } else {
-            toast.error("Group transaction is already closed for the day.");
-        }
+        setLoan(row.original);
+        setShowRejectModal(true);
     }
 
     const handleLoTypeChange = (value) => {
