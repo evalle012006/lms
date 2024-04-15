@@ -11,6 +11,7 @@ import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 import SideBar from "@/lib/ui/SideBar";
 import Spinner from "../Spinner";
+import { getApiBaseUrl } from "@/lib/constants";
 
 const AddUpdateBranch = ({ mode = 'add', branch = {}, showSidebar, setShowSidebar, onClose }) => {
     const formikRef = useRef();
@@ -48,7 +49,7 @@ const AddUpdateBranch = ({ mode = 'add', branch = {}, showSidebar, setShowSideba
     const handleSaveUpdate = (values, action) => {
         setLoading(true);
         if (mode === 'add') {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'branches/save/';
+            const apiUrl = getApiBaseUrl() + 'branches/save/';
 
             fetchWrapper.post(apiUrl, values)
                 .then(response => {
@@ -66,7 +67,7 @@ const AddUpdateBranch = ({ mode = 'add', branch = {}, showSidebar, setShowSideba
                     console.log(error)
                 });
         } else if (mode === 'edit') {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'branches';
+            const apiUrl = getApiBaseUrl() + 'branches';
             values._id = branch._id;
             fetchWrapper.post(apiUrl, values)
                 .then(response => {

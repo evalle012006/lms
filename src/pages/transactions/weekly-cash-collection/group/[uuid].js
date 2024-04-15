@@ -15,6 +15,7 @@ import Dialog from '@/lib/ui/Dialog';
 import ButtonOutline from '@/lib/ui/ButtonOutline';
 import ButtonSolid from '@/lib/ui/ButtonSolid';
 import Spinner from '@/components/Spinner';
+import { getApiBaseUrl } from '@/lib/constants';
 
 const WeeklyCashCollectionDetailsPage = () => {
     const [loading, setLoading] = useState(false);
@@ -89,7 +90,7 @@ const WeeklyCashCollectionDetailsPage = () => {
     // }
 
     const getListBranch = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'branches/list';
+        let url = getApiBaseUrl() + 'branches/list';
 
         if (currentUser.role.rep === 3 || currentUser.role.rep === 4) {
             url = url + '?' + new URLSearchParams({ branchCode: currentUser.designatedBranch });
@@ -120,7 +121,7 @@ const WeeklyCashCollectionDetailsPage = () => {
         let mounted = true;
 
         const getCurrentLO = async () => {
-            const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}users?`;
+            const apiUrl = `${getApiBaseUrl()}users?`;
             const params = { _id: uuid };
             const response = await fetchWrapper.get(apiUrl + new URLSearchParams(params));
             if (response.success) {
@@ -143,7 +144,7 @@ const WeeklyCashCollectionDetailsPage = () => {
 
     useEffect(() => {
         const getListUser = async () => {
-            let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
+            let url = getApiBaseUrl() + 'users/list';
             if (branchList.length > 0) {
                 url = url + '?' + new URLSearchParams({ loOnly: true, branchCode: branchList[0]?.code });
                 const response = await fetchWrapper.get(url);

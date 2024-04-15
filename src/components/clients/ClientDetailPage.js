@@ -16,6 +16,7 @@ import InputText from "@/lib/ui/InputText";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 import InputNumber from "@/lib/ui/InputNumber";
+import { getApiBaseUrl } from "@/lib/constants";
 
 const ClientDetailPage = () => {
     const dispatch = useDispatch();
@@ -227,7 +228,7 @@ const ClientDetailPage = () => {
     ]);
 
     const getClientDetails = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'clients?clientId=' + client._id;
+        let url = getApiBaseUrl() + 'clients?clientId=' + client._id;
 
         const response = await fetchWrapper.get(url);
         if (response.success) {

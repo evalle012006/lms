@@ -304,7 +304,7 @@ create table "roles" (
   "_id" varchar primary key,
   "name" varchar,
   "order" int,
-  "rep" varchar,
+  "rep" int,
   "shortCode" varchar,
   "system" boolean
 );
@@ -387,6 +387,7 @@ create table "areas" (
   "managerIds" varchar,
   "name" varchar,
   "regionId" varchar
+  "divisionId" varchar
 );
 
 -- drop table "regions"

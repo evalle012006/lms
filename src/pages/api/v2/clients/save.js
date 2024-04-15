@@ -1,8 +1,9 @@
 import { CLIENT_FIELDS } from "@/lib/graph.fields";
 import { GraphProvider } from "@/lib/graph/graph.provider";
 import { createGraphType, insertQl } from "@/lib/graph/graph.util";
-import { generateUUID } from "@/lib/utils";
+import { generateUUID, getCurrentDate } from "@/lib/utils";
 import { apiHandler } from "@/services/api-handler";
+import moment from 'moment';
 
 const graph = new GraphProvider();
 const CLIENT_TYPE = createGraphType('clients', `
@@ -26,7 +27,7 @@ async function save(req, res) {
       objects: [{
         _id: generateUUID(),
         ... clientData,
-        dateAdded: 'now()',
+        dateAdded: moment(getCurrentDate()).format('YYYY-MM-DD'),
       }]
     })
   );

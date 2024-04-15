@@ -3,6 +3,8 @@ import { apiHandler } from '@/services/api-handler';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, updateQl } from '@/lib/graph/graph.util';
 import { GROUP_FIELDS } from '@/lib/graph.fields';
+import { getCurrentDate } from '@/lib/utils';
+import moment from 'moment'
 
 const graph = new GraphProvider();
 const CLIENT_TYPE = createGraphType('client', `_id`)('clients');
@@ -69,7 +71,7 @@ async function updateLoan(loanData) {
                     loanCycle: 0,
                     remarks: loanData.remarks,
                     status: 'closed',
-                    dateModified: 'now()'
+                    dateModified: moment(getCurrentDate()).format('YYYY-MM-DD')
                 },
                 where: {
                     _id: loan._id

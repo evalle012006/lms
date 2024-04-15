@@ -11,6 +11,7 @@ import { setUserList } from "@/redux/actions/userActions";
 import { setTransferHistoryBranchToBranch, setTransferHistoryLOToLO } from "@/redux/actions/transferActions";
 import { TabSelector } from "@/lib/ui/tabSelector";
 import { TabPanel, useTabs } from "node_modules/react-headless-tabs/dist/react-headless-tabs";
+import { getApiBaseUrl } from "@/lib/constants";
 
 const TransferHistoryTable = ({ list = [], totals }) => {
     return (
@@ -377,7 +378,7 @@ const TransferHistoryDetails = ({ type }) => {
             setSelectedFilterBranch(initBranch?._id);
 
             const getListUser = async () => {
-                let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
+                let url = getApiBaseUrl() + 'users/list';
                 if (branchList.length > 0) {
                     url = url + '?' + new URLSearchParams({ branchCode: initBranch?.code });
                     const response = await fetchWrapper.get(url);

@@ -15,6 +15,7 @@ import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 import { useRouter } from "node_modules/next/router";
 import { autoHealCashCollections, autoSyncLoans } from "@/lib/sync-jobs";
+import { getApiBaseUrl } from "@/lib/constants";
 
 const DailyCashCollectionPage = () => {
     const router = useRouter();
@@ -98,7 +99,7 @@ const DailyCashCollectionPage = () => {
     }
 
     const getListBranch = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'branches/list';
+        let url = getApiBaseUrl() + 'branches/list';
 
         if (currentUser.role.rep === 3 || currentUser.role.rep === 4) {
             url = url + '?' + new URLSearchParams({ branchCode: currentUser.designatedBranch });

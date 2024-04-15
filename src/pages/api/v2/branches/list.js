@@ -32,7 +32,10 @@ async function list(req, res) {
     const where = codes.length ? { code: { _in: codes } } : { code: { _neq: 'null' } };
 
     const branches = await graph.query(
-        queryQl(BRANCH_TYPE, { where })
+        queryQl(BRANCH_TYPE, { 
+            where,
+            order_by: [{ code: 'asc' }]
+        }, )
     ).then(res => res.data.branches)
       .then(branches => 
         branches.map(branch => ({

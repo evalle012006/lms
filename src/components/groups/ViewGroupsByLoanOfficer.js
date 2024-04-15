@@ -5,6 +5,7 @@ import { useRouter } from "node_modules/next/router";
 import TableComponent, { SelectColumnFilter, StatusPill } from "@/lib/table";
 import { setUserList } from "@/redux/actions/userActions";
 import { fetchWrapper } from "@/lib/fetch-wrapper";
+import { getApiBaseUrl } from "@/lib/constants";
 
 const ViewGroupsByLoanOfficerPage = () => {
     const dispatch = useDispatch();
@@ -22,7 +23,7 @@ const ViewGroupsByLoanOfficerPage = () => {
 
     const getListUsers = async () => {
         if (branch) {
-            let url = process.env.NEXT_PUBLIC_API_URL + 'users/list-with-group-count?branchCode=' + branch.code;
+            let url = getApiBaseUrl() + 'users/list-with-group-count?branchCode=' + branch.code;
 
             const response = await fetchWrapper.get(url);
             let users = [];

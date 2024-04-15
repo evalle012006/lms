@@ -12,6 +12,7 @@ import AddUpdateClient from "@/components/clients/AddUpdateClientDrawer";
 import ViewClientsByGroupPage from "@/components/clients/ViewClientsByGroup";
 import { setBranchList } from "@/redux/actions/branchActions";
 import { setGroupList } from "@/redux/actions/groupActions";
+import { getApiBaseUrl } from "@/lib/constants";
 
 const ClientsOffsetPage = () => {
     const dispatch = useDispatch();
@@ -27,7 +28,7 @@ const ClientsOffsetPage = () => {
     const router = useRouter();
 
     const getListBranch = async () => {
-        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'branches/list');
+        const response = await fetchWrapper.get(getApiBaseUrl() + 'branches/list');
         if (response.success) {
             let branches = [];
             response.branches && response.branches.map(branch => {
@@ -53,7 +54,7 @@ const ClientsOffsetPage = () => {
     }
 
     const getListGroup = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list'
+        let url = getApiBaseUrl() + 'groups/list'
         if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
             url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id });
         } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
@@ -78,7 +79,7 @@ const ClientsOffsetPage = () => {
     }
 
     const getListClient = async () => {
-        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'clients/list');
+        const response = await fetchWrapper.get(getApiBaseUrl() + 'clients/list');
         if (response.success) {
             let clients = [];
             await response.clients && response.clients.map(client => {

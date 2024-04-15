@@ -10,6 +10,7 @@ import { useState, useEffect } from 'react';
 import Spinner from '@/components/Spinner';
 import { userService } from '@/services/user-service';
 import { useSelector } from 'react-redux';
+import { getApiBaseUrl } from '@/lib/constants';
 
 const RegistrationPage = () => {
     const [errors, setErrors] = useState('');
@@ -120,7 +121,7 @@ const RegistrationPage = () => {
 
         if (mounted && action == 'registerSuccess') {
             setLoading(true);
-            fetchWrapper.get('/api/users?id=' + objectId)
+            fetchWrapper.get(getApiBaseUrl() + '/api/users?id=' + objectId)
                 .then(response => {
                     if (response.users.length > 0) {
                         const user = response.users[0];

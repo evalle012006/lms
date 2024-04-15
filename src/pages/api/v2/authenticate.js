@@ -1,9 +1,11 @@
 import getConfig from 'next/config';
 import { apiHandler } from '@/services/api-handler';
 import logger from '@/logger';
+import moment from 'moment'
 
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, updateQl } from '@/lib/graph/graph.util';
+import { getCurrentDate } from '@/lib/utils';
 
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
@@ -37,7 +39,6 @@ dateModified
 
 async function authenticate(req, res) {
 
-    console.log('calling v2')
     const { username, password } = req.body;
     const [ user ] = await graph.query(
         queryQl(USER_TYPE, {
@@ -73,7 +74,7 @@ async function authenticate(req, res) {
             updateQl(USER_TYPE, {
                 set: {
                     logged: true,
-                    lastLogin: 'now()'
+                    lastLogin: moment(getCurrentDate()).format('YYYY-MM-DD')
                 },
                 where: {
                     _id: { _eq: user._id }

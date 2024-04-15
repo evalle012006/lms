@@ -1,8 +1,9 @@
 import { BRANCH_FIELDS } from '@/lib/graph.fields';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, insertQl, queryQl } from '@/lib/graph/graph.util';
-import { generateUUID } from '@/lib/utils';
+import { generateUUID, getCurrentDate } from '@/lib/utils';
 import { apiHandler } from '@/services/api-handler';
+import moment from 'moment'
 
 const graph = new GraphProvider();
 const BRANCH_TYPE = createGraphType('branches', `
@@ -25,7 +26,9 @@ async function save(req, res) {
                 code: { _eq: code }
             }
         })
-    ).then(res => res.branches);
+    ).then(res => res.data.branches);
+
+    console.log(branch)
 
     if(branch) {
         response = {
@@ -34,7 +37,7 @@ async function save(req, res) {
             message: `Branch with the code "${code}" already exists`
         };
     } else {
-        branch = await graph.mutation(
+        [branch] = await graph.mutation(
             insertQl(BRANCH_TYPE, {
                 objects: [{
                     _id: generateUUID(), // todo: generate id here
@@ -43,10 +46,15 @@ async function save(req, res) {
                     email: email,
                     phoneNumber: phoneNumber,
                     address: address,
-                    dateAdded: 'now()'
+                    dateAdded: moment(getCurrentDate()).format('YYYY-MM-DD')
                 }]
             })
-        ).then(res => res.data.returning?.[0]);
+        ).then(res => res.data.branches.returning);
+
+        response = {
+            success: true,
+            branch: branch
+        }
     }
 
     res.status(statusCode)

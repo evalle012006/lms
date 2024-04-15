@@ -15,6 +15,7 @@ import AddUpdateGroup from "@/components/groups/AddUpdateGroupDrawer";
 import { UppercaseFirstLetter } from "@/lib/utils";
 import { setBranchList } from "@/redux/actions/branchActions";
 import { setUserList } from "@/redux/actions/userActions";
+import { getApiBaseUrl } from "@/lib/constants";
 
 const ViewByGroupsPage = () => {
     const dispatch = useDispatch();
@@ -34,7 +35,7 @@ const ViewByGroupsPage = () => {
     const { uuid } = router.query;
 
     const getListBranch = async () => {
-        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'branches/list');
+        const response = await fetchWrapper.get(getApiBaseUrl() + 'branches/list');
         if (response.success) {
             let branches = [];
             response.branches && response.branches.map(branch => {
@@ -61,7 +62,7 @@ const ViewByGroupsPage = () => {
 
     const getListUser = async () => {
         if (currentUser.root !== true && (currentUser.role.rep === 3 || currentUser.role.rep === 4) && branchList.length > 0) {
-            let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
+            let url = getApiBaseUrl() + 'users/list';
             url = url + '?' + new URLSearchParams({ branchCode: branchList[0].code });
             const response = await fetchWrapper.get(url);
             if (response.success) {
@@ -83,7 +84,7 @@ const ViewByGroupsPage = () => {
 
             setLoading(false);
         } else if (branchList.length > 0) {
-            let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
+            let url = getApiBaseUrl() + 'users/list';
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let userList = [];
@@ -107,7 +108,7 @@ const ViewByGroupsPage = () => {
     }
 
     const getListGroup = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list-all';
+        let url = getApiBaseUrl() + 'groups/list-all';
         
         if (uuid && userList.length > 0 ) {
             const lo = userList.find(u => u._id === uuid);
@@ -241,7 +242,7 @@ const ViewByGroupsPage = () => {
     const handleDelete = () => {
         if (group) {
             setLoading(true);
-            fetchWrapper.postCors(process.env.NEXT_PUBLIC_API_URL + 'groups/delete', {_id: group._id})
+            fetchWrapper.postCors(getApiBaseUrl() + 'groups/delete', {_id: group._id})
                 .then(response => {
                     if (response.success) {
                         setShowDeleteDialog(false);

@@ -1,14 +1,16 @@
 import { CLIENT_FIELDS, LOAN_FIELDS } from '@/lib/graph.fields';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, updateQl } from '@/lib/graph/graph.util';
+import { getCurrentDate } from '@/lib/utils';
 import { apiHandler } from '@/services/api-handler';
 import formidable from "formidable";
 import fs from "fs";
+import moment from 'moment';
 
 const graph = new GraphProvider();
 const CLIENT_TYPE = createGraphType('client', `
 ${CLIENT_FIELDS}
-loans (order_by: [{ dateGranted: desc }]){
+loans (order_by: [{ dateGranted: desc }]) {
     ${LOAN_FIELDS}
 }
 `)('clients');
@@ -24,7 +26,7 @@ async function getClient(req, res) {
     let statusCode = 200;
     let response = {};
 
-    const clients = await graph.query(
+    const client = await graph.query(
         queryQl(CLIENT_TYPE, {
             where: {
                 _id: { _eq: clientId }
@@ -35,7 +37,7 @@ async function getClient(req, res) {
 
     response = {
         success: true,
-        client: clients
+        client: client
     }
 
     res.status(statusCode)
@@ -108,7 +110,7 @@ async function updateClient(req, res) {
                         loId: fields.loId,
                         groupId: fields.groupId,
                         profile: profile,
-                        dateModified: 'now()'
+                        dateModified: moment(getCurrentDate()).format('YYYY-MM-DD')
                     },
                     where: {
                         _id: clientData._id

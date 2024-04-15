@@ -14,6 +14,7 @@ import { UppercaseFirstLetter } from "@/lib/utils";
 import { setGroupList } from "@/redux/actions/groupActions";
 import { setUserList } from "@/redux/actions/userActions";
 import { setClientList } from "@/redux/actions/clientActions";
+import { getApiBaseUrl } from "@/lib/constants";
 
 const AddUpdateDebtCollection = ({ mode = 'add', data = {}, showSidebar, setShowSidebar, onClose }) => {
     const currentUser = useSelector(state => state.user.data);
@@ -172,7 +173,7 @@ const AddUpdateDebtCollection = ({ mode = 'add', data = {}, showSidebar, setShow
 
     const getListGroup = async (occurence, loId) => {
         setLoading(true);
-        let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list-by-group-occurence?' + new URLSearchParams({ loId: loId, occurence: occurence, mode: 'filter' });
+        let url = getApiBaseUrl() + 'groups/list-by-group-occurence?' + new URLSearchParams({ loId: loId, occurence: occurence, mode: 'filter' });
         const response = await fetchWrapper.get(url);
         if (response.success) {
             let groups = [];
@@ -193,7 +194,7 @@ const AddUpdateDebtCollection = ({ mode = 'add', data = {}, showSidebar, setShow
 
     const getListClient = async (groupId) => {
         setLoading(true);
-        const url = process.env.NEXT_PUBLIC_API_URL + 'clients/list-matured-pd?' + new URLSearchParams({ groupId: groupId });
+        const url = getApiBaseUrl() + 'clients/list-matured-pd?' + new URLSearchParams({ groupId: groupId });
 
         const response = await fetchWrapper.get(url);
         if (response.success) {

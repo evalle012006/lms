@@ -1,6 +1,8 @@
 import { GraphProvider } from "@/lib/graph/graph.provider";
 import { createGraphType, updateQl } from "@/lib/graph/graph.util";
+import { getCurrentDate } from "@/lib/utils";
 import { apiHandler } from '@/services/api-handler';
+import moment from 'moment'
 
 export default apiHandler({
     post: activate
@@ -16,7 +18,7 @@ async function activate(req, res) {
         updateQl(USER_TYPE, {
             set: {
                 status: 'active',
-                dateModified: 'now()'
+                dateModified: moment(getCurrentDate()).format('YYYY-MM-DD')
             },
             where: {
                 email: { _eq: email }

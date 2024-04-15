@@ -12,6 +12,7 @@ import SideBar from "@/lib/ui/SideBar";
 import Spinner from "../Spinner";
 import SelectDropdown from "@/lib/ui/select";
 import RadioButton from "@/lib/ui/radio-button";
+import { getApiBaseUrl } from "@/lib/constants";
 
 const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar, onClose }) => {
     const currentUser = useSelector(state => state.user.data);
@@ -93,7 +94,7 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
         }
         
         if (mode === 'add') {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'groups/save/';
+            const apiUrl = getApiBaseUrl() + 'groups/save/';
 
             let availableSlots = [];
             for (let i = 1; i <= 40; i++) {
@@ -121,7 +122,7 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
                     console.log(error)
                 });
         } else if (mode === 'edit') {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'groups';
+            const apiUrl = getApiBaseUrl() + 'groups';
             values._id = group._id;
             fetchWrapper.post(apiUrl, values)
                 .then(response => {

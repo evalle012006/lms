@@ -10,6 +10,7 @@ import { setCashCollectionList, setGroupSummaryTotals, setLoSummary } from "@/re
 import TableComponent, { SelectColumnFilter, StatusPill } from "@/lib/table";
 import { BehaviorSubject } from 'rxjs';
 import { setGroupList } from "@/redux/actions/groupActions";
+import { getApiBaseUrl } from "@/lib/constants";
 
 const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
     const router = useRouter();
@@ -1196,7 +1197,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
 
     useEffect(() => {
         const getListGroup = async (loId) => {
-            let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list-by-group-occurence?' + new URLSearchParams({ mode: "filter", occurence: type, loId: loId });
+            let url = getApiBaseUrl() + 'groups/list-by-group-occurence?' + new URLSearchParams({ mode: "filter", occurence: type, loId: loId });
 
             const response = await fetchWrapper.get(url);
             if (response.success) {

@@ -1,7 +1,6 @@
 import { BRANCH_FIELDS, USER_FIELDS } from '@/lib/graph.fields';
 import { GraphProvider } from '@/lib/graph/graph.provider';
-import { createGraphType, queryQl } from '@/lib/graph/graph.util';
-import { connectToDatabase } from '@/lib/mongodb';
+import { createGraphType, queryQl, updateQl } from '@/lib/graph/graph.util';
 import { apiHandler } from '@/services/api-handler';
 
 const graph = new GraphProvider();
@@ -61,8 +60,6 @@ async function getBranch(req, res) {
 }
 
 async function updateBranch(req, res) {
-    const { db } = await connectToDatabase();
-    const ObjectId = require('mongodb').ObjectId;
     let statusCode = 200;
     let response = {};
 
@@ -70,16 +67,18 @@ async function updateBranch(req, res) {
     const branchId = branch._id;
     delete branch._id;
 
-    const branchResp = await db
-        .collection('branches')
-        .updateOne(
-            { _id: new ObjectId(branchId) }, 
-            {
-                $set: { ...branch }
-            }, 
-            { upsert: false });
+    const resp = await graph.mutation(
+        updateQl(BRANCH_TYPE, {
+            set: {
+                ... branch
+            },
+            where: {
+                _id: { _eq: branchId }
+            }
+        })
+    );
 
-    response = { success: true, branch: branchResp };
+    response = { success: true, branch: resp };
 
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')

@@ -1,0 +1,19 @@
+### v1
+GET http://localhost:3000/api/groups/list-all
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2MzllODQ4MDkyNzMxZTFkMTFmYjZmZDIiLCJpYXQiOjE3MTEyMDg5MTksImV4cCI6MTcxMTIyMzMxOX0.CQKTcKbcQo23F-Merft2QuC5kHHy4LWqQFj9spxFKSI
+
+### v2
+GET http://localhost:3000/api/v2/groups/list-all
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2MzllODQ4MDkyNzMxZTFkMTFmYjZmZDIiLCJpYXQiOjE3MTEyMDg5MTksImV4cCI6MTcxMTIyMzMxOX0.CQKTcKbcQo23F-Merft2QuC5kHHy4LWqQFj9spxFKSI
+
+### v1
+GET http://localhost:3000/api/groups?_id=639e860636491596e49ed4e3
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2MzllODQ4MDkyNzMxZTFkMTFmYjZmZDIiLCJpYXQiOjE3MTEyMDg5MTksImV4cCI6MTcxMTIyMzMxOX0.CQKTcKbcQo23F-Merft2QuC5kHHy4LWqQFj9spxFKSI
+
+### v2
+GET http://localhost:3000/api/v2/groups?_id=639e860636491596e49ed4e3
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2MzllODQ4MDkyNzMxZTFkMTFmYjZmZDIiLCJpYXQiOjE3MTEyMDg5MTksImV4cCI6MTcxMTIyMzMxOX0.CQKTcKbcQo23F-Merft2QuC5kHHy4LWqQFj9spxFKSI

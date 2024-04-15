@@ -13,6 +13,7 @@ import { formatPricePhp, getDaysOfMonth } from "@/lib/utils";
 import { useRouter } from "node_modules/next/router";
 import { setBranch } from "@/redux/actions/branchActions";
 import { setUserList } from "@/redux/actions/userActions";
+import { getApiBaseUrl } from "@/lib/constants";
 
 const BranchManagerSummary = () => {
     const dispatch = useDispatch();
@@ -1569,7 +1570,7 @@ const BranchManagerSummary = () => {
 
         if (currentUser.role.rep === 3 || currentUser.role.rep === 4) {
             const getCurrentBranch = async () => {
-                const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}branches?`;
+                const apiUrl = `${getApiBaseUrl()}branches?`;
                 const params = { code: currentUser.designatedBranch };
                 const response = await fetchWrapper.get(apiUrl + new URLSearchParams(params));
                 if (response.success) {

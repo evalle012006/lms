@@ -13,6 +13,7 @@ import ButtonSolid from "@/lib/ui/ButtonSolid";
 import { setAreaList } from "@/redux/actions/areaActions";
 import { setRegionList } from "@/redux/actions/regionActions";
 import AddUpdateRegion from "@/components/regions/AddUpdateRegionDrawer";
+import { getApiBaseUrl } from "@/lib/constants";
 
 const RegionsPage = () => {
     const dispatch = useDispatch();
@@ -30,7 +31,7 @@ const RegionsPage = () => {
     const router = useRouter();
 
     const getListRegion = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'regions/list';
+        let url = getApiBaseUrl() + 'regions/list';
         const response = await fetchWrapper.get(url);
         if (response.success) {
             const data = [];
@@ -73,7 +74,7 @@ const RegionsPage = () => {
     }
 
     const getListArea = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'areas/list';
+        let url = getApiBaseUrl() + 'areas/list';
         const response = await fetchWrapper.get(url);
         if (response.success) {
             const data = [];
@@ -92,7 +93,7 @@ const RegionsPage = () => {
     }
 
     const getListManager = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'users/list-by-user-type?' + new URLSearchParams({ userType: 'region' });
+        let url = getApiBaseUrl() + 'users/list-by-user-type?' + new URLSearchParams({ userType: 'region' });
         const response = await fetchWrapper.get(url);
         if (response.success) {
             const data = [];
@@ -162,7 +163,7 @@ const RegionsPage = () => {
     const handleDelete = () => {
         if (region) {
             setLoading(true);
-            fetchWrapper.postCors(process.env.NEXT_PUBLIC_API_URL + 'regions/delete', region)
+            fetchWrapper.postCors(getApiBaseUrl() + 'regions/delete', region)
                 .then(response => {
                     if (response.success) {
                         setShowDeleteDialog(false);

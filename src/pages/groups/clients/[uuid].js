@@ -8,6 +8,7 @@ import { toast } from "react-toastify";
 import DetailsHeader from '@/components/groups/DetailsHeader';
 import { setGroup } from '@/redux/actions/groupActions';
 import ViewClientsByGroupPage from '@/components/clients/ViewClientsByGroup';
+import { getApiBaseUrl } from '@/lib/constants';
 
 const GroupsDetailsPage = () => {
     const dispatch = useDispatch();
@@ -24,7 +25,7 @@ const GroupsDetailsPage = () => {
         let mounted = true;
 
         const getCurrentGroup = async () => {
-            const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}groups?`;
+            const apiUrl = `${getApiBaseUrl()}groups?`;
             const params = { _id: uuid };
             const response = await fetchWrapper.get(apiUrl + new URLSearchParams(params));
             if (response.success) {
