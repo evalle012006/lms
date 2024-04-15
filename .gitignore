@@ -12,3 +12,4 @@ src/pages/_app.js
 .github/workflows/CI.yml
 
 .idea
+http-client.env.*

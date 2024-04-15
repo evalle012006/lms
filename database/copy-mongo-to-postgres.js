@@ -1,16 +1,20 @@
-const { MongoClient } = require('mongodb');
+const { MongoClient, ObjectId } = require('mongodb');
 const { Pool } = require('postgresql-client');
+const env = require('@next/env');
+const { tableNames } = require('./db-schema')
+
+env.loadEnvConfig('../');
 
 const MIGRATION_KEY = '__migrated';
-const MIGRATION_ID = 0;
-const MONGODB_URL = 'mongodb://root:example@localhost:27017';
-const MONGODB_NAME = 'acloandb';
-const PG_URL = 'postgres://postgres:@localhost:5432/acloandb';
+const MIGRATION_ID = 1;
+const MONGODB_URL = process.env.LOCAL_DB_URL;
+const MONGODB_NAME = process.env.LOCAL_DB_NAME;
+const PG_URL = process.env.HASURA_DB_URL;
 const BATCH_SIZE = 100;
 
 // run migration
-migrate();
-// showDistinctColumnNames('client');
+migrate(['branches']);
+// showDistinctColumnNames('regions');
 
 async function migrate(collectionNamesFilter = []) {
     const mClient = await MongoClient.connect(MONGODB_URL);
@@ -24,113 +28,83 @@ async function migrate(collectionNamesFilter = []) {
         }
     });
 
-
-    const collectionNames = [
-        "badDebtCollections",
-        "branches",
-        "cashCollections",
-        "client",
-        "groups",
-        "holidays",
-        "loans",
-        "losTotals",
-        "roles",
-        "rolesPermissions",
-        "settings",
-        "transactionSettings",
-        "transferClients",
-        "users",
-    ];
-
-    doMigrate: for (const tableName of collectionNames) {
+    doMigrate: for (const [tableName, columns] of tableNames) {
         if (collectionNamesFilter.length && !collectionNamesFilter.includes(tableName))
             continue;
 
         console.log(`migrating ${tableName}`);
         let migrated = 0;
         const cursor = mDb.collection(tableName).find({[MIGRATION_KEY]: {$ne: MIGRATION_ID}});
-        let promises = [];
+        let batch = [];
 
         for await (const doc of cursor) {
-            const keys = Object.keys(doc).filter(removeKeysNotForMigration);
-            const params = keys
-                .map((k) => ({key: k, value: mapValue(k, doc[k])}))
-                .filter(p => !!p.value);
+            batch.push(columns.map((k) => mapValue(k, doc[k])));
 
-            if (params.length === 1 && params[0].key === '_id')
-                continue;
-
-            promises.push(migrateDoc(tableName, doc, params, mDb, pgPool));
-            if (promises.length >= BATCH_SIZE) {
-                const successCount = (await Promise.all(promises)).filter(r => !!r).length;
-                migrated += successCount;
-                if (successCount < promises.length) {
+            if (batch.length >= BATCH_SIZE) {
+                const success = await batchInsert(tableName, columns, batch, mDb, pgPool);
+                migrated += batch.length;
+                if (!success) {
                     break doMigrate;
                 }
-                promises = [];
-                if (global.gc) {
-                    global.gc();
-                }
-                printMemUsage(tableName, migrated);
+                batch = [];
+                printMigratedRows(tableName, migrated);
             }
         }
 
-        if (promises.length) {
-            const successCount = (await Promise.all(promises)).filter(r => !!r).length;
-            migrated += successCount;
-            if (successCount < promises.length) {
-                break;
-            }
-            promises = null;
-            if (global.gc) {
-                global.gc();
+        if (batch.length) {
+            const success = await batchInsert(tableName, columns, batch, mDb, pgPool);
+            migrated += batch.length;
+            if (!success) {
+              break;
             }
         }
 
-        printMemUsage(tableName, migrated);
+        printMigratedRows(tableName, migrated);
     }
 
     await mClient.close();
     await pgPool.close();
 }
 
-function printMemUsage(tableName, migratedRows) {
-    const formatMemoryUsage = (data) => `${Math.round(data / 1024 / 1024 * 100) / 100} MB`;
-    const memoryData = process.memoryUsage();
-    console.log(
-        `${tableName}: migrated = ${migratedRows}`,
-        `| RSS = ${formatMemoryUsage(memoryData.rss)}`,
-        `| Heap = ${formatMemoryUsage(memoryData.heapTotal)}`,
+function printMigratedRows(tableName, migratedRows) {
+    console.log(`${tableName}: migrated = ${migratedRows}`);
+}
+
+async function batchInsert(tableName, colNames, batchParams, mongoDb, pgPool) {
+  const pgCon = await pgPool.acquire();
+
+  let paramCtr = 0;
+  const valuesSql = batchParams.map(params => `(${params.map(() => `$${++paramCtr}`).join(', ')})`).join(',\n');
+
+  // language=SQL format=false
+  const sql = `
+    insert into
+      "${tableName}" (${colNames.map(name => `"${name}"`).join(', ')})
+    values
+      ${valuesSql}
+    on conflict (_id) 
+      do update set ${colNames
+             .filter(name => name !== '_id')
+             .map(name => `"${name}" = EXCLUDED."${name}"`).join(', ')}
+  `;
+
+  try {
+    const stm = await pgCon.prepare(sql);
+    await stm.execute({ params: batchParams.flat() });
+
+    const mongIds = batchParams.map(p => new ObjectId(p[0]));
+    await mongoDb.collection(tableName).updateMany(
+      {_id: { $in: mongIds }},
+      {$set:{[MIGRATION_KEY]: MIGRATION_ID}}
     );
-}
-
-async function migrateDoc(tableName, doc, params, mongoDb, pgPool) {
-    const pgCon = await pgPool.acquire();
-
-    const sql = `
-              insert into
-                "${tableName}" (${params.map((p) => `"${p.key}"`).join(', ')})
-              values
-                (${params.map((_, i) => `$${i + 1}`).join(', ')}) 
-              on conflict (_id) do update
-               set ${params.filter(p => p.key !== '_id').map(p => `"${p.key}" = EXCLUDED."${p.key}"`).join(', ')}
-            `;
-    try {
-        const stm = await pgCon.prepare(sql);
-        await stm.execute({ params: params.map(p => p.value) });
-        await mongoDb.collection(tableName).updateOne({_id: doc._id},{$set:{[MIGRATION_KEY]: MIGRATION_ID}});
-        return true;
-    } catch (e) {
-        console.error(JSON.stringify(params, null, 2));
-        console.error(e.message, e);
-        return false;
-    } finally {
-        await pgCon.close();
-    }
-}
-
-function removeKeysNotForMigration(k) {
-    return !k.startsWith('__') && k !== 'deisgnatedBranchId';
+    return true;
+  } catch (e) {
+    console.error(JSON.stringify(params, null, 2));
+    console.error(e.message, e);
+    return false;
+  } finally {
+    await pgCon.close();
+  }
 }
 
 const corrections = {
@@ -168,6 +142,7 @@ function mapValue(key, value) {
     return value;
 }
 
+// noinspection JSUnusedLocalSymbols
 async function showDistinctColumnNames(collectionName) {
     const client = await MongoClient.connect(MONGODB_URL);
     const db = await client.db(MONGODB_NAME);
@@ -187,8 +162,4 @@ async function showDistinctColumnNames(collectionName) {
     }
 
     await client.close();
-}
-
-async function asyncTimeout(millis) {
-    return new Promise(resolve => setTimeout(resolve, millis));
 }

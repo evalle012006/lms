@@ -21,7 +21,10 @@ create table "branches" (
   "dateAdded" timestamptz,
   "email" varchar,
   "name" varchar,
-  "phoneNumber" varchar
+  "phoneNumber" varchar,
+  "areaId" varchar,
+  "regionId" varchar,
+  "divisionId" varchar
 );
 
 -- drop table "cashCollections";
@@ -374,4 +377,32 @@ create table "users" (
   "lastName" varchar,
   "root" boolean,
   "branchManagerName" varchar
+);
+
+-- drop table "areas"
+create table "areas" (
+  "_id" varchar primary key,
+  "branchIds" varchar,
+  "dateAdded" timestamptz,
+  "managerIds" varchar,
+  "name" varchar,
+  "regionId" varchar
+);
+
+-- drop table "regions"
+create table "regions" (
+  "_id" varchar primary key,
+  "areaIds" varchar,
+  "dateAdded" timestamptz,
+  "managerIds" varchar,
+  "name" varchar,
+  "divisionId" varchar
+);
+
+create table "divisions" (
+  "_id" varchar primary key,
+  "name" varchar,
+  "managerIds" jsonb,
+  "regionIds" jsonb,
+  "dateAdded" timestamptz
 );
