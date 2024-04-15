@@ -387,6 +387,7 @@ create table "areas" (
   "managerIds" varchar,
   "name" varchar,
   "regionId" varchar
+  "divisionId" varchar
 );
 
 -- drop table "regions"
