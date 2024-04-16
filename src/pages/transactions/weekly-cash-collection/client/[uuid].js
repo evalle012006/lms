@@ -1330,8 +1330,13 @@ const CashCollectionDetailsPage = () => {
                             temp.activeLoan = 0;
                             temp.targetCollection = 0;
                             temp.targetCollectionStr = '-';
-                            temp.mispayment = true;
-                            temp.mispaymentStr = 'Yes';
+                            if (temp.remarks.value === 'delinquent-mcbu') {
+                                temp.mispayment = true;
+                                temp.mispaymentStr = 'Yes';
+                            } else {
+                                temp.mispayment = false;
+                                temp.mispaymentStr = 'No';
+                            }
                         }
     
                         if (temp.loanBalance <= 0 && temp.remarks?.value !== 'offset-matured-pd') {
