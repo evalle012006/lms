@@ -9,7 +9,6 @@ lastLogin
 loNo
 logged
 number
-password
 position
 profile
 role
