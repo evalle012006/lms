@@ -23,7 +23,7 @@ import { BehaviorSubject } from 'rxjs';
 import Modal from '@/lib/ui/Modal';
 import ClientDetailPage from '@/components/clients/ClientDetailPage';
 import { setClient } from '@/redux/actions/clientActions';
-import { LOR_ONLY_OFFSET_REMARKS, LOR_WEEKLY_REMARKS } from '@/lib/constants';
+import { LOR_ONLY_OFFSET_REMARKS, LOR_WEEKLY_REMARKS, getApiBaseUrl } from '@/lib/constants';
 import CheckBox from '@/lib/ui/checkbox';
 
 const CashCollectionDetailsPage = () => {
@@ -55,7 +55,6 @@ const CashCollectionDetailsPage = () => {
     const [showAddDrawer, setShowAddDrawer] = useState(false);
     const [showRemarksModal, setShowRemarksModal] = useState(false);
     const [closeAccountRemarks, setCloseAccountRemarks] = useState();
-    const [offsetUseMCBU, setOffsetUseMCBU] = useState(false);
     const [closeLoan, setCloseLoan] = useState();
     const [remarksArr, setRemarksArr] = useState(LOR_WEEKLY_REMARKS);
     const [filter, setFilter] = useState(false);
@@ -1330,13 +1329,8 @@ const CashCollectionDetailsPage = () => {
                             temp.activeLoan = 0;
                             temp.targetCollection = 0;
                             temp.targetCollectionStr = '-';
-                            if (temp.remarks.value === 'delinquent-mcbu') {
-                                temp.mispayment = true;
-                                temp.mispaymentStr = 'Yes';
-                            } else {
-                                temp.mispayment = false;
-                                temp.mispaymentStr = 'No';
-                            }
+                            temp.mispayment = false;
+                            temp.mispaymentStr = 'No';
                         }
     
                         if (temp.loanBalance <= 0 && temp.remarks?.value !== 'offset-matured-pd') {
@@ -1858,6 +1852,7 @@ const CashCollectionDetailsPage = () => {
                                         toast.error("Invalid remarks. Please use For Close/Offset - Matured PD Client remarks.");
                                     } else {
                                         setShowRemarksModal(true);
+                                        setCloseLoan(cc);
                                         temp.error = false;
                                         setEditMode(true);
         
@@ -1909,8 +1904,6 @@ const CashCollectionDetailsPage = () => {
                                         if (temp.loanBalance === 0 && temp.paymentCollection === 0) {
                                             temp.fullPayment = temp?.history?.amountRelease;
                                         }
-
-                                        setCloseLoan(temp);
                                     }
                                 }
     
@@ -2325,35 +2318,13 @@ const CashCollectionDetailsPage = () => {
             
             if (cc.loanId === closeLoan.loanId) {
                 temp.closeRemarks = closeAccountRemarks;
-
-                if (offsetUseMCBU) {
-                    const newMCBU = closeLoan.mcbuReturnAmt - closeLoan.paymentCollection;
-                    temp.mcbuReturnAmt = newMCBU
-                    temp.mcbuReturnAmtStr = formatPricePhp(newMCBU);
-                }
             }
             
             return temp;
         });
 
         dispatch(setCashCollectionGroup(list));
-        setCloseAccountRemarks('');
-        setOffsetUseMCBU(false);
         setShowRemarksModal(false);
-    }
-
-    const handleOffsetUseMCBU = (name, checked) => {
-        if (checked && closeLoan) {
-            if (closeLoan.mcbuReturnAmt < closeLoan.paymentCollection) {
-                toast.error('Client has not enough MCBU collected.');
-            } else if (closeLoan.mcbuReturnAmt == 0) {
-                toast.error('Client has no MCBU collected.');
-            } else {
-                setOffsetUseMCBU(checked);
-            }
-        } else {
-            setOffsetUseMCBU(checked);
-        }
     }
 
     const handleMcbuWithdrawal = (e, selected, index) => {
@@ -2551,7 +2522,7 @@ const CashCollectionDetailsPage = () => {
         let mounted = true;
 
         const getListBranch = async () => {
-            let url = process.env.NEXT_PUBLIC_API_URL + 'branches/list';
+            let url = getApiBaseUrl() + 'branches/list';
 
             if (currentUser.role.rep === 3 || currentUser.role.rep === 4) {
                 url = url + '?' + new URLSearchParams({ branchCode: currentUser.designatedBranch });
@@ -2581,7 +2552,7 @@ const CashCollectionDetailsPage = () => {
 
         const getCurrentGroup = async () => {
             if (uuid) {
-                const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}groups?`;
+                const apiUrl = `${getApiBaseUrl()}groups?`;
                 const params = { _id: uuid };
                 const response = await fetchWrapper.get(apiUrl + new URLSearchParams(params));
                 if (response.success) {
@@ -2609,7 +2580,7 @@ const CashCollectionDetailsPage = () => {
 
     useEffect(() => {
         const getListGroup = async (selectedLO) => {
-            let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list-by-group-occurence?' + new URLSearchParams({ mode: "filter", branchId: branchList[0]?._id, occurence: 'weekly', loId: selectedLO });
+            let url = getApiBaseUrl() + 'groups/list-by-group-occurence?' + new URLSearchParams({ mode: "filter", branchId: branchList[0]?._id, occurence: 'weekly', loId: selectedLO });
 
             const response = await fetchWrapper.get(url);
             if (response.success) {
@@ -2887,10 +2858,9 @@ const CashCollectionDetailsPage = () => {
                             <div className="sm:flex sm:items-start justify-center">
                                 <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-center">
                                     <div className="mt-2">
-                                        <CheckBox size={"md"} value={offsetUseMCBU} label="Use MCBU as Payment" onChange={handleOffsetUseMCBU} />
                                         <textarea rows="4" value={closeAccountRemarks} onChange={(e) => setCloseAccountRemarks(e.target.value)}
                                             className="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border 
-                                                        border-gray-300 focus:ring-blue-500 focus:border-main mt-2" 
+                                                        border-gray-300 focus:ring-blue-500 focus:border-main" 
                                             placeholder="Enter remarks..."></textarea>
                                     </div>
                                 </div>

@@ -1,0 +1,23 @@
+# NOTE: auth_token variable is set globally in authenticate.http
+
+@apiUrl=http://localhost:3000/api/
+
+### Get Data
+GET {{apiUrl}}/v2/other-transactions/badDebtCollection?_id=65cc3dc8ecc5a117cc1b494c
+Content-Type: application/json
+Authorization: Bearer {{auth_token}}
+
+### Get List
+GET {{apiUrl}}/v2/other-transactions/badDebtCollection/list
+Content-Type: application/json
+Authorization: Bearer {{auth_token}}
+
+### Get List - area_admin
+GET {{apiUrl}}/v2/other-transactions/badDebtCollection/list?currentUserId=64f91c5519f25bfc17a7b19b
+Content-Type: application/json
+Authorization: Bearer {{auth_token}}
+
+### Get List - bad debts
+GET {{apiUrl}}/v2/other-transactions/badDebtCollection/list-bad-debts
+Content-Type: application/json
+Authorization: Bearer {{auth_token}}

@@ -40,7 +40,7 @@ async function allLoans(req, res) {
                                                     {$eq: ['$remarks.value', 'matured-past due'] },
                                                     {$eq: ['$remarks.value', 'delinquent'] },
                                                     {$eq: ['$remarks.value', 'delinquent-mcbu'] },
-                                                    {$regexMatch: { input: '$remarks.value', regex: /^excused-/ }}
+                                                    {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
                                                 ]
                                             },
                                             else: {$eq: ['$remarks.value', remarks]}
@@ -179,7 +179,7 @@ async function allLoans(req, res) {
                                                     {$eq: ['$remarks.value', 'matured-past due'] },
                                                     {$eq: ['$remarks.value', 'delinquent'] },
                                                     {$eq: ['$remarks.value', 'delinquent-mcbu'] },
-                                                    {$regexMatch: { input: '$remarks.value', regex: /^excused-/ }}
+                                                    {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
                                                 ]
                                             },
                                             else: {$eq: ['$remarks.value', remarks]}
@@ -259,8 +259,6 @@ async function allLoans(req, res) {
 
             data.sort((a, b) => { return a.loanBalance - b.loanBalance });
 
-            data = data.filter(lo => lo.noOfMispays > 0);
-
             data.push({
                 _id: 'TOTALS',
                 loName: 'TOTALS',
@@ -337,12 +335,6 @@ async function allLoans(req, res) {
                         totalNet: loan.totalNetLoanBalance,
                         totalNetStr: formatPricePhp(loan.totalNetLoanBalance),
                     }
-
-                    totalMispays += loan.totalMispayments;
-                    totalAmountRelease += loan.totalAmountRelease;
-                    totalLoanBalance += loan.totalLoanBalance;
-                    totalMCBU += loan.totalMCBU;
-                    totalNetLoanBalance += loan.totalNetLoanBalance;
                 });
 
                 data.push(temp);
@@ -359,8 +351,6 @@ async function allLoans(req, res) {
 
                 return 0;
             });
-
-            data = data.filter(branch => branch.noOfMispays > 0);
 
             data.push({
                 _id: 'TOTALS',
@@ -410,7 +400,7 @@ const getByBranch = async (db, branchId, remarks, date) => {
                                                 {$eq: ['$remarks.value', 'matured-past due'] },
                                                 {$eq: ['$remarks.value', 'delinquent'] },
                                                 {$eq: ['$remarks.value', 'delinquent-mcbu'] },
-                                                {$regexMatch: { input: '$remarks.value', regex: /^excused-/ }}
+                                                {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
                                             ]
                                         },
                                         else: {$eq: ['$remarks.value', remarks]}

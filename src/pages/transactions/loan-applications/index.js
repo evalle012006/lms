@@ -29,6 +29,7 @@ import { useRef } from "react";
 import LDFListPage from "@/components/transactions/loan-application/LDFList";
 import RadioButton from "@/lib/ui/radio-button";
 import CheckBox from "@/lib/ui/checkbox";
+import { getApiBaseUrl } from "@/lib/constants";
 
 const LoanApplicationPage = () => {
     const isHoliday = useSelector(state => state.systemSettings.holiday);
@@ -175,7 +176,7 @@ const LoanApplicationPage = () => {
     }
 
     const getListBranch = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'branches/list';
+        let url = getApiBaseUrl() + 'branches/list';
         
         const response = await fetchWrapper.get(url);
         if (response.success) {
@@ -246,7 +247,7 @@ const LoanApplicationPage = () => {
     }
 
     const getListGroup = async (selectedUser, selectedOccurence) => {
-        const url = process.env.NEXT_PUBLIC_API_URL + 'groups/list-by-group-occurence?' + new URLSearchParams({ loId: selectedUser, occurence: selectedOccurence });
+        const url = getApiBaseUrl() + 'groups/list-by-group-occurence?' + new URLSearchParams({ loId: selectedUser, occurence: selectedOccurence });
         const response = await fetchWrapper.get(url);
         if (response.success) {
             let groups = [];
@@ -1131,8 +1132,12 @@ const LoanApplicationPage = () => {
     }
     
     const handleShowWarningModal = (row) => {
-        setLoan(row.original);
-        setShowRejectModal(true);
+        if (row.original.allowApproved) {
+            setLoan(row.original);
+            setShowRejectModal(true);
+        } else {
+            toast.error("Group transaction is already closed for the day.");
+        }
     }
 
     const handleLoTypeChange = (value) => {

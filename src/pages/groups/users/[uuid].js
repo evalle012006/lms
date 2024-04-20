@@ -8,6 +8,7 @@ import { toast } from "react-toastify";
 import { setBranch } from '@/redux/actions/branchActions';
 import DetailsHeaderGroupMain from '@/components/groups/DetailsHeaderMain';
 import ViewGroupsByLoanOfficerPage from '@/components/groups/ViewGroupsByLoanOfficer';
+import { getApiBaseUrl } from '@/lib/constants';
 
 const GroupUsersPage = () => {
     const dispatch = useDispatch();
@@ -21,7 +22,7 @@ const GroupUsersPage = () => {
         let mounted = true;
 
         const getCurrentBranch = async () => {
-            const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}branches?`;
+            const apiUrl = `${getApiBaseUrl()}branches?`;
             const params = { _id: uuid };
             const response = await fetchWrapper.get(apiUrl + new URLSearchParams(params));
             if (response.success) {

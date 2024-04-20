@@ -163,7 +163,7 @@ const ViewByDivisionPage = ({dateFilter, type, selectedBranchGroup, viewMode}) =
                 },
                 {
                     Header: "Mispay",
-                    accessor: 'mispayment'
+                    accessor: 'mispaymentStr'
                 },
                 {
                     Header: "PD #",

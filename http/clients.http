@@ -1,0 +1,45 @@
+@apiKey=Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2MzllODQ4MDkyNzMxZTFkMTFmYjZmZDIiLCJpYXQiOjE3MTE1NDcxMjQsImV4cCI6MTcxMTU2MTUyNH0.o4cMtRRNzhpAxuhML4ajT7HEdsHGXuiHRIlj9tJ_858
+
+GET http://localhost:3000/api/clients?clientId=6547a1192f476e8fe7cc392d
+Content-Type: application/json
+Authorization: {{apiKey}}
+
+### v2
+GET http://localhost:3000/api/v2/clients?clientId=6547a1192f476e8fe7cc392d
+Content-Type: application/json
+Authorization: {{apiKey}}
+
+### v1
+GET http://localhost:3000/api/clients/list-delinquent
+Content-Type: application/json
+Authorization: {{apiKey}}
+
+### v2
+GET http://localhost:3000/api/v2/clients/list-delinquent
+Content-Type: application/json
+Authorization: {{apiKey}}
+
+### v1
+GET http://localhost:3000/api/clients/list-matured-pd?groupId=655deb85b13ee090c52909ce
+Content-Type: application/json
+Authorization: {{apiKey}}
+
+### v2
+GET http://localhost:3000/api/v2/clients/list-matured-pd?groupId=655deb85b13ee090c52909ce
+Content-Type: application/json
+Authorization: {{apiKey}}
+
+### v1
+GET http://localhost:3000/api/clients/list?status=pending&groupId=639e860636491596e49ed3d4
+Content-Type: application/json
+Authorization: {{apiKey}}
+
+### v2
+GET http://localhost:3000/api/clients/list?mode=view_existing_loan&groupId=639e860636491596e49ed3d4
+Content-Type: application/json
+Authorization: {{apiKey}}
+
+### v2
+GET http://localhost:3000/api/clients/list?mode=view_by_group&groupId=639e860636491596e49ed3d4
+Content-Type: application/json
+Authorization: {{apiKey}}

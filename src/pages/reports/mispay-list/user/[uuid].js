@@ -8,6 +8,7 @@ import { setBranchList } from "@/redux/actions/branchActions";
 import { BehaviorSubject } from 'rxjs';
 import ViewByLOPage from "@/components/reports/mispays-list/ViewByLO";
 import Header from "@/components/reports/mispays-list/Header";
+import { getApiBaseUrl } from "@/lib/constants";
 
 const MispaysByGroupPage = () => {
     const dispatch = useDispatch();
@@ -29,7 +30,7 @@ const MispaysByGroupPage = () => {
     }
 
     const getListBranch = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'branches/list';
+        let url = getApiBaseUrl() + 'branches/list';
 
         if (currentUser.role.rep == 2) {
             url = url + '?' + new URLSearchParams({ currentUserId: currentUser._id });

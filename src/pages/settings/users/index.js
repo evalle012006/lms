@@ -17,6 +17,7 @@ import Dialog from "@/lib/ui/Dialog";
 import { styles, DropdownIndicator, borderStyles } from "@/styles/select";
 import Select from 'react-select';
 import { setBranchList } from "@/redux/actions/branchActions";
+import { getApiBaseUrl } from "@/lib/constants";
 
 const TeamPage = () => {
     const dispatch = useDispatch();
@@ -39,7 +40,7 @@ const TeamPage = () => {
 
     const getListUsers = async () => {
         const imgpath = process.env.NEXT_PUBLIC_LOCAL_HOST !== 'local' && process.env.NEXT_PUBLIC_LOCAL_HOST;
-        let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
+        let url = getApiBaseUrl() + 'users/list';
         // not in used since user list is for root user only
         if (currentUser.root !== true && currentUser.role.rep === 3) { 
             url = url + '?' + new URLSearchParams({ branchCode: currentUser.designatedBranch });
@@ -125,7 +126,7 @@ const TeamPage = () => {
     }
 
     const getListPlatformRoles = async () => {
-        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'roles/list');
+        const response = await fetchWrapper.get(getApiBaseUrl() + 'roles/list');
         if (response.success) {
             let roles = [];
             response.roles && response.roles.map(role => {
@@ -146,7 +147,7 @@ const TeamPage = () => {
     }
 
     const getListBranch = async () => {
-        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'branches/list');
+        const response = await fetchWrapper.get(getApiBaseUrl() + 'branches/list');
         if (response.success) {
             let branchList = [];
             response.branches && response.branches.map(branch => {
@@ -259,7 +260,7 @@ const TeamPage = () => {
     const handleDelete = () => {
         if (userData) {
             setLoading(true);
-            fetchWrapper.postCors(process.env.NEXT_PUBLIC_API_URL + 'users/delete', userData)
+            fetchWrapper.postCors(getApiBaseUrl() + 'users/delete', userData)
                 .then(response => {
                     if (response.success) {
                         setShowDeleteDialog(false);
@@ -278,7 +279,7 @@ const TeamPage = () => {
     const handleResetUserPassword = (row) => {
         let rowOriginal = row.original;
         setLoading(true);
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'users/reset-password';
+        const apiUrl = getApiBaseUrl() + 'users/reset-password';
         fetchWrapper.post(apiUrl, rowOriginal)
             .then(response => {
                 setLoading(false);

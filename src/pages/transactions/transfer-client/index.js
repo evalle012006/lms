@@ -19,6 +19,7 @@ import { TabPanel, useTabs } from "react-headless-tabs";
 import { TabSelector } from "@/lib/ui/tabSelector";
 import TransferHistoryLOToLOPage from "@/components/transactions/transfer/TransferHistoryLOToLO";
 import RevertTransferPage from "@/components/transactions/transfer/RevertTransfer";
+import { getApiBaseUrl } from "@/lib/constants";
 
 const TransferClientPage = () => {
     const lastMonthDate = useSelector(state => state.systemSettings.lastDay);
@@ -464,7 +465,7 @@ const TransferClientPage = () => {
         let mounted = true;
 
         const getListBranch = async () => {
-            let url = process.env.NEXT_PUBLIC_API_URL + 'branches/list';
+            let url = getApiBaseUrl() + 'branches/list';
             if (currentUser.role.rep === 1) {
                 const response = await fetchWrapper.get(url);
                 if (response.success) {

@@ -13,6 +13,7 @@ import { formatPricePhp, getDaysOfMonth } from "@/lib/utils";
 import { useRouter } from "node_modules/next/router";
 import { setBranch } from "@/redux/actions/branchActions";
 import { setUserList } from "@/redux/actions/userActions";
+import { getApiBaseUrl } from "@/lib/constants";
 
 const BranchManagerSummary = () => {
     const dispatch = useDispatch();
@@ -410,7 +411,7 @@ const BranchManagerSummary = () => {
             activeBorrowers = temp.activeBorrowers;
             activeLoanReleasePerson = temp.activeLoanReleasePerson;
             activeLoanReleaseAmount = temp.activeLoanReleaseAmount !== '-' ? temp.activeLoanReleaseAmount : 0;
-            loanBalance = temp.loanBalance !== '-' ? temp.loanBalance : 0;
+            // loanBalance = temp.loanBalance !== '-' ? temp.loanBalance : 0;
 
             temp?.transferDailyGvr?.map(dailyGvr => {
                 if (dailyGvr) {
@@ -497,7 +498,7 @@ const BranchManagerSummary = () => {
                         activeBorrowers = activeBorrowers + noTransfer - tdaClients;
                         activeLoanReleasePerson = activeLoanReleasePerson + noTransfer - tdaClients;
                         activeLoanReleaseAmount += data.totalLoanRelease ? data.totalLoanRelease : 0 + data.currentReleaseAmount ? data.currentReleaseAmount : 0;
-                        loanBalance += (data.totalLoanRelease - data.collection);
+                        loanBalance += (data.totalLoanRelease - data.collection) + data.currentReleaseAmount;
                     }
                 }
             });
@@ -587,12 +588,11 @@ const BranchManagerSummary = () => {
                         activeBorrowers = activeBorrowers + noTransfer - tdaClients;
                         activeLoanReleasePerson = activeLoanReleasePerson + noTransfer - tdaClients;
                         activeLoanReleaseAmount += data.totalLoanRelease ? data.totalLoanRelease : 0 + data.currentReleaseAmount ? data.currentReleaseAmount : 0;
-                        loanBalance += (data.totalLoanRelease - data.collection);
+                        loanBalance += (data.totalLoanRelease - data.collection) + data.currentReleaseAmount;
                     }
                 }
             });
 
-            let totalActiveLoanReleaseAmountGiver = 0;
             if (transferDailyGvr.length > 0 || transferDailyRcv.length > 0 || transferWeeklyGvr.length > 0 || transferWeeklyRcv.length > 0) {
                 transferDailyGvr.map(dGvr => {
                     totalTransfer += dGvr.transfer;
@@ -604,14 +604,12 @@ const BranchManagerSummary = () => {
                     totalMcbuReturnAmt += dGvr.mcbuReturnAmt;
                     totalMcbuBalance += dGvr.mcbuBalance;
                     totalDailyNoLoanRelease += dGvr.transfer;
-                    totalDailyLoanRelease += dGvr.loanReleaseAmount;
+                    totalDailyLoanRelease += dGvr.loanReleaseAmount + dGvr?.currentReleaseAmount;
                     totalDailyTargetCollection += dGvr.collectionTarget;
                     totalDailyActualCollection += dGvr.collectionActual;
                     totalPastDue += dGvr.pastDueAmount > 0 ? dGvr.pastDueAmount : 0;
                     totalNoPastDue += dGvr.pastDuePerson > 0 ? dGvr.pastDuePerson : 0;
                     totalDailyCollectionAdvancePayment += dGvr.excess;
-
-                    totalActiveLoanReleaseAmountGiver += dGvr.currentReleaseAmount;
                 });
                 
                 transferDailyRcv.map(dRcv => {
@@ -624,7 +622,7 @@ const BranchManagerSummary = () => {
                     totalMcbuReturnAmt += transferDailyRcv.mcbuReturnAmt;
                     totalMcbuBalance += dRcv.mcbuBalance;
                     totalDailyNoLoanRelease += dRcv.transfer;
-                    totalDailyLoanRelease += dRcv.loanReleaseAmount;
+                    totalDailyLoanRelease += dRcv.loanReleaseAmount + dRcv?.currentReleaseAmount;
                     totalDailyTargetCollection += dRcv.collectionTarget;
                     totalDailyActualCollection += dRcv.collectionActual;
                     totalPastDue += dRcv.pastDueAmount > 0 ? dRcv.pastDueAmount : 0;
@@ -642,14 +640,12 @@ const BranchManagerSummary = () => {
                     totalMcbuReturnAmt += transferWeeklyGvr.mcbuReturnAmt;
                     totalMcbuBalance += wGvr.mcbuBalance;
                     totalWeeklyNoLoanRelease = wGvr.transfer;
-                    totalWeeklyLoanRelease += wGvr.loanReleaseAmount;
+                    totalWeeklyLoanRelease += wGvr.loanReleaseAmount + wGvr?.currentReleaseAmount;
                     totalWeeklyTargetCollection += wGvr.collectionTarget;
                     totalWeeklyActualCollection += wGvr.collectionActual;
                     totalPastDue += wGvr.pastDueAmount > 0 ? dRcv.pastDueAmount : 0;
                     totalNoPastDue += wGvr.pastDuePerson > 0 ? wGvr.pastDuePerson : 0;
                     totalWeeklyCollectionAdvancePayment += wGvr.excess;
-
-                    totalActiveLoanReleaseAmountGiver += wGvr.currentReleaseAmount;
                 });
 
                 transferWeeklyRcv.map(wRcv => {
@@ -662,15 +658,13 @@ const BranchManagerSummary = () => {
                     totalMcbuReturnAmt += transferWeeklyRcv.mcbuReturnAmt;
                     totalMcbuBalance += wRcv.mcbuBalance;
                     totalWeeklyNoLoanRelease += wRcv?.transfer;
-                    totalWeeklyLoanRelease += wRcv.loanReleaseAmount;
+                    totalWeeklyLoanRelease += wRcv.loanReleaseAmount + wRcv?.currentReleaseAmount;
                     totalWeeklyTargetCollection += wRcv.collectionTarget;
                     totalWeeklyActualCollection += wRcv.collectionActual;
                     totalPastDue += wRcv.pastDueAmount > 0 ? wRcv.pastDueAmount : 0;
                     totalNoPastDue += wRcv.pastDuePerson > 0 ? wRcv.pastDuePerson : 0;
                     totalWeeklyCollectionAdvancePayment += wRcv.excess;
                 });
-
-                activeLoanReleaseAmount += totalActiveLoanReleaseAmountGiver;
                 
                 if (totalMcbuBalance !== 0) {
                     mcbuBalance = temp.mcbuBalance ? temp.mcbuBalance : 0;
@@ -1576,7 +1570,7 @@ const BranchManagerSummary = () => {
 
         if (currentUser.role.rep === 3 || currentUser.role.rep === 4) {
             const getCurrentBranch = async () => {
-                const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}branches?`;
+                const apiUrl = `${getApiBaseUrl()}branches?`;
                 const params = { code: currentUser.designatedBranch };
                 const response = await fetchWrapper.get(apiUrl + new URLSearchParams(params));
                 if (response.success) {

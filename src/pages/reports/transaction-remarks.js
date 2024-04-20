@@ -13,7 +13,7 @@ import { fetchWrapper } from '@/lib/fetch-wrapper';
 import Spinner from '@/components/Spinner';
 import { setBranchList } from '@/redux/actions/branchActions';
 import TableComponent, { SelectColumnFilter } from '@/lib/table';
-import { LOR_DAILY_REMARKS, LOR_WEEKLY_REMARKS } from '@/lib/constants';
+import { LOR_DAILY_REMARKS, LOR_WEEKLY_REMARKS, getApiBaseUrl } from '@/lib/constants';
 import ButtonSolid from '@/lib/ui/ButtonSolid';
 import { setUserList } from '@/redux/actions/userActions';
 import { setGroupList } from '@/redux/actions/groupActions';
@@ -223,7 +223,7 @@ const TransactionRemarksPage = () => {
     }
 
     const getListBranch = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'branches/list';
+        let url = getApiBaseUrl() + 'branches/list';
         const branches = [];
         if (currentUser.role.rep === 1) {
             const response = await fetchWrapper.get(url);
@@ -322,7 +322,7 @@ const TransactionRemarksPage = () => {
 
     const getListGroup = async (selectedLO) => {
         if (selectedFilterBranch) {
-            let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list-by-group-occurence?' + new URLSearchParams({ branchId: selectedFilterBranch, occurence: occurence, loId: selectedLO });
+            let url = getApiBaseUrl() + 'groups/list-by-group-occurence?' + new URLSearchParams({ branchId: selectedFilterBranch, occurence: occurence, loId: selectedLO });
 
             const response = await fetchWrapper.get(url);
             if (response.success) {

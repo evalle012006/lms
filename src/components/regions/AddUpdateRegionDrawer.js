@@ -12,6 +12,7 @@ import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 import SideBar from "@/lib/ui/SideBar";
 import Spinner from "../Spinner";
+import { getApiBaseUrl } from "@/lib/constants";
 
 const AddUpdateRegion = ({ mode = 'add', region = {}, managerList=[], showSidebar, setShowSidebar, onClose }) => {
     const formikRef = useRef();
@@ -45,7 +46,7 @@ const AddUpdateRegion = ({ mode = 'add', region = {}, managerList=[], showSideba
         values.areaIds = selectedAreas.map(area => area._id);
         values.managerIds = selectedManagers.map(manager => manager._id);
         if (mode === 'add') {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'regions/save/';
+            const apiUrl = getApiBaseUrl() + 'regions/save/';
 
             fetchWrapper.post(apiUrl, values)
                 .then(response => {
@@ -65,7 +66,7 @@ const AddUpdateRegion = ({ mode = 'add', region = {}, managerList=[], showSideba
                     console.log(error)
                 });
         } else if (mode === 'edit') {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'regions';
+            const apiUrl = getApiBaseUrl() + 'regions';
             values._id = region._id;
             fetchWrapper.post(apiUrl, values)
                 .then(response => {

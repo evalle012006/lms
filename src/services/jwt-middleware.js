@@ -15,6 +15,7 @@ function jwtMiddleware(req, res) {
         // for open access pages, add the path here. 
         path: [
             '/api/authenticate',
+            '/api/v2/authenticate',
             '/api/register',
             '/api/users',
             '/api/activate',

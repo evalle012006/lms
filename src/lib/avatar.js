@@ -89,8 +89,7 @@ const Avatar = ({
   size,
   style,
   onClick,
-  className,
-  shape = 'circle'
+  className
 }) => {
 
   if (!name) {
@@ -100,10 +99,6 @@ const Avatar = ({
 
   const abbr = getInitials(name);
   // size = addPx(size);
-
-  if (shape == 'square') {
-    borderRadius = null;
-  }
 
   const imageStyle = {
     display: 'block',

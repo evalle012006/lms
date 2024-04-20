@@ -12,6 +12,7 @@ import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 import SideBar from "@/lib/ui/SideBar";
 import Spinner from "../Spinner";
+import { getApiBaseUrl } from "@/lib/constants";
 
 const AddUpdateArea = ({ mode = 'add', area = {}, managerList=[], showSidebar, setShowSidebar, onClose }) => {
     const formikRef = useRef();
@@ -45,7 +46,7 @@ const AddUpdateArea = ({ mode = 'add', area = {}, managerList=[], showSidebar, s
         values.branchIds = selectedBranches.map(branch => branch._id);
         values.managerIds = selectedManagers.map(manager => manager._id);
         if (mode === 'add') {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'areas/save/';
+            const apiUrl = getApiBaseUrl() + 'areas/save/';
 
             fetchWrapper.post(apiUrl, values)
                 .then(response => {
@@ -65,7 +66,7 @@ const AddUpdateArea = ({ mode = 'add', area = {}, managerList=[], showSidebar, s
                     console.log(error)
                 });
         } else if (mode === 'edit') {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'areas';
+            const apiUrl = getApiBaseUrl() + 'areas';
             values._id = area._id;
             fetchWrapper.post(apiUrl, values)
                 .then(response => {

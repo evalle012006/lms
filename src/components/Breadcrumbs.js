@@ -6,6 +6,7 @@ import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { UppercaseFirstLetter } from '@/lib/utils';
 import { useSelector } from 'react-redux';
 import { BehaviorSubject } from 'rxjs';
+import { getApiBaseUrl } from '@/lib/constants';
 
 const Breadcrumbs = () => {
     const selectedBranchSubject = new BehaviorSubject(process.browser && localStorage.getItem('selectedBranch'));
@@ -54,7 +55,7 @@ const Breadcrumbs = () => {
                     let labels;
                     let links;
                     if (paths[2] === 'group') {
-                        response = await fetchWrapper.get(`${process.env.NEXT_PUBLIC_API_URL}users?` + new URLSearchParams(params));
+                        response = await fetchWrapper.get(`${getApiBaseUrl()}users?` + new URLSearchParams(params));
                         data = response.user;
                         labels = [title, `${data.lastName}, ${data.firstName}`];
                         links = [
@@ -62,7 +63,7 @@ const Breadcrumbs = () => {
                             null
                         ];
                     } else if (paths[2] === 'client') {
-                        response = await fetchWrapper.get(`${process.env.NEXT_PUBLIC_API_URL}groups?` + new URLSearchParams(params));
+                        response = await fetchWrapper.get(`${getApiBaseUrl()}groups?` + new URLSearchParams(params));
                         data = response.group;
                         labels = [title, data.name];
                         links = [   // need to retrived the selected LO

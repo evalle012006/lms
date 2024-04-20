@@ -13,6 +13,7 @@ import { UppercaseFirstLetter, getLastWeekdayOfTheMonth, getMonths, getYears } f
 import ButtonSolid from '@/lib/ui/ButtonSolid';
 import InputNumber from '@/lib/ui/InputNumber';
 import moment from 'moment';
+import { getApiBaseUrl } from '@/lib/constants';
 
 const MigrationPage = () => {
     const dispatch = useDispatch();
@@ -161,7 +162,7 @@ const MigrationPage = () => {
         let mounted = true;
 
         const getListBranch = async () => {
-            let url = process.env.NEXT_PUBLIC_API_URL + 'branches/list';
+            let url = getApiBaseUrl() + 'branches/list';
             if (currentUser.role.rep === 1) {
                 const response = await fetchWrapper.get(url);
                 if (response.success) {
@@ -206,7 +207,7 @@ const MigrationPage = () => {
     useEffect(() => {
         if (selectedBranch) {
             const getListUser = async () => {
-                let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
+                let url = getApiBaseUrl() + 'users/list';
     
                 url = url + '?' + new URLSearchParams({ branchCode: selectedBranch.code });
                 const response = await fetchWrapper.get(url);

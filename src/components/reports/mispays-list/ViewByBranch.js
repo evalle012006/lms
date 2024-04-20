@@ -6,6 +6,7 @@ import { useRouter } from "node_modules/next/router";
 import { formatPricePhp } from "@/lib/utils";
 import { useDispatch, useSelector } from "react-redux";
 import { setBranchList } from "@/redux/actions/branchActions";
+import { getApiBaseUrl } from "@/lib/constants";
 
 const ViewByBranchPage = ({ dateFilter, remarks }) => {
     const dispatch = useDispatch();
@@ -70,7 +71,7 @@ const ViewByBranchPage = ({ dateFilter, remarks }) => {
     }
 
     const getListBranch = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'branches/list';
+        let url = getApiBaseUrl() + 'branches/list';
         
         const response = await fetchWrapper.get(url);
         if (response.success) {

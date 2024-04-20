@@ -1,4 +1,5 @@
 import moment from 'moment';
+import { v4 as uuidv4 } from 'uuid';
 
 export const FileExists = (url) => {
     if (!url) {
@@ -294,3 +295,13 @@ export const getPrevousWorkday = () => {
             return moment().day(today - 1);
     }
 }
+
+export const jsonTryParse = (str, defVal) => {
+    try {
+        return JSON.parse(str)
+    } catch(e) {
+        return defVal ?? str;
+    }
+}
+
+export const generateUUID = () => uuidv4();

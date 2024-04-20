@@ -12,6 +12,7 @@ import AddUpdateBranch from "@/components/branches/AddUpdateBranchDrawer";
 import Dialog from "@/lib/ui/Dialog";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
+import { getApiBaseUrl } from "@/lib/constants";
 
 const BranchesPage = () => {
     const dispatch = useDispatch();
@@ -30,7 +31,7 @@ const BranchesPage = () => {
     const router = useRouter();
 
     const getListBranch = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'branches/list';
+        let url = getApiBaseUrl() + 'branches/list';
         if (currentUser.role.rep === 1) {
             const response = await fetchWrapper.get(url);
             if (response.success) {
@@ -132,7 +133,7 @@ const BranchesPage = () => {
     const handleDelete = () => {
         if (branch) {
             setLoading(true);
-            fetchWrapper.postCors(process.env.NEXT_PUBLIC_API_URL + 'branches/delete', branch)
+            fetchWrapper.postCors(getApiBaseUrl() + 'branches/delete', branch)
                 .then(response => {
                     if (response.success) {
                         setShowDeleteDialog(false);

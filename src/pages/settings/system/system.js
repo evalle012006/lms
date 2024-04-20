@@ -8,6 +8,7 @@ import InputEmail from '@/lib/ui/InputEmail';
 import InputText from '@/lib/ui/InputText';
 import { setSystemSettings } from '@/redux/actions/systemActions';
 import Spinner from '@/components/Spinner';
+import { getApiBaseUrl } from '@/lib/constants';
 
 const SystemSettingsPage = (props) => {
     const currentUser = useSelector(state => state.user.data);
@@ -30,7 +31,7 @@ const SystemSettingsPage = (props) => {
 
     const handleUpdate = async (values, action) => {
         setLoading(true);
-        const apiURL = `${process.env.NEXT_PUBLIC_API_URL}settings/system`;
+        const apiURL = `${getApiBaseUrl()}settings/system`;
         const response = await fetchWrapper.post(apiURL, values);
 
         if (response.success) {

@@ -1,3 +1,6 @@
+export const getApiBaseUrl = () => process.env.NEXT_PUBLIC_API_URL +
+    (localStorage.getItem('api_version') ? localStorage.getItem('api_version') + '/' : '');
+
 export const LOR_DAILY_REMARKS = [
     { label: 'Remarks', value: ''},
     { label: 'Advance Payment', value: 'advance payment'},
@@ -71,6 +74,7 @@ export const LOR_ONLY_OFFSET_REMARKS = [
 
 export const LOR_MISPAY_REMARKS = [
     { label: 'Past Due', value: 'past due'},
+    { label: 'Matured Past Due', value: 'matured-past due'},
     { label: 'Delinquent', value: 'delinquent'},
     { label: 'Delinquent Client for MCBU', value: 'delinquent-mcbu'},
     { label: 'Excused Due to Calamity', value: 'excused-calamity'},

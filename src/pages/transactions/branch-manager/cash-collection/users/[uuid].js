@@ -13,6 +13,7 @@ import ViewByLoanOfficerPage from '@/components/transactions/ViewByLoanOfficer';
 import Dialog from '@/lib/ui/Dialog';
 import ButtonOutline from '@/lib/ui/ButtonOutline';
 import ButtonSolid from '@/lib/ui/ButtonSolid';
+import { getApiBaseUrl } from '@/lib/constants';
 
 const CashCollectionDetailsPage = () => {
     const [loading, setLoading] = useState(true);
@@ -95,7 +96,7 @@ const CashCollectionDetailsPage = () => {
 
     const getListBranch = async () => {
         setLoading(true);
-        let url = process.env.NEXT_PUBLIC_API_URL + 'branches/list';
+        let url = getApiBaseUrl() + 'branches/list';
         if (currentUser.role.rep === 1) {
             const response = await fetchWrapper.get(url);
             if (response.success) {
@@ -146,7 +147,7 @@ const CashCollectionDetailsPage = () => {
         let mounted = true;
 
         const getCurrentBranch = async () => {
-            const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}branches?`;
+            const apiUrl = `${getApiBaseUrl()}branches?`;
             const params = { _id: uuid };
             const response = await fetchWrapper.get(apiUrl + new URLSearchParams(params));
             if (response.success) {

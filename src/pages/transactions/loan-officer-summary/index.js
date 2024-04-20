@@ -13,6 +13,7 @@ import { formatPricePhp, getDaysOfMonth } from "@/lib/utils";
 import { useRouter } from "node_modules/next/router";
 import { setBranch } from "@/redux/actions/branchActions";
 import { setUserList } from "@/redux/actions/userActions";
+import { getApiBaseUrl } from "@/lib/constants";
 
 const LoanOfficerSummary = () => {
     const router = useRouter();
@@ -417,7 +418,7 @@ const LoanOfficerSummary = () => {
                     totalMcbuNoReturn = transferGvr?.noMcbuReturn;
                     totalMcbuReturnAmt = transferGvr?.mcbuReturnAmt;
                     totalMcbuBalance = transferGvr?.mcbuBalance;
-                    totalLoanRelease = transferGvr?.loanReleaseAmount;
+                    totalLoanRelease = transferGvr?.loanReleaseAmount + transferGvr?.currentReleaseAmount;
                     totalTargetCollection = transferGvr?.collectionTarget;
                     totalActualCollection = transferGvr?.collectionActual;
                     totalPastDue = transferGvr?.pastDueAmount > 0 ? transferGvr?.pastDueAmount : 0;
@@ -434,7 +435,7 @@ const LoanOfficerSummary = () => {
                     totalMcbuNoReturn += transferRcv?.noMcbuReturn;
                     totalMcbuReturnAmt += transferRcv.mcbuReturnAmt;
                     totalMcbuBalance += transferRcv?.mcbuBalance;
-                    totalLoanRelease += transferRcv?.loanReleaseAmount;
+                    totalLoanRelease += transferRcv?.loanReleaseAmount + transferRcv?.currentReleaseAmount;
                     totalTargetCollection += transferRcv?.collectionTarget;
                     totalActualCollection += transferRcv?.collectionActual;
                     totalPastDue += transferRcv?.pastDueAmount > 0 ? transferRcv?.pastDueAmount : 0;
@@ -442,8 +443,6 @@ const LoanOfficerSummary = () => {
                     // totalExcess += transferRcv?.excess;
                 }
 
-                activeLoanReleaseAmount += Math.abs(transferGvr?.currentReleaseAmount);
-                loanBalance += Math.abs(transferGvr?.currentReleaseAmount);
 
                 if (totalMcbuBalance !== 0) {
                     mcbuBalance = temp.mcbuBalance ? temp.mcbuBalance : 0 //+ totalMcbuBalance;
@@ -1125,7 +1124,7 @@ const LoanOfficerSummary = () => {
 
         if (currentUser.role.rep === 3 || currentUser.role.rep === 4) {
             const getCurrentBranch = async () => {
-                const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}branches?`;
+                const apiUrl = `${getApiBaseUrl()}branches?`;
                 const params = { code: currentUser.designatedBranch };
                 const response = await fetchWrapper.get(apiUrl + new URLSearchParams(params));
                 if (response.success) {

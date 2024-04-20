@@ -50,90 +50,86 @@ const Header = ({ pageNo, pageTitle, pageName, amount, handleAmountChange, amoun
                         </div>
                     </div>
                 )}
-                <div className="flex flex-col">
-                    <div className="flex flex-row w-11/12 text-gray-400 text-sm justify-start align-middle">
-                        <span className="text-zinc-500 text-sm font-bold mt-2">Filters:</span>
-                        <div className="ml-6 flex w-[27rem]">
-                            <span className="text-sm mt-2">Loan Balance: </span>
-                            <div className="ml-4 flex w-40">
-                                <Select 
-                                    options={operatorOptions}
-                                    value={amountOperator && operatorOptions.find(op => {
-                                        return op.value == amountOperator
-                                    })}
-                                    styles={borderStyles}
-                                    components={{ DropdownIndicator }}
-                                    onChange={handleAmountOperatorChange}
-                                    isSearchable={true}
-                                    closeMenuOnSelect={true}
-                                    placeholder={'Amount Operator Filter'}/>
-                                <div className="ml-2">
-                                    <InputNumber name="amount" value={amount} onChange={(val) => { handleAmountChange(val.target.value) }} className="w-14" />
-                                </div>
-                            </div>
-                        </div>
-                        <div className={`ml-6 flex w-[28rem]`}>
-                            <span className="text-sm mt-2">No Of Payments: </span>
-                            <div className="ml-4 flex w-40">
-                                <Select 
-                                    options={operatorOptions}
-                                    value={noOfPaymentsOperator && operatorOptions.find(op => {
-                                        return op.value == noOfPaymentsOperator
-                                    })}
-                                    styles={borderStyles}
-                                    components={{ DropdownIndicator }}
-                                    onChange={handleNoOfPaymentsOperatorChange}
-                                    isSearchable={true}
-                                    closeMenuOnSelect={true}
-                                    placeholder={'No of Payments Operator Filter'}/>
-                                <div className="ml-2">
-                                    <InputNumber name="noOfPayments" value={noOfPayments} onChange={(val) => { handleNoOfPaymentsChange(val.target.value) }} className="w-14" />
-                                </div>
+                <div className="flex flex-row w-11/12 text-gray-400 text-sm justify-start align-middle">
+                    <span className="text-zinc-500 text-sm font-bold mt-2">Filters:</span>
+                    <div className="ml-6 flex w-[27rem]">
+                        <span className="text-sm mt-2">Loan Balance: </span>
+                        <div className="ml-4 flex w-40">
+                            <Select 
+                                options={operatorOptions}
+                                value={amountOperator && operatorOptions.find(op => {
+                                    return op.value == amountOperator
+                                })}
+                                styles={borderStyles}
+                                components={{ DropdownIndicator }}
+                                onChange={handleAmountOperatorChange}
+                                isSearchable={true}
+                                closeMenuOnSelect={true}
+                                placeholder={'Amount Operator Filter'}/>
+                            <div className="ml-2">
+                                <InputNumber name="amount" value={amount} onChange={(val) => { handleAmountChange(val.target.value) }} className="w-14" />
                             </div>
                         </div>
                     </div>
-                    <div className="flex flex-row w-11/12 text-gray-400 text-sm justify-start align-middle">
-                        {(currentUser.role.rep == 4 || pageName == 'group-view') && (
-                            <div className="ml-12 flex w-[10rem]">
-                                <CheckBox name="includeDelinquent"
-                                    value={includeDelinquent} 
-                                    onChange={handleIncludeDelinquentChange}
-                                    label="Include Delinquent"
-                                    size={"md"} 
-                                />
+                    <div className="ml-6 flex w-[27rem]">
+                        <span className="text-sm mt-2">No Of Payments: </span>
+                        <div className="ml-4 flex w-40">
+                            <Select 
+                                options={operatorOptions}
+                                value={noOfPaymentsOperator && operatorOptions.find(op => {
+                                    return op.value == noOfPaymentsOperator
+                                })}
+                                styles={borderStyles}
+                                components={{ DropdownIndicator }}
+                                onChange={handleNoOfPaymentsOperatorChange}
+                                isSearchable={true}
+                                closeMenuOnSelect={true}
+                                placeholder={'No of Payments Operator Filter'}/>
+                            <div className="ml-2">
+                                <InputNumber name="noOfPayments" value={noOfPayments} onChange={(val) => { handleNoOfPaymentsChange(val.target.value) }} className="w-14" />
                             </div>
-                        )}
-                        {pageName == 'group-view' && (
-                                <div className="ml-4 flex w-40">
-                                    <Select 
-                                        options={userList}
-                                        value={currentLO && userList.find(lo => {
-                                            return lo._id === currentLO._id
-                                        })}
-                                        styles={borderStyles}
-                                        components={{ DropdownIndicator }}
-                                        onChange={handleLOFilter}
-                                        isSearchable={true}
-                                        closeMenuOnSelect={true}
-                                        placeholder={'LO Filter'}/>
-                                </div>
-                            )}
-                            {pageName == 'lo-view' && (
-                                <div className="ml-6 flex w-40">
-                                    <Select 
-                                        options={branchList}
-                                        value={currentBranch && branchList.find(branch => {
-                                            return branch._id === currentBranch._id
-                                        })}
-                                        styles={borderStyles}
-                                        components={{ DropdownIndicator }}
-                                        onChange={handleBranchFilter}
-                                        isSearchable={true}
-                                        closeMenuOnSelect={true}
-                                        placeholder={'Branch Filter'}/>
-                                </div>
-                            )}
+                        </div>
                     </div>
+                    {(currentUser.role.rep == 4 || pageName == 'group-view') && (
+                        <div className="ml-12 flex w-[10rem]">
+                            <CheckBox name="includeDelinquent"
+                                value={includeDelinquent} 
+                                onChange={handleIncludeDelinquentChange}
+                                label="Include Delinquent"
+                                size={"md"} 
+                            />
+                        </div>
+                    )}
+                    {pageName == 'group-view' && (
+                        <div className="ml-4 flex w-40">
+                            <Select 
+                                options={userList}
+                                value={currentLO && userList.find(lo => {
+                                    return lo._id === currentLO._id
+                                })}
+                                styles={borderStyles}
+                                components={{ DropdownIndicator }}
+                                onChange={handleLOFilter}
+                                isSearchable={true}
+                                closeMenuOnSelect={true}
+                                placeholder={'LO Filter'}/>
+                        </div>
+                    )}
+                    {pageName == 'lo-view' && (
+                        <div className="ml-6 flex w-40">
+                            <Select 
+                                options={branchList}
+                                value={currentBranch && branchList.find(branch => {
+                                    return branch._id === currentBranch._id
+                                })}
+                                styles={borderStyles}
+                                components={{ DropdownIndicator }}
+                                onChange={handleBranchFilter}
+                                isSearchable={true}
+                                closeMenuOnSelect={true}
+                                placeholder={'Branch Filter'}/>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

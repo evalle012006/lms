@@ -13,6 +13,7 @@ import SelectDropdown from "@/lib/ui/select";
 import SideBar from "@/lib/ui/SideBar";
 import { UppercaseFirstLetter, formatPricePhp } from "@/lib/utils";
 import Spinner from "@/components/Spinner";
+import { getApiBaseUrl } from "@/lib/constants";
 
 const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setShowSidebar, onClose }) => {
     const transferList = useSelector(state => state.client.transferList);
@@ -85,7 +86,7 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
 
     const getListUser = async (selectedBranch, type) => {
         if (selectedBranch) {
-            let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
+            let url = getApiBaseUrl() + 'users/list';
 
             url = url + '?' + new URLSearchParams({ branchCode: selectedBranch?.code });
             const response = await fetchWrapper.get(url);
@@ -117,7 +118,7 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
     }
 
     const getListGroup = async (selectedUser, type) => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'groups/list-all';
+        let url = getApiBaseUrl() + 'groups/list-all';
         let selectedBranch = {};
         if (type === "source") {
             selectedBranch = branchList.find(b => b._id === selectedSourceBranch);
@@ -157,7 +158,7 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
     const getListClient = async (groupId) => {
         setLoading(true);
         if (groupId) {
-            let url = process.env.NEXT_PUBLIC_API_URL + 'clients/list?' + new URLSearchParams({ mode: "view_all_by_group_for_transfer", groupId: groupId, currentDate: currentDate });;
+            let url = getApiBaseUrl() + 'clients/list?' + new URLSearchParams({ mode: "view_all_by_group_for_transfer", groupId: groupId, currentDate: currentDate });;
 
             const response = await fetchWrapper.get(url);
             if (response.success) {

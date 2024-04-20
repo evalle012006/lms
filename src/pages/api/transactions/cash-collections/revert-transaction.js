@@ -143,10 +143,6 @@ async function revert(req, res) {
                         currentLoan.history = previousCC.history;
                         currentLoan.status = 'active';
                         currentLoan.fullPaymentDate = null;
-
-                        if (cashCollection.mispayment) {
-                            currentLoan.mispayment -= 1;
-                        }
                     }
 
                     currentLoan.reverted = true;
