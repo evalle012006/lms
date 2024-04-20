@@ -15,7 +15,7 @@ const apiHandler = (handler) => async (req, res) => {
     
         await jwtMiddleware(req, res);
 
-        return handler[method](req, res);
+        return await handler[method](req, res);
     } catch (err) {
         errorHandler(err, res);
     }
