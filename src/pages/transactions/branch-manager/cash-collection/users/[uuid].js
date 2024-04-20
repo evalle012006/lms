@@ -79,7 +79,7 @@ const CashCollectionDetailsPage = () => {
                     currentDate: date
                 }
 
-                const resp = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collection-summary/save-update-bms', data);
+                const resp = await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collection-summary/save-update-bms', data);
     
                 if (resp.success) {
                     setLoading(false);

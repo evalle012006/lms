@@ -697,7 +697,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 dispatch(setGroupSummaryTotals(totals));
                 const dailyLos = {...createLos(totals, selectedBranch, selectedLOSubject.value, dateFilter, false, transferGvr, transferRcv, transferGvrByGroup, transferRcvByGroup, consolidateTotalData), losType: 'daily'};
                 if ((collectionTransferred.length > 0 || collectionReceived.length > 0) && !filter && !isWeekend && !isHoliday) {
-                    await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collection-summary/add-transfer-data-to-los', { userId: currentUser._id, date: currentDate, newLos: dailyLos });
+                    await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collection-summary/add-transfer-data-to-los', { userId: currentUser._id, date: currentDate, newLos: dailyLos });
                 }
                 dispatch(setLoSummary(dailyLos));
                 const currentMonth = moment().month();
@@ -1018,7 +1018,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
         if (currentUser.role.rep === 4) {
             const losTotals = {...createLos(totals, selectedBranch, null, null, yearEnd), losType: 'year-end', currentDate: currentDate};
     
-            await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collection-summary/save-update-totals', losTotals);
+            await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collection-summary/save-update-totals', losTotals);
         }
     }
 

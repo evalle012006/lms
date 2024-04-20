@@ -10,11 +10,12 @@ const MIGRATION_ID = 2;
 const MONGODB_URL = process.env.LOCAL_DB_URL;
 const MONGODB_NAME = process.env.LOCAL_DB_NAME;
 const PG_URL = process.env.HASURA_DB_URL;
-const BATCH_SIZE = 500;
+const BATCH_SIZE = 100;
+const BATCH_PARALLEL_SIZE = 10;
 
 // run migration
-migrate(['losTotals']);
-// showDistinctColumnNames('losTotals');
+// migrate(['groups']);
+showDistinctColumnNames('cashCollections');
 
 async function migrate(collectionNamesFilter = []) {
     const mClient = await MongoClient.connect(MONGODB_URL);
@@ -38,27 +39,45 @@ async function migrate(collectionNamesFilter = []) {
         let migrated = 0;
         const cursor = mDb.collection(tableName).find({[MIGRATION_KEY]: {$ne: MIGRATION_ID}});
         let batch = [];
+        let promises = [];
 
         for await (const doc of cursor) {
             batch.push(columns.map((k) => mapValue(k, doc[k])));
 
             if (batch.length >= BATCH_SIZE) {
-                const success = await batchInsert(tableName, columns, batch, mDb, pgPool);
-                migrated += batch.length;
-                if (!success) {
-                    break doMigrate;
-                }
+                const batchData = batch;
+                promises.push(new Promise(async (resolve) => {
+                  const success = await batchInsert(tableName, columns, batchData, mDb, pgPool);
+                  migrated += batchData.length;
+                  resolve(success);
+                }));
                 batch = [];
+            }
+
+            if (promises.length >= BATCH_PARALLEL_SIZE) {
+                const result = await Promise.all(promises);
+                if (result.find(r => !r)) {
+                  break doMigrate;
+                }
+                promises = [];
                 printMigratedRows(tableName, migrated);
             }
         }
 
         if (batch.length) {
-            const success = await batchInsert(tableName, columns, batch, mDb, pgPool);
-            migrated += batch.length;
-            if (!success) {
-              break;
-            }
+            const batchData = batch;
+            promises.push(new Promise(async (resolve) => {
+              const success = await batchInsert(tableName, columns, batchData, mDb, pgPool);
+              migrated += batchData.length;
+              resolve(success);
+            }));
+        }
+
+        if (promises.length) {
+          const result = await Promise.all(promises);
+          if (result.find(r => !r)) {
+            break;
+          }
         }
 
         printMigratedRows(tableName, migrated);
@@ -101,7 +120,7 @@ async function batchInsert(tableName, colNames, batchParams, mongoDb, pgPool) {
     );
     return true;
   } catch (e) {
-    console.error(JSON.stringify(params, null, 2));
+    console.error(batchParams.map(p => colNames.map((c, i) => [c, p[i]])).map(p => JSON.stringify(p)).join('\n'));
     console.error(e.message, e);
     return false;
   } finally {
@@ -136,6 +155,9 @@ function mapValue(key, value) {
     if (key.match(/^(mcbu|noOfPayments|activeLoan|amountRelease|loanBalance)$/)) {
         return isNaN(value) ? null : value || 0;
     }
+    if (key.match(/Date$/) && value === '') {
+      return null;
+    }
     for (const [pattern, replacement] of replacementPatterns) {
         if (typeof value === 'string' && value.match(pattern)) {
             return value.replace(pattern, replacement);
@@ -149,14 +171,17 @@ async function showDistinctColumnNames(collectionName) {
     const client = await MongoClient.connect(MONGODB_URL);
     const db = await client.db(MONGODB_NAME);
     const colNamesMap = new Map();
-
-    for await (const doc of db.collection(collectionName).find()) {
+    const maxRows = 50_000; // just check the last records
+    let ctr = 0;
+    for await (const doc of db.collection(collectionName).find().sort({ dateAdded: -1 })) {
         const keys = Object.keys(doc);
         for (const key of keys) {
             if (!colNamesMap.has(key)) {
                 colNamesMap.set(key, doc[key]);
             }
         }
+        if (++ctr >= maxRows)
+          break;
     }
 
     for (const [key, value] of colNamesMap.entries()) {

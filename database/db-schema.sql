@@ -126,7 +126,8 @@ create table "cashCollections" (
   "transferId" varchar,
   "transferred" boolean,
   "updateMessage" varchar,
-  "value" varchar
+  "value" varchar,
+  "branchToBranchclientIdclientStatus" varchar
 );
 
 -- drop table "client"
@@ -274,7 +275,8 @@ create table "loans" (
   "transfer" boolean,
   "transferDate" timestamptz,
   "transferId" varchar,
-  "transferred" boolean
+  "transferred" boolean,
+  "loanFor" varchar
 );
 
 -- drop table "losTotals"

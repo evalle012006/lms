@@ -267,7 +267,7 @@ const LoanApplicationPage = () => {
     }
 
     const getListLoan = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/list';
+        let url = getApiBaseUrl() + 'transactions/loans/list';
         if (currentUser.root !== true && currentUser.role.rep === 4) { 
             url = url + '?' + new URLSearchParams({ status: 'pending', branchId: currentUser.designatedBranchId, loId: currentUser._id, mode: currentUser.transactionType, currentDate: currentDate });
             const response = await fetchWrapper.get(url);

@@ -13,3 +13,5 @@ src/pages/_app.js
 
 .idea
 http-client.env.*
+graphql.config.yml
+schema.graphql

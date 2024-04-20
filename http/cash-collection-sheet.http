@@ -1,0 +1,9 @@
+# NOTE: auth_token variable is set globally in authenticate.http
+
+@apiUrl=http://localhost:3000/api/
+
+# ---- v1 ---------------
+### Get Data
+GET {{apiUrl}}/transactions/cash-collection-sheet?userId=647ec8c44850365c8b0d3573
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json

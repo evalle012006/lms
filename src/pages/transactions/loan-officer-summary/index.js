@@ -63,7 +63,7 @@ const LoanOfficerSummary = () => {
             filter = true;
         }
 
-        let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collection-summary';
+        let url = getApiBaseUrl() + 'transactions/cash-collection-summary';
         let losList = [{
             day: 'F / Balance',
             transfer: 0,
@@ -1105,7 +1105,7 @@ const LoanOfficerSummary = () => {
             }
         }
 
-        await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collection-summary/save-update-totals', losTotals);
+        await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collection-summary/save-update-totals', losTotals);
     }
 
     useEffect(() => {

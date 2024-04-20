@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import Layout from "@/components/Layout";
 import Spinner from "@/components/Spinner";
 import { useRouter } from "node_modules/next/router";
+import { getApiBaseUrl } from '@/lib/constants'
 
 const DailyCollectionSheetPage = () => {
     const router = useRouter();
@@ -11,7 +12,7 @@ const DailyCollectionSheetPage = () => {
     const currentUser = useSelector(state => state.user.data);
 
     const fetchData = () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collection-summary';
+        let url = getApiBaseUrl() + 'transactions/cash-collection-summary';
         if (currentUser?.role.rep === 3) {
             
         }

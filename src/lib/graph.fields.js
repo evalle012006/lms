@@ -324,6 +324,7 @@ modifiedBy
 modifiedDate
 month
 occurence
+officeType
 status
 userId
 userType

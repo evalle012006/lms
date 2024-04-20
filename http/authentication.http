@@ -3,8 +3,8 @@ POST http://localhost:3000/api/authenticate
 Content-Type: application/json
 
 {
-  "username": "admin@ambercashph.com",
-  "password": "superAmber09876"
+  "username": "BMcebucity1@ambercashph.com",
+  "password": "super_PassAC_24"
 }
 
 > {% client.global.set("auth_token", response.body.user.token); %}

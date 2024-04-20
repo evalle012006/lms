@@ -66,7 +66,7 @@ const WeeklyCashCollectionDetailsPage = () => {
                 toast.error("One or more group/s transaction has a draft data.");
             } else {
                 if (loSummary && Object.keys(loSummary).length > 0) {
-                    const resp = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collection-summary/save-update-totals', loSummary);
+                    const resp = await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collection-summary/save-update-totals', loSummary);
         
                     if (resp.success) {
                         setLoading(false);
