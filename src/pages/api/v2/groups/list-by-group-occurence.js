@@ -1,6 +1,6 @@
 import { GROUP_FIELDS } from '@/lib/graph.fields';
 import { GraphProvider } from '@/lib/graph/graph.provider';
-import { createGraphType } from '@/lib/graph/graph.util';
+import { createGraphType, queryQl } from '@/lib/graph/graph.util';
 import { apiHandler } from '@/services/api-handler';
 
 const graph = new GraphProvider();
@@ -16,6 +16,7 @@ async function list(req, res) {
     let response = {};
 
     const { areaManagerId, branchId, loId, occurence, mode } = req.query;
+
     const codes = await graph.query(
         queryQl(USER_TYPE, {
             where: { _id: areaManagerId ? { _eq: areaManagerId } : { _eq: 'null' } } // fetch non existing user if areaManagerId is null
