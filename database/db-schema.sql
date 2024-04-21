@@ -294,6 +294,7 @@ create table "losTotals" (
   "modifiedDate" timestamptz,
   "month" int,
   "occurence" varchar,
+  "officeType" varchar,
   "status" varchar,
   "userId" varchar,
   "userType" varchar,

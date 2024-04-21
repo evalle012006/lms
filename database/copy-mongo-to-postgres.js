@@ -6,15 +6,15 @@ const { tableNames } = require('./db-schema')
 env.loadEnvConfig('../');
 
 const MIGRATION_KEY = '__migrated';
-const MIGRATION_ID = 1;
+const MIGRATION_ID = 2;
 const MONGODB_URL = process.env.LOCAL_DB_URL;
 const MONGODB_NAME = process.env.LOCAL_DB_NAME;
 const PG_URL = process.env.HASURA_DB_URL;
-const BATCH_SIZE = 100;
+const BATCH_SIZE = 500;
 
 // run migration
-migrate(['branches']);
-// showDistinctColumnNames('regions');
+migrate(['losTotals']);
+// showDistinctColumnNames('losTotals');
 
 async function migrate(collectionNamesFilter = []) {
     const mClient = await MongoClient.connect(MONGODB_URL);
@@ -28,7 +28,9 @@ async function migrate(collectionNamesFilter = []) {
         }
     });
 
-    doMigrate: for (const [tableName, columns] of tableNames) {
+    doMigrate: for (const tableName of tableNames) {
+        const columns = await getColumnNames(tableName, pgPool);
+
         if (collectionNamesFilter.length && !collectionNamesFilter.includes(tableName))
             continue;
 
@@ -162,4 +164,21 @@ async function showDistinctColumnNames(collectionName) {
     }
 
     await client.close();
+}
+
+async function getColumnNames(table, pgPool) {
+  const pgCon = await pgPool.acquire();
+  try {
+    const sql = `
+      SELECT column_name
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name   = $1
+    `;
+    const stm = await pgCon.prepare(sql)
+    const result = await stm.execute({ params: [table] });
+    return result?.rows?.map(r => r[0]);
+  } finally {
+    await pgCon.close();
+  }
 }
