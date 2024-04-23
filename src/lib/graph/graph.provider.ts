@@ -1,7 +1,7 @@
 import { _ApolloClient as ApolloClient, _InMemoryCache as InMemoryCache, _HttpLink as HttpLink, _gql as gql } from './apollo';
 import { GraphQLStatement, MutationQLStatementFunction, QueryQLStatementFunction } from './graph.util';
 
-export type GraphResult = Promise<{ data?: any, errors?: any[] }>;
+export type GraphResult = Promise<{ data?: Record<string, any>, errors?: Error[] }>;
 
 export class GraphProvider {
 
