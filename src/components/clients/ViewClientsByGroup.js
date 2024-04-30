@@ -61,7 +61,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
             if (currentUser.role.rep > 2) {
                 const currentUserBranch = branchList.find(b => b.code === currentUser.designatedBranch);
                 if (status === 'offset') {
-                    url = url + '?' + new URLSearchParams({ mode: "view_offset", status: status });
+                    url = url + '?' + new URLSearchParams({ mode: "view_offset", status: status, origin: 'client' });
                     const response = await fetchWrapper.get(url);
                     if (response.success) {
                         let clients = [];
