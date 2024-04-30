@@ -504,7 +504,7 @@ const TransferClientPage = () => {
                 }
             }  else if (currentUser.role.rep === 3) {
                 const branchCodes = currentUser.designatedBranch;
-                url = url + '?' + new URLSearchParams({ branchCodes: [branchCodes] });
+                url = url + '?' + new URLSearchParams({ branchCode: [branchCodes] });
                 const response = await fetchWrapper.get(url);
                 if (response.success) {
                     let branches = [];
