@@ -591,7 +591,7 @@ const MenuItems = [
                 hasSub: false
             },
             {
-                label: "Query Loan Balance",
+                label: "Query Low Loan Balance",
                 url: "/reports/low-loan-balance",
                 icon: {
                     active: (

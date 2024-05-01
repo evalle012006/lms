@@ -110,7 +110,7 @@ async function getAllLoanTransactionsByArea(db, areaId, date, dayName, currentDa
                                                         if: { $or: [
                                                             {$eq: ['$remarks.value', 'delinquent']},
                                                             {$eq: ['$remarks.value', 'delinquent-mcbu']},
-                                                            {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                                                            {$regexMatch: { input: '$remarks.value', regex: /^excused-/ }}
                                                         ] },
                                                         then: '$prevData.activeLoan',
                                                         else: 0
@@ -193,7 +193,7 @@ async function getAllLoanTransactionsByArea(db, areaId, date, dayName, currentDa
                             //                         $cond: {
                             //                             if: { $or: [
                             //                                 {$eq: ['$remarks.value', 'delinquent']},
-                            //                                 {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                            //                                 {$regexMatch: { input: '$remarks.value', regex: /^excused-/ }}
                             //                             ] },
                             //                             then: '$prevData.activeLoan',
                             //                             else: 0
@@ -714,7 +714,7 @@ async function getAllLoanTransactionsByArea(db, areaId, date, dayName, currentDa
                                                                                     if: { $or: [
                                                                                         {$eq: ['$remarks.value', 'delinquent']},
                                                                                         {$eq: ['$remarks.value', 'delinquent-mcbu']},
-                                                                                        {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                                                                                        {$regexMatch: { input: '$remarks.value', regex: /^excused-/ }}
                                                                                     ] },
                                                                                     then: 0,
                                                                                     else: {
@@ -856,7 +856,7 @@ async function getAllLoanTransactionsByArea(db, areaId, date, dayName, currentDa
                                                                     {$eq: ['$remarks.value', 'delinquent']},
                                                                     {$eq: ['$remarks.value', 'delinquent-mcbu']},
                                                                     {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
-                                                                    {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                                                                    {$regexMatch: { input: '$remarks.value', regex: /^excused-/ }}
                                                                 ] },
                                                                 then: 0,
                                                                 else: 50
