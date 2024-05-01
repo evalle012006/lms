@@ -52,29 +52,7 @@ const ViewLowBalanceByLOPage = ({ amount, amountOperator, noOfPayments, noOfPaym
         let url = process.env.NEXT_PUBLIC_API_URL + 'reports/get-all-low-loan-balance?' + new URLSearchParams({ branchId: currentUser.role.rep == 3 ? currentUser.designatedBranchId : branchId, amountOption: amountOption, noOfPaymentsOption: noOfPaymentsOption });
         const response = await fetchWrapper.get(url);
         if (response.success) {
-            const responseData = [];
-            response.data.map(lo => {
-                let temp = {
-                    _id: lo._id,
-                    loName: `${lo.firstName} ${lo.lastName}`
-                }
-                lo.loans.map(loan => {
-                    temp = {
-                        ...temp,
-                        noOfClients: loan.totalClients,
-                        totalAmountRelease: loan.totalAmountRelease,
-                        totalAmountReleaseStr: formatPricePhp(loan.totalAmountRelease),
-                        totalLoanBalance: loan.totalLoanBalance,
-                        totalLoanBalanceStr: formatPricePhp(loan.totalLoanBalance),
-                        totalMCBU: loan.totalMCBU,
-                        totalMCBUStr: formatPricePhp(loan.totalMCBU)
-                    };
-                });
-                responseData.push(temp);
-            });
-
-            responseData.sort((a, b) => { return a.loanBalance - b.loanBalance });
-            setList(responseData);
+            setList(response.data);
             setLoading(false);
         }
     }

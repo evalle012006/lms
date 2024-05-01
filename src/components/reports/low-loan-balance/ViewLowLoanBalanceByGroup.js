@@ -88,36 +88,8 @@ const ViewLowBalanceByGroupsPage = ({ amount, amountOperator, noOfPayments, noOf
         let url = process.env.NEXT_PUBLIC_API_URL + 'reports/get-all-low-loan-balance?' + new URLSearchParams({ loId: currentUser.role.rep == 4 ? currentUser._id : loId, amountOption: amountOption, noOfPaymentsOption: noOfPaymentsOption });
         const response = await fetchWrapper.get(url);
         if (response.success) {
-            const responseData = [];
-            response.data.map(group => {
-                group.loans.map(loan => {
-                    const delinquent = loan.client.length > 0 ? loan.client[0].delinquent == true ? 'Yes' : 'No' : 'No';
-                    let fullName = loan.client.length > 0 ? loan.client[0].fullName : null;
-                    if (loan.client.length > 0 && fullName == null) {
-                        fullName = `${loan.client[0].lastName}, ${loan.client[0].firstName}`;
-                    }
-                    responseData.push({
-                        groupId: group._id,
-                        groupName: group.name,
-                        slotNo: loan.slotNo,
-                        clientName: fullName,
-                        loanCycle: loan.loanCycle,
-                        amountRelease: loan.amountRelease,
-                        amountReleaseStr: formatPricePhp(loan.amountRelease),
-                        loanBalance: loan.loanBalance,
-                        loanBalanceStr: formatPricePhp(loan.loanBalance),
-                        mcbu: loan.mcbu,
-                        mcbuStr: formatPricePhp(loan.mcbu),
-                        noOfPayments: loan.noOfPayments,
-                        noOfMispayments: loan.noOfMisPayments,
-                        delinquent: delinquent
-                    });
-                });
-            });
-
-            responseData.sort((a, b) => { return a.loanBalance - b.loanBalance });
-            setList(responseData);
-            setData(responseData);
+            setList(response.data);
+            setData(response.data);
             setLoading(false);
         }
     }

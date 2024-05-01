@@ -106,7 +106,7 @@ async function getAllLoanTransactionsByBranch(db, branchId, date, dayName, curre
                                             if: { $or: [
                                                 {$eq: ['$remarks.value', 'delinquent']},
                                                 {$eq: ['$remarks.value', 'delinquent-mcbu']},
-                                                {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                                                {$regexMatch: { input: '$remarks.value', regex: /^excused-/ }}
                                             ] },
                                             then: '$prevData.activeLoan',
                                             else: 0
@@ -189,7 +189,7 @@ async function getAllLoanTransactionsByBranch(db, branchId, date, dayName, curre
                 //                         $cond: {
                 //                             if: { $or: [
                 //                                 {$eq: ['$remarks.value', 'delinquent']},
-                //                                 {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                //                                 {$regexMatch: { input: '$remarks.value', regex: /^excused-/ }}
                 //                             ] },
                 //                             then: '$prevData.activeLoan',
                 //                             else: 0
@@ -705,7 +705,7 @@ async function getAllLoanTransactionsByBranch(db, branchId, date, dayName, curre
                                                                         if: { $or: [
                                                                             {$eq: ['$remarks.value', 'delinquent']},
                                                                             {$eq: ['$remarks.value', 'delinquent-mcbu']},
-                                                                            {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                                                                            {$regexMatch: { input: '$remarks.value', regex: /^excused-/ }}
                                                                         ] },
                                                                         then: 0,
                                                                         else: {
@@ -847,7 +847,7 @@ async function getAllLoanTransactionsByBranch(db, branchId, date, dayName, curre
                                                         {$eq: ['$remarks.value', 'delinquent']},
                                                         {$eq: ['$remarks.value', 'delinquent-mcbu']},
                                                         {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
-                                                        {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                                                        {$regexMatch: { input: '$remarks.value', regex: /^excused-/ }}
                                                     ] },
                                                     then: 0,
                                                     else: 50

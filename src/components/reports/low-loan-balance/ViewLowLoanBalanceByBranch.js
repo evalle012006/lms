@@ -63,48 +63,7 @@ const ViewLowBalanceByBranchPage = ({ amount, amountOperator, noOfPayments, noOf
         }
         const response = await fetchWrapper.get(url);
         if (response.success) {
-            const responseData = [];
-            response.data.map(branch => {
-                let temp = {
-                    _id: branch._id,
-                    code: branch.code,
-                    name: branch.name,
-                    noOfClients: 0,
-                    totalAmountRelease: 0,
-                    totalAmountReleaseStr: '-',
-                    totalLoanBalance: 0,
-                    totalLoanBalanceStr: '-',
-                    totalMCBU: 0,
-                    totalMCBUStr: '-'
-                }
-                branch.loans.map(loan => {
-                    temp = {
-                        ...temp,
-                        noOfClients: loan.totalClients,
-                        totalAmountRelease: loan.totalAmountRelease,
-                        totalAmountReleaseStr: formatPricePhp(loan.totalAmountRelease),
-                        totalLoanBalance: loan.totalLoanBalance,
-                        totalLoanBalanceStr: formatPricePhp(loan.totalLoanBalance),
-                        totalMCBU: loan.totalMCBU,
-                        totalMCBUStr: formatPricePhp(loan.totalMCBU)
-                    }
-                });
-
-                responseData.push(temp);
-            });
-
-            responseData.sort((a, b) => {
-                if (a.code < b.code) {
-                    return -1;
-                }
-
-                if (b.code < b.code) {
-                    return 1;
-                }
-
-                return 0;
-            } );
-            setList(responseData);
+            setList(response.data);
             setLoading(false);
         }
     }
