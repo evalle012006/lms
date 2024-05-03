@@ -78,6 +78,7 @@ async function getAllLoansPerGroup(date, mode, groupId, dayName, currentDate) {
                                             if: { $or: [
                                                 {$eq: ['$remarks.value', 'delinquent']},
                                                 {$eq: ['$remarks.value', 'delinquent-mcbu']},
+                                                {$eq: ['$remarks.value', 'excused advance payment']},
                                                 {$regexMatch: { input: '$remarks.value', regex: /^excused-/ }}
                                             ] },
                                             then: '$prevData.activeLoan',
@@ -557,6 +558,7 @@ async function getAllLoansPerGroup(date, mode, groupId, dayName, currentDate) {
                                                                 if: { $or: [
                                                                     {$eq: ['$remarks.value', 'delinquent']},
                                                                     {$eq: ['$remarks.value', 'delinquent-mcbu']},
+                                                                    {$eq: ['$remarks.value', 'excused advance payment']},
                                                                     {$regexMatch: { input: '$remarks.value', regex: /^excused-/ }}
                                                                 ] },
                                                                 then: 0,
