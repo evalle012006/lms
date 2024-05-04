@@ -110,6 +110,7 @@ async function getAllLoanTransactionsByRegion(db, regionId, date, dayName, curre
                                                         if: { $or: [
                                                             {$eq: ['$remarks.value', 'delinquent']},
                                                             {$eq: ['$remarks.value', 'delinquent-mcbu']},
+                                                            {$eq: ['$remarks.value', 'excused advance payment']},
                                                             {$regexMatch: { input: '$remarks.value', regex: /^excused-/ }}
                                                         ] },
                                                         then: '$prevData.activeLoan',
@@ -714,6 +715,7 @@ async function getAllLoanTransactionsByRegion(db, regionId, date, dayName, curre
                                                                                     if: { $or: [
                                                                                         {$eq: ['$remarks.value', 'delinquent']},
                                                                                         {$eq: ['$remarks.value', 'delinquent-mcbu']},
+                                                                                        {$eq: ['$remarks.value', 'excused advance payment']},
                                                                                         {$regexMatch: { input: '$remarks.value', regex: /^excused-/ }}
                                                                                     ] },
                                                                                     then: 0,
