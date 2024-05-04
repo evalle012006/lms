@@ -239,7 +239,7 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup, viewMode}) => 
                         noOfFullPayment += branch.fullPayment[0].noOfFullPayment;
                     }
 
-                    targetLoanCollection += collection.loanTarget;
+                    targetLoanCollection += collection.loanTarget ? collection.loanTarget : 0;
                 } else {
                     if (branch.cashCollections.length > 0) {
                         collection.activeClients = branch.cashCollections[0].activeClients; 
@@ -290,7 +290,7 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup, viewMode}) => 
                         noOfPendings += branch.cashCollections[0].pendingClients;
                         totalsLoanRelease += branch.cashCollections[0].totalRelease;
                         totalsLoanBalance += branch.cashCollections[0].totalLoanBalance;
-                        targetLoanCollection += branch.cashCollections[0].loanTarget;
+                        targetLoanCollection += branch.cashCollections[0].loanTarget ? branch.cashCollections[0].loanTarget : 0;
                         excess += branch.cashCollections[0].excess;
                         totalLoanCollection += branch.cashCollections[0].collection;
                         mispayment += branch.cashCollections[0].mispayment;
