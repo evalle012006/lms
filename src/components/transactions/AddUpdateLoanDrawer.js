@@ -349,7 +349,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                             console.log(error)
                         });
                 } else if (mode === 'edit') {
-                    const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans';
+                    const apiUrl = getApiBaseUrl() + 'transactions/loans';
                     values._id = loan._id;
                     values.modifiedBy = currentUser._id;
                     values.modifiedDate = moment(new Date()).format("YYYY-MM-DD");
