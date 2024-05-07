@@ -739,6 +739,10 @@ const LoanApplicationPage = () => {
             accessor: 'fullName'
         },
         {
+            Header: "Loan Cycle",
+            accessor: 'loanCycle'
+        },
+        {
             Header: "Admission Date",
             accessor: 'admissionDate'
         },
@@ -1269,6 +1273,10 @@ const LoanApplicationPage = () => {
                 {
                     Header: "Client Name",
                     accessor: 'fullName'
+                },
+                {
+                    Header: "Loan Cycle",
+                    accessor: 'loanCycle'
                 },
                 {
                     Header: "Admission Date",
