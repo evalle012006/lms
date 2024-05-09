@@ -601,7 +601,7 @@ const LoanApplicationPage = () => {
     }
 
     const getHistoyListLoan = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/list-history';
+        let url = getApiBaseUrl() + 'transactions/loans/list-history';
         if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
             url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id, mode: occurence });
             const response = await fetchWrapper.get(url);
