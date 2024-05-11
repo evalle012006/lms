@@ -979,7 +979,7 @@ const LoanApplicationPage = () => {
                     errorMsg += "\n\nPlease update each missing info by clicking the row.";
                     toast.error(errorMsg, { autoClose: 10000 });
                 } else {
-                    const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/approved-reject-by-batch', selectedLoanList);
+                    const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/loans/approve-by-batch', selectedLoanList);
 
                     if (response.success) {
                         setLoading(false);
