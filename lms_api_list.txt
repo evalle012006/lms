@@ -94,7 +94,7 @@
 /lms/lms/src/pages/api/transactions/cash-collections/update-group-transaction-status.js
 /lms/lms/src/pages/api/transactions/loans/add-comaker-loan.js
 /lms/lms/src/pages/api/transactions/loans/approve-by-batch.js
-/lms/lms/src/pages/api/transactions/loans/approved-reject-loan.js
+/lms/lms/src/pages/api/transactions/loans/reject.js
 /lms/lms/src/pages/api/transactions/loans/check-existing-pn-number-by-branch.js
 /lms/lms/src/pages/api/transactions/loans/check-loan-payment.js
 /lms/lms/src/pages/api/transactions/loans/delete.js

@@ -13,6 +13,11 @@ import {
   LOAN_FIELDS,
 } from "@/lib/graph.fields";
 import { GraphProvider } from "@/lib/graph/graph.provider";
+import {
+  findCashCollections,
+  findClients,
+  findLoans,
+} from "@/lib/graph.functions";
 
 const loanType = createGraphType("loans", LOAN_FIELDS)();
 const groupType = createGraphType("groups", GROUP_FIELDS)();
@@ -49,7 +54,7 @@ async function processData(req, res) {
           delete loan.origin;
           delete loan.hasActiveLoan;
 
-          const active = await findActiveLoans({
+          const active = await findLoans({
             clientId: { _eq: loan.clientId },
             status: { _eq: "active" },
           });
@@ -76,7 +81,7 @@ async function processData(req, res) {
     const promise = await new Promise(async (resolve) => {
       const response = await Promise.all(
         loanData.map(async (loan) => {
-          const active = await findActiveLoans({
+          const active = await findLoans({
             clientId: { _eq: loan.clientId },
             status: { _eq: "active" },
           });
@@ -169,16 +174,6 @@ async function processData(req, res) {
   res.send(response);
 }
 
-async function findActiveLoans(filter) {
-  return graph
-    .query(
-      queryQl(loanType, {
-        where: filter,
-      })
-    )
-    .then((res) => res.data.loans ?? []);
-}
-
 async function updateLoan(loanId, loan) {
   return await graph.mutation(
     updateQl(loanType, {
@@ -212,13 +207,6 @@ async function updateGroup(group) {
   return { success: true, groupResp };
 }
 
-async function findClients(filter) {
-  return (
-    (await graph.query(queryQl(clientType, { where: filter }))).data?.clients ??
-    []
-  );
-}
-
 async function updateClient(loan) {
   const clientId = loan.clientId;
   let client = await findClients({ _id: { _eq: clientId } });
@@ -249,12 +237,6 @@ async function updateClient(loan) {
   return { success: true, client };
 }
 
-async function findLoans(filter) {
-  return (
-    (await graph.query(queryQl(loanType, { where: filter }))).data?.loans ?? []
-  );
-}
-
 async function getCoMakerInfo(coMaker, groupId) {
   let client;
   if (typeof coMaker === "number" || !isNaN(coMaker)) {
@@ -279,13 +261,6 @@ async function getCoMakerInfo(coMaker, groupId) {
   }
 
   return { success: true, client };
-}
-
-async function findCashCollections(filter) {
-  return (
-    (await graph.query(queryQl(cashCollectionType, { where: filter }))).data
-      ?.cashCollections ?? []
-  );
 }
 
 async function saveCashCollection(loan, group, currentDate) {

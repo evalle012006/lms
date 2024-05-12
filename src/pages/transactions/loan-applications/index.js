@@ -698,7 +698,7 @@ const LoanApplicationPage = () => {
 
             delete loanData.selected;
 
-            const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/approved-reject-loan', loanData)
+            const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/loans/reject', loanData)
             
             if (response.success) {
                 setLoading(false);
@@ -711,7 +711,7 @@ const LoanApplicationPage = () => {
         } else {
             loanData.status = updatedValue;
             loanData.rejectReason = rejectReason;
-            const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/approved-reject-loan', loanData)
+            const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/loans/reject', loanData)
             if (response.success) {
                 setLoading(false);
                 toast.success('Loan successfully updated.');
