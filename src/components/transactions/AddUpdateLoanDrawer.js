@@ -251,6 +251,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             values.branchId = branch._id;
             values.branchName = branch.name;
             values.loId = group.loanOfficerId;
+            values.occurence = group?.occurence;
 
             if (clientType == 'advance' || clientType == 'active') {
                 values.mode = clientType;
@@ -261,7 +262,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             }
         } else {
             group = loan.group;
-            values.loId = group.loanOfficerId;
+            values.loId = loan.loId;
             values.groupId = loan.groupId;
             values.groupName = loan.groupName;
             values.mode = 'reloan';
@@ -270,13 +271,13 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             values.branchId = loan.branchId;
             values.prevLoanFullPaymentDate = loan.fullPaymentDate;
             values.prevLoanFullPaymentAmount = loan?.history.amountRelease;
+            values.occurence = loan.occurence;
         }
 
         values.slotNo = mode !== 'reloan' ? slotNo : loan.slotNo;
-        values.occurence = group.occurence;
 
         if (values.occurence === 'weekly') {
-            values.groupDay = group.day;
+            values.groupDay = loan.groupDay;
         }
 
         const loanLimit = values.occurence == 'daily' ? transactionSettings.loanDailyLimit : transactionSettings.loanWeeklyLimit;
@@ -292,10 +293,10 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                 toast.error('For 100 days loan term, principal amount should be greater than or equal to 10,0000.');
             } else {
                 if (values.status !== 'active') {
-                    if (group.occurence === 'weekly') {
+                    if (values.occurence === 'weekly') {
                         values.activeLoan = (values.principalLoan * 1.20) / 24;
                         values.loanTerms = 24;
-                    } else if (group.occurence === 'daily') {
+                    } else if (values.occurence === 'daily') {
                         values.loanTerms = loanTerms;
                         if (loanTerms === 60) {
                             values.activeLoan = (values.principalLoan * 1.20) / 60;
@@ -710,13 +711,14 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             }
         }
 
-        if (currentUser.role.rep == 4) {
-            getLOStatus(currentUser._id);
-        } else if (selectedLo){
-            getLOStatus(selectedLo);
+        if (mode == 'add') {
+            if (currentUser.role.rep == 4) {
+                getLOStatus(currentUser._id);
+            } else if (selectedLo){
+                getLOStatus(selectedLo);
+            }
         }
-        
-    }, [currentUser, selectedLo]);;
+    }, [mode, currentUser, selectedLo]);;
 
     return (
         <React.Fragment>
