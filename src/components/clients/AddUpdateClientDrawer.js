@@ -91,6 +91,25 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
         setShowCalendar(false);
     };
 
+    const hasDuplicates = async (field, value) => {
+        const form = formikRef.current;
+        form.setFieldValue(field, value?.toUpperCase());
+
+        setTimeout(async () => {
+            const firstName = form.values.firstName;
+            const lastName = form.values.lastName;
+            if (firstName && lastName) {
+                const searchText = firstName + ' ' + lastName;
+                const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'clients/search?' + new URLSearchParams({ searchText: searchText?.toUpperCase() }));
+                if (response.success) {
+                    if (response.clients.length > 0) {
+                        toast.warning('Client has similar name. Please verify the client first in the search client tool in Dashboard!');
+                    }
+                }
+            }
+        }, 800);
+    }
+
     const handleSaveUpdate = (values, action) => {
         let error = false;
         if (values.birthdate) {
@@ -323,6 +342,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                             name="lastName"
                                             value={values.lastName}
                                             onChange={handleChange}
+                                            onBlur={(field, value) => hasDuplicates(field, value)}
                                             label="Last Name"
                                             placeholder="Enter Last Name"
                                             setFieldValue={setFieldValue}
@@ -333,6 +353,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                             name="firstName"
                                             value={values.firstName}
                                             onChange={handleChange}
+                                            onBlur={(field, value) => hasDuplicates(field, value)}
                                             label="First Name"
                                             placeholder="Enter First Name"
                                             setFieldValue={setFieldValue}
