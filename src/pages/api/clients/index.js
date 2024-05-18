@@ -116,30 +116,18 @@ async function updateClient(req, res) {
                 profile: profile
             };
 
+            if (fields.hasOwnProperty('archived')) {
+                clientData.archived = (fields.archived == true || fields.archived == 'true') ? true : false;
+                clientData.archivedDate = new Date();
+                clientData.archivedBy = fields.archivedBy;
+            }
+
             const clientResponse = await db
                 .collection('client')
                 .updateOne(
                     { _id: new ObjectId(clientData._id) },
                     {
-                        $set: {
-                            firstName: fields.firstName,
-                            middleName: fields.middleName,
-                            lastName: fields.lastName,
-                            birthdate: fields.birthdate,
-                            addressStreetNo: fields.addressStreetNo,
-                            addressBarangayDistrict: fields.addressBarangayDistrict,
-                            addressMunicipalityCity: fields.addressMunicipalityCity,
-                            addressProvince: fields.addressProvince,
-                            addressZipCode: fields.addressZipCode,
-                            contactNumber: fields.contactNumber,
-                            branchId: fields.branchId,
-                            status: fields.status,
-                            delinquent: fields.delinquent,
-                            loId: fields.loId,
-                            groupId: fields.groupId,
-                            profile: profile
-                        },
-                        $currentDate: { dateModified: true }
+                        $set: { ...clientData, dateModified: new Date()},
                     }
                 );
 

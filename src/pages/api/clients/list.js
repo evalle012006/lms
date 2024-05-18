@@ -406,7 +406,7 @@ async function list(req, res) {
                 clients = await db
                     .collection('client')
                     .aggregate([
-                        { $match: { loId: loId, groupId: groupId, status: status } },
+                        { $match: { loId: loId, groupId: groupId, status: status, archived: { $ne: true } } },
                         {
                             $addFields: {
                                 "clientId": { $toString: "$_id" },
@@ -451,7 +451,7 @@ async function list(req, res) {
                 clients = await db
                     .collection('client')
                     .aggregate([
-                        { $match: { branchId: branchId, groupId: groupId, status: status } },
+                        { $match: { branchId: branchId, groupId: groupId, status: status, archived: { $ne: true } } },
                         {
                             $addFields: {
                                 "clientId": { $toString: "$_id" },
