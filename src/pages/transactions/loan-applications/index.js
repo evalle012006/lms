@@ -1086,7 +1086,7 @@ const LoanApplicationPage = () => {
     }
 
     const checkCoMakerLoanStatus = async (coMakerList) => {
-        const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/get-comaker-loan-status', coMakerList);
+        const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/loans/get-comaker-loan-status', coMakerList);
         let statusList = [];
         if (response.success) {
             statusList = response.data;
