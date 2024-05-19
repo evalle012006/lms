@@ -629,7 +629,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     }
 
     const getAllLoanPerGroup = async (groupId) => {
-        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/get-comaker-by-group?' + new URLSearchParams({ groupId: groupId }));
+        const response = await fetchWrapper.get(getApiBaseUrl() + 'transactions/loans/get-comaker-by-group?' + new URLSearchParams({ groupId: groupId }));
 
         let slotNumbers = [];
         if (response.success) {
