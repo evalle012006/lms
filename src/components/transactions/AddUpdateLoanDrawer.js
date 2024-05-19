@@ -402,7 +402,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     const handlePNNumber = async (e) => {
         const pnNumber = e.target.value;
         if (pnNumber && currentBranch) {
-            const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/check-existing-pn-number-by-branch?' + new URLSearchParams({ branchId: currentBranch._id, pnNumber: pnNumber }));
+            const response = await fetchWrapper.get(getApiBaseUrl() + 'transactions/loans/check-existing-pn-number-by-branch?' + new URLSearchParams({ branchId: currentBranch._id, pnNumber: pnNumber }));
             if (response.success) {
                 if (response.loans.length > 0) {
                     const form = formikRef.current;
