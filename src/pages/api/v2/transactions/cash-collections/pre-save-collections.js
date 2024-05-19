@@ -1,3 +1,4 @@
+import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, insertQl } from '@/lib/graph/graph.util';
 import { generateUUID } from '@/lib/utils';
 import { apiHandler } from '@/services/api-handler';
