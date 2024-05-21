@@ -45,7 +45,7 @@ async function processLOSummary(req, res) {
             } else {
                 let result;
                 if (mode == 'close' && hasClosingTime.length == 0) {
-                    mutationQl.push(
+                    result = await graph.mutation(
                         updateQl(CASH_COLLECTION_TYPE, {
                             set: {
                                 groupStatus: 'closed',
@@ -58,7 +58,7 @@ async function processLOSummary(req, res) {
                         })
                     );
                 } else {
-                    mutationQl.push(
+                    result = await graph.mutation(
                         updateQl(CASH_COLLECTION_TYPE, {
                             set: {
                                 groupStatus: mode === 'close' ? 'closed' : 'pending',
@@ -70,14 +70,15 @@ async function processLOSummary(req, res) {
                         })
                     );
                 }
-                
-                if (result.modifiedCount === 0) {
+
+                if(result.data.collections.affected_rows === 0) {
                     response = { error: true, message: "No transactions found for this Loan Officer." };
                 } else {
                     response = { success: true };
                 }
             }
         }
+
     } else {
         response = { error: true, message: "Loan Office Id not found." };
     }
