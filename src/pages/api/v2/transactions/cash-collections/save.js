@@ -6,10 +6,10 @@ import logger from '@/logger';
 import { apiHandler } from '@/services/api-handler';
 
 const graph = new GraphProvider();
-const COLLECTION_TYPE = createGraphType('cashCollections', '_id')('collections');
-const LOAN_TYPE = createGraphType('loans', `${LOAN_FIELDS}`)('loans');
-const CLIENT_TYPE =createGraphType('clients', `${CLIENT_FIELDS}`)('clients');
-const GROUP_TYPE = createGraphType('groups', `${GROUP_FIELDS}`)('groups');
+const COLLECTION_TYPE = createGraphType('cashCollections', '_id')
+const LOAN_TYPE = createGraphType('loans', `${LOAN_FIELDS}`)
+const CLIENT_TYPE = createGraphType('clients', `${CLIENT_FIELDS}`);
+const GROUP_TYPE = createGraphType('groups', `${GROUP_FIELDS}`)
 
 export default apiHandler({
     post: save
@@ -123,7 +123,7 @@ async function save(req, res) {
 
 async function saveCollection(mutationQL, collections) {
     mutationQL.push(
-        insertQl(COLLECTION_TYPE,{
+        insertQl(COLLECTION_TYPE('collections_' + (mutationQL.length + 1)),{
                 objects: collections.map(c => ({
                     _id: generateUUID(),
                     ... c
@@ -143,7 +143,7 @@ async function updateCollection(mutationQL, collections) {
         } 
 
         mutationQL.push(
-            updateQl(COLLECTION_TYPE, {
+            updateQl(COLLECTION_TYPE('collections_' + (mutationQL.length + 1)), {
                 set: {
                     ... collection,
                     origin: null,
@@ -156,7 +156,7 @@ async function updateCollection(mutationQL, collections) {
 }
 
 async function updateLoan(mutationQL, collection, currentDate) {
-    let loan = await graph.query(queryQl(LOAN_TYPE, { where: { _id: { _eq: collection.loanId } } })).then(res => res.data.loans);
+    let loan = await graph.query(queryQl(LOAN_TYPE('loans'), { where: { _id: { _eq: collection.loanId } } })).then(res => res.data.loans);
     logger.debug({page: `Saving Cash Collection - Updating Loan: ${collection.loanId}`});
     if (loan.length > 0) {
         loan = loan[0];
@@ -267,7 +267,7 @@ async function updateLoan(mutationQL, collection, currentDate) {
 
 
         mutationQL.push(
-            updateQl(LOAN_TYPE, {
+            updateQl(LOAN_TYPE('loans_' + mutationQL.length + 1), {
                 set: {
                     ... loan,
                     reverted: null
@@ -329,7 +329,7 @@ async function updateClient(mutationQl, loan, currentDate) {
 
 
         mutationQl.push(
-            updateQl(CLIENT_TYPE, {
+            updateQl(CLIENT_TYPE('clients_' + (mutationQl.length + 1)), {
                 set: {
                     ... client
                 },
@@ -347,7 +347,7 @@ async function updateClient(mutationQl, loan, currentDate) {
 }
 
 async function updateLoanClose(mutationQl, loanData, currentDate) {
-    let loan = await graph.query(LOAN_TYPE, { where: { _id: { _eq: loanData.loanId } } }).then(res => res.data.loans);
+    let loan = await graph.query(LOAN_TYPE('loans'), { where: { _id: { _eq: loanData.loanId } } }).then(res => res.data.loans);
     logger.debug({page: `Saving Cash Collection - Updating Loan Close`, loanSize: loan.length});
     if (loan.length > 0) {
         loan = loan[0];
@@ -361,7 +361,7 @@ async function updateLoanClose(mutationQl, loanData, currentDate) {
         logger.debug({page: `Saving Cash Collection - Updating Loan Close`, data: loan});
 
         mutationQl.push(
-            updateQl(LOAN_TYPE, {
+            updateQl(LOAN_TYPE('loans_' + (mutationQl.length + 1)), {
                 set: loan,
                 where: {
                     _id: { _eq: loanData.loanId }
