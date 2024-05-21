@@ -46,8 +46,6 @@ async function tomorrowLoans(loId) {
         temp.remediated = moment(new Date()).format('YYYY-MM-DD') + ' - ' + 'WRONG_STATUS';
         
         delete temp._id;
-        
-        await db.collection('loans').updateOne({ _id: loan._id }, {$set: {...temp}});
 
         mutationList.push(
             updateQl(LOAN_TYPE, {
