@@ -5,7 +5,7 @@ import moment from 'moment';
 
 
 const graph = new GraphProvider();
-const LOAN_TYPE = createGraphType('loans', `${LOAN_FIELDS}`)('loans');
+const LOAN_TYPE = createGraphType('loans', `${LOAN_FIELDS}`)
 
 let response = {};
 let statusCode = 200;
@@ -35,7 +35,7 @@ async function tomorrowLoans(loId) {
 
     const mutationList = [];
 
-    await Promise.all(loans.map(async (loan) => {
+    await Promise.all(loans.map(async (loan, i) => {
         let temp = {...loan};
         const loanTerms = loan.loanTerms;
 
@@ -48,7 +48,7 @@ async function tomorrowLoans(loId) {
         delete temp._id;
 
         mutationList.push(
-            updateQl(LOAN_TYPE, {
+            updateQl(LOAN_TYPE(`loans_${i}`), {
                 set: temp,
                 where: {
                     _id: { _eq: loan._id }

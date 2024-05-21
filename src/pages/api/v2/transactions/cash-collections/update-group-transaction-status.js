@@ -17,7 +17,6 @@ export default apiHandler({
 async function processLOSummary(req, res) {
     const { loId, mode, currentDate, currentTime } = req.body;
 
-    const mutationQl = [];
     if (loId) {
         const cashCollectionCounts = await checkLoTransactions(loId, currentDate);
         if (cashCollectionCounts) {
