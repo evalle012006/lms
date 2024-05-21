@@ -109,7 +109,7 @@ const TransferClientPage = () => {
 
     const checkGroupsStatus = async (groupIds) => {
         let errorMsg;
-        const url = process.env.NEXT_PUBLIC_API_URL 
+        const url = getApiBaseUrl() 
                     + 'transactions/cash-collections/update-group-transaction-status?' 
                     + new URLSearchParams({ groupIds: groupIds, currentDate: currentDate, currentTime: currentTime });
         const response = await fetchWrapper.get(url);

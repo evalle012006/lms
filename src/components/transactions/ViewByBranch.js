@@ -9,6 +9,7 @@ import moment from 'moment';
 import { formatPricePhp, getTotal } from "@/lib/utils";
 import { setCashCollectionBranch } from "@/redux/actions/cashCollectionActions";
 import { transferBranchDetailsTotal } from "@/lib/transfer-util";
+import { getApiBaseUrl } from "@/lib/constants";
 
 const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup, viewMode}) => {
     const dispatch = useDispatch();
@@ -28,7 +29,7 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup, viewMode}) => 
         setLoading(true);
         const filter = date ? true : false;
 
-        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 
+        const response = await fetchWrapper.get(getApiBaseUrl() + 
                             'transactions/cash-collections/get-all-loans-per-branch-v2?' 
                             + new URLSearchParams({ date: date ? date : currentDate, currentUserId: currentUser._id, selectedBranchGroup: selectedBranchGroup, dayName: dayName, currentDate: currentDate }));
         if (response.success) {

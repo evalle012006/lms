@@ -29,7 +29,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
     const getCashCollections = async (dateFilter) => {
         setLoading(true);
         const filter = dateFilter ? true : false;
-        let url = process.env.NEXT_PUBLIC_API_URL + 
+        let url = getApiBaseUrl() + 
             'transactions/cash-collections/get-all-loans-per-group-v2?' 
             + new URLSearchParams({ 
                     date: dateFilter ? dateFilter : currentDate,
@@ -1256,7 +1256,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                     currentUser: currentUser._id
                 };
     
-                await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/pre-save-collections', data);
+                await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collections/pre-save-collections', data);
             }
 
             setTimeout(() => {
