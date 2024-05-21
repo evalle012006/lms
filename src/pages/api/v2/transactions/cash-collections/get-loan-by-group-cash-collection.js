@@ -43,7 +43,7 @@ async function getLoanWithCashCollection(req, res) {
         tomorrowPending = await graph.apollo.query({
             query: gql`
             query groups ($where:loan_group_model_bool_exp_bool_exp,  $args: get_loans_per_group_cashcollection_tomorrow_pending_arguments!) {
-                collections: get_loans_per_group_cashcollection_tomorrow_pending(args: $args, where: $where, limit:10) {
+                collections: get_loans_per_group_cashcollection_tomorrow_pending(args: $args, where: $where) {
                   _id,
                   data
                 }
