@@ -126,8 +126,9 @@ const Avatar = ({
   let inner, classes = ['UserAvatar'];
   if (src || srcset) {
     innerStyle.backgroundImage = `url(${src || srcset})`;
-    innerStyle.backgroundSize = "cover";
+    innerStyle.backgroundSize = "contain"
     innerStyle.backgroundRepeat = "no-repeat";
+    innerStyle.backgroundPosition = "center";
   } else {
     let background;
     if (color) {

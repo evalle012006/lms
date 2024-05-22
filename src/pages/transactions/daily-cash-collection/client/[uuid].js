@@ -92,7 +92,8 @@ const CashCollectionDetailsPage = () => {
 
     const handleShowClientInfoModal = (selected) => {
         if (selected.status !== 'totals') {
-            const selectedClient = selected.client;
+            const imgpath = process.env.NEXT_PUBLIC_LOCAL_HOST !== 'local' && process.env.NEXT_PUBLIC_LOCAL_HOST;
+            const selectedClient = {...selected.client, imgUrl: selected.client.profile ? imgpath + '/images/clients/' + selected.client.profile : ''};
             dispatch(setClient(selectedClient));
             setShowClientInfoModal(true);
         }
