@@ -1,7 +1,10 @@
 import { GraphProvider } from "@/lib/graph/graph.provider";
 import {
-  CASH_COLLECTIONS_FIELDS, CLIENT_FIELDS, GROUP_FIELDS,
+  CASH_COLLECTIONS_FIELDS,
+  CLIENT_FIELDS,
+  GROUP_FIELDS,
   LOAN_FIELDS,
+  TRANSFER_CLIENT_FIELDS,
   USER_FIELDS,
 } from "@/lib/graph.fields";
 import { createGraphType, queryQl } from "@/lib/graph/graph.util";
@@ -32,4 +35,9 @@ export async function findClients(filter, fields = CLIENT_FIELDS) {
 export async function findGroups(filter, fields = GROUP_FIELDS) {
   return (await graph.query(queryQl(createGraphType('groups', fields)(), { where: filter })))
     .data?.groups ?? [];
+}
+
+export async function findTransferClients(filter, fields = TRANSFER_CLIENT_FIELDS) {
+  return (await graph.query(queryQl(createGraphType('transferClients', fields)(), { where: filter })))
+    .data?.transferClients ?? [];
 }

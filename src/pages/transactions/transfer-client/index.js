@@ -217,7 +217,7 @@ const TransferClientPage = () => {
     const handleDelete = () => {
         if (client) {
             setLoading(true);
-            fetchWrapper.postCors(process.env.NEXT_PUBLIC_API_URL + 'transactions/transfer-client/delete', { id: client._id })
+            fetchWrapper.postCors(getApiBaseUrl() + 'transactions/transfer-client/delete', { id: client._id })
                 .then(response => {
                     if (response.success) {
                         setShowDeleteDialog(false);
