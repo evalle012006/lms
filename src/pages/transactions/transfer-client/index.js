@@ -169,7 +169,7 @@ const TransferClientPage = () => {
                 msg = 'Selected transfer was reject.';
             }
 
-            const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/transfer-client/approve-reject', [transfer]);
+            const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/transfer-client/approve-reject', [transfer]);
 
             if (response.success) {
                 setLoading(false);
@@ -291,7 +291,7 @@ const TransferClientPage = () => {
                     return temp;
                 });
     
-                const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/transfer-client/approve-reject', selectedList);
+                const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/transfer-client/approve-reject', selectedList);
     
                 if (response.success) {
                     setLoading(false);

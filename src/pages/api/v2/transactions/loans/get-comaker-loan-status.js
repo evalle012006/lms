@@ -1,10 +1,5 @@
 import { apiHandler } from "@/services/api-handler";
-import { createGraphType, queryQl } from '@/lib/graph/graph.util';
-import { LOAN_FIELDS } from '@/lib/graph.fields';
-import { GraphProvider } from '@/lib/graph/graph.provider';
-
-const loansType = createGraphType("loans", LOAN_FIELDS)();
-const graph = new GraphProvider();
+import { findLoans } from "@/lib/graph.functions";
 
 export default apiHandler({
   post: getLoan,
@@ -15,11 +10,9 @@ async function getLoan(req, res) {
   const loanStatus = [];
 
   clientIdList.map(async (client) => {
-    const loan = (await graph.query(queryQl(loansType, {
-      where: {
-        clientId: { _eq: client.coMaker }
-      }
-    })))?.data?.loans;
+    const loan = await findLoans({
+      clientId: { _eq: client.coMaker }
+    });
 
     if (loan) {
       const latestLoan = loan[loan.length - 1];

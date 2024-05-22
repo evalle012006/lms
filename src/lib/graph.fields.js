@@ -368,3 +368,25 @@ _id
 name
 dateAdded
 `;
+
+export const TRANSFER_CLIENT_FIELDS = `
+_id
+approveRejectDate
+branchToBranch
+currentSlotNo
+dateAdded
+loToLo
+loanId
+modifiedDateTime
+occurence
+sameLo
+sourceBranchId
+status
+targetBranchId
+targetGroupId
+selectedClientId
+sourceGroupId
+targetUserId
+selectedSlotNo
+sourceUserId
+`;

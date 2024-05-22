@@ -1,10 +1,5 @@
 import { apiHandler } from "@/services/api-handler";
-import { createGraphType, queryQl } from "@/lib/graph/graph.util";
-import { LOAN_FIELDS } from "@/lib/graph.fields";
-import { GraphProvider } from "@/lib/graph/graph.provider";
-
-const loansType = createGraphType("loans", LOAN_FIELDS)();
-const graph = new GraphProvider();
+import { findLoans } from "@/lib/graph.functions";
 
 export default apiHandler({
   get: getComaker,
@@ -12,16 +7,10 @@ export default apiHandler({
 
 async function getComaker(req, res) {
   const { groupId } = req.query;
-  const data = (
-    await graph.query(
-      queryQl(loansType, {
-        where: {
-          groupId: { _eq: groupId },
-          status: { _nin: ["closed", "reject"] },
-        },
-      })
-    )
-  )?.data?.loans;
+  const data = await findLoans({
+    groupId: { _eq: groupId },
+    status: { _nin: ["closed", "reject"] },
+  });
 
   const slotNumbers = data.map(async (d) => {
     if (d.coMaker) {
