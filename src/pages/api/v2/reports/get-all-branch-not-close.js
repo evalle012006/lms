@@ -8,12 +8,15 @@ branchId,
 loanId,
 groupId
 groupName
+branch {
+    name
+}
 loanOfficer {
     firstName
     lastName
 }
 clientId
-fullName
+clientName: fullName
 branch {
     name
 }
@@ -30,7 +33,7 @@ async function allLoans(req, res) {
     let response;
     let statusCode = 200;
 
-    const { branchIds, branchId, loId } = req.query;
+    const { currentUserId, branchId, loId } = req.query;
 
     let cashCollectionsDraft;
     let cashCollectionsPending;
@@ -55,13 +58,31 @@ async function allLoans(req, res) {
             })
         ).then(res => res.data.cashCollections ?? []);
 
-    } else if (branchId || branchIds) {
-        const branche_ids = [branchId, ... (branchIds ?? [])].filter(b => !!b);
-        
+    } else if (branchId || currentUserId) {
+        let branch_ids = []
+        if(branchId) {
+            branch_ids = [branchId]
+        } else {
+            const getBranchIds = async (where) => await graph.query(
+                queryQl(createGraphType('branches', '_id')('branches'), {
+                    where
+                })
+            ).then(res => res.data.branches.map(b => b._id));
+
+            const user = await graph.query(queryQl(createGraphType('users', `${USER_FIELDS}`), { where: { _id: { _eq: currentUserId } }})).then(res => res.data.users);
+            if (user[0].areaId && user[0].role.shortCode === 'area_admin') {
+                branch_ids = await getBranchIds({ areaId: { _eq: user[0].areaId } })
+            } else if (user[0].regionId && user[0].role.shortCode === 'regional_manager') {
+                branch_ids = await getBranchIds({ regionId: { _eq: user[0].regionId } })
+            } else if (user[0].divisionId && user[0].role.shortCode === 'deputy_director') {
+                branch_ids = await getBranchIds({ divisionId: { _eq: user[0].divisionId } })
+            }
+        }
+
         cashCollectionsDraft = await graph.query(
             queryQl(CASH_COLLECTION_TYPE, {
                 where: {
-                    branchId: { _in: branche_ids },
+                    branchId: { _in: branch_ids },
                     draft: { _eq: true }
                 }
             })
@@ -70,11 +91,12 @@ async function allLoans(req, res) {
         cashCollectionsPending = await graph.query(
             queryQl(CASH_COLLECTION_TYPE, {
                 where: {
-                    branchId: { _in: branche_ids },
+                    branchId: { _in: branch_ids },
                     groupStatus: { _eq: 'pending' }
                 }
             })
         ).then(res => res.data.cashCollections ?? []);
+        
     } else {
 
         cashCollectionsDraft = await graph.query(
@@ -101,7 +123,7 @@ async function allLoans(req, res) {
         groupId: c.groupId,
         groupName: c.groupName,
         clientId: c.clientId,
-        clientName: c.fullName,
+        clientName: c.clientName,
         slotNo: c.slotNo,
         loanId: c.loanId,
         dateAdded: c.dateAdded,
@@ -114,7 +136,7 @@ async function allLoans(req, res) {
         groupId: c.groupId,
         groupName: c.groupName,
         clientId: c.clientId,
-        clientName: c.fullName,
+        clientName: c.clientName,
         slotNo: c.slotNo,
         loanId: c.loanId,
         dateAdded: c.dateAdded,
