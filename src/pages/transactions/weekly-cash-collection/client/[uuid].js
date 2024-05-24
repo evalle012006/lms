@@ -128,7 +128,7 @@ const CashCollectionDetailsPage = () => {
     const getCashCollections = async (date) => {
         setLoading(true);
         const type = date ? 'filter' : 'current';
-        let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/get-loan-by-group-cash-collection?' 
+        let url = getApiBaseUrl() + 'transactions/cash-collections/get-loan-by-group-cash-collection?' 
             + new URLSearchParams({ date: date ? date : currentDate, mode: 'weekly', groupId: uuid, type: type });
         
         const response = await fetchWrapper.get(url);
@@ -1425,11 +1425,11 @@ const CashCollectionDetailsPage = () => {
                         };
                     }
             
-                    const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/save', cashCollection);
+                    const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collections/save', cashCollection);
                     if (response.success) {
                         if (pendings.length > 0) {
                             setTimeout(async () => {
-                                const responsePending = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/update-pending-loans', pendings);
+                                const responsePending = await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collections/update-pending-loans', pendings);
                                 if (responsePending.success) {
                                     reloadAfterSave();
                                 }
@@ -2277,7 +2277,7 @@ const CashCollectionDetailsPage = () => {
         const selectedRows = data.filter(d => d.selected);
         if (selectedRows.length > 0) {
             setLoading(true);
-            const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/revert-transaction', selectedRows);
+            const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collections/revert-transaction', selectedRows);
             if (response.success) {
                 setTimeout(() => {
                     setLoading(false);

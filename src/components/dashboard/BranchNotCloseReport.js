@@ -33,7 +33,7 @@ const BranchNotCloseTool = () => {
 
     const getList = async () => {
         setLoading(true);
-        let url = process.env.NEXT_PUBLIC_API_URL + 'reports/get-all-branch-not-close';
+        let url = getApiBaseUrl() + 'reports/get-all-branch-not-close';
         if (currentUser.role.rep === 1) {
             const response = await fetchWrapper.get(url);
             if (response.success) {

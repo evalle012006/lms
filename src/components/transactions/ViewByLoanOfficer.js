@@ -10,6 +10,7 @@ import { toast } from "react-toastify";
 import { BehaviorSubject } from 'rxjs';
 import { setBmSummary, setCashCollectionLo } from "@/redux/actions/cashCollectionActions";
 import { setUserList } from "@/redux/actions/userActions";
+import { getApiBaseUrl } from "@/lib/constants";
 
 const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) => {
     const dispatch = useDispatch();
@@ -42,7 +43,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
     const getGroupCashCollections = async (date) => {
         setLoading(true);
         const filter = date ? true : false;
-        let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/get-all-loans-per-lo-v2?' + new URLSearchParams({ date: date ? date : currentDate, loIds: JSON.stringify(selectedLOIds), dayName: dayName, currentDate: currentDate });
+        let url = getApiBaseUrl() + 'transactions/cash-collections/get-all-loans-per-lo-v2?' + new URLSearchParams({ date: date ? date : currentDate, loIds: JSON.stringify(selectedLOIds), dayName: dayName, currentDate: currentDate });
         
         const response = await fetchWrapper.get(url);
         if (response.success) {
@@ -1115,7 +1116,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
 
             let data = { loId: row.original._id, mode: 'open', currentDate: currentDate };
 
-            const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/update-group-transaction-status', data);
+            const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collections/update-group-transaction-status', data);
             
             if (response.success) {
                 toast.success(`${data.name} groups transactions are now open!`);

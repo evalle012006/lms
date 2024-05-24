@@ -9,6 +9,7 @@ import TableComponent from '@/lib/table';
 import Avatar from '@/lib/avatar';
 import placeholder from '/public/images/image-placeholder.png';
 import moment from 'moment';
+import { getApiBaseUrl } from '@/lib/constants';
 
 const ClientSearchTool = () => {
     const dispatch = useDispatch();
@@ -23,7 +24,7 @@ const ClientSearchTool = () => {
         if (searchText) {
             setSearching(true);
             const imgpath = process.env.NEXT_PUBLIC_LOCAL_HOST !== 'local' && process.env.NEXT_PUBLIC_LOCAL_HOST;
-            const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'clients/search?' + new URLSearchParams({ searchText: searchText.toUpperCase() }));
+            const response = await fetchWrapper.get(getApiBaseUrl() + 'clients/search?' + new URLSearchParams({ searchText: searchText.toUpperCase() }));
             const list = [];
             if (response.success) {
                 response.clients.map(client => {
