@@ -1,8 +1,6 @@
-import { apiHandler } from '@/services/api-handler';
-import { connectToDatabase } from '@/lib/mongodb';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl } from '@/lib/graph/graph.util';
-import { BRANCH_FIELDS } from '@/lib/graph.fields';
+import { apiHandler } from '@/services/api-handler';
 
 const graph = new GraphProvider();
 const CASH_COLLECTION_TYPE = createGraphType('cashCollections', `
@@ -29,7 +27,6 @@ export default apiHandler({
 });
 
 async function allLoans(req, res) {
-    const { db } = await connectToDatabase();
     let response;
     let statusCode = 200;
 
@@ -53,7 +50,7 @@ async function allLoans(req, res) {
             queryQl(CASH_COLLECTION_TYPE, {
                 where: {
                     loId: { _eq: loId },
-                    groupStatus: { _eq: 'peding' }
+                    groupStatus: { _eq: 'pending' }
                 }
             })
         ).then(res => res.data.cashCollections ?? []);
@@ -74,7 +71,7 @@ async function allLoans(req, res) {
             queryQl(CASH_COLLECTION_TYPE, {
                 where: {
                     branchId: { _in: branche_ids },
-                    groupStatus: { _eq: 'peding' }
+                    groupStatus: { _eq: 'pending' }
                 }
             })
         ).then(res => res.data.cashCollections ?? []);
@@ -91,7 +88,7 @@ async function allLoans(req, res) {
         cashCollectionsPending = await graph.query(
             queryQl(CASH_COLLECTION_TYPE, {
                 where: {
-                    groupStatus: { _eq: 'peding' }
+                    groupStatus: { _eq: 'pending' }
                 }
             })
         ).then(res => res.data.cashCollections ?? []);
