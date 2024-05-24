@@ -85,7 +85,7 @@ const AddUpdateDebtCollection = ({ mode = 'add', data = {}, showSidebar, setShow
                     values.mcbu = clientData.mcbu;
                 }
 
-                const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'other-transactions/badDebtCollection/save/';
+                const apiUrl = getApiBaseUrl() + 'other-transactions/badDebtCollection/save/';
     
                 fetchWrapper.post(apiUrl, values)
                     .then(response => {

@@ -8,40 +8,31 @@ export default apiHandler({
 });
 
 const graph = new GraphProvider();
-const CLIENT_TYPE = createGraphType('client', `
+const CLIENT_TYPE = createGraphType('clients', `
 ${CLIENT_FIELDS}
-group {
+groups {
     name
 }
 branch {
     name
 }
-`)('clients');
+`)
 
 async function list(req, res) {
     let statusCode = 200;
     let response = {};
 
     const { searchText, mode } = req.query;
-    const fullNameCondition = [...  searchText.split(' ')].join('%');
+    const fullNameCondition = [ '%', ...  searchText.split(' ')].join('%');
 
     const clients = await graph.query(
         queryQl(CLIENT_TYPE, {
             where: {
                 status: mode === 'offset' ? {  _eq: 'offset' } : { _neq: 'null' },
-                fullName: { _ilike: `%${fullNameCondition}%` },
-                groupId: { _is_null: false }
+                fullName: { _ilike: fullNameCondition }
             }
         })
     )
-    .then(res => {
-        if(res.errors) {
-            throw res.errors
-        }
-        
-        return res;
-    })
-    .then(res => res.data.clients);
     
     response = {
         success: true,

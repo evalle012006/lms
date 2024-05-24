@@ -9,6 +9,7 @@ lastLogin
 loNo
 logged
 number
+password
 position
 profile
 role
@@ -323,6 +324,7 @@ modifiedBy
 modifiedDate
 month
 occurence
+officeType
 status
 userId
 userType

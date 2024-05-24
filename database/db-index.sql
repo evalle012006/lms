@@ -35,6 +35,7 @@ create index "ix_groups__status" on groups("status");
 create index "ix_losTotals__userId" on "losTotals"("userId");
 create index "ix_losTotals__month" on "losTotals"("month");
 create index "ix_losTotals__year" on "losTotals"("year");
+create index "ix_losTotals__officeType" on "losTotals"("officeType");
 
 
 create index "ix_users__root" on "users"("root");

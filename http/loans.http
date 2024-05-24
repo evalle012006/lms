@@ -1,0 +1,20 @@
+# NOTE: auth_token variable is set globally in authenticate.http
+
+@apiUrl=http://localhost:3000/api/
+
+# ---- v1 ---------------
+### Get Pending Loans
+GET {{apiUrl}}/transactions/loans/list?status=pending&branchId=647e678eb021fc463ed63cec&currentDate=2024-04-26
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+
+# ---- v2 ---------------
+### Get Pending Loans
+GET {{apiUrl}}/v2/transactions/loans/list?status=pending&branchId=647e678eb021fc463ed63cec&currentDate=2024-04-26
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+### Get Loan
+GET {{apiUrl}}/v2/transactions/loans?_id=6534fa1c6936a6f7db380d34
+Authorization: Bearer {{auth_token}}

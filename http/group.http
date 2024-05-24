@@ -17,9 +17,3 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2MzllODQ4M
 GET http://localhost:3000/api/v2/groups?_id=639e860636491596e49ed4e3
 Content-Type: application/json
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2MzllODQ4MDkyNzMxZTFkMTFmYjZmZDIiLCJpYXQiOjE3MTEyMDg5MTksImV4cCI6MTcxMTIyMzMxOX0.CQKTcKbcQo23F-Merft2QuC5kHHy4LWqQFj9spxFKSI
-
-
-###
-GET http://localhost:3000/api/v2/groups/list-by-group-occurence?branchId=639e80c8aeb5b756302b6cf4&occurence=daily&loId=639e848092731e1d11fb6fd4
-Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2MzllODQ4MDkyNzMxZTFkMTFmYjZmZDIiLCJpYXQiOjE3MTM2OTU2NTQsImV4cCI6MTcxMzcxMDA1NH0.K77zbRccc7I-JWi8JCUgLanWzx7lV7rSRjNg4ki4W3A

@@ -267,7 +267,7 @@ const LoanApplicationPage = () => {
     }
 
     const getListLoan = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/list';
+        let url = getApiBaseUrl() + 'transactions/loans/list';
         if (currentUser.root !== true && currentUser.role.rep === 4) { 
             url = url + '?' + new URLSearchParams({ status: 'pending', branchId: currentUser.designatedBranchId, loId: currentUser._id, mode: currentUser.transactionType, currentDate: currentDate });
             const response = await fetchWrapper.get(url);
@@ -601,7 +601,7 @@ const LoanApplicationPage = () => {
     }
 
     const getHistoyListLoan = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/list-history';
+        let url = getApiBaseUrl() + 'transactions/loans/list-history';
         if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
             url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id, mode: occurence });
             const response = await fetchWrapper.get(url);
@@ -698,7 +698,7 @@ const LoanApplicationPage = () => {
 
             delete loanData.selected;
 
-            const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/approved-reject-loan', loanData)
+            const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/loans/reject', loanData)
             
             if (response.success) {
                 setLoading(false);
@@ -711,7 +711,7 @@ const LoanApplicationPage = () => {
         } else {
             loanData.status = updatedValue;
             loanData.rejectReason = rejectReason;
-            const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/approved-reject-loan', loanData)
+            const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/loans/reject', loanData)
             if (response.success) {
                 setLoading(false);
                 toast.success('Loan successfully updated.');
@@ -979,7 +979,7 @@ const LoanApplicationPage = () => {
                     errorMsg += "\n\nPlease update each missing info by clicking the row.";
                     toast.error(errorMsg, { autoClose: 10000 });
                 } else {
-                    const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/approved-reject-by-batch', selectedLoanList);
+                    const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/loans/approve-by-batch', selectedLoanList);
 
                     if (response.success) {
                         setLoading(false);

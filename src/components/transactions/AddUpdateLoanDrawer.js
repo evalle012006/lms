@@ -313,7 +313,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
 
                 if (mode === 'add' || mode === 'reloan') {
                     // should check if the user has previous loan that is loanCycle 0, then set the loanCycle to 1
-                    const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/save/';
+                    const apiUrl = getApiBaseUrl() + 'transactions/loans/save/';
 
                     values.lastUpdated = null;  // use only when updating the mispayments
                     values.admissionDate = moment(values.admissionDate).format('YYYY-MM-DD');
@@ -349,7 +349,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                             console.log(error)
                         });
                 } else if (mode === 'edit') {
-                    const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans';
+                    const apiUrl = getApiBaseUrl() + 'transactions/loans';
                     values._id = loan._id;
                     values.modifiedBy = currentUser._id;
                     values.modifiedDate = moment(new Date()).format("YYYY-MM-DD");

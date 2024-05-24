@@ -1,77 +1,100 @@
 const { MongoClient, ObjectId } = require('mongodb');
-const { Pool } = require('postgresql-client');
+const { Connection } = require('postgresql-client');
 const env = require('@next/env');
 const { tableNames } = require('./db-schema')
 
 env.loadEnvConfig('../');
 
 const MIGRATION_KEY = '__migrated';
-const MIGRATION_ID = 1;
+const MIGRATION_ID = 3;
 const MONGODB_URL = process.env.LOCAL_DB_URL;
 const MONGODB_NAME = process.env.LOCAL_DB_NAME;
 const PG_URL = process.env.HASURA_DB_URL;
 const BATCH_SIZE = 100;
+const BATCH_PARALLEL_SIZE = 50;
 
 // run migration
-migrate(['branches']);
-// showDistinctColumnNames('regions');
+migrate();
+
+// new columns
+// (async function () {
+//   const fieldsMap = await getNewFieldsNotInRdbms("users");
+//   [...fieldsMap.keys()]
+//     .filter((key) => !key.startsWith("__"))
+//     .forEach((key) => {
+//       console.log({ key, ...fieldsMap.get(key) });
+//     });
+// })();
+
 
 async function migrate(collectionNamesFilter = []) {
     const mClient = await MongoClient.connect(MONGODB_URL);
     const mDb = await mClient.db(MONGODB_NAME);
 
-    const pgPool = new Pool({
-        host: PG_URL,
-        pool: {
-            min: 3,
-            max: 3
-        }
-    });
+    doMigrate: for (const tableName of tableNames) {
+        const columns = await getColumnNames(tableName);
 
-    doMigrate: for (const [tableName, columns] of tableNames) {
-        if (collectionNamesFilter.length && !collectionNamesFilter.includes(tableName))
+        if (collectionNamesFilter?.length && !collectionNamesFilter.includes(tableName))
             continue;
 
         console.log(`migrating ${tableName}`);
         let migrated = 0;
         const cursor = mDb.collection(tableName).find({[MIGRATION_KEY]: {$ne: MIGRATION_ID}});
         let batch = [];
+        let promises = [];
 
         for await (const doc of cursor) {
             batch.push(columns.map((k) => mapValue(k, doc[k])));
 
             if (batch.length >= BATCH_SIZE) {
-                const success = await batchInsert(tableName, columns, batch, mDb, pgPool);
-                migrated += batch.length;
-                if (!success) {
-                    break doMigrate;
-                }
+                const batchData = batch;
+                promises.push(new Promise(async (resolve) => {
+                  const success = await batchInsert(tableName, columns, batchData, mDb);
+                  migrated += batchData.length;
+                  resolve(success);
+                }));
                 batch = [];
+            }
+
+            if (promises.length >= BATCH_PARALLEL_SIZE) {
+                const result = await Promise.all(promises);
+                if (result.find(r => !r)) {
+                  break doMigrate;
+                }
+                promises = [];
                 printMigratedRows(tableName, migrated);
             }
         }
 
         if (batch.length) {
-            const success = await batchInsert(tableName, columns, batch, mDb, pgPool);
-            migrated += batch.length;
-            if (!success) {
-              break;
-            }
+            const batchData = batch;
+            promises.push(new Promise(async (resolve) => {
+              const success = await batchInsert(tableName, columns, batchData, mDb);
+              migrated += batchData.length;
+              resolve(success);
+            }));
+        }
+
+        if (promises.length) {
+          const result = await Promise.all(promises);
+          if (result.find(r => !r)) {
+            break;
+          }
         }
 
         printMigratedRows(tableName, migrated);
     }
 
     await mClient.close();
-    await pgPool.close();
 }
 
 function printMigratedRows(tableName, migratedRows) {
     console.log(`${tableName}: migrated = ${migratedRows}`);
 }
 
-async function batchInsert(tableName, colNames, batchParams, mongoDb, pgPool) {
-  const pgCon = await pgPool.acquire();
+async function batchInsert(tableName, colNames, batchParams, mongoDb) {
+  const pgCon = new Connection(PG_URL);
+  await pgCon.connect();
 
   let paramCtr = 0;
   const valuesSql = batchParams.map(params => `(${params.map(() => `$${++paramCtr}`).join(', ')})`).join(',\n');
@@ -99,7 +122,7 @@ async function batchInsert(tableName, colNames, batchParams, mongoDb, pgPool) {
     );
     return true;
   } catch (e) {
-    console.error(JSON.stringify(params, null, 2));
+    console.error(batchParams.map(p => colNames.map((c, i) => [c, p[i]])).map(p => JSON.stringify(p)).join('\n'));
     console.error(e.message, e);
     return false;
   } finally {
@@ -134,6 +157,9 @@ function mapValue(key, value) {
     if (key.match(/^(mcbu|noOfPayments|activeLoan|amountRelease|loanBalance)$/)) {
         return isNaN(value) ? null : value || 0;
     }
+    if (key.match(/Date$/) && value === '') {
+      return null;
+    }
     for (const [pattern, replacement] of replacementPatterns) {
         if (typeof value === 'string' && value.match(pattern)) {
             return value.replace(pattern, replacement);
@@ -143,23 +169,71 @@ function mapValue(key, value) {
 }
 
 // noinspection JSUnusedLocalSymbols
-async function showDistinctColumnNames(collectionName) {
+/**
+ * @param {string} collectionName
+ * @returns {Promise<Map<string, { value: any, type: string }>>}
+ */
+async function getDistinctCollectionFields(collectionName) {
     const client = await MongoClient.connect(MONGODB_URL);
     const db = await client.db(MONGODB_NAME);
     const colNamesMap = new Map();
-
-    for await (const doc of db.collection(collectionName).find()) {
+    const maxRows = 500_000; // just check the last records
+    let ctr = 0;
+    for await (const doc of db.collection(collectionName).find().sort({ dateAdded: -1 })) {
         const keys = Object.keys(doc);
         for (const key of keys) {
             if (!colNamesMap.has(key)) {
                 colNamesMap.set(key, doc[key]);
             }
         }
+        if (++ctr >= maxRows)
+          break;
     }
 
+    const fieldsMap = new Map();
     for (const [key, value] of colNamesMap.entries()) {
-        console.log(JSON.stringify({key, value, type: (typeof value)}));
+        fieldsMap.set(key, { value, type: (typeof value) });
     }
 
     await client.close();
+    return fieldsMap;
+}
+
+/**
+ * @param {string} table
+ * @returns {Promise<string[]>}
+ */
+async function getColumnNames(table) {
+  const pgCon = new Connection(PG_URL);
+  await pgCon.connect();
+
+  try {
+    const sql = `
+      SELECT column_name
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name   = $1
+    `;
+    const stm = await pgCon.prepare(sql)
+    const result = await stm.execute({ params: [table] });
+    return result?.rows?.map(r => r[0]);
+  } finally {
+    await pgCon.close();
+  }
+}
+
+// noinspection JSUnusedLocalSymbols
+/**
+ * @param {string} collectionName
+ * @returns {Promise<Map<string, {value: any, type: string}>>}
+ */
+async function getNewFieldsNotInRdbms(collectionName) {
+  const fieldsMap = await getDistinctCollectionFields(collectionName);
+  const tableColumns = await getColumnNames(collectionName);
+
+  for (const colName of tableColumns) {
+    fieldsMap.delete(colName);
+  }
+
+  return fieldsMap;
 }

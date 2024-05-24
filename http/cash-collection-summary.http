@@ -1,0 +1,26 @@
+# NOTE: auth_token variable is set globally in authenticate.http
+
+@apiUrl=http://localhost:3000/api/
+
+# ---- v1 ---------------
+### Get Data (loan officer)
+GET {{apiUrl}}/transactions/cash-collection-summary?userId=648963df06ccad20515c2b1b&date=2024-01-12
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+### Get Data (branch manager)
+GET {{apiUrl}}/transactions/cash-collection-summary?userId=647ec8c44850365c8b0d3573&date=2023-11-20&loGroup=main&branchId=63ec7e645f28f2393ec01263
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+
+# ---- v2 ---------------
+### Get Data (loan officer)
+GET {{apiUrl}}/v2/transactions/cash-collection-summary?userId=648963df06ccad20515c2b1b&date=2024-01-12
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+### Get Data (branch manager)
+GET {{apiUrl}}/v2/transactions/cash-collection-summary?userId=647ec8c44850365c8b0d3573&date=2024-03-16&loGroup=main
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
