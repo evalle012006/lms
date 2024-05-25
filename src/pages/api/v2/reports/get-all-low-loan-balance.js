@@ -33,7 +33,7 @@ query groups ($groupWhere: groups_bool_exp, $loanWhere: loans_bool_exp){
 
 const USERS_QL = gql`
 query users ($_id: String, $loanWhere: loans_bool_exp){
-    user: users (where: {
+    data: users (where: {
       _id: { _eq: $_id }
     }){
       _id
@@ -55,7 +55,7 @@ query users ($_id: String, $loanWhere: loans_bool_exp){
 
 const BRANCH_QL = gql`
 query branches ($_id: String, $loanWhere: loans_bool_exp){
-    branch: branches (where: {
+    data: branches (where: {
       _id: { _eq: $_id }
     }){
       _id
@@ -184,12 +184,9 @@ const getQueryById = async (query, _id, loanWhere) => await graph.apollo.query(
             }
         })
           .then(res => res.data.map(u => ({
-            ... u.branch?.[0],
+            ... u.data?.[0],
             loans: u.loans.map(l => ({
                 _id,
-                totalClients: l.aggregate.totalClient,
-                totalAmountRelease: l.aggregate.totalAmountRelease,
-                totalLoanBalance: l.aggregate.totalLoanBalance,
-                totalMCBU: l.aggregate.totalMCBU
+                ... l.aggregate.totalClient
             }))
         })))
