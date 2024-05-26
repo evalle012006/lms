@@ -791,9 +791,9 @@ const LoanApplicationPage = () => {
         if (currentUser.role.rep === 4) {
             getListGroup(currentUser._id, currentUser?.transactionType);
         }
-        // setTimeout(() => {
-        //     setLoading(false);
-        // }, 1000);
+        setTimeout(() => {
+            setLoading(false);
+        }, 1000);
     }
 
     const handleMultiSelect = (mode, selectAll, row, rowIndex) => {
@@ -1217,23 +1217,29 @@ const LoanApplicationPage = () => {
         }
     }
 
+    const fetchData = async () => {
+        const promise = await new Promise(async (resolve) => {
+            const response = await Promise.all([getListBranch(), getListLoan()]);
+            resolve(response);
+        });
+
+        if (promise) {
+            setLoading(false);
+        }
+    }
+
     useEffect(() => {
         let mounted = true;
-        mounted && getListBranch();
+        mounted && fetchData();
+
+        if (currentUser.role.rep == 3 || currentUser.role.rep == 4) {
+            mounted && getHistoyListLoan();
+        }
 
         return () => {
             mounted = false;
         };
-    }, []);
-
-    useEffect(() => {
-        if (currentDate) {
-            getListLoan();
-            if (currentUser.role.rep == 3 || currentUser.role.rep == 4) {
-                getHistoyListLoan();
-            }
-        }
-    }, []);
+    }, [currentDate]);
 
     useEffect(() => {
         if (isFiltering) {

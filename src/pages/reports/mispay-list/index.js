@@ -7,12 +7,15 @@ import { useEffect } from "react";
 import { useState } from "react";
 import { useSelector } from "react-redux";
 import moment from 'moment'
+import { BehaviorSubject } from 'rxjs';
 
 const IncomingReloanPage = () => {
     const currentUser = useSelector(state => state.user.data);
     const currentDate = useSelector(state => state.systemSettings.currentDate);
-    const [remarks, setRemarks] = useState('all');
-    const [dateFilter, setDateFilter] = useState();
+    const remarksSubject = new BehaviorSubject(process.browser && localStorage.getItem('filterMispaysRemarks'));
+    const dateFilterSubject = new BehaviorSubject(process.browser && localStorage.getItem('filterMispaysDate'));
+    const [remarks, setRemarks] = useState(remarksSubject.value ? remarksSubject.value : 'all');
+    const [dateFilter, setDateFilter] = useState(dateFilterSubject.value ? dateFilterSubject.value : null);
 
     const handleDateFilter = (selected) => {
         const filteredDate = selected.target.value;

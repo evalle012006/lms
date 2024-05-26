@@ -38,7 +38,7 @@ async function save(req, res) {
     logger.debug({page: `Saving Loan: ${loanData.clientId}`, mode: mode, data: loanData});
     const spotExist = await db.collection('loans').find({ $expr: { $and: [{$eq: ["$slotNo", loanData.slotNo]}, {$eq: ["$groupId", loanData.groupId]}, { $or: [{$eq: ["$status", "active"]}, {$eq: ["$status", "completed"]}, {$eq: ["$status", "pending"]}] }] } }).toArray();
     const pendingExist = await db.collection('loans').find({ slotNo: loanData.slotNo, clientId: loanData.clientId, status: 'pending' }).toArray();
-    const groupCashCollections = await db.collection('cashCollections').find({ groupId: group._id, dateAdded: currentDate }).toArray();
+    const groupCashCollections = await db.collection('cashCollections').find({ groupId: loanData.groupId, dateAdded: currentDate }).toArray();
     let groupStatus = 'pending';
     if (groupCashCollections.length > 0) {
         const groupStatuses = groupCashCollections.filter(cc => cc.groupStatus == 'pending');

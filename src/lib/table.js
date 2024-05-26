@@ -25,7 +25,8 @@ import {
   ArrowPathIcon,
   KeyIcon,
   DocumentIcon,
-  ArrowUturnLeftIcon
+  ArrowUturnLeftIcon,
+  ArrowsRightLeftIcon
 } from '@heroicons/react/24/solid';
 import CheckBox from "./ui/checkbox";
 import { useEffect } from "react";
@@ -422,6 +423,11 @@ const ActionButton = ({ row, rowActionButtons }) => {
                       {item.label === 'Revert' && (
                         <div className="px-2" onClick={() => item.action(row)} title={item.title}>
                           <ArrowUturnLeftIcon className="cursor-pointer h-5" />
+                        </div>
+                      )}
+                      {item.label === 'Transfer' && (
+                        <div className="px-2" onClick={() => item.action(row)} title={item.title}>
+                          <ArrowsRightLeftIcon className="cursor-pointer h-5" />
                         </div>
                       )}
                     </React.Fragment>

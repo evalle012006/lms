@@ -6,13 +6,18 @@ import ViewLowBalanceByLOPage from "@/components/reports/low-loan-balance/ViewLo
 import { useEffect } from "react";
 import { useState } from "react";
 import { useSelector } from "react-redux";
+import { BehaviorSubject } from 'rxjs';
 
 const IncomingReloanPage = () => {
     const currentUser = useSelector(state => state.user.data);
-    const [amount, setAmount] = useState(1000);
-    const [amountOperator, setAmountOperator] = useState('less_than_equal');
-    const [noOfPayments, setNoOfPayments] = useState(0);
-    const [noOfPaymentsOperator, setNoOfPaymentsOperator] = useState('greater_than_equal');
+    const amountSubject = new BehaviorSubject(process.browser && localStorage.getItem('filterLowBalanceAmount'));
+    const amountOperatorSubject = new BehaviorSubject(process.browser && localStorage.getItem('filterLowBalanceAmountOperator'));
+    const noOfPaymentsSubject = new BehaviorSubject(process.browser && localStorage.getItem('filterLowBalanceNoOfPayments'));
+    const noOfPaymentsOperatorSubject = new BehaviorSubject(process.browser && localStorage.getItem('filterLowBalanceNoOfPaymentsOperator'));
+    const [amount, setAmount] = useState(amountSubject.value ? amountSubject.value : 1000);
+    const [amountOperator, setAmountOperator] = useState(amountOperatorSubject.value ? amountOperatorSubject.value : 'less_than_equal');
+    const [noOfPayments, setNoOfPayments] = useState(noOfPaymentsSubject.value ? noOfPaymentsSubject.value : 0);
+    const [noOfPaymentsOperator, setNoOfPaymentsOperator] = useState(noOfPaymentsOperatorSubject.value ? noOfPaymentsOperatorSubject.value : 'greater_than_equal');
     const [includeDelinquent, setIncludeDelinquent] = useState(true);
 
     const handleAmountChange = (value) => {

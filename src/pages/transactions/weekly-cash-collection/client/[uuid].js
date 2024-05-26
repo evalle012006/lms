@@ -25,6 +25,7 @@ import ClientDetailPage from '@/components/clients/ClientDetailPage';
 import { setClient } from '@/redux/actions/clientActions';
 import { LOR_ONLY_OFFSET_REMARKS, LOR_WEEKLY_REMARKS } from '@/lib/constants';
 import CheckBox from '@/lib/ui/checkbox';
+import ActionDropDown from '@/lib/ui/action-dropdown';
 
 const CashCollectionDetailsPage = () => {
     const isHoliday = useSelector(state => state.systemSettings.holiday);
@@ -89,7 +90,8 @@ const CashCollectionDetailsPage = () => {
 
     const handleShowClientInfoModal = (selected) => {
         if (selected.status !== 'totals') {
-            const selectedClient = selected.client;
+            const imgpath = process.env.NEXT_PUBLIC_LOCAL_HOST !== 'local' && process.env.NEXT_PUBLIC_LOCAL_HOST;
+            const selectedClient = {...selected.client, imgUrl: selected.client.profile ? imgpath + '/images/clients/' + selected.client.profile : ''};
             dispatch(setClient(selectedClient));
             setShowClientInfoModal(true);
         }
@@ -2299,14 +2301,11 @@ const CashCollectionDetailsPage = () => {
         }
     }
 
-    const handleReloan = (e, selected) => {
-        e.stopPropagation();
-        
+    const handleReloan = (selected) => {
         if (changeRemarks) {
             toast.error('You have unsaved changes. Please click Submit button before using this function.');
         } else if ((selected.remarks && (selected.remarks.value === "pending" || selected.remarks.value === "reloaner")) || (selected.status === 'completed' && !selected.remarks)) {
             setShowAddDrawer(true);
-            selected.group = currentGroup;
             setLoan(selected);
         } else {
             toast.error("This client can't reloan because it is not tagged as reloaner or pending in remarks.");
@@ -2356,9 +2355,7 @@ const CashCollectionDetailsPage = () => {
         }
     }
 
-    const handleMcbuWithdrawal = (e, selected, index) => {
-        e.stopPropagation();
-
+    const handleMcbuWithdrawal = (selected, index) => {
         if (parseFloat(selected.mcbu) > 0) {
             let origList = [...data];
             let temp = {...selected};
@@ -2378,9 +2375,7 @@ const CashCollectionDetailsPage = () => {
         }
     }
 
-    const handleOffset = (e, selected, index) => {
-        e.stopPropagation();
-
+    const handleOffset = (selected, index) => {
         let origList = [...data];
         let temp = {...selected};
 
@@ -2398,8 +2393,7 @@ const CashCollectionDetailsPage = () => {
         dispatch(setCashCollectionGroup(origList));
     }
 
-    const handleMCBUInterest = (e, selected, index) => {
-        e.stopPropagation();
+    const handleMCBUInterest = (selected, index) => {
         if (parseFloat(selected.mcbu) > 1000) {
             setEditMode(true);
             setAddMcbuInterest(true);
@@ -2660,11 +2654,32 @@ const CashCollectionDetailsPage = () => {
         }
     }, [currentGroup]);
 
-    // useEffect(() => {
-    //     if (!editMode && revertMode) {
-    //         setEditMode(true);
-    //     }
-    // }, [revertMode]);
+    const [dropDownActions, setDropDownActions] = useState([
+        {
+            label: 'Reloan',
+            action: handleReloan,
+            icon: <ArrowPathIcon className="w-5 h-5" title="Reloan" />,
+            hidden: true
+        },
+        {
+            label: 'MCBU Withdrawal',
+            action: handleMcbuWithdrawal,
+            icon: <CurrencyDollarIcon className="w-5 h-5" title="MCBU Withdrawal" />,
+            hidden: true
+        },
+        {
+            label: 'Offset',
+            action: handleOffset,
+            icon: <StopCircleIcon className="w-5 h-5" title="Offset" />,
+            hidden: true
+        },
+        {
+            label: 'Calculate MCBU Interest',
+            action: handleMCBUInterest,
+            icon: <ReceiptPercentIcon className="w-5 h-5" title="Calculate MCBU Interest" />,
+            hidden: true
+        },
+    ]);
 
     return (
         <Layout header={false} noPad={true} hScroll={false}>
@@ -2861,11 +2876,7 @@ const CashCollectionDetailsPage = () => {
                                                     <React.Fragment>
                                                         {(!isWeekend && !isHoliday && currentUser.role.rep > 2 && !groupSummaryIsClose) && (
                                                             <div className='flex flex-row p-2'>
-                                                                {/* {(currentUser.role.rep === 3 && cc.hasOwnProperty('_id') && !filter && !cc.draft && cc?.origin !== 'pre-save' && !cc.reverted && cc?.prevData && !cc.mcbuInterestFlag) && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleShowWarningDialog(e, cc)} />} */}
-                                                                {(!cc.advance && (cc.status == 'completed' && !prevDraft && cc.hasOwnProperty("_id") && (cc.remarks && cc.remarks.value == 'reloaner'))) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
-                                                                {(!filter && cc.status === 'active' && !cc.draft) && <CurrencyDollarIcon className="w-5 h-5 mr-6" title="MCBU Refund" onClick={(e) => handleMcbuWithdrawal(e, cc, index)} />}
-                                                                {(!filter && cc.status === 'active' && !cc.draft) && <StopCircleIcon className="w-5 h-5 mr-6" title="Offset" onClick={(e) => handleOffset(e, cc, index)} />}
-                                                                {(!filter && !editMode && cc.status !== 'closed' && currentMonth === 11 && !cc.draft) && <ReceiptPercentIcon className="w-5 h-5 mr-6" title="Calculate MCBU Interest" onClick={(e) => handleMCBUInterest(e, cc, index)} />}
+                                                                <ActionDropDown origin="cash-collection" data={cc} index={index} options={dropDownActions} dataOptions={{ filter: filter, prevDraft: prevDraft, editMode: editMode, currentMonth: currentMonth }} />
                                                             </div>
                                                         )}
                                                     </React.Fragment>
