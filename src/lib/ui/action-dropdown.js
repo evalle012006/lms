@@ -29,6 +29,10 @@ const ActionDropDown = ({ data, options=[], dataOptions = {}, origin }) => {
                     tempOption.hidden = false;
                 }
 
+                if (option.label == 'MCBU Withdrawal' && (!dataOptions?.filter && data.status == 'active' && !data?.draft)) {
+                    tempOption.hidden = false;
+                }
+
                 if (option.label == 'Change Reloaner Remarks' && ((data.remarks?.value?.startsWith('reloaner') && (data.status == 'pending' || data.status == 'tomorrow')) && !dataOptions?.filter && !data.draft && !data.reverted)) {
                     tempOption.hidden = false;
                 }
