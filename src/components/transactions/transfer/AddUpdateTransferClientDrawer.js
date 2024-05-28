@@ -304,7 +304,7 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
                 if (mode === "add") {
                     values.status = "pending";
                     values.dateAdded = currentDate;
-                    fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/transfer-client', values)
+                    fetchWrapper.post(getApiBaseUrl() + 'transactions/transfer-client', values)
                         .then(response => {
                             setLoading(false);
                             if (response.error) {

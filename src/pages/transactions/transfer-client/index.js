@@ -311,7 +311,7 @@ const TransferClientPage = () => {
 
     const getTransferList = async () => {
         // determined all the closed loans it should be highlited with red and option to delete only...
-        let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/transfer-client';
+        let url = getApiBaseUrl() + 'transactions/transfer-client';
         if (currentUser.role.rep === 1) {
             const response = await fetchWrapper.get(url);
             if (response.success) {

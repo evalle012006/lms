@@ -1,5 +1,6 @@
 import { GraphProvider } from "@/lib/graph/graph.provider";
 import {
+  BRANCH_FIELDS,
   CASH_COLLECTIONS_FIELDS,
   CLIENT_FIELDS,
   GROUP_FIELDS,
@@ -15,6 +16,11 @@ const graph = new GraphProvider();
 export async function findUserById(id, fields = USER_FIELDS) {
   return (await graph.query(queryQl(createGraphType('users', fields)(), { where: { _id: { _eq: id } } })))
     .data?.users?.[0];
+}
+
+export async function findUsers(filter, fields = USER_FIELDS) {
+  return (await graph.query(queryQl(createGraphType('users', fields)(), { where: filter })))
+    .data?.users ?? [];
 }
 
 export async function findLoans(filter, fields = LOAN_FIELDS) {
@@ -40,4 +46,9 @@ export async function findGroups(filter, fields = GROUP_FIELDS) {
 export async function findTransferClients(filter, fields = TRANSFER_CLIENT_FIELDS) {
   return (await graph.query(queryQl(createGraphType('transferClients', fields)(), { where: filter })))
     .data?.transferClients ?? [];
+}
+
+export async function findBranches(filter, fields = BRANCH_FIELDS) {
+  return (await graph.query(queryQl(createGraphType('branches', fields)(), { where: filter })))
+    .data?.branches ?? [];
 }
