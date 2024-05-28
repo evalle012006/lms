@@ -2414,26 +2414,30 @@ const CashCollectionDetailsPage = () => {
     }
 
     const handleMcbuWithdrawal = (selected, index) => {
-        let origList = [...data];
-        let temp = {...selected};
-
-        if (temp.loanCycle == 1) {
+        if (selected.loanCycle == 1) {
             toast.error('Error occured. MCBU Withdrawal is not allowed on first loan cycle.');
-        } else if (temp.status != 'completed') {
+        } else if (selected.status != 'completed') {
             toast.error('Error occured. MCBU Withdrawal is only allowed on completed transactions.');
-        } else if (temp.mcbu <= 1000) {
+        } else if (selected.mcbu <= 1000) {
             toast.error('Error occured. MCBU Withdrawal should have more than ₱1,000 remaining MCBU balance.');
         } else if (parseFloat(selected.mcbu) > 0) {
-            temp.mcbuWithdrawFlag = !temp.mcbuWithdrawFlag;
-            
-            if (temp.mcbuWithdrawFlag) {
-                setAllowMcbuWithdrawal(true);
-            } else {
-                setAllowMcbuWithdrawal(false);
-            }
+            const list = data.map((cc, idx) => {
+                let temp = {...cc};
 
-            origList[index] = temp;
-            dispatch(setCashCollectionGroup(origList));
+                if (selected.slotNo === cc.slotNo) {
+                    temp.mcbuWithdrawFlag = !temp.mcbuWithdrawFlag;
+            
+                    if (temp.mcbuWithdrawFlag) {
+                        setAllowMcbuWithdrawal(true);
+                    } else {
+                        setAllowMcbuWithdrawal(false);
+                    }
+                }
+
+                return temp;
+            });
+
+            dispatch(setCashCollectionGroup(list));
         } else {
             toast.error('Client has no MCBU collected.');
         }
@@ -2441,15 +2445,17 @@ const CashCollectionDetailsPage = () => {
 
     const handleMCBUInterest = (selected, index) => {
         if (parseFloat(selected.mcbu) > 1000) {
-            setEditMode(true);
-            setAddMcbuInterest(true);
-            let origList = [...data];
-            let temp = {...selected};
+            const list = data.map((cc, idx) => {
+                let temp = {...cc};
 
-            temp.mcbuInterestFlag = true;
+                if (selected.slotNo === cc.slotNo) {
+                    temp.mcbuInterestFlag = true;
+                }
 
-            origList[index] = temp;
-            dispatch(setCashCollectionGroup(origList));
+                return temp;
+            });
+
+            dispatch(setCashCollectionGroup(list));
         } else {
             toast.error('Client has not reached the minimum of 1000 MCBU to accumulate interest.');
         }
@@ -2645,32 +2651,36 @@ const CashCollectionDetailsPage = () => {
         }
     }, [currentGroup]);
 
-    const [dropDownActions, setDropDownActions] = useState([
-        {
-            label: 'Reloan',
-            action: handleReloan,
-            icon: <ArrowPathIcon className="w-5 h-5" title="Reloan" />,
-            hidden: true
-        },
-        {
-            label: 'MCBU Withdrawal',
-            action: handleMcbuWithdrawal,
-            icon: <CurrencyDollarIcon className="w-5 h-5" title="MCBU Withdrawal" />,
-            hidden: true
-        },
-        {
-            label: 'Change Reloaner Remarks',
-            action: handleShowChangeRemarksDialog,
-            icon: <ArrowsRightLeftIcon className="w-5 h-5" title="Change Reloaner Remarks" />,
-            hidden: true
-        },
-        {
-            label: 'Calculate MCBU Interest',
-            action: handleMCBUInterest,
-            icon: <ReceiptPercentIcon className="w-5 h-5" title="Calculate MCBU Interest" />,
-            hidden: true
-        },
-    ]);
+    const [dropDownActions, setDropDownActions] = useState();
+
+    useEffect(() => {
+        setDropDownActions([
+            {
+                label: 'Reloan',
+                action: handleReloan,
+                icon: <ArrowPathIcon className="w-5 h-5" title="Reloan" />,
+                hidden: true
+            },
+            {
+                label: 'MCBU Withdrawal',
+                action: handleMcbuWithdrawal,
+                icon: <CurrencyDollarIcon className="w-5 h-5" title="MCBU Withdrawal" />,
+                hidden: true
+            },
+            {
+                label: 'Change Reloaner Remarks',
+                action: handleShowChangeRemarksDialog,
+                icon: <ArrowsRightLeftIcon className="w-5 h-5" title="Change Reloaner Remarks" />,
+                hidden: true
+            },
+            {
+                label: 'Calculate MCBU Interest',
+                action: handleMCBUInterest,
+                icon: <ReceiptPercentIcon className="w-5 h-5" title="Calculate MCBU Interest" />,
+                hidden: true
+            },
+        ]);
+    }, [data]);
 
     return (
         <Layout header={false} noPad={true} hScroll={false}>
@@ -2872,7 +2882,7 @@ const CashCollectionDetailsPage = () => {
                                                     <React.Fragment>
                                                         {(!isWeekend && !isHoliday && currentUser.role.rep > 2 && !groupSummaryIsClose) && (
                                                             <div className='flex flex-row p-2 justify-end'>
-                                                                <ActionDropDown origin="cash-collection" data={cc} index={index} options={dropDownActions} dataOptions={{ filter: filter, prevDraft: prevDraft, editMode: editMode, currentMonth: currentMonth }} />
+                                                                {(data && data.length > 0) && <ActionDropDown origin="cash-collection" data={cc} index={index} options={dropDownActions} dataOptions={{ filter: filter, prevDraft: prevDraft, editMode: editMode, currentMonth: currentMonth }} />}
                                                             </div>
                                                         )}
                                                     </React.Fragment>
