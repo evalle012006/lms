@@ -1401,7 +1401,7 @@ const CashCollectionDetailsPage = () => {
                 const pendings = dataArr.filter(cc => {
                     return cc?.advance && cc.status == 'pending';
                 });
-
+                // console.log(dataArr)
                 if (save) {
                     let cashCollection;
                     if (editMode) {
@@ -2357,53 +2357,66 @@ const CashCollectionDetailsPage = () => {
 
     const handleMcbuWithdrawal = (selected, index) => {
         if (parseFloat(selected.mcbu) > 0) {
-            let origList = [...data];
-            let temp = {...selected};
+            const list = data.map((cc, idx) => {
+                let temp = {...cc};
 
-            temp.mcbuWithdrawFlag = !temp.mcbuWithdrawFlag;
+                if (selected.slotNo === cc.slotNo) {
+                    temp.mcbuWithdrawFlag = !temp.mcbuWithdrawFlag;
             
-            if (temp.mcbuWithdrawFlag) {
-                setAllowMcbuWithdrawal(true);
-            } else {
-                setAllowMcbuWithdrawal(false);
-            }
+                    if (temp.mcbuWithdrawFlag) {
+                        setAllowMcbuWithdrawal(true);
+                    } else {
+                        setAllowMcbuWithdrawal(false);
+                    }
+                }
 
-            origList[index] = temp;
-            dispatch(setCashCollectionGroup(origList));
+                return temp;
+            });
+
+            dispatch(setCashCollectionGroup(list));
         } else {
             toast.error('Client has no MCBU collected.');
         }
     }
 
     const handleOffset = (selected, index) => {
-        let origList = [...data];
-        let temp = {...selected};
+        const list = data.map((cc, idx) => {
+            let temp = {...cc};
 
-        temp.offsetTransFlag = !temp.offsetTransFlag;
+            if (selected.slotNo === cc.slotNo) {
+                temp.offsetTransFlag = !temp.offsetTransFlag;
         
-        if (temp.offsetTransFlag) {
-            setAllowOffsetTransaction(true);
-            setRemarksArr(LOR_ONLY_OFFSET_REMARKS);
-        } else {
-            setAllowOffsetTransaction(false);
-            setRemarksArr(LOR_WEEKLY_REMARKS);
-        }
+                if (temp.offsetTransFlag) {
+                    setAllowOffsetTransaction(true);
+                    setRemarksArr(LOR_ONLY_OFFSET_REMARKS);
+                } else {
+                    setAllowOffsetTransaction(false);
+                    setRemarksArr(LOR_WEEKLY_REMARKS);
+                }
+            }
 
-        origList[index] = temp;
-        dispatch(setCashCollectionGroup(origList));
+            return temp;
+        });
+
+        dispatch(setCashCollectionGroup(list));
     }
 
     const handleMCBUInterest = (selected, index) => {
         if (parseFloat(selected.mcbu) > 1000) {
-            setEditMode(true);
-            setAddMcbuInterest(true);
-            let origList = [...data];
-            let temp = {...selected};
+            const list = data.map((cc, idx) => {
+                let temp = {...cc};
+    
+                if (selected.slotNo === cc.slotNo) {
+                    setEditMode(true);
+                    setAddMcbuInterest(true);
 
-            temp.mcbuInterestFlag = true;
-
-            origList[index] = temp;
-            dispatch(setCashCollectionGroup(origList));
+                    temp.mcbuInterestFlag = true;
+                }
+    
+                return temp;
+            });
+    
+            dispatch(setCashCollectionGroup(list));
         } else {
             toast.error('Client has not reached the minimum of 1000 MCBU to accumulate interest.');
         }
@@ -2654,32 +2667,38 @@ const CashCollectionDetailsPage = () => {
         }
     }, [currentGroup]);
 
-    const [dropDownActions, setDropDownActions] = useState([
-        {
-            label: 'Reloan',
-            action: handleReloan,
-            icon: <ArrowPathIcon className="w-5 h-5" title="Reloan" />,
-            hidden: true
-        },
-        {
-            label: 'MCBU Withdrawal',
-            action: handleMcbuWithdrawal,
-            icon: <CurrencyDollarIcon className="w-5 h-5" title="MCBU Withdrawal" />,
-            hidden: true
-        },
-        {
-            label: 'Offset',
-            action: handleOffset,
-            icon: <StopCircleIcon className="w-5 h-5" title="Offset" />,
-            hidden: true
-        },
-        {
-            label: 'Calculate MCBU Interest',
-            action: handleMCBUInterest,
-            icon: <ReceiptPercentIcon className="w-5 h-5" title="Calculate MCBU Interest" />,
-            hidden: true
-        },
-    ]);
+    const [dropDownActions, setDropDownActions] = useState();
+
+    useEffect(() => {
+        setDropDownActions(
+            [
+                {
+                    label: 'Reloan',
+                    action: handleReloan,
+                    icon: <ArrowPathIcon className="w-5 h-5" title="Reloan" />,
+                    hidden: true
+                },
+                {
+                    label: 'MCBU Withdrawal',
+                    action: handleMcbuWithdrawal,
+                    icon: <CurrencyDollarIcon className="w-5 h-5" title="MCBU Withdrawal" />,
+                    hidden: true
+                },
+                {
+                    label: 'Offset',
+                    action: handleOffset,
+                    icon: <StopCircleIcon className="w-5 h-5" title="Offset" />,
+                    hidden: true
+                },
+                {
+                    label: 'Calculate MCBU Interest',
+                    action: handleMCBUInterest,
+                    icon: <ReceiptPercentIcon className="w-5 h-5" title="Calculate MCBU Interest" />,
+                    hidden: true
+                },
+            ]
+        );
+    }, [data]);
 
     return (
         <Layout header={false} noPad={true} hScroll={false}>
@@ -2876,7 +2895,7 @@ const CashCollectionDetailsPage = () => {
                                                     <React.Fragment>
                                                         {(!isWeekend && !isHoliday && currentUser.role.rep > 2 && !groupSummaryIsClose) && (
                                                             <div className='flex flex-row p-2'>
-                                                                <ActionDropDown origin="cash-collection" data={cc} index={index} options={dropDownActions} dataOptions={{ filter: filter, prevDraft: prevDraft, editMode: editMode, currentMonth: currentMonth }} />
+                                                                {(data && data.length > 0) && <ActionDropDown origin="cash-collection" data={cc} index={index} options={dropDownActions} dataOptions={{ filter: filter, prevDraft: prevDraft, editMode: editMode, currentMonth: currentMonth }} />}
                                                             </div>
                                                         )}
                                                     </React.Fragment>

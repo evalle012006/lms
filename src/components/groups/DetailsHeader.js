@@ -67,7 +67,7 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
 
     useEffect(() => {
         if (group) {
-            const currentBranch = branchList.find(branch => branch._id == group.branchId);
+            const currentBranch = branchList.find(branch => branch?._id == group.branchId);
             if (currentBranch) {
                 setBranchName(currentBranch.name);
             }
@@ -165,7 +165,7 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
                     )}
 
                     {( (!showSaveButton && groupTransactionStatus != 'close' && !isHoliday && !isWeekend && currentUser.role.rep == 3) && (
-                        <div className="w-40">
+                        <div className="w-40 ml-4">
                             <ButtonSolid label="Revert" onClick={(e) => handleShowWarningDialog(e)} />
                         </div>
                     ) )}
