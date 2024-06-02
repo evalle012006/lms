@@ -37,7 +37,7 @@ import {
 import Avatar from "@/lib/avatar";
 import { userService } from "@/services/user-service";
 import { fetchWrapper } from "@/lib/fetch-wrapper";
-import { setTransfer, setTransferList } from "@/redux/actions/transferActions";
+// import { setTransfer, setTransferList } from "@/redux/actions/transferActions";
 import { setLosList } from "@/redux/actions/losActions";
 import { setCashCollectionList } from "@/redux/actions/cashCollectionActions";
 import { setUser, setUserList } from "@/redux/actions/userActions";
@@ -65,8 +65,8 @@ const SubNav = ({ item, index, activePath, inner=false, className }) => {
     }
 
     const resetReduxState = () => {
-        dispatch(setTransferList([]));
-        dispatch(setTransfer(null));
+        // dispatch(setTransferList([]));
+        // dispatch(setTransfer(null));
         dispatch(setLosList([]));
         dispatch(setCashCollectionList([]));
         dispatch(setUserList([]));
