@@ -18,8 +18,9 @@ import placeholder from '/public/images/image-placeholder.png';
 import Image from 'next/image';
 import { calculateAge, checkFileSize } from "@/lib/utils";
 import { useRouter } from "node_modules/next/router";
+import ClientSearchTool from "../dashboard/ClientSearchTool";
 // add loan officer per client
-const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSidebar, onClose }) => {
+const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSidebar, setMode, onClose }) => {
     const hiddenInput = useRef(null);
     const formikRef = useRef();
     const dispatch = useDispatch();
@@ -37,6 +38,8 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
     const [image, setImage] = useState('');
     const [selectedGroup, setSelectedGroup] = useState();
     const router = useRouter();
+    const [searchedClients, setSearchedClients] = useState([]);
+    const [selectedClient, setSelectedClient] = useState();
 
     const { status } = router.query;
 
@@ -103,7 +106,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                 const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'clients/search?' + new URLSearchParams({ searchText: searchText?.toUpperCase() }));
                 if (response.success) {
                     if (response.clients.length > 0) {
-                        toast.warning('Client has similar name. Please verify the client first in the search client tool in Dashboard!');
+                        toast.warning('Client has similar name. Please verify the client first in the search client tool!');
                     }
                 }
             }
@@ -259,6 +262,28 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
         }
     }, [currentUser]);
 
+    // useEffect(() => {
+    //     if (selectedClient?.length > 0 && ((selectedClient?.status == "offset") ||
+    //         ((selectedClient?.status == "pending" && (currentUser.role.rep === 4 && selectedClient?.loId == currentUser._id)) || (currentUser.role.rep == 3 && selectedClient?.branchId == currentUser.branchId)))
+    //     ) {
+    //         const form = formikRef.current;
+    //         form.setFieldValue('firstName', selectedClient.firstName);
+    //         form.setFieldValue('middleName', selectedClient.middleName);
+    //         form.setFieldValue('lastName', selectedClient.lastName);
+    //         form.setFieldValue('birthdate', selectedClient.birthdate);
+    //         form.setFieldValue('addressStreetNo', selectedClient.addressStreetNo);
+    //         form.setFieldValue('addressBarangayDistrict', selectedClient.addressBarangayDistrict);
+    //         form.setFieldValue('addressMunicipalityCity', selectedClient.addressMunicipalityCity);
+    //         form.setFieldValue('addressProvince', selectedClient.addressProvince);
+    //         form.setFieldValue('addressZipCode', selectedClient.addressZipCode);
+    //         form.setFieldValue('contactNumber', selectedClient.contactNumber);
+    //         form.setFieldValue('branchId', currentUser.branchId);
+    //         if (currentUser.role.rep == 4) {
+    //             form.setFieldValue('loId', currentUser._id);
+    //         }
+    //     }
+    // }, [selectedClient]);
+
     return (
         <React.Fragment>
             <SideBar title={mode === 'add' ? 'Add Client' : 'Edit Client'} showSidebar={showSidebar} setShowSidebar={setShowSidebar} hasCloseButton={false}>
@@ -268,6 +293,11 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                     </div>
                 ) : (
                     <div className="px-2">
+                        {mode == "add" && (
+                            <div className="w-11/12">
+                                <ClientSearchTool origin="client_list" callback={setSearchedClients} setSelected={setSelectedClient} />
+                            </div>
+                        )}
                         <Formik enableReinitialize={true}
                             onSubmit={handleSaveUpdate}
                             initialValues={initialValues}
@@ -286,7 +316,6 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                 setFieldTouched
                             }) => (
                                 <form onSubmit={handleSubmit} autoComplete="off">
-                                    {/* add occurence selection */}
                                     {mode === 'edit' && (
                                         <div className="profile-photo rounded-lg p-3 proxima-regular border">
                                             <div className="proxima-bold">Profile Photo</div>

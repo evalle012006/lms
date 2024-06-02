@@ -215,7 +215,7 @@
 .dropdown-menu-container {
     box-shadow: 0px 16px 24px rgba(33, 33, 35, 0.08);
     border-radius: 8px;
-    z-index: 999;
+    z-index: 100;
 }
 
 .dropdown-menu-item {

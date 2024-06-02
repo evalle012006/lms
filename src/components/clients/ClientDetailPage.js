@@ -206,12 +206,12 @@ const ClientDetailPage = () => {
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
-        {
-            Header: "Date Granted",
-            accessor: 'dateGranted',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
+        // {
+        //     Header: "Date Granted",
+        //     accessor: 'dateGranted',
+        //     Filter: SelectColumnFilter,
+        //     filter: 'includes'
+        // },
         {
             Header: "PN Number",
             accessor: 'pnNumber',
@@ -266,7 +266,7 @@ const ClientDetailPage = () => {
     }, [client]);
 
     return (
-        <React.Fragment>
+        <div className="overflow-x-auto h-[45rem]">
             {loading ? (
                 <div className="absolute top-1/2 left-1/2">
                     <Spinner />
@@ -354,7 +354,7 @@ const ClientDetailPage = () => {
                     )}
                 </React.Fragment>
             )}
-        </React.Fragment>
+        </div>
     )
 }
 

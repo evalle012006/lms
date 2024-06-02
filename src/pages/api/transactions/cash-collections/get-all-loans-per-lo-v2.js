@@ -117,7 +117,7 @@ async function getAllLoansPerGroup(date, mode, loId, dayName, currentDate) {
                                     } },
                                     mcbuCol: { $sum: '$mcbuCol' },
                                     mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
-                                    mcbuDailyWithdrawal: { $sum: '$mcbuDailyWithdrawal' },
+                                    // mcbuDailyWithdrawal: { $sum: '$mcbuDailyWithdrawal' },
                                     mcbuReturnNo: { $sum: {
                                         $cond: {
                                             if: { $or: [
@@ -376,7 +376,7 @@ async function getAllLoansPerGroup(date, mode, loId, dayName, currentDate) {
                                     } },
                                     pendingClients: { $sum: { 
                                         $cond: {
-                                            if: { $eq: ['$status', 'completed'] },
+                                            if: { $and: [ {$eq: ['$status', 'completed']}, {$ne: ['$transferred', true]} ] },
                                             then: 1,
                                             else: 0
                                         } 
@@ -783,7 +783,7 @@ async function getAllLoansPerGroup(date, mode, loId, dayName, currentDate) {
                                     } },
                                     pendingClients: { $sum: { 
                                         $cond: {
-                                            if: { $eq: ['$status', 'completed'] },
+                                            if: { $and: [ {$eq: ['$status', 'completed']}, {$ne: ['$transferred', true]} ] },
                                             then: 1,
                                             else: 0
                                         } 
@@ -943,7 +943,7 @@ async function getAllLoansPerGroup(date, mode, loId, dayName, currentDate) {
                                     mcbu: { $sum: '$mcbu' },
                                     mcbuCol: { $sum: '$mcbuCol' },
                                     mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
-                                    mcbuDailyWithdrawal: { $sum: '$mcbuDailyWithdrawal' },
+                                    // mcbuDailyWithdrawal: { $sum: '$mcbuDailyWithdrawal' },
                                     mcbuReturnNo: { $sum: {
                                         $cond: {
                                             if: { $or: [

@@ -40,13 +40,7 @@ async function updateUser(req, res) {
             }
 
             const profile = file ? file : userData.profile;
-            const role = JSON.parse(fields.role);
-            let designatedBranch = fields.designatedBranch;
-            // if (role.rep === 2) {
-            //     designatedBranch = JSON.parse(fields.designatedBranch);
-            // }
-
-            if (role.rep === 3) {
+            if (fields?.origin == 'updateUser') {
                 await db
                     .collection('users')
                     .updateOne(
@@ -57,37 +51,62 @@ async function updateUser(req, res) {
                                 lastName: fields.lastName,
                                 number: fields.number,
                                 position: fields.position,
-                                profile: profile,
-                                role: role,
-                                designatedBranch: designatedBranch,
-                                loNo: fields.loNo,
-                                transactionType: fields.transactionType,
-                                branchManagerName: fields.branchManagerName
+                                profile: profile
                             },
                             $currentDate: { dateModified: true }
                         }
                     );
             } else {
-                await db
-                    .collection('users')
-                    .updateOne(
-                        { email: fields.email },
-                        {
-                            $set: {
-                                firstName: fields.firstName,
-                                lastName: fields.lastName,
-                                number: fields.number,
-                                position: fields.position,
-                                profile: profile,
-                                role: role,
-                                designatedBranch: designatedBranch,
-                                loNo: fields.loNo,
-                                transactionType: fields.transactionType
-                            },
-                            $currentDate: { dateModified: true }
-                        }
-                    );
+                const role = JSON.parse(fields.role);
+                let designatedBranch = fields.designatedBranch;
+                // if (role.rep === 2) {
+                //     designatedBranch = JSON.parse(fields.designatedBranch);
+                // }
+
+                if (role.rep === 3) {
+                    await db
+                        .collection('users')
+                        .updateOne(
+                            { email: fields.email },
+                            {
+                                $set: {
+                                    firstName: fields.firstName,
+                                    lastName: fields.lastName,
+                                    number: fields.number,
+                                    position: fields.position,
+                                    profile: profile,
+                                    role: role,
+                                    designatedBranch: designatedBranch,
+                                    loNo: fields.loNo,
+                                    transactionType: fields.transactionType,
+                                    branchManagerName: fields.branchManagerName
+                                },
+                                $currentDate: { dateModified: true }
+                            }
+                        );
+                } else {
+                    await db
+                        .collection('users')
+                        .updateOne(
+                            { email: fields.email },
+                            {
+                                $set: {
+                                    firstName: fields.firstName,
+                                    lastName: fields.lastName,
+                                    number: fields.number,
+                                    position: fields.position,
+                                    profile: profile,
+                                    role: role,
+                                    designatedBranch: designatedBranch,
+                                    loNo: fields.loNo,
+                                    transactionType: fields.transactionType
+                                },
+                                $currentDate: { dateModified: true }
+                            }
+                        );
+                }
             }
+
             // userData.profile = file ? file : userData.profile;
             delete userData._id;
             delete userData.password;
