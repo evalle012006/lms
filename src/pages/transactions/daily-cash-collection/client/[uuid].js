@@ -277,8 +277,8 @@ const CashCollectionDetailsPage = () => {
                         mcbuReturnAmtStr: mcbuReturnAmt > 0 ? formatPricePhp(mcbuReturnAmt) : '-',
                         mcbuInterest: cc.mcbuInterest ? cc.mcbuInterest : 0,
                         mcbuInterestStr: cc.mcbuInterest > 0 ? formatPricePhp(cc.mcbuInterest) : '-',
-                        mcbuDailyWithdrawal: 0,
-                        mcbuDailyWithdrawalStr: '-',
+                        // mcbuDailyWithdrawal: 0,
+                        // mcbuDailyWithdrawalStr: '-',
                         amountRelease: amountRelease,
                         amountReleaseStr: amountRelease > 0 ? formatPricePhp(amountRelease) : '-',
                         loanBalance: loanBalance,
@@ -352,8 +352,8 @@ const CashCollectionDetailsPage = () => {
                             mcbuReturnAmtStr: cc.mcbuReturnAmt > 0 ? formatPricePhp(cc.mcbuReturnAmt) : '-',
                             mcbuInterest: cc.mcbuInterest ? cc.mcbuInterest : 0,
                             mcbuInterestStr: cc.mcbuInterest > 0 ? formatPricePhp(cc.mcbuInterest) : '-',
-                            mcbuDailyWithdrawal: cc.mcbuDailyWithdrawal ? cc.mcbuDailyWithdrawal : 0,
-                            mcbuDailyWithdrawalStr: cc.mcbuDailyWithdrawal > 0 ? formatPricePhp(cc.mcbuDailyWithdrawal) : '-',
+                            // mcbuDailyWithdrawal: cc.mcbuDailyWithdrawal ? cc.mcbuDailyWithdrawal : 0,
+                            // mcbuDailyWithdrawalStr: cc.mcbuDailyWithdrawal > 0 ? formatPricePhp(cc.mcbuDailyWithdrawal) : '-',
                             amountRelease: '-',
                             amountReleaseStr: '-',
                             loanBalance: '-',
@@ -464,8 +464,8 @@ const CashCollectionDetailsPage = () => {
                             mcbuReturnAmtStr: mcbuReturnAmt > 0 ? formatPricePhp(mcbuReturnAmt) : '-',
                             mcbuInterest: cc.mcbuInterest ? cc.mcbuInterest : 0,
                             mcbuInterestStr: cc.mcbuInterest > 0 ? formatPricePhp(cc.mcbuInterest) : '-',
-                            mcbuDailyWithdrawal: cc.mcbuDailyWithdrawal ? cc.mcbuDailyWithdrawal : 0,
-                            mcbuDailyWithdrawalStr: cc.mcbuDailyWithdrawal > 0 ? formatPricePhp(cc.mcbuDailyWithdrawal) : '-',
+                            // mcbuDailyWithdrawal: cc.mcbuDailyWithdrawal ? cc.mcbuDailyWithdrawal : 0,
+                            // mcbuDailyWithdrawalStr: cc.mcbuDailyWithdrawal > 0 ? formatPricePhp(cc.mcbuDailyWithdrawal) : '-',
                             amountRelease: amountRelease,
                             amountReleaseStr: amountRelease > 0 ? formatPricePhp(amountRelease) : '-',
                             loanBalance: loanBalance,
@@ -585,8 +585,8 @@ const CashCollectionDetailsPage = () => {
                             mcbuReturnAmtStr: '-',
                             mcbuInterest: cc.mcbuInterest ? cc.mcbuInterest : 0,
                             mcbuInterestStr: cc.mcbuInterest > 0 ? formatPricePhp(cc.mcbuInterest) : '-',
-                            mcbuDailyWithdrawal: cc.mcbuDailyWithdrawal ? cc.mcbuDailyWithdrawal : 0,
-                            mcbuDailyWithdrawalStr: cc.mcbuDailyWithdrawal > 0 ? formatPricePhp(cc.mcbuDailyWithdrawal) : '-',
+                            // mcbuDailyWithdrawal: cc.mcbuDailyWithdrawal ? cc.mcbuDailyWithdrawal : 0,
+                            // mcbuDailyWithdrawalStr: cc.mcbuDailyWithdrawal > 0 ? formatPricePhp(cc.mcbuDailyWithdrawal) : '-',
                             activeLoan: activeLoan,
                             targetCollection: activeLoan,
                             targetCollectionStr: activeLoan > 0 ? formatPricePhp(activeLoan) : '-',
@@ -652,8 +652,8 @@ const CashCollectionDetailsPage = () => {
                             collection.mcbuReturnAmtStr = collection.mcbuReturnAmt > 0 ? formatPricePhp(collection.mcbuReturnAmt) : '-';
                             collection.mcbuInterest = draftCC.mcbuInterest ? cc.mcbuInterest : 0,
                             collection.mcbuInterestStr = draftCC.mcbuInterest > 0 ? formatPricePhp(draftCC.mcbuInterest) : '-',
-                            collection.mcbuDailyWithdrawal = draftCC.mcbuDailyWithdrawal ? draftCC.mcbuDailyWithdrawal : 0,
-                            collection.mcbuDailyWithdrawalStr = draftCC.mcbuDailyWithdrawal > 0 ? formatPricePhp(draftCC.mcbuDailyWithdrawal) : '-',
+                            // collection.mcbuDailyWithdrawal = draftCC.mcbuDailyWithdrawal ? draftCC.mcbuDailyWithdrawal : 0,
+                            // collection.mcbuDailyWithdrawalStr = draftCC.mcbuDailyWithdrawal > 0 ? formatPricePhp(draftCC.mcbuDailyWithdrawal) : '-',
                             collection.advanceDays = draftCC.advanceDays;
                             collection.draft = draftCC.draft;
                             collection.dcmc = (draftCC.hasOwnProperty('dcmc') && draftCC.dcmc) ? draftCC.dcmc : false;
@@ -702,8 +702,8 @@ const CashCollectionDetailsPage = () => {
                                 collection.mcbuReturnAmtStr = collection.mcbuReturnAmt > 0 ? formatPricePhp(collection.mcbuReturnAmt) : '-';
                                 collection.mcbuInterest = current.mcbuInterest ? cc.mcbuInterest : 0,
                                 collection.mcbuInterestStr = current.mcbuInterest > 0 ? formatPricePhp(current.mcbuInterest) : '-',
-                                collection.mcbuDailyWithdrawal = current.mcbuDailyWithdrawal ? current.mcbuDailyWithdrawal : 0,
-                                collection.mcbuDailyWithdrawalStr = current.mcbuDailyWithdrawal > 0 ? formatPricePhp(current.mcbuDailyWithdrawal) : '-',
+                                // collection.mcbuDailyWithdrawal = current.mcbuDailyWithdrawal ? current.mcbuDailyWithdrawal : 0,
+                                // collection.mcbuDailyWithdrawalStr = current.mcbuDailyWithdrawal > 0 ? formatPricePhp(current.mcbuDailyWithdrawal) : '-',
                                 collection.advanceDays = current.advanceDays;
                                 collection.draft = current.draft;
                                 collection.dcmc = (current.hasOwnProperty('dcmc') && current.dcmc) ? current.dcmc : false;
@@ -824,8 +824,8 @@ const CashCollectionDetailsPage = () => {
                             mcbuReturnAmtStr: currentLoan.mcbuReturnAmt > 0 ? formatPricePhp(currentLoan.mcbuReturnAmt) : '-',
                             mcbuInterest: loan.mcbuInterest,
                             mcbuInterestStr: loan.mcbuInterest > 0 ? formatPricePhp(loan.mcbuInterest) : '-',
-                            mcbuDailyWithdrawal: currentLoan.mcbuDailyWithdrawal,
-                            mcbuDailyWithdrawalStr: currentLoan.mcbuDailyWithdrawal > 0 ? formatPricePhp(currentLoan.mcbuDailyWithdrawal) : '-',
+                            // mcbuDailyWithdrawal: currentLoan.mcbuDailyWithdrawal,
+                            // mcbuDailyWithdrawalStr: currentLoan.mcbuDailyWithdrawal > 0 ? formatPricePhp(currentLoan.mcbuDailyWithdrawal) : '-',
                             targetCollection: currentLoan.history.activeLoan,
                             targetCollectionStr: formatPricePhp(currentLoan.history.activeLoan),
                             mispayment: currentLoan.mispayment,
@@ -902,8 +902,8 @@ const CashCollectionDetailsPage = () => {
                             mcbuReturnAmtStr: loan.mcbuReturnAmt > 0 ? formatPricePhp(loan.mcbuReturnAmt) : '-',
                             mcbuInterest: loan.mcbuInterest,
                             mcbuInterestStr: loan.mcbuInterest > 0 ? formatPricePhp(loan.mcbuInterest) : '-',
-                            mcbuDailyWithdrawal: loan.mcbuDailyWithdrawal,
-                            mcbuDailyWithdrawalStr: loan.mcbuDailyWithdrawal > 0 ? formatPricePhp(loan.mcbuDailyWithdrawal) : '-',
+                            // mcbuDailyWithdrawal: loan.mcbuDailyWithdrawal,
+                            // mcbuDailyWithdrawalStr: loan.mcbuDailyWithdrawal > 0 ? formatPricePhp(loan.mcbuDailyWithdrawal) : '-',
                             remarks: currentLoan?.status === 'completed' ? currentLoan.remarks : '-',
                             fullPaymentStr: '-',
                             loanTerms: loan.loanTerms,
@@ -963,8 +963,8 @@ const CashCollectionDetailsPage = () => {
                         mcbuReturnAmtStr: prevLoan?.mcbuReturnAmt > 0 ? formatPricePhp(prevLoan.mcbuReturnAmt) : '-',
                         mcbuInterest: loan.mcbuInterest,
                         mcbuInterestStr: loan.mcbuInterest > 0 ? formatPricePhp(loan.mcbuInterest) : '-',
-                        mcbuDailyWithdrawal: loan.mcbuDailyWithdrawal,
-                        mcbuDailyWithdrawalStr: loan.mcbuDailyWithdrawal > 0 ? formatPricePhp(loan.mcbuDailyWithdrawal) : '-',
+                        // mcbuDailyWithdrawal: loan.mcbuDailyWithdrawal,
+                        // mcbuDailyWithdrawalStr: loan.mcbuDailyWithdrawal > 0 ? formatPricePhp(loan.mcbuDailyWithdrawal) : '-',
                         remarks: prevLoan ? prevLoan.history?.remarks : '-',
                         pastDueStr: '-',
                         fullPaymentStr: '-',
@@ -1244,7 +1244,7 @@ const CashCollectionDetailsPage = () => {
                     delete temp.mcbuWithdrawalStr;
                     delete temp.mcbuReturnAmtStr;
                     delete temp.mcbuInterestStr;
-                    delete temp.mcbuDailyWithdrawalStr;
+                    // delete temp.mcbuDailyWithdrawalStr;
                     delete temp.mcbuError;
                     delete temp.client;
                     delete temp.transferStr;
@@ -1475,13 +1475,6 @@ const CashCollectionDetailsPage = () => {
                             };
                         }
 
-                        // Reset MCBU
-                        // if (temp.hasOwnProperty('mcbuHistory')) {
-                        //     temp.mcbu = temp.mcbuHistory.mcbu;
-                        //     temp.mcbuStr = temp.mcbu > 0 ? formatPricePhp(temp.mcbu) : '-';
-                        //     temp.prevData.mcbu = temp.mcbuHistory.mcbu;
-                        // }
-
                         if (value && parseInt(value) != 0) {
                             if (containsAnyLetters(value)) {
                                 toast.error("Invalid amount in actual collection. Please input numeric only.");
@@ -1646,60 +1639,46 @@ const CashCollectionDetailsPage = () => {
         } else if (type === 'mcbuWithdrawal') {
             const value = e.target.value ? parseFloat(e.target.value) : 0;
             
-            if (value > 0) {
-                const mcbuWithdrawal = value;
+            const mcbuWithdrawal = value;
 
-                let list = data.map((cc, idx) => {
-                    let temp = {...cc};
+            let list = data.map((cc, idx) => {
+                let temp = {...cc};
 
-                    if (idx === index) {
-                        if (temp.hasOwnProperty('prevData') && temp?.prevData) {
-                            temp.mcbu = temp.prevData.mcbu;
-                            temp.mcbuStr = formatPricePhp(temp.mcbu);
-                        } else {
-                            temp.prevData = {
-                                amountRelease: temp.amountRelease,
-                                paymentCollection: temp.paymentCollection,
-                                excess: temp.excess !== '-' ? temp.excess : 0,
-                                loanBalance: temp.loanBalance,
-                                activeLoan: temp.activeLoan,
-                                noOfPayments: temp.noOfPayments,
-                                total: temp.total,
-                                pastDue: temp.pastDue,
-                                mcbu: temp.mcbu
-                            };
-                        }
-
-                        const diff = temp.mcbu - mcbuWithdrawal;
-
-                        if (temp.loanCycle == 1) {
-                            toast.error('Error occured. MCBU Withdrawal is not allowed on first loan cycle.');
-                        } else if (temp.status != 'completed') {
-                            toast.error('Error occured. MCBU Withdrawal is only allowed on completed transactions.');
-                        } else if (diff < 1000) {
-                            toast.error('Error occured. MCBU Withdrawal should have at least ₱1,000 remaining balance.');
-                        } else if (mcbuWithdrawal > temp.mcbu) {
-                            temp.mcbuError = true;
-                        } else {
-                            temp.mcbuError = false;
-                            temp.mcbuDailyWithdrawal = mcbuWithdrawal;
-                            temp.mcbuDailyWithdrawalStr = formatPricePhp(mcbuWithdrawal);
-                            if (temp.mcbu > 0) {
-                                temp.mcbu = parseFloat(temp.mcbu) - mcbuWithdrawal;
-                                temp.mcbuStr = formatPricePhp(temp.mcbu);   
-                            }
-                        }
+                if (idx === index) {
+                    if (temp.mcbuWithdrawal > 0) {
+                        temp.mcbu = temp.prevData.mcbu + temp.mcbuWithdrawal;
                     }
 
-                    return temp;
-                });
+                    const diff = temp.mcbu - mcbuWithdrawal;
 
-                const totalsObj = calculateTotals(list);
-                list[totalIdx] = totalsObj;
+                    if (temp.loanCycle == 1) {
+                        toast.error('Error occured. MCBU Withdrawal is not allowed on first loan cycle.');
+                    } else if (temp.status != 'completed') {
+                        toast.error('Error occured. MCBU Withdrawal is only allowed on completed transactions.');
+                    } else if (diff < 1000) {
+                        toast.error('Error occured. MCBU Withdrawal should have at least ₱1,000 remaining balance.');
+                    } else if (mcbuWithdrawal > temp.mcbu) {
+                        temp.mcbuError = true;
+                    } else {
+                        temp.mcbuError = false;
+                        temp.mcbuWithdrawal = mcbuWithdrawal;
+                        temp.mcbuWithdrawalStr = formatPricePhp(mcbuWithdrawal);
+                        if (temp.mcbu > 0) {
+                            temp.mcbu = parseFloat(temp.mcbu) - mcbuWithdrawal;
+                            temp.mcbuStr = formatPricePhp(temp.mcbu);
+                            temp.prevData.mcbu = temp.mcbu;
+                        }
+                    }
+                }
 
-                list.sort((a, b) => { return a.slotNo - b.slotNo; });
-                dispatch(setCashCollectionGroup(list));
-            }
+                return temp;
+            });
+
+            const totalsObj = calculateTotals(list);
+            list[totalIdx] = totalsObj;
+
+            list.sort((a, b) => { return a.slotNo - b.slotNo; });
+            dispatch(setCashCollectionGroup(list));
         } else if (type === 'mcbuInterest') {
             const value = e.target.value ? parseFloat(e.target.value) : 0;
             if (value > 0) {
@@ -2667,12 +2646,12 @@ const CashCollectionDetailsPage = () => {
                 icon: <CurrencyDollarIcon className="w-5 h-5" title="MCBU Withdrawal" />,
                 hidden: true
             },
-            {
-                label: 'Change Reloaner Remarks',
-                action: handleShowChangeRemarksDialog,
-                icon: <ArrowsRightLeftIcon className="w-5 h-5" title="Change Reloaner Remarks" />,
-                hidden: true
-            },
+            // {
+            //     label: 'Change Reloaner Remarks',
+            //     action: handleShowChangeRemarksDialog,
+            //     icon: <ArrowsRightLeftIcon className="w-5 h-5" title="Change Reloaner Remarks" />,
+            //     hidden: true
+            // },
             {
                 label: 'Calculate MCBU Interest',
                 action: handleMCBUInterest,
@@ -2714,7 +2693,7 @@ const CashCollectionDetailsPage = () => {
                                         <th className="p-2 text-center">Target Collection</th>
                                         <th className="p-2 text-center">Excess</th>
                                         <th className="p-2 text-center">Actual Collection</th>
-                                        <th className="p-2 text-center">MCBU Refund</th>
+                                        {/* <th className="p-2 text-center">MCBU Refund</th> */}
                                         <th className="p-2 text-center">MCBU Withdrawal</th>
                                         {currentMonth === 11 && (<th className="p-2 text-center">MCBU Interest</th>)}
                                         <th className="p-2 text-center">MCBU Return Amt</th>
@@ -2802,20 +2781,20 @@ const CashCollectionDetailsPage = () => {
                                                             </React.Fragment>
                                                     }
                                                 </td>
-                                                <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
+                                                {/* <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
                                                     { cc.mcbuWithdrawalStr }
-                                                </td>
+                                                </td> */}
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
                                                     { (cc.mcbuWithdrawFlag && (!cc.hasOwnProperty('transferStr') || cc?.transferStr == '-')) ? (
                                                         <React.Fragment>
-                                                            <input type="number" name={`${cc.clientId}-mcbuWithdrawal`} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'mcbuWithdrawal')}
-                                                                onClick={(e) => e.stopPropagation()} defaultValue={cc.mcbuDailyWithdrawal ? cc.mcbuDailyWithdrawal : 0} tabIndex={index + 3}
+                                                            <input type="number" name={`${cc.clientId}-mcbuWithdrawal`} min={0} step={10} onBlur={(e) => handlePaymentCollectionChange(e, index, 'mcbuWithdrawal')}
+                                                                onClick={(e) => e.stopPropagation()} defaultValue={cc.mcbuWithdrawal ? cc.mcbuWithdrawal : 0} tabIndex={index + 3}
                                                                 onWheel={(e) => e.target.blur()} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg 
                                                                             focus:ring-main focus:border-main block p-2.5" style={{ width: '100px' }}/>
                                                         </React.Fragment>
                                                         ): 
                                                             <React.Fragment>
-                                                                {(!editMode || filter || !cc.reverted || cc.status === 'completed' || cc.status === 'pending' || cc.status === 'totals' || cc.status === 'closed') ? cc.mcbuDailyWithdrawalStr : '-'}
+                                                                {(!editMode || filter || !cc.reverted || cc.status === 'completed' || cc.status === 'pending' || cc.status === 'totals' || cc.status === 'closed') ? cc.mcbuWithdrawalStr : '-'}
                                                             </React.Fragment>
                                                     }
                                                 </td>

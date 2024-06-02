@@ -302,7 +302,7 @@ async function getAllLoanTransactionsByDivision(db, divisionId, date, dayName, c
                                                 } },
                                                 pendingClients: { $sum: { 
                                                     $cond: {
-                                                        if: { $eq: ['$status', 'completed'] },
+                                                        if: { $and: [ {$eq: ['$status', 'completed']}, {$ne: ['$transferred', true]} ] },
                                                         then: 1,
                                                         else: 0
                                                     } 
@@ -684,7 +684,7 @@ async function getAllLoanTransactionsByDivision(db, divisionId, date, dayName, c
                                                 } },
                                                 pendingClients: { $sum: { 
                                                     $cond: {
-                                                        if: { $eq: ['$status', 'completed'] },
+                                                        if: { $and: [ {$eq: ['$status', 'completed']}, {$ne: ['$transferred', true]} ] },
                                                         then: 1,
                                                         else: 0
                                                     } 
@@ -877,7 +877,7 @@ async function getAllLoanTransactionsByDivision(db, divisionId, date, dayName, c
                                                 } },
                                                 transferred: { $sum: {
                                                     $cond: {
-                                                        if: { $eq: ['$transferred', true] },
+                                                        if: { $and: [ {$eq: ['$status', 'completed']}, {$ne: ['$transferred', true]} ] },
                                                         then: 1,
                                                         else: 0
                                                     }
@@ -1151,7 +1151,7 @@ async function processData(data, date, currentDate) {
                     mcbu = branch.loans[0].mcbu;
                 }
 
-                if (branch.cashCollections.length > 0) {
+                if (branch.cashCollections.length > 0 && branch.cashCollections[0].collection > 0) {
                     branchTargetLoanCollection = branchTargetLoanCollection - branch.cashCollections[0].loanTarget;
                     branchExcess += branch.cashCollections[0].excess;
                     branchTotalLoanCollection += branch.cashCollections[0].collection;

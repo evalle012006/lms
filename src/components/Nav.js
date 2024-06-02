@@ -23,9 +23,9 @@ import {
     CpuChipIcon,
     ArrowRightOnRectangleIcon,
     ArrowsRightLeftIcon,
-    CloudArrowUpIcon
+    CloudArrowUpIcon,
 } from '@heroicons/react/24/solid';
-import { ExclamationTriangleIcon, AdjustmentsHorizontalIcon } from '@heroicons/react/24/outline';
+import { ExclamationTriangleIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
 import Link from "next/link";
 import { useRouter } from "node_modules/next/router";
 import { useDispatch, useSelector } from "react-redux";
@@ -966,14 +966,18 @@ const NavComponent = () => {
                         </Link>
                     </div>
                 </header>
-                {/** add click event to navigate to user profile **/}
-                <div id="profile" className="flex items-center border-b border-orange-darkest px-4 py-4">
-                    <div id="img" className="w-1/4 mr-4">
-                        <Avatar name={userState.firstName + " " + userState.lastName} src={userState.profile ? '/images/profiles/' + userState.profile : ""} className={`${userState.profile ? 'p-8' : 'p-4'} `} />
-                    </div>
-                    <div id="welcome" className="text-white w-2/4 sm:ml-1 md:ml-4">
-                        <p className="text-xs">Welcome,</p>
-                        <span className="text-lg">{userState.firstName + " " + userState.lastName}</span>
+                <div className="group">
+                    <span className="hidden group-hover:block absolute right-2 pt-1 cursor-pointer" onClick={() => router.push(`/settings/users/${userState._id}`)}>
+                        <PencilSquareIcon className="text-white w-6 h-6" />
+                    </span>
+                    <div id="profile" className="flex items-center border-b border-orange-darkest px-2 py-4">
+                        <div id="img" className="w-1/4 mr-4">
+                            <Avatar name={userState.firstName + " " + userState.lastName} src={userState.profile ? '/images/profiles/' + userState.profile : ""} className={`${userState.profile ? 'p-8' : 'p-6'} `} />
+                        </div>
+                        <div id="welcome" className="text-white w-2/4 sm:ml-1 md:ml-4">
+                            <p className="text-xs">Welcome,</p>
+                            <span className="text-lg">{userState.firstName + " " + userState.lastName}</span>
+                        </div>
                     </div>
                 </div>
                 <ul id="menu" className="flex flex-col list-reset sm:hidden md:block">

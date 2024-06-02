@@ -180,23 +180,27 @@ async function updateLoan(db, collection, currentDate) {
         }
         loan.mcbuCollection = loan.mcbuCollection ? loan.mcbuCollection + parseFloat(collection.mcbuCol) : parseFloat(collection.mcbuCol);
 
-        if (loan.occurence == 'daily' && collection.remarks) {
-            if (collection.remarks.value == 'reloaner-wd') {
-                loan.mcbuWithdrawal = collection.mcbuWithdrawal;
-            } else if (collection.remarks.value == 'reloaner-cont') {
-                loan.mcbuWithdrawal = 0;
-            }
-        } else {
+        // if (loan.occurence == 'daily' && collection.remarks) {
+        //     if (collection.remarks.value == 'reloaner-wd') {
+        //         loan.mcbuWithdrawal = collection.mcbuWithdrawal;
+        //     } else if (collection.remarks.value == 'reloaner-cont') {
+        //         loan.mcbuWithdrawal = 0;
+        //     }
+        // } else {
+            // loan.mcbuWithdrawal = loan.mcbuWithdrawal ? loan.mcbuWithdrawal + parseFloat(collection.mcbuWithdrawal) : collection.mcbuWithdrawal ? parseFloat(collection.mcbuWithdrawal) : 0;
+        // }
+
+        if (collection?.mcbuWithdrawal > 0) {
             loan.mcbuWithdrawal = loan.mcbuWithdrawal ? loan.mcbuWithdrawal + parseFloat(collection.mcbuWithdrawal) : collection.mcbuWithdrawal ? parseFloat(collection.mcbuWithdrawal) : 0;
         }
 
-        if (collection?.mcbuDailyWithdrawal > 0) {
-            if (loan.hasOwnProperty('mcbuDailyWithdrawal')) {
-                loan.mcbuDailyWithdrawal += collection.mcbuDailyWithdrawal;
-            } else {
-                loan.mcbuDailyWithdrawal = collection.mcbuDailyWithdrawal;
-            }
-        }
+        // if (collection?.mcbuDailyWithdrawal > 0) {
+        //     if (loan.hasOwnProperty('mcbuDailyWithdrawal')) {
+        //         loan.mcbuDailyWithdrawal += collection.mcbuDailyWithdrawal;
+        //     } else {
+        //         loan.mcbuDailyWithdrawal = collection.mcbuDailyWithdrawal;
+        //     }
+        // }
 
         if (collection.hasOwnProperty('mcbuInterest')) {
             loan.mcbuInterest = loan.mcbuInterest ? loan.mcbuInterest + collection.mcbuInterest : collection.mcbuInterest !== '-' ? collection.mcbuInterest : 0;

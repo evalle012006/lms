@@ -10,33 +10,41 @@ import Avatar from '@/lib/avatar';
 import placeholder from '/public/images/image-placeholder.png';
 import moment from 'moment';
 
-const ClientSearchTool = () => {
+const ClientSearchTool = ({ origin = "", callback, setSelected }) => {
     const dispatch = useDispatch();
     const [searchText, setSearchText] = useState('');
     const [searching, setSearching] = useState(false);
     const [clientList, setClientList] = useState([]);
     const [selectedClient, setSelectedClient] = useState();
+    const [toolbarWidth, setToolbarWidth] = useState("40rem");
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
         if (searchText) {
             setSearching(true);
             const imgpath = process.env.NEXT_PUBLIC_LOCAL_HOST !== 'local' && process.env.NEXT_PUBLIC_LOCAL_HOST;
             const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'clients/search?' + new URLSearchParams({ searchText: searchText.toUpperCase() }));
             const list = [];
             if (response.success) {
-                response.clients.map(client => {
-                    list.push({
-                        ...client,
-                        imgUrl: client.profile ? imgpath + '/images/clients/' + client.profile : '',
-                        birthdate: client.birthdate?  moment(client.birthdate).format('YYYY-MM-DD') : '-',
-                        groupName: client.group.name,
-                        branchName: client.branch.name,
-                        address: client.address ? client.address.replaceAll('undefined', '') : '-',
-                        delinquentStr: client.delinquent ? 'Yes' : 'No'
+                if (response.clients.length === 0) {
+                    callback([]);
+                } else {
+                    if (origin == 'client_list') {
+                        callback(response.clients);
+                        setSearching(true);
+                    }
+                    response.clients.map(client => {
+                        list.push({
+                            ...client,
+                            imgUrl: client.profile ? imgpath + '/images/clients/' + client.profile : '',
+                            birthdate: client.birthdate?  moment(client.birthdate).format('YYYY-MM-DD') : '-',
+                            groupName: client.group.name,
+                            branchName: client.branch.name,
+                            address: client.address ? client.address.replaceAll('undefined', '') : '-',
+                            delinquentStr: client.delinquent ? 'Yes' : 'No'
+                        });
                     });
-                });
+                }
 
                 setClientList(list);
             }
@@ -55,6 +63,7 @@ const ClientSearchTool = () => {
 
     const handleRowClick = (row) => {
         setSelectedClient(row);
+        setSelected(row);
     }
 
     const [columns, setColumns] = useState([
@@ -91,15 +100,19 @@ const ClientSearchTool = () => {
     useEffect(() => {
         let mounted = true;
 
+        if (origin == 'client_list') {
+            setToolbarWidth("29.5rem");
+        }
+
         return (() => {
             mounted = false;
         });
-    }, []);
+    }, [origin]);
 
     return (
         <div className='flex flex-col w-full'>
             <form onSubmit={handleSubmit}>
-                <div className="pt-2 relative mx-auto text-gray-600" style={{ width: '40rem' }}>
+                <div className="pt-2 relative mx-auto text-gray-600" style={{ width: toolbarWidth }}>
                     <input className="border-2 border-gray-300 bg-white h-10 px-5 pr-16 rounded-lg text-sm w-full focus:outline-none" autoComplete='off' value={searchText} onChange={(e) => setSearchText(e.target.value)} type="search" name="search" placeholder="Search for Client Name"/>
                     <button type="submit" className="absolute right-0 top-0 mt-5 pr-2">
                         <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">

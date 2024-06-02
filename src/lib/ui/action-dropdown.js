@@ -25,11 +25,11 @@ const ActionDropDown = ({ data, options=[], dataOptions = {}, origin }) => {
                     tempOption.hidden = false;
                 }
 
-                if (option.label == 'MCBU Refund' && (!dataOptions?.filter && data.status == 'completed' && !data?.draft)) {
-                    tempOption.hidden = false;
-                }
+                // if (option.label == 'MCBU Refund' && (!dataOptions?.filter && data.status == 'completed' && !data?.draft)) {
+                //     tempOption.hidden = false;
+                // }
 
-                if (option.label == 'MCBU Withdrawal' && (!dataOptions?.filter && data.status == 'active' && !data?.draft)) {
+                if (option.label == 'MCBU Withdrawal' && (!dataOptions?.filter && ((data.occurence == 'daily' && data.status == 'completed') || (data.occurence == 'weekly' && data.status == 'active') ) && !data?.draft)) {
                     tempOption.hidden = false;
                 }
 

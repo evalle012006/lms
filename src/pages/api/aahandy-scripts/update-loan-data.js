@@ -7,6 +7,34 @@ export default apiHandler({
     post: updateLoanData
 });
 
+async function updateLoanData(req, res) {
+    const { db } = await connectToDatabase();
+    const ObjectId = require('mongodb').ObjectId;
+
+    let statusCode = 200;
+    let response = {};
+
+    const loans = await db.collection('loans').find({mcbuDailyWithdrawal: {$gt: 0}, occurence: 'daily'}).toArray();
+
+    if (loans.length > 0) {
+        loans.map(async loan => {
+            
+            const mcbuWithdrawal = loan.mcbuWithdrawal ? loan.mcbuWithdrawal : 0;
+            const mcbuDailyWithdrawal = loan.mcbuDailyWithdrawal ? loan.mcbuDailyWithdrawal : 0;
+
+            const totalWithdrawal = mcbuWithdrawal + mcbuDailyWithdrawal;
+            
+            await db.collection('loans').updateOne({ _id: loan._id }, { $unset: {mcbuDailyWithdrawal: 1}, $set: { mcbuWithdrawal: totalWithdrawal, remediated: true } });
+        });
+    }
+
+    response = { success: true };
+
+    res.status(statusCode)
+        .setHeader('Content-Type', 'application/json')
+        .end(JSON.stringify(response));
+}
+
 // async function updateLoanData(req, res) {
 //     const { db } = await connectToDatabase();
 //     const ObjectId = require('mongodb').ObjectId;
@@ -53,44 +81,44 @@ export default apiHandler({
 //         .end(JSON.stringify(response));
 // }
 
-async function updateLoanData(req, res) {
-    const { db } = await connectToDatabase();
-    const ObjectId = require('mongodb').ObjectId;
+// async function updateLoanData(req, res) {
+//     const { db } = await connectToDatabase();
+//     const ObjectId = require('mongodb').ObjectId;
 
-    let statusCode = 200;
-    let response = {};
+//     let statusCode = 200;
+//     let response = {};
 
-    const loans = await db.collection('loans').find({status: "active", activeLoan: 0}).toArray();
+//     const loans = await db.collection('loans').find({status: "active", activeLoan: 0}).toArray();
 
-    if (loans.length > 0) {
-        loans.map(async loan => {
-            let temp = {...loan};
+//     if (loans.length > 0) {
+//         loans.map(async loan => {
+//             let temp = {...loan};
             
-            temp.activeLoan = temp?.history.activeLoan;
-            if (temp.activeLoan == 0) {
-                if (temp.amountRelease == 6000) {
-                    temp.activeLoan = 100;
-                } else if (temp.amountRelease == 7200) {
-                    temp.activeLoan = 120;
-                } else if (temp.amountRelease == 8400) {
-                    temp.activeLoan = 140;
-                } else if (temp.amountRelease == 12000) {
-                    temp.activeLoan = 200;
-                }
+//             temp.activeLoan = temp?.history.activeLoan;
+//             if (temp.activeLoan == 0) {
+//                 if (temp.amountRelease == 6000) {
+//                     temp.activeLoan = 100;
+//                 } else if (temp.amountRelease == 7200) {
+//                     temp.activeLoan = 120;
+//                 } else if (temp.amountRelease == 8400) {
+//                     temp.activeLoan = 140;
+//                 } else if (temp.amountRelease == 12000) {
+//                     temp.activeLoan = 200;
+//                 }
 
-                temp.remidiation = true;
-            }
-            delete temp._id;
-            await db.collection('loans').updateOne({ _id: loan._id }, { $set: {...temp} });
-        });
-    }
+//                 temp.remidiation = true;
+//             }
+//             delete temp._id;
+//             await db.collection('loans').updateOne({ _id: loan._id }, { $set: {...temp} });
+//         });
+//     }
 
-    response = { success: true };
+//     response = { success: true };
 
-    res.status(statusCode)
-        .setHeader('Content-Type', 'application/json')
-        .end(JSON.stringify(response));
-}
+//     res.status(statusCode)
+//         .setHeader('Content-Type', 'application/json')
+//         .end(JSON.stringify(response));
+// }
     
 
 // async function updateLoanData(req, res) {
