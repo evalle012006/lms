@@ -8,6 +8,7 @@ import Dialog from "@/lib/ui/Dialog";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 import { formatPricePhp } from "@/lib/utils";
+import { getApiBaseUrl } from '@/lib/constants';
 
 const RevertTransferPage = () => {
     const isHoliday = useSelector(state => state.systemSettings.holiday);
@@ -21,7 +22,7 @@ const RevertTransferPage = () => {
 
     const getList = async () => {
         setLoading(true);
-        let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/transfer-client/list-history';
+        let url = getApiBaseUrl() + 'transactions/transfer-client/list-history';
         if (currentUser.role.rep === 1) {
             const response = await fetchWrapper.get(url);
             if (response.success) {
@@ -158,7 +159,7 @@ const RevertTransferPage = () => {
         if (selectedTransfer) {
             setShowWarningDialog(false);
             setLoading(true);
-            fetchWrapper.postCors(process.env.NEXT_PUBLIC_API_URL + 'transactions/transfer-client/revert-transfer', {transferId: selectedTransfer._id})
+            fetchWrapper.postCors(getApiBaseUrl() + 'transactions/transfer-client/revert-transfer', {transferId: selectedTransfer._id})
                 .then(response => {
                     if (response.success) {
                         setShowWarningDialog(false);
