@@ -1226,7 +1226,9 @@ async function processData(data, date, currentDate) {
                     branch.transferDailyGiverDetails.map(giver => {    
                         if (filter) {
                             branchNoOfClients -= 1;
-                            branchNoOfBorrowers -= 1;
+                            if (giver.status !== "completed") {
+                                branchNoOfBorrowers -= 1;
+                            }
                         }
 
                         branchTotalMcbu -= giver.mcbu;
@@ -1256,7 +1258,7 @@ async function processData(data, date, currentDate) {
                         if (!filter) {
                             if (rcv.status !== 'pending') {
                                 collection.activeClients += 1;
-                                if (collection.status !== "completed") {
+                                if (rcv.status !== "completed") {
                                     branchNoOfBorrowers += 1;
                                 }
                                 branchTotalMcbu += rcv.mcbu ? rcv.mcbu : 0;
@@ -1266,9 +1268,6 @@ async function processData(data, date, currentDate) {
                             }
                         } else {
                             if (rcv.status !== 'pending') {
-                                if (rcv.status == "completed") {
-                                    branchNoOfBorrowers -= 1;
-                                }
                                 branchTargetLoanCollection -= rcv.targetCollection;
 
                                 if (rcv.status == 'tomorrow') {
@@ -1287,7 +1286,9 @@ async function processData(data, date, currentDate) {
                     branch.transferWeeklyGiverDetails.map(giver => {
                         if (filter) {
                             branchNoOfClients -= 1;
-                            branchNoOfBorrowers -= 1;
+                            if (giver.status !== "completed") {
+                                branchNoOfBorrowers -= 1;
+                            }
                         }
 
                         branchTotalMcbu -= giver.mcbu;
@@ -1317,7 +1318,7 @@ async function processData(data, date, currentDate) {
                         if (!filter) {
                             if (rcv.status !== 'pending') {
                                 collection.activeClients += 1;
-                                if (collection.status !== "completed") {
+                                if (rcv.status !== "completed") {
                                     branchNoOfBorrowers += 1;
                                 }
                                 branchTotalMcbu += rcv.mcbu ? rcv.mcbu : 0;
@@ -1327,9 +1328,6 @@ async function processData(data, date, currentDate) {
                             }
                         } else {
                             if (rcv.status !== 'pending') {
-                                if (rcv.status == "completed") {
-                                    branchNoOfBorrowers -= 1;
-                                }
                                 branchTargetLoanCollection -= rcv.targetCollection;
 
                                 if (rcv.status == 'tomorrow') {
