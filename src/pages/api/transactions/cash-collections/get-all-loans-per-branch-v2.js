@@ -1366,7 +1366,9 @@ async function processData(data, date, currentDate) {
                 branch.transferDailyGiverDetails.map(giver => {    
                     if (filter) {
                         collection.activeClients -= 1;
-                        collection.activeBorrowers -= 1;
+                        if (giver.status !== "completed") {
+                            collection.activeBorrowers -= 1;
+                        }
                     }
 
                     collection.mcbu -= giver.mcbu;
@@ -1401,7 +1403,7 @@ async function processData(data, date, currentDate) {
                     if (!filter) {
                         if (rcv.status !== 'pending') {
                             collection.activeClients += 1;
-                            if (collection.status !== "completed") {
+                            if (rcv.status !== "completed") {
                                 collection.activeBorrowers += 1;
                             }
                             collection.mcbu += rcv.mcbu ? rcv.mcbu : 0;
@@ -1416,9 +1418,6 @@ async function processData(data, date, currentDate) {
                         }
                     } else {
                         if (rcv.status !== 'pending') {
-                            if (rcv.status == "completed") {
-                                collection.activeBorrowers -= 1;
-                            }
                             collection.loanTarget -= rcv.targetCollection;
                             collection.loanTargetStr = formatPricePhp(collection.loanTarget);
 
@@ -1443,7 +1442,9 @@ async function processData(data, date, currentDate) {
                 branch.transferWeeklyGiverDetails.map(giver => {
                     if (filter) {
                         collection.activeClients -= 1;
-                        collection.activeBorrowers -= 1;
+                        if (giver.status !== "completed") {
+                            collection.activeBorrowers -= 1;
+                        }
                     }
                     collection.mcbu -= giver.mcbu;
                     totalTransferMcbu -= giver.mcbu;
@@ -1476,7 +1477,7 @@ async function processData(data, date, currentDate) {
                     if (!filter) {
                         if (rcv.status !== 'pending') {
                             collection.activeClients += 1;
-                            if (collection.status !== "completed") {
+                            if (rcv.status !== "completed") {
                                 collection.activeBorrowers += 1;
                             }
                             collection.mcbu += rcv.mcbu ? rcv.mcbu : 0;
@@ -1491,9 +1492,6 @@ async function processData(data, date, currentDate) {
                         }
                     } else {
                         if (rcv.status !== 'pending') {
-                            if (rcv.status == "completed") {
-                                collection.activeBorrowers -= 1;
-                            }
                             collection.loanTarget -= rcv.targetCollection;
                             collection.loanTargetStr = formatPricePhp(collection.loanTarget);
 

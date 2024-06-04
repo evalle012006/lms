@@ -411,7 +411,9 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
                         lo.transferDailyGiverDetails.map(giver => {    
                             if (filter) {
                                 collection.activeClients -= 1;
-                                collection.activeBorrowers -= 1;
+                                if (giver.status !== "completed") {
+                                    collection.activeBorrowers -= 1;
+                                }
                             }
 
                             collection.mcbu -= giver.mcbu;
@@ -466,7 +468,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
                             if (!filter) {
                                 if (rcv.status !== 'pending') {
                                     collection.activeClients += 1;
-                                    if (collection.status !== "completed") {
+                                    if (rcv.status !== "completed") {
                                         collection.activeBorrowers += 1;
                                     }
                                     collection.mcbu += rcv.mcbu ? rcv.mcbu : 0;
@@ -481,9 +483,6 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
                                 }
                             } else {
                                 if (rcv.status !== 'pending') {
-                                    if (rcv.status == "completed") {
-                                        collection.activeBorrowers -= 1;
-                                    }
                                     collection.loanTarget -= rcv.targetCollection;
                                     collection.loanTargetStr = formatPricePhp(collection.loanTarget);
     
@@ -508,7 +507,9 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
                         lo.transferWeeklyGiverDetails.map(giver => {
                             if (filter) {
                                 collection.activeClients -= 1;
-                                collection.activeBorrowers -= 1;
+                                if (giver.status !== "completed") {
+                                    collection.activeBorrowers -= 1;
+                                }
                             }
                             collection.mcbu -= giver.mcbu;
                             totalTransferMcbu -= giver.mcbu;
@@ -560,7 +561,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
                             if (!filter) {
                                 if (rcv.status !== 'pending') {
                                     collection.activeClients += 1;
-                                    if (collection.status !== "completed") {
+                                    if (rcv.status !== "completed") {
                                         collection.activeBorrowers += 1;
                                     }
                                     collection.mcbu += rcv.mcbu ? rcv.mcbu : 0;
@@ -575,9 +576,6 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
                                 }
                             } else {
                                 if (rcv.status !== 'pending') {
-                                    if (rcv.status == "completed") {
-                                        collection.activeBorrowers -= 1;
-                                    }
                                     collection.loanTarget -= rcv.targetCollection;
                                     collection.loanTargetStr = formatPricePhp(collection.loanTarget);
     

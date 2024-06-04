@@ -489,7 +489,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 }
 
                 let transfer = 0;
-
+                console.log(collection?.group, collection.activeBorrowers)
                 if (cc.transferGiverDetails.length > 0) {
                     collectionTransferred.push.apply(collectionTransferred, cc.transferGiverDetails);
                     transfer = transfer - cc.transferGiverDetails.length;
@@ -501,7 +501,9 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
 
                         if (filter) {
                             collection.activeClients -= 1;
-                            collection.activeBorrowers -= 1;
+                            if (giver.status !== "completed") {
+                                collection.activeBorrowers -= 1;
+                            }
                         }
 
                         collection.mcbu -= giver.mcbu;
@@ -527,7 +529,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         if (!filter) {
                             if (rcv.status !== 'pending') {
                                 collection.activeClients += 1;
-                                if (collection.status !== "completed") {
+                                if (rcv.status !== "completed") {
                                     collection.activeBorrowers += 1;
                                 }
                                 collection.mcbu += rcv.mcbu ? rcv.mcbu : 0;
@@ -542,9 +544,6 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                             }
                         } else {
                             if (rcv.status !== 'pending') {
-                                // if (rcv.status == "completed") {
-                                //     collection.activeBorrowers -= 1;
-                                // }
                                 collection.loanTarget -= rcv.targetCollection;
                                 collection.loanTargetStr = formatPricePhp(collection.loanTarget);
 
