@@ -448,7 +448,7 @@ const TransferClientPage = () => {
     }, [currentUser]);
 
     useEffect(() => {
-        // if (currentDate === lastMonthDate && currentUser.role.rep < 3) {
+        if (currentDate === lastMonthDate && currentUser.role.rep < 3) {
             setActionButtons([
                 <ButtonOutline label="Approved Selected Transfer" type="button" className="p-2 mr-3" onClick={handleMultiApprove} />,
                 <ButtonSolid label="Add Transfer" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
@@ -458,15 +458,15 @@ const TransferClientPage = () => {
                 { label: 'Reject', action: handleReject}
                 // { label: 'Delete', action: handleDeleteAction}
             ]);
-        // } else {
-        //     setActionButtons([
-        //         <ButtonSolid label="Add Transfer" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
-        //     ]);
-        //     setRowActionButtons([
-        //         { label: 'Reject', action: handleReject}
-        //         // { label: 'Delete', action: handleDeleteAction}
-        //     ]);
-        // }
+        } else {
+            setActionButtons([
+                <ButtonSolid label="Add Transfer" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
+            ]);
+            setRowActionButtons([
+                { label: 'Reject', action: handleReject}
+                // { label: 'Delete', action: handleDeleteAction}
+            ]);
+        }
     }, [currentDate, pendingTransferList, approvedTransferList, lastMonthDate]);
 
     return (
