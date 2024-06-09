@@ -334,6 +334,14 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                             } else if (response.success) {
                                 setShowSidebar(false);
                                 toast.success('Loan successfully added.');
+
+                                if (clientType == 'active') {
+                                    const pendingLoan = [{...values, loanId: values.oldLoanId}];
+                                    setTimeout(async () => {
+                                        await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/update-pending-loans', pendingLoan);
+                                    }, 3000);
+                                }
+
                                 action.setSubmitting = false;
                                 action.resetForm({values: ''});
                                 setSelectedGroup();
