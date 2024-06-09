@@ -45,3 +45,5 @@ create index "ix_users__designatedBranchId" on "users"("designatedBranchId");
 create index "ix_users__loNo" on "users"("loNo");
 create index "ix_users__email" on "users"("email");
 create index "ix_users__status" on "users"("status");
+
+create index "ix_cashCollections__transferId" on "cashCollections"("transferId")

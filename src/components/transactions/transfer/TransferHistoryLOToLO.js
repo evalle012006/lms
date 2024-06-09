@@ -132,7 +132,7 @@ const TransferHistoryDetails = ({ type }) => {
         const startDate = `${selectedFilterYear}-${selectedFilterMonth}-01`;
         const endDate = selectedLastDate;
 
-        const url = process.env.NEXT_PUBLIC_API_URL 
+        const url = getApiBaseUrl()
                     + 'transactions/transfer-client/list-history-lo-lo?' 
                     + new URLSearchParams({ branchId: selectedFilterBranch, startDate: startDate, endDate: endDate, occurence: type });
         const response = await fetchWrapper.get(url);
