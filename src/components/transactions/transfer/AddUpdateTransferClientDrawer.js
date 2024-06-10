@@ -15,7 +15,7 @@ import { UppercaseFirstLetter, formatPricePhp } from "@/lib/utils";
 import Spinner from "@/components/Spinner";
 
 const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setShowSidebar, onClose }) => {
-    const transferList = useSelector(state => state.client.transferList);
+    const transferList = useSelector(state => state.transfer.pendingList);
     const formikRef = useRef();
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
@@ -164,6 +164,7 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
                 let clients = [];
                 await response.clients && response.clients.map(client => {
                     const hasTransfer = transferList.find(t => t.selectedClientId === client._id);
+                    console.log(hasTransfer)
                     if (!hasTransfer) {
                         // const clientCollections = client.cashCollections.length > 0 ? client.cashCollections[0] : null;
                         // const clientLoans = client.loans.length > 0 ? client.loans[0] : null;
@@ -296,9 +297,9 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
                 values.loToLo = selectedSourceBranch === selectedTargetBranch;
                 values.branchToBranch = selectedSourceBranch !== selectedTargetBranch;
 
-                if (selectedClient.loans.length > 0) {
-                    values.loanId = selectedClient.loans[0]._id;
-                }
+                // if (selectedClient.loans.length > 0) {
+                //     values.loanId = selectedClient.loans[0]._id;
+                // }
 
                 if (mode === "add") {
                     values.status = "pending";
@@ -339,7 +340,7 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
     useEffect(() => {
         let mounted = true;
 
-        if (currentUser.role.rep == 3) {
+        if (currentUser.role.rep == 3 && branchList.length > 0) {
             setSelectedSourceBranch(branchList[0].value);
         }
 

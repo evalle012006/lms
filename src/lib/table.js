@@ -28,6 +28,7 @@ import {
   ArrowUturnLeftIcon,
   ArrowsRightLeftIcon
 } from '@heroicons/react/24/solid';
+import { ExclamationCircleIcon } from '@heroicons/react/24/outline';
 import CheckBox from "./ui/checkbox";
 import { useEffect } from "react";
 import ActionDropDown from "./ui/action-dropdown";
@@ -123,9 +124,11 @@ export function StatusPill({ value }) {
 
 export function AvatarCell({ value, column, row }) {
   const url = row.original[column.imgAccessor];
+  const errorMessage = row.original.errorMsg ? row.original.errorMsg : '';
 
   return (
     <div className="flex items-center">
+      {errorMessage && ( <ExclamationCircleIcon className="cursor-pointer h-5 mr-1" title={errorMessage} /> )}
       <div className="image-container">
         {url ? (
           <img
@@ -635,10 +638,15 @@ const TableComponent = ({
                                 const draft = row.original.hasOwnProperty('isDraft') && row.original.isDraft;
                                 const pageName = row.original.hasOwnProperty('page') && row.original.page;
                                 const ldfApproved = row.original.hasOwnProperty('ldfApproved') ? row.original.ldfApproved : false;
-                                // const error = row.original.error ? row.original.error : false;
+                                const error = row.original.withError ? row.original.withError : false;
+
+                                let checkBoxDisable = false;
+                                if (disable || error) {
+                                  checkBoxDisable = true;
+                                }
 
                                 let bg = 'even:bg-gray-100';
-                                if (delinquent === 'Yes') {
+                                if (delinquent === 'Yes' || error) {
                                   bg = 'bg-red-100';
                                 } else if (status === 'open') {
                                   bg = 'bg-blue-200';
@@ -655,7 +663,7 @@ const TableComponent = ({
                                                 value={selected} 
                                                 onChange={() => handleSelectRow(row.original, i)}
                                                 size={"md"}
-                                                disabled={disable}
+                                                disabled={checkBoxDisable}
                                             />
                                           </td>
                                         )}
@@ -721,7 +729,7 @@ const TableComponent = ({
                                                 value={selected} 
                                                 onChange={() => handleSelectRow(row.original, i)}
                                                 size={"md"}
-                                                disabled={disable}
+                                                disabled={checkBoxDisable}
                                             />
                                           </td>
                                         )}
