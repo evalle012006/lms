@@ -1,0 +1,23 @@
+# Use root/example as user/password credentials
+version: '3.1'
+
+services:
+  lms:
+    image: lms/v2
+    ports:
+      - 3000:3000
+    environment:
+      NODE_ENV: development
+      DB_NAME: acloandb_prod
+      DB_URL: mongodb+srv://amber-admin:amberlms@cluster0.gborljd.mongodb.net/?retryWrites=true&w=majority
+      DEV_URL: http://localhost:3000
+      LOCAL_DB_NAME: acloandb-staging
+      LOCAL_DB_URL: mongodb+srv://amber-admin:amberlms@cluster0.gborljd.mongodb.net/?retryWrites=true&w=majority
+      NEXT_PUBLIC_URL: http://localhost:3000
+      NEXT_PUBLIC_API_URL: http://localhost:3000/api/
+      NEXT_PUBLIC_PATHS: /login,/register,/forgot-password
+      NEXT_PUBLIC_IMAGE_HOST: http://localhost:3000
+      NEXT_PUBLIC_LOCAL_HOST: localhost
+      NEXT_PUBLIC_GA_ID: G-YWQQS28LLX
+      HASURA_URL: http://188.166.225.198:8080
+      HASURA_ADMIN_SECRET: lms_01
