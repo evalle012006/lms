@@ -1,39 +1,43 @@
-import { apiHandler } from '@/services/api-handler';
-import { connectToDatabase } from '@/lib/mongodb';
+import { apiHandler } from "@/services/api-handler";
+import { GraphProvider } from "@/lib/graph/graph.provider";
+import { createGraphType, updateQl } from "@/lib/graph/graph.util";
+import { LOS_TOTALS_FIELDS } from "@/lib/graph.fields";
+
+const graph = new GraphProvider();
+const losTotalsType = createGraphType("losTotals", LOS_TOTALS_FIELDS)();
 
 export default apiHandler({
     post: processLOSTotals
 });
 
 async function processLOSTotals(req, res) {
-    const { db } = await connectToDatabase();
-
     const { branchId, loIds, currentDate } = req.body;
 
-    const checkLos = await db.collection('users')
-                        .aggregate([
-                            { $addFields: { userIdStr: { $toString: '$_id' } } },
-                            { $match: { $expr: { $in: ['$userIdStr', loIds] } } },
-                            {
-                                $lookup: {
-                                    from: 'losTotals',
-                                    localField: 'userIdStr',
-                                    foreignField: 'userId',
-                                    pipeline: [
-                                        { $match: { losType: 'daily', dateAdded: currentDate, userType: 'lo' } },
-                                        {
-                                            $group: {
-                                                _id: '$_id',
-                                                count: { $sum: 1 }
-                                            }
-                                        }
-                                    ],
-                                    as: 'losTotal'
-                                }
-                            },
-                            { $project: { userIdStr: 0 } }
-                        ])
-                        .toArray();
+    const query = gql`
+      query find($loIds: [String!], $dateAdded: timestamptz) {
+        users (where: { _id: { _in: $loIds} }) {
+            firstName, lastName
+            losTotal: losTotals(
+                where: {
+                  losType: { _eq: "daily" },
+                  dateAdded: { _eq: $dateAdded },
+                  userType: { _eq: "lo" }
+                }
+            ) {
+              _id
+            }
+        }
+      }
+    `;
+
+    const checkLos = (await graph.apollo.query({ query, variables: { loIds, dateAdded }}))
+      .then((res) => {
+        if (res.errors) {
+          console.error(res.errors);
+          throw res.errors[0];
+        }
+        return res.data?.users ?? [];
+      });
 
     let response = {};
     if (checkLos) {
@@ -46,13 +50,18 @@ async function processLOSTotals(req, res) {
 
             response = { error: true, message: errorMsg };
         } else {
-            const los = await db.collection('losTotals').updateMany(
-                { losType: 'daily', dateAdded: currentDate, branchId: branchId, userType: 'lo' },
-                { $set: {
-                    status: 'approved',
-                    dateApproved: currentDate
-                } }
-            );
+            const los = await graph.mutation(updateQl(losTotalsType, {
+              where: {
+                losType: { _eq: 'daily' },
+                dateAdded: { _eq: currentDate },
+                branchId: { _eq: branchId },
+                userType: { _eq: 'lo' }
+              },
+              set: {
+                status: 'approved',
+                dateApproved: currentDate,
+              }
+            }));
         
             response = { success: true, data: los };
         }
