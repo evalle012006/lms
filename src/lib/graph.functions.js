@@ -4,7 +4,7 @@ import {
   CASH_COLLECTIONS_FIELDS,
   CLIENT_FIELDS,
   GROUP_FIELDS,
-  LOAN_FIELDS,
+  LOAN_FIELDS, LOS_TOTALS_FIELDS,
   TRANSFER_CLIENT_FIELDS,
   USER_FIELDS,
 } from "@/lib/graph.fields";
@@ -51,4 +51,9 @@ export async function findTransferClients(filter, fields = TRANSFER_CLIENT_FIELD
 export async function findBranches(filter, fields = BRANCH_FIELDS) {
   return (await graph.query(queryQl(createGraphType('branches', fields)(), { where: filter })))
     .data?.branches ?? [];
+}
+
+export async function findLosTotals(filter, fields = LOS_TOTALS_FIELDS) {
+  return (await graph.query(queryQl(createGraphType('losTotals', fields)(), { where: filter })))
+    .data?.losTotals ?? [];
 }
