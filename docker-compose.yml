@@ -1,11 +1,22 @@
-# Use root/example as user/password credentials
-version: '3.1'
-
 services:
   lms:
-    image: lms/v2
+    image: node:18
+    platform: linux/amd64
+    command: sh -c "cd /app/ && npm install && npm run dev"
     ports:
       - 3000:3000
+    restart: unless-stopped
+    volumes:
+      - node_modules:/app/node_modules
+      - ./public:/app/public
+      - ./src:/app/src
+      - ./.babelrc:/app/.babelrc
+      - ./jsconfig.json:/app/jsconfig.json
+      - ./next.config.js:/app/next.config.js
+      - ./package.json:/app/package.json
+      - ./package-lock.json:/app/package-lock.json
+      - ./postcss.config.js:/app/postcss.config.js
+      - ./tailwind.config.js:/app/tailwind.config.js
     environment:
       NODE_ENV: development
       DB_NAME: acloandb_prod
@@ -21,3 +32,6 @@ services:
       NEXT_PUBLIC_GA_ID: G-YWQQS28LLX
       HASURA_URL: http://188.166.225.198:8080
       HASURA_ADMIN_SECRET: lms_01
+
+volumes:
+  node_modules:
