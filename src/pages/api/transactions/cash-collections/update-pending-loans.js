@@ -44,7 +44,7 @@ async function updatePendingLoan(db, collection, currentDate) {
         pendingLoan = pendingLoan[0];
         cashCollection = cashCollection[0];
 
-        pendingLoan.mcbu = currentLoan.mcbu;
+        pendingLoan.mcbu = cashCollection.mcbu;
 
         currentLoan.status = 'closed';
         currentLoan.loanBalance = 0;
