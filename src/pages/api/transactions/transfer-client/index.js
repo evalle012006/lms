@@ -420,7 +420,7 @@ async function getApprovedTransfer(db, _id, branchId, previousLastMonthDate) {
                             localField: 'transferIdStr',
                             foreignField: 'transferId',
                             pipeline: [
-                                { $match: { transfer: true } }
+                                { $match: { transfer: true, status: { $ne: 'closed' } } }
                             ],
                             as: 'loans'
                         }
@@ -509,7 +509,7 @@ async function getApprovedTransfer(db, _id, branchId, previousLastMonthDate) {
                         localField: 'transferIdStr',
                         foreignField: 'transferId',
                         pipeline: [
-                            { $match: { transfer: true } }
+                            { $match: { transfer: true, status: { $ne: 'closed' } } }
                         ],
                         as: 'loans'
                     }
@@ -598,7 +598,7 @@ async function getApprovedTransfer(db, _id, branchId, previousLastMonthDate) {
                         localField: 'transferIdStr',
                         foreignField: 'transferId',
                         pipeline: [
-                            { $match: { transfer: true } }
+                            { $match: { transfer: true, status: { $ne: 'closed' } } }
                         ],
                         as: 'loans'
                     }
@@ -717,8 +717,10 @@ function processData(data, status) {
         temp.targetUserName = transfer.targetUser.length > 0 ? `${transfer.targetUser[0].firstName} ${transfer.targetUser[0].lastName}` : '',
         temp.targetGroupName = transfer.targetGroup.length > 0 ? transfer.targetGroup[0].name : '';
 
-        temp.sourceGroup = transfer.sourceGroup.length > 0 ? transfer.sourceGroup[0] : null;
-        temp.targetGroup = transfer.targetGroup.length > 0 ? transfer.targetGroup[0] : null;
+        if (status == 'pending') {
+            temp.sourceGroup = transfer.sourceGroup.length > 0 ? transfer.sourceGroup[0] : null;
+            temp.targetGroup = transfer.targetGroup.length > 0 ? transfer.targetGroup[0] : null;
+        }
 
         if (temp.loanStatus === "closed") {
             temp.delinquent = true;
