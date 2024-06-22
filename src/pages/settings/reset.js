@@ -110,7 +110,7 @@ const ResetPage = () => {
     }
 
     const processResetSystem = async () => {
-        const apiURL = `${process.env.NEXT_PUBLIC_API_URL}secure/reset-system`;
+        const apiURL = `${getApiBaseUrl()}secure/reset-system`;
         const response = await fetchWrapper.post(apiURL);
 
         if (response.success) {
@@ -121,7 +121,7 @@ const ResetPage = () => {
     }
 
     const processResetBranch = async () => {
-        const apiURL = `${process.env.NEXT_PUBLIC_API_URL}secure/reset-branch`;
+        const apiURL = `${getApiBaseUrl()}secure/reset-branch`;
         const response = await fetchWrapper.post(apiURL, {branchId: selectedBranch._id});
 
         if (response.success) {
@@ -132,7 +132,7 @@ const ResetPage = () => {
     }
 
     const processResetLO = async () => {
-        const apiURL = `${process.env.NEXT_PUBLIC_API_URL}secure/reset-lo`;
+        const apiURL = `${getApiBaseUrl()}secure/reset-lo`;
         const response = await fetchWrapper.post(apiURL, {loId: selectedUser._id});
 
         if (response.success) {
@@ -143,7 +143,7 @@ const ResetPage = () => {
     }
 
     const processResetGroup = async () => {
-        const apiURL = `${process.env.NEXT_PUBLIC_API_URL}secure/reset-group`;
+        const apiURL = `${getApiBaseUrl()}secure/reset-group`;
         const response = await fetchWrapper.post(apiURL, {groupId: selectedGroup._id});
 
         if (response.success) {

@@ -1,16 +1,23 @@
-import { apiHandler } from '@/services/api-handler';
-import { connectToDatabase } from '@/lib/mongodb';
+import { apiHandler } from "@/services/api-handler";
+import {
+  findCashCollections,
+  findLosTotals,
+  findUsers,
+} from "@/lib/graph.functions";
+import { GraphProvider } from "@/lib/graph/graph.provider";
+import { createGraphType, insertQl, updateQl } from "@/lib/graph/graph.util";
+
+const graph = new GraphProvider();
+const losTotalsType = createGraphType('losTotals', '_id')();
 
 export default apiHandler({
     post: processLOSTotals
 });
 
 async function processLOSTotals(req, res) {
-    const { db } = await connectToDatabase();
-    const ObjectId = require('mongodb').ObjectId;
     const data = req.body;
 
-    const lo = await db.collection('users').find({ _id: new ObjectId(data.userId) }).toArray();
+    const lo = await findUsers(data.userId);
     let officeType;
     if (lo.length > 0) {
         if (lo[0].role.rep == 4) {
@@ -24,8 +31,12 @@ async function processLOSTotals(req, res) {
             response = await saveUpdateYearEnd(data, officeType);
             break;
         case 'daily':
-            const filter = data.data.day === data.currentDate ? false : true;
-            const cashCollections = await db.collection('cashCollections').find({ loId: data.userId, dateAdded: data.data.day, occurence: data.occurence }).toArray();
+            const filter = (data.data.day !== data.currentDate);
+            const cashCollections = await findCashCollections({
+              loId: { _eq: data.userId },
+              dateAdded: { _eq: data.data.day },
+              occurence: { _eq: data.occurence }
+            });
 
             if (cashCollections.length === 0) {
                 response = { error: true, message: "One or more group/s have no transaction for today."};
@@ -45,28 +56,39 @@ async function processLOSTotals(req, res) {
 
 
 async function saveUpdateYearEnd(total, officeType) {
-    const { db } = await connectToDatabase();
     const currentDateStr = total.currentDate;
     let resp;
 
-    let losTotal = await db.collection('losTotals').find({ userId: total.userId, month: 12, year: total.year, losType: 'year-end', occurence: total.occurence }).toArray();
+    let losTotal = await findLosTotals({
+      userId: { _eq: total.userId },
+      month: { _eq: 12 },
+      year: { _eq: total.year },
+      losType: { _eq: 'year-end' },
+      occurence: { _eq: total.occurence }
+    });
 
     if (losTotal.length > 0) {
         losTotal = losTotal[0];
-        resp = await db.collection('losTotals').updateOne(
-            { _id: losTotal._id},
-            { $set: {
-                ...losTotal,
-                data: total.data,
-                dateModified: currentDateStr
-            } }
-        );
+        resp = await graph.mutation(updateQl(
+          losTotalsType,
+          {
+            where: { _id: { _eq: losTotal._id } },
+            set: {
+              ...losTotal,
+              data: total.data,
+              dateModified: currentDateStr
+            }
+          }
+        )).then(res => res.data);
     } else {
         const finalData = {...total};
         delete finalData.currentDate;
-        resp = await db.collection('losTotals').insertOne(
-            { ...finalData, dateAdded: currentDateStr, officeType: officeType }
-        );
+        resp = await graph.mutation(insertQl(
+          losTotalsType,
+          {
+            objects: [{ ...finalData, dateAdded: currentDateStr, officeType: officeType }]
+          }
+        )).then(res => res.data);
     }
 
     return { success: true, response: resp };
@@ -74,55 +96,63 @@ async function saveUpdateYearEnd(total, officeType) {
 
 
 async function saveUpdateDaily(total, filter, officeType) {
-    const { db } = await connectToDatabase();
     const currentDateStr = total.currentDate;
     let resp;
 
-    let losTotal = await db.collection('losTotals').find({ userId: total.userId, dateAdded: total.data.day, losType: 'daily', occurence: total.occurence }).toArray();
+    let losTotal = await findLosTotals({
+      userId: { _eq: total.userId },
+      dateAdded: { _eq: total.data.day },
+      losType: { _eq: 'daily' },
+      occurence: { _eq: total.occurence }
+    });
 
     if (filter) {
         if (losTotal.length > 0) {
             losTotal = losTotal[0];
-            await db.collection('losTotals').updateOne(
-                { _id: losTotal._id},
-                { $set: {
-                    ...losTotal,
-                    data: total.data,
-                    dateModified: total.data.day,
-                    modifiedBy: 'admin',
-                    modifiedDate: currentDateStr
-                } }
-            );
+            await graph.mutation(updateQl(losTotalsType, {
+              where: { _id: { _eq: losTotal._id } },
+              set: {
+                ...losTotal,
+                data: total.data,
+                dateModified: total.data.day,
+                modifiedBy: 'admin',
+                modifiedDate: currentDateStr
+              }
+            }));
         } else {
             const finalData = {...total};
             delete finalData.currentDate;
-            await db.collection('losTotals').insertOne(
-                { 
-                    ...finalData, 
-                    dateAdded: total.data.day, 
-                    insertedBy: 'admin',
-                    insertedDate: currentDateStr,
-                    officeType: officeType
-                }
-            );
+            await graph.mutation(insertQl(losTotalsType, {
+              objects: [{
+                ...finalData,
+                dateAdded: total.data.day,
+                insertedBy: 'admin',
+                insertedDate: currentDateStr,
+                officeType: officeType
+              }]
+            }));
         }
-    } else {        
+    } else {
         if (losTotal.length > 0) {
             losTotal = losTotal[0];
-            await db.collection('losTotals').updateOne(
-                { _id: losTotal._id},
-                { $set: {
-                    ...losTotal,
-                    data: total.data,
-                    dateModified: currentDateStr
-                } }
-            );
+            await graph.mutation(updateQl(losTotalsType, {
+              where: { _id: { _eq: losTotal._id } },
+              set: {
+                ...losTotal,
+                data: total.data,
+                dateModified: currentDateStr
+              }
+            }));
         } else {
             const finalData = {...total};
             delete finalData.currentDate;
-            await db.collection('losTotals').insertOne(
-                { ...finalData, dateAdded: currentDateStr, officeType: officeType }
-            );
+            await graph.mutation(insertQl(losTotalsType, {
+              objects: [{
+                ...finalData,
+                dateAdded: currentDateStr,
+                officeType: officeType
+              }]
+            }))
         }
     }
 
@@ -130,37 +160,45 @@ async function saveUpdateDaily(total, filter, officeType) {
 }
 
 async function saveUpdateCommulative(total, officeType) {
-    const { db } = await connectToDatabase();
     const currentDateStr = total.currentDate;
     let resp;
     let loGroup = officeType;
 
-    if (officeType == null || officeType == undefined) { // it means it is BM
+    if (officeType === null || officeType === undefined) { // it means it is BM
         loGroup = total.officeType;
     }
 
-    let losTotal = await db.collection('losTotals').find({ userId: total.userId, month: total.month, year: total.year, losType: 'commulative', officeType: loGroup }).toArray();
+    let losTotal = await findLosTotals({
+      userId: { _eq: total.userId },
+      month: { _eq: total.month },
+      year: { _eq: total.year },
+      losType: { _eq: "commulative" },
+      officeType: { _eq: loGroup },
+    });
 
     if (losTotal.length > 0) {
         losTotal = losTotal[0];
         if (losTotal.hasOwnProperty('insertedBy') && losTotal.insertedBy === 'migration') {
             // don't override...
         } else {
-            await db.collection('losTotals').updateOne(
-                { _id: losTotal._id},
-                { $set: {
-                    ...losTotal,
-                    data: total.data,
-                    dateModified: currentDateStr
-                } }
-            );
+            await graph.mutation(updateQl(losTotalsType, {
+              where: { _id: { _eq: losTotal._id } },
+              set: {
+                ...losTotal,
+                data: total.data,
+                dateModified: currentDateStr
+              }
+            }));
         }
     } else {
         const finalData = {...total};
         delete finalData.currentDate;
-        await db.collection('losTotals').insertOne(
-            { ...finalData, dateAdded: currentDateStr }
-        );
+        await graph.mutation(insertQl(losTotalsType, {
+          objects: [{
+            ...finalData,
+            dateAdded: currentDateStr
+          }]
+        }))
     }
 
     return  { success: true, response: resp };

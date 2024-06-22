@@ -10,6 +10,7 @@ import Spinner from "../Spinner";
 import 'react-calendar/dist/Calendar.css';
 import SelectDropdown from "@/lib/ui/select";
 import SideBar from "@/lib/ui/SideBar";
+import { getApiBaseUrl } from '@/lib/constants';
 
 const AddUpdateClientCoMaker = ({ client = {}, showSidebar, setShowSidebar, onClose, type }) => {
     const formikRef = useRef();
@@ -40,7 +41,7 @@ const AddUpdateClientCoMaker = ({ client = {}, showSidebar, setShowSidebar, onCl
     }
 
     const handleSaveUpdate = (values, action) => {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/add-comaker-loan';
+        const apiUrl = getApiBaseUrl() + 'transactions/loans/add-comaker-loan';
         fetchWrapper.post(apiUrl, values)
             .then(response => {
                 setLoading(false);
