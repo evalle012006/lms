@@ -143,7 +143,7 @@ const ResetPage = () => {
     }
 
     const processResetGroup = async () => {
-        const apiURL = `${process.env.NEXT_PUBLIC_API_URL}secure/reset-group`;
+        const apiURL = `${getApiBaseUrl()}secure/reset-group`;
         const response = await fetchWrapper.post(apiURL, {groupId: selectedGroup._id});
 
         if (response.success) {
