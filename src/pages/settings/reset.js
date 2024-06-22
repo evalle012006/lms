@@ -132,7 +132,7 @@ const ResetPage = () => {
     }
 
     const processResetLO = async () => {
-        const apiURL = `${process.env.NEXT_PUBLIC_API_URL}secure/reset-lo`;
+        const apiURL = `${getApiBaseUrl()}secure/reset-lo`;
         const response = await fetchWrapper.post(apiURL, {loId: selectedUser._id});
 
         if (response.success) {
