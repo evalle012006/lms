@@ -9,6 +9,8 @@ export class GraphProvider {
 
     constructor() {
 
+        console.log(process.env.HASURA_URL, process.env.HASURA_ADMIN_SECRET);
+
         const cache = new InMemoryCache({ addTypename: false });
         const link = new HttpLink({
             uri: process.env.HASURA_URL + '/v1/graphql',

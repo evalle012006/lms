@@ -4,7 +4,7 @@ module.exports = {
         secret: 'A39518F3263ABF7687DC89697A21A'
     },
     publicRuntimeConfig: {
-        apiUrl: process.env.DEV_URL
+        apiUrl: process.env.NEXT_PUBLIC_API_URL
     },
     images: {
         domains: [process.env.NEXT_PUBLIC_IMAGE_HOST],

@@ -22,14 +22,22 @@ function handleResponse(response) {
     });
 }
 
+function isApiUrl(url) {
+  const apiUrl = publicRuntimeConfig.apiUrl ?? '';
+  if (apiUrl.startsWith('/') && url.startsWith('http')) {
+    url = new URL(url).pathname;
+  }
+  console.log(url, apiUrl, url.startsWith(apiUrl))
+  return url.startsWith(apiUrl);
+}
+
 function authHeader(url) {
     let user = userService.userValue;
     if (user && user.hasOwnProperty('user')) {
         user = user.user;
     }
     const isLoggedIn = user && user.token;
-    const isApiUrl = url.startsWith(publicRuntimeConfig.apiUrl);
-    if (isLoggedIn && isApiUrl) {
+    if (isLoggedIn && isApiUrl(url)) {
         return { Authorization: `Bearer ${user.token}` };
     } else {
         return {};
