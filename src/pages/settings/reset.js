@@ -110,7 +110,7 @@ const ResetPage = () => {
     }
 
     const processResetSystem = async () => {
-        const apiURL = `${process.env.NEXT_PUBLIC_API_URL}secure/reset-system`;
+        const apiURL = `${getApiBaseUrl()}secure/reset-system`;
         const response = await fetchWrapper.post(apiURL);
 
         if (response.success) {
