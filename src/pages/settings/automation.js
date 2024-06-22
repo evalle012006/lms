@@ -121,7 +121,7 @@ const AutomationPage = () => {
     }
 
     const processResetBranch = async () => {
-        const apiURL = `${process.env.NEXT_PUBLIC_API_URL}secure/reset-branch`;
+        const apiURL = `${getApiBaseUrl()}secure/reset-branch`;
         const response = await fetchWrapper.post(apiURL, {branchId: selectedBranch._id});
 
         if (response.success) {
