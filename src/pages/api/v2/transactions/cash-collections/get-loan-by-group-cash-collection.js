@@ -1,4 +1,5 @@
 import { apiHandler } from '@/services/api-handler';
+import { gql } from 'node_modules/apollo-boost/lib/index';
 
 
 export default apiHandler({
@@ -37,7 +38,7 @@ async function getLoanWithCashCollection(req, res) {
                 curr_type: type
            }
         }
-    }).then(res => res.collections.map(c => c.data));
+    }).then(res => res.data.collections.map(c => c.data));
 
     if(type == 'current') {
         tomorrowPending = await graph.apollo.query({
@@ -57,7 +58,7 @@ async function getLoanWithCashCollection(req, res) {
                     curr_date: date,
                }
             }
-        }).then(res => res.collections.map(c => c.data));
+        }).then(res => res.data.collections.map(c => c.data));
     }
 
     cashCollection = {

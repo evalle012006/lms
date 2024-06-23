@@ -1,5 +1,6 @@
 import { apiHandler } from '@/services/api-handler';
 import moment from  'moment';
+import { gql } from 'node_modules/apollo-boost/lib/index';
 
 const graph = new GraphProvider();
 
@@ -63,7 +64,7 @@ async function getAllLoansPerGroup(date, mode, groupId, dayName, currentDate) {
               curr_date: date,
               groupIds: [groupId]
           }
-      }).then(res => res.collections.map(c => c.data));
+      }).then(res => res.data.collections.map(c => c.data));
     } else {
         cashCollection = await graph.apollo.query({
             query: gql`
@@ -86,8 +87,15 @@ async function getAllLoansPerGroup(date, mode, groupId, dayName, currentDate) {
                 date_added: date,
                 groupIds: [groupId]
             }
-        }).then(res => res.collections.map(c => c.data));
+        }).then(res => res.data.collections.map(c => c.data));
     }
 
-    return cashCollection;
+    return cashCollection.map(c => ({
+      ... c,
+      cashCollections: c.cashCollections ? [c.cashCollections] : [],
+      loans: c.loans ? [c.loans] : [],
+      activeLoans: c.activeLoans ? [c.activeLoans] : [],
+      currentRelease: c.currentRelease ? [c.currentRelease] : [],
+      fullPayment: c.fullPayment ? [c.fullPayment] : [],
+    }))
 }
