@@ -40,16 +40,21 @@ async function list(req, res) {
 
 
     if (mode === 'view_offset' && status === 'offset') {
+        const where = {
+            status: { _eq: status },
+            branchId: { _eq: branchId ?? '' },
+            oldLoId: { _eq: loId ?? '' },
+            oldGroupId: { _eq: groupId ?? '' },
+        };
+
         clients = await graph.query(
             queryQl(CLIENT_TYPE(), {
-                where:{
-                    status: { _eq: status },
-                    branchId: { _eq: branchId },
-                    oldLoId: { _eq: loId },
-                    oldGroupId: { _eq: groupId },
-                }
+                where
             })
-        ).then(res => res.data.clients);
+        ).then(res => res.data.clients.map(o => ({
+            ... o,
+            lo: o.lo ?? [],
+        })));
 
     } else if (mode === 'view_active_by_group' && groupId) {
         clients = await graph.query(
@@ -91,7 +96,7 @@ async function list(req, res) {
             queryQl(CLIENT_TYPE(), {
                 where:{
                     branchId: { _eq: branchId },
-                    status: { status }
+                    status: { _eq: status }
                 }
             })
         ).then(res => res.data.clients);

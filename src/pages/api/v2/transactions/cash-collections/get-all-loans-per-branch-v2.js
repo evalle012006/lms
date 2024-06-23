@@ -97,7 +97,7 @@ async function getAllLoanTransactionsByBranch(branchId, date, dayName, currentDa
                 curr_date: date,
                 branchIds: [branchId]
             }
-        }).then(res => res.collections.map(c => c.data));
+        }).then(res => res.data.collections.map(c => c.data));
     } else {
         cashCollection = await graph.apollo.query({
             query: gql`
@@ -120,8 +120,15 @@ async function getAllLoanTransactionsByBranch(branchId, date, dayName, currentDa
                 date_added: date,
                 branchIds: [branchId]
             }
-        }).then(res => res.collections.map(c => c.data));
+        }).then(res => res.data.collections.map(c => c.data));
     }
      
-    return cashCollection;
+    return cashCollection.map(c => ({
+        ... c,
+        cashCollections: c.cashCollections ? [c.cashCollections] : [],
+        loans: c.loans ? [c.loans] : [],
+        activeLoans: c.activeLoans ? [c.activeLoans] : [],
+        currentRelease: c.currentRelease ? [c.currentRelease] : [],
+        fullPayment: c.fullPayment ? [c.fullPayment] : [],
+      }))
 }

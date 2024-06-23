@@ -1,10 +1,16 @@
 import { apiHandler } from '@/services/api-handler';
 import moment from 'moment';
 import logger from '@/logger';
+import { GraphProvider } from '@/lib/graph/graph.provider';
+import { gql } from 'node_modules/apollo-boost/lib/index';
+
+const graph = new GraphProvider();
 
 export default apiHandler({
     get: getData
 });
+
+
 
 async function getData(req, res) {
     const { date, mode, loIds, dayName, currentDate } = req.query;
@@ -12,24 +18,17 @@ async function getData(req, res) {
     let response = {};
 
     const loIdsObj = JSON.parse(loIds);
-    const data = [];
+    const { data, error } = await getAllLoansPerGroup(date, mode, loIdsObj, dayName, currentDate).then(data => ({ data })).catch(error => ({ error }));
 
-    const promise = await new Promise(async (resolve) => {
-        const response = await Promise.all(loIdsObj.map(async (loId) => {
-            logger.debug({page: 'Loan Officer Collections', message: `Getting data for loan officer id: ${loId}`});
-            data.push.apply(data, await getAllLoansPerGroup(date, mode, loId, dayName, currentDate));
-        }));
-
-        resolve(response);
-    });
-
-    if (promise) {
-        data.sort((a, b) => { return a.loNo - b.loNo });
-        response = { success: true, data: data };
+    if(data) {
+      
+      data.sort((a, b) => { return a.loNo - b.loNo });
+      response = { success: true, data: data };
     }
     else {
+
         statusCode = 500;
-        response = { error: true, message: "Error fetching data" };
+        response = { error, message: "Error fetching data" };
     }
 
     res.status(statusCode)
@@ -37,7 +36,7 @@ async function getData(req, res) {
         .end(JSON.stringify(response));
 }
 
-async function getAllLoansPerGroup(date, mode, loId, dayName, currentDate) {
+async function getAllLoansPerGroup(date, mode, loIds, dayName, currentDate) {
     let cashCollection;
 
     if (currentDate === date) {
@@ -61,10 +60,13 @@ async function getAllLoansPerGroup(date, mode, loId, dayName, currentDate) {
           variables: {
               day_name: dayName,
               curr_date: date,
-              loIds: [loId]
+              loIds
           }
-      }).then(res => res.collections.map(c => c.data));
+      })
+        .then(res => res.data)
+        .then(res => res.collections.map(c => c.data));
     } else {
+      
         cashCollection = await graph.apollo.query({
             query: gql`
             query loan_group ($day_name: String!, $date_added: date!, $loIds: [String!]!) {
@@ -84,10 +86,19 @@ async function getAllLoansPerGroup(date, mode, loId, dayName, currentDate) {
             variables: {
                 day_name: dayName,
                 date_added: date,
-                loIds: [loId],
+                loIds
             }
-        }).then(res => res.collections.map(c => c.data));
+        })
+        .then(res => res.data)
+        .then(res => res.collections.map(c => c.data));
     }
 
-    return cashCollection;
+    return cashCollection.map(c => ({
+      ... c,
+      cashCollections: c.cashCollections ? [c.cashCollections] : [],
+      loans: c.loans ? [c.loans] : [],
+      activeLoans: c.activeLoans ? [c.activeLoans] : [],
+      currentRelease: c.currentRelease ? [c.currentRelease] : [],
+      fullPayment: c.fullPayment ? [c.fullPayment] : [],
+    }))
 }
