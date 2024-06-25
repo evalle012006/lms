@@ -18,15 +18,15 @@ async function getData(req, res) {
     let response = {};
 
     const loIdsObj = JSON.parse(loIds);
-    const { data, error } = await getAllLoansPerGroup(date, mode, loIdsObj, dayName, currentDate).then(data => ({ data })).catch(error => ({ error }));
-
+    const promises = loIdsObj.map(async id => await getAllLoansPerGroup(date, mode, id, dayName, currentDate).then(res => res?.[0]));
+    const { data, error } = await Promise.all(promises).then(data => ({ data })).catch(error => ({ error }));
+    
     if(data) {
-      
       data.sort((a, b) => { return a.loNo - b.loNo });
       response = { success: true, data: data };
     }
     else {
-
+        logger.debug(error);
         statusCode = 500;
         response = { error, message: "Error fetching data" };
     }
@@ -36,20 +36,20 @@ async function getData(req, res) {
         .end(JSON.stringify(response));
 }
 
-async function getAllLoansPerGroup(date, mode, loIds, dayName, currentDate) {
+async function getAllLoansPerGroup(date, mode, loId, dayName, currentDate) {
     let cashCollection;
 
     if (currentDate === date) {
       dayName = moment(date).format('dddd').toLowerCase();
       cashCollection = await graph.apollo.query({
           query: gql`
-          query loan_group ($day_name: String!, $curr_date: date!, $loIds: [String!]!) {
-              collections: get_all_loans_per_lo_by_curr_date_and_day_name(args: {
+          query loan_group ($day_name: String!, $curr_date: date!, $loId: String!) {
+              collections: get_all_loans_per_lo_by_curr_date_and_day_name(limit: 1,  args: {
                 day_name: $day_name,
                 curr_date: $curr_date
               }, where: {
                 _id: {
-                  _in: $loIds
+                  _eq: $loId
                 }
               }) {
                 _id
@@ -60,7 +60,7 @@ async function getAllLoansPerGroup(date, mode, loIds, dayName, currentDate) {
           variables: {
               day_name: dayName,
               curr_date: date,
-              loIds
+              loId
           }
       })
         .then(res => res.data)
@@ -69,13 +69,13 @@ async function getAllLoansPerGroup(date, mode, loIds, dayName, currentDate) {
       
         cashCollection = await graph.apollo.query({
             query: gql`
-            query loan_group ($day_name: String!, $date_added: date!, $loIds: [String!]!) {
-                collections: get_all_loans_per_lo_by_date_added_and_day_name(args: {
+            query loan_group ($day_name: String!, $date_added: date!, $loId: String!) {
+                collections: get_all_loans_per_lo_by_date_added_and_day_name(limit: 1, args: {
                   day_name: $day_name,
                   date_added: $date_added
                 }, where: {
                   _id: {
-                    _in: $loIds
+                    _eq: $loId
                   }
                 }) {
                   _id
@@ -86,7 +86,7 @@ async function getAllLoansPerGroup(date, mode, loIds, dayName, currentDate) {
             variables: {
                 day_name: dayName,
                 date_added: date,
-                loIds
+                loId
             }
         })
         .then(res => res.data)
@@ -100,5 +100,7 @@ async function getAllLoansPerGroup(date, mode, loIds, dayName, currentDate) {
       activeLoans: c.activeLoans ? [c.activeLoans] : [],
       currentRelease: c.currentRelease ? [c.currentRelease] : [],
       fullPayment: c.fullPayment ? [c.fullPayment] : [],
+      transferWeeklyGiverDetails: c.transferWeeklyGiverDetails ?? [],
+      transferWeeklyReceivedDetails: c.transferWeeklyReceivedDetails ?? []
     }))
 }
