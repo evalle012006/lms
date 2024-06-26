@@ -75,6 +75,7 @@ async function processData(req, res) {
                         groupData = groupData[0];
             
                         if (loan.status === 'active') {
+                            console.log('approving loan...updating client')
                             await updateClient(loan);
                             if (loan.coMaker) {
                                 if (typeof loan.coMaker === 'string') {
@@ -163,7 +164,7 @@ async function updateClient(loan) {
     const ObjectId = require('mongodb').ObjectId;
     const clientId = loan.clientId;
     let client = await db.collection('client').find({ _id: new ObjectId(clientId) }).toArray();
-
+    console.log(client.length)
     if (client.length > 0) {
         client = client[0];
         
@@ -178,6 +179,10 @@ async function updateClient(loan) {
         }
 
         client.status = 'active';
+        console.log('duplicate', client?.duplicate)
+        if (client?.duplicate) {
+            client.duplicate = false;
+        }
         delete client._id;
 
         await db
