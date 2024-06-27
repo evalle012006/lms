@@ -20,7 +20,7 @@ async function getData(req, res) {
     const loIdsObj = JSON.parse(loIds);
     const promises = loIdsObj.map(async id => await getAllLoansPerGroup(date, mode, id, dayName, currentDate).then(res => res?.[0]));
     const { data, error } = await Promise.all(promises).then(data => ({ data })).catch(error => ({ error }));
-    
+
     if(data) {
       data.sort((a, b) => { return a.loNo - b.loNo });
       response = { success: true, data: data };
@@ -100,6 +100,8 @@ async function getAllLoansPerGroup(date, mode, loId, dayName, currentDate) {
       activeLoans: c.activeLoans ? [c.activeLoans] : [],
       currentRelease: c.currentRelease ? [c.currentRelease] : [],
       fullPayment: c.fullPayment ? [c.fullPayment] : [],
+      transferDailyGiverDetails: c.transferWeeklyGiverDetails ?? [],
+      transferDailyReceivedDetails: c.transferWeeklyReceivedDetails ?? [],
       transferWeeklyGiverDetails: c.transferWeeklyGiverDetails ?? [],
       transferWeeklyReceivedDetails: c.transferWeeklyReceivedDetails ?? []
     }))

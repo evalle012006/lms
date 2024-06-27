@@ -78,13 +78,13 @@ async function getAllLoanTransactionsByBranch(branchId, date, dayName, currentDa
     if (currentDate === date) {
         cashCollection = await graph.apollo.query({
             query: gql`
-            query loan_group ($day_name: String!, $curr_date: date!, $branchIds: [String!]!) {
-                collections: get_all_loans_per_branch_by_curr_date_and_day_name(args: {
+            query loan_group ($day_name: String!, $curr_date: date!, $branchId: String!) {
+                collections: get_all_loans_per_branch_by_curr_date_and_day_name(limit: 1, args: {
                   day_name: $day_name,
                   curr_date: $curr_date
                 }, where: {
                   _id: {
-                    _in: $branchIds
+                    _in: $branchId
                   }
                 }) {
                   _id
@@ -95,19 +95,19 @@ async function getAllLoanTransactionsByBranch(branchId, date, dayName, currentDa
             variables: {
                 day_name: dayName,
                 curr_date: date,
-                branchIds: [branchId]
+                branchId,
             }
         }).then(res => res.data.collections.map(c => c.data));
     } else {
         cashCollection = await graph.apollo.query({
             query: gql`
-            query loan_group ($day_name: String!, $date_added: date!, $branchIds: [String!]!) {
-                collections: get_all_loans_per_group_by_date_added_and_day_name(args: {
+            query loan_group ($day_name: String!, $date_added: date!, $branchId: String!) {
+                collections: get_all_loans_per_group_by_date_added_and_day_name(limit: 1, args: {
                   day_name: $day_name,
                   date_added: $date_added
                 }, where: {
                   _id: {
-                    _in: $branchIds
+                    __eq: $branchId
                   }
                 }) {
                   _id
@@ -118,7 +118,7 @@ async function getAllLoanTransactionsByBranch(branchId, date, dayName, currentDa
             variables: {
                 day_name: dayName,
                 date_added: date,
-                branchIds: [branchId]
+                branchId,
             }
         }).then(res => res.data.collections.map(c => c.data));
     }
@@ -130,5 +130,9 @@ async function getAllLoanTransactionsByBranch(branchId, date, dayName, currentDa
         activeLoans: c.activeLoans ? [c.activeLoans] : [],
         currentRelease: c.currentRelease ? [c.currentRelease] : [],
         fullPayment: c.fullPayment ? [c.fullPayment] : [],
+        transferDailyGiverDetails: c.transferWeeklyGiverDetails ?? [],
+        transferDailyReceivedDetails: c.transferWeeklyReceivedDetails ?? [],
+        transferWeeklyGiverDetails: c.transferWeeklyGiverDetails ?? [],
+        transferWeeklyReceivedDetails: c.transferWeeklyReceivedDetails ?? []
       }))
 }
