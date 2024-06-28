@@ -125,14 +125,12 @@ async function getAllLoanTransactionsByBranch(branchId, date, dayName, currentDa
      
     return cashCollection.map(c => ({
         ... c,
-        cashCollections: c.cashCollections ? [c.cashCollections] : [],
-        loans: c.loans ? [c.loans] : [],
-        activeLoans: c.activeLoans ? [c.activeLoans] : [],
-        currentRelease: c.currentRelease ? [c.currentRelease] : [],
-        fullPayment: c.fullPayment ? [c.fullPayment] : [],
-        transferDailyGiverDetails: c.transferWeeklyGiverDetails ?? [],
-        transferDailyReceivedDetails: c.transferWeeklyReceivedDetails ?? [],
-        transferWeeklyGiverDetails: c.transferWeeklyGiverDetails ?? [],
-        transferWeeklyReceivedDetails: c.transferWeeklyReceivedDetails ?? []
+        cashCollections: c.cashCollections ?? [],
+        loans: c.loans ?? [],
+        activeLoans: c.activeLoans ?? [],
+        currentRelease: c.currentRelease ?? [],
+        fullPayment: c.fullPayment ?? [],
+        transferGiverDetails: c.transferGiverDetails ?? [],
+        transferReceivedDetails: c.transferReceivedDetails ?? []
       }))
 }

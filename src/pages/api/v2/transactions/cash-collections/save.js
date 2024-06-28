@@ -131,6 +131,7 @@ function cleanUpCollection(c) {
         loanTerms: `${c.loanTerms}`,
         coMaker: c.coMaker === '-' ? null : +c.coMaker,
         noOfPayments: c.noOfPayments === '-' ? 0 : +c.noOfPayments,
+        remarks: JSON.stringify(c.remarks),
     })
 }
 

@@ -120,7 +120,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
                 let groupStatus = 'open';
                 if (lo?.draftCollections?.length > 0) {
                     const groupStatusArr = lo.draftCollections[0].groupStatusArr;
-                    if (groupStatusArr.length === 1) {
+                    if (groupStatusArr?.length === 1) {
                         const transactionStatus = groupStatusArr.filter(status => status === "closed");
                         if (transactionStatus.length > 0) {
                             groupStatus = 'close';
@@ -128,7 +128,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
                     }
                 } else if (lo.cashCollections.length > 0) {
                     const groupStatusArr = lo.cashCollections[0].groupStatusArr;
-                    if (groupStatusArr.length === 1) {
+                    if (groupStatusArr?.length === 1) {
                         const transactionStatus = groupStatusArr.filter(status => status === "pending");
                         if (transactionStatus.length === 0) {
                             groupStatus = 'close';

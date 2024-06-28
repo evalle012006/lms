@@ -95,11 +95,11 @@ async function getAllLoansPerGroup(date, mode, loId, dayName, currentDate) {
 
     return cashCollection.map(c => ({
       ... c,
-      cashCollections: c.cashCollections ? [c.cashCollections] : [],
-      loans: c.loans ? [c.loans] : [],
-      activeLoans: c.activeLoans ? [c.activeLoans] : [],
-      currentRelease: c.currentRelease ? [c.currentRelease] : [],
-      fullPayment: c.fullPayment ? [c.fullPayment] : [],
+      cashCollections: c.cashCollections ?? [],
+      loans: c.loans ?? [],
+      activeLoans: c.activeLoans ?? [],
+      currentRelease: c.currentRelease ?? [],
+      fullPayment: c.fullPayment ?? [],
       transferDailyGiverDetails: c.transferWeeklyGiverDetails ?? [],
       transferDailyReceivedDetails: c.transferWeeklyReceivedDetails ?? [],
       transferWeeklyGiverDetails: c.transferWeeklyGiverDetails ?? [],
