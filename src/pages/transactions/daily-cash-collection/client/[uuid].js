@@ -674,7 +674,7 @@ const CashCollectionDetailsPage = () => {
                             collection.previousDraft = true;
                             collection.dateAdded = draftCC.dateAdded;
                         } else if (cc.hasOwnProperty('current') && cc.current.length > 0) {
-                            const current = cc.current.find(cur => !cur.hasOwnProperty('transferId'));
+                            const current = cc.current.find(cur => !cur.transferId);
                             if (current) {
                                 setEditMode(false);
                                 collection.targetCollection = current.targetCollection;

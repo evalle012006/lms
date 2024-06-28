@@ -1,3 +1,4 @@
+import { GraphProvider } from '@/lib/graph/graph.provider';
 import { apiHandler } from '@/services/api-handler';
 import { gql } from 'node_modules/apollo-boost/lib/index';
 
@@ -22,20 +23,18 @@ async function getLoanWithCashCollection(req, res) {
 
     cashCollectionDay = await graph.apollo.query({
         query: gql`
-        query groups ($where:loan_group_model_bool_exp_bool_exp,  $args: get_loans_per_group_cashcollection_collection_day_by_type_arguments!) {
-            collections: get_loans_per_group_cashcollection_collection_day_by_type(args: $args, where: $where) {
+        query groups ($args: get_loans_per_group_cashcollection_collection_day_by_type_arguments!) {
+            collections: get_loans_per_group_cashcollection_collection_day_by_type(args: $args) {
               data
               _id
             }
         }
         `,
         variables: {
-           where: {
-                _id: { _eq: groupId }
-           },
            args: {
                 curr_date: date,
-                curr_type: type
+                curr_type: type,
+                group_id: groupId
            }
         }
     }).then(res => res.data.collections.map(c => c.data));
@@ -43,27 +42,36 @@ async function getLoanWithCashCollection(req, res) {
     if(type == 'current') {
         tomorrowPending = await graph.apollo.query({
             query: gql`
-            query groups ($where:loan_group_model_bool_exp_bool_exp,  $args: get_loans_per_group_cashcollection_tomorrow_pending_arguments!) {
-                collections: get_loans_per_group_cashcollection_tomorrow_pending(args: $args, where: $where) {
+            query groups ($args: get_loans_per_group_cashcollection_tomorrow_pending_arguments!) {
+                collections: get_loans_per_group_cashcollection_tomorrow_pending(args: $args) {
                   _id,
                   data
                 }
               }
             `,
             variables: {
-               where: {
-                    _id: { _eq: groupId }
-               },
                args: {
                     curr_date: date,
+                    group_id: groupId
                }
             }
         }).then(res => res.data.collections.map(c => c.data));
     }
 
     cashCollection = {
-        collection: cashCollectionDay,
-        tomorrowPending: tomorrowPending
+        collection: cashCollectionDay.map(c => ({
+            ... c,
+            currentRelease: c.currentRelease ?? [],
+            current: c.current ?? [],
+            fullPayment: c.fullPayment ?? [],
+        })),
+        tomorrowPending: tomorrowPending.map(c => ({
+            ... c,
+            currentRelease: c.currentRelease ?? [],
+            current: c.current ?? [],
+            fullPayment: c.fullPayment ?? [],
+            prevLoans: c.prevLoans ?? [],
+        }))
     };
 
     response = { success: true, data: cashCollection };

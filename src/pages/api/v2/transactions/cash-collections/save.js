@@ -29,6 +29,7 @@ async function save(req, res) {
         let existCC = [];
         let newCC = [];
         // let prevCommpleted = [];
+        
         logger.debug({page: `Saving Cash Collection - Group ID: ${data.collection[0]?.groupId}`});
         data.collection.map(async cc => {
             if (cc.status !== "totals") {
@@ -96,11 +97,11 @@ async function save(req, res) {
         });
 
         if (newCC.length > 0) {
-            await saveCollection(newCC);
+            await saveCollection(mutationQl, newCC);
         }
 
         if (existCC.length > 0) {
-            await updateCollection(existCC);
+            await updateCollection(mutationQl, existCC);
         }
 
         // if (prevCommpleted.length > 0) {
@@ -109,6 +110,8 @@ async function save(req, res) {
 
 
         // save all changes in one request
+
+        console.log('mutation qal length', mutationQl.length);
         await graph.mutation(
             ... mutationQl
         );
@@ -121,12 +124,22 @@ async function save(req, res) {
         .end(JSON.stringify(response));
 }
 
+function cleanUpCollection(c) {
+    return ({
+        ... c,
+        mispayment: `${c.mispayment}`,
+        loanTerms: `${c.loanTerms}`,
+        coMaker: c.coMaker === '-' ? null : +c.coMaker,
+        noOfPayments: c.noOfPayments === '-' ? 0 : +c.noOfPayments,
+    })
+}
+
 async function saveCollection(mutationQL, collections) {
     mutationQL.push(
         insertQl(COLLECTION_TYPE('collections_' + (mutationQL.length + 1)),{
                 objects: collections.map(c => ({
                     _id: generateUUID(),
-                    ... c
+                    ... cleanUpCollection(c),
                 }))
             }
         )
@@ -135,17 +148,17 @@ async function saveCollection(mutationQL, collections) {
 
 async function updateCollection(mutationQL, collections) {
 
-    collections.map(async collection => {
-        const collectionId = collection._id;
-        delete collection._id;
-        if (collection?.origin === 'pre-save') {
-            delete collection.origin;
+    collections.map(async c => {
+        const collectionId = c._id;
+        delete c._id;
+        if (c?.origin === 'pre-save') {
+            delete c.origin;
         } 
 
         mutationQL.push(
             updateQl(COLLECTION_TYPE('collections_' + (mutationQL.length + 1)), {
                 set: {
-                    ... collection,
+                    ... cleanUpCollection(c),
                     origin: null,
                     reverted: null,
                 },
@@ -284,6 +297,7 @@ async function updateLoan(mutationQL, collection, currentDate) {
 
 async function updateClient(mutationQl, loan, currentDate) {
 
+    let client = await graph.query(queryQl(CLIENT_TYPE, { where: { _id: { _eq: loan.clientId } } })).then(res => res.data.client);
     if (client.length > 0) {
         client = client[0];
 
