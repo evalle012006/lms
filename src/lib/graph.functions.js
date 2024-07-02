@@ -1,5 +1,6 @@
 import { GraphProvider } from "@/lib/graph/graph.provider";
 import {
+  AREA_FIELDS,
   BRANCH_FIELDS,
   CASH_COLLECTIONS_FIELDS,
   CLIENT_FIELDS,
@@ -56,4 +57,9 @@ export async function findBranches(filter, fields = BRANCH_FIELDS) {
 export async function findLosTotals(filter, fields = LOS_TOTALS_FIELDS) {
   return (await graph.query(queryQl(createGraphType('losTotals', fields)(), { where: filter })))
     .data?.losTotals ?? [];
+}
+
+export async function findAreas(filter, fields = AREA_FIELDS) {
+  return (await graph.query(queryQl(createGraphType('areas', fields)(), { where: filter })))
+    .data?.areas ?? [];
 }
