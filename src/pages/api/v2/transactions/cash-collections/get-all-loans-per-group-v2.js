@@ -88,7 +88,13 @@ async function getAllLoansPerGroup(date, mode, groupId, dayName, currentDate) {
                 date_added: date,
                 groupId,
             }
-        }).then(res => res.data.collections.map(c => c.data));
+
+        })
+          .then(res => {
+            console.log(res.errors);
+            return res;
+          })
+         .then(res => res.data.collections.map(c => c.data));
     }
 
     return cashCollection.map(c => ({

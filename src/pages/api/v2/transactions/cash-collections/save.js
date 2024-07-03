@@ -1,4 +1,4 @@
-import { CLIENT_FIELDS, GROUP_FIELDS, LOAN_FIELDS } from '@/lib/graph.fields';
+import { CASH_COLLECTIONS_FIELDS, CLIENT_FIELDS, GROUP_FIELDS, LOAN_FIELDS } from '@/lib/graph.fields';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, insertQl, queryQl, updateQl } from '@/lib/graph/graph.util';
 import { generateUUID } from '@/lib/utils';
@@ -125,14 +125,25 @@ async function save(req, res) {
 }
 
 function cleanUpCollection(c) {
+    const fields = CASH_COLLECTIONS_FIELDS.split('\n').map(f => f.trim()).filter(f => !!f);
+
+    const allow_fields = Object.keys(c).filter(c => fields.includes(c));
+    
+    console.log(allow_fields);
+    const cc = allow_fields.reduce((g, f) => ({
+        ... g,
+        [f]: c[f],
+    }), {});
+
+
+    console.log(cc);
+
     return ({
-        ... c,
-        mispayment: `${c.mispayment}`,
+        ... cc,
         loanTerms: `${c.loanTerms}`,
         coMaker: c.coMaker === '-' ? null : +c.coMaker,
-        noOfPayments: c.noOfPayments === '-' ? 0 : +c.noOfPayments,
-        remarks: JSON.stringify(c.remarks),
-    })
+        noOfPayments: c.noOfPayments === '-' ? 0 : +c.noOfPayments
+    });
 }
 
 async function saveCollection(mutationQL, collections) {

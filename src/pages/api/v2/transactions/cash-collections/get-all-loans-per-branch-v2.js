@@ -102,7 +102,7 @@ async function getAllLoanTransactionsByBranch(branchId, date, dayName, currentDa
         cashCollection = await graph.apollo.query({
             query: gql`
             query loan_group ($day_name: String!, $date_added: date!, $branchId: String!) {
-                collections: get_all_loans_per_group_by_date_added_and_day_name(limit: 1, args: {
+                collections: get_all_loans_per_branch_by_date_added_and_day_name(limit: 1, args: {
                   day_name: $day_name,
                   date_added: $date_added
                 }, where: {
