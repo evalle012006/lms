@@ -5,7 +5,7 @@ import {
   CASH_COLLECTIONS_FIELDS,
   CLIENT_FIELDS, DIVISION_FIELDS,
   GROUP_FIELDS,
-  LOAN_FIELDS, LOS_TOTALS_FIELDS,
+  LOAN_FIELDS, LOS_TOTALS_FIELDS, REGION_FIELDS,
   TRANSFER_CLIENT_FIELDS,
   USER_FIELDS,
 } from "@/lib/graph.fields";
@@ -67,4 +67,9 @@ export async function findAreas(filter, fields = AREA_FIELDS) {
 export async function findDivisions(filter, fields = DIVISION_FIELDS) {
   return (await graph.query(queryQl(createGraphType('divisions', fields)(), { where: filter })))
     .data?.divisions ?? [];
+}
+
+export async function findRegions(filter, fields = REGION_FIELDS) {
+  return (await graph.query(queryQl(createGraphType('regions', fields)(), { where: filter })))
+    .data?.regions ?? [];
 }

@@ -25,10 +25,10 @@ async function getData (req, res) {
         let divisionIds = [];
         if (selectedBranchGroup === 'mine' && user[0].role.rep !== 1) {
             if (user[0].divisionId && user[0].role.shortCode === 'regional_manager') {
-                const divisions = await findDivisions({ _id: user[0].divisionId });
+                const divisions = await findDivisions({ _id: { _eq: user[0].divisionId } });
                 divisionIds = divisions.map(division => division._id.toString());
             } else if (user[0].divisionId && user[0].role.shortCode === 'deputy_director') {
-                const divisions = await findDivisions({ _id: user[0].divisionId });
+                const divisions = await findDivisions({ _id: { _eq: user[0].divisionId } });
                 divisionIds = divisions.map(division => division._id.toString());
             }
         } else {
