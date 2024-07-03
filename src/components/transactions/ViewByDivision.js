@@ -6,6 +6,7 @@ import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { useSelector } from "react-redux";
 import moment from 'moment';
 import TableComponent from '@/lib/table';
+import { getApiBaseUrl } from '@/lib/constants';
 
 const ViewByDivisionPage = ({dateFilter, type, selectedBranchGroup, viewMode}) => {
     const [loading, setLoading] = useState(true);
@@ -197,7 +198,7 @@ const ViewByDivisionPage = ({dateFilter, type, selectedBranchGroup, viewMode}) =
     const getCollectionData = async (date) => {
         const filter = date ? true : false;
 
-        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 
+        const response = await fetchWrapper.get(getApiBaseUrl() +
                             'transactions/cash-collections/get-all-loans-per-division?' 
                             + new URLSearchParams({ date: date ? date : currentDate, currentUserId: currentUser._id, selectedBranchGroup: selectedBranchGroup, dayName: dayName, currentDate: currentDate }));
         if (response.success) {

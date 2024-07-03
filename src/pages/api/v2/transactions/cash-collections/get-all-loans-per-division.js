@@ -2,8 +2,8 @@ import { apiHandler } from "@/services/api-handler";
 import logger from "@/logger";
 import { formatPricePhp } from "@/lib/utils";
 import { transferBranchDetailsTotal } from "@/lib/transfer-util";
+import { findDivisions, findUsers } from "@/lib/graph.functions";
 import { GraphProvider } from "@/lib/graph/graph.provider";
-import { findAreas, findUsers } from "@/lib/graph.functions";
 import { gql } from "apollo-boost";
 
 const graph = new GraphProvider();
@@ -22,23 +22,23 @@ async function getData (req, res) {
 
     const user = await findUsers({ _id: { _eq: currentUserId } });
     if (user.length > 0) {
-        let areaIds = [];
+        let divisionIds = [];
         if (selectedBranchGroup === 'mine' && user[0].role.rep !== 1) {
-            if (user[0].regionId && user[0].role.shortCode === 'regional_manager') {
-                const areas = await findAreas({ regionId: user[0].regionId });
-                areaIds = areas.map(area => area._id.toString());
+            if (user[0].divisionId && user[0].role.shortCode === 'regional_manager') {
+                const divisions = await findDivisions({ _id: user[0].divisionId });
+                divisionIds = divisions.map(division => division._id.toString());
             } else if (user[0].divisionId && user[0].role.shortCode === 'deputy_director') {
-                const areas = await findAreas({ divisionId: { _eq: user[0].divisionId } });
-                areaIds = areas.map(area => area._id.toString());
+                const divisions = await findDivisions({ _id: user[0].divisionId });
+                divisionIds = divisions.map(division => division._id.toString());
             }
         } else {
-            const areas = await findAreas({});
-            areaIds = areas.map(area => area._id.toString());
+            const divisions = await findDivisions({ });
+            divisionIds = divisions.map(division => division._id.toString());
         }
         
-        const result = await Promise.all(areaIds.map(async (areaId) => {
-            logger.debug({page: 'Area Collections', message: `Getting data for area id: ${areaId}`});
-            data.push.apply(data, await getAllLoanTransactionsByArea(db, areaId, date, dayName, currentDate));
+        const result = await Promise.all(divisionIds.map(async (divisionId) => {
+            logger.debug({page: 'Division Collections', message: `Getting data for division id: ${divisionId}`});
+            data.push.apply(data, await getAllLoanTransactionsByDivision(db, divisionId, date, dayName, currentDate));
         }));
 
         if (result) {
@@ -56,7 +56,7 @@ async function getData (req, res) {
 
             const processedData = await processData(data, date, currentDate);
 
-            response = { success: true, data: processedData };
+            response = { success: true, rawData: data, data: processedData };
         } else {
             statusCode = 500;
             response = { error: true, message: "Error fetching data" };
@@ -68,30 +68,14 @@ async function getData (req, res) {
         .end(JSON.stringify(response));
 }
 
-async function getAllLoanTransactionsByArea(db, areaId, date, dayName, currentDate) {
+async function getAllLoanTransactionsByDivision(db, divisionId, date, dayName, currentDate) {
     let cashCollection;
     
     if (currentDate === date) {
-        const query = gql`
-          query get($areaId: String!, $date: date!, $dayName: String!) {
-              cashCollections: get_all_loans_per_area_current_date(args: {
-                  areaId: $areaId,
-                  date: $date,
-                  dayName: $dayName
-              }) {
-                  data
-              }
-          }
-        `;
-        const variables = { areaId, date, dayName };
-        cashCollection = await graph.apollo.query({ query, variables})
-          .then(res => res.data?.cashCollections?.map(({ data }) => data) ?? []);
-
-    } else {
       const query = gql`
-          query get($areaId: String!, $date: date!, $dayName: String!) {
-              cashCollections: get_all_loans_per_area(args: {
-                  areaId: $areaId,
+          query get($divisionId: String!, $date: date!, $dayName: String!) {
+              cashCollections: get_all_loans_per_division_current_date(args: {
+                  divisionId: $divisionId,
                   date: $date,
                   dayName: $dayName
               }) {
@@ -99,7 +83,23 @@ async function getAllLoanTransactionsByArea(db, areaId, date, dayName, currentDa
               }
           }
       `;
-      const variables = { areaId, date, dayName };
+      const variables = { divisionId, date, dayName };
+      cashCollection = await graph.apollo.query({ query, variables})
+        .then(res => res.data?.cashCollections?.map(({ data }) => data) ?? []);
+
+    } else {
+      const query = gql`
+          query get($divisionId: String!, $date: date!, $dayName: String!) {
+              cashCollections: get_all_loans_per_division(args: {
+                  divisionId: $divisionId,
+                  date: $date,
+                  dayName: $dayName
+              }) {
+                  data
+              }
+          }
+      `;
+      const variables = { divisionId, date, dayName };
       cashCollection = await graph.apollo.query({ query, variables})
         .then(res => res.data?.cashCollections?.map(({ data }) => data) ?? []);
     }
@@ -116,7 +116,7 @@ async function processData(data, date, currentDate) {
 
     const filter = date !== currentDate;
 
-    data.map(area => {
+    data.map(division => {
         let groupStatus = 'open';
 
         let branchNoOfClients = 0;
@@ -143,7 +143,7 @@ async function processData(data, date, currentDate) {
         let branchTotalTransfer = 0;
         let branchTotalMcbuDailyWithdrawal = 0;
 
-        area.branchCollection.map(branch => {
+        division.branchCollection.map(branch => {
             if (branch?.draftCollections?.length > 0) {
                 const transactionStatus = branch.draftCollections[0].groupStatusArr.filter(status => status === "pending");
                 const draft = branch.draftCollections[0].hasDraftsArr.filter(d => d === true);
@@ -376,8 +376,8 @@ async function processData(data, date, currentDate) {
         });
 
         let collection = {
-            _id: area._id,
-            name: area.name,
+            _id: division._id,
+            name: division.name,
             noCurrentReleaseStr: '-',
             currentReleaseAmountStr: '-',
             activeClients: '-',
@@ -399,11 +399,11 @@ async function processData(data, date, currentDate) {
             pastDueStr: '-',
             noPastDue: '-',
             transfer: '-',
-            page: 'area-summary',
+            page: 'division-summary',
             status: '-'
         }
 
-        if (area.branchCollection.length > 0) {
+        if (division.branchCollection.length > 0) {
             collection.activeClients = branchNoOfClients;
             collection.activeBorrowers = branchNoOfBorrowers;
             collection.pendingClients = branchNoOfPendings;
@@ -424,10 +424,10 @@ async function processData(data, date, currentDate) {
             collection.mcbuColStr = branchTotalMcbuCol > 0 ? formatPricePhp(branchTotalMcbuCol) : '-';
             collection.mcbuWithdrawal = branchTotalMcbuWithdrawal;
             collection.mcbuWithdrawalStr = branchTotalMcbuWithdrawal > 0 ? formatPricePhp(branchTotalMcbuWithdrawal) : '-';
-            collection.mcbuReturnAmt = branchTotalMcbuReturnAmt;
-            collection.mcbuReturnAmtStr = branchTotalMcbuReturnAmt > 0 ? formatPricePhp(branchTotalMcbuReturnAmt) : '-';
             collection.mcbuDailyWithdrawal = branchTotalMcbuDailyWithdrawal;
             collection.mcbuDailyWithdrawalStr = branchTotalMcbuDailyWithdrawal > 0 ? formatPricePhp(branchTotalMcbuDailyWithdrawal) : '-';
+            collection.mcbuReturnAmt = branchTotalMcbuReturnAmt;
+            collection.mcbuReturnAmtStr = branchTotalMcbuReturnAmt > 0 ? formatPricePhp(branchTotalMcbuReturnAmt) : '-';
             collection.excess = branchExcess;
             collection.excessStr = branchExcess > 0 ? formatPricePhp(branchExcess) : '-';
             collection.total = branchTotalLoanCollection;

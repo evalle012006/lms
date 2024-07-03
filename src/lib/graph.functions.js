@@ -3,7 +3,7 @@ import {
   AREA_FIELDS,
   BRANCH_FIELDS,
   CASH_COLLECTIONS_FIELDS,
-  CLIENT_FIELDS,
+  CLIENT_FIELDS, DIVISION_FIELDS,
   GROUP_FIELDS,
   LOAN_FIELDS, LOS_TOTALS_FIELDS,
   TRANSFER_CLIENT_FIELDS,
@@ -62,4 +62,9 @@ export async function findLosTotals(filter, fields = LOS_TOTALS_FIELDS) {
 export async function findAreas(filter, fields = AREA_FIELDS) {
   return (await graph.query(queryQl(createGraphType('areas', fields)(), { where: filter })))
     .data?.areas ?? [];
+}
+
+export async function findDivisions(filter, fields = DIVISION_FIELDS) {
+  return (await graph.query(queryQl(createGraphType('divisions', fields)(), { where: filter })))
+    .data?.divisions ?? [];
 }
