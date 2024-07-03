@@ -695,7 +695,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
 
     useEffect(() => {
         const getLOStatus = async (loId) => {
-            const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/get-lo-status?' + new URLSearchParams({ loId: loId, currentDate: currentDate }));
+            const response = await fetchWrapper.get(getApiBaseUrl() + 'transactions/cash-collections/get-lo-status?' + new URLSearchParams({ loId: loId, currentDate: currentDate }));
             if (response.success) {
                 setLoStatus(response.status);
 
