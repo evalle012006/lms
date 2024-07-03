@@ -1,10 +1,11 @@
 import { GraphProvider } from "@/lib/graph/graph.provider";
 import {
+  AREA_FIELDS,
   BRANCH_FIELDS,
   CASH_COLLECTIONS_FIELDS,
-  CLIENT_FIELDS,
+  CLIENT_FIELDS, DIVISION_FIELDS,
   GROUP_FIELDS,
-  LOAN_FIELDS, LOS_TOTALS_FIELDS,
+  LOAN_FIELDS, LOS_TOTALS_FIELDS, REGION_FIELDS,
   TRANSFER_CLIENT_FIELDS,
   USER_FIELDS,
 } from "@/lib/graph.fields";
@@ -56,4 +57,19 @@ export async function findBranches(filter, fields = BRANCH_FIELDS) {
 export async function findLosTotals(filter, fields = LOS_TOTALS_FIELDS) {
   return (await graph.query(queryQl(createGraphType('losTotals', fields)(), { where: filter })))
     .data?.losTotals ?? [];
+}
+
+export async function findAreas(filter, fields = AREA_FIELDS) {
+  return (await graph.query(queryQl(createGraphType('areas', fields)(), { where: filter })))
+    .data?.areas ?? [];
+}
+
+export async function findDivisions(filter, fields = DIVISION_FIELDS) {
+  return (await graph.query(queryQl(createGraphType('divisions', fields)(), { where: filter })))
+    .data?.divisions ?? [];
+}
+
+export async function findRegions(filter, fields = REGION_FIELDS) {
+  return (await graph.query(queryQl(createGraphType('regions', fields)(), { where: filter })))
+    .data?.regions ?? [];
 }
