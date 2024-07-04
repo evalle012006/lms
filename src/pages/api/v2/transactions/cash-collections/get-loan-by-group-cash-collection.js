@@ -61,11 +61,13 @@ async function getLoanWithCashCollection(req, res) {
     cashCollection = {
         collection: cashCollectionDay.map(c => ({
             ... c,
+            current: c.current ?? [],
             currentRelease: c.currentRelease ?? [],
             fullPayment: c.fullPayment ?? [],
         })),
         tomorrowPending: tomorrowPending.map(c => ({
             ... c,
+            current: c.current ?? [],
             currentRelease: c.currentRelease ?? [],
             fullPayment: c.fullPayment ?? [],
             prevLoans: c.prevLoans ?? [],
