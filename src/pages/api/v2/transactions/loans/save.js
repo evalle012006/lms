@@ -6,6 +6,7 @@ import { GraphProvider } from '@/lib/graph/graph.provider'
 import { createGraphType, insertQl, queryQl, updateQl } from '@/lib/graph/graph.util'
 import { CASH_COLLECTIONS_FIELDS, LOAN_FIELDS } from '@/lib/graph.fields'
 import { generateUUID } from '@/lib/utils'
+import { filterGraphFields } from '@/lib/graph.functions';
 
 const graph = new GraphProvider();
 const loansType = createGraphType("loans", LOAN_FIELDS)();
@@ -136,12 +137,12 @@ async function save(req, res) {
 
             const loanId = generateUUID();
             const loan = (await graph.mutation(insertQl(loansType, {
-              objects: [{
+              objects: [filterGraphFields(LOAN_FIELDS, {
                 ...finalData,
                 _id: loanId,
                 dateGranted: currentDate,
                 insertedDateTime: new Date()
-              }]
+              })]
             }))).data?.loans?.returning?.[0];
 
             if (mode === 'reloan') {
@@ -246,7 +247,7 @@ async function updateLoan(loanId, loanData, currentDate, mode) {
         }
 
         await graph.mutation(updateQl(loansType, {
-          set: { ...loan },
+          set: filterGraphFields(LOAN_FIELDS, { ...loan }),
           where: { _id: { _eq: loanId } },
         }))
     }
@@ -323,10 +324,10 @@ async function saveCashCollection(loan, reloan, group, loanId, currentDate, grou
             data.rejectReason = loan.rejectReason;
         }
         logger.debug({page: `Saving Cash Collection: ${loan.clientId}`, data: data});
-        await graph.mutation(insertQl(cashCollectionsType, { objects: [{
+        await graph.mutation(insertQl(cashCollectionsType, { objects: [filterGraphFields(CASH_COLLECTIONS_FIELDS, {
             ...data,
             _id: generateUUID(),
-        }] }));
+        })]}));
     } else {
         logger.debug({page: `Updating Loan: ${loan.clientId}`});
         await graph.mutation(updateQl(cashCollectionsType, {

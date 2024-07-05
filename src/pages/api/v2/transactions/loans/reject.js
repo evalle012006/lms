@@ -7,12 +7,13 @@ import {
   updateQl,
 } from "@/lib/graph/graph.util";
 import {
-  CASH_COLLECTIONS_FIELDS,
+  CASH_COLLECTIONS_FIELDS, CLIENT_FIELDS,
   GROUP_FIELDS,
   LOAN_FIELDS,
 } from "@/lib/graph.fields";
 import { GraphProvider } from "@/lib/graph/graph.provider";
 import {
+  filterGraphFields,
   findCashCollections,
   findClients,
   findGroups,
@@ -96,10 +97,10 @@ async function updateLoan(req, res) {
                         delete cashCollection.prevLoanId;
                         await graph.mutation(updateQl(cashCollection, {
                           where: { _id: { _eq: ccId } },
-                          set: {
+                          set: filterGraphFields(CASH_COLLECTIONS_FIELDS, {
                             ...cashCollection,
-                            prevLoanId: null, // TODO: confirm with donie if this is the meaning of unset?
-                          }
+                            prevLoanId: null,
+                          })
                         }))
                         // await db.collection('cashCollections').updateOne({ _id: ccId }, { $unset: { prevLoanId: 1 }, $set: { ...cashCollection } });
                     }
@@ -119,11 +120,11 @@ async function updateLoan(req, res) {
                     
                     await graph.mutation(updateQl(loanType, {
                       where: { _id: { _eq: prevLoanId } },
-                      set: {
+                      set: filterGraphFields(LOAN_FIELDS, {
                         ...prevLoan,
-                        advance: null, // TODO: confirm with donie if this is the meaning of unset?
+                        advance: null,
                         advanceDate: null, 
-                      }
+                      })
                     }))
                     // await db.collection('loans').updateOne({ _id: prevLoanId }, {$unset: {advance: 1, advanceDate: 1}, $set: { ...prevLoan }});
                 }
@@ -147,7 +148,7 @@ async function updateLoan(req, res) {
             logger.debug({page: `Loan: ${loanId}`, message: 'Updating loan data.', status: loan.status});
             await graph.mutation(updateQl(loanType, {
               where: { _id: { _eq: loanId } },
-              set: { ...loan }
+              set: filterGraphFields(LOAN_FIELDS, { ...loan })
             }));
 
             loan._id = loanId;
@@ -187,7 +188,7 @@ async function updateClient(clientId) {
 
         await graph.mutation(updateQl(clientType, {
           where: { _id: { _eq: clientId } },
-          set: { ...client }
+          set: filterGraphFields(CLIENT_FIELDS, { ...client })
         }));
     }
     
@@ -235,7 +236,7 @@ async function saveCashCollection(loan, group, currentDate) {
 
         await graph.mutation(updateQl(cashCollection, {
           where: { _id: { _eq: ccId } },
-          set: { ...cashCollection, status: status, loanCycle: loan.loanCycle, modifiedDate: currentDate }
+          set: filterGraphFields(CASH_COLLECTIONS_FIELDS, { ...cashCollection, status: status, loanCycle: loan.loanCycle, modifiedDate: currentDate })
         }))
     } else {
         // this entry is only when the approve or reject is not the same day when it applies
@@ -283,7 +284,7 @@ async function saveCashCollection(loan, group, currentDate) {
         }
 
         await graph.mutation(insertQl(cashCollectionType, {
-          objects: [{...data}]
+          objects: [filterGraphFields(CASH_COLLECTIONS_FIELDS, {...data})]
         }));
     }
 }

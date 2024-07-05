@@ -6,7 +6,7 @@ import {
   LOAN_FIELDS,
   TRANSFER_CLIENT_FIELDS,
 } from "@/lib/graph.fields";
-import { findLoans, findTransferClients } from "@/lib/graph.functions";
+import { filterGraphFields, findLoans, findTransferClients } from "@/lib/graph.functions";
 import { createGraphType, deleteQl, updateQl } from '@/lib/graph/graph.util';
 
 const graph = new GraphProvider();
@@ -49,10 +49,10 @@ async function revertTransfer(req, res) {
             delete prevLoan._id;
             await graph.mutation(updateQl(loansType, {
               where: { _id: { _eq: originalCC.prevLoanId }},
-              set: {
+              set: filterGraphFields(LOAN_FIELDS, {
                 transferredReleased: null,
                 ...prevLoan,
-              }
+              })
             }));
         }
 
@@ -66,11 +66,11 @@ async function revertTransfer(req, res) {
         delete originalLoan._id;
         await graph.mutation(updateQl(loansType, {
           where: { _id: { _eq: originalLoanId } },
-          set: {
+          set: filterGraphFields(LOAN_FIELDS, {
             transferred: null,
             transferId: null,
             ...originalLoan,
-          }
+          })
         }));
 
         delete originalCC.transferred;
@@ -83,14 +83,14 @@ async function revertTransfer(req, res) {
         delete originalCC._id;
         await graph.mutation(updateQl(ccType, {
           where: { _id: { _eq: originalCCId }},
-          set: {
+          set: filterGraphFields(CASH_COLLECTIONS_FIELDS, {
             transferred: null,
             transferId: null,
             sameLo: null,
             loToLo: null,
             branchToBranch: null,
             ...originalCC
-          }
+          })
         }));
 
         await graph.mutation(deleteQl(loansType, { _id: { _eq: newLoan._id}}));

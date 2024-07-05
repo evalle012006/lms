@@ -1,7 +1,8 @@
 import { apiHandler } from "@/services/api-handler";
 import { GraphProvider } from "@/lib/graph/graph.provider";
 import { createGraphType, updateQl } from "@/lib/graph/graph.util";
-import { findLoans } from "@/lib/graph.functions";
+import { filterGraphFields, findLoans } from "@/lib/graph.functions";
+import { LOAN_FIELDS } from '@/lib/graph.fields';
 
 const graph = new GraphProvider();
 const loansType = createGraphType('loans', '_id')();
@@ -39,7 +40,7 @@ async function syncLoans(req, res) {
         delete loan._id;
         const resp = await graph.mutation(updateQl(loansType, {
           where: { _id: { _eq: loanId } },
-          set: { ...loan }
+          set: filterGraphFields(LOAN_FIELDS, { ...loan })
         }));
         response = { success: true, response: resp };
     }

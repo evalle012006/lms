@@ -14,6 +14,7 @@ import {
 } from "@/lib/graph.fields";
 import { GraphProvider } from "@/lib/graph/graph.provider";
 import {
+  filterGraphFields,
   findCashCollections,
   findClients,
   findLoans,
@@ -177,7 +178,7 @@ async function processData(req, res) {
 async function updateLoan(loanId, loan) {
   return await graph.mutation(
     updateQl(loanType, {
-      set: { ...loan },
+      set: filterGraphFields(LOAN_FIELDS, { ...loan }),
       where: { _id: { _eq: loanId } },
     })
   );
@@ -229,7 +230,7 @@ async function updateClient(loan) {
     await graph.mutation(
       updateQl(clientType, {
         where: { _id: { _eq: clientId } },
-        set: { ...client },
+        set: filterGraphFields(CLIENT_FIELDS, { ...client }),
       })
     );
   }
@@ -283,12 +284,12 @@ async function saveCashCollection(loan, group, currentDate) {
     await graph.mutation(
       updateQl(cashCollection, {
         where: { _id: { _eq: ccId } },
-        set: {
+        set: filterGraphFields(CASH_COLLECTIONS_FIELDS, {
           ...cashCollection,
           status: status,
           loanCycle: loan.loanCycle,
           modifiedDate: currentDate,
-        },
+        }),
       })
     );
   } else {
@@ -342,7 +343,7 @@ async function saveCashCollection(loan, group, currentDate) {
     });
 
     await graph.mutation(
-      insertQl(cashCollectionType, { objects: [{ ...data }] })
+      insertQl(cashCollectionType, { objects: [filterGraphFields(CASH_COLLECTIONS_FIELDS, { ...data })] })
     );
   }
 }

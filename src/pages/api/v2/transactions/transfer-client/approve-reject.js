@@ -1,6 +1,6 @@
 import { apiHandler } from "@/services/api-handler";
 import moment from "moment";
-import { findCashCollections, findLoans } from "@/lib/graph.functions";
+import { filterGraphFields, findCashCollections, findLoans } from "@/lib/graph.functions";
 import { GraphProvider } from "@/lib/graph/graph.provider";
 import { createGraphType, insertQl, updateQl } from "@/lib/graph/graph.util";
 import {
@@ -149,14 +149,14 @@ async function approveReject(req, res) {
                   await graph.mutation(
                     updateQl(loansType, {
                       where: { _id: { _eq: prevLoanId } },
-                      set: { ...prevLoan },
+                      set: filterGraphFields(LOAN_FIELDS, { ...prevLoan }),
                     })
                   );
                 }
 
                 const newLoan = await graph
                   .mutation(
-                    insertQl(loansType, { objects: [{ ...updatedLoan }] })
+                    insertQl(loansType, { objects: [filterGraphFields(LOAN_FIELDS, { ...updatedLoan })] })
                   )
                   .catch((e) => ({ errors: [e] }));
 
@@ -199,7 +199,7 @@ async function approveReject(req, res) {
             await graph.mutation(
               updateQl(clientType, {
                 where: { _id: { _eq: client._id } },
-                set: { ...updatedClient },
+                set: filterGraphFields(CLIENT_FIELDS, { ...updatedClient }),
               })
             );
 
@@ -330,7 +330,7 @@ async function saveCashCollection(
     }
 
     await graph.mutation(
-      insertQl(cashCollectionsType, { objects: [{ ...data }] })
+      insertQl(cashCollectionsType, { objects: [filterGraphFields(CASH_COLLECTIONS_FIELDS, { ...data })] })
     );
   } else {
     await graph.mutation(
@@ -338,11 +338,8 @@ async function saveCashCollection(
         where: { _id: { _eq: cashCollection[0]._id } },
         set: {
           transfer: true,
-          sameLo: transfer.sameLo,
           transferId: transfer._id,
           transferDate: transfer.dateAdded,
-          loToLo: transfer.loToLo,
-          branchToBranch: transfer.branchToBranch,
           modifiedDateTime: new Date(),
         },
       })
@@ -407,7 +404,7 @@ async function saveCashCollection(
     }
 
     await graph.mutation(
-      insertQl(cashCollectionsType, { objects: [{ ...data }] })
+      insertQl(cashCollectionsType, { objects: [filterGraphFields(CASH_COLLECTIONS_FIELDS, { ...data })] })
     );
   } else {
     await graph.mutation(
@@ -415,11 +412,8 @@ async function saveCashCollection(
         where: { _id: { _eq: existingCashCollection[0]._id } },
         set: {
           transferred: true,
-          sameLo: transfer.sameLo,
           transferId: transfer._id,
           transferredDate: transfer.dateAdded,
-          loToLo: transfer.loToLo,
-          branchToBranch: transfer.branchToBranch,
           modifiedDateTime: new Date(),
         },
       })

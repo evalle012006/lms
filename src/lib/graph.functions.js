@@ -13,6 +13,24 @@ import { createGraphType, queryQl } from "@/lib/graph/graph.util";
 
 const graph = new GraphProvider();
 
+/**
+ * @param {string[] | string} fields
+ * @param {Record<string, any>} object
+ */
+export function filterGraphFields(fields, object) {
+  const fieldArr = (Array.isArray(fields)
+    ? fields
+    : fields.split(/\s+/).map(f => f.trim()).filter(f => !!f));
+
+  const newObject = {};
+  Object.keys(object).forEach(k => {
+    if (fieldArr.includes(k)) {
+      newObject[k] = object[k];
+    }
+  });
+  return newObject;
+}
+
 /** @return Promise<any> */
 export async function findUserById(id, fields = USER_FIELDS) {
   return (await graph.query(queryQl(createGraphType('users', fields)(), { where: { _id: { _eq: id } } })))

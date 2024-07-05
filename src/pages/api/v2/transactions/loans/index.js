@@ -4,12 +4,13 @@ import moment from "moment";
 import { getCurrentDate } from "@/lib/utils";
 import { createGraphType, queryQl, updateQl } from "@/lib/graph/graph.util";
 import {
-  BRANCH_FIELDS,
+  BRANCH_FIELDS, CASH_COLLECTIONS_FIELDS,
   CLIENT_FIELDS,
   GROUP_FIELDS,
   LOAN_FIELDS,
 } from "@/lib/graph.fields";
 import { GraphProvider } from "@/lib/graph/graph.provider";
+import { filterGraphFields } from '@/lib/graph.functions';
 
 const fields = `
   ${LOAN_FIELDS}
@@ -48,14 +49,13 @@ async function updateLoan(req, res) {
     dateOfRelease = moment(currentDate).add(1, "days").format("YYYY-MM-DD");
   }
 
-  // TODO: confirm with donie, migrated data has mixed types
   // the mixed type from mongo during migration
   loan.coMaker = loan.coMaker?.toString();
 
   const loanResp = await graph.mutation(
     updateQl(loanType, {
       where: { _id: { _eq: loanId } },
-      set: { ...loan, dateOfRelease },
+      set: filterGraphFields(LOAN_FIELDS, { ...loan, dateOfRelease }),
     })
   );
 
@@ -65,7 +65,7 @@ async function updateLoan(req, res) {
         loanId: { _eq: loanId },
         status: { _in: ["tomorrow", "pending"] },
       },
-      set: { currentReleaseAmount: loan.amountRelease },
+      set: filterGraphFields(CASH_COLLECTIONS_FIELDS, { currentReleaseAmount: loan.amountRelease }),
     })
   );
 
