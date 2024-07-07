@@ -10,6 +10,7 @@ export const SET_TOMORROW_LOAN = 'SET_TOMORROW_LOAN';
 export const SET_TOMORROW_LOAN_LIST = 'SET_TOMORROW_LOAN_LIST';
 export const SET_ADD_UPDATE_TOMORROW_LOAN = 'SET_ADD_UPDATE_TOMORROW_LOAN';
 export const SET_FILTERED_TOMORROW_LOAN_LIST = 'SET_FILTERED_TOMORROW_LOAN_LIST';
+export const SET_DUPLICATE_LOAN_LIST = 'SET_DUPLICATE_LOAN_LIST';
 
 export const setLoan = (loan) => ({
     type: SET_LOAN,
@@ -68,5 +69,10 @@ export const setAddUpdateTomorrowLoan = (loan) => ({
 
 export const setFilteredTomorrowLoanList = (loanList) => ({
     type: SET_FILTERED_TOMORROW_LOAN_LIST,
+    payload: loanList
+});
+
+export const setDuplicateLoanList = (loanList) => ({
+    type: SET_DUPLICATE_LOAN_LIST,
     payload: loanList
 });
