@@ -232,9 +232,6 @@ async function list(req, res) {
                         }
                     },
                     {
-                        $unwind: "$groupStatus"
-                    },
-                    {
                         $lookup: {
                             from: "groups",
                             localField: "groupIdObj",
@@ -320,9 +317,6 @@ async function list(req, res) {
                                 }
                             },
                             {
-                                $unwind: "$groupStatus"
-                            },
-                            {
                                 $lookup: {
                                     from: "groups",
                                     localField: "groupIdObj",
@@ -394,9 +388,6 @@ async function list(req, res) {
                             ],
                             as: 'groupStatus'
                         }
-                    },
-                    {
-                        $unwind: "$groupStatus"
                     },
                     {
                         $lookup: {
@@ -474,9 +465,6 @@ async function list(req, res) {
                         ],
                         as: 'groupStatus'
                     }
-                },
-                {
-                    $unwind: "$groupStatus"
                 },
                 {
                     $lookup: {
@@ -557,9 +545,6 @@ async function list(req, res) {
                     }
                 },
                 {
-                    $unwind: "$groupStatus"
-                },
-                {
                     $lookup: {
                         from: "groups",
                         localField: "groupIdObj",
@@ -632,9 +617,6 @@ async function list(req, res) {
                     }
                 },
                 {
-                    $unwind: "$groupStatus"
-                },
-                {
                     $lookup: {
                         from: "groups",
                         localField: "groupIdObj",
@@ -705,9 +687,6 @@ async function list(req, res) {
                         ],
                         as: 'groupStatus'
                     }
-                },
-                {
-                    $unwind: "$groupStatus"
                 },
                 {
                     $lookup: {
