@@ -421,8 +421,8 @@ async function getAllLoanTransactionsByArea(db, areaId, date, dayName, currentDa
                                         { $match: { status: 'active', dateGranted: date } },
                                         { $group: {
                                                 _id: '$branchId',
-                                                currentReleaseAmount: { $sum: '$amountRelease' },
-                                                noOfCurrentRelease: { $sum: 1 },
+                                                currentReleaseAmount: { $sum: { $cond: { if: { $ne: ['$transfer', true] }, then: '$amountRelease', else: 0 } } },
+                                                noOfCurrentRelease: { $sum: { $cond: { if: { $ne: ['$transfer', true] }, then: 1, else: 0 } } },
                                                 newCurrentRelease: { $sum: { $cond:{if: { $eq: ['$loanCycle', 1] }, then: 1, else: 0} } },
                                                 reCurrentRelease: { $sum: { $cond:{if: { $gt: ['$loanCycle', 1] }, then: 1, else: 0} } }
                                             }
@@ -758,7 +758,10 @@ async function getAllLoanTransactionsByArea(db, areaId, date, dayName, currentDa
                                                 currentReleaseAmount: {
                                                     $sum: {
                                                         $cond: {
-                                                            if: {$eq: ['$status', 'tomorrow']},
+                                                            if: { $and: [
+                                                                {$eq: ['$status', 'tomorrow']}, 
+                                                                {$ne: ['$transfer', true]}
+                                                            ] },
                                                             then: '$currentReleaseAmount',
                                                             else: 0
                                                         }
@@ -779,7 +782,7 @@ async function getAllLoanTransactionsByArea(db, areaId, date, dayName, currentDa
                                                 newCurrentRelease: {
                                                     $sum: {
                                                         $cond: {
-                                                            if: { $and: [{$eq: ['$status', 'tomorrow']}, { $eq: ['$loanCycle', 1]}] },
+                                                            if: { $and: [{$eq: ['$status', 'tomorrow']}, { $eq: ['$loanCycle', 1]}, {$ne: ['$transfer', true]}] },
                                                             then: 1,
                                                             else: 0
                                                         }

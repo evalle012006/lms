@@ -244,6 +244,14 @@ const CashCollectionDetailsPage = () => {
                                 excess = cc?.history?.excess > 0 ? cc.history.excess : cc.excess;
                                 paymentCollection = cc?.history?.collection ? cc.history.collection : 0;
                             }
+
+                            if (cc.status == 'tomorrow' || cc.status == 'pending') {
+                                noOfPayments = 60;
+                            }
+
+                            if (cc.status == "tomorrow") {
+                                currentReleaseAmount = cc.currentReleaseAmount;
+                            }
                         }
                     }
 
@@ -743,7 +751,7 @@ const CashCollectionDetailsPage = () => {
                                 collection.paymentCollectionStr = formatPricePhp(collection.paymentCollection);
                             }
     
-                            collection.notCalculate = true;
+                            // collection.notCalculate = true;
                             collection.remarks = cc.history ? cc.history?.remarks : '-';
                         }
 

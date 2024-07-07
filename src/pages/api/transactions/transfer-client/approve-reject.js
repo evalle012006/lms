@@ -235,6 +235,8 @@ async function saveCashCollection(transfer, client, loan, sourceGroup, targetGro
             if (data.status == 'tomorrow')  {
                 data.amountRelease = 0;
                 data.loanBalance = 0;
+                data.targetCollection = 0;
+                data.activeLoan = 0;
             }
 
             if (data.occurence === 'weekly') {
