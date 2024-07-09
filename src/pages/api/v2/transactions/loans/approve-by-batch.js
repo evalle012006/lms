@@ -79,91 +79,87 @@ async function processData(req, res) {
       };
     }
   } else {
-    const promise = await new Promise(async (resolve) => {
-      const response = await Promise.all(
-        loanData.map(async (loan) => {
-          const active = await findLoans({
-            clientId: { _eq: loan.clientId },
-            status: { _eq: "active" },
-          });
-          if (active.length > 0) {
-            const error = `Client ${active[0].fullName} with slot ${active[0].slotNo} of group ${active[0].groupName}, still have active loan.`;
-            errorMsg.push(error);
-          } else {
-            const loanId = loan._id;
-            const currentDate = loan.currentDate;
-            logger.debug({ page: `Approving Loan: ${loanId}`, data: loan });
-            delete loan._id;
-            delete loan.loanOfficer;
-            delete loan.groupCashCollections;
-            delete loan.loanReleaseStr;
-            delete loan.allowApproved;
-            delete loan.currentDate;
-            delete loan.groupStatus;
-            delete loan.pendings;
-            delete loan.origin;
-            delete loan.hasActiveLoan;
+    const result = await Promise.all(
+      loanData.map(async (loan) => {
+        const active = await findLoans({
+          clientId: { _eq: loan.clientId },
+          status: { _eq: "active" },
+        });
+        if (active.length > 0) {
+          const error = `Client ${active[0].fullName} with slot ${active[0].slotNo} of group ${active[0].groupName}, still have active loan.`;
+          errorMsg.push(error);
+        } else {
+          const loanId = loan._id;
+          const currentDate = loan.currentDate;
+          logger.debug({ page: `Approving Loan: ${loanId}`, data: loan });
+          delete loan._id;
+          delete loan.loanOfficer;
+          delete loan.groupCashCollections;
+          delete loan.loanReleaseStr;
+          delete loan.allowApproved;
+          delete loan.currentDate;
+          delete loan.groupStatus;
+          delete loan.pendings;
+          delete loan.origin;
+          delete loan.hasActiveLoan;
 
-            let groupData = await checkGroupStatus(loan.groupId);
-            if (groupData.length > 0) {
-              groupData = groupData[0];
+          let groupData = await checkGroupStatus(loan.groupId);
+          if (groupData.length > 0) {
+            groupData = groupData[0];
 
-              if (loan.status === "active") {
-                await updateClient(loan);
-                if (loan.coMaker) {
-                  if (typeof loan.coMaker === "string") {
-                    loan.coMakerId = loan.coMaker;
-                    const coMakerResp = await getCoMakerInfo(
-                      loan.coMaker,
-                      loan.groupId
-                    );
-                    if (coMakerResp.success) {
-                      loan.coMaker = coMakerResp.client;
-                    }
-                  } else if (typeof loan.coMaker === "number") {
-                    const coMakerResp = await getCoMakerInfo(
-                      loan.coMaker,
-                      loan.groupId
-                    );
-                    if (coMakerResp.success) {
-                      loan.coMakerId = coMakerResp.client;
-                    }
+            if (loan.status === "active") {
+              await updateClient(loan);
+              if (loan.coMaker) {
+                if (typeof loan.coMaker === "string") {
+                  loan.coMakerId = loan.coMaker;
+                  const coMakerResp = await getCoMakerInfo(
+                    loan.coMaker,
+                    loan.groupId
+                  );
+                  if (coMakerResp.success) {
+                    loan.coMaker = coMakerResp.client;
+                  }
+                } else if (typeof loan.coMaker === "number") {
+                  const coMakerResp = await getCoMakerInfo(
+                    loan.coMaker,
+                    loan.groupId
+                  );
+                  if (coMakerResp.success) {
+                    loan.coMakerId = coMakerResp.client;
                   }
                 }
-              } else if (loan.status === "reject") {
-                if (!groupData.availableSlots.includes(loan.slotNo)) {
-                  groupData.availableSlots.push(loan.slotNo);
-                  groupData.availableSlots.sort((a, b) => {
-                    return a - b;
-                  });
-                  groupData.noOfClients = groupData.noOfClients - 1;
-                  groupData.status =
-                    groupData.status === "full"
-                      ? "available"
-                      : groupData.status;
-                  await updateGroup(groupData);
-                }
               }
-
-              if (loan.status === "active" || loan.status === "reject") {
-                logger.debug({
-                  page: `Loan: ${loan._id}`,
-                  message: "Updating loan data.",
-                  status: loan.status,
+            } else if (loan.status === "reject") {
+              if (!groupData.availableSlots.includes(loan.slotNo)) {
+                groupData.availableSlots.push(loan.slotNo);
+                groupData.availableSlots.sort((a, b) => {
+                  return a - b;
                 });
-                await updateLoan(loanId, loan);
-                loan._id = loanId;
-                await saveCashCollection(loan, groupData, currentDate);
+                groupData.noOfClients = groupData.noOfClients - 1;
+                groupData.status =
+                  groupData.status === "full"
+                    ? "available"
+                    : groupData.status;
+                await updateGroup(groupData);
               }
             }
+
+            if (loan.status === "active" || loan.status === "reject") {
+              logger.debug({
+                page: `Loan: ${loan._id}`,
+                message: "Updating loan data.",
+                status: loan.status,
+              });
+              await updateLoan(loanId, loan);
+              loan._id = loanId;
+              await saveCashCollection(loan, groupData, currentDate);
+            }
           }
-        })
-      );
+        }
+      })
+    );
 
-      resolve(response);
-    });
-
-    if (promise) {
+    if (result) {
       response = {
         success: true,
         withError: errorMsg.length > 0,

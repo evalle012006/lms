@@ -11,6 +11,11 @@ function errorHandler(err, res) {
         return res.status(401).json({ message: 'Invalid Token' });
     }
 
-    console.error(err);
+    const errorInfo = {
+      graphQLErrors: err?.graphQLErrors,
+      message: err.message,
+      stack: err.stack,
+    }
+    console.error(JSON.stringify(errorInfo, null, 2));
     return res.status(500).json({ message: err.message });
 }

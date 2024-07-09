@@ -130,7 +130,7 @@ async function updateLoan(req, res) {
                 }
             } else {
                 logger.debug({page: `Rejecting Loan: ${loanId}`, message: 'Deleting cashCollection data.'});
-                await graph.mutation(deleteQl(cashCollectionType, { where: { loanId: { _eq: loan._id } } }));
+                await graph.mutation(deleteQl(cashCollectionType, { loanId: { _eq: loanId } }));
             }
 
             loan.loanCycle = 0;
