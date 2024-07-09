@@ -7,10 +7,12 @@ import { toast } from "react-toastify";
 import Dialog from "@/lib/ui/Dialog";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
-import { formatPricePhp } from "@/lib/utils";
 import { getApiBaseUrl } from '@/lib/constants';
+import { formatPricePhp, getLastWeekdayOfTheMonth } from "@/lib/utils";
+import moment from 'moment'
 
 const RevertTransferPage = () => {
+    const holidayList = useSelector(state => state.systemSettings.holidayList);
     const isHoliday = useSelector(state => state.systemSettings.holiday);
     const isWeekend = useSelector(state => state.systemSettings.weekend);
     const currentUser = useSelector(state => state.user.data);
@@ -22,8 +24,10 @@ const RevertTransferPage = () => {
 
     const getList = async () => {
         setLoading(true);
+        const previousLastMonthDate = getLastWeekdayOfTheMonth(moment().subtract(1, 'months').format('YYYY'), moment().subtract(1, 'months').format('MM'), holidayList);
         let url = getApiBaseUrl() + 'transactions/transfer-client/list-history';
         if (currentUser.role.rep === 1) {
+            url = url + '?' + new URLSearchParams({ previousLastMonthDate: previousLastMonthDate });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 const transfertList = [];
@@ -63,7 +67,7 @@ const RevertTransferPage = () => {
                 toast.error(response.message);
             }
         } else if (currentUser.role.rep === 2) {
-            url = url + '?' + new URLSearchParams({ _id: currentUser._id });
+            url = url + '?' + new URLSearchParams({ _id: currentUser._id, previousLastMonthDate: previousLastMonthDate });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 const transfertList = [];

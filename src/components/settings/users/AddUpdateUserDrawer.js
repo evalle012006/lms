@@ -102,7 +102,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
             designatedBranchId = selectedBranchesId;
         } else if (selectedRole.rep > 2) {
             designatedBranch = values.designatedBranch;
-            const selectedBranch = branches.find(b => b.code === designatedBranch);
+            const selectedBranch = branchList.find(b => b.code === designatedBranch);
             if (selectedBranch) {
                 values.designatedBranchId = selectedBranch._id;
             }

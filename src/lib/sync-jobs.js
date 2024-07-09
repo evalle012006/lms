@@ -2,7 +2,7 @@ import { getApiBaseUrl } from "./constants";
 import { fetchWrapper } from "./fetch-wrapper";
 
 export const autoSyncLoans = async (loId) => {
-    const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collections/sync-loans', {loId: loId});
+    const response = await fetchWrapper.post(getApiBaseUrl() + 'auto-heal-jobs/sync-loans', {loId: loId});
 
     if (response.success) {
         setTimeout(() => {
@@ -12,7 +12,17 @@ export const autoSyncLoans = async (loId) => {
 }
 
 export const autoHealCashCollections = async (loId, currentDate) => {
-    const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collections/auto-heal-loans', {loId: loId, currentDate: currentDate});
+    const response = await fetchWrapper.post(getApiBaseUrl() + 'auto-heal-jobs/loans', {loId: loId, currentDate: currentDate});
+
+    if (response.success) {
+        setTimeout(() => {
+            return true;
+        }, 2000);
+    }
+}
+
+export const autoHealClients = async () => {
+    const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'auto-heal-jobs/clients', {});
 
     if (response.success) {
         setTimeout(() => {

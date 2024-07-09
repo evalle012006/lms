@@ -31,6 +31,7 @@ async function allLoans(req, res) {
                             { $match: { $expr: { 
                                 $and: [ 
                                     {$eq: ['$dateAdded', date]},
+                                    {$ne: ['$transfer', true]},
                                     { $or: [
                                         {$cond: {
                                             if: { $eq: [remarks, 'all'] },
@@ -170,6 +171,7 @@ async function allLoans(req, res) {
                             { $match: { $expr: { 
                                 $and: [ 
                                     {$eq: ['$dateAdded', date]},
+                                    {$ne: ['$transfer', true]},
                                     { $or: [
                                         {$cond: {
                                             if: { $eq: [remarks, 'all'] },
@@ -391,6 +393,7 @@ const getByBranch = async (db, branchId, remarks, date) => {
                         { $match: { $expr: { 
                             $and: [ 
                                 {$eq: ['$dateAdded', date]},
+                                {$ne: ['$transfer', true]},
                                 { $or: [
                                     {$cond: {
                                         if: { $eq: [remarks, 'all'] },

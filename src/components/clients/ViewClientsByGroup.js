@@ -12,6 +12,8 @@ import Modal from "@/lib/ui/Modal";
 import ClientDetailPage from "./ClientDetailPage";
 import { formatPricePhp } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/constants";
+import { TabSelector } from "@/lib/ui/tabSelector";
+import { TabPanel, useTabs } from "node_modules/react-headless-tabs/dist/react-headless-tabs";
 
 const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMode, handleShowAddDrawer, handleShowCoMakerDrawer}) => {
     const dispatch = useDispatch();
@@ -19,10 +21,17 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
     const branchList = useSelector(state => state.branch.list);
     const groupList = useSelector(state => state.group.list);
     const list = useSelector(state => state.client.list);
+    const [activeList, setActiveList] = useState();
+    const [excludedList, setExcludedList] = useState();
     const [loading, setLoading] = useState(true);
 
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [showClientInfoModal, setShowClientInfoModal] = useState(false);
+
+    const [selectedTab, setSelectedTab] = useTabs([
+        'new-prospects',
+        'excluded-prospects'
+    ]);
 
     // admin: should be viewed first per branch -> group -> clients
     // am: branch -> group -> clients
@@ -62,7 +71,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
             if (currentUser.role.rep > 2) {
                 const currentUserBranch = branchList.find(b => b.code === currentUser.designatedBranch);
                 if (status === 'offset') {
-                    url = url + '?' + new URLSearchParams({ mode: "view_offset", status: status });
+                    url = url + '?' + new URLSearchParams({ mode: "view_offset", status: status, origin: 'client' });
                     const response = await fetchWrapper.get(url);
                     if (response.success) {
                         let clients = [];
@@ -232,6 +241,34 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
         setClientParent({});
     }
 
+    const handleTransferAction = (row) => {
+        setLoading(true)
+        let clientData = row.original.hasOwnProperty("client") ? row.original.client : row.original;
+        if (clientData.status == 'pending')  {
+            if (clientData.hasOwnProperty("archived") && clientData.archived == true) {
+                clientData.archived = false;
+                clientData.archivedBy = currentUser._id;
+            } else {
+                clientData.archived = true;
+                clientData.archivedBy = currentUser._id;
+            }
+            delete clientData.group;
+            delete clientData.loans;
+            delete clientData.lo;
+            fetchWrapper.sendData(process.env.NEXT_PUBLIC_API_URL + 'clients/', clientData)
+                .then(response => {
+                    setTimeout(() => {
+                        fetchData();
+                    }, 800);
+                    toast.success('Client successfully updated.');
+                }).catch(error => {
+                    console.log(error);
+                });
+        } else {
+            toast.error('Client must be in pending status to transfer.');
+        }
+    }
+
     const handleShowClientInfoModal = (selectedRow) => {
         let clientData = selectedRow.hasOwnProperty("client") ? selectedRow.client : selectedRow;
         dispatch(setClient(clientData));
@@ -244,6 +281,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
 
     const [rowActionButtons, setRowActionButtons] = useState(status !== 'active' ? [
         { label: 'Edit', action: handleEditAction },
+        { label: 'Transfer', action: handleTransferAction },
         // { label: 'Delete', action: handleDeleteAction }
     ] : [
         { label: 'Edit', action: handleEditAction },
@@ -272,6 +310,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
     }
 
     const fetchData = async () => {
+        setLoading(true);
         const promise = await new Promise(async (resolve) => {
             const response = await Promise.all([getListClient()]);
             resolve(response);
@@ -470,6 +509,15 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
         setColumns(activeColumns);
     }, [currentUser]);
 
+    useEffect(() => {
+        if (list) {
+            const active = list.filter(client => !client?.archived);
+            setActiveList(active);
+            const excluded = list.filter(client => client?.archived);
+            setExcludedList(excluded);
+        }
+    }, [list]);
+
     return (
         <React.Fragment>
             <div className="pb-4">
@@ -478,7 +526,34 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                         <div className="absolute top-1/2 left-1/2">
                             <Spinner />
                         </div>
-                    ) : <TableComponent columns={columns} data={list} hasActionButtons={groupId ? false : true} rowActionButtons={currentUser.role.rep > 2 && rowActionButtons} showFilters={true} rowClick={handleShowClientInfoModal}/>}
+                    ) : (
+                        <React.Fragment>
+                            {status == 'pending' ? (
+                                <React.Fragment>
+                                    <nav className="flex pl-10 bg-white border-b border-gray-300">
+                                        <TabSelector
+                                            isActive={selectedTab === "new-prospects"}
+                                            onClick={() => setSelectedTab("new-prospects")}>
+                                                New Prospects
+                                        </TabSelector>
+                                        <TabSelector
+                                            isActive={selectedTab === "excluded-prospects"}
+                                            onClick={() => setSelectedTab("excluded-prospects")}>
+                                                Excluded Prospects
+                                        </TabSelector>
+                                    </nav>
+                                    <TabPanel hidden={selectedTab !== "new-prospects"}>
+                                        <TableComponent columns={columns} data={activeList} hasActionButtons={groupId ? false : true} rowActionButtons={currentUser.role.rep > 2 && rowActionButtons} showFilters={true} rowClick={handleShowClientInfoModal}/>
+                                    </TabPanel>
+                                    <TabPanel hidden={selectedTab !== "excluded-prospects"}>
+                                        <TableComponent columns={columns} data={excludedList} hasActionButtons={groupId ? false : true} rowActionButtons={currentUser.role.rep > 2 && rowActionButtons} showFilters={true} rowClick={handleShowClientInfoModal}/>
+                                    </TabPanel>
+                                </React.Fragment>
+                            ) : (
+                                <TableComponent columns={columns} data={list} hasActionButtons={groupId ? false : true} rowActionButtons={currentUser.role.rep > 2 && rowActionButtons} showFilters={true} rowClick={handleShowClientInfoModal}/>
+                            )}
+                        </React.Fragment>
+                    )}
             </div>
             <Modal title="Client Detail Info" show={showClientInfoModal} onClose={handleCloseClientInfoModal} width="70rem">
                 <ClientDetailPage />

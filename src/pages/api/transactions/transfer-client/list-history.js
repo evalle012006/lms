@@ -11,7 +11,7 @@ let response = {};
 async function getList(req, res) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
-    const { _id } = req.query;
+    const { _id, previousLastMonthDate } = req.query;
 
     if (_id) {
         const user = await db.collection('users').find({ _id: new ObjectId(_id) }).toArray();
@@ -31,7 +31,7 @@ async function getList(req, res) {
             const transferClients = await db
                 .collection('transferClients')
                 .aggregate([
-                    { $match: { $expr: {$and: [{$eq: ['$status', 'approved']}, {$in: ['$sourceBranchId', branchIds]}]} } },
+                    { $match: { $expr: {$and: [{$eq: ['$status', 'approved']}, {$in: ['$sourceBranchId', branchIds]}, {$eq: ['$approveRejectDate', previousLastMonthDate]}]} } },
                     {
                         $addFields: {
                             "clientIdObj": { $toObjectId: "$selectedClientId" },
@@ -94,7 +94,7 @@ async function getList(req, res) {
         const transferClients = await db
             .collection('transferClients')
             .aggregate([
-                { $match: { $expr: { $eq: ['$status', 'approved'] } } },
+                { $match: { $expr: {$and: [{$eq: ['$status', 'approved']}, {$eq: ['$approveRejectDate', previousLastMonthDate]}]} } },
                 {
                     $addFields: {
                         "clientIdObj": { $toObjectId: "$selectedClientId" },

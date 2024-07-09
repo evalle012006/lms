@@ -25,6 +25,7 @@ import ClientDetailPage from '@/components/clients/ClientDetailPage';
 import { setClient } from '@/redux/actions/clientActions';
 import { LOR_ONLY_OFFSET_REMARKS, LOR_WEEKLY_REMARKS, getApiBaseUrl } from '@/lib/constants';
 import CheckBox from '@/lib/ui/checkbox';
+import ActionDropDown from '@/lib/ui/action-dropdown';
 
 const CashCollectionDetailsPage = () => {
     const isHoliday = useSelector(state => state.systemSettings.holiday);
@@ -88,7 +89,8 @@ const CashCollectionDetailsPage = () => {
 
     const handleShowClientInfoModal = (selected) => {
         if (selected.status !== 'totals') {
-            const selectedClient = selected.client;
+            const imgpath = process.env.NEXT_PUBLIC_LOCAL_HOST !== 'local' && process.env.NEXT_PUBLIC_LOCAL_HOST;
+            const selectedClient = {...selected.client, imgUrl: selected.client.profile ? imgpath + '/images/clients/' + selected.client.profile : ''};
             dispatch(setClient(selectedClient));
             setShowClientInfoModal(true);
         }
@@ -128,7 +130,7 @@ const CashCollectionDetailsPage = () => {
     const getCashCollections = async (date) => {
         setLoading(true);
         const type = date ? 'filter' : 'current';
-        let url = getApiBaseUrl() + 'transactions/cash-collections/get-loan-by-group-cash-collection?' 
+        let url = getApiBaseUrl() + 'transactions/cash-collections/get-loan-by-group-cash-collection?'
             + new URLSearchParams({ date: date ? date : currentDate, mode: 'weekly', groupId: uuid, type: type });
         
         const response = await fetchWrapper.get(url);
@@ -240,6 +242,14 @@ const CashCollectionDetailsPage = () => {
                                 activeLoan = cc?.history?.activeLoan ? cc.history.activeLoan : cc.activeLoan;
                                 excess = cc?.history?.excess > 0 ? cc.history.excess : cc.excess;
                                 paymentCollection = cc?.history?.collection ? cc.history.collection : 0;
+                            }
+
+                            if (cc.status == 'tomorrow' || cc.status == 'pending') {
+                                noOfPayments = 60;
+                            }
+
+                            if (cc.status == "tomorrow") {
+                                currentReleaseAmount = cc.currentReleaseAmount;
                             }
                         }
                     }
@@ -740,7 +750,7 @@ const CashCollectionDetailsPage = () => {
                                 collection.paymentCollectionStr = formatPricePhp(collection.paymentCollection);
                             }
     
-                            collection.notCalculate = true;
+                            // collection.notCalculate = true;
                             collection.remarks = cc.history ? cc.history?.remarks : '-';
                         }
 
@@ -1393,7 +1403,7 @@ const CashCollectionDetailsPage = () => {
                 const pendings = dataArr.filter(cc => {
                     return cc?.advance && cc.status == 'pending';
                 });
-
+                // console.log(dataArr)
                 if (save) {
                     let cashCollection;
                     if (editMode) {
@@ -2292,14 +2302,11 @@ const CashCollectionDetailsPage = () => {
         }
     }
 
-    const handleReloan = (e, selected) => {
-        e.stopPropagation();
-        
+    const handleReloan = (selected) => {
         if (changeRemarks) {
             toast.error('You have unsaved changes. Please click Submit button before using this function.');
         } else if ((selected.remarks && (selected.remarks.value === "pending" || selected.remarks.value === "reloaner")) || (selected.status === 'completed' && !selected.remarks)) {
             setShowAddDrawer(true);
-            selected.group = currentGroup;
             setLoan(selected);
         } else {
             toast.error("This client can't reloan because it is not tagged as reloaner or pending in remarks.");
@@ -2327,60 +2334,68 @@ const CashCollectionDetailsPage = () => {
         setShowRemarksModal(false);
     }
 
-    const handleMcbuWithdrawal = (e, selected, index) => {
-        e.stopPropagation();
-
+    const handleMcbuWithdrawal = (selected, index) => {
         if (parseFloat(selected.mcbu) > 0) {
-            let origList = [...data];
-            let temp = {...selected};
+            const list = data.map((cc, idx) => {
+                let temp = {...cc};
 
-            temp.mcbuWithdrawFlag = !temp.mcbuWithdrawFlag;
+                if (selected.slotNo === cc.slotNo) {
+                    temp.mcbuWithdrawFlag = !temp.mcbuWithdrawFlag;
             
-            if (temp.mcbuWithdrawFlag) {
-                setAllowMcbuWithdrawal(true);
-            } else {
-                setAllowMcbuWithdrawal(false);
-            }
+                    if (temp.mcbuWithdrawFlag) {
+                        setAllowMcbuWithdrawal(true);
+                    } else {
+                        setAllowMcbuWithdrawal(false);
+                    }
+                }
 
-            origList[index] = temp;
-            dispatch(setCashCollectionGroup(origList));
+                return temp;
+            });
+
+            dispatch(setCashCollectionGroup(list));
         } else {
             toast.error('Client has no MCBU collected.');
         }
     }
 
-    const handleOffset = (e, selected, index) => {
-        e.stopPropagation();
+    const handleOffset = (selected, index) => {
+        const list = data.map((cc, idx) => {
+            let temp = {...cc};
 
-        let origList = [...data];
-        let temp = {...selected};
-
-        temp.offsetTransFlag = !temp.offsetTransFlag;
+            if (selected.slotNo === cc.slotNo) {
+                temp.offsetTransFlag = !temp.offsetTransFlag;
         
-        if (temp.offsetTransFlag) {
-            setAllowOffsetTransaction(true);
-            setRemarksArr(LOR_ONLY_OFFSET_REMARKS);
-        } else {
-            setAllowOffsetTransaction(false);
-            setRemarksArr(LOR_WEEKLY_REMARKS);
-        }
+                if (temp.offsetTransFlag) {
+                    setAllowOffsetTransaction(true);
+                    setRemarksArr(LOR_ONLY_OFFSET_REMARKS);
+                } else {
+                    setAllowOffsetTransaction(false);
+                    setRemarksArr(LOR_WEEKLY_REMARKS);
+                }
+            }
 
-        origList[index] = temp;
-        dispatch(setCashCollectionGroup(origList));
+            return temp;
+        });
+
+        dispatch(setCashCollectionGroup(list));
     }
 
-    const handleMCBUInterest = (e, selected, index) => {
-        e.stopPropagation();
+    const handleMCBUInterest = (selected, index) => {
         if (parseFloat(selected.mcbu) > 1000) {
-            setEditMode(true);
-            setAddMcbuInterest(true);
-            let origList = [...data];
-            let temp = {...selected};
+            const list = data.map((cc, idx) => {
+                let temp = {...cc};
 
-            temp.mcbuInterestFlag = true;
+                if (selected.slotNo === cc.slotNo) {
+                    setEditMode(true);
+                    setAddMcbuInterest(true);
 
-            origList[index] = temp;
-            dispatch(setCashCollectionGroup(origList));
+                    temp.mcbuInterestFlag = true;
+                }
+
+                return temp;
+            });
+
+            dispatch(setCashCollectionGroup(list));
         } else {
             toast.error('Client has not reached the minimum of 1000 MCBU to accumulate interest.');
         }
@@ -2631,11 +2646,38 @@ const CashCollectionDetailsPage = () => {
         }
     }, [currentGroup]);
 
-    // useEffect(() => {
-    //     if (!editMode && revertMode) {
-    //         setEditMode(true);
-    //     }
-    // }, [revertMode]);
+    const [dropDownActions, setDropDownActions] = useState();
+
+    useEffect(() => {
+        setDropDownActions(
+            [
+                {
+                    label: 'Reloan',
+                    action: handleReloan,
+                    icon: <ArrowPathIcon className="w-5 h-5" title="Reloan" />,
+                    hidden: true
+                },
+                {
+                    label: 'MCBU Withdrawal',
+                    action: handleMcbuWithdrawal,
+                    icon: <CurrencyDollarIcon className="w-5 h-5" title="MCBU Withdrawal" />,
+                    hidden: true
+                },
+                {
+                    label: 'Offset',
+                    action: handleOffset,
+                    icon: <StopCircleIcon className="w-5 h-5" title="Offset" />,
+                    hidden: true
+                },
+                {
+                    label: 'Calculate MCBU Interest',
+                    action: handleMCBUInterest,
+                    icon: <ReceiptPercentIcon className="w-5 h-5" title="Calculate MCBU Interest" />,
+                    hidden: true
+                },
+            ]
+        );
+    }, [data]);
 
     return (
         <Layout header={false} noPad={true} hScroll={false}>
@@ -2669,7 +2711,7 @@ const CashCollectionDetailsPage = () => {
                                         <th className="p-2 text-center">Target Collection</th>
                                         <th className="p-2 text-center">Excess</th>
                                         <th className="p-2 text-center">Actual Collection</th>
-                                        <th className="p-2 text-center">MCBU Refund</th>
+                                        <th className="p-2 text-center">MCBU Withdrawal</th>
                                         {currentMonth === 11 && (<th className="p-2 text-center">MCBU Interest</th>)}
                                         <th className="p-2 text-center">MCBU Return Amt</th>
                                         <th className="p-2 text-center">Full Payment</th>
@@ -2832,11 +2874,7 @@ const CashCollectionDetailsPage = () => {
                                                     <React.Fragment>
                                                         {(!isWeekend && !isHoliday && currentUser.role.rep > 2 && !groupSummaryIsClose) && (
                                                             <div className='flex flex-row p-2'>
-                                                                {/* {(currentUser.role.rep === 3 && cc.hasOwnProperty('_id') && !filter && !cc.draft && cc?.origin !== 'pre-save' && !cc.reverted && cc?.prevData && !cc.mcbuInterestFlag) && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleShowWarningDialog(e, cc)} />} */}
-                                                                {(!cc.advance && (cc.status == 'completed' && !prevDraft && cc.hasOwnProperty("_id") && (cc.remarks && cc.remarks.value == 'reloaner'))) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
-                                                                {(!filter && cc.status === 'active' && !cc.draft) && <CurrencyDollarIcon className="w-5 h-5 mr-6" title="MCBU Refund" onClick={(e) => handleMcbuWithdrawal(e, cc, index)} />}
-                                                                {(!filter && cc.status === 'active' && !cc.draft) && <StopCircleIcon className="w-5 h-5 mr-6" title="Offset" onClick={(e) => handleOffset(e, cc, index)} />}
-                                                                {(!filter && !editMode && cc.status !== 'closed' && currentMonth === 11 && !cc.draft) && <ReceiptPercentIcon className="w-5 h-5 mr-6" title="Calculate MCBU Interest" onClick={(e) => handleMCBUInterest(e, cc, index)} />}
+                                                                {(data && data.length > 0) && <ActionDropDown origin="cash-collection" data={cc} index={index} options={dropDownActions} dataOptions={{ filter: filter, prevDraft: prevDraft, editMode: editMode, currentMonth: currentMonth }} />}
                                                             </div>
                                                         )}
                                                     </React.Fragment>
@@ -2860,7 +2898,7 @@ const CashCollectionDetailsPage = () => {
                                     <div className="mt-2">
                                         <textarea rows="4" value={closeAccountRemarks} onChange={(e) => setCloseAccountRemarks(e.target.value)}
                                             className="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border 
-                                                        border-gray-300 focus:ring-blue-500 focus:border-main" 
+                                                        border-gray-300 focus:ring-blue-500 focus:border-main"
                                             placeholder="Enter remarks..."></textarea>
                                     </div>
                                 </div>

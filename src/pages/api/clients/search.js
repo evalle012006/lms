@@ -88,8 +88,8 @@ async function list(req, res) {
                         ]
                     }  } },
                     { $addFields: { 
-                        branchIdObj: { $toObjectId: '$branchId' },
-                        groupIdObj: { $toObjectId: '$groupId' },
+                        "branchIdObj": {$convert: {input: '$branchId', to : 'objectId', onError: '',onNull: ''}},
+                        "groupIdObj": {$convert: {input: '$groupId', to : 'objectId', onError: '',onNull: ''}}
                     } },
                     {
                         $lookup: {
@@ -140,8 +140,8 @@ async function list(req, res) {
                         ]
                     }  } },
                     { $addFields: { 
-                        branchIdObj: { $toObjectId: '$branchId' },
-                        groupIdObj: { $toObjectId: '$groupId' },
+                        "branchIdObj": {$convert: {input: '$branchId', to : 'objectId', onError: '',onNull: ''}},
+                        "groupIdObj": {$convert: {input: '$groupId', to : 'objectId', onError: '',onNull: ''}}
                     } },
                     {
                         $lookup: {
@@ -201,8 +201,8 @@ async function list(req, res) {
                         ]
                     }  } },
                     { $addFields: { 
-                        branchIdObj: { $toObjectId: '$branchId' },
-                        groupIdObj: { $toObjectId: '$groupId' },
+                        "branchIdObj": {$convert: {input: '$branchId', to : 'objectId', onError: '',onNull: ''}},
+                        "groupIdObj": {$convert: {input: '$groupId', to : 'objectId', onError: '',onNull: ''}}
                     } },
                     {
                         $lookup: {

@@ -1,5 +1,6 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
+import { formatPricePhp } from '@/lib/utils';
 
 export default apiHandler({
     get: allLoans
@@ -17,7 +18,7 @@ async function allLoans(req, res) {
     const noOfPaymentsOptionObj = JSON.parse(noOfPaymentsOption);
 
     if (loId) {
-        data = await db.collection('groups')
+        const groupData = await db.collection('groups')
             .aggregate([
                 { $match: { loanOfficerId: loId, noOfClients: { $ne: 0 } } },
                 { $addFields: {
@@ -113,8 +114,61 @@ async function allLoans(req, res) {
                     }
                 }
             ]).toArray();
+
+        if (groupData) {
+            let totalClients = 0;
+            let totalAmountRelease = 0;
+            let totalLoanBalance = 0;
+            let totalMCBU = 0;
+
+            groupData.map(group => {
+                group.loans.map(loan => {
+                    const delinquent = loan.client.length > 0 ? loan.client[0].delinquent == true ? 'Yes' : 'No' : 'No';
+                    let fullName = loan.client.length > 0 ? loan.client[0].fullName : null;
+                    if (loan.client.length > 0 && fullName == null) {
+                        fullName = `${loan.client[0].lastName}, ${loan.client[0].firstName}`;
+                    }
+                    data.push({
+                        groupId: group._id,
+                        groupName: group.name,
+                        slotNo: loan.slotNo,
+                        clientName: fullName,
+                        loanCycle: loan.loanCycle,
+                        amountRelease: loan.amountRelease,
+                        amountReleaseStr: formatPricePhp(loan.amountRelease),
+                        loanBalance: loan.loanBalance,
+                        loanBalanceStr: formatPricePhp(loan.loanBalance),
+                        mcbu: loan.mcbu,
+                        mcbuStr: formatPricePhp(loan.mcbu),
+                        noOfPayments: loan.noOfPayments,
+                        delinquent: delinquent
+                    });
+
+                    totalClients += 1;
+                    totalAmountRelease += loan.amountRelease;
+                    totalLoanBalance += loan.loanBalance;
+                    totalMCBU += loan.mcbu;
+                });
+            });
+
+            data.sort((a, b) => { return a.loanBalance - b.loanBalance });
+
+            data.push({
+                groupId: "TOTALS",
+                groupName: "TOTALS",
+                slotNo: '-',
+                clientName: totalClients,
+                loanCycle: '-',
+                amountReleaseStr: formatPricePhp(totalAmountRelease),
+                loanBalanceStr: formatPricePhp(totalLoanBalance),
+                mcbuStr: formatPricePhp(totalMCBU),
+                noOfPayments: '-',
+                delinquent: '-',
+                totalData: true
+            });
+        }
     }  else if (branchId) {
-        data = await db.collection('users')
+        const loData = await db.collection('users')
             .aggregate([
                 { $match: { "role.rep": 4, designatedBranchId: branchId } },
                 { $addFields: {
@@ -189,6 +243,53 @@ async function allLoans(req, res) {
                     $sort: { loNo: 1 }
                 }
             ]).toArray();
+
+        let totalNoOfClients = 0;
+        let totalAmountRelease = 0;
+        let totalLoanBalance = 0;
+        let totalMCBU = 0;
+
+        if (loData) {
+            loData.map(lo => {
+                let temp = {
+                    _id: lo._id,
+                    loName: `${lo.firstName} ${lo.lastName}`
+                }
+                lo.loans.map(loan => {
+                    temp = {
+                        ...temp,
+                        noOfClients: loan.totalClients,
+                        totalAmountRelease: loan.totalAmountRelease,
+                        totalAmountReleaseStr: formatPricePhp(loan.totalAmountRelease),
+                        totalLoanBalance: loan.totalLoanBalance,
+                        totalLoanBalanceStr: formatPricePhp(loan.totalLoanBalance),
+                        totalMCBU: loan.totalMCBU,
+                        totalMCBUStr: formatPricePhp(loan.totalMCBU)
+                    };
+    
+                    totalNoOfClients += loan.totalClients;
+                    totalAmountRelease += loan.totalAmountRelease;
+                    totalLoanBalance += loan.totalLoanBalance;
+                    totalMCBU += loan.totalMCBU;
+                });
+    
+                data.push(temp);
+            });
+    
+            data.sort((a, b) => { return a.loanBalance - b.loanBalance });
+    
+            data = data.filter(lo => lo.noOfClients > 0);
+    
+            data.push({
+                _id: 'TOTALS',
+                loName: 'TOTALS',
+                noOfClients: totalNoOfClients,
+                totalAmountReleaseStr: formatPricePhp(totalAmountRelease),
+                totalLoanBalanceStr: formatPricePhp(totalLoanBalance),
+                totalMCBUStr: formatPricePhp(totalMCBU),
+                totalData: true
+            });
+        }
     } else {
         let branchIdsObj;
         if (currentUserId) {
@@ -220,7 +321,71 @@ async function allLoans(req, res) {
         });
 
         if (promise) {
-            data = branchData;
+            let totalNoOfClients = 0;
+            let totalAmountRelease = 0;
+            let totalLoanBalance = 0;
+            let totalMCBU = 0;
+
+            branchData.map(branch => {
+                let temp = {
+                    _id: branch._id,
+                    code: branch.code,
+                    name: branch.name,
+                    noOfClients: 0,
+                    totalAmountRelease: 0,
+                    totalAmountReleaseStr: '-',
+                    totalLoanBalance: 0,
+                    totalLoanBalanceStr: '-',
+                    totalMCBU: 0,
+                    totalMCBUStr: '-'
+                }
+                branch.loans.map(loan => {
+                    temp = {
+                        ...temp,
+                        noOfClients: loan.totalClients,
+                        totalAmountRelease: loan.totalAmountRelease,
+                        totalAmountReleaseStr: formatPricePhp(loan.totalAmountRelease),
+                        totalLoanBalance: loan.totalLoanBalance,
+                        totalLoanBalanceStr: formatPricePhp(loan.totalLoanBalance),
+                        totalMCBU: loan.totalMCBU,
+                        totalMCBUStr: formatPricePhp(loan.totalMCBU),
+                        totalNet: loan.totalNetLoanBalance,
+                        totalNetStr: formatPricePhp(loan.totalNetLoanBalance),
+                    }
+
+                    totalNoOfClients += loan.totalClients;
+                    totalAmountRelease += loan.totalAmountRelease;
+                    totalLoanBalance += loan.totalLoanBalance;
+                    totalMCBU += loan.totalMCBU;
+                });
+
+                data.push(temp);
+            });
+
+            data.sort((a, b) => {
+                if (a.code < b.code) {
+                    return -1;
+                }
+
+                if (b.code < b.code) {
+                    return 1;
+                }
+
+                return 0;
+            });
+
+            data = data.filter(branch => branch.noOfClients > 0);
+
+            data.push({
+                _id: 'TOTALS',
+                name: '-',
+                code: 'TOTALS',
+                noOfClients: totalNoOfClients,
+                totalAmountReleaseStr: formatPricePhp(totalAmountRelease),
+                totalLoanBalanceStr: formatPricePhp(totalLoanBalance),
+                totalMCBUStr: formatPricePhp(totalMCBU),
+                totalData: true
+            });
         }
     }
 

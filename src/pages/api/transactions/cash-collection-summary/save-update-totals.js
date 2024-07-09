@@ -140,7 +140,7 @@ async function saveUpdateCommulative(total, officeType) {
     const currentDateStr = total.currentDate;
     let resp;
     let loGroup = officeType;
-
+    
     if (officeType == null || officeType == undefined) { // it means it is BM
         loGroup = total.officeType;
     }
@@ -165,7 +165,7 @@ async function saveUpdateCommulative(total, officeType) {
         const finalData = {...total};
         delete finalData.currentDate;
         await db.collection('losTotals').insertOne(
-            { ...finalData, dateAdded: currentDateStr }
+            { ...finalData, dateAdded: currentDateStr, officeType: loGroup }
         );
     }
 

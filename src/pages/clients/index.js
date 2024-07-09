@@ -304,7 +304,7 @@ const ClientsProspectPage = () => {
                 <React.Fragment>
                     <ViewClientsByGroupPage status={status} client={client} setClientParent={setClient} setMode={setMode} handleShowAddDrawer={handleShowAddDrawer} handleShowCoMakerDrawer={handleShowCoMakerDrawer} />
                     <AddUpdateClient mode={mode} client={client} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
-                    <AddUpdateClientCoMaker client={client} showSidebar={showCoMakerModal} setShowSidebar={setShowCoMakerModal} onClose={handleCloseCoMakerDrawer} />
+                    <AddUpdateClientCoMaker client={client} showSidebar={showCoMakerModal} setShowSidebar={setShowCoMakerModal} setMode={setMode} onClose={handleCloseCoMakerDrawer} />
                 </React.Fragment>
             )}
         </Layout>

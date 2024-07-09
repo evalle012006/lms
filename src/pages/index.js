@@ -6,6 +6,7 @@ import { setSystemSettings } from '@/redux/actions/systemActions';
 import { useState } from 'react';
 import DashboardPage from '@/components/dashboard/DashboardPage';
 import { getApiBaseUrl } from '@/lib/constants';
+import { autoHealClients } from '@/lib/sync-jobs';
 
 const Index = () => {
     const dispatch = useDispatch();
@@ -69,6 +70,10 @@ const Index = () => {
         //     await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}aahandy-scripts/aaa-test`, {});
         // }
 
+        const updateClientData = async () => {
+            await autoHealClients();;
+        }
+
         mounted && getSystemSettings();
         // mounted && testQuery();
 
@@ -81,6 +86,13 @@ const Index = () => {
                     || (timeArgs[1] == 'PM' && hourMinArgs[0] == '9' && (hourMinArgs[1] == '00' || hourMinArgs[1] == '10')))) {
                 mounted && updateGroupClients();
             }
+
+            // if (currentUser?.root &&
+            //     ((timeArgs[1] == 'AM' && timeArgs[0].startsWith('8'))
+            //         || (timeArgs[1] == 'PM' && timeArgs[0].startsWith('3'))
+            //         || (timeArgs[1] == 'PM' && hourMinArgs[0] == '1' && (hourMinArgs[1] == '00' || hourMinArgs[1] == '10')))) {
+            //     mounted && updateClientData();
+            // }
         }
         // mounted && updateLOData();
         // mounted && updateGroupData();
@@ -90,6 +102,7 @@ const Index = () => {
         // mounted && getTransactionSettings();
         // mounted && getListHoliday();
         // mounted && updateLoanData();
+        // mounted && updateClientData();
         // mounted && updateCCData();
         // mounted && updateLOSData();
         // mounted && updateLoanMaturedData();

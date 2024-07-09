@@ -18,8 +18,9 @@ import placeholder from '/public/images/image-placeholder.png';
 import Image from 'next/image';
 import { calculateAge, checkFileSize } from "@/lib/utils";
 import { useRouter } from "node_modules/next/router";
+import ClientSearchTool from "../dashboard/ClientSearchTool";
 // add loan officer per client
-const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSidebar, onClose }) => {
+const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSidebar, setMode, onClose }) => {
     const hiddenInput = useRef(null);
     const formikRef = useRef();
     const dispatch = useDispatch();
@@ -37,6 +38,9 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
     const [image, setImage] = useState('');
     const [selectedGroup, setSelectedGroup] = useState();
     const router = useRouter();
+    const [searchedClients, setSearchedClients] = useState([]);
+    const [selectedClient, setSelectedClient] = useState();
+    const [duplicate, setDuplicate] = useState(false);
 
     const { status } = router.query;
 
@@ -91,6 +95,26 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
         setShowCalendar(false);
     };
 
+    const hasDuplicates = async (field, value) => {
+        const form = formikRef.current;
+        form.setFieldValue(field, value?.toUpperCase());
+
+        setTimeout(async () => {
+            const firstName = form.values.firstName;
+            const lastName = form.values.lastName;
+            if (firstName && lastName) {
+                const searchText = firstName + ' ' + lastName;
+                const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'clients/search?' + new URLSearchParams({ searchText: searchText?.toUpperCase() }));
+                if (response.success) {
+                    if (response.clients.length > 0) {
+                        setDuplicate(true);
+                        toast.warning('Client has similar name. Please verify the client first in the search client tool!');
+                    }
+                }
+            }
+        }, 800);
+    }
+
     const handleSaveUpdate = (values, action) => {
         let error = false;
         if (values.birthdate) {
@@ -134,6 +158,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
 
                 values.status = 'pending';
                 values.delinquent = false;
+                values.duplicate = duplicate;
 
                 fetchWrapper.post(apiUrl, values)
                     .then(response => {
@@ -249,6 +274,11 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                     </div>
                 ) : (
                     <div className="px-2">
+                        {mode == "add" && (
+                            <div className="w-11/12">
+                                <ClientSearchTool origin="client_list" callback={setSearchedClients} setSelected={setSelectedClient} />
+                            </div>
+                        )}
                         <Formik enableReinitialize={true}
                             onSubmit={handleSaveUpdate}
                             initialValues={initialValues}
@@ -267,7 +297,6 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                 setFieldTouched
                             }) => (
                                 <form onSubmit={handleSubmit} autoComplete="off">
-                                    {/* add occurence selection */}
                                     {mode === 'edit' && (
                                         <div className="profile-photo rounded-lg p-3 proxima-regular border">
                                             <div className="proxima-bold">Profile Photo</div>
@@ -323,6 +352,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                             name="lastName"
                                             value={values.lastName}
                                             onChange={handleChange}
+                                            onBlur={(field, value) => hasDuplicates(field, value)}
                                             label="Last Name"
                                             placeholder="Enter Last Name"
                                             setFieldValue={setFieldValue}
@@ -333,6 +363,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                             name="firstName"
                                             value={values.firstName}
                                             onChange={handleChange}
+                                            onBlur={(field, value) => hasDuplicates(field, value)}
                                             label="First Name"
                                             placeholder="Enter First Name"
                                             setFieldValue={setFieldValue}

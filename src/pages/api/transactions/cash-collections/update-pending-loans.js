@@ -44,6 +44,8 @@ async function updatePendingLoan(db, collection, currentDate) {
         pendingLoan = pendingLoan[0];
         cashCollection = cashCollection[0];
 
+        pendingLoan.mcbu = cashCollection.mcbu;
+
         currentLoan.status = 'closed';
         currentLoan.loanBalance = 0;
         currentLoan.amountRelease = 0;
@@ -55,10 +57,6 @@ async function updatePendingLoan(db, collection, currentDate) {
         currentLoan.mcbuWithdrawal = collection.mcbuWithdrawal > 0 ? collection.mcbuWithdrawal : 0;
         currentLoan.mcbuReturnAmt = collection.mcbuReturnAmt > 0 ? collection.mcbuReturnAmt : 0;
         currentLoan.history = collection.history;
-
-        if (collection.remarks && (collection.remarks.value == 'reloaner-cont' || collection.remarks.value == 'reloaner')) {
-            pendingLoan.mcbu = collection.mcbu;
-        }
 
         pendingLoan.prevLoanFullPaymentDate = currentDate;
         pendingLoan.prevLoanFullPaymentAmount = collection.fullPayment;

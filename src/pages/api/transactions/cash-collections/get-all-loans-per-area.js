@@ -110,7 +110,8 @@ async function getAllLoanTransactionsByArea(db, areaId, date, dayName, currentDa
                                                         if: { $or: [
                                                             {$eq: ['$remarks.value', 'delinquent']},
                                                             {$eq: ['$remarks.value', 'delinquent-mcbu']},
-                                                            {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                                                            {$eq: ['$remarks.value', 'excused advance payment']},
+                                                            {$regexMatch: { input: '$remarks.value', regex: /^excused-/ }}
                                                         ] },
                                                         then: '$prevData.activeLoan',
                                                         else: 0
@@ -193,7 +194,7 @@ async function getAllLoanTransactionsByArea(db, areaId, date, dayName, currentDa
                             //                         $cond: {
                             //                             if: { $or: [
                             //                                 {$eq: ['$remarks.value', 'delinquent']},
-                            //                                 {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                            //                                 {$regexMatch: { input: '$remarks.value', regex: /^excused-/ }}
                             //                             ] },
                             //                             then: '$prevData.activeLoan',
                             //                             else: 0
@@ -301,7 +302,7 @@ async function getAllLoanTransactionsByArea(db, areaId, date, dayName, currentDa
                                                 } },
                                                 pendingClients: { $sum: { 
                                                     $cond: {
-                                                        if: { $eq: ['$status', 'completed'] },
+                                                        if: { $and: [ {$eq: ['$status', 'completed']}, {$ne: ['$transferred', true]} ] },
                                                         then: 1,
                                                         else: 0
                                                     } 
@@ -420,8 +421,8 @@ async function getAllLoanTransactionsByArea(db, areaId, date, dayName, currentDa
                                         { $match: { status: 'active', dateGranted: date } },
                                         { $group: {
                                                 _id: '$branchId',
-                                                currentReleaseAmount: { $sum: '$amountRelease' },
-                                                noOfCurrentRelease: { $sum: 1 },
+                                                currentReleaseAmount: { $sum: { $cond: { if: { $ne: ['$transfer', true] }, then: '$amountRelease', else: 0 } } },
+                                                noOfCurrentRelease: { $sum: { $cond: { if: { $ne: ['$transfer', true] }, then: 1, else: 0 } } },
                                                 newCurrentRelease: { $sum: { $cond:{if: { $eq: ['$loanCycle', 1] }, then: 1, else: 0} } },
                                                 reCurrentRelease: { $sum: { $cond:{if: { $gt: ['$loanCycle', 1] }, then: 1, else: 0} } }
                                             }
@@ -683,7 +684,7 @@ async function getAllLoanTransactionsByArea(db, areaId, date, dayName, currentDa
                                                 } },
                                                 pendingClients: { $sum: { 
                                                     $cond: {
-                                                        if: { $eq: ['$status', 'completed'] },
+                                                        if: { $and: [ {$eq: ['$status', 'completed']}, {$ne: ['$transferred', true]} ] },
                                                         then: 1,
                                                         else: 0
                                                     } 
@@ -714,7 +715,8 @@ async function getAllLoanTransactionsByArea(db, areaId, date, dayName, currentDa
                                                                                     if: { $or: [
                                                                                         {$eq: ['$remarks.value', 'delinquent']},
                                                                                         {$eq: ['$remarks.value', 'delinquent-mcbu']},
-                                                                                        {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                                                                                        {$eq: ['$remarks.value', 'excused advance payment']},
+                                                                                        {$regexMatch: { input: '$remarks.value', regex: /^excused-/ }}
                                                                                     ] },
                                                                                     then: 0,
                                                                                     else: {
@@ -756,7 +758,10 @@ async function getAllLoanTransactionsByArea(db, areaId, date, dayName, currentDa
                                                 currentReleaseAmount: {
                                                     $sum: {
                                                         $cond: {
-                                                            if: {$eq: ['$status', 'tomorrow']},
+                                                            if: { $and: [
+                                                                {$eq: ['$status', 'tomorrow']}, 
+                                                                {$ne: ['$transfer', true]}
+                                                            ] },
                                                             then: '$currentReleaseAmount',
                                                             else: 0
                                                         }
@@ -777,7 +782,7 @@ async function getAllLoanTransactionsByArea(db, areaId, date, dayName, currentDa
                                                 newCurrentRelease: {
                                                     $sum: {
                                                         $cond: {
-                                                            if: { $and: [{$eq: ['$status', 'tomorrow']}, { $eq: ['$loanCycle', 1]}] },
+                                                            if: { $and: [{$eq: ['$status', 'tomorrow']}, { $eq: ['$loanCycle', 1]}, {$ne: ['$transfer', true]}] },
                                                             then: 1,
                                                             else: 0
                                                         }
@@ -856,7 +861,7 @@ async function getAllLoanTransactionsByArea(db, areaId, date, dayName, currentDa
                                                                     {$eq: ['$remarks.value', 'delinquent']},
                                                                     {$eq: ['$remarks.value', 'delinquent-mcbu']},
                                                                     {$regexMatch: { input: '$remarks.value', regex: /^offset/ }},
-                                                                    {$regexMatch: { input: '$remarks.value', regex: /^excused/ }}
+                                                                    {$regexMatch: { input: '$remarks.value', regex: /^excused-/ }}
                                                                 ] },
                                                                 then: 0,
                                                                 else: 50
@@ -1149,7 +1154,7 @@ async function processData(data, date, currentDate) {
                     mcbu = branch.loans[0].mcbu;
                 }
 
-                if (branch.cashCollections.length > 0) {
+                if (branch.cashCollections.length > 0 && branch.cashCollections[0].collection > 0) {
                     branchTargetLoanCollection = branchTargetLoanCollection - branch.cashCollections[0].loanTarget;
                     branchExcess += branch.cashCollections[0].excess;
                     branchTotalLoanCollection += branch.cashCollections[0].collection;
@@ -1224,7 +1229,9 @@ async function processData(data, date, currentDate) {
                     branch.transferDailyGiverDetails.map(giver => {    
                         if (filter) {
                             branchNoOfClients -= 1;
-                            branchNoOfBorrowers -= 1;
+                            if (giver.status !== "completed") {
+                                branchNoOfBorrowers -= 1;
+                            }
                         }
 
                         branchTotalMcbu -= giver.mcbu;
@@ -1254,7 +1261,7 @@ async function processData(data, date, currentDate) {
                         if (!filter) {
                             if (rcv.status !== 'pending') {
                                 collection.activeClients += 1;
-                                if (collection.status !== "completed") {
+                                if (rcv.status !== "completed") {
                                     branchNoOfBorrowers += 1;
                                 }
                                 branchTotalMcbu += rcv.mcbu ? rcv.mcbu : 0;
@@ -1264,9 +1271,6 @@ async function processData(data, date, currentDate) {
                             }
                         } else {
                             if (rcv.status !== 'pending') {
-                                if (rcv.status == "completed") {
-                                    branchNoOfBorrowers -= 1;
-                                }
                                 branchTargetLoanCollection -= rcv.targetCollection;
 
                                 if (rcv.status == 'tomorrow') {
@@ -1285,7 +1289,9 @@ async function processData(data, date, currentDate) {
                     branch.transferWeeklyGiverDetails.map(giver => {
                         if (filter) {
                             branchNoOfClients -= 1;
-                            branchNoOfBorrowers -= 1;
+                            if (giver.status !== "completed") {
+                                branchNoOfBorrowers -= 1;
+                            }
                         }
 
                         branchTotalMcbu -= giver.mcbu;
@@ -1315,7 +1321,7 @@ async function processData(data, date, currentDate) {
                         if (!filter) {
                             if (rcv.status !== 'pending') {
                                 collection.activeClients += 1;
-                                if (collection.status !== "completed") {
+                                if (rcv.status !== "completed") {
                                     branchNoOfBorrowers += 1;
                                 }
                                 branchTotalMcbu += rcv.mcbu ? rcv.mcbu : 0;
@@ -1325,9 +1331,6 @@ async function processData(data, date, currentDate) {
                             }
                         } else {
                             if (rcv.status !== 'pending') {
-                                if (rcv.status == "completed") {
-                                    branchNoOfBorrowers -= 1;
-                                }
                                 branchTargetLoanCollection -= rcv.targetCollection;
 
                                 if (rcv.status == 'tomorrow') {

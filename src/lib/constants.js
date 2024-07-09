@@ -4,8 +4,8 @@ export const getApiBaseUrl = () => process.env.NEXT_PUBLIC_API_URL +
 export const LOR_DAILY_REMARKS = [
     { label: 'Remarks', value: ''},
     { label: 'Advance Payment', value: 'advance payment'},
-    { label: 'Reloaner Cont/MCBU', value: 'reloaner-cont'},
-    { label: 'Reloaner RF/MCBU', value: 'reloaner-wd'},
+    { label: 'Reloaner', value: 'reloaner-cont'},
+    // { label: 'Reloaner RF/MCBU', value: 'reloaner-wd'},
     { label: 'For Close/Offset', value: 'offset-good'},
     // { label: 'For Close/Offset - Delinquent Client', value: 'offset-delinquent'},
     { label: 'For Close/Offset - Unclaimed Amount', value: 'offset-unclaimed'},

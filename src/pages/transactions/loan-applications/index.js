@@ -10,7 +10,7 @@ import { setBranch, setBranchList } from "@/redux/actions/branchActions";
 import Dialog from "@/lib/ui/Dialog";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
-import { setFilteredLoanList, setFilteredPendingLoanList, setFilteredTomorrowLoanList, setLoanList, setPendingLoanList, setTomorrowLoanList } from "@/redux/actions/loanActions";
+import { setDuplicateLoanList, setFilteredLoanList, setFilteredPendingLoanList, setFilteredTomorrowLoanList, setLoanList, setPendingLoanList, setTomorrowLoanList } from "@/redux/actions/loanActions";
 import { setGroupList } from "@/redux/actions/groupActions";
 import { setClient, setClientList } from "@/redux/actions/clientActions";
 import { formatPricePhp, getEndDate, getTotal, UppercaseFirstLetter } from "@/lib/utils";
@@ -42,6 +42,7 @@ const LoanApplicationPage = () => {
     const filteredList = useSelector(state => state.loan.filteredList);
     const filteredPendingList = useSelector(state => state.loan.filteredPendingList);
     const filteredTomorrowList = useSelector(state => state.loan.filteredTomorrowList);
+    const duplicateList = useSelector(state => state.loan.duplicateLoanList);
     const branchList = useSelector(state => state.branch.list);
     const userList = useSelector(state => state.user.list);
     const groupList = useSelector(state => state.group.list);
@@ -68,7 +69,8 @@ const LoanApplicationPage = () => {
         'ldf',
         'tomorrow',
         'application',
-        'history'
+        'history',
+        'duplicate'
     ]);
 
     const [noOfLDFLoans, setNoOfLDFLoans] = useState(0);
@@ -177,29 +179,66 @@ const LoanApplicationPage = () => {
 
     const getListBranch = async () => {
         let url = getApiBaseUrl() + 'branches/list';
-        
-        const response = await fetchWrapper.get(url);
-        if (response.success) {
-            let branches = [];
-            response.branches && response.branches.map(branch => {
-                branches.push(
-                    {
-                        ...branch,
-                        value: branch._id,
-                        label: UppercaseFirstLetter(branch.name)
-                    }
-                );
-            });
-
-            if (branches.length > 0 && (currentUser.role.rep === 3 || currentUser.role.rep === 4)) {
-                const currentBranch = branches.find(b => b._id == currentUser.designatedBranchId);
-                dispatch(setBranch(currentBranch));
-                dispatch(setBranchList([currentBranch]));
-            } else {
+        if (currentUser.role.rep === 1) {
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                let branches = [];
+                response.branches && response.branches.map(branch => {
+                    branches.push(
+                        {
+                            ...branch,
+                            value: branch._id,
+                            label: UppercaseFirstLetter(branch.name)
+                        }
+                    );
+                });
                 dispatch(setBranchList(branches));
+                setLoading(false);
+            } else if (response.error) {
+                setLoading(false);
+                toast.error(response.message);
             }
-        } else {
-            toast.error('Error retrieving branches list.');
+        } else if (currentUser.role.rep === 2) {
+            url = url + '?' + new URLSearchParams({ currentUserId: currentUser._id });
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                let branches = [];
+                response.branches && response.branches.map(branch => {
+                    branches.push(
+                        {
+                            ...branch,
+                            value: branch._id,
+                            label: UppercaseFirstLetter(branch.name)
+                        }
+                    );
+                });
+                dispatch(setBranchList(branches));
+                setLoading(false);
+            } else if (response.error) {
+                setLoading(false);
+                toast.error(response.message);
+            }
+        } else if (currentUser.role.rep == 3 || currentUser.role.rep == 4) {
+            url = url + '?' + new URLSearchParams({ branchCode: currentUser.designatedBranch });
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                let branches = [];
+                response.branches && response.branches.map(branch => {
+                    branches.push(
+                        {
+                            ...branch,
+                            value: branch._id,
+                            label: UppercaseFirstLetter(branch.name)
+                        }
+                    );
+                });
+                dispatch(setBranchList(branches));
+                dispatch(setBranch(branches.length > 0 ? branches[0] : null));
+                setLoading(false);
+            } else if (response.error) {
+                setLoading(false);
+                toast.error(response.message);
+            }
         }
     }
 
@@ -341,6 +380,8 @@ const LoanApplicationPage = () => {
                     }
                 });
                 dispatch(setTomorrowLoanList(tomList));
+                dispatch(setDuplicateLoanList(loanList.filter(l => l.client.duplicate)));
+
                 setLoading(false);
             } else if (response.error) {
                 setLoading(false);
@@ -429,6 +470,7 @@ const LoanApplicationPage = () => {
                     }
                 });
                 dispatch(setTomorrowLoanList(tomList));
+                dispatch(setDuplicateLoanList(loanList.filter(l => l.client.duplicate)));
                 setLoading(false);
             } else if (response.error) {
                 setLoading(false);
@@ -443,19 +485,16 @@ const LoanApplicationPage = () => {
                     let allowApproved = false;
                     let hasActiveLoan = false;
                     
-                    // if (loan.groupStatus.length > 0 && loan.groupStatus[0].hasOwnProperty('groupStatusArr')) {
-                    //     const transactionStatus = loan.groupStatus[0].groupStatusArr.filter(s => s === "pending");
-                    //     if (transactionStatus.length > 0) {
-                    //         allowApproved = true;
-                    //     } else if (loan.loanCycle == 1) {
-                    //         allowApproved = true;
-                    //     }
-                    // } else if (loan.pendings.length > 0) {
-                    //     allowApproved = false;
-                    //     hasActiveLoan = true;
-                    // } else {
-                    //     allowApproved = true;
-                    // }
+                    if (loan.groupStatus.length > 0 && loan.groupStatus[0].hasOwnProperty('groupStatusArr')) {
+                        const transactionStatus = loan.groupStatus[0].groupStatusArr.filter(s => s === "pending");
+                        if (transactionStatus.length > 0) {
+                            allowApproved = true;
+                        } else if (loan.loanCycle == 1) {
+                            allowApproved = true;
+                        }
+                    } else {
+                        allowApproved = true;
+                    }
 
                     loanList.push({
                         ...loan,
@@ -510,6 +549,7 @@ const LoanApplicationPage = () => {
                     }
                 });
                 dispatch(setTomorrowLoanList(tomList));
+                dispatch(setDuplicateLoanList(loanList.filter(l => l.client.duplicate)));
                 setLoading(false);
             } else if (response.error) {
                 setLoading(false);
@@ -591,7 +631,7 @@ const LoanApplicationPage = () => {
                     }
                 });
                 dispatch(setTomorrowLoanList(tomList));
-
+                dispatch(setDuplicateLoanList(loanList.filter(l => l.client.duplicate)));
                 setLoading(false);
             } else if (response.error) {
                 setLoading(false);
@@ -740,6 +780,10 @@ const LoanApplicationPage = () => {
             accessor: 'fullName'
         },
         {
+            Header: "Loan Cycle",
+            accessor: 'loanCycle'
+        },
+        {
             Header: "Admission Date",
             accessor: 'admissionDate'
         },
@@ -788,9 +832,9 @@ const LoanApplicationPage = () => {
         if (currentUser.role.rep === 4) {
             getListGroup(currentUser._id, currentUser?.transactionType);
         }
-        // setTimeout(() => {
-        //     setLoading(false);
-        // }, 1000);
+        setTimeout(() => {
+            setLoading(false);
+        }, 1000);
     }
 
     const handleMultiSelect = (mode, selectAll, row, rowIndex) => {
@@ -846,16 +890,43 @@ const LoanApplicationPage = () => {
                     dispatch(setPendingLoanList(tempList));
                 }
             }
+        } else if (selectedTab == 'duplicate') {
+            if (duplicateList) {
+                if (mode === 'all') {
+                    const tempList = duplicateList.map(loan => {
+                        let temp = {...loan};
+
+                        // if (temp.allowApproved) {
+                            temp.selected = selectAll;
+                        // }
+
+                        return temp;
+                    });
+                    dispatch(setDuplicateLoanList(tempList));
+                } else if (mode === 'row') {
+                    const tempList = duplicateList.map((loan, index) => {
+                        let temp = {...loan};
+
+                        if (index === rowIndex) {
+                            temp.selected = !temp.selected;
+                        }
+
+                        return temp;
+                    });
+                    dispatch(setDuplicateLoanList(tempList));
+                }
+            }
         }
     }
 
-    const validate = (loanList) => {
+    const validate = (loanList, origin) => {
         let errorMsg = new Set();
         loanList.map(loan => {
-            const clientName = `${loan.client.firstName} ${loan.client.lastName}`;
+            const clientData = loan.client;
+            const clientName = `${clientData.firstName} ${clientData.lastName}`;
             const groupName = loan.group.name;
 
-            if (loan.client.firstName == null || loan.client.lastName == null) {
+            if (clientData.firstName == null || clientData.lastName == null) {
                 errorMsg.add(`Invalid name: ${clientName} in group ${groupName}, please update it in Client page.`);
             }
 
@@ -874,6 +945,10 @@ const LoanApplicationPage = () => {
             if (loan.pnNumber == null || !loan.pnNumber) {
                 errorMsg.add(`${clientName} in group ${groupName} don't have PN Number.`);
             }
+
+            if (clientData?.duplicate && selectedTab !== 'duplicate') {
+                errorMsg.add(`${clientName} in group ${groupName} has been marked as duplicate client. Please contact your RM for approval of this client loan.`);
+            }
         });
 
         return Array.from(errorMsg);
@@ -883,7 +958,11 @@ const LoanApplicationPage = () => {
         let selectedLoanList;
         let validation = [];
         if (origin == 'ldf') {
-            selectedLoanList = list && list.filter(loan => loan.selected === true);
+            if (selectedTab == 'duplicate') {
+                selectedLoanList = duplicateList && duplicateList.filter(loan => loan.selected === true);
+            } else {
+                selectedLoanList = list && list.filter(loan => loan.selected === true);
+            }
             
             validation = validate(selectedLoanList);
 
@@ -894,6 +973,13 @@ const LoanApplicationPage = () => {
             selectedLoanList = pendingList && pendingList.filter(loan => loan.selected === true);
 
             validation = validate(selectedLoanList);
+
+            if (validation.length > 0) {
+                selectedLoanList = [];
+            }
+        } else if (origin == 'duplicate') {
+            selectedLoanList = duplicateList && duplicateList.filter(loan => loan.selected === true);
+            validation = validate(selectedLoanList, origin);
 
             if (validation.length > 0) {
                 selectedLoanList = [];
@@ -939,6 +1025,10 @@ const LoanApplicationPage = () => {
                     temp.ldfApproved = !unapprove;
                     temp.ldfApprovedDate = unapprove ? '' : currentDate;
                     temp.origin = 'ldf';
+
+                    if (origin == 'duplicate') {
+                        temp.duplicate = false;
+                    }
                 } else {
                     temp.dateGranted = currentDate
                     temp.status = 'active';
@@ -956,7 +1046,7 @@ const LoanApplicationPage = () => {
 
                 return temp;
             });
-            console.log(errorMsg)
+
             // let pendingCoMaker = [];
             // const coMakerStatus = checkCoMakerLoanStatus(coMakerList);
             // if (coMakerStatus.length > 0) {
@@ -1218,23 +1308,29 @@ const LoanApplicationPage = () => {
         }
     }
 
+    const fetchData = async () => {
+        const promise = await new Promise(async (resolve) => {
+            const response = await Promise.all([getListBranch(), getListLoan()]);
+            resolve(response);
+        });
+
+        if (promise) {
+            setLoading(false);
+        }
+    }
+
     useEffect(() => {
         let mounted = true;
-        mounted && getListBranch();
+        mounted && fetchData();
+
+        if (currentUser.role.rep == 3 || currentUser.role.rep == 4) {
+            mounted && getHistoyListLoan();
+        }
 
         return () => {
             mounted = false;
         };
-    }, []);
-
-    useEffect(() => {
-        if (currentDate) {
-            getListLoan();
-            if (currentUser.role.rep == 3 || currentUser.role.rep == 4) {
-                getHistoyListLoan();
-            }
-        }
-    }, []);
+    }, [currentDate]);
 
     useEffect(() => {
         if (isFiltering) {
@@ -1274,6 +1370,10 @@ const LoanApplicationPage = () => {
                 {
                     Header: "Client Name",
                     accessor: 'fullName'
+                },
+                {
+                    Header: "Loan Cycle",
+                    accessor: 'loanCycle'
                 },
                 {
                     Header: "Admission Date",
@@ -1395,9 +1495,14 @@ const LoanApplicationPage = () => {
         if (currentUser.role.rep < 4) {
             actBtns = [
                 <ButtonOutline label="LDF Approved" type="button" className="p-2 mr-3" onClick={() => handleMultiApprove('ldf')} />,
-                <ButtonOutline label="LDF Unapproved" type="button" className="p-2 mr-3 !border-red-600 !text-red-500 !bg-red-100" onClick={() => handleMultiApprove('ldf', true)} />,
-                <ButtonSolid label="Add Loan" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
+                <ButtonOutline label="LDF Unapproved" type="button" className="p-2 mr-3 !border-red-600 !text-red-500 !bg-red-100" onClick={() => handleMultiApprove('ldf', true)} />
             ];
+
+            if (currentUser.role.rep > 2)  {
+                actBtns.push(
+                    <ButtonSolid label="Add Loan" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
+                );
+            }
 
             if ((selectedTab == 'application' || selectedTab == 'tomorrow') && !isWeekend && !isHoliday) {
                 // actBtns.splice(0, 1);
@@ -1408,13 +1513,17 @@ const LoanApplicationPage = () => {
                     );
                 }
             }
+
+            if (selectedTab == 'duplicate') { // && !isWeekend && !isHoliday
+                actBtns.push(<ButtonOutline label="Approved Selected Duplicate Loans" type="button" className="p-2 mr-3" onClick={() => handleMultiApprove('duplicate')} />);
+            }
         }
         
         setActionButtons(actBtns);
-    }, [selectedTab, list, pendingList]);
+    }, [selectedTab, list, pendingList, duplicateList]);
 
     return (
-        <Layout actionButtons={(currentUser.role.rep > 2 && selectedTab !== 'history') && actionButtons}>
+        <Layout actionButtons={(selectedTab !== 'history') && actionButtons}>
             <div className="pb-4">
                 {loading ?
                     (
@@ -1444,6 +1553,13 @@ const LoanApplicationPage = () => {
                                         isActive={selectedTab === "history"}
                                         onClick={() => handleSelectTab("history")}>
                                         History
+                                    </TabSelector>
+                                )}
+                                {currentUser.role.rep < 3 && (
+                                    <TabSelector
+                                        isActive={selectedTab === "duplicate"}
+                                        onClick={() => handleSelectTab("duplicate")}>
+                                        Duplicate Clients Applications
                                     </TabSelector>
                                 )}
                             </nav>
@@ -1677,6 +1793,11 @@ const LoanApplicationPage = () => {
                                 {currentUser.role.rep > 2 && (
                                     <TabPanel hidden={selectedTab !== 'history'}>
                                         <TableComponent columns={columns} data={historyList} hasActionButtons={false} showFilters={false} pageSize={500} />
+                                    </TabPanel>
+                                )}
+                                {currentUser.role.rep < 3 && (
+                                    <TabPanel hidden={selectedTab !== 'duplicate'}>
+                                        <TableComponent columns={columns} data={duplicateList} hasActionButtons={false} showFilters={false} multiSelect={true} multiSelectActionFn={handleMultiSelect}  pageSize={500} />
                                     </TabPanel>
                                 )}
                             </div>

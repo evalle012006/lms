@@ -14,7 +14,7 @@ import Dialog from "@/lib/ui/Dialog";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 import { useRouter } from "node_modules/next/router";
-import { autoHealCashCollections, autoSyncLoans } from "@/lib/sync-jobs";
+import { autoHealCashCollections } from "@/lib/sync-jobs";
 import { getApiBaseUrl } from "@/lib/constants";
 
 const DailyCashCollectionPage = () => {
@@ -139,7 +139,7 @@ const DailyCashCollectionPage = () => {
         let mounted = true;
         
         const syncLoans = async () => {
-            if (currentUser.role.rep === 3 || currentUser.role.rep === 4) {
+            if (currentUser.role.rep === 4) {
                 // await autoSyncLoans(currentUser._id);
                 setTimeout(async () => {
                     await autoHealCashCollections(currentUser._id, currentDate);
