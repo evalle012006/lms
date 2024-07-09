@@ -1354,8 +1354,12 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
                 accessor: 'pendingClients'
             },
             {
-                Header: "TFR",
+                Header: "TOC",
                 accessor: 'transferStr'
+            },
+            {
+                Header: "COH",
+                accessor: 'cohStr'
             }
         ];
 

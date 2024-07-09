@@ -1,7 +1,5 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
-import formidable from "formidable";
-import fs from "fs";
 
 export default apiHandler({
     get: getBranch,
@@ -11,7 +9,7 @@ export default apiHandler({
 async function getBranch(req, res) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
-    const { _id, code } = req.query;
+    const { _id, code, date } = req.query;
     let statusCode = 200;
     let response = {};
 
@@ -21,6 +19,7 @@ async function getBranch(req, res) {
         branch = await db.collection('branches')
             .aggregate([
                 { $match: { _id: new ObjectId(_id) } },
+                { $addFields: { _idStr: { $toString: '$_id' } } },
                 {
                     $lookup: {
                         from: "users",
@@ -48,13 +47,25 @@ async function getBranch(req, res) {
                         as: "noOfLO"
                     }
                 },
-                { $unwind: '$noOfLO' }
+                { $unwind: '$noOfLO' },
+                {
+                    $lookup: {
+                        from: "branchCOH",
+                        localField: '_idStr',
+                        foreignField: "branchId",
+                        pipeline: [
+                            { $match: { dateAdded: date } }
+                        ],
+                        as: "cashOnHand"
+                    }
+                }
             ])
             .toArray();
     } else if (code) {
         branch = await db.collection('branches')
             .aggregate([
                 { $match: { code: code } },
+                { $addFields: { _idStr: { $toString: '$_id' } } },
                 {
                     $lookup: {
                         from: "users",
@@ -82,7 +93,18 @@ async function getBranch(req, res) {
                         as: "noOfLO"
                     }
                 },
-                { $unwind: '$noOfLO' }
+                { $unwind: '$noOfLO' },
+                {
+                    $lookup: {
+                        from: "branchCOH",
+                        localField: '_idStr',
+                        foreignField: "branchId",
+                        pipeline: [
+                            { $match: { dateAdded: date } }
+                        ],
+                        as: "cashOnHand"
+                    }
+                }
             ])
             .toArray();
     }

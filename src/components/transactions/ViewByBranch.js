@@ -1,14 +1,12 @@
 import React, { useEffect, useState } from "react";
-import TableComponent, { AvatarCell, SelectCell, SelectColumnFilter } from '@/lib/table';
+import TableComponent, { SelectColumnFilter } from '@/lib/table';
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { useDispatch, useSelector } from "react-redux";
 import Spinner from "@/components/Spinner";
 import { toast } from "react-toastify";
 import { useRouter } from "node_modules/next/router";
 import moment from 'moment';
-import { formatPricePhp, getTotal } from "@/lib/utils";
 import { setCashCollectionBranch } from "@/redux/actions/cashCollectionActions";
-import { transferBranchDetailsTotal } from "@/lib/transfer-util";
 
 const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup, viewMode}) => {
     const dispatch = useDispatch();
@@ -280,8 +278,12 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup, viewMode}) => 
                     accessor: 'pendingClients'
                 },
                 {
-                    Header: "TFR",
+                    Header: "TOC",
                     accessor: 'transfer'
+                },
+                {
+                    Header: "COH",
+                    accessor: 'cohStr'
                 }
             ];
         }
