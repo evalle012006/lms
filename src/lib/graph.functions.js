@@ -53,7 +53,7 @@ export async function findCashCollections(filter, fields = CASH_COLLECTIONS_FIEL
 }
 
 export async function findClients(filter, fields = CLIENT_FIELDS) {
-  return (await graph.query(queryQl(createGraphType('clients', fields)(), { where: filter })))
+  return (await graph.query(queryQl(createGraphType('client', fields)(), { where: filter })))
     .data?.clients ?? [];
 }
 

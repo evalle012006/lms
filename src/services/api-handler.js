@@ -17,6 +17,7 @@ const apiHandler = (handler) => async (req, res) => {
 
         return await handler[method](req, res);
     } catch (err) {
+        console.error('ERROR:', req.url, err.message);
         errorHandler(err, res);
     }
 }
