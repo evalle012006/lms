@@ -622,6 +622,17 @@ async function getAllLoanTransactionsByBranch(db, branchId, date, dayName, curre
                     }
                 },
                 {
+                    $lookup: {
+                        from: "branchCOH",
+                        localField: "branchIdstr",
+                        foreignField: "branchId",
+                        pipeline: [
+                            { $match: { dateAdded: date } }
+                        ],
+                        as: "cashOnHand"
+                    }
+                },
+                {
                     $sort: { code: 1 }
                 }
             ]).toArray();
@@ -1067,6 +1078,17 @@ async function getAllLoanTransactionsByBranch(db, branchId, date, dayName, curre
                     }
                 },
                 {
+                    $lookup: {
+                        from: "branchCOH",
+                        localField: "branchIdstr",
+                        foreignField: "branchId",
+                        pipeline: [
+                            { $match: { dateAdded: date } }
+                        ],
+                        as: "cashOnHand"
+                    }
+                },
+                {
                     $sort: { code: 1 }
                 }
             ]).toArray();
@@ -1105,6 +1127,7 @@ async function processData(data, date, currentDate) {
     let totalMcbuReturnAmt = 0;
     let totalMcbuDailyWithdrawal = 0;
     let totalTransfer = 0;
+    let totalCOH = 0;
 
     const filter = date !== currentDate;
     
@@ -1133,6 +1156,7 @@ async function processData(data, date, currentDate) {
             pastDueStr: '-',
             noPastDue: '-',
             transfer: '-',
+            cohStr: '-',
             page: 'branch-summary',
             status: '-'
         };
@@ -1351,6 +1375,13 @@ async function processData(data, date, currentDate) {
                 totalMcbuReturnAmt += collection.mcbuReturnAmt ? collection.mcbuReturnAmt : 0;
                 totalTransfer += collection.transfer !== '-' ? collection.transfer : 0;
             }
+        }
+
+        if (branch.cashOnHand.length > 0) {
+            collection.coh = branch.cashOnHand[0].amount ? branch.cashOnHand[0].amount : 0;
+            collection.cohStr = collection.coh > 0 ? formatPricePhp(collection.coh) : '-';
+
+            totalCOH += collection.coh;
         }
 
         if (branch.transferDailyGiverDetails.length > 0 || branch.transferDailyReceivedDetails.length > 0 || branch.transferWeeklyGiverDetails.length > 0 || branch.transferWeeklyReceivedDetails.length > 0) {
@@ -1575,6 +1606,8 @@ async function processData(data, date, currentDate) {
         noMcbuReturn: totalMcbuReturnNo,
         mcbuReturnAmt: totalMcbuReturnAmt,
         mcbuReturnAmtStr: formatPricePhp(totalMcbuReturnAmt),
+        coh: totalCOH,
+        cohStr: formatPricePhp(totalCOH),
         totalData: true
     };
 

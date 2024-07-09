@@ -11,6 +11,7 @@ const Breadcrumbs = () => {
     const selectedBranchSubject = new BehaviorSubject(process.browser && localStorage.getItem('selectedBranch'));
     const router = useRouter();
     const currentUser = useSelector(state => state.user.data);
+    const currentDate = useSelector(state => state.systemSettings.currentDate);
     const [breadcrumbs, setBreadcrumbs] = useState([]);
     const { uuid } = router.query;
     const paths = router.asPath
@@ -70,7 +71,7 @@ const Breadcrumbs = () => {
                             null
                         ];
                     } else if (paths[2] === 'users') {
-                        params = {_id: selectedBranchSubject.value}
+                        params = {_id: selectedBranchSubject.value, date: currentDate}
                         response = await fetchWrapper.get(`${process.env.NEXT_PUBLIC_API_URL}branches?` + new URLSearchParams(params));
                         data = response.branch;
                         labels = [title, data.name];
