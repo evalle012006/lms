@@ -621,6 +621,17 @@ async function getAllLoanTransactionsByRegion(db, regionId, date, dayName, curre
                                 }
                             },
                             {
+                                $lookup: {
+                                    from: "branchCOH",
+                                    localField: "branchIdstr",
+                                    foreignField: "branchId",
+                                    pipeline: [
+                                        { $match: { dateAdded: date } }
+                                    ],
+                                    as: "cashOnHand"
+                                }
+                            },
+                            {
                                 $sort: { code: 1 }
                             }
                         ],
@@ -1074,6 +1085,17 @@ async function getAllLoanTransactionsByRegion(db, regionId, date, dayName, curre
                                 }
                             },
                             {
+                                $lookup: {
+                                    from: "branchCOH",
+                                    localField: "branchIdstr",
+                                    foreignField: "branchId",
+                                    pipeline: [
+                                        { $match: { dateAdded: date } }
+                                    ],
+                                    as: "cashOnHand"
+                                }
+                            },
+                            {
                                 $sort: { code: 1 }
                             }
                         ],
@@ -1121,6 +1143,7 @@ async function processData(data, date, currentDate) {
         let branchTotalMcbuReturnAmt = 0;
         let branchTotalTransfer = 0;
         let branchTotalMcbuDailyWithdrawal = 0;
+        let branchTotalCOH = 0;
 
         region.branchCollection.map(branch => {
             if (branch?.draftCollections?.length > 0) {
@@ -1214,6 +1237,10 @@ async function processData(data, date, currentDate) {
                     branchNoOfFullPayment += branch.cashCollections[0].noOfFullPayment;
                     branchFullPaymentAmount += branch.cashCollections[0].fullPaymentAmount;
                 }
+            }
+
+            if (branch.cashOnHand.length > 0) {
+                branchTotalCOH = branch.cashOnHand[0].amount ? branch.cashOnHand[0].amount : 0;
             }
 
             if (branch.transferDailyGiverDetails.length > 0 || branch.transferDailyReceivedDetails.length > 0 || branch.transferWeeklyGiverDetails.length > 0 || branch.transferWeeklyReceivedDetails.length > 0) {
@@ -1376,6 +1403,7 @@ async function processData(data, date, currentDate) {
             pastDueStr: '-',
             noPastDue: '-',
             transfer: '-',
+            cohStr: '-',
             page: 'region-summary',
             status: '-'
         }
@@ -1418,6 +1446,8 @@ async function processData(data, date, currentDate) {
             collection.noPastDue = branchTotalNoPastDue;
             collection.transfer = branchTotalTransfer;
             collection.transferStr = branchTotalTransfer >=0 ? branchTotalTransfer : `(${branchTotalTransfer * -1})`;
+            collection.coh = branchTotalCOH;
+            collection.cohStr = branchTotalCOH > 0 ? formatPricePhp(branchTotalCOH) : '-';
             collection.status = groupStatus;
         }
 
@@ -1447,6 +1477,7 @@ async function processData(data, date, currentDate) {
     let totalMcbuReturnAmt = 0;
     let totalMcbuDailyWithdrawal = 0;
     let totalTransfer = 0;
+    let totalCOH = 0;
 
     collectionData.map(collection => {
         if (collection.activeClients != '-') {
@@ -1473,6 +1504,7 @@ async function processData(data, date, currentDate) {
             totalMcbuReturnNo += collection.mcbuReturnAmt;
             totalMcbuReturnAmt += collection.mcbuReturnAmt;
             totalTransfer += collection.transfer;
+            totalCOH += collection.coh;
         }
     });
 
@@ -1514,6 +1546,7 @@ async function processData(data, date, currentDate) {
         noMcbuReturn: totalMcbuReturnNo,
         mcbuReturnAmt: totalMcbuReturnAmt,
         mcbuReturnAmtStr: formatPricePhp(totalMcbuReturnAmt),
+        cohStr: formatPricePhp(totalCOH),
         totalData: true
     };
 

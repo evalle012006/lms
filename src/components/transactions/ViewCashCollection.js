@@ -1177,7 +1177,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 accessor: 'pendingClients'
             },
             {
-                Header: "TFR",
+                Header: "TOC",
                 accessor: 'transferStr'
             },
             {

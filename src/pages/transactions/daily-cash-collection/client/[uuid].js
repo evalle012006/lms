@@ -2710,7 +2710,7 @@ const CashCollectionDetailsPage = () => {
                                         <th className="p-2 text-center"># of Mispay</th>
                                         <th className="p-2 text-center">Past Due</th>
                                         <th className="p-2 text-center">Remarks</th>
-                                        <th className="p-2 text-center">TFR</th>
+                                        <th className="p-2 text-center">TOC</th>
                                         <th className="p-2 text-center">Actions</th>
                                     </tr>
                                 </thead>

@@ -454,7 +454,7 @@ const LoanOfficerSummary = () => {
         });
 
         return {
-            day: 'TFR Total',
+            day: 'TOC Total',
             transfer: totalTransfer < 0 ? `(${Math.abs(totalTransfer)})` : totalTransfer,
             newMember: '-',
             mcbuTarget: totalMcbuTarget,
@@ -1126,7 +1126,7 @@ const LoanOfficerSummary = () => {
         if (currentUser.role.rep === 3 || currentUser.role.rep === 4) {
             const getCurrentBranch = async () => {
                 const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}branches?`;
-                const params = { code: currentUser.designatedBranch };
+                const params = { code: currentUser.designatedBranch, date: currentDate };
                 const response = await fetchWrapper.get(apiUrl + new URLSearchParams(params));
                 if (response.success) {
                     dispatch(setBranch(response.branch));
@@ -1208,7 +1208,7 @@ const LoanOfficerSummary = () => {
                                 <thead>
                                     <tr>
                                         <th rowSpan={3} className="sticky top-0 bg-white border border-gray-300 border-l-0 border-t-0  px-2 py-2 text-gray-500 uppercase">Date</th>
-                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">TFR</th>
+                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">TOC</th>
                                         <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">NM</th>
                                         <th colSpan={6} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 text-gray-500 uppercase">MCBU</th> 
                                         {/* <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">OFST Pers.</th> */}
