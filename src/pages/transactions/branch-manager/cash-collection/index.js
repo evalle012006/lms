@@ -39,12 +39,11 @@ const BranchCashCollectionPage = () => {
         const amount = value ? parseFloat(value) : 0;
 
         let updatedCohData = {...cohData};
-        if (cohData) {
+        if (cohData.hasOwnProperty("_id")) {
             updatedCohData.amount = amount;
             updatedCohData.modifiedBy = currentUser._id;
         } else {
             updatedCohData.branchId = currentUser.designatedBranchId;
-            updatedCohData.officeType = selectedLoGroup;
             updatedCohData.amount = amount;
             updatedCohData.insertedBy = currentUser._id;
             updatedCohData.dateAdded = currentDate;
