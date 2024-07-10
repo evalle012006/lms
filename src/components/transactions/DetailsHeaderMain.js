@@ -32,7 +32,6 @@ const DetailsHeader = ({ pageTitle, page, pageName, currentDate, mode, selectedB
     const [branchCode, setBranchCode] = useState();
     const [branchName, setBranchName] = useState();
     const [cohAmount, setCohAmount] = useState(0);
-    const [disableCohAmount, setDisableCohAmount] = useState(true);
 
     const openCalendar = () => {
         setShowCalendar(true);
@@ -87,12 +86,6 @@ const DetailsHeader = ({ pageTitle, page, pageName, currentDate, mode, selectedB
     useEffect(() => {
         if (cohData) {
             setCohAmount(cohData?.amount);
-        }
-
-        if (currentUser.role.rep == 3) {
-            if (!cohData || cohData?.dateAdded == moment(currentDate).format('YYYY-MM-DD')) {
-                setDisableCohAmount(false);
-            }
         }
     }, [cohData]);
 
@@ -187,7 +180,7 @@ const DetailsHeader = ({ pageTitle, page, pageName, currentDate, mode, selectedB
                                     onBlur={(val) => { handleCOHDataChange(val.target.value) }}
                                     className="w-22"
                                     filter={true}
-                                    disabled={filter || disableCohAmount} 
+                                    disabled={filter} 
                                 />
                             </div>
                         ) }
