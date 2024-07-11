@@ -255,7 +255,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
             delete clientData.group;
             delete clientData.loans;
             delete clientData.lo;
-            fetchWrapper.sendData(process.env.NEXT_PUBLIC_API_URL + 'clients/', clientData)
+            fetchWrapper.sendData(getApiBaseUrl() + 'clients/', clientData)
                 .then(response => {
                     setTimeout(() => {
                         fetchData();
@@ -292,7 +292,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
     const handleDelete = () => {
         if (client) {
             setLoading(true);
-            fetchWrapper.postCors(process.env.NEXT_PUBLIC_API_URL + 'clients/delete', {_id: client._id})
+            fetchWrapper.postCors(getApiBaseUrl() + 'clients/delete', {_id: client._id})
                 .then(response => {
                     if (response.success) {
                         setShowDeleteDialog(false);

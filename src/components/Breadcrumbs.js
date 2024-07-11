@@ -25,7 +25,7 @@ const Breadcrumbs = () => {
             const currentPage = paths[0];
             let params = {};
             let crumbs = [];
-            const url = process.env.NEXT_PUBLIC_API_URL + currentPage;
+            const url = getApiBaseUrl() + currentPage;
 
             if (paths.length == 2) {
                 params = { _id: paths[1] };
@@ -73,7 +73,7 @@ const Breadcrumbs = () => {
                         ];
                     } else if (paths[2] === 'users') {
                         params = {_id: selectedBranchSubject.value, date: currentDate}
-                        response = await fetchWrapper.get(`${process.env.NEXT_PUBLIC_API_URL}branches?` + new URLSearchParams(params));
+                        response = await fetchWrapper.get(`${getApiBaseUrl()}branches?` + new URLSearchParams(params));
                         data = response.branch;
                         labels = [title, data.name];
                         links = [  

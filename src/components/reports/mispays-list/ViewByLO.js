@@ -6,6 +6,7 @@ import Spinner from "@/components/Spinner";
 import TableComponent from "@/lib/table";
 import { useRouter } from "node_modules/next/router";
 import { formatPricePhp } from "@/lib/utils";
+import { getApiBaseUrl } from '@/lib/constants';
 
 const ViewByLOPage = ({ dateFilter, remarks }) => {
     const router = useRouter();
@@ -51,7 +52,7 @@ const ViewByLOPage = ({ dateFilter, remarks }) => {
 
     const getList = async (branchId) => {
         setLoading(true);
-        let url = process.env.NEXT_PUBLIC_API_URL + 'reports/get-all-mispays?' + new URLSearchParams({ branchId: currentUser.role.rep == 3 ? currentUser.designatedBranchId : branchId, date: dateFilter, remarks: remarks});
+        let url = getApiBaseUrl() + 'reports/get-all-mispays?' + new URLSearchParams({ branchId: currentUser.role.rep == 3 ? currentUser.designatedBranchId : branchId, date: dateFilter, remarks: remarks});
         const response = await fetchWrapper.get(url);
         if (response.success) {
             const responseData = response.data;

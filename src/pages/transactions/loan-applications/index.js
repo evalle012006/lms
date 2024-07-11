@@ -243,7 +243,7 @@ const LoanApplicationPage = () => {
     }
 
     const getListUser = async (branchCode) => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'users/list?' + new URLSearchParams({ branchCode: branchCode });
+        let url = getApiBaseUrl() + 'users/list?' + new URLSearchParams({ branchCode: branchCode });
         const response = await fetchWrapper.get(url);
         if (response.success) {
             let userList = [];
@@ -1191,7 +1191,7 @@ const LoanApplicationPage = () => {
         if (loan) {
             setLoading(true);
             const loanData = {...loan, deleted: true, deletedBy: currentUser._id, dateDeleted: moment(currentDate).format('YYYY-MM-DD')};
-            fetchWrapper.postCors(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/delete', loanData)
+            fetchWrapper.postCors(getApiBaseUrl() + 'transactions/loans/delete', loanData)
                 .then(response => {
                     if (response.success) {
                         setShowDeleteDialog(false);

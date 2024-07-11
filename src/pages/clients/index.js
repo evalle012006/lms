@@ -202,7 +202,7 @@ const ClientsProspectPage = () => {
 
             setLoading(false);
         } else if (currentUser.role.rep === 2) {
-            let url = process.env.NEXT_PUBLIC_API_URL + 'users/list?' + new URLSearchParams({ currentUserId: currentUser._id });;
+            let url = getApiBaseUrl() + 'users/list?' + new URLSearchParams({ currentUserId: currentUser._id });;
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let userList = [];

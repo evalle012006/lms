@@ -39,7 +39,7 @@ const CashCollectionDetailsPage = () => {
 
     const getListBranch = async () => {
         setLoading(true);
-        let url = process.env.NEXT_PUBLIC_API_URL + 'branches/list';
+        let url = getApiBaseUrl() + 'branches/list';
         if (currentUser.role.rep === 1) {
             const response = await fetchWrapper.get(url);
             if (response.success) {

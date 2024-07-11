@@ -8,7 +8,7 @@ export default apiHandler({
 });
 
 const graph = new GraphProvider();
-const CLIENT_TYPE = createGraphType('clients', `
+const CLIENT_TYPE = createGraphType('client', `
 ${CLIENT_FIELDS}
 groups {
     name

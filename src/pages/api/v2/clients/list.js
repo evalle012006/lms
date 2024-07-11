@@ -36,9 +36,6 @@ async function list(req, res) {
     const offset = (page * size) - size;
     const limit = size;
 
-    console.log(req.query);
-
-
     if (mode === 'view_offset' && status === 'offset') {
         const where = {
             status: { _eq: status },

@@ -1,5 +1,4 @@
 import getConfig from 'next/config';
-import { errorHandler } from '@/services/error-handler';
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
 import logger from '@/logger';

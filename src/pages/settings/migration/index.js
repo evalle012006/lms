@@ -90,7 +90,7 @@ const MigrationPage = () => {
                     occurence: selectedUser.transactionType
                 }
         
-                const response = await fetchWrapper.sendData(process.env.NEXT_PUBLIC_API_URL + 'migration/', params);
+                const response = await fetchWrapper.sendData(getApiBaseUrl() + 'migration/', params);
                 if (response.success) {
                     const resp = await addForwardBalance();
                     if (resp.success) {
@@ -123,14 +123,14 @@ const MigrationPage = () => {
             losType: "commulative",
             occurence: selectedUser.transactionType
         }
-        return await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'migration/add-los-commulative-data', fBal);
+        return await fetchWrapper.post(getApiBaseUrl() + 'migration/add-los-commulative-data', fBal);
     }
 
     const handleResetMigration = async () => {
         if (selectedUser) {
             setLoading(true);
 
-            const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'migration/reset-migration?' + new URLSearchParams({ loId: selectedUser._id }));
+            const response = await fetchWrapper.get(getApiBaseUrl() + 'migration/reset-migration?' + new URLSearchParams({ loId: selectedUser._id }));
             if (response.success) {
                 setLoading(false);
                 toast.success('Selected LO Migration Data resetted!');

@@ -49,7 +49,7 @@ const ClientDetailPage = () => {
         if (!pnNumber) {
             toast.error('PN Number is required!');
         } else if (selectedLoan) {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/update-pn-number';
+            const apiUrl = getApiBaseUrl() + 'transactions/loans/update-pn-number';
             fetchWrapper.post(apiUrl, { loanId: selectedLoan._id, branchId: selectedLoan.branchId, pnNumber: pnNumber })
                 .then(response => {
                     setLoading(false);
@@ -88,7 +88,7 @@ const ClientDetailPage = () => {
             if (selectedLoan.status == 'closed') {
                 toast.error('Loan already closed');
             } else {
-                const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/update-loan-release';
+                const apiUrl = getApiBaseUrl() + 'transactions/loans/update-loan-release';
                 fetchWrapper.post(apiUrl, { loanId: selectedLoan._id, principalLoan: parseFloat(principalLoan) })
                     .then(response => {
                         setLoading(false);
@@ -156,7 +156,7 @@ const ClientDetailPage = () => {
             toast.error(fileSizeMsg);
         } else {
             const clientData = {...client, file: fileUploaded};
-            fetchWrapper.sendData(process.env.NEXT_PUBLIC_API_URL + 'clients/', clientData)
+            fetchWrapper.sendData(getApiBaseUrl() + 'clients/', clientData)
                     .then(response => {
                         setLoading(false);
                         const imgpath = process.env.NEXT_PUBLIC_LOCAL_HOST !== 'local' && process.env.NEXT_PUBLIC_LOCAL_HOST;

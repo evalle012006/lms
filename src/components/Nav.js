@@ -45,6 +45,7 @@ import { setBranch, setBranchList } from "@/redux/actions/branchActions";
 import { setGroup, setGroupList } from "@/redux/actions/groupActions";
 import { setClient, setClientList } from "@/redux/actions/clientActions";
 import { setLoan, setLoanList } from "@/redux/actions/loanActions";
+import { getApiBaseUrl } from '@/lib/constants';
 
 const SubNav = ({ item, index, activePath, inner=false, className }) => {
     const dispatch = useDispatch();
@@ -57,7 +58,7 @@ const SubNav = ({ item, index, activePath, inner=false, className }) => {
         if (user && user.hasOwnProperty('user')) {
             user = user.user;
         }
-        const url = `${process.env.NEXT_PUBLIC_API_URL}authenticate?`;
+        const url = `${getApiBaseUrl()}authenticate?`;
         const params = { user: user._id };
         const response = await fetchWrapper.get(url + new URLSearchParams(params));
         await response && response.success && response.query.acknowledged && userService.logout();

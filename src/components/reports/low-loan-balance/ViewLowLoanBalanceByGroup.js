@@ -12,6 +12,7 @@ import ReactToPrint from 'node_modules/react-to-print/lib/index';
 import { useRef } from "react";
 import logo from "/public/images/logo.png";
 import Image from 'next/image';
+import { getApiBaseUrl } from '@/lib/constants';
 
 const ViewLowBalanceByGroupsPage = ({ amount, amountOperator, noOfPayments, noOfPaymentsOperator, includeDelinquent }) => {
     const router = useRouter();
@@ -85,7 +86,7 @@ const ViewLowBalanceByGroupsPage = ({ amount, amountOperator, noOfPayments, noOf
         setLoading(true);
         const amountOption = JSON.stringify({ amount: amount, operator: amountOperator });
         const noOfPaymentsOption = JSON.stringify({ noOfPayments: noOfPayments, operator: noOfPaymentsOperator });
-        let url = process.env.NEXT_PUBLIC_API_URL + 'reports/get-all-low-loan-balance?' + new URLSearchParams({ loId: currentUser.role.rep == 4 ? currentUser._id : loId, amountOption: amountOption, noOfPaymentsOption: noOfPaymentsOption });
+        let url = getApiBaseUrl() + 'reports/get-all-low-loan-balance?' + new URLSearchParams({ loId: currentUser.role.rep == 4 ? currentUser._id : loId, amountOption: amountOption, noOfPaymentsOption: noOfPaymentsOption });
         const response = await fetchWrapper.get(url);
         if (response.success) {
             setList(response.data);

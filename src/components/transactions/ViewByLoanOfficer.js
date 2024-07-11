@@ -1137,7 +1137,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
 
             let data = { loId: row.original._id, mode: 'close', currentDate: currentDate, currentTime: currentTime };
 
-            const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/update-group-transaction-status', data);
+            const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collections/update-group-transaction-status', data);
             if (response.success) {
                 toast.success(`Selected loan officer groups are now closed!`);
                 window.location.reload();
@@ -1161,7 +1161,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
 
     useEffect(() => {
         const getListUser = async () => {
-            let url = process.env.NEXT_PUBLIC_API_URL + 'users/list?' + new URLSearchParams({ loOnly: true, branchCode: currentBranch.code, selectedLoGroup: selectedLoGroup });
+            let url = getApiBaseUrl() + 'users/list?' + new URLSearchParams({ loOnly: true, branchCode: currentBranch.code, selectedLoGroup: selectedLoGroup });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let userList = [];

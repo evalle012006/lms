@@ -6,7 +6,7 @@ import { apiHandler } from "@/services/api-handler";
 import moment from 'moment';
 
 const graph = new GraphProvider();
-const CLIENT_TYPE = createGraphType('clients', `
+const CLIENT_TYPE = createGraphType('client', `
 ${CLIENT_FIELDS}
 `)('clients');
 
@@ -22,7 +22,7 @@ async function save(req, res) {
   let statusCode = 200;
 
   // should check if the full name exist already
-  await graph.mutation(
+  const client = await graph.mutation(
     insertQl(CLIENT_TYPE, {
       objects: [{
         _id: generateUUID(),
@@ -30,7 +30,7 @@ async function save(req, res) {
         dateAdded: moment(getCurrentDate()).format('YYYY-MM-DD'),
       }]
     })
-  );
+  ).then(res => res.data?.clients?.returning?.[0]);
 
   response = {
     success: true,

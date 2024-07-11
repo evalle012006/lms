@@ -8,7 +8,7 @@ import { apiHandler } from '@/services/api-handler';
 const graph = new GraphProvider();
 const COLLECTION_TYPE = createGraphType('cashCollections', '_id')
 const LOAN_TYPE = createGraphType('loans', `${LOAN_FIELDS}`)
-const CLIENT_TYPE = createGraphType('clients', `${CLIENT_FIELDS}`);
+const CLIENT_TYPE = createGraphType('client', `${CLIENT_FIELDS}`);
 const GROUP_TYPE = createGraphType('groups', `${GROUP_FIELDS}`)
 
 export default apiHandler({

@@ -12,6 +12,7 @@ import ReactToPrint from 'node_modules/react-to-print/lib/index';
 import { useRef } from "react";
 import logo from "/public/images/logo.png";
 import Image from 'next/image';
+import { getApiBaseUrl } from '@/lib/constants';
 
 const ViewByGroupsPage = ({ dateFilter, remarks }) => {
     const router = useRouter();
@@ -87,7 +88,7 @@ const ViewByGroupsPage = ({ dateFilter, remarks }) => {
 
     const getList = async (loId) => {
         setLoading(true);
-        let url = process.env.NEXT_PUBLIC_API_URL + 'reports/get-all-mispays?' + new URLSearchParams({ loId: currentUser.role.rep == 4 ? currentUser._id : loId, date: dateFilter, remarks: remarks});
+        let url = getApiBaseUrl() + 'reports/get-all-mispays?' + new URLSearchParams({ loId: currentUser.role.rep == 4 ? currentUser._id : loId, date: dateFilter, remarks: remarks});
         const response = await fetchWrapper.get(url);
         if (response.success) {
             setList(response.data);

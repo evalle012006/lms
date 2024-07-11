@@ -50,7 +50,7 @@ const BranchCashCollectionPage = () => {
             updatedCohData.dateAdded = currentDate;
         }
 
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'branches/save-update-coh';
+        const apiUrl = getApiBaseUrl() + 'branches/save-update-coh';
         fetchWrapper.post(apiUrl, updatedCohData)
             .then(response => {
                 if (response.success) {

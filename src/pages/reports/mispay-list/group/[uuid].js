@@ -8,6 +8,7 @@ import { useState } from "react";
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import ViewByGroupsPage from "@/components/reports/mispays-list/ViewByGroup";
+import { getApiBaseUrl } from '@/lib/constants';
 
 const MispaysByGroupPage = () => {
     const dispatch = useDispatch();
@@ -30,7 +31,7 @@ const MispaysByGroupPage = () => {
     }
 
     const getListUser = async (branchId) => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'users/list?' + new URLSearchParams({ loOnly: true, branchId: currentUser.role.rep == 3 ? currentUser.designatedBranchId : branchId });
+        let url = getApiBaseUrl() + 'users/list?' + new URLSearchParams({ loOnly: true, branchId: currentUser.role.rep == 3 ? currentUser.designatedBranchId : branchId });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let userDataList = [];

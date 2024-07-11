@@ -12,6 +12,7 @@ function errorHandler(err, res) {
     }
 
     const errorInfo = {
+      url: err.requestUrl,
       graphQLErrors: err?.graphQLErrors,
       message: err.message,
       stack: err.stack,

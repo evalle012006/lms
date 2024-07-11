@@ -56,7 +56,7 @@ const ViewByBranchPage = ({ dateFilter, remarks }) => {
 
     const getList = async () => {
         setLoading(true);
-        let url = process.env.NEXT_PUBLIC_API_URL + 'reports/get-all-mispays';
+        let url = getApiBaseUrl() + 'reports/get-all-mispays';
         if (currentUser.role.rep == 2 && branchList.length > 0) {
             url = url + '?' + new URLSearchParams({ currentUserId: currentUser._id, date: dateFilter, remarks: remarks });
         } else {

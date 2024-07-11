@@ -97,7 +97,7 @@ const ResetPage = () => {
             password: password
         }
 
-        const apiURL = process.env.NEXT_PUBLIC_API_URL + 'authenticate';
+        const apiURL = getApiBaseUrl() + 'authenticate';
         return fetchWrapper.post(apiURL, data)
             .then(data => {
                 setLoading(false);

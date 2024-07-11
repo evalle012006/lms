@@ -67,7 +67,7 @@ const RolesPage = () => {
     // }
 
     const getListPermission = async () => {
-        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'permissions/list');
+        const response = await fetchWrapper.get(getApiBaseUrl() + 'permissions/list');
         if (response.success) {
             const permissionList = response.permissions.sort((a,b) => a.rep - b.rep);;
             setPermissions(permissionList);
@@ -110,7 +110,7 @@ const RolesPage = () => {
     const handleEditAction = async (row) => {
         setMode("edit");
         const roleOriginal = row.original;
-        const roleApiUrl = process.env.NEXT_PUBLIC_API_URL + 'roles?';
+        const roleApiUrl = getApiBaseUrl() + 'roles?';
         const params = { id: roleOriginal._id };
         const response = await fetchWrapper.get(roleApiUrl + new URLSearchParams(params));
         if (response.success) {
@@ -135,7 +135,7 @@ const RolesPage = () => {
     const handleDelete = () => {
         if (role) {
             setLoading(true);
-            fetchWrapper.postCors(process.env.NEXT_PUBLIC_API_URL + 'roles/delete', branch)
+            fetchWrapper.postCors(getApiBaseUrl() + 'roles/delete', branch)
                 .then(response => {
                     if (response.success) {
                         setShowDeleteDialog(false);

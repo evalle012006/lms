@@ -19,6 +19,7 @@ import Image from 'next/image';
 import { calculateAge, checkFileSize } from "@/lib/utils";
 import { useRouter } from "node_modules/next/router";
 import ClientSearchTool from "../dashboard/ClientSearchTool";
+import { getApiBaseUrl } from '@/lib/constants';
 // add loan officer per client
 const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSidebar, setMode, onClose }) => {
     const hiddenInput = useRef(null);
@@ -104,7 +105,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
             const lastName = form.values.lastName;
             if (firstName && lastName) {
                 const searchText = firstName + ' ' + lastName;
-                const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'clients/search?' + new URLSearchParams({ searchText: searchText?.toUpperCase() }));
+                const response = await fetchWrapper.get(getApiBaseUrl() + 'clients/search?' + new URLSearchParams({ searchText: searchText?.toUpperCase() }));
                 if (response.success) {
                     if (response.clients.length > 0) {
                         setDuplicate(true);
@@ -143,9 +144,12 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
             let groupData;
             if (status === 'active' || mode === 'edit') {
                 groupData = selectedGroup;
-            } else {
-                groupData = groupList && groupList.find(g => g._id === values.groupId);
             }
+
+            if (!groupData) {
+                groupData = groupList?.find(g => g._id === values.groupId)
+            }
+
             values.groupName = groupData.name;
             if (currentUser.root !== true && (currentUser.role.rep === 4 || currentUser.role.rep === 3) && branchList.length > 0) {
                 const branch = branchList.find(b => b.code === currentUser.designatedBranch);
@@ -154,7 +158,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
             } // if area manager it should be able to select a branch where this client is
             
             if (mode === 'add') {
-                const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'clients/save/';
+                const apiUrl = getApiBaseUrl() + 'clients/save/';
 
                 values.status = 'pending';
                 values.delinquent = false;
@@ -180,7 +184,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
             } else if (mode === 'edit') {
                 values._id = client._id;
                 values.file = image;
-                fetchWrapper.sendData(process.env.NEXT_PUBLIC_API_URL + 'clients/', values)
+                fetchWrapper.sendData(getApiBaseUrl() + 'clients/', values)
                     .then(response => {
                         setLoading(false);
                         setShowSidebar(false);

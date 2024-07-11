@@ -137,7 +137,7 @@ const AddUpdateDebtCollection = ({ mode = 'add', data = {}, showSidebar, setShow
     }
 
     const getListUser = async (branchCode) => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'users/list?' + new URLSearchParams({ branchCode: branchCode });
+        let url = getApiBaseUrl() + 'users/list?' + new URLSearchParams({ branchCode: branchCode });
         const response = await fetchWrapper.get(url);
         if (response.success) {
             let userList = [];

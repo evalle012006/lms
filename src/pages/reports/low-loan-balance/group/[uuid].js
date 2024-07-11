@@ -8,6 +8,7 @@ import { useRouter } from "node_modules/next/router";
 import { useState } from "react";
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { getApiBaseUrl } from '@/lib/constants';
 
 const LowLoanBalanceByGroupPage = () => {
     const dispatch = useDispatch();
@@ -34,7 +35,7 @@ const LowLoanBalanceByGroupPage = () => {
     }
 
     const getListUser = async (branchId) => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'users/list?' + new URLSearchParams({ loOnly: true, branchId: currentUser.role.rep == 3 ? currentUser.designatedBranchId : branchId });
+        let url = getApiBaseUrl() + 'users/list?' + new URLSearchParams({ loOnly: true, branchId: currentUser.role.rep == 3 ? currentUser.designatedBranchId : branchId });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let userDataList = [];

@@ -6,6 +6,7 @@ import Spinner from "@/components/Spinner";
 import TableComponent from "@/lib/table";
 import { useRouter } from "node_modules/next/router";
 import { formatPricePhp } from "@/lib/utils";
+import { getApiBaseUrl } from '@/lib/constants';
 
 const ViewLowBalanceByLOPage = ({ amount, amountOperator, noOfPayments, noOfPaymentsOperator }) => {
     const router = useRouter();
@@ -49,7 +50,7 @@ const ViewLowBalanceByLOPage = ({ amount, amountOperator, noOfPayments, noOfPaym
         setLoading(true);
         const amountOption = JSON.stringify({ amount: amount, operator: amountOperator });
         const noOfPaymentsOption = JSON.stringify({ noOfPayments: noOfPayments, operator: noOfPaymentsOperator });
-        let url = process.env.NEXT_PUBLIC_API_URL + 'reports/get-all-low-loan-balance?' + new URLSearchParams({ branchId: currentUser.role.rep == 3 ? currentUser.designatedBranchId : branchId, amountOption: amountOption, noOfPaymentsOption: noOfPaymentsOption });
+        let url = getApiBaseUrl() + 'reports/get-all-low-loan-balance?' + new URLSearchParams({ branchId: currentUser.role.rep == 3 ? currentUser.designatedBranchId : branchId, amountOption: amountOption, noOfPaymentsOption: noOfPaymentsOption });
         const response = await fetchWrapper.get(url);
         if (response.success) {
             setList(response.data);

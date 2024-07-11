@@ -22,7 +22,7 @@ export const autoHealCashCollections = async (loId, currentDate) => {
 }
 
 export const autoHealClients = async () => {
-    const response = await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'auto-heal-jobs/clients', {});
+    const response = await fetchWrapper.post(getApiBaseUrl() + 'auto-heal-jobs/clients', {});
 
     if (response.success) {
         setTimeout(() => {

@@ -14,6 +14,7 @@ import ButtonSolid from "@/lib/ui/ButtonSolid";
 import placeholder from '/public/images/image-placeholder.png';
 import Image from 'next/image';
 import { checkFileSize } from "@/lib/utils";
+import { getApiBaseUrl } from '@/lib/constants';
 
 const UserDetailsPage = () => {
     const router = useRouter();
@@ -54,7 +55,7 @@ const UserDetailsPage = () => {
 
     const handleSaveUpdate = async () => {
         const values = {...data, _id: uuid, file: image, origin: 'updateUser'};
-        fetchWrapper.sendData(process.env.NEXT_PUBLIC_API_URL + 'users/', values)
+        fetchWrapper.sendData(getApiBaseUrl() + 'users/', values)
             .then(response => {
                 setLoading(false);
                 getCurrentUser();
@@ -68,7 +69,7 @@ const UserDetailsPage = () => {
     }
 
     const getCurrentUser = async () => {
-        const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}users?`;
+        const apiUrl = `${getApiBaseUrl()}users?`;
         const params = { _id: uuid };
         const response = await fetchWrapper.get(apiUrl + new URLSearchParams(params));
         const imgpath = process.env.NEXT_PUBLIC_LOCAL_HOST !== 'local' && process.env.NEXT_PUBLIC_LOCAL_HOST;

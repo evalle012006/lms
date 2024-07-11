@@ -112,7 +112,7 @@ const TransactionRemarksPage = () => {
     const setApplyFilter = async () => {
         if (selectedFilterRemarks) {
             setList([]);
-            let url = process.env.NEXT_PUBLIC_API_URL + 'reports/remarks?';
+            let url = getApiBaseUrl() + 'reports/remarks?';
 
             if (dateFilterBy === 'date') {
                 url = url + new URLSearchParams({ remarks: selectedFilterRemarks, occurence: occurence, date: selectedDateFilter, branchId: selectedFilterBranch, loId: selectedFilterUser, groupId: selectedFilterGroup });
@@ -282,7 +282,7 @@ const TransactionRemarksPage = () => {
     }
 
     const getListUser = async (branchCode) => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'users/list?' + new URLSearchParams({ branchCode: branchCode });
+        let url = getApiBaseUrl() + 'users/list?' + new URLSearchParams({ branchCode: branchCode });
         const response = await fetchWrapper.get(url);
         if (response.success) {
             let userList = [];

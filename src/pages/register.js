@@ -57,7 +57,7 @@ const RegistrationPage = () => {
     });
 
     const handleRegistration = async (values, actions) => {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'register/';
+        const apiUrl = getApiBaseUrl() + 'register/';
 
         const apiResponse = await fetchWrapper.post(apiUrl, values);
         if (apiResponse.error) {

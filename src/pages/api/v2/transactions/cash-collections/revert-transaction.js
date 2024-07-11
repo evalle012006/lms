@@ -12,7 +12,7 @@ import moment from 'moment';
 const graph = new GraphProvider();
 const CASH_COLLECTION_TYPE = createGraphType('cashCollections', `${CASH_COLLECTIONS_FIELDS}`)
 const LOAN_TYPE = createGraphType('loans', `${LOAN_FIELDS}`)
-const CLIENT_TYPE = createGraphType('clients', `${CLIENT_FIELDS}`);
+const CLIENT_TYPE = createGraphType('client', `${CLIENT_FIELDS}`);
 const GROUP_TYPE = createGraphType('groups', `${GROUP_FIELDS}`)
 
 export default apiHandler({
@@ -22,7 +22,7 @@ export default apiHandler({
 let statusCode = 200;
 let response = {};
 
-const getClientById = (_id) => graph.query(queryQl(CLIENT_TYPE('clients'), { where: { _id: { _eq: _id } } })).then(res => res.data.clients);
+const getClientById = (_id) => graph.query(queryQl(CLIENT_TYPE('client'), { where: { _id: { _eq: _id } } })).then(res => res.data.clients);
 const getLoanById = (_id) => graph.query(queryQl(LOAN_TYPE('loans'), {where: { _id: { _eq: _id } }})).then(res =>  res.data.loans);
 
 async function revert(req, res) {

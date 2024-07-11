@@ -52,7 +52,7 @@ async function updateClient(req, res) {
     const form = new formidable.IncomingForm({ keepExtensions: true });
     const promise = await new Promise((resolve, reject) => {
         form.parse(req, async function (err, fields, files) {
-            const [clientData] = await graph.query(
+            let [clientData] = await graph.query(
                 queryQl(CLIENT_TYPE, {
                     where: {
                         _id: { _eq: fields._id ?? null }
@@ -113,7 +113,7 @@ async function updateClient(req, res) {
                         dateModified: moment(getCurrentDate()).format('YYYY-MM-DD')
                     },
                     where: {
-                        _id: clientData._id
+                        _id: { _eq: clientData._id }
                     }
                 })
             );

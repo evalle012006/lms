@@ -339,7 +339,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                 if (clientType == 'active') {
                                     const pendingLoan = [{...values, loanId: values.oldLoanId}];
                                     setTimeout(async () => {
-                                        await fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/cash-collections/update-pending-loans', pendingLoan);
+                                        await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collections/update-pending-loans', pendingLoan);
                                     }, 3000);
                                 }
 
@@ -423,7 +423,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     }
 
     const getListUser = async (branchCode, type) => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'users/list?' + new URLSearchParams({ branchCode: branchCode });
+        let url = getApiBaseUrl() + 'users/list?' + new URLSearchParams({ branchCode: branchCode });
         const response = await fetchWrapper.get(url);
         if (response.success) {
             let userList = [];

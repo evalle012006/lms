@@ -1608,7 +1608,7 @@ const BranchManagerSummary = () => {
 
     useEffect(() => {
         const getListUser = async () => {
-            let url = process.env.NEXT_PUBLIC_API_URL + 'users/list?' + new URLSearchParams({ loOnly: true, branchCode: currentBranch?.code, selectedLoGroup: selectedLoGroup });
+            let url = getApiBaseUrl() + 'users/list?' + new URLSearchParams({ loOnly: true, branchCode: currentBranch?.code, selectedLoGroup: selectedLoGroup });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 const userListArr = [];

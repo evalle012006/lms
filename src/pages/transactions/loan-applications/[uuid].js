@@ -10,6 +10,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { formatPricePhp } from '@/lib/utils';
 import { useRouter } from 'node_modules/next/router';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
+import { getApiBaseUrl } from '@/lib/constants';
 
 const ClientNDSPage = () => {
     const dispatch = useDispatch();
@@ -24,7 +25,7 @@ const ClientNDSPage = () => {
     useEffect(() => {
         let mounted = true;
         const getLoan = async () => {
-            const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans?' + new URLSearchParams({ _id: uuid }));
+            const response = await fetchWrapper.get(getApiBaseUrl() + 'transactions/loans?' + new URLSearchParams({ _id: uuid }));
 
             if (response.success) {
                 setLoan(response.loan);

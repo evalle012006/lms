@@ -6,6 +6,7 @@ import { useRouter } from "node_modules/next/router";
 import { formatPricePhp } from "@/lib/utils";
 import { useDispatch, useSelector } from "react-redux";
 import { setBranchList } from "@/redux/actions/branchActions";
+import { getApiBaseUrl } from '@/lib/constants';
 
 const ViewLowBalanceByBranchPage = ({ amount, amountOperator, noOfPayments, noOfPaymentsOperator }) => {
     const dispatch = useDispatch();
@@ -53,7 +54,7 @@ const ViewLowBalanceByBranchPage = ({ amount, amountOperator, noOfPayments, noOf
         setLoading(true);
         const amountOption = JSON.stringify({ amount: amount, operator: amountOperator });
         const noOfPaymentsOption = JSON.stringify({ noOfPayments: noOfPayments, operator: noOfPaymentsOperator });
-        let url = process.env.NEXT_PUBLIC_API_URL + 'reports/get-all-low-loan-balance';
+        let url = getApiBaseUrl() + 'reports/get-all-low-loan-balance';
         if (currentUser.role.rep == 2 && branchList.length > 0) {
             // const branchIds = branchList.filter(branch => currentUser.designatedBranch.includes(branch.code)).map(branch => branch._id);
             // url = url + '?' + new URLSearchParams({ branchIds: JSON.stringify(branchIds), amountOption: amountOption, noOfPaymentsOption: noOfPaymentsOption });
@@ -69,7 +70,7 @@ const ViewLowBalanceByBranchPage = ({ amount, amountOperator, noOfPayments, noOf
     }
 
     const getListBranch = async () => {
-        let url = process.env.NEXT_PUBLIC_API_URL + 'branches/list';
+        let url = getApiBaseUrl() + 'branches/list';
         
         const response = await fetchWrapper.get(url);
         if (response.success) {
