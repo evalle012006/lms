@@ -1,14 +1,12 @@
 import React, { useEffect, useState } from "react";
-import TableComponent, { AvatarCell, SelectCell, SelectColumnFilter } from '@/lib/table';
+import TableComponent, { SelectColumnFilter } from '@/lib/table';
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { useDispatch, useSelector } from "react-redux";
 import Spinner from "@/components/Spinner";
 import { toast } from "react-toastify";
 import { useRouter } from "node_modules/next/router";
 import moment from 'moment';
-import { formatPricePhp, getTotal } from "@/lib/utils";
 import { setCashCollectionBranch } from "@/redux/actions/cashCollectionActions";
-import { transferBranchDetailsTotal } from "@/lib/transfer-util";
 import { getApiBaseUrl } from "@/lib/constants";
 
 const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup, viewMode}) => {
@@ -29,7 +27,7 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup, viewMode}) => 
         setLoading(true);
         const filter = date ? true : false;
 
-        const response = await fetchWrapper.get(getApiBaseUrl() + 
+        const response = await fetchWrapper.get(getApiBaseUrl() +
                             'transactions/cash-collections/get-all-loans-per-branch-v2?' 
                             + new URLSearchParams({ date: date ? date : currentDate, currentUserId: currentUser._id, selectedBranchGroup: selectedBranchGroup, dayName: dayName, currentDate: currentDate }));
         if (response.success) {
@@ -281,8 +279,12 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup, viewMode}) => 
                     accessor: 'pendingClients'
                 },
                 {
-                    Header: "TFR",
+                    Header: "TOC",
                     accessor: 'transfer'
+                },
+                {
+                    Header: "COH",
+                    accessor: 'cohStr'
                 }
             ];
         }

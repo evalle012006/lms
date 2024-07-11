@@ -24,17 +24,43 @@ const BranchCashCollectionPage = () => {
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
-    const branch = useSelector(state => state.branch.data);
+    const currentBranch = useSelector(state => state.branch.data);
     const currentDate = useSelector(state => state.systemSettings.currentDate);
     const [loading, setLoading] = useState(true);
     const [dateFilter, setDateFilter] = useState(currentDate);
     const loCollectionList = useSelector(state => state.cashCollection.lo);
-    const bmSummary = useSelector(state => state.cashCollection.bmSummary);
     const [showSubmitDialog, setShowSubmitDialog] = useState(false);
     const [filter, setFilter] = useState(false);
     const [selectedLoGroup, setSelectedLoGroup] = useState('all');
     const [selectedBranchGroup, setSelectedBranchGroup] = useState('mine');
     const [viewMode, setViewMode] = useState('branch');
+    const [cohData, setCohData] = useState();
+
+    const handleCOHDataChange = (value) => {
+        const amount = value ? parseFloat(value) : 0;
+
+        let updatedCohData = {...cohData};
+        if (cohData.hasOwnProperty("_id")) {
+            updatedCohData.amount = amount;
+            updatedCohData.modifiedBy = currentUser._id;
+        } else {
+            updatedCohData.branchId = currentUser.designatedBranchId;
+            updatedCohData.amount = amount;
+            updatedCohData.insertedBy = currentUser._id;
+            updatedCohData.dateAdded = currentDate;
+        }
+
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL + 'branches/save-update-coh';
+        fetchWrapper.post(apiUrl, updatedCohData)
+            .then(response => {
+                if (response.success) {
+                    toast.success('Cash on Hand data successfully saved.');
+                    getListBranch();
+                }
+            }).catch(error => {
+                console.log(error)
+            });
+    }
 
     const handleViewModeChange = (mode) => {
         setViewMode(mode);
@@ -54,9 +80,11 @@ const BranchCashCollectionPage = () => {
         if (filteredDate === currentDate) {
             setFilter(false);
         } else {
-            setFilter(true);    
+            setFilter(true);
         }
-        
+
+        getListBranch(filteredDate);
+
         localStorage.setItem('cashCollectionDateFilter', filteredDate);
     }
 
@@ -90,7 +118,7 @@ const BranchCashCollectionPage = () => {
                     }
                     
                     const data = {
-                        branchId: branch._id,
+                        branchId: currentBranch._id,
                         loIds: loIds,
                         currentDate: date
                     }
@@ -111,11 +139,11 @@ const BranchCashCollectionPage = () => {
         setShowSubmitDialog(false);
     }
 
-    const getListBranch = async () => {
+    const getListBranch = async (date) => {
         let url = getApiBaseUrl() + 'branches/list';
 
         if (currentUser.role.rep === 3) {
-            url = url + '?' + new URLSearchParams({ branchCode: currentUser.designatedBranch });
+            url = url + '?' + new URLSearchParams({ branchCode: currentUser.designatedBranch, date: date ? date : currentDate });
         }
 
         const response = await fetchWrapper.get(url);
@@ -148,12 +176,12 @@ const BranchCashCollectionPage = () => {
     useEffect(() => {
         let mounted = true;
 
-        mounted && getListBranch();
+        mounted && getListBranch(currentDate);
 
         return () => {
             mounted = false;
         };
-    }, []);
+    }, [currentDate]);
 
     useEffect(() => {
         if (dateFilter === null) {
@@ -166,6 +194,12 @@ const BranchCashCollectionPage = () => {
             localStorage.setItem('cashCollectionDateFilter', currentDate);
         }
     }, [branchList, currentDate]);
+
+    useEffect(() => {
+        if (currentUser.role.rep == 3 && currentBranch) {
+            setCohData(currentBranch?.cashOnHand?.length > 0 ? currentBranch.cashOnHand[0] : {amount: 0});
+        }
+    }, [currentUser, currentBranch]);
 
     return (
         <Layout header={false} noPad={true}>
@@ -182,6 +216,7 @@ const BranchCashCollectionPage = () => {
                             selectedLoGroup={selectedLoGroup} handleLoGroupChange={handleLoGroupChange}
                             selectedBranchGroup={selectedBranchGroup} handleBranchGroup={handleBranchGroup}
                             viewMode={viewMode} handleViewModeChange={handleViewModeChange}
+                            cohData={cohData} handleCOHDataChange={handleCOHDataChange}
                         />}
                         <div className={`p-4 ${currentUser.role.rep < 4 ? 'mt-[8rem]' : 'mt-[6rem]'} `}>
                             {currentUser.role.rep < 3 && (

@@ -91,7 +91,7 @@ const CashCollectionDetailsPage = () => {
 
         const getCurrentBranch = async () => {
             const apiUrl = `${getApiBaseUrl()}branches?`;
-            const params = { _id: uuid };
+            const params = { _id: uuid, date: currentDate };
             const response = await fetchWrapper.get(apiUrl + new URLSearchParams(params));
             if (response.success) {
                 dispatch(setBranch(response.branch));

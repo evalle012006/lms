@@ -13,6 +13,7 @@ import { getApiBaseUrl } from '@/lib/constants';
 const GroupUsersPage = () => {
     const dispatch = useDispatch();
     const router = useRouter();
+    const currentDate = useSelector(state => state.systemSettings.currentDate);
     const branch = useSelector(state => state.branch.data);
     const { uuid } = router.query;
     const [loading, setLoading] = useState(true);
@@ -23,7 +24,7 @@ const GroupUsersPage = () => {
 
         const getCurrentBranch = async () => {
             const apiUrl = `${getApiBaseUrl()}branches?`;
-            const params = { _id: uuid };
+            const params = { _id: uuid, date: currentDate };
             const response = await fetchWrapper.get(apiUrl + new URLSearchParams(params));
             if (response.success) {
                 dispatch(setBranch(response.branch));

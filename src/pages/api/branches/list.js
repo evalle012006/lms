@@ -12,7 +12,7 @@ async function list(req, res) {
     let response = {};
     let branches;
 
-    const { currentUserId, branchCode } = req.query;
+    const { currentUserId, branchCode, date } = req.query;
 
     if (branchCode) {
         branches = await db
@@ -21,6 +21,7 @@ async function list(req, res) {
             // .sort({ code: 1 })
             .aggregate([
                 { $match: { code: branchCode } },
+                { $addFields: { _idStr: { $toString: '$_id' } } },
                 {
                     $lookup: {
                         from: "users",
@@ -39,6 +40,17 @@ async function list(req, res) {
                 { $unwind: '$noOfLO' },
                 {
                     $sort: { code: 1 }
+                },
+                {
+                    $lookup: {
+                        from: "branchCOH",
+                        localField: '_idStr',
+                        foreignField: "branchId",
+                        pipeline: [
+                            { $match: { dateAdded: date } }
+                        ],
+                        as: "cashOnHand"
+                    }
                 }
             ])
             .toArray();
@@ -61,6 +73,7 @@ async function list(req, res) {
             branches = await db.collection('branches')
                 .aggregate([
                     { $match: { $expr: {$in: ["$code", codes]} } },
+                    { $addFields: { _idStr: { $toString: '$_id' } } },
                     {
                         $lookup: {
                             from: "users",
@@ -78,6 +91,17 @@ async function list(req, res) {
                     },
                     { $unwind: '$noOfLO' },
                     {
+                        $lookup: {
+                            from: "branchCOH",
+                            localField: '_idStr',
+                            foreignField: "branchId",
+                            pipeline: [
+                                { $match: { dateAdded: date } }
+                            ],
+                            as: "cashOnHand"
+                        }
+                    },
+                    {
                         $sort: { code: 1 }
                     }
                 ])
@@ -87,6 +111,7 @@ async function list(req, res) {
         branches = await db
             .collection('branches')
             .aggregate([
+                { $addFields: { _idStr: { $toString: '$_id' } } },
                 {
                     $lookup: {
                         from: "users",
@@ -103,6 +128,17 @@ async function list(req, res) {
                     }
                 },
                 { $unwind: '$noOfLO' },
+                {
+                    $lookup: {
+                        from: "branchCOH",
+                        localField: '_idStr',
+                        foreignField: "branchId",
+                        pipeline: [
+                            { $match: { dateAdded: date } }
+                        ],
+                        as: "cashOnHand"
+                    }
+                },
                 {
                     $sort: { code: 1 }
                 }

@@ -179,8 +179,12 @@ const ViewByAreaPage = ({dateFilter, type, selectedBranchGroup, viewMode}) => {
                     accessor: 'pendingClients'
                 },
                 {
-                    Header: "TFR",
+                    Header: "TOC",
                     accessor: 'transfer'
+                },
+                {
+                    Header: "COH",
+                    accessor: 'cohStr'
                 }
             ];
         }

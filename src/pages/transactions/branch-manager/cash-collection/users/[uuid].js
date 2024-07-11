@@ -32,6 +32,7 @@ const CashCollectionDetailsPage = () => {
     const isWeekend = useSelector(state => state.systemSettings.weekend);
     const loCashCollectionList = useSelector(state => state.cashCollection.lo);
     const [selectedLoGroup, setSelectedLoGroup] = useState('all');
+    const [cohData, setCohData] = useState();
 
     const handleBranchFilter = (selected) => {
         setCurrentBranch(selected);
@@ -42,6 +43,7 @@ const CashCollectionDetailsPage = () => {
     const handleDateFilter = (selected) => {
         const filteredDate = selected.target.value;
         setDateFilter(filteredDate);
+        getCurrentBranch(filteredDate);
     }
 
     const handleShowSubmitDialog = () => {
@@ -143,27 +145,27 @@ const CashCollectionDetailsPage = () => {
         setSelectedLoGroup(value);
     }
 
+    const getCurrentBranch = async (date) => {
+        const apiUrl = `${getApiBaseUrl()}branches?`;
+        const params = { _id: uuid, date: date ? date : currentDate };
+        const response = await fetchWrapper.get(apiUrl + new URLSearchParams(params));
+        if (response.success) {
+            dispatch(setBranch(response.branch));
+            setLoading(false);
+        } else {
+            toast.error('Error while loading data');
+        }
+    }
+
     useEffect(() => {
         let mounted = true;
-
-        const getCurrentBranch = async () => {
-            const apiUrl = `${getApiBaseUrl()}branches?`;
-            const params = { _id: uuid };
-            const response = await fetchWrapper.get(apiUrl + new URLSearchParams(params));
-            if (response.success) {
-                dispatch(setBranch(response.branch));
-                setLoading(false);
-            } else {
-                toast.error('Error while loading data');
-            }
-        }
 
         mounted && uuid && getCurrentBranch() && getListBranch();
 
         return () => {
             mounted = false;
         };
-    }, [uuid]);
+    }, [uuid, currentDate]);
 
     useEffect(() => {
         if (dateFilter === null) {
@@ -174,6 +176,7 @@ const CashCollectionDetailsPage = () => {
     useEffect(() => {
         if (branch) {
             setCurrentBranch(branch);
+            setCohData(branch?.cashOnHand?.length > 0 ? branch.cashOnHand[0] : {amount: 0});
         }
     }, [branch]);
 
@@ -184,6 +187,7 @@ const CashCollectionDetailsPage = () => {
                     selectedBranch={currentBranch} handleBranchFilter={handleBranchFilter} handleSubmit={handleShowSubmitDialog}
                     dateFilter={dateFilter} handleDateFilter={handleDateFilter} holiday={isHoliday} weekend={isWeekend}
                     selectedLoGroup={selectedLoGroup} handleLoGroupChange={handleLoGroupChange}
+                    cohData={cohData}
                 />}
                 <div className='p-4 mt-[8rem]'>
                     <ViewByLoanOfficerPage pageNo={2} dateFilter={dateFilter} selectedLoGroup={selectedLoGroup} />

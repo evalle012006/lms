@@ -1,8 +1,7 @@
 import DatePicker from "@/lib/ui/DatePicker";
 import { UppercaseFirstLetter } from "@/lib/utils";
-import { styles, DropdownIndicator, borderStyles } from "@/styles/select";
+import { DropdownIndicator, borderStyles } from "@/styles/select";
 import React from "react";
-import { useRef } from "react";
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import Select from 'react-select';
@@ -14,22 +13,25 @@ import ButtonSolid from "@/lib/ui/ButtonSolid";
 import RadioButton from "@/lib/ui/radio-button";
 import { useDispatch } from "node_modules/react-redux/es/exports";
 import { setBranch } from "@/redux/actions/branchActions";
+import InputNumber from "@/lib/ui/InputNumber";
 
 const DetailsHeader = ({ pageTitle, page, pageName, currentDate, mode, selectedBranch, filter,
                             handleBranchFilter, selectedLO, handleLOFilter, dateFilter, handleDateFilter, weekend, holiday, handleSubmit, 
-                            selectedLoGroup, handleLoGroupChange, selectedBranchGroup, handleBranchGroup, viewMode, handleViewModeChange }) => {
+                            selectedLoGroup, handleLoGroupChange, selectedBranchGroup, handleBranchGroup, viewMode, handleViewModeChange,
+                            cohData, handleCOHDataChange
+                        }) => {
     const dispatch = useDispatch();
     const router = useRouter();
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
     const currentBranch = useSelector(state => state.branch.data);
-    const groupList = useSelector(state => state.group.list);
     const userList = useSelector(state => state.user.list);
     const [showCalendar, setShowCalendar] = useState(false);
     const [loanOfficerName, setLoanOfficerName] = useState();
     const [branchManager, setBranchManager] = useState();
     const [branchCode, setBranchCode] = useState();
     const [branchName, setBranchName] = useState();
+    const [cohAmount, setCohAmount] = useState(0);
 
     const openCalendar = () => {
         setShowCalendar(true);
@@ -80,6 +82,12 @@ const DetailsHeader = ({ pageTitle, page, pageName, currentDate, mode, selectedB
             dispatch(setBranch(branchList[0]));
         }
     }, [branchList, currentBranch])
+
+    useEffect(() => {
+        if (cohData) {
+            setCohAmount(cohData?.amount);
+        }
+    }, [cohData]);
 
     return (
         <div className="bg-white px-7 py-2 fixed w-screen z-10">
@@ -161,6 +169,21 @@ const DetailsHeader = ({ pageTitle, page, pageName, currentDate, mode, selectedB
                                 <RadioButton id={"radio_all"} name="radio-lo" label={"All"} checked={selectedBranchGroup === 'all'} value="all" onChange={handleBranchGroup} />
                             </div>
                         ) }
+
+                        { (currentUser.role.rep == 3) && (
+                            <div className="flex flex-row ml-4">
+                                <span className="text-gray-400 text-sm mt-1 mr-4">COH:</span >
+                                <InputNumber 
+                                    name="coh"
+                                    value={cohAmount}
+                                    onChange={(val) => { setCohAmount(val.target.value) }}
+                                    onBlur={(val) => { handleCOHDataChange(val.target.value) }}
+                                    className="w-22"
+                                    filter={true}
+                                    disabled={filter} 
+                                />
+                            </div>
+                        ) }
                     </div>
                 </div>
             )}
@@ -235,6 +258,20 @@ const DetailsHeader = ({ pageTitle, page, pageName, currentDate, mode, selectedB
                                                     <RadioButton id={"radio_all"} name="radio-lo" label={"All"} checked={selectedLoGroup === 'all'} value="all" onChange={handleLoGroupChange} />
                                                     <RadioButton id={"radio_main"} name="radio-lo" label={"Main"} checked={selectedLoGroup === 'main'} value="main" onChange={handleLoGroupChange} />
                                                     <RadioButton id={"radio_ext"} name="radio-lo" label={"Extension"} checked={selectedLoGroup === 'ext'} value="ext" onChange={handleLoGroupChange} />
+                                                </div>
+                                            ) }
+                                            { (currentUser.role.rep < 3) && (
+                                                <div className="flex flex-row ml-4">
+                                                    <span className="text-gray-400 text-sm mt-1 mr-4">COH:</span >
+                                                    <InputNumber 
+                                                        name="coh"
+                                                        value={cohAmount}
+                                                        onChange={(val) => { setCohAmount(val.target.value) }}
+                                                        onBlur={(val) => { handleCOHDataChange(val.target.value) }}
+                                                        className="w-22"
+                                                        filter={true}
+                                                        disabled={true} 
+                                                    />
                                                 </div>
                                             ) }
                                         </div>
