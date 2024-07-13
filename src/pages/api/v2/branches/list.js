@@ -1,11 +1,11 @@
 import { apiHandler } from '@/services/api-handler';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl } from '@/lib/graph/graph.util';
-import { BRANCH_FIELDS } from '@/lib/graph.fields';
+import { BRANCH_COH_FIELDS, BRANCH_FIELDS } from '@/lib/graph.fields';
 
 
 const graph = new GraphProvider();
-const BRANCH_TYPE = createGraphType('branches', `
+const BRANCH_TYPE = (date) => createGraphType('branches', `
     ${BRANCH_FIELDS}
     noOfLO: users_aggregate(where: {
         role: {
@@ -15,6 +15,10 @@ const BRANCH_TYPE = createGraphType('branches', `
         }
     }) {
         aggregate {  count }
+    }
+    
+    cashOnHand: branchCOHs (where: { dateAdded: { _eq: "${date}" } }){
+        ${BRANCH_COH_FIELDS}
     }
 `)('branches');
 
@@ -26,13 +30,13 @@ async function list(req, res) {
     let statusCode = 200;
     let response = {};
 
-    const { branchCode = null, branchCodes = null } = req.query;
+    const { branchCode = null, branchCodes = null, date } = req.query;
 
     const codes = [branchCode, ... (branchCodes?.split(',') ?? [])].filter(code => !!code);
     const where = codes.length ? { code: { _in: codes } } : { code: { _neq: 'null' } };
 
     const branches = await graph.query(
-        queryQl(BRANCH_TYPE, { 
+        queryQl(BRANCH_TYPE(date), { 
             where,
             order_by: [{ code: 'asc' }]
         }, )

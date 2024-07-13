@@ -385,3 +385,13 @@ export const TRANSFER_CLIENT_FIELDS = `
   selectedSlotNo
   sourceUserId
   `;
+
+  export const BRANCH_COH_FIELDS = `
+  _id
+  amount
+  branchId
+  insertedBy
+  dateAdded
+  modifiedBy
+  modifiedDateTime
+  `;
