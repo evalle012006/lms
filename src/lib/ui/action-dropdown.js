@@ -4,19 +4,7 @@ import { useEffect } from "react";
 const ActionDropDown = ({ data, options=[], dataOptions = {}, origin }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [updatedOptions, setUpdatedOptions] = useState([]);
-    // daily
-    //     {(!cc.advance && cc.status === 'completed' && !prevDraft && cc.hasOwnProperty("_id") && (cc.remarks && cc.remarks.value?.startsWith('reloaner'))) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
-    //     {(!filter && cc.status === 'completed' && !cc.draft) && <CurrencyDollarIcon className="w-5 h-5 mr-6" title="MCBU Refund" onClick={(e) => handleMcbuWithdrawal(e, cc, index)} />}
-    //     {((cc.remarks?.value?.startsWith('reloaner') && (cc.status === 'pending' || cc.status === 'tomorrow')) && !filter && !cc.draft && !cc.reverted) && <ArrowsRightLeftIcon className="w-5 h-5 mr-6" title="Change Reloaner Remarks" onClick={(e) => handleShowChangeRemarksDialog(e, cc)} />}
-    //     {(!filter && !editMode && cc.status !== 'closed' && currentMonth === 11 && !cc.draft) && <ReceiptPercentIcon className="w-5 h-5 mr-6" title="Calculate MCBU Interest" onClick={(e) => handleMCBUInterest(e, cc, index)} />}
-
-    // weekly
-    // {/* {(currentUser.role.rep === 3 && cc.hasOwnProperty('_id') && !filter && !cc.draft && cc?.origin !== 'pre-save' && !cc.reverted && cc?.prevData && !cc.mcbuInterestFlag) && <ArrowUturnLeftIcon className="w-5 h-5 mr-6" title="Revert" onClick={(e) => handleShowWarningDialog(e, cc)} />} */}
-    // {(!cc.advance && (cc.status == 'completed' && !prevDraft && cc.hasOwnProperty("_id") && (cc.remarks && cc.remarks.value == 'reloaner'))) && <ArrowPathIcon className="w-5 h-5 mr-6" title="Reloan" onClick={(e) => handleReloan(e, cc)} />}
-    // {(!filter && cc.status === 'active' && !cc.draft) && <CurrencyDollarIcon className="w-5 h-5 mr-6" title="MCBU Refund" onClick={(e) => handleMcbuWithdrawal(e, cc, index)} />}
-    // {(!filter && cc.status === 'active' && !cc.draft) && <StopCircleIcon className="w-5 h-5 mr-6" title="Offset" onClick={(e) => handleOffset(e, cc, index)} />}
-    // {(!filter && !editMode && cc.status !== 'closed' && currentMonth === 11 && !cc.draft) && <ReceiptPercentIcon className="w-5 h-5 mr-6" title="Calculate MCBU Interest" onClick={(e) => handleMCBUInterest(e, cc, index)} />}
-
+    
     useEffect(() => {
         const temp = options.map(option => {
             let tempOption = { ...option };
@@ -44,8 +32,16 @@ const ActionDropDown = ({ data, options=[], dataOptions = {}, origin }) => {
                 if (option.label == 'Offset' && (!dataOptions?.filter && data.status == 'active' && !data.draft)) {
                     tempOption.hidden = false;
                 }
+            } else if (origin == 'transfer' && data) {
+                if ((option.label == 'Reject Transfer' || option.label == 'Edit Transfer' || option.label == 'Delete Transfer') && data.status == 'pending') {
+                    tempOption.hidden = false;
+                }
+
+                if (option.label == 'Repair Transfer' && data.status == 'approved' && data.withError) {
+                    tempOption.hidden = false;
+                }
             }
-            // console.log(tempOption)
+            
             return tempOption;
         });
 
@@ -66,12 +62,12 @@ const ActionDropDown = ({ data, options=[], dataOptions = {}, origin }) => {
                         aria-orientation="vertical"
                         aria-labelledby="options-menu"
                     >
-                        <div className="py-1" role="none">
+                        <div role="none">
                             {updatedOptions.every(option => option.hidden) ? <span className="p-6">No Action</span> : (
                                 <React.Fragment>
                                     {updatedOptions.map((option, index) => {
                                         return (
-                                            <div key={index} className="px-2 w-11/12">
+                                            <div key={index} className="w-full">
                                                 {!option.hidden && (
                                                     <button
                                                         key={option.label}
@@ -84,7 +80,7 @@ const ActionDropDown = ({ data, options=[], dataOptions = {}, origin }) => {
                                                             option.action(data, index);
                                                         }}
                                                     >
-                                                        <div className="flex flex-row justify-start">
+                                                        <div className="flex flex-row justify-start px-2">
                                                             {option?.icon && option.icon}
                                                             <span className="pl-2">{option.label}</span>
                                                         </div>

@@ -40,6 +40,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
     const router = useRouter();
     const [searchedClients, setSearchedClients] = useState([]);
     const [selectedClient, setSelectedClient] = useState();
+    const [duplicate, setDuplicate] = useState(false);
 
     const { status } = router.query;
 
@@ -106,6 +107,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                 const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'clients/search?' + new URLSearchParams({ searchText: searchText?.toUpperCase() }));
                 if (response.success) {
                     if (response.clients.length > 0) {
+                        setDuplicate(true);
                         toast.warning('Client has similar name. Please verify the client first in the search client tool!');
                     }
                 }
@@ -156,6 +158,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
 
                 values.status = 'pending';
                 values.delinquent = false;
+                values.duplicate = duplicate;
 
                 fetchWrapper.post(apiUrl, values)
                     .then(response => {
@@ -261,28 +264,6 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
             form.setFieldValue('loId', currentUser._id);
         }
     }, [currentUser]);
-
-    // useEffect(() => {
-    //     if (selectedClient?.length > 0 && ((selectedClient?.status == "offset") ||
-    //         ((selectedClient?.status == "pending" && (currentUser.role.rep === 4 && selectedClient?.loId == currentUser._id)) || (currentUser.role.rep == 3 && selectedClient?.branchId == currentUser.branchId)))
-    //     ) {
-    //         const form = formikRef.current;
-    //         form.setFieldValue('firstName', selectedClient.firstName);
-    //         form.setFieldValue('middleName', selectedClient.middleName);
-    //         form.setFieldValue('lastName', selectedClient.lastName);
-    //         form.setFieldValue('birthdate', selectedClient.birthdate);
-    //         form.setFieldValue('addressStreetNo', selectedClient.addressStreetNo);
-    //         form.setFieldValue('addressBarangayDistrict', selectedClient.addressBarangayDistrict);
-    //         form.setFieldValue('addressMunicipalityCity', selectedClient.addressMunicipalityCity);
-    //         form.setFieldValue('addressProvince', selectedClient.addressProvince);
-    //         form.setFieldValue('addressZipCode', selectedClient.addressZipCode);
-    //         form.setFieldValue('contactNumber', selectedClient.contactNumber);
-    //         form.setFieldValue('branchId', currentUser.branchId);
-    //         if (currentUser.role.rep == 4) {
-    //             form.setFieldValue('loId', currentUser._id);
-    //         }
-    //     }
-    // }, [selectedClient]);
 
     return (
         <React.Fragment>

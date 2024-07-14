@@ -178,6 +178,10 @@ async function updateClient(loan) {
         }
 
         client.status = 'active';
+
+        if (client?.duplicate) {
+            client.duplicate = false;
+        }
         delete client._id;
 
         await db

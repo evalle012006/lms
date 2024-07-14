@@ -4,8 +4,6 @@ import * as yup from 'yup';
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { toast } from "react-toastify";
 import { useDispatch, useSelector } from "react-redux";
-import InputText from "@/lib/ui/InputText";
-import InputNumber from "@/lib/ui/InputNumber";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 import 'react-calendar/dist/Calendar.css';
@@ -15,7 +13,7 @@ import { UppercaseFirstLetter, formatPricePhp } from "@/lib/utils";
 import Spinner from "@/components/Spinner";
 
 const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setShowSidebar, onClose }) => {
-    const transferList = useSelector(state => state.transfer.pendingList);
+    const transferList = useSelector(state => state.transfer.list);
     const formikRef = useRef();
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);

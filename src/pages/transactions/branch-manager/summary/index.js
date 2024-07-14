@@ -496,7 +496,7 @@ const BranchManagerSummary = () => {
                         activeClients = activeClients + noTransfer - pendingClients;
                         activeBorrowers = activeBorrowers + noTransfer;
                         activeLoanReleasePerson = activeLoanReleasePerson + noTransfer;
-                        activeLoanReleaseAmount += data.totalLoanRelease ? data.totalLoanRelease : 0 + data.currentReleaseAmount ? data.currentReleaseAmount : 0;
+                        activeLoanReleaseAmount += data.totalLoanRelease ? data.totalLoanRelease : 0// + data.currentReleaseAmount ? data.currentReleaseAmount : 0;
                         loanBalance += (data.totalLoanRelease - data.collection);
                     }
                 }
@@ -586,7 +586,7 @@ const BranchManagerSummary = () => {
                         activeClients = activeClients + noTransfer - pendingClients;
                         activeBorrowers = activeBorrowers + noTransfer - tdaClients;
                         activeLoanReleasePerson = activeLoanReleasePerson + noTransfer - tdaClients;
-                        activeLoanReleaseAmount += data.totalLoanRelease ? data.totalLoanRelease : 0 + data.currentReleaseAmount ? data.currentReleaseAmount : 0;
+                        activeLoanReleaseAmount += data.totalLoanRelease ? data.totalLoanRelease : 0// + data.currentReleaseAmount ? data.currentReleaseAmount : 0;
                         loanBalance += (data.totalLoanRelease - data.collection);
                     }
                 }

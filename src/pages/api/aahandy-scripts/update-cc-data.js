@@ -15,32 +15,17 @@ async function updateCCData(req, res) {
     let response = {};
 
 
-    const cashCollections = await db.collection('cashCollections').find({branchId: "651e1f85fe9e9b760e604bb0", slotNo: {$in: [4,5,6,7,8,9,10,12]}, dateAdded: {$in: ["2024-03-06", "2024-03-07"]} }).toArray();
-    console.log(cashCollections.length)
+    const cashCollections = await db.collection('cashCollections').aggregate([
+        { $match: { transferred: true, dateAdded: "2024-06-28" } },
+        { $addFields: { "loanIdObj": { $toObjectId: "$loanId" }, transferIdObj: { $toObjectId: "" } } },
+    ]).toArray();
     cashCollections.map(async cc => {
         let temp = {...cc};
 
-        if (temp.dateAdded == '2024-03-06') {
-            delete temp._id;
-
-            if (temp.status !== 'closed' && temp.status !== 'pending') {
-                if (temp.paymentCollection > 0 && temp.excess == 0 && temp.status == 'active') {
-                    temp.noOfPayments += 1;
-                    temp.mcbu += 10;
-                    temp.loanBalance = temp.loanBalance - temp.paymentCollection;
-
-                    if (temp.noOfPayments == 60) {
-                        temp.status = 'completed';
-                        temp.fullPaymentDate = '2024-03-07';
-                    }
-                }
-    
-                temp.dateAdded = "2024-03-07";
-                temp.modifiedRemarks = "wrong_delete";
-    
-                await db.collection('cashCollections').insertOne(temp);
-            }
-        }
+        // temp.oldLoanId = cc.oldLoanId + '';
+        temp.loanId = cc.loanId + '';
+        delete temp._id;
+        await db.collection('cashCollections').updateOne({_id: cc._id}, {$set: {...temp}});
     });
 
     response = { success: true };
@@ -49,6 +34,49 @@ async function updateCCData(req, res) {
         .setHeader('Content-Type', 'application/json')
         .end(JSON.stringify(response));
 }
+
+// async function updateCCData(req, res) {
+//     const { db } = await connectToDatabase();
+//     const ObjectId = require('mongodb').ObjectId;
+
+//     let statusCode = 200;
+//     let response = {};
+
+
+//     const cashCollections = await db.collection('cashCollections').find({branchId: "651e1f85fe9e9b760e604bb0", slotNo: {$in: [4,5,6,7,8,9,10,12]}, dateAdded: {$in: ["2024-03-06", "2024-03-07"]} }).toArray();
+//     console.log(cashCollections.length)
+//     cashCollections.map(async cc => {
+//         let temp = {...cc};
+
+//         if (temp.dateAdded == '2024-03-06') {
+//             delete temp._id;
+
+//             if (temp.status !== 'closed' && temp.status !== 'pending') {
+//                 if (temp.paymentCollection > 0 && temp.excess == 0 && temp.status == 'active') {
+//                     temp.noOfPayments += 1;
+//                     temp.mcbu += 10;
+//                     temp.loanBalance = temp.loanBalance - temp.paymentCollection;
+
+//                     if (temp.noOfPayments == 60) {
+//                         temp.status = 'completed';
+//                         temp.fullPaymentDate = '2024-03-07';
+//                     }
+//                 }
+    
+//                 temp.dateAdded = "2024-03-07";
+//                 temp.modifiedRemarks = "wrong_delete";
+    
+//                 await db.collection('cashCollections').insertOne(temp);
+//             }
+//         }
+//     });
+
+//     response = { success: true };
+
+//     res.status(statusCode)
+//         .setHeader('Content-Type', 'application/json')
+//         .end(JSON.stringify(response));
+// }
 
 // fixed no currentReleaseAmount and loanCycle
 // async function updateCCData(req, res) {

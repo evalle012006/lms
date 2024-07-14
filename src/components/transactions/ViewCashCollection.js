@@ -489,7 +489,6 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 }
 
                 let transfer = 0;
-                // console.log(collection?.group, collection.collection, collection.loanTarget)
                 if (cc.transferGiverDetails.length > 0) {
                     collectionTransferred.push.apply(collectionTransferred, cc.transferGiverDetails);
                     transfer = transfer - cc.transferGiverDetails.length;
@@ -556,12 +555,11 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                                     totalsLoanRelease += rcv.amountRelease ? rcv.amountRelease : 0;
                                     totalsLoanBalance += rcv.loanBalance ? rcv.loanBalance : 0;
                                 }
-        
-                                // targetLoanCollection -= rcv.targetCollection;
                             }
                         }
                     });
                 }
+
 
                 if (cc.transferGiverDetails.length > 0 || cc.transferReceivedDetails.length > 0) {
                     collection.mcbuStr = formatPricePhp(collection.mcbu);
