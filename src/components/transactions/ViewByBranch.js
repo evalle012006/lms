@@ -226,15 +226,13 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup, viewMode}) => 
                     filter: 'includes'
                 },
                 {
-                    Header: "MCBU Refund",
-                    accessor: 'mcbuWithdrawalStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
                     Header: "MCBU Withdrawal",
-                    accessor: 'mcbuDailyWithdrawalStr'
+                    accessor: 'mcbuWithdrawalStr',
                 },
+                // {
+                //     Header: "MCBU Withdrawal",
+                //     accessor: 'mcbuDailyWithdrawalStr'
+                // },
                 {
                     Header: "# MCBU Return",
                     accessor: 'noMcbuReturn',

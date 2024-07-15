@@ -156,9 +156,9 @@ async function updateLoan(db, collection, currentDate) {
             loan.revertedDate = collection.revertedDate;
         }
 
-        if (collection.remarks && (!collection.remarks.value?.startsWith('excused')  && collection.remarks.value !== 'delinquent')) {
-            loan.activeLoan = collection.activeLoan;
-        }
+        // if (collection.remarks && (!collection.remarks.value?.startsWith('excused')  && collection.remarks.value !== 'delinquent')) {
+        //     loan.activeLoan = collection.activeLoan;
+        // }
 
         if (collection.remarks && collection.remarks.value === 'matured-past due') {
             loan.activeLoan = 0;
@@ -168,7 +168,6 @@ async function updateLoan(db, collection, currentDate) {
         
         loan.amountRelease = collection.amountRelease;
         loan.noOfPayments = collection.noOfPayments !== '-' ? collection.noOfPayments : 0;
-        // loan.fullPaymentDate = '';
         loan.status = collection.status;
         loan.pastDue = collection.pastDue;
         loan.advanceDays = collection?.advanceDays ? collection.advanceDays : 0;
@@ -180,27 +179,9 @@ async function updateLoan(db, collection, currentDate) {
         }
         loan.mcbuCollection = loan.mcbuCollection ? loan.mcbuCollection + parseFloat(collection.mcbuCol) : parseFloat(collection.mcbuCol);
 
-        // if (loan.occurence == 'daily' && collection.remarks) {
-        //     if (collection.remarks.value == 'reloaner-wd') {
-        //         loan.mcbuWithdrawal = collection.mcbuWithdrawal;
-        //     } else if (collection.remarks.value == 'reloaner-cont') {
-        //         loan.mcbuWithdrawal = 0;
-        //     }
-        // } else {
-            // loan.mcbuWithdrawal = loan.mcbuWithdrawal ? loan.mcbuWithdrawal + parseFloat(collection.mcbuWithdrawal) : collection.mcbuWithdrawal ? parseFloat(collection.mcbuWithdrawal) : 0;
-        // }
-
         if (collection?.mcbuWithdrawal > 0) {
             loan.mcbuWithdrawal = loan.mcbuWithdrawal ? loan.mcbuWithdrawal + parseFloat(collection.mcbuWithdrawal) : collection.mcbuWithdrawal ? parseFloat(collection.mcbuWithdrawal) : 0;
         }
-
-        // if (collection?.mcbuDailyWithdrawal > 0) {
-        //     if (loan.hasOwnProperty('mcbuDailyWithdrawal')) {
-        //         loan.mcbuDailyWithdrawal += collection.mcbuDailyWithdrawal;
-        //     } else {
-        //         loan.mcbuDailyWithdrawal = collection.mcbuDailyWithdrawal;
-        //     }
-        // }
 
         if (collection.hasOwnProperty('mcbuInterest')) {
             loan.mcbuInterest = loan.mcbuInterest ? loan.mcbuInterest + collection.mcbuInterest : collection.mcbuInterest !== '-' ? collection.mcbuInterest : 0;

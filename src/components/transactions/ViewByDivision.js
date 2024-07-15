@@ -138,13 +138,13 @@ const ViewByDivisionPage = ({dateFilter, type, selectedBranchGroup, viewMode}) =
                     accessor: 'totalStr'
                 },
                 {
-                    Header: "MCBU Refund",
+                    Header: "MCBU Withdrawal",
                     accessor: 'mcbuWithdrawalStr'
                 },
-                {
-                    Header: "MCBU Withdrawal",
-                    accessor: 'mcbuDailyWithdrawalStr'
-                },
+                // {
+                //     Header: "MCBU Withdrawal",
+                //     accessor: 'mcbuDailyWithdrawalStr'
+                // },
                 {
                     Header: "# MCBU Return",
                     accessor: 'noMcbuReturn'
