@@ -139,6 +139,7 @@ async function processData(data, date, currentDate) {
         let branchTotalMcbuReturnAmt = 0;
         let branchTotalTransfer = 0;
         let branchTotalMcbuDailyWithdrawal = 0;
+        let branchTotalCOH = 0;
 
         region.branchCollection.map(branch => {
             if (branch?.draftCollections?.length > 0) {
@@ -158,7 +159,7 @@ async function processData(data, date, currentDate) {
             if (!filter) {
                 let mcbu = 0;
                 if (branch.activeLoans.length > 0) {
-                    branchNoOfClients += branch.activeLoans[0].activeClients; 
+                    branchNoOfClients += branch.activeLoans[0].activeClients;
                     branchNoOfBorrowers += branch.activeLoans[0].activeBorrowers;
                     branchNoOfPendings += branch.activeLoans[0].pendingClients;
                 }
@@ -172,7 +173,7 @@ async function processData(data, date, currentDate) {
                     mcbu = branch.loans[0].mcbu;
                 }
 
-                if (branch.cashCollections.length > 0) {
+                if (branch.cashCollections.length > 0 && branch.cashCollections[0].collection > 0) {
                     branchTargetLoanCollection = branchTargetLoanCollection - branch.cashCollections[0].loanTarget;
                     branchExcess += branch.cashCollections[0].excess;
                     branchTotalLoanCollection += branch.cashCollections[0].collection;
@@ -204,14 +205,14 @@ async function processData(data, date, currentDate) {
                 branchTotalMcbu += mcbu;
             } else {
                 if (branch.cashCollections.length > 0) {
-                    branchNoOfClients += branch.cashCollections[0].activeClients; 
+                    branchNoOfClients += branch.cashCollections[0].activeClients;
                     branchNoOfBorrowers += branch.cashCollections[0].activeBorrowers;
                     branchNoOfPendings += branch.cashCollections[0].pendingClients;
 
                     branchTotalsLoanRelease += branch.cashCollections[0].totalRelease;
                     branchTotalsLoanBalance += branch.cashCollections[0].totalLoanBalance;
                     branchTargetLoanCollection += branch.cashCollections[0].loanTarget;
-                    
+
                     branchExcess += branch.cashCollections[0].excess;
                     branchTotalLoanCollection += branch.cashCollections[0].collection;
                     branchMispayment += branch.cashCollections[0].mispayment;
@@ -234,6 +235,10 @@ async function processData(data, date, currentDate) {
                 }
             }
 
+            if (branch.cashOnHand.length > 0) {
+                branchTotalCOH = branch.cashOnHand[0].amount ? branch.cashOnHand[0].amount : 0;
+            }
+
             if (branch.transferDailyGiverDetails.length > 0 || branch.transferDailyReceivedDetails.length > 0 || branch.transferWeeklyGiverDetails.length > 0 || branch.transferWeeklyReceivedDetails.length > 0) {
                 let transfer = 0;
                 let totalTransferMcbu = 0;
@@ -244,10 +249,12 @@ async function processData(data, date, currentDate) {
                     collectionDailyReceived.push.apply(collectionDailyReceived, branch.transferDailyGiverDetails);
                     transfer = transfer - branch.transferDailyGiverDetails.length;
 
-                    branch.transferDailyGiverDetails.map(giver => {    
+                    branch.transferDailyGiverDetails.map(giver => {
                         if (filter) {
                             branchNoOfClients -= 1;
-                            branchNoOfBorrowers -= 1;
+                            if (giver.status !== "completed") {
+                                branchNoOfBorrowers -= 1;
+                            }
                         }
 
                         branchTotalMcbu -= giver.mcbu;
@@ -266,7 +273,7 @@ async function processData(data, date, currentDate) {
                 if (branch.transferDailyReceivedDetails.length > 0) {
                     collectionDailyTransferred.push.apply(collectionDailyTransferred, branch.transferDailyReceivedDetails);
                     transfer = transfer + branch.transferDailyReceivedDetails.length;
-                    
+
                     branch.transferDailyReceivedDetails.map(rcv => {
                         totalTransferMcbu += rcv.mcbu;
                         const details = rcv.data[0];
@@ -277,19 +284,16 @@ async function processData(data, date, currentDate) {
                         if (!filter) {
                             if (rcv.status !== 'pending') {
                                 collection.activeClients += 1;
-                                if (collection.status !== "completed") {
+                                if (rcv.status !== "completed") {
                                     branchNoOfBorrowers += 1;
                                 }
                                 branchTotalMcbu += rcv.mcbu ? rcv.mcbu : 0;
-    
+
                                 branchTotalsLoanRelease += rcv.amountRelease ? rcv.amountRelease : 0;
                                 branchTotalsLoanBalance += rcv.loanBalance ? rcv.loanBalance : 0;
                             }
                         } else {
                             if (rcv.status !== 'pending') {
-                                if (rcv.status == "completed") {
-                                    branchNoOfBorrowers -= 1;
-                                }
                                 branchTargetLoanCollection -= rcv.targetCollection;
 
                                 if (rcv.status == 'tomorrow') {
@@ -308,7 +312,9 @@ async function processData(data, date, currentDate) {
                     branch.transferWeeklyGiverDetails.map(giver => {
                         if (filter) {
                             branchNoOfClients -= 1;
-                            branchNoOfBorrowers -= 1;
+                            if (giver.status !== "completed") {
+                                branchNoOfBorrowers -= 1;
+                            }
                         }
 
                         branchTotalMcbu -= giver.mcbu;
@@ -323,7 +329,7 @@ async function processData(data, date, currentDate) {
                         branchTotalsLoanBalance -= giver.loanBalance ? giver.loanBalance : 0;
                     });
                 }
-                
+
                 if (branch.transferWeeklyReceivedDetails.length > 0) {
                     collectionWeeklyTransferred.push.apply(collectionWeeklyTransferred, branch.transferWeeklyReceivedDetails);
                     transfer = transfer + branch.transferWeeklyReceivedDetails.length;
@@ -338,19 +344,16 @@ async function processData(data, date, currentDate) {
                         if (!filter) {
                             if (rcv.status !== 'pending') {
                                 collection.activeClients += 1;
-                                if (collection.status !== "completed") {
+                                if (rcv.status !== "completed") {
                                     branchNoOfBorrowers += 1;
                                 }
                                 branchTotalMcbu += rcv.mcbu ? rcv.mcbu : 0;
-    
+
                                 branchTotalsLoanRelease += rcv.amountRelease ? rcv.amountRelease : 0;
                                 branchTotalsLoanBalance += rcv.loanBalance ? rcv.loanBalance : 0;
                             }
                         } else {
                             if (rcv.status !== 'pending') {
-                                if (rcv.status == "completed") {
-                                    branchNoOfBorrowers -= 1;
-                                }
                                 branchTargetLoanCollection -= rcv.targetCollection;
 
                                 if (rcv.status == 'tomorrow') {
@@ -367,7 +370,7 @@ async function processData(data, date, currentDate) {
                     branchTargetLoanCollection += totalTransferTargetCollection;
                     branchTotalLoanCollection += totalTransferActualCollection;
                 }
-                
+
                 branchTotalTransfer += transfer;
             }
         });
@@ -396,6 +399,7 @@ async function processData(data, date, currentDate) {
             pastDueStr: '-',
             noPastDue: '-',
             transfer: '-',
+            cohStr: '-',
             page: 'region-summary',
             status: '-'
         }
@@ -438,6 +442,8 @@ async function processData(data, date, currentDate) {
             collection.noPastDue = branchTotalNoPastDue;
             collection.transfer = branchTotalTransfer;
             collection.transferStr = branchTotalTransfer >=0 ? branchTotalTransfer : `(${branchTotalTransfer * -1})`;
+            collection.coh = branchTotalCOH;
+            collection.cohStr = branchTotalCOH > 0 ? formatPricePhp(branchTotalCOH) : '-';
             collection.status = groupStatus;
         }
 
@@ -467,6 +473,7 @@ async function processData(data, date, currentDate) {
     let totalMcbuReturnAmt = 0;
     let totalMcbuDailyWithdrawal = 0;
     let totalTransfer = 0;
+    let totalCOH = 0;
 
     collectionData.map(collection => {
         if (collection.activeClients != '-') {
@@ -493,6 +500,7 @@ async function processData(data, date, currentDate) {
             totalMcbuReturnNo += collection.mcbuReturnAmt;
             totalMcbuReturnAmt += collection.mcbuReturnAmt;
             totalTransfer += collection.transfer;
+            totalCOH += collection.coh;
         }
     });
 
@@ -534,6 +542,7 @@ async function processData(data, date, currentDate) {
         noMcbuReturn: totalMcbuReturnNo,
         mcbuReturnAmt: totalMcbuReturnAmt,
         mcbuReturnAmtStr: formatPricePhp(totalMcbuReturnAmt),
+        cohStr: formatPricePhp(totalCOH),
         totalData: true
     };
 
