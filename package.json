@@ -1,4 +1,5 @@
 {
+  "name": "lms",
   "scripts": {
     "dev": "next",
     "build": "next build",
