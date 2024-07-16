@@ -131,7 +131,7 @@ async function getAllLoanTransactionsByBranch(db, branchId, date, dayName, curre
                                     mcbu: { $sum: '$mcbu' },
                                     mcbuCol: { $sum: '$mcbuCol' },
                                     mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
-                                    mcbuDailyWithdrawal: { $sum: '$mcbuDailyWithdrawal' },
+                                    // mcbuDailyWithdrawal: { $sum: '$mcbuDailyWithdrawal' },
                                     mcbuReturnNo: { $sum: {
                                         $cond: {
                                             if: { $or: [
@@ -847,7 +847,7 @@ async function getAllLoanTransactionsByBranch(db, branchId, date, dayName, curre
                                     mcbu: { $sum: '$mcbu' },
                                     mcbuCol: { $sum: '$mcbuCol' },
                                     mcbuWithdrawal: { $sum: '$mcbuWithdrawal' },
-                                    mcbuDailyWithdrawal: { $sum: '$mcbuDailyWithdrawal' },
+                                    // mcbuDailyWithdrawal: { $sum: '$mcbuDailyWithdrawal' },
                                     mcbuReturnNo: { $sum: {
                                         $cond: {
                                             if: { $or: [
@@ -1128,7 +1128,7 @@ async function processData(data, date, currentDate) {
     let totalMcbuWithdrawal = 0;
     let totalMcbuReturnNo = 0;
     let totalMcbuReturnAmt = 0;
-    let totalMcbuDailyWithdrawal = 0;
+    // let totalMcbuDailyWithdrawal = 0;
     let totalTransfer = 0;
     let totalCOH = 0;
 
@@ -1149,7 +1149,7 @@ async function processData(data, date, currentDate) {
             mcbuStr: '-',
             mcbuColStr: '-',
             mcbuWithdrawalStr: '-',
-            mcbuDailyWithdrawalStr: '-',
+            // mcbuDailyWithdrawalStr: '-',
             mcbuReturnAmtStr: '-',
             excessStr: '-',
             totalStr: '-',
@@ -1205,8 +1205,8 @@ async function processData(data, date, currentDate) {
                 collection.mcbuColStr = '-';
                 collection.mcbuWithdrawal = 0;
                 collection.mcbuWithdrawalStr = '-';
-                collection.mcbuDailyWithdrawal = 0;
-                collection.mcbuDailyWithdrawalStr = '-';
+                // collection.mcbuDailyWithdrawal = 0;
+                // collection.mcbuDailyWithdrawalStr = '-';
                 collection.noMcbuReturn = 0;
                 collection.mcbuReturnAmt = 0;
                 collection.mcbuReturnAmtStr = '-';
@@ -1265,8 +1265,8 @@ async function processData(data, date, currentDate) {
                 collection.mcbuColStr = collection.mcbuCol > 0 ? formatPricePhp(collection.mcbuCol) : '-';
                 collection.mcbuWithdrawal = branch.cashCollections[0].mcbuWithdrawal;
                 collection.mcbuWithdrawalStr = collection.mcbuWithdrawal ? formatPricePhp(collection.mcbuWithdrawal) : '-';
-                collection.mcbuDailyWithdrawal = branch.cashCollections[0].mcbuDailyWithdrawal;
-                collection.mcbuDailyWithdrawalStr = collection.mcbuDailyWithdrawal ? formatPricePhp(collection.mcbuDailyWithdrawal) : '-';
+                // collection.mcbuDailyWithdrawal = branch.cashCollections[0].mcbuDailyWithdrawal;
+                // collection.mcbuDailyWithdrawalStr = collection.mcbuDailyWithdrawal ? formatPricePhp(collection.mcbuDailyWithdrawal) : '-';
                 collection.noMcbuReturn = branch.cashCollections[0].mcbuReturnNo;
                 collection.mcbuReturnAmt = branch.cashCollections[0].mcbuReturnAmt;
                 collection.mcbuReturnAmtStr = collection.mcbuReturnAmt ? formatPricePhp(collection.mcbuReturnAmt) : '-';
@@ -1278,7 +1278,7 @@ async function processData(data, date, currentDate) {
                 mispayment += branch.cashCollections[0].mispayment;
                 // totalMcbuCol += collection.mcbuCol ? collection.mcbuCol : 0;
                 totalMcbuWithdrawal += collection.mcbuWithdrawal ? collection.mcbuWithdrawal : 0;
-                totalMcbuDailyWithdrawal += collection.mcbuDailyWithdrawal ? collection.mcbuDailyWithdrawal : 0;
+                // totalMcbuDailyWithdrawal += collection.mcbuDailyWithdrawal ? collection.mcbuDailyWithdrawal : 0;
                 totalMcbuReturnNo += collection.noMcbuReturn ? collection.noMcbuReturn : 0;
                 totalMcbuReturnAmt += collection.mcbuReturnAmt ? collection.mcbuReturnAmt : 0;
                 totalTransfer += collection.transfer !== '-' ? collection.transfer : 0;
@@ -1339,8 +1339,8 @@ async function processData(data, date, currentDate) {
                 collection.noMcbuReturn = branch.cashCollections[0].mcbuReturnNo ? branch.cashCollections[0].mcbuReturnNo: 0;
                 collection.mcbuReturnAmt = branch.cashCollections[0].mcbuReturnAmt ? branch.cashCollections[0].mcbuReturnAmt: 0;
                 collection.mcbuReturnAmtStr = collection.mcbuReturnAmt > 0 ? formatPricePhp(collection.mcbuReturnAmt): '-';
-                collection.mcbuDailyWithdrawal = branch.cashCollections[0].mcbuDailyWithdrawal;
-                collection.mcbuDailyWithdrawalStr = collection.mcbuDailyWithdrawal ? formatPricePhp(collection.mcbuDailyWithdrawal) : '-';
+                // collection.mcbuDailyWithdrawal = branch.cashCollections[0].mcbuDailyWithdrawal;
+                // collection.mcbuDailyWithdrawalStr = collection.mcbuDailyWithdrawal ? formatPricePhp(collection.mcbuDailyWithdrawal) : '-';
 
                 const newReleasePerson = branch.cashCollections[0].newCurrentRelease;
                 const reReleasePerson = branch.cashCollections[0].reCurrentRelease;
@@ -1373,7 +1373,7 @@ async function processData(data, date, currentDate) {
                 // totalMcbu += collection.mcbu ? collection.mcbu : 0;
                 // totalMcbuCol += collection.mcbuCol ? collection.mcbuCol : 0;
                 totalMcbuWithdrawal += collection.mcbuWithdrawal ? collection.mcbuWithdrawal : 0;
-                totalMcbuDailyWithdrawal += collection.mcbuDailyWithdrawal ? collection.mcbuDailyWithdrawal : 0;
+                // totalMcbuDailyWithdrawal += collection.mcbuDailyWithdrawal ? collection.mcbuDailyWithdrawal : 0;
                 totalMcbuReturnNo += collection.noMcbuReturn ? collection.noMcbuReturn : 0;
                 totalMcbuReturnAmt += collection.mcbuReturnAmt ? collection.mcbuReturnAmt : 0;
                 totalTransfer += collection.transfer !== '-' ? collection.transfer : 0;
@@ -1604,8 +1604,8 @@ async function processData(data, date, currentDate) {
         mcbuColStr: formatPricePhp(totalMcbuCol),
         mcbuWithdrawal: totalMcbuWithdrawal,
         mcbuWithdrawalStr: formatPricePhp(totalMcbuWithdrawal),
-        mcbuDailyWithdrawal: totalMcbuDailyWithdrawal,
-        mcbuDailyWithdrawalStr: formatPricePhp(totalMcbuDailyWithdrawal),
+        // mcbuDailyWithdrawal: totalMcbuDailyWithdrawal,
+        // mcbuDailyWithdrawalStr: formatPricePhp(totalMcbuDailyWithdrawal),
         noMcbuReturn: totalMcbuReturnNo,
         mcbuReturnAmt: totalMcbuReturnAmt,
         mcbuReturnAmtStr: formatPricePhp(totalMcbuReturnAmt),

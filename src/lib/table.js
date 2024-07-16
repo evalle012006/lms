@@ -468,7 +468,9 @@ const TableComponent = ({
   multiSelect = false,
   multiSelectActionFn = null,
   pageSize = 50,
-  dropDownActions = []
+  dropDownActions = [],
+  actionDropDownDataOptions = [],
+  dropDownActionOrigin
 }) => {
   // Use the state and functions returned from useTable to build your UI
   const {
@@ -715,7 +717,7 @@ const TableComponent = ({
                                         )}
                                         {(dropDownActions.length > 0) && (
                                           <td className="py-4-custom whitespace-nowrap-custom" role="cell">
-                                              <ActionDropDown data={row.original} options={dropDownActions} />
+                                              <ActionDropDown key={i} data={row.original} options={dropDownActions} dataOptions={actionDropDownDataOptions} origin={dropDownActionOrigin} />
                                           </td>
                                         )}
                                     </tr>
@@ -781,7 +783,7 @@ const TableComponent = ({
                                         )}
                                         {(dropDownActions.length > 0) && (
                                           <td className="py-4-custom whitespace-nowrap-custom" role="cell">
-                                              <ActionDropDown data={row.original} options={dropDownActions} />
+                                              <ActionDropDown key={i} data={row.original} options={dropDownActions} dataOptions={actionDropDownDataOptions} origin={dropDownActionOrigin} />
                                           </td>
                                         )}
                                     </tr>

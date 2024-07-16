@@ -184,6 +184,25 @@ export const getLastWeekdayOfTheMonth = (year, month, holidayList = []) => {
     return dateArr[dateArr.length - 1];
 }
 
+export const isEndMonthDate = (currentDate, holidayList = []) => {
+    const year = moment(currentDate).year();
+    const month = moment(currentDate).month() + 1;
+    
+    const days = getDaysOfMonth(year, month);
+
+    const dateArr = days.filter(day => {
+        const dayName = moment(day).format('dddd');
+
+        const dateArr = day.split('-');
+        const dateStr = dateArr[1] + "-" + dateArr[2];
+        if (dayName !== 'Saturday' && dayName !== 'Sunday' && (holidayList && !holidayList.includes(dateStr))) {
+            return day;
+        }
+    });
+
+    return dateArr[dateArr.length - 1] == currentDate;
+}
+
 export const getMonths = () => {
     return [
         { label: 'January', value: '01' },

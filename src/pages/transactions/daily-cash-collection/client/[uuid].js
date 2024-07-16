@@ -2310,6 +2310,22 @@ const CashCollectionDetailsPage = () => {
         setShowRemarksModal(false);
     }
 
+    const handleOffsetUseMCBU = (name, checked) => {
+        if (checked && closeLoan) {
+            if (closeLoan.mcbuReturnAmt < closeLoan.paymentCollection) {
+                toast.error('Client has not enough MCBU collected.');
+            } else if (closeLoan.mcbuReturnAmt == 0) {
+                toast.error('Client has no MCBU collected.');
+            } else if (closeLoan.loanBalance <= 0) {
+                toast.error("Client don't have any loan balance to offset with MCBU.");
+            } else {
+                setOffsetUseMCBU(checked);
+            }
+        } else {
+            setOffsetUseMCBU(checked);
+        }
+    }
+
     const handleShowChangeRemarksDialog = (selected) => {
         if (selected.status !== 'totals') {
             let temp = {...selected};
