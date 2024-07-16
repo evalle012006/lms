@@ -13,10 +13,16 @@ function errorHandler(err, res) {
 
     const errorInfo = {
       url: err.requestUrl,
-      graphQLErrors: err?.graphQLErrors,
       message: err.message,
       stack: err.stack,
+    };
+
+    if (Array.isArray(err)) {
+      errorInfo.errors = err;
+    } else if (err?.graphQLErrors) {
+      errorInfo.errors = err.graphQLErrors;
     }
+
     console.error(JSON.stringify(errorInfo, null, 2));
     return res.status(500).json({ message: err.message });
 }

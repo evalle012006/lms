@@ -113,8 +113,8 @@ async function getPendingTransfer(_id, branchId) {
       const fields = `
         ${TRANSFER_CLIENT_FIELDS}
         client {${CLIENT_FIELDS}}
-        loans: selectedClientLoans(where: {status: { _in: ["active", "completed", "pending"] }) {${LOAN_FIELDS}}
-        closedLoans: selectedClientLoans(where: {status: { _eq: "closed" }) {${LOAN_FIELDS}}
+        loans: selectedClientLoans(where: {status: { _in: ["active", "completed", "pending"] }}) {${LOAN_FIELDS}}
+        closedLoans: selectedClientLoans(where: {status: { _eq: "closed" }}) {${LOAN_FIELDS}}
         sourceBranch {${BRANCH_FIELDS}}
         sourceGroup {${GROUP_FIELDS}}
         sourceUser {${USER_FIELDS}}
@@ -123,7 +123,7 @@ async function getPendingTransfer(_id, branchId) {
         targetUser {${USER_FIELDS}}
       `;
       return findTransferClients(filter, fields)
-        .then(({client, sourceBranch, sourceGroup, sourceUser, targetBranch, targetGroup, targetUser, ...info}) => ({
+        .then(row => row.map(({client, sourceBranch, sourceGroup, sourceUser, targetBranch, targetGroup, targetUser, ...info}) => ({
             ...info,
             client: [client],
             sourceGroup: [sourceGroup],
@@ -132,7 +132,7 @@ async function getPendingTransfer(_id, branchId) {
             targetBranch: [targetBranch],
             sourceUser: [sourceUser],
             targetUser: [targetUser],
-          }));
+          })));
     } else {
       return [];
     }
@@ -179,7 +179,7 @@ async function getApprovedTransfer(_id, branchId, previousLastMonthDate) {
     const fields = `
         ${TRANSFER_CLIENT_FIELDS}
         client {${CLIENT_FIELDS}}
-        loans (where: {transfer: { _eq: true }, status: { _ne: "closed" }) {${LOAN_FIELDS}}
+        loans (where: {transfer: { _eq: true }, status: { _neq: "closed" }}) {${LOAN_FIELDS}}
         sourceBranch {${BRANCH_FIELDS}}
         sourceGroup {${GROUP_FIELDS}}
         sourceUser {${USER_FIELDS}}
@@ -188,7 +188,7 @@ async function getApprovedTransfer(_id, branchId, previousLastMonthDate) {
         targetUser {${USER_FIELDS}}
       `;
     return findTransferClients(filter, fields)
-      .then(({client, sourceBranch, sourceGroup, sourceUser, targetBranch, targetGroup, targetUser, ...info}) => ({
+      .then(row => row.map(({client, sourceBranch, sourceGroup, sourceUser, targetBranch, targetGroup, targetUser, ...info}) => ({
         ...info,
         client: [client],
         sourceGroup: [sourceGroup],
@@ -197,7 +197,7 @@ async function getApprovedTransfer(_id, branchId, previousLastMonthDate) {
         targetBranch: [targetBranch],
         sourceUser: [sourceUser],
         targetUser: [targetUser],
-      }));
+      })));
   } else {
     return [];
   }
