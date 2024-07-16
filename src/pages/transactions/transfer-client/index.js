@@ -338,7 +338,7 @@ const TransferClientPage = () => {
                 toast.info('Please contact system administrator!');
             } else {
                 setLoading(true);
-                fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/transfer-client/repair', { _id: data._id })
+                fetchWrapper.post(getApiBaseUrl() + 'transactions/transfer-client/repair', { _id: data._id })
                     .then(response => {
                         if (response.success) {
                             setLoading(false);
