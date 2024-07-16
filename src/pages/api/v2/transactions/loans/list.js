@@ -70,7 +70,6 @@ async function list(req, res) {
 
         rowMapper = (row) => {
           row.branch = [row.branch];
-          row.groupStatus = row.groupStatus?.[0];
         };
       }
     }
@@ -79,23 +78,18 @@ async function list(req, res) {
       args = { status: 'pending', currentDate };
       rowMapper = (row) => {
         row.branch = [row.branch];
-        row.groupStatus = row.groupStatus?.[0];
       };
     }
   } else {
     // loId and branchId
     if (loId && branchId) {
       args = { loId, branchId, currentDate };
-      rowMapper = (row) => {
-        row.groupStatus = row.groupStatus?.[0];
-      };
     }
     // branchId
     else if (branchId) {
       args = { branchId, currentDate };
       rowMapper = (row) => {
         row.branch = [row.branch];
-        row.groupStatus = row.groupStatus?.[0];
       };
     }
     // groupId
@@ -103,7 +97,6 @@ async function list(req, res) {
       args = { groupId, occurrence: mode, currentDate };
       rowMapper = (row) => {
         row.branch = [row.branch];
-        row.groupStatus = row.groupStatus?.[0];
       };
     }
     // query 9
@@ -111,7 +104,6 @@ async function list(req, res) {
       args = { status: 'pending', currentDate };
       rowMapper = (row) => {
         row.branch = [row.branch];
-        row.groupStatus = row.groupStatus?.[0];
       };
     }
   }

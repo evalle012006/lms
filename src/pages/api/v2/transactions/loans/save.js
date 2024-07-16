@@ -66,7 +66,7 @@ async function save(req, res) {
       
     const groupCashCollections = (await graph.query(queryQl(cashCollectionsType, {
       where: {
-        groupId: { _eq: group._id },
+        groupId: { _eq: loanData.groupId },
         dateAdded: { _eq: currentDate },
       }
     }))).data?.cashCollections;
