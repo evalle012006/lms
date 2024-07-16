@@ -1,10 +1,10 @@
-import { BRANCH_FIELDS, USER_FIELDS } from '@/lib/graph.fields';
+import { BRANCH_COH_FIELDS, BRANCH_FIELDS, USER_FIELDS } from '@/lib/graph.fields';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, updateQl } from '@/lib/graph/graph.util';
 import { apiHandler } from '@/services/api-handler';
 
 const graph = new GraphProvider();
-const BRANCH_TYPE = createGraphType('branches', `
+const BRANCH_TYPE = (date) => createGraphType('branches', `
     ${BRANCH_FIELDS}
     branchManager: users (where: {
         role: {
@@ -24,6 +24,10 @@ const BRANCH_TYPE = createGraphType('branches', `
     }) {
         aggregate {  count }
     }
+
+    cashOnHand: branchCOHs (where: { dateAdded: { _eq: "${date}" } }){
+        ${BRANCH_COH_FIELDS}
+    }
 `)('branches');
 
 export default apiHandler({
@@ -32,14 +36,14 @@ export default apiHandler({
 });
 
 async function getBranch(req, res) {
-    const { _id = null, code = null } = req.query;
+    const { _id = null, code = null, date } = req.query;
 
     let statusCode = 200;
     let response = {};
     const where = _id ? { _id: { _eq: _id } } : { code: { _eq: code } }
 
     const branch = await graph.query(
-        queryQl(BRANCH_TYPE, {
+        queryQl(BRANCH_TYPE(date), {
             where,
         })
     ).then(res => res.data.branches?.[0])
@@ -68,7 +72,7 @@ async function updateBranch(req, res) {
     delete branch._id;
 
     const resp = await graph.mutation(
-        updateQl(BRANCH_TYPE, {
+        updateQl(createGraphType('branches', `_id`), {
             set: {
                 ... branch
             },
