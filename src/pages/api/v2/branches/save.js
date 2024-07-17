@@ -28,8 +28,6 @@ async function save(req, res) {
         })
     ).then(res => res.data.branches);
 
-    console.log(branch)
-
     if(branch) {
         response = {
             error: true,

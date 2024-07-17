@@ -48,12 +48,15 @@ async function list(req, res) {
     const data = await graph.query(
         queryQl(createGraphType('cashCollections', `
             ${CASH_COLLECTIONS_FIELDS}
-            group: groups { name } 
-            client: clients { firstName lastName status delinquent }
-            loan: loans { ${LOAN_FIELDS} }
-            branch: branches { name, code }
+            group { name } 
+            client { firstName lastName status delinquent }
+            loan { ${LOAN_FIELDS} }
+            branch { name, code }
         `)('results'), {
             where: {
+                loan: {
+                    _id: { _is_null: false }
+                },
                 _and: filter
             }
         })
@@ -64,7 +67,7 @@ async function list(req, res) {
         client: o.client ? [o.client] : [],
         loan: o.loan ? [o.loan] : [],
         branch: o.branch ? [o.branch] : [],
-     })))
+     })));
     
     response = {
         success: true,
