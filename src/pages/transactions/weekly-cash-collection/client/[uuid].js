@@ -169,7 +169,7 @@ const CashCollectionDetailsPage = () => {
             dataCollection.map(cc => {
                 let collection;
                 let transferStr = '-';
-                if (cc?.transferred || cc?.transfer) {
+                if (cc?.transferred == true || (cc?.transfer == true && cc?.current?.length == 0)) {
                     let numMispayment = cc.mispayment > 0 ? cc.mispayment + ' / ' + cc.loanTerms : '-';
                     if (date) {
                         numMispayment = cc.noMispayment > 0 ? cc.noMispayment + ' / ' + cc.loanTerms : '-';
@@ -403,8 +403,8 @@ const CashCollectionDetailsPage = () => {
                         let prevData = cc.prevData;
                         let draft = false;
                         let reverted = false;
-                        if (cc.hasOwnProperty('current') && cc.current.length > 0) {
-                            const current = cc.current.find(cur => !cur.hasOwnProperty('transfer'));
+                        if (cc?.current?.length > 0) {
+                            const current = cc.current.find(cur => cur?.transfer !== null);
                             if (current) {
                                 if (current?.transferred) {
                                     amountRelease = current.amountRelease;
