@@ -9,14 +9,14 @@ export default apiHandler({
 
 const graph = new GraphProvider();
 const CLIENT_TYPE = createGraphType('client', `
-${CLIENT_FIELDS}
-groups {
-    name
-}
-branch {
-    name
-}
-`)
+    ${CLIENT_FIELDS}
+    group {
+        name
+    }
+    branch {
+        name
+    }
+`)('clients')
 
 async function list(req, res) {
     let statusCode = 200;
@@ -32,11 +32,15 @@ async function list(req, res) {
                 fullName: { _ilike: fullNameCondition }
             }
         })
-    )
+    ).then(res => res.data.clients ?? [])
     
     response = {
         success: true,
-        clients: clients
+        clients: clients.map(c => ({
+            ... c,
+            group: c.group ?? {},
+            branch: c.branch ?? {},
+        }))
     }
 
     res.status(statusCode)
