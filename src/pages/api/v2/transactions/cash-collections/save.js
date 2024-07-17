@@ -376,7 +376,9 @@ async function updateClient(mutationQl, loan, currentDate) {
 }
 
 async function updateLoanClose(mutationQl, loanData, currentDate) {
-    let loan = await graph.query(LOAN_TYPE('loans'), { where: { _id: { _eq: loanData.loanId } } }).then(res => res.data.loans);
+    let loan = await graph.query(
+        queryQl(LOAN_TYPE('loans'), { where: { _id: { _eq: loanData.loanId } } })
+    ).then(res => res.data.loans);
     logger.debug({page: `Saving Cash Collection - Updating Loan Close`, loanSize: loan.length});
     if (loan.length > 0) {
         loan = loan[0];
@@ -401,7 +403,9 @@ async function updateLoanClose(mutationQl, loanData, currentDate) {
 }
 
 async function updateGroup(mutationQl, loan) {
-    let group = await graph.query(GROUP_TYPE('groups'), {where: { _id: { _eq: loan.groupId } }}).then(res => res.data.groups);
+    let group = await graph.query(
+        queryQl(GROUP_TYPE('groups'), {where: { _id: { _eq: loan.groupId } }})
+    ).then(res => res.data.groups);
 
     if (group.length > 0) {
         group = group[0];
