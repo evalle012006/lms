@@ -1,6 +1,8 @@
 import { USER_FIELDS } from '@/lib/graph.fields';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl } from '@/lib/graph/graph.util';
+import { transferBranchDetailsTotal } from '@/lib/transfer-util';
+import { formatPricePhp } from '@/lib/utils';
 import logger from '@/logger';
 import { apiHandler } from '@/services/api-handler';
 import { gql } from 'node_modules/apollo-boost/lib/index';
@@ -18,11 +20,11 @@ async function getData (req, res) {
     let response = {};
 
     const { date, currentUserId, selectedBranchGroup, dayName, currentDate } = req.query;
-    const user = graph.query(
+    const user = await graph.query(
         queryQl(USER_TYPE, { where: { _id: { _eq: currentUserId } } })
-    ).then(res => res.users);
+    ).then(res => res.data.users);
 
-    const getBranchIds = (where) => graph.query(queryQl(BRANCH_TYPE, {where})).then(res => res.branches.map(b => b._id));
+    const getBranchIds = (where) => graph.query(queryQl(BRANCH_TYPE, {where})).then(res => res.data.branches.map(b => b._id));
 
     if (user.length > 0) {
         let branchIds = [];
@@ -46,7 +48,9 @@ async function getData (req, res) {
             }));
 
             resolve(response);
-        });
+        }).catch(err => {
+            console.error(err)
+        })
 
         if (promise) {
             data.sort((a, b) => {
@@ -86,7 +90,7 @@ async function getAllLoanTransactionsByBranch(branchId, date, dayName, currentDa
                   curr_date: $curr_date
                 }, where: {
                   _id: {
-                    _in: $branchId
+                    _eq: $branchId
                   }
                 }) {
                   _id
@@ -99,7 +103,8 @@ async function getAllLoanTransactionsByBranch(branchId, date, dayName, currentDa
                 curr_date: date,
                 branchId,
             }
-        }).then(res => res.data.collections.map(c => c.data));
+        })
+        .then(res => res.data.collections.map(c => c.data));
     } else {
         cashCollection = await graph.apollo.query({
             query: gql`
@@ -643,7 +648,7 @@ async function processData(data, date, currentDate) {
         mcbuColStr: formatPricePhp(totalMcbuCol),
         mcbuWithdrawal: totalMcbuWithdrawal,
         mcbuWithdrawalStr: formatPricePhp(totalMcbuWithdrawal),
-        mcbuDailyWithdrawal: totalMcbuDailyWithdrawal,
+        // mcbuDailyWithdrawal: totalMcbuDailyWithdrawal,
         // mcbuDailyWithdrawalStr: formatPricePhp(totalMcbuDailyWithdrawal),
         noMcbuReturn: totalMcbuReturnNo,
         mcbuReturnAmt: totalMcbuReturnAmt,
