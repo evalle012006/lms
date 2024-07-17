@@ -31,7 +31,7 @@ async function save(req, res) {
         // let prevCommpleted = [];
         
         logger.debug({page: `Saving Cash Collection - Group ID: ${data.collection[0]?.groupId}`});
-        data.collection.map(async cc => {
+        const promiseData = data.collection.map(async cc => {
             if (cc.status !== "totals") {
                 let collection = {...cc};
                 delete collection.reverted;
@@ -95,6 +95,8 @@ async function save(req, res) {
                 // }
             }
         });
+
+        await promiseData;
 
         if (newCC.length > 0) {
             await saveCollection(mutationQl, newCC);
@@ -288,6 +290,7 @@ async function updateLoan(mutationQL, collection, currentDate) {
 
         loan.lastUpdated = currentDate;
         logger.debug({page: `Saving Cash Collection - Updating Loan`, data: loan});
+        const loanId = loan._id;
         delete loan._id;
 
 
@@ -298,7 +301,7 @@ async function updateLoan(mutationQL, collection, currentDate) {
                     reverted: null
                 },
                 where: {
-                    _id: { _eq: collection.loanId }
+                    _id: { _eq: loanId }
                 }
             })
         )
@@ -309,7 +312,7 @@ async function updateLoan(mutationQL, collection, currentDate) {
 
 async function updateClient(mutationQl, loan, currentDate) {
 
-    let client = await graph.query(queryQl(CLIENT_TYPE, { where: { _id: { _eq: loan.clientId } } })).then(res => res.data.client);
+    let client = await graph.query(queryQl(CLIENT_TYPE('client'), { where: { _id: { _eq: loan.clientId } } })).then(res => res.data.client);
     if (client.length > 0) {
         client = client[0];
 
@@ -398,7 +401,7 @@ async function updateLoanClose(mutationQl, loanData, currentDate) {
 }
 
 async function updateGroup(mutationQl, loan) {
-    let group = await graph.query(GROUP_TYPE, {where: { _id: { _eq: loan.groupId } }}).then(res => res.data.groups);
+    let group = await graph.query(GROUP_TYPE('groups'), {where: { _id: { _eq: loan.groupId } }}).then(res => res.data.groups);
 
     if (group.length > 0) {
         group = group[0];
@@ -426,7 +429,7 @@ async function updateGroup(mutationQl, loan) {
         delete group._id;
 
         mutationQl.push(
-            updateQl(GROUP_TYPE, {
+            updateQl(GROUP_TYPE('groups_' + mutationQl.length), {
                 set: {
                     ... group
                 },
