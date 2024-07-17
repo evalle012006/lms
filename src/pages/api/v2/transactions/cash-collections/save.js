@@ -96,7 +96,7 @@ async function save(req, res) {
             }
         });
 
-        await promiseData;
+        await Promise.all(promiseData);
 
         if (newCC.length > 0) {
             await saveCollection(mutationQl, newCC);
@@ -295,7 +295,7 @@ async function updateLoan(mutationQL, collection, currentDate) {
 
 
         mutationQL.push(
-            updateQl(LOAN_TYPE('loans_' + mutationQL.length + 1), {
+            updateQl(LOAN_TYPE('loans_' + (mutationQL.length + 1)), {
                 set: {
                     ... loan,
                     reverted: null
@@ -429,7 +429,7 @@ async function updateGroup(mutationQl, loan) {
         delete group._id;
 
         mutationQl.push(
-            updateQl(GROUP_TYPE('groups_' + mutationQl.length), {
+            updateQl(GROUP_TYPE('groups_' + (mutationQl.length + 1)), {
                 set: {
                     ... group
                 },
