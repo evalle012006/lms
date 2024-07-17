@@ -8,7 +8,7 @@ const graph = new GraphProvider();
 const CLIENT_TYPE = (... additionalFields) => {
     return createGraphType('client', `
         ${CLIENT_FIELDS}
-        loans (where: { status: { _in: ["active", "completed"] } }, limit: 1) {
+        loans (where: { status: { _in: ["active", "completed"] } }) {
             ${LOAN_FIELDS}
         }
         lo {
@@ -27,14 +27,11 @@ export default apiHandler({
 
 async function list(req, res) {
 
-    const {mode = null, groupId = null, branchId = null, loId = null, status = null, branchCodes = null, currentDate = null, page = 1, size = 20} = req.query;
+    const {mode = null, groupId = null, branchId = null, loId = null, status = null, branchCodes = null, currentDate = null} = req.query;
 
     let statusCode = 200;
     let response = {};
     let clients;
-
-    const offset = (page * size) - size;
-    const limit = size;
 
     if (mode === 'view_offset' && status === 'offset') {
         const where = {
@@ -169,9 +166,7 @@ async function list(req, res) {
             queryQl(CLIENT_TYPE(''), {
                 where: {
                     status: { _eq: status }
-                },
-                limit,
-                offset
+                }
             })
         ).then(res => res.data.clients);
     }

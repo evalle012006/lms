@@ -1,6 +1,5 @@
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl } from '@/lib/graph/graph.util';
-import { connectToDatabase } from '@/lib/mongodb';
 import { apiHandler } from '@/services/api-handler';
 
 const graph = new GraphProvider();
@@ -27,7 +26,6 @@ export default apiHandler({
 });
 
 async function allLoans(req, res) {
-    const { db } = await connectToDatabase();
     let response;
     let statusCode = 200;
 
@@ -92,13 +90,13 @@ async function allLoans(req, res) {
                     groupStatus: { _eq: 'pending' }
                 }
             })
-        ).then(res => res.data.cashCollections ?? []);
+        ).then(res => res.data.cashCollections ?? [])
     }
 
-    cashCollectionsDraft = cashCollectionsDraft.map(c => ({
+    const mapToBranch = (c) => ({
         branchName: c.branch.name,
-        loanOfficerFirstName: c.loanOfficer.firstName,
-        loanOfficerLastName: c.loanOfficer.lastName,
+        loanOfficerFirstName: c.loanOfficer?.firstName,
+        loanOfficerLastName: c.loanOfficer?.lastName,
         groupId: c.groupId,
         groupName: c.groupName,
         clientId: c.clientId,
@@ -106,20 +104,10 @@ async function allLoans(req, res) {
         slotNo: c.slotNo,
         loanId: c.loanId,
         dateAdded: c.dateAdded,
-     }));
+    });
 
-     cashCollectionsPending = cashCollectionsPending.map(c => ({
-        branchName: c.branch.name,
-        loanOfficerFirstName: c.loanOfficer.firstName,
-        loanOfficerLastName: c.loanOfficer.lastName,
-        groupId: c.groupId,
-        groupName: c.groupName,
-        clientId: c.clientId,
-        clientName: c.fullName,
-        slotNo: c.slotNo,
-        loanId: c.loanId,
-        dateAdded: c.dateAdded,
-     }));
+    cashCollectionsDraft = cashCollectionsDraft.map(mapToBranch);
+    cashCollectionsPending = cashCollectionsPending.map(mapToBranch);
 
     response = { success: true, cashCollectionsDraft: cashCollectionsDraft, cashCollectionsPending: cashCollectionsPending };
 
