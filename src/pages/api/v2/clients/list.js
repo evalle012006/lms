@@ -173,7 +173,12 @@ async function list(req, res) {
     
     response = {
         success: true,
-        clients: clients
+        clients: clients.map(c => ({
+            ... c,
+            lo: c.lo ? [c.lo] : [],
+            group: c.group ? [c.group] : [],
+            cashCollections: c.cashCollections ? c.cashCollections : [],
+        }))
     }
 
     res.status(statusCode)
