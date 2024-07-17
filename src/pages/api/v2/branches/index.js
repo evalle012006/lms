@@ -72,7 +72,7 @@ async function updateBranch(req, res) {
     delete branch._id;
 
     const resp = await graph.mutation(
-        updateQl(createGraphType('branches', `_id`), {
+        updateQl(createGraphType('branches', `_id`)('branches'), {
             set: {
                 ... branch
             },
@@ -80,7 +80,7 @@ async function updateBranch(req, res) {
                 _id: { _eq: branchId }
             }
         })
-    );
+    )
 
     response = { success: true, branch: resp };
 
