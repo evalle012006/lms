@@ -1,26 +1,28 @@
-/**
- * @type {[string, string[]][]}
- */
-const tableNames = [
-  'badDebtCollections',
+const masterFileTableNames = [
   'branches',
-  'cashCollections',
   'client',
-  'groups',
   'holidays',
-  'loans',
-  'losTotals',
   'roles',
   'rolesPermissions',
   'settings',
   'transactionSettings',
-  'transferClients',
   'users',
   'areas',
   'regions',
   'divisions',
 ];
 
+const transactionTableNames = [
+  'badDebtCollections',
+  'branchCOH',
+  'cashCollections',
+  'groups',
+  'loans',
+  'losTotals',
+  'transferClients',
+];
+
 module.exports = {
-  tableNames
+  masterFileTableNames,
+  transactionTableNames,
 }
