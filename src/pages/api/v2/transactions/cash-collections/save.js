@@ -71,28 +71,20 @@ async function save(req, res) {
                 logger.debug({page: `Saving Cash Collection - Group ID: ${data.collection[0]?.groupId}`, currentDate: currentDate, data: collection});
                 if (collection.hasOwnProperty('_id')) {
                     collection.modifiedDateTime = new Date();
-                    const existCollection = {...collection};
+                    const existCollection = {...assignNullValues(collection)};
                     delete existCollection.mcbuHistory;
-                    existCC.push(collection);
+                    existCC.push(existCollection);
                 } else {
-                    // if (collection.status === 'completed' && collection?.previousDraft) {
-                    //     prevCommpleted.push(collection);
-                    // } else {
-                        collection.insertedDateTime = new Date();
-                        const newCollection = {...collection};
-                        delete newCollection.mcbuHistory;
-                        newCC.push(collection);
-                    // }
+                    collection.insertedDateTime = new Date();
+                    const newCollection = {...assignNullValues(collection)};
+                    delete newCollection.mcbuHistory;
+                    newCC.push(collection);
                 }
                 
                 if (collection.status !== "tomorrow" && collection.status !== "pending" && !collection.draft) {
                     await updateLoan(mutationQl, collection, currentDate)
                     await updateClient(mutationQl, collection, currentDate);
                 }
-
-                // if (collection.status === 'pending' && collection?.advance) {
-                //     collection = await updatePendingLoan(db, collection, currentDate);
-                // }
             }
         });
 
@@ -105,11 +97,6 @@ async function save(req, res) {
         if (existCC.length > 0) {
             await updateCollection(mutationQl, existCC);
         }
-
-        // if (prevCommpleted.length > 0) {
-        //     await updateCompletedCollection(prevCommpleted);
-        // }
-
 
         // save all changes in one request
 
@@ -131,14 +118,14 @@ function cleanUpCollection(c) {
 
     const allow_fields = Object.keys(c).filter(c => fields.includes(c));
     
-    console.log(allow_fields);
+    // console.log(allow_fields);
     const cc = allow_fields.reduce((g, f) => ({
         ... g,
         [f]: c[f],
     }), {});
 
 
-    console.log(cc);
+    // console.log(cc);
 
     return ({
         ... cc,
@@ -297,8 +284,7 @@ async function updateLoan(mutationQL, collection, currentDate) {
         mutationQL.push(
             updateQl(LOAN_TYPE('loans_' + (mutationQL.length + 1)), {
                 set: {
-                    ... loan,
-                    reverted: null
+                    ... assignNullValues(loan)
                 },
                 where: {
                     _id: { _eq: loanId }
@@ -360,7 +346,7 @@ async function updateClient(mutationQl, loan, currentDate) {
         mutationQl.push(
             updateQl(CLIENT_TYPE('clients_' + (mutationQl.length + 1)), {
                 set: {
-                    ... client
+                    ... assignNullValues(client, 'client')
                 },
                 where: {
                     _id: { _eq: loan.clientId }
@@ -393,7 +379,7 @@ async function updateLoanClose(mutationQl, loanData, currentDate) {
 
         mutationQl.push(
             updateQl(LOAN_TYPE('loans_' + (mutationQl.length + 1)), {
-                set: loan,
+                set: assignNullValues(loan),
                 where: {
                     _id: { _eq: loanData.loanId }
                 }
@@ -443,4 +429,27 @@ async function updateGroup(mutationQl, loan) {
             })
         );
     }
+}
+
+const assignNullValues = (obj, origin) => {
+    let cc = { ...obj };
+
+    if (origin == 'client') {
+        cc.delinquent = cc.delinquent ? cc.delinquent : false;
+        cc.duplicate = cc.duplicate ? cc.duplicate : false;
+
+        return cc;
+    }
+
+    cc.reverted = cc.reverted ? cc.reverted : false;
+    cc.revertedTransfer = cc.revertedTransfer ? cc.revertedTransfer : false;
+    cc.ldfApproved = cc.ldfApproved ? cc.ldfApproved : false;
+    cc.maturedPD = cc.maturedPD ? cc.maturedPD : false;
+    cc.transfer = cc.transfer ? cc.transfer : false;
+    cc.transferred = cc.transferred ? cc.transferred : false;
+    cc.advance = cc.advance ? cc.advance : false;
+    cc.transferredReleased = cc.transferredReleased ? cc.transferredReleased : false;
+    cc.advancetransaction =  cc.advancetransaction ? cc.advancetransaction : false;
+
+    return cc;
 }

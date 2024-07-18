@@ -64,7 +64,6 @@ export const CLIENT_FIELDS = `
   addressProvince
   addressStreetNo
   addressZipCode
-  deliquent
   oldGroupid
   `;
 

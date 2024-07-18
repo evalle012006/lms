@@ -2,6 +2,7 @@ import { CASH_COLLECTIONS_FIELDS } from '@/lib/graph.fields';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, updateQl } from '@/lib/graph/graph.util';
 import { apiHandler } from '@/services/api-handler';
+import { gql } from 'node_modules/apollo-boost/lib/index';
 
 let response = {};
 let statusCode = 200;
