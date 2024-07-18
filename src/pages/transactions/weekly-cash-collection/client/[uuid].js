@@ -140,13 +140,10 @@ const CashCollectionDetailsPage = () => {
             let dataCollection = response.data.collection;
             let transactionStatus;
             if (type === 'filter') {
-                dataCollection = dataCollection.filter(cc => cc.hasOwnProperty('loanId') && cc.loanId !== null );
+                dataCollection = dataCollection.filter(cc => cc.loanId !== null );
                 transactionStatus = dataCollection.filter(cc => cc.status !== 'pending').filter(cc => cc.groupStatus === 'closed');
             } else {
-                // transactionStatus = dataCollection.filter(cc => cc.status !== 'pending').filter(cc => cc?.draftCollection[0]?.groupStatus === 'closed');
-                // if (transactionStatus.length === 0) {
-                    transactionStatus = dataCollection.filter(cc => cc.status !== 'pending').filter(cc => cc?.current[0]?.groupStatus === 'closed');
-                // }
+                transactionStatus = dataCollection.filter(cc => cc.status !== 'pending').filter(cc => cc?.current[0]?.groupStatus === 'closed');
             }
 
             if (transactionStatus.length === 0 && (!date || currentDate === date)) {
@@ -169,7 +166,7 @@ const CashCollectionDetailsPage = () => {
             dataCollection.map(cc => {
                 let collection;
                 let transferStr = '-';
-                if (cc?.transferred == true || (cc?.transfer == true && cc?.current?.length == 0)) {
+                if ((cc?.transferred == true && cc.transferredDate == currentDate) || ((cc?.transfer == true && cc.transferDate == currentDate) && cc?.current?.length == 0)) {
                     let numMispayment = cc.mispayment > 0 ? cc.mispayment + ' / ' + cc.loanTerms : '-';
                     if (date) {
                         numMispayment = cc.noMispayment > 0 ? cc.noMispayment + ' / ' + cc.loanTerms : '-';
@@ -188,7 +185,7 @@ const CashCollectionDetailsPage = () => {
                     let currentReleaseAmount = 0;
                     let noOfPayments = cc.noOfPayments;
                     let fullPayment = cc.fullPayment.length > 0 ? cc.fullPayment[0].fullPaymentAmount : 0;
-                    if (cc.hasOwnProperty('current') && cc.current.length > 0) {
+                    if (cc.current.length > 0) {
                         const current = cc.current[0];
                         mispayment = current.mispayment;
                         if (cc?.transfer) {
@@ -308,8 +305,8 @@ const CashCollectionDetailsPage = () => {
                         clientStatus: cc.client.status ? cc.client.status : '-',
                         delinquent: cc.client.delinquent,
                         fullPaymentDate: cc.fullPaymentDate ? cc.fullPaymentDate : null,
-                        history: cc.hasOwnProperty('history') ? cc.history : null,
-                        prevData: cc.hasOwnProperty('prevData') ? cc.prevData : null,
+                        history: cc.history,
+                        prevData: cc.prevData,
                         loanTerms: cc.loanTerms,
                         transferStr: transferStr
                     }
@@ -361,8 +358,8 @@ const CashCollectionDetailsPage = () => {
                             mcbuInterest: cc.mcbuInterest ? cc.mcbuInterest : 0,
                             mcbuInterestStr: cc.mcbuInterest > 0 ? formatPricePhp(cc.mcbuInterest) : '-',
                             activeLoan: '-',
-                            targetCollection: cc.hasOwnProperty('prevData') ? cc.prevData.activeLoan : 0,
-                            targetCollectionStr: cc.hasOwnProperty('prevData') ? formatPricePhp(cc.prevData.activeLoan) : 0,
+                            targetCollection: cc.prevData != null ? cc.prevData.activeLoan : 0,
+                            targetCollectionStr: cc.prevData != null ? formatPricePhp(cc.prevData.activeLoan) : 0,
                             amountRelease: '-',
                             amountReleaseStr: '-',
                             loanBalance: '-',
@@ -372,16 +369,16 @@ const CashCollectionDetailsPage = () => {
                             occurence: cc.group.occurence,
                             currentReleaseAmount: cc.currentReleaseAmount,
                             currentReleaseAmountStr: formatPricePhp(cc.currentReleaseAmount),
-                            fullPayment: (cc.hasOwnProperty('prevData') && cc.fullPayment.length > 0) ? cc.fullPayment[0].fullPaymentAmount : 0,
-                            fullPaymentStr: (cc.hasOwnProperty('prevData') && cc.fullPayment.length > 0) ? formatPricePhp(cc.fullPayment[0].fullPaymentAmount) : '-',
+                            fullPayment: (cc.prevData != null && cc.fullPayment.length > 0) ? cc.fullPayment[0].fullPaymentAmount : 0,
+                            fullPaymentStr: (cc.prevData != null && cc.fullPayment.length > 0) ? formatPricePhp(cc.fullPayment[0].fullPaymentAmount) : '-',
                             remarks: cc.remarks ? cc.remarks : '',
                             pastDue: cc.pastDue ? cc.pastDue : 0,
                             pastDueStr: cc.pastDue ? formatPricePhp(cc.pastDue) : '-',
                             clientStatus: cc.client.status ? cc.client.status : '-',
                             delinquent: cc.client.delinquent,
                             fullPaymentDate: cc.fullPaymentDate ? cc.fullPaymentDate : null,
-                            history: cc.hasOwnProperty('history') ? cc.history : null,
-                            prevData: cc.hasOwnProperty('prevData') ? cc.prevData : null,
+                            history: cc.history,
+                            prevData: cc.prevData,
                             loanTerms: cc.loanTerms
                         }
     
@@ -486,7 +483,7 @@ const CashCollectionDetailsPage = () => {
                             clientStatus: cc.client.status ? cc.client.status : '-',
                             delinquent: cc.client.delinquent,
                             fullPaymentDate: cc.fullPaymentDate ? cc.fullPaymentDate : null,
-                            history: cc.hasOwnProperty('history') ? cc.history : null,
+                            history: cc.history,
                             prevData: prevData,
                             loanTerms: cc.loanTerms,
                             draft: draft,
@@ -516,7 +513,7 @@ const CashCollectionDetailsPage = () => {
                             activeLoan = 0;
                         }
 
-                        let history = cc.hasOwnProperty('history') ? cc.history : null;
+                        let history = cc.history;
                         if (cc.status == "completed" && cc.fullPaymentDate !== currentDate) {
                             history = {
                                 amountRelease: history?.amountRelease,
@@ -596,20 +593,20 @@ const CashCollectionDetailsPage = () => {
                             clientStatus: cc.client.status ? cc.client.status : '-',
                             delinquent: cc.client.delinquent,
                             fullPaymentDate: cc.fullPaymentDate ? cc.fullPaymentDate : null,
-                            history: cc.hasOwnProperty('history') ? cc.history : null,
+                            history: cc.history,
                             advanceDays: cc.advanceDays,
                             status: cc.status,
                             loanTerms: cc.loanTerms,
                             startDate: cc.startDate,
                             endDate: cc.endDate,
-                            reverted: cc.hasOwnProperty('reverted') ? cc.reverted : false,
+                            reverted: cc.reverted ? cc.reverted : false,
                             pnNumber: cc.pnNumber,
                             guarantorFirstName: cc.guarantorFirstName,
                             guarantorMiddleName: cc.guarantorMiddleName,
                             guarantorLastName: cc.guarantorLastName,
                             loanRelease: cc.loanRelease,
-                            maturedPD: cc.hasOwnProperty('maturedPD') ? cc.maturedPD : false,
-                            advance: cc.hasOwnProperty('advance') ? cc.advance : false
+                            maturedPD: cc.maturedPD ? cc.maturedPD : false,
+                            advance: cc.advance ? cc.advance : false
                         }
     
                         delete cc._id;
@@ -626,7 +623,7 @@ const CashCollectionDetailsPage = () => {
                             collection.mispayment = draftCC.mispayment;
                             collection.mispaymentStr = draftCC.mispaymentStr;
                             collection.remarks = draftCC.remarks;
-                            collection.delinquent = draftCC.hasOwnProperty('delinquent') ? draftCC.delinquent : false;
+                            collection.delinquent = draftCC.delinquent ? draftCC.delinquent : false;
                             collection._id = draftCC._id;
                             collection.prevData = draftCC.prevData;
                             collection.pastDue = draftCC.pastDue ? draftCC.pastDue : 0;
@@ -643,9 +640,9 @@ const CashCollectionDetailsPage = () => {
                             collection.advanceDays = draftCC.advanceDays;
                             collection.draft = draftCC.draft;
                             collection.dcmc = draftCC.dcmc;
-                            collection.excused = (draftCC.hasOwnProperty('excused') && draftCC.excused) ? draftCC.excused : false;
-                            collection.latePayment = (draftCC.hasOwnProperty('latePayment') && draftCC.latePayment) ? draftCC.latePayment : false;
-                            collection.mpdc = (current.hasOwnProperty('mpdc') && current.mpdc) ? current.mpdc : false;
+                            collection.excused = draftCC.excused ? draftCC.excused : false;
+                            collection.latePayment = draftCC.latePayment ? draftCC.latePayment : false;
+                            collection.mpdc = current.mpdc ? current.mpdc : false;
 
                             if (draftCC?.origin) {
                                 collection.origin = draftCC.origin;
@@ -674,8 +671,8 @@ const CashCollectionDetailsPage = () => {
 
                             collection.previousDraft = true;
                             collection.dateAdded = draftCC.dateAdded;
-                        } else if (cc.hasOwnProperty('current') && cc.current.length > 0) {
-                            const current = cc.current.find(cur => !cur.hasOwnProperty('transferId'));
+                        } else if (cc.current.length > 0) {
+                            const current = cc.current.find(cur => cur.transferId == null);
                             if (current) {
                                 collection.targetCollection = current.targetCollection;
                                 collection.targetCollectionStr = collection.targetCollection > 0 ? formatPricePhp(collection.targetCollection) : '-';
@@ -686,7 +683,7 @@ const CashCollectionDetailsPage = () => {
                                 collection.mispayment = current.mispayment;
                                 collection.mispaymentStr = current.mispaymentStr;
                                 collection.remarks = current.remarks;
-                                collection.delinquent = current.hasOwnProperty('delinquent') ? current.delinquent : false;
+                                collection.delinquent = current.delinquent ? current.delinquent : false;
                                 collection._id = current._id;
                                 collection.prevData = current.prevData;
                                 collection.pastDue = current.pastDue ? current.pastDue : 0;
@@ -703,8 +700,8 @@ const CashCollectionDetailsPage = () => {
                                 collection.advanceDays = current.advanceDays;
                                 collection.draft = current.draft;
                                 collection.dcmc = current.dcmc;
-                                collection.excused = (current.hasOwnProperty('excused') && current.excused) ? current.excused : false;
-                                collection.latePayment = (current.hasOwnProperty('latePayment') && current.latePayment) ? current.latePayment : false;
+                                collection.excused = current.excused ? current.excused : false;
+                                collection.latePayment = current.latePayment ? current.latePayment : false;
                                 collection.mcbuInterestFlag = false;
     
                                 if (current?.origin) {
@@ -977,8 +974,8 @@ const CashCollectionDetailsPage = () => {
                         status: loan.status === 'active' ? 'tomorrow' : 'pending',
                         loanTerms: loan.loanTerms,
                         selected: false,
-                        loanFor: loan.hasOwnProperty('loanFor') ? loan.loanFor : 'today',
-                        dateOfRelease: loan.hasOwnProperty('dateOfRelease') ? loan.dateOfRelease : null
+                        loanFor: loan.loanFor ? loan.loanFor : 'today',
+                        dateOfRelease: loan.dateOfRelease ? loan.dateOfRelease : null
                     };
 
                     if (prevLoan) {
@@ -1075,11 +1072,11 @@ const CashCollectionDetailsPage = () => {
                     totalLoanBalance += collection.loanBalance ? collection.loanBalance !== '-' ? collection.loanBalance : 0 : 0;
                 }
 
-                if (collection.status === 'tomorrow' || (collection.hasOwnProperty('tomorrow') && collection.tomorrow)) {
+                if (collection.status === 'tomorrow' || collection.tomorrow) {
                     totalReleaseAmount += collection.currentReleaseAmount ? collection.currentReleaseAmount !== '-' ? collection.currentReleaseAmount : 0 : 0;
                 }
 
-                if ((collection.status === 'tomorrow' || (collection.hasOwnProperty('tomorrow') && collection.tomorrow) || collection?.transferred)) {
+                if ((collection.status === 'tomorrow' || collection.tomorrow || collection?.transferred)) {
                     totalTargetLoanCollection += collection.history ? collection.history.activeLoan : 0;
                 } else if (!collection.remarks || (collection.remarks && collection.remarks?.value !== 'delinquent' && !collection.remarks.value?.startsWith("excused-")) || collection?.transferred) {
                     totalTargetLoanCollection += collection.targetCollection  ? collection.targetCollection !== '-' ? collection.targetCollection : 0 : 0;
@@ -1140,7 +1137,7 @@ const CashCollectionDetailsPage = () => {
         let errorMsg = new Set();
 
         data && data.map(cc => {
-            if (cc.status !== 'totals' && cc.status == 'active' && cc?.loanBalance > 0 && !draft && !cc?.maturedPD && (!cc.hasOwnProperty('transferStr') || cc?.transferStr == '-')) {
+            if (cc.status !== 'totals' && cc.status == 'active' && cc?.loanBalance > 0 && !draft && !cc?.maturedPD && (cc?.transferStr == null || cc?.transferStr == '-')) {
                 if (cc.group.day === dayName) {
                     if (cc.error) {
                         errorMsg.add('Error occured. Please double check the Actual Collection column.');
@@ -1211,7 +1208,7 @@ const CashCollectionDetailsPage = () => {
                         errorMsg.add('Error occured. Only offset transaction allowed.');
                     }
                 }
-            } else if (cc.status !== 'totals' && (!cc.hasOwnProperty('transferStr') || cc?.transferStr == '-') && (cc.status === 'completed' || (cc?.status !== 'closed' && cc?.loanBalance <= 0)) && (!cc.remarks || (cc.remarks && (cc.remarks.value !== 'pending' && !cc.remarks.value?.startsWith('reloaner') && !cc.remarks.value?.startsWith('offset'))))) {
+            } else if (cc.status !== 'totals' && (cc?.transferStr == null || cc?.transferStr == '-') && (cc.status === 'completed' || (cc?.status !== 'closed' && cc?.loanBalance <= 0)) && (!cc.remarks || (cc.remarks && (cc.remarks.value !== 'pending' && !cc.remarks.value?.startsWith('reloaner') && !cc.remarks.value?.startsWith('offset'))))) {
                 errorMsg.add("Invalid remarks. Fullpayment transaction has no remarks. Please set the remarks to RELOANER OR OFFSET.");
             }
         });
@@ -1305,7 +1302,7 @@ const CashCollectionDetailsPage = () => {
                     delete temp.transferStr;
                     delete temp.selected;
 
-                    if (cc.hasOwnProperty('_id')) {
+                    if (cc?._id) {
                         temp.modifiedBy = currentUser._id;
                         temp.dateModified = moment(currentDate).format('YYYY-MM-DD');
                     } else {
@@ -1479,7 +1476,7 @@ const CashCollectionDetailsPage = () => {
                         temp.error = false;
                         temp.dcmc = false;
                         temp.mpdc = false;
-                        if (temp.hasOwnProperty('prevData') && temp.prevData) {
+                        if (temp.prevData) {
                             temp.loanBalance = temp.prevData.loanBalance;
                             temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
                             temp.total = temp.prevData.total;
@@ -1635,7 +1632,7 @@ const CashCollectionDetailsPage = () => {
                         temp.mcbuWithdrawFlag = false;
                         temp.mcbuWithdrawal = 0;
                         temp.mcbuWithdrawalStr = '-';
-                        if (temp.hasOwnProperty('prevData') && temp.prevData) {
+                        if (temp.prevData != null) {
                             temp.mcbu = temp.prevData.mcbu;
                             temp.mcbuStr = formatPricePhp(temp.mcbu);
                         } else {
@@ -1713,7 +1710,7 @@ const CashCollectionDetailsPage = () => {
                     let temp = {...cc};
 
                     if (idx === index) {
-                        if (temp.hasOwnProperty('prevData') && temp?.prevData) {
+                        if (temp?.prevData != null) {
                             temp.mcbu = temp.prevData.mcbu;
                             temp.mcbuStr = formatPricePhp(temp.mcbu);
                         } else {
@@ -1763,7 +1760,7 @@ const CashCollectionDetailsPage = () => {
                     let temp = {...cc};
 
                     if (idx === index) {
-                        if (temp.hasOwnProperty('prevData') && temp.prevData) {
+                        if (temp.prevData != null) {
                             temp.mcbu = temp.prevData.mcbu;
                             temp.mcbuStr = formatPricePhp(temp.mcbu);
                         } else {
@@ -1822,7 +1819,7 @@ const CashCollectionDetailsPage = () => {
                             temp.error = false;
                             temp.dcmc = false;
                             temp.mpdc = false;
-                            if (temp.hasOwnProperty('prevData') && temp.prevData) {
+                            if (temp.prevData != null) {
                                 temp.targetCollection = temp.prevData.activeLoan;
                                 temp.activeLoan = temp.prevData.activeLoan;
                                 temp.pastDue = temp.prevData.pastDue;
@@ -2055,7 +2052,7 @@ const CashCollectionDetailsPage = () => {
                                     toast.error('Invalid remarks. Please mark it as Reloaner or Offset');
                                 }
                             } else if (remarks.value === "excused advance payment") {
-                                if (temp.hasOwnProperty('prevData')) {
+                                if (temp.prevData != null) {
                                     temp.targetCollection = temp.prevData.activeLoan;
                                     temp.targetCollectionStr = formatPricePhp(temp.activeLoan);
                                     temp.advanceDays = temp.prevData.advanceDays;
@@ -2240,7 +2237,7 @@ const CashCollectionDetailsPage = () => {
                                 mcbuCol: temp.mcbuCol
                             }
     
-                            if (temp.hasOwnProperty('history')) {
+                            if (temp.history != null) {
                                 temp.history = {
                                     ...temp.history,
                                     remarks: remarks
@@ -2524,7 +2521,7 @@ const CashCollectionDetailsPage = () => {
         setSelectAll(!selectAll);
         const dataList = data.map(cc => {
             let temp = {...cc};
-            if (temp.clientId && (!temp.hasOwnProperty('transferStr') || temp?.transferStr == '-')) {
+            if (temp.clientId && (temp?.transferStr == null || temp?.transferStr == '-')) {
                 temp.selected = !selectAll;
             }
             return temp;
@@ -2769,7 +2766,7 @@ const CashCollectionDetailsPage = () => {
                                         return (
                                             <tr key={index} className={`w-full hover:bg-slate-200 border-b border-b-gray-300 font-proxima 
                                                                 ${rowBg} ${cc.status === 'totals' ? 'font-bold font-proxima-bold text-red-400' : 'text-gray-600'}`} >
-                                                {currentUser.role.rep == 3 && <th className="p-2 text-center">{(cc.status !== 'totals' && cc.clientId && (!cc.hasOwnProperty('transferStr') || cc?.transferStr == '-')) && <CheckBox size={"md"} value={cc.selected} onChange={() => handleSelectRow(index)} />}</th>}
+                                                {currentUser.role.rep == 3 && <th className="p-2 text-center">{(cc.status !== 'totals' && cc.clientId && (cc?.transferStr == null || cc?.transferStr == '-')) && <CheckBox size={"md"} value={cc.selected} onChange={() => handleSelectRow(index)} />}</th>}
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.status !== 'totals' ? cc.slotNo : '' }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer" onClick={() => handleShowClientInfoModal(cc)}>{ cc.fullName }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.coMaker }</td>
@@ -2801,7 +2798,7 @@ const CashCollectionDetailsPage = () => {
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
                                                     { (!isWeekend && !isHoliday && currentUser.role.rep > 2 && cc.status === 'active' 
                                                         && editMode && ((cc?.origin && (cc?.origin === 'pre-save' || cc?.origin === 'automation-trf')) || cc?.reverted || cc.draft)
-                                                        || (cc.offsetTransFlag && cc.otherDay) && !cc?.dcmc && !cc?.mpdc && !cc?.maturedPD && (!cc.hasOwnProperty('transferStr') || cc?.transferStr == '-')) ? (
+                                                        || (cc.offsetTransFlag && cc.otherDay) && !cc?.dcmc && !cc?.mpdc && !cc?.maturedPD && (cc?.transferStr == null || cc?.transferStr == '-')) ? (
                                                         <React.Fragment>
                                                             <input type="number" name={cc.clientId} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'amount', cc.activeLoan)}
                                                                 onClick={(e) => e.stopPropagation()} value={cc.paymentCollection} tabIndex={index + 2} onWheel={(e) => e.target.blur()}
@@ -2815,7 +2812,7 @@ const CashCollectionDetailsPage = () => {
                                                     }
                                                 </td>
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
-                                                    { (cc.mcbuWithdrawFlag && (!cc.hasOwnProperty('transferStr') || cc?.transferStr == '-')) ? (
+                                                    { (cc.mcbuWithdrawFlag && (cc?.transferStr == null || cc?.transferStr == '-')) ? (
                                                         <React.Fragment>
                                                             <input type="number" name={`${cc.clientId}-mcbuWithdrawal`} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'mcbuWithdrawal')}
                                                                 onClick={(e) => e.stopPropagation()} onBlur={(e) => handlePaymentValidation(e, cc, index, 'mcbuWithdrawal')} defaultValue={cc.mcbuWithdrawal ? cc.mcbuWithdrawal : 0} tabIndex={index + 3}
@@ -2855,7 +2852,7 @@ const CashCollectionDetailsPage = () => {
                                                         || (cc.status == 'completed' && cc.remarks == '')
                                                         || (cc.offsetTransFlag && cc.otherDay)  
                                                        )
-                                                    && (!cc.hasOwnProperty('transferStr') || cc?.transferStr == '-')
+                                                    && (cc?.transferStr == null || cc?.transferStr == '-')
                                                   ) ? (
                                                         <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer">
                                                             { cc.remarks !== '-' ? (
