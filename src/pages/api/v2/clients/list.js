@@ -80,8 +80,8 @@ async function list(req, res) {
         clients = await graph.query(
             queryQl(CLIENT_TYPE(), {
                 where:{
-                    logId: { _eq: loId },
-                    status: { status }
+                    loId: { _eq: loId },
+                    status: { _eq: status }
                 }
             })
         ).then(res => res.data.clients);

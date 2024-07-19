@@ -278,7 +278,7 @@ async function saveCashCollection(loan, group, currentDate) {
     const ccId = cashCollection._id;
     delete cashCollection._id;
     await graph.mutation(
-      updateQl(cashCollection, {
+      updateQl(cashCollectionType, {
         where: { _id: { _eq: ccId } },
         set: filterGraphFields(CASH_COLLECTIONS_FIELDS, {
           ...cashCollection,
