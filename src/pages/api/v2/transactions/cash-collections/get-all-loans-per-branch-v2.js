@@ -114,7 +114,7 @@ async function getAllLoanTransactionsByBranch(branchId, date, dayName, currentDa
                   date_added: $date_added
                 }, where: {
                   _id: {
-                    __eq: $branchId
+                    _eq: $branchId
                   }
                 }) {
                   _id

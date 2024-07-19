@@ -1,7 +1,6 @@
 import { CASH_COLLECTIONS_FIELDS, CLIENT_FIELDS, GROUP_FIELDS, LOAN_FIELDS } from '@/lib/graph.fields';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, deleteQl, queryQl, updateQl } from '@/lib/graph/graph.util';
-import { connectToDatabase } from '@/lib/mongodb';
 import { getCurrentDate } from '@/lib/utils';
 import logger from '@/logger';
 import { apiHandler } from '@/services/api-handler';
@@ -24,12 +23,12 @@ let response = {};
 
 const getClientById = (_id) => graph.query(queryQl(CLIENT_TYPE('client'), { where: { _id: { _eq: _id } } })).then(res => res.data.clients);
 const getLoanById = (_id) => graph.query(queryQl(LOAN_TYPE('loans'), {where: { _id: { _eq: _id } }})).then(res =>  res.data.loans);
-
+ 
 async function revert(req, res) {
     const cashCollections = req.body;
-
     const currentDate = moment(getCurrentDate()).format('YYYY-MM-DD');
-
+    
+    const mutationQL = [];
     const promise = await new Promise(async (resolve) => {
         const response = await Promise.all(cashCollections.map(async (cc) => {
             let cashCollection = {...cc};
@@ -57,6 +56,7 @@ async function revert(req, res) {
                 queryQl(CASH_COLLECTION_TYPE('cashCollections'), {
                     where: { clientId: { _eq: cashCollection.clientId } },
                     // order_by: [{ natural: 'desc' }], -- need to find alternative for this revert
+                    order_by: [{ insertedDateTime: 'desc' }],
                     limit: 2
                 })
             ).then(res => res.data.cashCollections);
@@ -69,7 +69,8 @@ async function revert(req, res) {
                 client = client[0];
                 previousCC = previousCC[1];
                 // delete current transaction
-                await graph.mutation(deleteQl(CASH_COLLECTION_TYPE('cashCollections'), { _id: { _eq: cashCollectionId } }));
+
+                mutationQL.push(deleteQl(CASH_COLLECTION_TYPE('delete_cashCollections_' + (mutationQL.length + 1)), { _id: { _eq: cashCollectionId } }));
                 logger.debug({page: `Reverting Transaction Loan: ${cashCollection.clientId}`, previousCC: previousCC });
                 if (previousLoan.length > 0) { // pending, tomorrow
                     previousLoan = previousLoan[0];
@@ -113,8 +114,9 @@ async function revert(req, res) {
                         delete previousLoan.advance;
                         delete previousLoan.advanceDate;
                         logger.debug({page: `Reverting Transaction Loan: ${cashCollection.clientId}`, previousLoan: previousLoan });
-                        await graph.mutation(
-                            updateQl(LOAN_TYPE('loans'), {
+
+                        mutationQL.push(
+                            updateQl(LOAN_TYPE('update_loans_' + (mutationQL.length)), {
                                 set: {
                                     ... previousLoan,
                                     advance: null,
@@ -124,8 +126,7 @@ async function revert(req, res) {
                                     _id: { _eq: previousLoanId }
                                 }
                             })
-                        )
-                        // await db.collection('loans').updateOne({ _id: new ObjectId(previousLoanId) }, { $unset: {advance: 1, advanceDate: 1}, $set: {...previousLoan} });
+                        );
                     }
                 } else if (currentLoan.length > 0) { // active, completed, closed
                     currentLoan = currentLoan[0];
@@ -190,8 +191,9 @@ async function revert(req, res) {
                         client.oldLoId =  null;
                         delete client.oldGroupId;
                         delete client.oldLoId;
-                        await graph.mutation(
-                            updateQl(CLIENT_TYPE('client'), {
+
+                        mutationQL.push(
+                            updateQl(CLIENT_TYPE('update_client_' + (mutationQL.length)), {
                                 set: {
                                     ... client,
                                     oldGroupId: null,
@@ -202,23 +204,21 @@ async function revert(req, res) {
                                 }
                             })
                         );
-                        // await db.collection('client').updateOne({ _id: new ObjectId(cashCollection.clientId) }, { $unset: { oldGroupId: 1, oldLoId: 1 }, $set: { ...client } });
-
                         // update group
-                        await updateGroup(cashCollection.group, cashCollection.slotNo);
+                        await updateGroup(mutationQL, cashCollection.group, cashCollection.slotNo);
 
                         // update loan
                         currentLoan.loanCycle = previousCC.loanCycle;
                         delete currentLoan.closedDate;
                         delete currentLoan.remarks;
                         logger.debug({page: `Reverting Transaction Loan: ${cashCollection.clientId}`, updatedCurrentLoan: currentLoan });
-                        await graph.mutation(
-                            updateQl(LOAN_TYPE('loans'), {
+
+                        mutationQL.push(
+                            updateQl(LOAN_TYPE('update_loans_' + (mutationQL.length + 1)), {
                                 set: { ... currentLoan, closedDate: null, remarks:  null },
                                 where: { _id: { _eq: loanId } }
                             })
                         );
-                        // await db.collection('loans').updateOne({ _id: new ObjectId(loanId) }, { $unset: { closedDate: 1, remarks: 1 }, $set: {...currentLoan} });
                     } else {
                         logger.debug({page: `Reverting Transaction Loan: ${cashCollection.clientId}`, currentLoan: currentLoan });
                         if (currentLoan.status == 'pending' && cc.status == 'tomorrow') {
@@ -228,10 +228,9 @@ async function revert(req, res) {
                                     where: { _id: { _eq: loanId } }
                                 })
                             );
-                            // await db.collection('loans').updateOne({ _id: new ObjectId(loanId) }, { $unset: {startDate: 1, endDate: 1}, $set: {...currentLoan} });
                         } else if (cc.status == 'pending') {
-                            await graph.mutation(deleteQl(LOAN_TYPE('loans'), { _id: { _eq: loanId } }));
-                            await updateGroup(cashCollection.group, cashCollection.slotNo);
+                            mutationQL.push(deleteQl(LOAN_TYPE('delete_loans_' + (mutationQL.length + 1)), { _id: { _eq: loanId } }))
+                            await updateGroup(mutationQL, cashCollection.group, cashCollection.slotNo);
                         } else {
                             await graph.mutation(
                                 updateQl(LOAN_TYPE('loans'), {
@@ -248,14 +247,18 @@ async function revert(req, res) {
                 currentLoan = currentLoan[0];
                 logger.debug({page: `Reverting Transaction Loan: ${cashCollection.clientId}`, previousCC: previousCC, currentLoan: currentLoan });
                 // delete current transaction
-                await graph.mutation(deleteQl(CASH_COLLECTION_TYPE('cashCollections'), { _id: { _eq: previousCC._id } }));
-                await graph.mutation(deleteQl(LOAN_TYPE('loans'), { _id: { _eq: currentLoan._id } }));
-                await updateGroup(cashCollection.group, currentLoan.slotNo);
+                mutationQL.push(deleteQl(CASH_COLLECTION_TYPE('delete_cashCollections_' + (mutationQL.length)), { _id: { _eq: previousCC._id } }));
+                mutationQL.push(deleteQl(LOAN_TYPE('delete_loans_' + (mutationQL.length)), { _id: { _eq: currentLoan._id } }));
+                await updateGroup(mutationQL, cashCollection.group, currentLoan.slotNo);
             }
         }));
 
         resolve(response);
     });
+
+    await graph.mutation(
+        ... mutationQL
+    );
 
     if (promise) {
         response = { success: true };
@@ -266,7 +269,7 @@ async function revert(req, res) {
         .end(JSON.stringify(response));
 }
 
-async function updateGroup(groupData, slotNo) {
+async function updateGroup(mutationQl, groupData, slotNo) {
     let group = {...groupData};
     group.availableSlots = group.availableSlots.filter(s => s !== slotNo);
     group.noOfClients = group.noOfClients + 1;
@@ -277,7 +280,8 @@ async function updateGroup(groupData, slotNo) {
     }
     const groupId = group._id;
     delete group._id;
-    await graph.mutation(
+
+    mutationQl.push(
         updateQl(GROUP_TYPE('groups'),
         {
             set: {
@@ -288,6 +292,4 @@ async function updateGroup(groupData, slotNo) {
             }
         })
     );
-
-    // await db.collection('groups').updateOne({ _id: new ObjectId(groupId) }, {$set: { ...group }});
 }

@@ -1,3 +1,4 @@
+import { GROUP_FIELDS } from '@/lib/graph.fields';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, updateQl } from '@/lib/graph/graph.util';
 import { apiHandler } from '@/services/api-handler';
@@ -13,9 +14,7 @@ loans (where: { status: { _in: ["active", "pending", "completed"] } }) {
 }
 `)('groups');
 
-const LOAN_TYPE = createGraphType('loans', `
-slotNo
-`)
+const GROUP_MUTATION_TYPE = createGraphType('groups', `_id`);
 
 export default apiHandler({
     post: updateGroup
@@ -29,13 +28,17 @@ async function updateGroup(req, res) {
         queryQl(GROUP_TYPE, {})
     ).then(res => res.data.groups ?? []);
 
+    const mutationQl = [];
     const updates = groups.map(async group => {
+        const loans = group.loans;
+
         const update = {
             status: group.status,
             noOfClients: group.loans.length,
             availableSlots: group.availableSlots,
         }
 
+        
         if (loans.length > 0) {
             let availableSlots = [];
             for (let i = 1; i <= 40; i++) {
@@ -55,17 +58,21 @@ async function updateGroup(req, res) {
             update.status = 'available';
         }
 
-        await graph.mutation(
-            updateQl(LOAN_TYPE, {
-                _set: update,
+        mutationQl.push(
+            updateQl(GROUP_MUTATION_TYPE('group_' + (mutationQl.length + 1)), {
+                set: {
+                    ... update,
+                },
                 where: {
                     _id: { _eq: group._id }
                 }
             })
-        );
+        )
+        
     });
 
     await Promise.all(updates);
+    await graph.mutation( ... mutationQl );
 
     response = { success: true };
 
