@@ -122,10 +122,11 @@ const checkLoTransactions = async (loId, currentDate) => {
         variables: {
            args: {
             loId,
-            dataAdded: currentDate,
+            dateAdded: currentDate,
            }
         }
-    }).then(res => res.collections.map(c => c.data));
+    })
+    .then(res => res.data.collections.map(c => c.data));
 
     return collections;
 }
