@@ -6,8 +6,6 @@ import logger from '@/logger';
 import { apiHandler } from '@/services/api-handler';
 import moment from 'moment';
 
-
-
 const graph = new GraphProvider();
 const CASH_COLLECTION_TYPE = createGraphType('cashCollections', `${CASH_COLLECTIONS_FIELDS}`)
 const LOAN_TYPE = createGraphType('loans', `${LOAN_FIELDS}`)
