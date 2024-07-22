@@ -73,7 +73,8 @@ const Layout = ({ children, bgwhite = false, header = true, noPad = false, actio
             const dayName = moment(currentDate).format('dddd');
         
             if (dayName === 'Saturday' || dayName === 'Sunday') {
-                dispatch(setWeekend(true));
+                // RESET
+                dispatch(setWeekend(false));
             } else {
                 dispatch(setWeekend(false));
             }
