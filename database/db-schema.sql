@@ -374,7 +374,10 @@ create table public."transactionSettings" (
   _id character varying primary key not null,
   "loanDailyLimit" numeric(10,2),
   "loanWeeklyLimit" numeric(10,2),
-  "mcbuRate" numeric(10,2)
+  "mcbuRate" numeric(10,2),
+  "allowWeekendTransaction" boolean,
+  "startTransactionTime" character varying,
+  "superPwd" character varying,
 );
 
 create table public."transferClients" (

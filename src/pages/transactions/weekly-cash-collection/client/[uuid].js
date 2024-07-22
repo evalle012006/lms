@@ -56,6 +56,7 @@ const CashCollectionDetailsPage = () => {
     const [showAddDrawer, setShowAddDrawer] = useState(false);
     const [showRemarksModal, setShowRemarksModal] = useState(false);
     const [closeAccountRemarks, setCloseAccountRemarks] = useState();
+    const [offsetUseMCBU, setOffsetUseMCBU] = useState(false);
     const [closeLoan, setCloseLoan] = useState();
     const [remarksArr, setRemarksArr] = useState(LOR_WEEKLY_REMARKS);
     const [filter, setFilter] = useState(false);
@@ -400,8 +401,9 @@ const CashCollectionDetailsPage = () => {
                         let prevData = cc.prevData;
                         let draft = false;
                         let reverted = false;
+                        let remarks = cc.remarks ? cc.remarks : '';
                         if (cc?.current?.length > 0) {
-                            const current = cc.current.find(cur => cur?.transfer !== null);
+                            const current = cc.current.find(cur => cur?.transfer !== true);
                             if (current) {
                                 if (current?.transferred) {
                                     amountRelease = current.amountRelease;
@@ -416,6 +418,7 @@ const CashCollectionDetailsPage = () => {
                                 prevData = current.prevData;
                                 draft = current.draft;
                                 reverted = current.reverted;
+                                remarks = current.remarks ? current.remarks : '';
                             }
                         }
 
@@ -477,7 +480,7 @@ const CashCollectionDetailsPage = () => {
                             currentReleaseAmountStr: '-',
                             fullPayment: cc.fullPayment.length > 0 ? cc.fullPayment[0].fullPaymentAmount : 0,
                             fullPaymentStr: cc.fullPayment.length > 0 ? formatPricePhp(cc.fullPayment[0].fullPaymentAmount) : '-',
-                            remarks: cc.remarks ? cc.remarks : '',
+                            remarks: remarks,
                             pastDue: cc.pastDue ? cc.pastDue : 0,
                             pastDueStr: cc.pastDue ? formatPricePhp(cc.pastDue) : '-',
                             clientStatus: cc.client.status ? cc.client.status : '-',
@@ -824,8 +827,8 @@ const CashCollectionDetailsPage = () => {
                             amountReleaseStr: 0, 
                             loanBalance: 0,
                             loanBalanceStr: 0,
-                            targetCollection: currentLoan.history.activeLoan,
-                            targetCollectionStr: formatPricePhp(currentLoan.history.activeLoan),
+                            targetCollection: currentLoan.history?.activeLoan,
+                            targetCollectionStr: formatPricePhp(currentLoan.history?.activeLoan),
                             mispayment: currentLoan.mispayment,
                             mispaymentStr: currentLoan.mispayment ? 'Yes' : 'No',
                             noMispayment: currentLoan.noMispayment,
@@ -844,11 +847,11 @@ const CashCollectionDetailsPage = () => {
                             mcbuReturnAmtStr: currentLoan.mcbuReturnAmt > 0 ? formatPricePhp(currentLoan.mcbuReturnAmt) : '-',
                             mcbuInterest: loan.mcbuInterest,
                             mcbuInterestStr: loan.mcbuInterest > 0 ? formatPricePhp(loan.mcbuInterest) : '-',
-                            excess: currentLoan.history.excess,
-                            excessStr: formatPricePhp(currentLoan.history.excess),
+                            excess: currentLoan.history?.excess,
+                            excessStr: formatPricePhp(currentLoan.history?.excess),
                             paymentCollection: currentLoan.history.collection,
-                            paymentCollectionStr: formatPricePhp(currentLoan.history.collection),
-                            remarks: currentLoan.history.remarks,
+                            paymentCollectionStr: formatPricePhp(currentLoan.history?.collection),
+                            remarks: currentLoan.history?.remarks,
                             fullPayment: currentLoan.fullPayment,
                             fullPaymentStr: currentLoan.fullPayment ? currentLoan.fullPaymentStr : 0,
                             pastDue: currentLoan.pastDue ? currentLoan.pastDue : 0,
@@ -872,6 +875,13 @@ const CashCollectionDetailsPage = () => {
                             cashCollection[index].prevData = loan.current[0].prevData;
                             cashCollection[index].mcbuCol = loan.current[0].mcbuCol;
                             cashCollection[index].mcbuColStr = loan.current[0].mcbuCol > 0 ? formatPricePhp(loan.current[0].mcbuCol) : '-';
+                            cashCollection[index].targetCollection = loan.current[0].history?.activeLoan ? loan.current[0].history.activeLoan : 0;
+                            cashCollection[index].targetCollectionStr = loan.current[0].history?.activeLoan ? formatPricePhp(loan.current[0].history.activeLoan) : '-';
+                            cashCollection[index].excess = loan.current[0].history?.excess ? loan.current[0].history?.excess : 0;
+                            cashCollection[index].excessStr = loan.current[0].history?.excess ? formatPricePhp(loan.current[0].history?.excess) : '-';
+                            cashCollection[index].paymentCollection = loan.current[0].history?.collection ? loan.current[0].history?.collection : 0;
+                            cashCollection[index].paymentCollectionStr = loan.current[0].history?.collection ? formatPricePhp(loan.current[0].history?.collection) : '-';
+                            cashCollection[index].remarks = loan.current[0].history?.remarks;
                         }
                     } else if (currentLoan.status !== 'active' && (currentLoan.status == 'completed' && !currentLoan?.advance  && (loan?.loanFor == 'today' || (loan?.loanFor == 'tomorrow' && diff >= 0)))) {
                         cashCollection[index] = {
@@ -1026,20 +1036,21 @@ const CashCollectionDetailsPage = () => {
                 setEditMode(true);
                 setRevertMode(true);
             }
-
+            cashCollection.sort((a, b) => a.slotNo - b.slotNo);
             dispatch(setCashCollectionGroup(cashCollection));
-            setTimeout(() => {
-                if (currentTime) {
-                    const time24h = moment(currentTime, 'h:mm:ss A').format('HH:mm');
-                    const timeArr = time24h.split(':');
-                    const hour = parseInt(timeArr[0]);
-                    if (hour < 9) {
-                        setEditMode(false);
-                        setGroupSummaryIsClose(true);
-                    }
-                }
+            // RESET
+            // setTimeout(() => {
+            //     if (currentTime) {
+            //         const time24h = moment(currentTime, 'h:mm:ss A').format('HH:mm');
+            //         const timeArr = time24h.split(':');
+            //         const hour = parseInt(timeArr[0]);
+            //         if (hour < 9) {
+            //             setEditMode(false);
+            //             setGroupSummaryIsClose(true);
+            //         }
+            //     }
                 setLoading(false);
-            }, 1000);
+            // }, 1000);
         } else if (response.error){
             toast.error('Error retrieving cash collection list.');
             setTimeout(() => {
@@ -2876,7 +2887,7 @@ const CashCollectionDetailsPage = () => {
                                                                 </React.Fragment>
                                                             ) : (
                                                                 <React.Fragment>
-                                                                    { cc.history?.remarks.label }
+                                                                    { cc.remarks?.label ? cc.remarks.label : '-' }
                                                                 </React.Fragment>
                                                             ) }
                                                         </td>
@@ -2909,9 +2920,10 @@ const CashCollectionDetailsPage = () => {
                             <div className="sm:flex sm:items-start justify-center">
                                 <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-center">
                                     <div className="mt-2">
+                                        <CheckBox size={"md"} value={offsetUseMCBU} label="Use MCBU as Payment" onChange={handleOffsetUseMCBU} />
                                         <textarea rows="4" value={closeAccountRemarks} onChange={(e) => setCloseAccountRemarks(e.target.value)}
                                             className="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border 
-                                                        border-gray-300 focus:ring-blue-500 focus:border-main"
+                                                        border-gray-300 focus:ring-blue-500 focus:border-main mt-2" 
                                             placeholder="Enter remarks..."></textarea>
                                     </div>
                                 </div>

@@ -57,6 +57,7 @@ const CashCollectionDetailsPage = () => {
     const [showAddDrawer, setShowAddDrawer] = useState(false);
     const [showRemarksModal, setShowRemarksModal] = useState(false);
     const [closeAccountRemarks, setCloseAccountRemarks] = useState();
+    const [offsetUseMCBU, setOffsetUseMCBU] = useState(false);
     const [closeLoan, setCloseLoan] = useState();
     const [remarksArr, setRemarksArr] = useState(LOR_DAILY_REMARKS);
     const [filter, setFilter] = useState(false);
@@ -394,8 +395,9 @@ const CashCollectionDetailsPage = () => {
                         let prevData = cc.prevData;
                         let draft = false;
                         let reverted = false;
+                        let remarks = cc.remarks ? cc.remarks : '';
                         if (cc?.current?.length > 0) {
-                            const current = cc.current.find(cur => cur?.transfer !== null);
+                            const current = cc.current.find(cur => cur?.transfer !== true);
                             if (current) {
                                 if (cc?.maturedPD) {
                                     loanBalance = current.loanBalance;
@@ -414,6 +416,7 @@ const CashCollectionDetailsPage = () => {
                                 prevData = current.prevData;
                                 draft = current.draft;
                                 reverted = current.reverted;
+                                remarks = current.remarks;
                             }
                         }
 
@@ -464,8 +467,6 @@ const CashCollectionDetailsPage = () => {
                             mcbuReturnAmtStr: mcbuReturnAmt > 0 ? formatPricePhp(mcbuReturnAmt) : '-',
                             mcbuInterest: cc.mcbuInterest ? cc.mcbuInterest : 0,
                             mcbuInterestStr: cc.mcbuInterest > 0 ? formatPricePhp(cc.mcbuInterest) : '-',
-                            // mcbuDailyWithdrawal: cc.mcbuDailyWithdrawal ? cc.mcbuDailyWithdrawal : 0,
-                            // mcbuDailyWithdrawalStr: cc.mcbuDailyWithdrawal > 0 ? formatPricePhp(cc.mcbuDailyWithdrawal) : '-',
                             amountRelease: amountRelease,
                             amountReleaseStr: amountRelease > 0 ? formatPricePhp(amountRelease) : '-',
                             loanBalance: loanBalance,
@@ -477,7 +478,7 @@ const CashCollectionDetailsPage = () => {
                             currentReleaseAmountStr: '-',
                             fullPayment: cc.fullPayment.length > 0 ? cc.fullPayment[0].fullPaymentAmount : 0,
                             fullPaymentStr: cc.fullPayment.length > 0 ? formatPricePhp(cc.fullPayment[0].fullPaymentAmount) : '-',
-                            remarks: cc.remarks ? cc.remarks : '',
+                            remarks: remarks,
                             pastDue: cc.pastDue ? cc.pastDue : 0,
                             pastDueStr: cc.pastDue ? formatPricePhp(cc.pastDue) : '-',
                             clientStatus: cc.client.status ? cc.client.status : '-',
@@ -490,7 +491,7 @@ const CashCollectionDetailsPage = () => {
                             draft: draft,
                             reverted: reverted
                         }
-    
+
                         if (loanBalance > 0 && !cc?.maturedPD) {
                             collection.transferred = true;
                         }
@@ -1017,20 +1018,21 @@ const CashCollectionDetailsPage = () => {
                 setEditMode(true);
                 setRevertMode(true);
             }
-
+            cashCollection.sort((a, b) => a.slotNo - b.slotNo);
             dispatch(setCashCollectionGroup(cashCollection));
-            setTimeout(() => {
-                if (currentTime) {
-                    const time24h = moment(currentTime, 'h:mm:ss A').format('HH:mm');
-                    const timeArr = time24h.split(':');
-                    const hour = parseInt(timeArr[0]);
-                    if (hour < 9) {
-                        setEditMode(false);
-                        setGroupSummaryIsClose(true);
-                    }
-                }
+            // RESET
+            // setTimeout(() => {
+            //     if (currentTime) {
+            //         const time24h = moment(currentTime, 'h:mm:ss A').format('HH:mm');
+            //         const timeArr = time24h.split(':');
+            //         const hour = parseInt(timeArr[0]);
+            //         if (hour < 9) {
+            //             setEditMode(false);
+            //             setGroupSummaryIsClose(true);
+            //         }
+            //     }
                 setLoading(false);
-            }, 1000);
+            // }, 1000);
         } else if (response.error){
             toast.error('Error retrieving cash collection list.');
             setTimeout(() => {
@@ -2563,7 +2565,7 @@ const CashCollectionDetailsPage = () => {
         return () => {
             mounted = false;
         };
-    }, [uuid, currentDate]);
+    }, [currentDate]);
 
     useEffect(() => {
         const getListGroup = async (selectedLO) => {
@@ -2832,7 +2834,7 @@ const CashCollectionDetailsPage = () => {
                                                                 </React.Fragment>
                                                             ) : (
                                                                 <React.Fragment>
-                                                                    { cc?.history?.remarks?.label ? cc?.history?.remarks?.label : cc.remarks?.label ? cc.remarks.label : '-' }
+                                                                    { cc.remarks?.label ? cc.remarks.label : '-' }
                                                                 </React.Fragment>
                                                             ) }
                                                         </td>
@@ -2865,9 +2867,10 @@ const CashCollectionDetailsPage = () => {
                             <div className="sm:flex sm:items-start justify-center">
                                 <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-center">
                                     <div className="mt-2">
+                                        <CheckBox size={"md"} value={offsetUseMCBU} label="Use MCBU as Payment" onChange={handleOffsetUseMCBU} />
                                         <textarea rows="4" value={closeAccountRemarks} onChange={(e) => setCloseAccountRemarks(e.target.value)}
                                             className="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border 
-                                                        border-gray-300 focus:ring-blue-500 focus:border-main"
+                                                        border-gray-300 focus:ring-blue-500 focus:border-main mt-2" 
                                             placeholder="Enter remarks..."></textarea>
                                     </div>
                                 </div>

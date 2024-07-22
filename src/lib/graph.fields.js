@@ -196,6 +196,9 @@ export const TRANSACTION_SETTINGS_FIELDS = `
   loanDailyLimit
   loanWeeklyLimit
   mcbuRate
+  allowWeekendTransaction
+  startTransactionTime
+  superPwd
   `;
 
 export const BAD_DEBT_COLLECTIONS_FIELDS = `
