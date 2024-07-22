@@ -1,0 +1,12 @@
+node_modules
+.DS_Store
+next.config.js
+.next
+public
+logs
+src/pages/_app.js
+
+.env
+
+.github/workflows/CD.yml
+.github/workflows/CI.yml
