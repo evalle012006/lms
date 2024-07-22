@@ -179,7 +179,7 @@ async function updateLoan(mutationQL, collection, currentDate) {
         loan.modifiedDateTime = new Date();
 
         if (collection?.revertedDate) {
-            loan.revertedDate = collection.revertedDate;
+            loan.revertedDateTime = collection.revertedDate;
         }
 
         if (collection.remarks && (!collection.remarks.value?.startsWith('excused')  && collection.remarks.value !== 'delinquent')) {

@@ -21,7 +21,7 @@ export default apiHandler({
 let statusCode = 200;
 let response = {};
 
-const getClientById = (_id) => graph.query(queryQl(CLIENT_TYPE('client'), { where: { _id: { _eq: _id } } })).then(res => res.data.clients);
+const getClientById = (_id) => graph.query(queryQl(CLIENT_TYPE('clients'), { where: { _id: { _eq: _id } } })).then(res => res.data.clients);
 const getLoanById = (_id) => graph.query(queryQl(LOAN_TYPE('loans'), {where: { _id: { _eq: _id } }})).then(res =>  res.data.loans);
  
 async function revert(req, res) {
@@ -42,6 +42,8 @@ async function revert(req, res) {
             }
 
             let client =  await getClientById(cashCollection.clientId);
+
+            console.log('client', client);
             let previousLoanId = cashCollection?.prevLoanId;
             let currentLoan = [];
             let previousLoan = [];
@@ -110,7 +112,8 @@ async function revert(req, res) {
                     
                     if (previousCC.status !== 'closed') {
                         previousLoan.reverted = true;
-                        previousLoan.revertedDate = currentDate;
+                        // previousLoan.revertedDate = currentDate;
+                        previousLoan.revertedDateTime = new Date()
                         delete previousLoan.advance;
                         delete previousLoan.advanceDate;
                         logger.debug({page: `Reverting Transaction Loan: ${cashCollection.clientId}`, previousLoan: previousLoan });
@@ -178,7 +181,7 @@ async function revert(req, res) {
                     }
 
                     currentLoan.reverted = true;
-                    currentLoan.revertedDate = currentDate;
+                    //currentLoan.revertedDate = currentDate;
                     currentLoan.revertedDateTime = new Date();
 
                     if (cashCollection.status == 'closed') {
