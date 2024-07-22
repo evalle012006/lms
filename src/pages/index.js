@@ -26,11 +26,12 @@ const Index = () => {
             }
         }
 
-        /*
+        
         const updateGroupClients = async () => {
-            await fetchWrapper.post(`${getApiBaseUrl()}groups/update-group-clients`);
+            // await fetchWrapper.post(`${getApiBaseUrl()}groups/update-group-clients`);
+            return null;
         }
-        */
+        
 
         // const updateCCData = async () => {
         //     await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}transactions/cash-collections/update-cc-data`);
