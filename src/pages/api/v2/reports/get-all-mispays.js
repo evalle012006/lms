@@ -15,9 +15,6 @@ async function allLoans(req, res) {
 
     const { loId, currentUserId, branchId, date, remarks } = req.query;
 
-    
-    console.log('date', date);
-
     let data = [];
 
     if (loId) {
@@ -38,6 +35,10 @@ async function allLoans(req, res) {
                     dateAdded: date,
                     remarks,
                 }
+            })
+            .then(res => {
+                console.log(res);
+                return res;
             })
             .then(res => res.data.collections.map(c => c.data));
             
@@ -117,9 +118,14 @@ async function allLoans(req, res) {
             }`,
             variables: {
                 loId,
+                branchId,
                 dateAdded: date,
                 remarks,
             }
+        })
+        .then(res => {
+            console.log(res);
+            return res;
         }).then(res => res.data.collections.map(c => c.data));
 
         if (loData) {
@@ -189,6 +195,10 @@ async function allLoans(req, res) {
                 dateAdded: date,
                 remarks,
             }
+        })
+        .then(res => {
+            console.log(res);
+            return res;
         })
         .then(res => res.data.collections.map(c => c.data))
 

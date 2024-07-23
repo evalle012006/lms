@@ -67,7 +67,7 @@ async function getLoanWithCashCollection(req, res) {
             current: c.current ?? [],
             currentRelease: c.currentRelease ?? [],
             fullPayment: c.fullPayment ?? [],
-        })),
+        })).sort((a, b) => a.slotNo - b.slotNo),
         tomorrowPending: tomorrowPending.map(c => ({
             ... c,
             branch: c.branch?.[0],
@@ -78,6 +78,7 @@ async function getLoanWithCashCollection(req, res) {
             fullPayment: c.fullPayment ?? [],
             prevLoans: c.prevLoans ?? [],
         }))
+        .sort((a, b) => a.slotNo - b.slotNo),
     };
 
     response = { success: true, data: cashCollection };
