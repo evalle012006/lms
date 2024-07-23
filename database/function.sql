@@ -72,3 +72,18 @@ $$;
 
 alter function public.cashcollection_remarks_value("cashCollections") owner to postgres;
 
+create function public.to_timetz_or_null(v_input text) returns timetz
+  language plpgsql
+as
+$$
+declare v_time timetz default null;
+begin
+  begin
+    v_time := v_input::timetz;
+  exception when others then
+    raise notice 'Invalid timetz value: "%".  Returning NULL.', v_input;
+    return null;
+  end;
+  return v_time;
+end;
+$$;

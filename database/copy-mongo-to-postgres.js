@@ -12,12 +12,13 @@
 const { MongoClient } = require('mongodb');
 const { Connection } = require('postgresql-client');
 const env = require('@next/env');
-const { masterFileTableNames, transactionTableNames } = require('./db-schema')
+const moment = require('moment');
+const { masterFileTableNames, transactionTableNames, getDateAddedFilterFieldForCollection } = require('./db-schema')
 
 env.loadEnvConfig(__dirname + '/../');
 
-const MONGODB_URL = process.env.LOCAL_DB_URL;
-const MONGODB_NAME = process.env.LOCAL_DB_NAME;
+const MONGODB_URL = process.env.MIGRATION_SOURCE_DB_URL;
+const MONGODB_NAME = process.env.MIGRATION_SOURCE_DB_NAME;
 
 const PG_CON_OPTIONS = {
   host: process.env.MIGRATION_TARGET_DB_HOST,
@@ -30,21 +31,29 @@ const BATCH_SIZE = 100;
 const BATCH_PARALLEL_SIZE = 50;
 
 const cliArgs = require('args-parser')(process.argv);
+const runDate = moment().format();
+const fs = require('fs');
 
 const cliCommands = {
   'migrate-master': async () => {
     return migrate(masterFileTableNames);
   },
   'migrate-tx': async () => {
-    const mongoFilter = {};
     if (!cliArgs.branchId || typeof cliArgs.branchId !== 'string') {
       console.error('Argument "-branchId=[ID or all]" is required.')
       return;
     }
     if (cliArgs.branchId !== 'all') {
-      mongoFilter.branchId = { $eq: cliArgs.branchId };
+      const branchIds = cliArgs.branchId.split(',');
+      for (const id of branchIds) {
+        const mongoFilter = { branchId: { $eq: id } };
+        await migrate(transactionTableNames, mongoFilter);
+      }
+    } else {
+      await migrate(transactionTableNames);
     }
-    return migrate(transactionTableNames, mongoFilter);
+
+    await updateActiveLoanAmount();
   },
   'print-new-fields-in-mongo': async () => {
     printNewFieldsInMongo();
@@ -56,7 +65,7 @@ const handler = cliCommands[cliCmd];
 if (handler) {
   handler();
 } else {
-  console.log('CLI commands:\n' + Object.keys(cliCommands).map(s => `  ${s}`).join('\n'));
+  logInfo('CLI commands:\n' + Object.keys(cliCommands).map(s => `  ${s}`).join('\n'));
 }
 
 /**
@@ -76,24 +85,54 @@ async function migrate(tableNames, mongoFilter = null) {
         .filter(s => !!s));
     }
 
+
+    const dateFromFilter = (cliArgs.dateFrom && typeof cliArgs.dateFrom === 'string') ? cliArgs.dateFrom : null;
+    const dateToFilter = (cliArgs.dateTo && typeof cliArgs.dateTo === 'string') ? cliArgs.dateTo : null;
+
     doMigrate: for (const tableName of tableNames) {
         if (collectionNamesFilter?.length && !collectionNamesFilter.includes(tableName))
             continue;
 
-        console.log(`migrating ${tableName}`);
+        logInfo(`migrating ${tableName}`);
         const columnDef = await getColumnNames(tableName);
         const columns = columnDef.map(cd => cd.name);
 
         let processed = 0;
-        const cursor = mDb.collection(tableName).find(mongoFilter ?? {});
+        const queryFilter = mongoFilter ?? {};
+        const dateFilterField = getDateAddedFilterFieldForCollection(tableName);
+        let dateFilters = [];
+        if (dateFilterField) {
+          if (dateFromFilter) {
+            dateFilters.push({ [dateFilterField]: { $gte: dateFromFilter }});
+          }
+          if (dateToFilter) {
+            dateFilters.push({ [dateFilterField]: { $lte: dateToFilter }});
+          }
+          if (dateFilters.length) {
+            queryFilter['$and'] = dateFilters;
+          }
+        }
 
-        let batch = [];
-        let promises = [];
+        const cursor = mDb.collection(tableName).find(queryFilter).batchSize(BATCH_SIZE * 2);
 
         const asyncBatchInsert = async (batchData) => {
-          const batchResult = await batchInsert(tableName, columns, batchData);
+          const batchParams = batchData.map(doc =>
+            columnDef.map((cd) => mapValue(cd, doc[cd.name], doc)))
+
+          const batchResult = await batchInsert(tableName, columns, batchParams);
+
+          if (batchResult === false) {
+            batchData.forEach(row => appendLog(tableName + '_failed', row));
+          } else {
+            const insertedIds = new Set(batchResult.ids);
+            batchData.forEach(row => {
+              if (insertedIds.has(row._id.toString())) {
+                appendLog(tableName + '_migrated', row)
+              }
+            });
+          }
           processed += batchData.length;
-          return batchResult;
+          return batchResult === false ? false : batchResult.rowsAffected;
         };
 
         const waitResult = async (promises) => {
@@ -102,8 +141,11 @@ async function migrate(tableNames, mongoFilter = null) {
           return { rowsInserted, hasError: !!result.find(r => r === false) };
         };
 
+        let batch = [];
+        let promises = [];
+
         for await (const doc of cursor) {
-            batch.push(columnDef.map((cd) => mapValue(cd, doc[cd.name])));
+            batch.push(doc);
 
             if (batch.length >= BATCH_SIZE) {
                 promises.push(asyncBatchInsert(batch));
@@ -133,7 +175,7 @@ async function migrate(tableNames, mongoFilter = null) {
         }
 
         printMigratedRows(tableName, processed, rowsInserted);
-        console.log('');
+        logInfo('');
         if (hasError) {
           break;
         }
@@ -142,15 +184,50 @@ async function migrate(tableNames, mongoFilter = null) {
     await mClient.close();
 }
 
+async function updateActiveLoanAmount() {
+  logInfo('Recomputing the loans."activeLoan" for null or zero values.')
+  const sql = `
+    update loans
+    set "activeLoan" = (
+      case when occurence = 'weekly' then
+             ("principalLoan" * 1.20) / 24
+           when occurence = 'daily'
+             then
+             case when "loanTerms" = 60 then
+                    ("principalLoan" * 1.20) / 60
+                  else
+                    ("principalLoan" * 1.20) / 100
+               end
+        end
+      )
+    where "activeLoan" is null or "activeLoan" = 0 and status = 'active';
+  `;
+
+  const pgCon = new Connection(PG_CON_OPTIONS);
+
+  try {
+    await pgCon.connect();
+    const stm = await pgCon.prepare(sql);
+    await stm.execute({ params: [] });
+  } catch (e) {
+    logError(e);
+    throw e;
+  } finally {
+    await pgCon.close();
+  }
+}
+
 function printMigratedRows(tableName, processedRows, rowsInserted) {
-    console.log(`${tableName}: total rows scanned = ${processedRows}, rows inserted in batch = ${rowsInserted}`);
+    logInfo(`${tableName}: total rows scanned = ${processedRows}, rows inserted in batch = ${rowsInserted}`);
 }
 
 /**
  * @param {string} tableName
  * @param {string[]} colNames
  * @param {any[]} batchParams
- * @returns {Promise<number|boolean>} If successful, returns the number of rows affected. Otherwise, returns false.
+ * @returns {Promise<{rowsAffected: number, ids: string[]}|boolean>}
+ *    If successful, returns the number of rows affected and the array of ID inserted.
+ *    Otherwise, returns false.
  */
 async function batchInsert(tableName, colNames, batchParams) {
   const pgCon = new Connection(PG_CON_OPTIONS);
@@ -167,15 +244,20 @@ async function batchInsert(tableName, colNames, batchParams) {
       ${valuesSql}
     on conflict (_id) 
       do nothing
+    returning _id
   `;
 
   try {
     const stm = await pgCon.prepare(sql);
     const result = await stm.execute({ params: batchParams.flat() });
-    return result.rowsAffected;
+    const ids = result?.rows?.map(r => r[0]) ?? [];
+    return {
+      rowsAffected: ids.length,
+      ids,
+    };
   } catch (e) {
-    console.error(batchParams.map(p => colNames.map((c, i) => [c, p[i]])).map(p => JSON.stringify(p)).join('\n'));
-    console.error(e.message, e);
+    logError(batchParams.map(p => colNames.map((c, i) => [c, p[i]])).map(p => JSON.stringify(p)).join('\n'));
+    logError(e.message, e);
     return false;
   } finally {
     await pgCon.close();
@@ -197,7 +279,10 @@ const dateAutoCorrectionPattern = [
   [/(\d{4}-\d)['\-](\d-\d{2})/, '$1$2'],
 ];
 
-function mapValue({ name, dataType }, value) {
+function mapValue({ name, dataType }, value, doc) {
+  if (name === 'insertedDateTime' && !value) {
+    value = doc.dateAdded;
+  }
   if (name === '_id') {
     return value.toString();
   }
@@ -212,6 +297,9 @@ function mapValue({ name, dataType }, value) {
   }
   if (value instanceof Date) {
     return value.toISOString();
+  }
+  if (dataType === 'time with timezone' || dataType === 'time') {
+    return dateInvalidValues.includes(value) ? null : value;
   }
   if (dataType.match(/date|timestamp/)) {
     if (dateInvalidValues.includes(value)) {
@@ -280,7 +368,7 @@ async function getColumnNames(table) {
       dataType: r[1]?.toLowerCase(),
     }));
   } catch (e) {
-    console.error(e);
+    logError(e);
     throw e;
   } finally {
     await pgCon.close();
@@ -312,11 +400,38 @@ async function printNewFieldsInMongo() {
   const tableNames = cliArgs.tables.split(',').map(s => s.trim()).filter(s => !!s);
   for (const tableName of tableNames) {
     const fieldsMap = await getNewFieldsNotInRdbms(tableName);
-    console.log(tableName + ':');
+    logInfo(tableName + ':');
     [...fieldsMap.keys()]
       .filter((key) => !key.startsWith("__"))
       .forEach((key) => {
-        console.log({ key, ...fieldsMap.get(key) });
+        logInfo({ key, ...fieldsMap.get(key) });
       });
   }
+}
+
+function appendLog(fileName, row) {
+  if (row instanceof Error) {
+    row = `${row.message}\n${row.stack}`;
+  }
+  else if (typeof row !== 'string') {
+    row = JSON.stringify(row);
+  }
+
+  const logDir = `${__dirname}/logs-${runDate}`
+  const logFile = `${logDir}/${fileName}.log`;
+  if (!fs.existsSync(logDir)) {
+    fs.mkdirSync(logDir);
+  }
+
+  fs.appendFileSync(logFile, row + '\n');
+}
+
+function logInfo(message) {
+  console.log(message);
+  appendLog('status_info', message);
+}
+
+function logError(message) {
+  console.error(message);
+  appendLog('status_error', message);
 }

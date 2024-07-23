@@ -10,3 +10,10 @@ src/pages/_app.js
 
 .github/workflows/CD.yml
 .github/workflows/CI.yml
+
+.idea
+graphql.config.yml
+http-client.env.json
+schema.graphql
+
+database/logs-*
