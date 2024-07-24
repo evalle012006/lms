@@ -41,7 +41,6 @@ async function revert(req, res) {
 
             let client =  await getClientById(cashCollection.clientId);
 
-            console.log('client', client);
             let previousLoanId = cashCollection?.prevLoanId;
             let currentLoan = [];
             let previousLoan = [];
@@ -67,7 +66,7 @@ async function revert(req, res) {
             // - set loan to rejected
             if (client.length > 0 && previousCC.length == 2) {
                 client = client[0];
-                previousCC = previousCC[1];
+                previousCC = previousCC[1]; // latest
                 // delete current transaction
 
                 mutationQL.push(deleteQl(CASH_COLLECTION_TYPE('delete_cashCollections_' + (mutationQL.length + 1)), { _id: { _eq: cashCollectionId } }));
@@ -75,7 +74,7 @@ async function revert(req, res) {
                 if (previousLoan.length > 0) { // pending, tomorrow
                     previousLoan = previousLoan[0];
                     delete previousLoan._id;
-                    await graph.mutation(deleteQl(LOAN_TYPE('loans'), { _id: { _eq: loanId } }));
+                    mutationQL.push(deleteQl(LOAN_TYPE('update_loans_' + (mutationQL.length + 1)), { _id: { _eq: loanId } }));
                     // there are cases wherein the advance loan were not deleted....need proper steps
                     if (previousCC.status == 'completed') {
                         previousLoan.activeLoan = 0;
@@ -223,8 +222,8 @@ async function revert(req, res) {
                     } else {
                         logger.debug({page: `Reverting Transaction Loan: ${cashCollection.clientId}`, currentLoan: currentLoan });
                         if (currentLoan.status == 'pending' && cc.status == 'tomorrow') {
-                            await graph.mutation(
-                                updateQl(LOAN_TYPE('loans'), {
+                            mutationQL.push(
+                                updateQl(LOAN_TYPE('update_loans_' + (mutationQL.length + 1)), {
                                     set: { ... currentLoan, startDate: null, endDate:  null },
                                     where: { _id: { _eq: loanId } }
                                 })
@@ -233,8 +232,8 @@ async function revert(req, res) {
                             mutationQL.push(deleteQl(LOAN_TYPE('delete_loans_' + (mutationQL.length + 1)), { _id: { _eq: loanId } }))
                             await updateGroup(mutationQL, cashCollection.group, cashCollection.slotNo);
                         } else {
-                            await graph.mutation(
-                                updateQl(LOAN_TYPE('loans'), {
+                            mutationQL.push(
+                                updateQl(LOAN_TYPE('update_loans_' + (mutationQL.length + 1)), {
                                     set: { ... currentLoan  },
                                     where: { _id: { _eq: loanId } }
                                 })
