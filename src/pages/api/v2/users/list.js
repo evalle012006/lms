@@ -32,7 +32,7 @@ async function list(req, res) {
                 users = await graph.query(
                     queryQl(USER_TYPE, {
                         where: { 
-                            root: { _is_null: true },
+                            root: { _eq: false },
                             role: { _contains: { rep: 4 } },
                             designatedBranch: { _eq: branchCode },
                             loNo: { _lt: 11 }
@@ -48,7 +48,7 @@ async function list(req, res) {
                 users = await graph.query(
                     queryQl(USER_TYPE, {
                         where: { 
-                            root: { _is_null: true },
+                            root: { _eq: false },
                             role: { _contains: { rep: 4 } },
                             designatedBranch: { _eq: branchCode },
                             loNo: { _lt: 10 }
@@ -65,7 +65,7 @@ async function list(req, res) {
             users = await graph.query(
                 queryQl(USER_TYPE, {
                     where: { 
-                        root: { _is_null: true },
+                        root: { _eq: false },
                         role: { _contains: { rep: 4 } },
                         designatedBranch: { _eq: branchCode }
                     },
@@ -80,7 +80,7 @@ async function list(req, res) {
             users = await graph.query(
                 queryQl(USER_TYPE, {
                     where: { 
-                        root: { _is_null: true },
+                        root: { _eq: false },
                         designatedBranch: { _eq: branchCode }
                     },
                     order_by: [{
@@ -95,7 +95,7 @@ async function list(req, res) {
         users = await graph.query(
             queryQl(USER_TYPE, {
                 where: { 
-                    root: { _is_null: true },
+                    root: { _eq: false },
                     role: { _contains: { rep: 4 } },
                     designatedBranchId: { _eq: branchId }
                 },
@@ -110,7 +110,7 @@ async function list(req, res) {
         users = await graph.query(
             queryQl(USER_TYPE, {
                 where: { 
-                    root: { _is_null: true }
+                    root: { _eq: false },
                 },
                 order_by: [{
                     loNo: 'asc'
