@@ -143,7 +143,7 @@ const BranchCashCollectionPage = () => {
         let url = getApiBaseUrl() + 'branches/list';
 
         if (currentUser.role.rep === 3) {
-            url = url + '?' + new URLSearchParams({ branchCode: currentUser.designatedBranch, date: date ? date : currentDate });
+            url = url + '?' + new URLSearchParams({ branchCode: currentUser.designatedBranch, date: date });
         }
 
         const response = await fetchWrapper.get(url);
@@ -176,7 +176,7 @@ const BranchCashCollectionPage = () => {
     useEffect(() => {
         let mounted = true;
 
-        mounted && getListBranch(currentDate);
+        mounted && currentDate && getListBranch(currentDate);
 
         return () => {
             mounted = false;
