@@ -273,6 +273,14 @@ async function updateLoan(mutationQL, collection, currentDate) {
                 loan.noPastDue = 0;
                 loan.pastDue = 0;
             }
+
+            if (collection.status == 'closed') {
+                loan.loanCycle = 0;
+                loan.remarks = collection.closeRemarks;
+                loan.status = 'closed';
+                loan.closedDate = currentDate;
+                loan.dateModified = currentDate;
+            }
         }
 
         loan.lastUpdated = currentDate;
@@ -355,7 +363,7 @@ async function updateClient(mutationQl, loan, currentDate) {
         )
         
         if (loan.remarks && loan.remarks.value?.startsWith('offset')) {
-            await updateLoanClose(mutationQl, loan, currentDate);
+            // await updateLoanClose(mutationQl, loan, currentDate);
             await updateGroup(mutationQl, loan);
         }
     }
