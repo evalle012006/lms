@@ -476,8 +476,8 @@ const TransferClientPage = () => {
     }, [currentDate]);
 
     useEffect(() => {
-        if (currentUser.role.rep < 3) {
-            if (currentDate === lastMonthDate) {
+        if (currentUser.role.rep < 4) {
+            if (currentDate === lastMonthDate && currentUser.role.rep <= 2) {
                 setActionButtons([
                     <ButtonOutline label="Approved Selected Transfer" type="button" className="p-2 mr-3" onClick={handleMultiApprove} />,
                     <ButtonSolid label="Add Transfer" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
