@@ -4,22 +4,20 @@ import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { setBranchList } from "@/redux/actions/branchActions";
-import TableComponent, { AvatarCell, SelectCell, StatusPill } from "@/lib/table";
+import TableComponent, { AvatarCell, StatusPill } from "@/lib/table";
 import Layout from "@/components/Layout";
 import Spinner from "@/components/Spinner";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
-import { PlusIcon } from '@heroicons/react/24/solid';
+import { PlusIcon, XMarkIcon, WrenchScrewdriverIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/solid';
 import { useRouter } from "node_modules/next/router";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
-import { setTransferClientList } from "@/redux/actions/clientActions";
 import AddUpdateTransferClient from "@/components/transactions/transfer/AddUpdateTransferClientDrawer";
 import Dialog from "@/lib/ui/Dialog";
-import { formatPricePhp, getLastWeekdayOfTheMonth } from "@/lib/utils";
+import { getLastWeekdayOfTheMonth, isEndMonthDate } from "@/lib/utils";
 import { TabPanel, useTabs } from "react-headless-tabs";
 import { TabSelector } from "@/lib/ui/tabSelector";
-import TransferHistoryLOToLOPage from "@/components/transactions/transfer/TransferHistoryLOToLO";
 import RevertTransferPage from "@/components/transactions/transfer/RevertTransfer";
-import { setApprovedTransferList, setPendingTransferList } from "@/redux/actions/transferActions";
+import { setTransferList } from "@/redux/actions/transferActions";
 import moment from 'moment'
 
 const TransferClientPage = () => {
@@ -33,17 +31,16 @@ const TransferClientPage = () => {
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
     const currentDate = useSelector(state => state.systemSettings.currentDate);
-    const pendingTransferList = useSelector(state => state.transfer.pendingList);
-    const approvedTransferList = useSelector(state => state.transfer.approvedList);
+    const transferList = useSelector(state => state.transfer.list);
 
     const [showAddDrawer, setShowAddDrawer] = useState(false);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [mode, setMode] = useState('add');
     const [client, setClient] = useState();
+    const [dropDownActions, setDropDownActions] = useState();
 
     const [selectedTab, setSelectedTab] = useTabs([
-        'transfer-giver',
-        'transfer-receiver',
+        'transfer-transaction',
         // 'history-branch',
         // 'history-lo',
         'history-revert-transfer'
@@ -59,10 +56,6 @@ const TransferClientPage = () => {
             accessor: 'fullName',
             Cell: AvatarCell,
             imgAccessor: "imgUrl",
-        },
-        {
-            Header: "Current Slot No",
-            accessor: 'currentSlotNo'
         },
         {
             Header: "Amount Release",
@@ -90,6 +83,10 @@ const TransferClientPage = () => {
             Cell: StatusPill
         },
         {
+            Header: "Source Slot No",
+            accessor: 'currentSlotNo'
+        },
+        {
             Header: "Source Branch",
             accessor: 'sourceBranchName'
         },
@@ -102,6 +99,10 @@ const TransferClientPage = () => {
             accessor: 'sourceGroupName'
         },
         {
+            Header: "Target Slot No",
+            accessor: 'selectedSlotNo'
+        },
+        {
             Header: "Target Branch",
             accessor: 'targetBranchName'
         },
@@ -112,7 +113,12 @@ const TransferClientPage = () => {
         {
             Header: "Target Group",
             accessor: 'targetGroupName'
-        }
+        },
+        {
+            Header: "Transfer Status",
+            accessor: 'transferStatus',
+            Cell: StatusPill
+        },
     ]);
 
     const checkGroupsStatus = async (groupIds) => {
@@ -250,38 +256,42 @@ const TransferClientPage = () => {
         // getTransferList();
         setMode('add');
         setClient({});
-        window.location.reload();
+        setTimeout(() => {
+            window.location.reload();
+        }, 800);
     }
 
     const handleMultiSelect = (mode, selectAll, row, rowIndex) => {
-        if (pendingTransferList) {
+        if (transferList) {
             if (mode === 'all') {
-                const tempList = pendingTransferList.map(loan => {
+                const tempList = transferList.map(loan => {
                     let temp = {...loan};
                     
-                    temp.selected = selectAll;
+                    if (temp.status == 'pending') {
+                        temp.selected = selectAll;
+                    }
                     
                     return temp;
                 });
 
-                dispatch(setPendingTransferList(tempList));
+                dispatch(setTransferList(tempList));
             } else if (mode === 'row') {
-                const tempList = pendingTransferList.map((loan, index) => {
+                const tempList = transferList.map((loan, index) => {
                     let temp = {...loan};
                     
-                    if (index === rowIndex) {
+                    if (temp.status == 'pending' && index === rowIndex) {
                         temp.selected = !temp.selected;
                     }
     
                     return temp;
                 });
-                dispatch(setPendingTransferList(tempList));
+                dispatch(setTransferList(tempList));
             }
         }
     }
 
     const handleMultiApprove = async () => {
-        let selectedList = pendingTransferList && pendingTransferList.filter(t => t.selected === true);
+        let selectedList = transferList && transferList.filter(t => t.selected === true);
         
         if (selectedList.length > 0) {
             const sourceGroupIds = selectedList.map(sg => sg.sourceGroupId);
@@ -299,9 +309,8 @@ const TransferClientPage = () => {
                 } else {
                     selectedList = selectedList.map(transfer => {
                         let temp = {...transfer};
-        
-                        temp = processTransfer(temp);
-        
+                        temp.status = "approved";
+                        temp.currentDate = currentDate;
                         return temp;
                     });
         
@@ -321,8 +330,31 @@ const TransferClientPage = () => {
         }
     }
 
+    const handleRepair = async (data) => {
+        if (data) {
+            if (data.errorMsg?.includes('slot number')) {
+                toast.info('Please contact system administrator!');
+            } else {
+                setLoading(true);
+                fetchWrapper.post(process.env.NEXT_PUBLIC_API_URL + 'transactions/transfer-client/repair', { _id: data._id })
+                    .then(response => {
+                        if (response.success) {
+                            setLoading(false);
+                            toast.success('Transfer successfully repaired.');
+                            setTimeout(() => {
+                                getTransferList();
+                            }, 1000);
+                        } else if (response.error) {
+                            toast.error(response.message);
+                        } else {
+                            console.log(response);
+                        }
+                    });
+            }
+        }
+    }
+
     const [actionButtons, setActionButtons] = useState();
-    const [rowActionButtons, setRowActionButtons] = useState();
 
     const getListBranch = async () => {
         let url = process.env.NEXT_PUBLIC_API_URL + 'branches/list';
@@ -343,8 +375,6 @@ const TransferClientPage = () => {
                 toast.error(response.message);
             }
         } else if (currentUser.role.rep === 2) {
-            // const branchCodes = typeof currentUser.designatedBranch === 'string' ? JSON.parse(currentUser.designatedBranch) : currentUser.designatedBranch;
-            // url = url + '?' + new URLSearchParams({ branchCodes: branchCodes });
             url = url + '?' + new URLSearchParams({ currentUserId: currentUser._id });
             const response = await fetchWrapper.get(url);
             if (response.success) {
@@ -383,35 +413,33 @@ const TransferClientPage = () => {
     }
 
     const getTransferList = async () => {
-        // determined all the closed loans it should be highlited with red and option to delete only...
-        const previousLastMonthDate = getLastWeekdayOfTheMonth(moment().subtract(1, 'months').format('YYYY'), moment().subtract(1, 'months').format('MM'), holidayList);
+        const previousMonthEndDate = getLastWeekdayOfTheMonth(moment().subtract(1, 'months').format('YYYY'), moment().subtract(1, 'months').format('MM'), holidayList);
+        const endMonthDate = isEndMonthDate(currentDate, holidayList);
+
         let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/transfer-client';
         if (currentUser.role.rep === 1) {
-            url = url + '?' + new URLSearchParams({ previousLastMonthDate: previousLastMonthDate });
+            url = url + '?' + new URLSearchParams({ previousLastMonthDate: endMonthDate ? currentDate : previousMonthEndDate });
             const response = await fetchWrapper.get(url);
             if (response.success) {
-                dispatch(setPendingTransferList(response.pending));
-                dispatch(setApprovedTransferList(response.approved));
+                dispatch(setTransferList(response.data));
             } else if (response.error) {
                 setLoading(false);
                 toast.error(response.message);
             }
         } else if (currentUser.role.rep === 2) {
-            url = url + '?' + new URLSearchParams({ _id: currentUser._id, previousLastMonthDate: previousLastMonthDate });
+            url = url + '?' + new URLSearchParams({ _id: currentUser._id, previousLastMonthDate: endMonthDate ? currentDate : previousMonthEndDate });
             const response = await fetchWrapper.get(url);
             if (response.success) {
-                dispatch(setPendingTransferList(response.pending));
-                dispatch(setApprovedTransferList(response.approved));
+                dispatch(setTransferList(response.data));
             } else if (response.error) {
                 setLoading(false);
                 toast.error(response.message);
             }
         }  else if (currentUser.role.rep === 3) {
-            url = url + '?' + new URLSearchParams({ branchId: currentUser.designatedBranchId, previousLastMonthDate: previousLastMonthDate });
+            url = url + '?' + new URLSearchParams({ branchId: currentUser.designatedBranchId, previousLastMonthDate: endMonthDate ? currentDate : previousMonthEndDate });
             const response = await fetchWrapper.get(url);
             if (response.success) {
-                dispatch(setPendingTransferList(response.pending));
-                dispatch(setApprovedTransferList(response.approved));
+                dispatch(setTransferList(response.data));
             } else if (response.error) {
                 setLoading(false);
                 toast.error(response.message);
@@ -445,29 +473,49 @@ const TransferClientPage = () => {
         return (() => {
             mounted = false;
         })
-    }, [currentUser]);
+    }, [currentDate]);
 
     useEffect(() => {
-        if (currentDate === lastMonthDate && currentUser.role.rep < 3) {
-            setActionButtons([
-                <ButtonOutline label="Approved Selected Transfer" type="button" className="p-2 mr-3" onClick={handleMultiApprove} />,
-                <ButtonSolid label="Add Transfer" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
-            ]);
-            setRowActionButtons([
-                { label: 'Approve', action: handleApprove},
-                { label: 'Reject', action: handleReject}
-                // { label: 'Delete', action: handleDeleteAction}
-            ]);
-        } else {
-            setActionButtons([
-                <ButtonSolid label="Add Transfer" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
-            ]);
-            setRowActionButtons([
-                { label: 'Reject', action: handleReject}
-                // { label: 'Delete', action: handleDeleteAction}
+        if (currentUser.role.rep < 3) {
+            if (currentDate === lastMonthDate) {
+                setActionButtons([
+                    <ButtonOutline label="Approved Selected Transfer" type="button" className="p-2 mr-3" onClick={handleMultiApprove} />,
+                    <ButtonSolid label="Add Transfer" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
+                ]);
+            } else {
+                setActionButtons([
+                    <ButtonSolid label="Add Transfer" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
+                ]);
+            }
+    
+            setDropDownActions([
+                {
+                    label: 'Edit Transfer',
+                    action: handleEditAction,
+                    icon: <PencilIcon className="w-5 h-5" title="Edit Transfer" />,
+                    hidden: true
+                },
+                {
+                    label: 'Reject Transfer',
+                    action: handleReject,
+                    icon: <XMarkIcon className="w-5 h-5" title="Reject Transfer" />,
+                    hidden: true
+                },
+                {
+                    label: 'Repair Transfer',
+                    action: handleRepair,
+                    icon: <WrenchScrewdriverIcon className="w-5 h-5" title="Repair Transfer" />,
+                    hidden: true
+                },
+                {
+                    label: 'Delete Transfer',
+                    action: handleDeleteAction,
+                    icon: <TrashIcon className="w-5 h-5" title="Delete Transfer" />,
+                    hidden: true
+                },
             ]);
         }
-    }, [currentDate, pendingTransferList, approvedTransferList, lastMonthDate]);
+    }, [currentDate, transferList, lastMonthDate]);
 
     return (
         <Layout actionButtons={currentUser.role.rep <= 3 && actionButtons}>
@@ -480,16 +528,10 @@ const TransferClientPage = () => {
                     <React.Fragment>
                         <nav className="flex pl-10 bg-white border-b border-gray-300">
                             <TabSelector
-                                isActive={selectedTab === "transfer-giver"}
-                                onClick={() => setSelectedTab("transfer-giver")}>
+                                isActive={selectedTab === "transfer-transaction"}
+                                onClick={() => setSelectedTab("transfer-transaction")}>
                                 {/* List of all outgoing transfer that is pending or not successful */}
-                                    Giver
-                            </TabSelector>
-                            <TabSelector
-                                isActive={selectedTab === "transfer-receiver"}
-                                onClick={() => setSelectedTab("transfer-receiver")}>
-                                {/* List of all received transfer that is successful */}
-                                    Receiver
+                                    Transactions
                             </TabSelector>
                             {/* <TabSelector
                                 isActive={selectedTab === "history-branch"}
@@ -510,11 +552,8 @@ const TransferClientPage = () => {
                             )}
                         </nav>
                         <React.Fragment>
-                            <TabPanel hidden={selectedTab !== "transfer-giver"}>
-                                <TableComponent columns={columns} data={pendingTransferList} pageSize={50} hasActionButtons={(currentUser.role.rep <= 2 && !isWeekend && !isHoliday) ? true : false} rowActionButtons={!isWeekend && !isHoliday && rowActionButtons} showFilters={false} multiSelect={currentUser.role.rep <= 2 ? true : false} multiSelectActionFn={handleMultiSelect} />
-                            </TabPanel>
-                            <TabPanel hidden={selectedTab !== "transfer-receiver"}>
-                                <TableComponent columns={columns} data={approvedTransferList} pageSize={50}  />
+                            <TabPanel hidden={selectedTab !== "transfer-transaction"}>
+                                <TableComponent columns={columns} data={transferList} pageSize={20} hasActionButtons={false} dropDownActions={dropDownActions} dropDownActionOrigin="transfer" showFilters={false} multiSelect={currentUser.role.rep <= 2 ? true : false} multiSelectActionFn={handleMultiSelect} />
                             </TabPanel>
                             {/* <TabPanel hidden={selectedTab !== "history-branch"}>
                                 <div>UNDER CONSTRUCTION</div>

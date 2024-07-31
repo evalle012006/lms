@@ -49,7 +49,9 @@ async function getList(req, res) {
         const pendingData = processData(pendingTransferClients, 'pending');
         const approvedData = processData(approvedTransferClients, 'approved');
 
-        response = { success: true, pending: pendingData, approved: approvedData };
+        const mergedData = [ ...pendingData, ...approvedData ];
+
+        response = { success: true, data: mergedData };
     }
 
     res.status(statusCode)
@@ -684,7 +686,7 @@ function processData(data, status) {
             temp.fullName = client.fullName;
             temp.lastName = client.lastName;
             temp.firstName = client.firstName;
-            temp.status = client.status;
+            temp.clientStatus = client.status;
             temp.clientBranchId = client.branchId;
             temp.clientLoId = client.loId;
             temp.clientGroupId = client.groupId;
@@ -713,7 +715,7 @@ function processData(data, status) {
         temp.sourceBranchName = transfer.sourceBranch.length > 0 ? transfer.sourceBranch[0].name : '';
         temp.sourceUserName = transfer.sourceUser.length > 0 ? `${transfer.sourceUser[0].firstName} ${transfer.sourceUser[0].lastName}` : '',
         temp.sourceGroupName = transfer.sourceGroup.length > 0 ? transfer.sourceGroup[0].name : '';
-        temp.targetBranchName = transfer.targetBranch.lenth > 0 ? transfer.targetBranch[0].name : '';
+        temp.targetBranchName = transfer.targetBranch.length > 0 ? transfer.targetBranch[0].name : '';
         temp.targetUserName = transfer.targetUser.length > 0 ? `${transfer.targetUser[0].firstName} ${transfer.targetUser[0].lastName}` : '',
         temp.targetGroupName = transfer.targetGroup.length > 0 ? transfer.targetGroup[0].name : '';
 
@@ -725,6 +727,18 @@ function processData(data, status) {
         if (temp.loanStatus === "closed") {
             temp.delinquent = true;
         }
+
+        if (temp.withError) {
+            temp.transferStatus = 'error';
+        } else {
+            temp.transferStatus = temp.status;
+        }
+
+        if (temp.status == 'approved') {
+            temp.disable = true;
+        }
+
+        temp.origin = status;
  
         list.push(temp);
     });
@@ -751,11 +765,23 @@ function getAndValidateLoan(transfer, status) {
                 // check if loan.loId is equal to targetUserId
                 // check if loan.groupId is equal to targetGroupId
                 // check if loan.slotNo is equal to selectedSlotNo
-                if (loan.branchId == transfer.targetBranchId && loan.loId == transfer.targetUserId && loan.groupId == transfer.targetGroupId && loan.slotNo == transfer.selectedSlotNo) {
-                    withError = false;
-                } else {
+                if (loan.branchId != transfer.targetBranchId) {
                     withError = true;
-                    errorMsg = "Loan details does not match with the transfer details.";
+                    errorMsg = "Target branch does not match with the loan branch.";
+                } else if (loan.loId != transfer.targetUserId) {
+                    withError = true;
+                    errorMsg = "Target LO does not match with the loan LO.";
+                } else if (loan.groupId != transfer.targetGroupId) {
+                    withError = true;
+                    errorMsg = "Target group does not match with the loan group.";
+                } else if (loan.slotNo != transfer.selectedSlotNo) {
+                    withError = true;
+                    errorMsg = "Selected slot number does not match with the loan slot number.";
+                } else if (transfer.client.length == 0) {
+                    withError = true;
+                    errorMsg = "Selected client data was not properly updated.";
+                } else {
+                    withError = false;
                 }
             }
         }

@@ -2331,6 +2331,8 @@ const CashCollectionDetailsPage = () => {
                 toast.error('Client has not enough MCBU collected.');
             } else if (closeLoan.mcbuReturnAmt == 0) {
                 toast.error('Client has no MCBU collected.');
+            } else if (closeLoan.loanBalance <= 0) {
+                toast.error("Client don't have any loan balance to offset with MCBU.");
             } else {
                 setOffsetUseMCBU(checked);
             }

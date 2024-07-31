@@ -1,17 +1,18 @@
 import React, { useEffect, useState } from "react";
-import TableComponent, { AvatarCell, SelectColumnFilter, StatusPill } from '@/lib/table';
+import TableComponent, { AvatarCell } from '@/lib/table';
 import { fetchWrapper } from "@/lib/fetch-wrapper";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import Spinner from "@/components/Spinner";
 import { toast } from "react-toastify";
 import Dialog from "@/lib/ui/Dialog";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
-import { formatPricePhp, getLastWeekdayOfTheMonth } from "@/lib/utils";
+import { formatPricePhp, getLastWeekdayOfTheMonth, isEndMonthDate } from "@/lib/utils";
 import moment from 'moment'
 
 const RevertTransferPage = () => {
     const holidayList = useSelector(state => state.systemSettings.holidayList);
+    const currentDate = useSelector(state => state.systemSettings.currentDate);
     const isHoliday = useSelector(state => state.systemSettings.holiday);
     const isWeekend = useSelector(state => state.systemSettings.weekend);
     const currentUser = useSelector(state => state.user.data);
@@ -22,11 +23,13 @@ const RevertTransferPage = () => {
     const [showWarningDialog, setShowWarningDialog] = useState(false);
 
     const getList = async () => {
+        const previousMonthEndDate = getLastWeekdayOfTheMonth(moment().subtract(1, 'months').format('YYYY'), moment().subtract(1, 'months').format('MM'), holidayList);
+        const endMonthDate = isEndMonthDate(currentDate, holidayList);
+
         setLoading(true);
-        const previousLastMonthDate = getLastWeekdayOfTheMonth(moment().subtract(1, 'months').format('YYYY'), moment().subtract(1, 'months').format('MM'), holidayList);
         let url = process.env.NEXT_PUBLIC_API_URL + 'transactions/transfer-client/list-history';
         if (currentUser.role.rep === 1) {
-            url = url + '?' + new URLSearchParams({ previousLastMonthDate: previousLastMonthDate });
+            url = url + '?' + new URLSearchParams({ previousLastMonthDate: endMonthDate ? currentDate : previousMonthEndDate });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 const transfertList = [];
@@ -66,7 +69,7 @@ const RevertTransferPage = () => {
                 toast.error(response.message);
             }
         } else if (currentUser.role.rep === 2) {
-            url = url + '?' + new URLSearchParams({ _id: currentUser._id, previousLastMonthDate: previousLastMonthDate });
+            url = url + '?' + new URLSearchParams({ _id: currentUser._id, previousLastMonthDate: endMonthDate ? currentDate : previousMonthEndDate });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 const transfertList = [];
