@@ -998,8 +998,8 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
             };
         }
 
-        let month = yearEnd ? 12 : moment().month() + 1;
-        let year = yearEnd ? moment().year() - 1 : moment().year();
+        let month = yearEnd ? 12 : moment(currentDate).month() + 1;
+        let year = yearEnd ? moment(currentDate).year() - 1 : moment().year();
         if (dateFilter)  {
             month = moment(dateFilter).month() + 1;
             year = moment(dateFilter).year();
