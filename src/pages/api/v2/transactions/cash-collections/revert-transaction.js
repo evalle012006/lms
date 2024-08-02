@@ -200,7 +200,7 @@ async function revert(req, res) {
                                     oldLoId: null
                                 },
                                 where: {
-                                    _id: cashCollection.clientId
+                                    _id: { _eq: cashCollection.clientId }
                                 }
                             })
                         );
