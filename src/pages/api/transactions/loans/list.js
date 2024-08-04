@@ -15,11 +15,11 @@ async function list(req, res) {
     const { branchId, groupId, loId, status, currentUserId, mode, currentDate } = req.query;
 
     if (status) {
-        if (loId && branchId) { // lo
+        if (loId) { // lo
             loans = await db
                 .collection('loans')
                 .aggregate([
-                    { $match: { branchId: branchId, status: status, occurence: mode } },
+                    { $match: { loId: loId, status: status, occurence: mode } },
                     {
                         $addFields: {
                             "branchIdObj": { $toObjectId: "$branchId" },
@@ -73,9 +73,6 @@ async function list(req, res) {
                             from: "groups",
                             localField: "groupIdObj",
                             foreignField: "_id",
-                            pipeline: [
-                                { $match: { "loanOfficerId": loId } }
-                            ],
                             as: "group"
                         }
                     },
@@ -427,11 +424,11 @@ async function list(req, res) {
                 .toArray();
         }
     } else {
-        if (loId && branchId) {
+        if (loId) {
             loans = await db
             .collection('loans')
             .aggregate([
-                { $match: { branchId: branchId, occurence: mode } },
+                { $match: { loId: loId, occurence: mode } },
                 {
                     $addFields: {
                         "branchIdObj": { $toObjectId: "$branchId" },
@@ -471,9 +468,6 @@ async function list(req, res) {
                         from: "groups",
                         localField: "groupIdObj",
                         foreignField: "_id",
-                        pipeline: [
-                            { $match: { "loanOfficerId": loId } }
-                        ],
                         as: "group"
                     }
                 },

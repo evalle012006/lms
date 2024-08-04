@@ -188,7 +188,7 @@ const CashCollectionDetailsPage = () => {
                     selectedLoGroup={selectedLoGroup} handleLoGroupChange={handleLoGroupChange}
                     cohData={cohData}
                 />}
-                <div className='p-4 mt-[8rem]'>
+                <div className='p-4 mt-40'>
                     <ViewByLoanOfficerPage pageNo={2} dateFilter={dateFilter} selectedLoGroup={selectedLoGroup} />
                 </div>
                 <Dialog show={showSubmitDialog}>
