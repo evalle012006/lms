@@ -1,37 +1,18 @@
 /* eslint-disable key-spacing */
 /* eslint-disable no-unused-vars */
 /* eslint-disable react/jsx-key */
-import React from "react";
-import {
-  useTable,
-  useFilters,
-  useGlobalFilter,
-  useAsyncDebounce,
-  useSortBy,
-  usePagination,
-} from "react-table";
-import Avatar from "./avatar";
-import { FileExists } from "./utils";
-import { useState } from "react";
-import SelectDropdown from "./ui/select";
+import React, { useState, useCallback, useMemo } from 'react';
+import { useTable, useFilters, useGlobalFilter, useSortBy, usePagination } from 'react-table';
 import { 
-  PencilIcon, 
-  TrashIcon, 
-  CheckIcon, 
-  XMarkIcon, 
-  LockClosedIcon, 
-  LockOpenIcon,
-  XCircleIcon,
-  ArrowPathIcon,
-  KeyIcon,
-  DocumentIcon,
-  ArrowUturnLeftIcon,
-  ArrowsRightLeftIcon
+  ChevronLeftIcon, ChevronRightIcon, ChevronDoubleLeftIcon, ChevronDoubleRightIcon,
+  PencilIcon, TrashIcon, CheckIcon, XMarkIcon, 
+  LockClosedIcon, LockOpenIcon, XCircleIcon, ArrowPathIcon, 
+  KeyIcon, DocumentIcon, ArrowUturnLeftIcon, ArrowsRightLeftIcon
 } from '@heroicons/react/24/solid';
 import { ExclamationCircleIcon } from '@heroicons/react/24/outline';
-import CheckBox from "./ui/checkbox";
-import { useEffect } from "react";
-import ActionDropDown from "./ui/action-dropdown";
+import CheckBox from './ui/checkbox';
+import ActionDropDown from './ui/action-dropdown';
+import Avatar from './avatar';
 
 // Define a default UI for filtering
 function GlobalFilter({
@@ -286,69 +267,6 @@ export function PageButton({ children, className, ...rest }) {
   );
 }
 
-// const ActionButton = ({ row, rowActionButtons }) => {
-//   const [showMenu, setShowMenu] = useState(false);
-
-//   const handleClick = () => {
-//     setShowMenu(!showMenu);
-//   };
-
-//   return (
-//     <React.Fragment>
-//       <div
-//         className="relative inline-block text-left cursor-pointer"
-//         onClick={handleClick}
-//       >
-//         <svg
-//           xmlns="http://www.w3.org/2000/svg"
-//           className="h-6 w-6"
-//           fill="none"
-//           viewBox="0 0 24 24"
-//           stroke="currentColor"
-//           strokeWidth={2}
-//         >
-//           <path
-//             strokeLinecap="round"
-//             strokeLinejoin="round"
-//             d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
-//           />
-//         </svg>
-//         <div
-//           className={`dropdown-menu-container border border-solid border-gray-13 origin-top-right absolute right-0 mt-2 w-56 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none ${
-//             showMenu ? "block" : "hidden"
-//           }`}
-//           role="menu"
-//           aria-orientation="vertical"
-//           aria-labelledby="menu-button"
-//           tabIndex="-1"
-//         >
-//           <div className="flex flex-col w-56" role="none">
-//             {rowActionButtons &&
-//               rowActionButtons.map((item, index) => {
-//                 return (
-//                   <a
-//                     key={index}
-//                     href="#"
-//                     className="dropdown-menu-item"
-//                     role="menuitem"
-//                     tabIndex="-1"
-//                     id={`'menu-item-'${index}`}
-//                     onClick={() => {
-//                       item.action(row);
-//                       setShowMenu(false);
-//                     }}
-//                   >
-//                     {item.label}
-//                   </a>
-//                 );
-//               })}
-//           </div>
-//         </div>
-//       </div>
-//     </React.Fragment>
-//   );
-// };
-
 const ActionButton = ({ row, rowActionButtons }) => {
   const status = row.original.hasOwnProperty('status') ? row.original.status : '';
   const page = row.original.hasOwnProperty('page') ? row.original.page : '';
@@ -451,11 +369,10 @@ const GenerateButtons = (pageSize) => {
   return comp;
 };
 
-const TableComponent = ({
+const TableComponent = React.memo(({
   columns,
   data,
   showPagination = true,
-  showPaginationBottom = false,
   showFilters = true,
   columnSorting = true,
   showSearch = false,
@@ -467,21 +384,17 @@ const TableComponent = ({
   border = false,
   multiSelect = false,
   multiSelectActionFn = null,
-  pageSize = 50,
+  pageSize: initialPageSize = 30,
   dropDownActions = [],
   actionDropDownDataOptions = [],
   dropDownActionOrigin
 }) => {
-  // Use the state and functions returned from useTable to build your UI
   const {
     getTableProps,
     getTableBodyProps,
     headerGroups,
     prepareRow,
-    page, // Instead of using 'rows', we'll use page,
-    // which has only the rows for the active page
-
-    // The rest of these things are super handy, too ;)
+    page,
     canPreviousPage,
     canNextPage,
     pageOptions,
@@ -490,7 +403,6 @@ const TableComponent = ({
     nextPage,
     previousPage,
     setPageSize,
-    rows,
     state,
     preGlobalFilteredRows,
     setGlobalFilter,
@@ -498,449 +410,210 @@ const TableComponent = ({
     {
       columns,
       data,
-      showPagination,
-      showPaginationBottom,
+      initialState: { pageIndex: 0, pageSize: initialPageSize },
     },
-    useFilters, // useFilters!
+    useFilters,
     useGlobalFilter,
     useSortBy,
-    usePagination // new
+    usePagination
   );
 
   const [selectAll, setSelectAll] = useState(false);
 
-  const handleSelectAll = () => {
+  const handleSelectAll = useCallback(() => {
     setSelectAll(!selectAll);
-    multiSelectActionFn('all', !selectAll);
-  }
+    multiSelectActionFn && multiSelectActionFn('all', !selectAll);
+  }, [selectAll, multiSelectActionFn]);
 
-  const handleSelectRow = (row, index) => {
-    multiSelectActionFn('row', null, row, index);
-  }
+  const handleSelectRow = useCallback((row, index) => {
+    multiSelectActionFn && multiSelectActionFn('row', null, row, index);
+  }, [multiSelectActionFn]);
 
-  useEffect(() => {
-    setPageSize(pageSize);
-  }, [pageSize]);
-
-  // Render the UI for your table
   return (
-    <div className={`relative w-full ${border && 'border rounded border-gray-400 overflow-hidden'}`}>
-      <div className="relative">
-        {showSearch && (
-          <GlobalFilter
-            preGlobalFilteredRows={preGlobalFilteredRows}
-            globalFilter={state.globalFilter}
-            setGlobalFilter={setGlobalFilter}
-          />
-        )}
+    <div className="relative w-full shadow-md rounded-lg overflow-hidden">
+      {title && <h2 className="text-xl font-semibold p-4">{title}</h2>}
+      
+      <div className={`${noPadding ? 'p-1' : 'p-4'} w-full`}>
+        <div className="overflow-x-auto">
+          <table {...getTableProps()} className="w-full text-sm text-left text-gray-500">
+            <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+              {headerGroups.map(headerGroup => (
+                <tr {...headerGroup.getHeaderGroupProps()}>
+                  {multiSelect && (
+                    <th className="px-4 py-3 w-10">
+                      <CheckBox
+                        name="selectAll"
+                        value={selectAll}
+                        onChange={handleSelectAll}
+                        size="md"
+                      />
+                    </th>
+                  )}
+                  {headerGroup.headers.map(column => (
+                    <th 
+                      scope="col" 
+                      className={`px-4 py-3 ${column.width || 'w-auto'}`}
+                      {...column.getHeaderProps(column.getSortByToggleProps())}
+                    >
+                      <div className="flex items-center">
+                        {column.render('Header')}
+                        <span>
+                          {column.isSorted
+                            ? column.isSortedDesc
+                              ? ' 🔽'
+                              : ' 🔼'
+                            : ''}
+                        </span>
+                      </div>
+                    </th>
+                  ))}
+                  {(hasActionButtons || dropDownActions.length > 0) && (
+                    <th scope="col" className="px-4 py-3 w-24">Actions</th>
+                  )}
+                </tr>
+              ))}
+            </thead>
+            <tbody {...getTableBodyProps()}>
+              {page.length > 0 ? (
+                page.map((row, i) => {
+                  prepareRow(row);
+                  const {
+                    root,
+                    delinquent,
+                    totalData,
+                    selected,
+                    disable,
+                    status,
+                    isDraft,
+                    page: pageName,
+                    ldfApproved,
+                    withError: error
+                  } = row.original;
 
-        {showFilters && (
-          <div className="flex flex-row flex-wrap filter-container items-center w-full">
-            <span className="text-gray-12">Filters: </span>
-            {headerGroups.map((headerGroup) =>
-              headerGroup.headers.map((column) =>
-                column.Filter && (
-                  <div className="filter sm:mt-0 mb-2" key={column.id}>
-                    {column.render("Filter")}
-                  </div>
-                )
-              )
-            )}
-          </div>
-        )}
-      </div>
-      {/* table */}
-      <div className={`${noPadding ? 'p-1' : 'p-6 mt-4'} w-full`}>
-        <div className="-my-2 overflow-x-auto -mx-4 sm:-mx-6 lg:-mx-8">
-          <div className="py-2 align-middle inline-block w-auto min-w-full lg:px-4">
-            <div
-              style={{ width: "100%" }}
-              className="table-div overflow-hidden"
-            >
-              {title && <div className="table-title">{title}</div>}
-              <table
-                {...getTableProps()}
-                className="table-component divide-y-custom divide-gray-21"
-              >
-                <thead className="table-head table-row-group">
-                  {headerGroups.map((headerGroup, index) => (
-                    <tr key={index} {...headerGroup.getHeaderGroupProps()}>
+                  const checkBoxDisable = disable || error;
+
+                  let rowClass = 'bg-white border-b hover:bg-gray-50';
+                  if (delinquent === 'Yes' || error) {
+                    rowClass = 'bg-red-100 border-b hover:bg-red-200';
+                  } else if (status === 'open') {
+                    rowClass = 'bg-blue-100 border-b hover:bg-blue-200';
+                  } else if (ldfApproved) {
+                    rowClass = 'bg-green-100 border-b hover:bg-green-200';
+                  }
+
+                  return (
+                    <tr 
+                      {...row.getRowProps()}
+                      className={rowClass}
+                      style={isDraft ? { backgroundColor: "#F9DFB3" } : {}}
+                    >
                       {multiSelect && (
-                        <th scope="col" className="py-4-custom whitespace-nowrap-custom">
-                          <CheckBox name="selectAll"
-                              value={selectAll} 
-                              onChange={handleSelectAll}
-                              size={"md"} 
+                        <td className="px-4 py-3 w-10">
+                          <CheckBox
+                            name={`select-${i}`}
+                            value={selected}
+                            onChange={() => handleSelectRow(row.original, i)}
+                            size="md"
+                            disabled={checkBoxDisable}
                           />
-                        </th>
+                        </td>
                       )}
-                      {headerGroup.headers.map((column) => (
-                        // Add the sorting props to control sorting. For this example
-                        // we can add them into the header props
-                        <th
-                          scope="col"
-                          className="column py-0 pr-0 pl-4 text-left text-gray-500 uppercase tracking-wider m-1"
-                          {...column.getHeaderProps(
-                            column.getSortByToggleProps()
-                          )}
+                      {row.cells.map(cell => (
+                        <td 
+                          {...cell.getCellProps()}
+                          className={`px-4 py-3 ${totalData ? 'font-bold text-red-500' : ''} ${rowClick ? 'cursor-pointer' : ''} ${cell.column.width || 'w-auto'}`}
+                          onClick={() => rowClick && rowClick(row.original)}
                         >
-                          <div className="flex items-center justify-between">
-                            {column.render("Header")}
-                            {/* Add a sort direction indicator */}
-                            {columnSorting && (
-                              <span>
-                                {column.isSorted ? (
-                                  column.isSortedDesc ? (
-                                    <SortDownIcon className="w-4 h-4 text-gray-400" />
-                                  ) : (
-                                    <SortUpIcon className="w-4 h-4 text-gray-400" />
-                                  )
-                                ) : (
-                                  <SortIcon className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100" />
-                                )}
-                              </span>
+                          {cell.render('Cell')}
+                        </td>
+                      ))}
+                      {(hasActionButtons || dropDownActions.length > 0) && (
+                        <td className="px-4 py-3 w-24">
+                          <div className="flex items-center space-x-2">
+                            {hasActionButtons && !root && !row.original.system && (
+                              <ActionButton row={row} rowActionButtons={rowActionButtons} />
+                            )}
+                            {dropDownActions.length > 0 && (
+                              <ActionDropDown
+                                key={i}
+                                data={row.original}
+                                options={dropDownActions}
+                                dataOptions={actionDropDownDataOptions}
+                                origin={dropDownActionOrigin}
+                              />
                             )}
                           </div>
-                        </th>
-                      ))}
-                      {hasActionButtons && (
-                        <th
-                          scope="col"
-                          className="column py-0 pr-0 pl-4 tracking-wider m-1"
-                        >Actions</th>
-                      )}
-                      {dropDownActions.length > 0 && (
-                        <th scope="col" className="column py-0 pr-0 pl-4 tracking-wider m-1"></th>
+                        </td>
                       )}
                     </tr>
-                  ))}
-                </thead>
-                <tbody
-                  {...getTableBodyProps()}
-                  className="bg-white divide-y-custom divide-gray-21 text-gray-500"
-                >
-                    {page.length === 0 ? (
-                        <>
-                            <tr className='text-center'>
-                                <td colSpan={headerGroups[0].headers.length} className="pt-5">
-                                    NO DATA FOUND
-                                </td>
-                            </tr>
-                        </>
-                    ) : (
-                        <>
-                            {page.map((row, i) => {
-                                prepareRow(row);
-                                const root = row.original.root ? row.original.root : false;
-                                const delinquent = row.original.delinquent;
-                                const totalData = row.original.hasOwnProperty('totalData') ? row.original.totalData : false;
-                                const selected = row.original.hasOwnProperty('selected') ? row.original.selected : false;
-                                const disable = row.original.hasOwnProperty('disable') ? row.original.disable : false;
-                                const status = row.original.hasOwnProperty('status') && row.original.status;
-                                const draft = row.original.hasOwnProperty('isDraft') && row.original.isDraft;
-                                const pageName = row.original.hasOwnProperty('page') && row.original.page;
-                                const ldfApproved = row.original.hasOwnProperty('ldfApproved') ? row.original.ldfApproved : false;
-                                const error = row.original.withError ? row.original.withError : false;
-
-                                let checkBoxDisable = false;
-                                if (disable || error) {
-                                  checkBoxDisable = true;
-                                }
-
-                                let bg = 'even:bg-gray-100';
-                                if (delinquent === 'Yes' || error) {
-                                  bg = 'bg-red-100';
-                                } else if (status === 'open') {
-                                  bg = 'bg-blue-200';
-                                } else if (ldfApproved) {
-                                  bg = 'bg-green-100';
-                                }
-
-                                if (draft) {
-                                  return (
-                                    <tr {...row.getRowProps()} className={`hover:bg-slate-200`} style={{ backgroundColor: "#F9DFB3" }}>
-                                        {multiSelect && (
-                                          <td className="py-4-custom whitespace-nowrap-custom" role="cell">
-                                            <CheckBox name={`select-${i}`}
-                                                value={selected} 
-                                                onChange={() => handleSelectRow(row.original, i)}
-                                                size={"md"}
-                                                disabled={checkBoxDisable}
-                                            />
-                                          </td>
-                                        )}
-                                        {row.cells.map((cell) => {
-                                        return (
-                                            <td
-                                              {...cell.getCellProps()}
-                                              className={`px-4 py-3 whitespace-nowrap-custom ${rowClick && 'cursor-pointer'} ${totalData && 'font-bold'}`}
-                                              role="cell"
-                                              onClick={() => rowClick && rowClick(row.original)}
-                                            >
-                                              <React.Fragment>
-                                                {totalData ? (
-                                                  <React.Fragment>
-                                                    {cell.column.Cell.name === "defaultRenderer" ? (
-                                                      <div className={`text-sm !text-red-400`}>
-                                                        {cell.render("Cell")}
-                                                      </div>  
-                                                    ) : (
-                                                        cell.render("Cell")
-                                                    )}
-                                                  </React.Fragment>
-                                                ) : (
-                                                  <React.Fragment>
-                                                    {cell.column.Cell.name === "defaultRenderer" ? (
-                                                      <div className={`text-sm text-gray-500`}>
-                                                        {cell.render("Cell")}
-                                                      </div>  
-                                                    ) : (
-                                                        cell.render("Cell")
-                                                    )}
-                                                  </React.Fragment>
-                                                )}
-                                              </React.Fragment>
-                                            </td>
-                                        );
-                                        })}
-                                        {/* ACTION BUTTON */}
-                                        {(hasActionButtons && !root && !row.original.system) && (
-                                        <td
-                                            className="py-4-custom whitespace-nowrap-custom"
-                                            role="cell"
-                                        >
-                                            <ActionButton
-                                              row={row}
-                                              rowActionButtons={rowActionButtons}
-                                            />
-                                        </td>
-                                        )}
-                                        {(dropDownActions.length > 0) && (
-                                          <td className="py-4-custom whitespace-nowrap-custom" role="cell">
-                                              <ActionDropDown key={i} data={row.original} options={dropDownActions} dataOptions={actionDropDownDataOptions} origin={dropDownActionOrigin} />
-                                          </td>
-                                        )}
-                                    </tr>
-                                  );
-                                } else {
-                                  return (
-                                    <tr {...row.getRowProps()} className={`${bg} hover:bg-slate-200`}>
-                                        {multiSelect && (
-                                          <td className="py-4-custom whitespace-nowrap-custom" role="cell">
-                                            <CheckBox name={`select-${i}`}
-                                                value={selected} 
-                                                onChange={() => handleSelectRow(row.original, i)}
-                                                size={"md"}
-                                                disabled={checkBoxDisable}
-                                            />
-                                          </td>
-                                        )}
-                                        {row.cells.map((cell) => {
-                                        return (
-                                            <td
-                                              {...cell.getCellProps()}
-                                              className={`px-4 py-3 whitespace-nowrap-custom ${rowClick && 'cursor-pointer'} ${totalData && 'font-bold'}`}
-                                              role="cell"
-                                              onClick={() => rowClick && rowClick(row.original)}
-                                            >
-                                              <React.Fragment>
-                                                {totalData ? (
-                                                  <React.Fragment>
-                                                    {cell.column.Cell.name === "defaultRenderer" ? (
-                                                      <div className={`text-sm !text-red-400`}>
-                                                        {cell.render("Cell")}
-                                                      </div>  
-                                                    ) : (
-                                                        cell.render("Cell")
-                                                    )}
-                                                  </React.Fragment>
-                                                ) : (
-                                                  <React.Fragment>
-                                                    {cell.column.Cell.name === "defaultRenderer" ? (
-                                                      <div className={`text-sm text-gray-500`}>
-                                                        {cell.render("Cell")}
-                                                      </div>  
-                                                    ) : (
-                                                        cell.render("Cell")
-                                                    )}
-                                                  </React.Fragment>
-                                                )}
-                                              </React.Fragment>
-                                            </td>
-                                        );
-                                        })}
-                                        {/* ACTION BUTTON */}
-                                        {(hasActionButtons && !root && !row.original.system) && (
-                                        <td
-                                            className="py-4-custom whitespace-nowrap-custom"
-                                            role="cell"
-                                        >
-                                            <ActionButton
-                                              row={row}
-                                              rowActionButtons={rowActionButtons}
-                                            />
-                                        </td>
-                                        )}
-                                        {(dropDownActions.length > 0) && (
-                                          <td className="py-4-custom whitespace-nowrap-custom" role="cell">
-                                              <ActionDropDown key={i} data={row.original} options={dropDownActions} dataOptions={actionDropDownDataOptions} origin={dropDownActionOrigin} />
-                                          </td>
-                                        )}
-                                    </tr>
-                                  );
-                                }
-                            })}
-                        </>
-                    )}
-                </tbody>
-              </table>
-              {/* Pagination */}
-              {(showPagination && rows.length > 0) && (
-                <div className="mt-4 py-3 flex items-center justify-between">
-                  <div style={{ marginRight: 20, marginLeft: 20 }}>
-                    <span className="text-gray-10">
-                      {state.pageIndex + 1}-{state.pageSize} of {rows.length}{" "}
-                      items
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <button
-                      onClick={() => gotoPage(0)}
-                      disabled={!canPreviousPage}
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className={`h-5 w-5 ${
-                          !canPreviousPage ? "text-gray-10" : ""
-                        }`}
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        strokeWidth={2}
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M11 19l-7-7 7-7m8 14l-7-7 7-7"
-                        />
-                      </svg>
-                    </button>{" "}
-                    <div
-                      className="flex items-center justify-between"
-                      style={{ marginRight: 20, marginLeft: 20 }}
-                    >
-                      <button
-                        onClick={() => previousPage()}
-                        disabled={!canPreviousPage}
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className={`h-5 w-5 ${
-                            !canPreviousPage ? "text-gray-10" : ""
-                          }`}
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                          strokeWidth={2}
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M15 19l-7-7 7-7"
-                          />
-                        </svg>
-                      </button>{" "}
-                      <span className="text-slate-300">
-                        <strong>
-                          {GenerateButtons(pageCount).map((value, index) => (
-                            <button key={index}
-                              onClick={(e) => {
-                                // console.log(e.target.value);
-                                const page = value ? Number(value) - 1 : 0;
-                                gotoPage(page);
-                              }}
-                              className={`py-1 px-2 font-medium ${
-                                state.pageIndex + 1 === value
-                                  ? "bg-main m-3 rounded-md text-white"
-                                  : "text-gray-10"
-                              } `}
-                            >
-                              {value}
-                            </button>
-                          ))}
-                        </strong>{" "}
-                      </span>
-                      <button
-                        onClick={() => nextPage()}
-                        disabled={!canNextPage}
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className={`h-5 w-5 ${
-                            !canNextPage ? "text-gray-10" : ""
-                          }`}
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                          strokeWidth={2}
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M9 5l7 7-7 7"
-                          />
-                        </svg>
-                      </button>{" "}
-                    </div>
-                    <button
-                      onClick={() => gotoPage(pageCount - 1)}
-                      disabled={!canNextPage}
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className={`h-5 w-5 ${
-                          !canNextPage ? "text-gray-10" : ""
-                        }`}
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        strokeWidth={2}
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M13 5l7 7-7 7M5 5l7 7-7 7"
-                        />
-                      </svg>
-                    </button>{" "}
-                  </div>
-
-                  <div style={{ marginRight: 20, marginLeft: 20 }}>
-                    <span className="text-gray-10">View</span>
-                    <select
-                      className="text-gray-10 border-none"
-                      value={state.pageSize}
-                      onChange={(e) => {
-                        setPageSize(Number(e.target.value));
-                      }}
-                    >
-                      {[5, 10, 15, 20, 25].map((pageSize, index) => (
-                        <option key={index} value={pageSize}>
-                          {pageSize}
-                        </option>
-                      ))}
-                    </select>{" "}
-                    <span className="text-gray-10">Items per Page</span>
-                  </div>
-                </div>
-              )}
+                  );
+                }) 
+              ) : (
+                  <tr>
+                    <td colSpan={columns.length + (multiSelect ? 1 : 0) + ((hasActionButtons || dropDownActions.length > 0) ? 1 : 0)} className="px-4 py-8 text-center text-gray-500">
+                      NO DATA
+                    </td>
+                  </tr>
+                )}
+            </tbody>
+          </table>
+        </div>
+        
+        {/* Pagination */}
+        {showPagination && page.length > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-end space-y-3 sm:space-y-0 mt-4">
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-700 mr-4">
+                Page <span className="font-medium">{state.pageIndex + 1}</span> of{' '}
+                <span className="font-medium">{pageOptions.length}</span>
+              </span>
+              <button
+                onClick={() => gotoPage(0)}
+                disabled={!canPreviousPage}
+                className="p-1 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+              >
+                <ChevronDoubleLeftIcon className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => previousPage()}
+                disabled={!canPreviousPage}
+                className="p-1 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+              >
+                <ChevronLeftIcon className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => nextPage()}
+                disabled={!canNextPage}
+                className="p-1 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+              >
+                <ChevronRightIcon className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => gotoPage(pageCount - 1)}
+                disabled={!canNextPage}
+                className="p-1 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+              >
+                <ChevronDoubleRightIcon className="w-5 h-5" />
+              </button>
+              <select
+                value={state.pageSize}
+                onChange={e => {
+                  setPageSize(Number(e.target.value));
+                }}
+                className="block w-20 px-2 py-1 text-sm text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              >
+                {[10, 20, 30, 40, 50].map(pageSize => (
+                  <option key={pageSize} value={pageSize}>
+                    {pageSize}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
-};
+});
 
 export default TableComponent;
