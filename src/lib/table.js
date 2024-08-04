@@ -440,7 +440,7 @@ const TableComponent = React.memo(({
               {headerGroups.map(headerGroup => (
                 <tr {...headerGroup.getHeaderGroupProps()}>
                   {multiSelect && (
-                    <th className="px-4 py-3">
+                    <th className="px-4 py-3 w-10">
                       <CheckBox
                         name="selectAll"
                         value={selectAll}
@@ -452,7 +452,7 @@ const TableComponent = React.memo(({
                   {headerGroup.headers.map(column => (
                     <th 
                       scope="col" 
-                      className="px-4 py-3"
+                      className={`px-4 py-3 ${column.width || 'w-auto'}`}
                       {...column.getHeaderProps(column.getSortByToggleProps())}
                     >
                       <div className="flex items-center">
@@ -468,7 +468,7 @@ const TableComponent = React.memo(({
                     </th>
                   ))}
                   {(hasActionButtons || dropDownActions.length > 0) && (
-                    <th scope="col" className="px-4 py-3">Actions</th>
+                    <th scope="col" className="px-4 py-3 w-24">Actions</th>
                   )}
                 </tr>
               ))}
@@ -508,7 +508,7 @@ const TableComponent = React.memo(({
                       style={isDraft ? { backgroundColor: "#F9DFB3" } : {}}
                     >
                       {multiSelect && (
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3 w-10">
                           <CheckBox
                             name={`select-${i}`}
                             value={selected}
@@ -521,14 +521,14 @@ const TableComponent = React.memo(({
                       {row.cells.map(cell => (
                         <td 
                           {...cell.getCellProps()}
-                          className={`px-4 py-3 ${totalData ? 'font-bold text-red-500' : ''} ${rowClick ? 'cursor-pointer' : ''}`}
+                          className={`px-4 py-3 ${totalData ? 'font-bold text-red-500' : ''} ${rowClick ? 'cursor-pointer' : ''} ${cell.column.width || 'w-auto'}`}
                           onClick={() => rowClick && rowClick(row.original)}
                         >
                           {cell.render('Cell')}
                         </td>
                       ))}
                       {(hasActionButtons || dropDownActions.length > 0) && (
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3 w-24">
                           <div className="flex items-center space-x-2">
                             {hasActionButtons && !root && !row.original.system && (
                               <ActionButton row={row} rowActionButtons={rowActionButtons} />

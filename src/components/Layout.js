@@ -10,7 +10,15 @@ import { getLastWeekdayOfTheMonth } from "@/lib/utils";
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/solid';
 import useIsMobile from "@/lib/useIsMobile";
 
-const Layout = ({ children, bgwhite = false, header = true, noPad = false, actionButtons = [], hScroll = true }) => {
+const Layout = ({ 
+    children, 
+    bgwhite = false, 
+    header = true, 
+    noPad = false, 
+    actionButtons = [], 
+    vScroll = false,  // New prop for vertical scroll
+    hScroll = true  // Changed default to false for horizontal scroll
+  }) => {
     const state = useSelector(state => state.global);
     const pageTitle = state.title;
     const dispatch = useDispatch();
@@ -107,7 +115,7 @@ const Layout = ({ children, bgwhite = false, header = true, noPad = false, actio
     return (
         <div className="flex bg-white">
             <NavComponent isVisible={isNavVisible} toggleNav={toggleNav} isMobile={isMobile} />
-            <div className={`flex flex-col bg-neutral-200 duration-300 min-h-screen ${isNavVisible && !isMobile ? 'lg:ml-64' : 'ml-0'} flex-1`}>
+            <div className={`flex flex-col bg-neutral-200 duration-300 min-h-full ${isNavVisible && !isMobile ? 'lg:ml-64' : 'ml-0'} flex-1`}>
                 {header && (
                     <div className="bg-white p-6 gap-6 h-20">
                         <div className="flex flex-row justify-between items-center">
@@ -135,8 +143,13 @@ const Layout = ({ children, bgwhite = false, header = true, noPad = false, actio
                         </div>
                     </div>
                 )}
-                <div className={`${bgwhite ? 'bg-white' : ''} flex-grow ${hScroll ? 'overflow-x-auto' : ''}`}>
-                    {children}
+                <div className={`
+                    ${bgwhite ? 'bg-white' : ''} 
+                    flex-grow 
+                    ${vScroll ? 'overflow-y-auto' : 'overflow-y-hidden'}
+                    ${hScroll ? 'overflow-x-auto' : 'overflow-x-hidden'}
+                    `}>
+                        {children}
                 </div>
             </div>
         </div>

@@ -6,6 +6,7 @@ import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { useSelector } from "react-redux";
 import moment from 'moment';
 import TableComponent from '@/lib/table';
+import { useMemo } from "react";
 
 const ViewByDivisionPage = ({dateFilter, type, selectedBranchGroup, viewMode}) => {
     const [loading, setLoading] = useState(true);
@@ -16,180 +17,105 @@ const ViewByDivisionPage = ({dateFilter, type, selectedBranchGroup, viewMode}) =
     const isWeekend = useSelector(state => state.systemSettings.weekend);
     const [divisionCollectionData, setDivisionCollectionData] = useState([]);
 
-    const [columns, setColumns] = useState();
-
-    useEffect(() => {
-        let cols = [];
-        if (type === 'daily') {
-            cols = [
-                {
-                    Header: "Division Name",
-                    accessor: 'name'
-                },
-                {
-                    Header: "Active Clients", // total number of clients per group
-                    accessor: 'activeClients'
-                },
-                {
-                    Header: "Total Loan Releases",
-                    accessor: 'totalReleasesStr'
-                },
-                {
-                    Header: "Active Borrowers", // with balance
-                    accessor: 'activeBorrowers'
-                },
-                {
-                    Header: "Total Loan Balance",
-                    accessor: 'totalLoanBalanceStr'
-                },
-                {
-                    Header: "Current Release Person",
-                    accessor: 'noCurrentReleaseStr'
-                },
-                {
-                    Header: "Current Release Amount",
-                    accessor: 'currentReleaseAmountStr'
-                },
-                {
-                    Header: "Target Loan Collection",
-                    accessor: 'loanTargetStr'
-                },
-                {
-                    Header: "Excess",
-                    accessor: 'excessStr'
-                },
-                {
-                    Header: "Actual Loan Collection",
-                    accessor: 'totalStr'
-                },
-                {
-                    Header: "Full Payment Person",
-                    accessor: 'noOfFullPayment'
-                },
-                {
-                    Header: "Full Payment Amount",
-                    accessor: 'fullPaymentAmountStr'
-                },
-                {
-                    Header: "Mispay",
-                    accessor: 'mispaymentStr'
-                },
-                {
-                    Header: "PD #",
-                    accessor: 'noPastDue'
-                },
-                {
-                    Header: "PD Amount",
-                    accessor: 'pastDueStr'
-                },
-                {
-                    Header: "PND",
-                    accessor: 'pendingClients'
-                }
-            ];
-        } else {
-            cols = [
-                {
-                    Header: "Division Name",
-                    accessor: 'name'
-                },
-                {
-                    Header: "Active Clients", // total number of clients per group
-                    accessor: 'activeClients'
-                },
-                {
-                    Header: "MCBU",
-                    accessor: 'mcbuStr'
-                },
-                {
-                    Header: "Total Loan Releases",
-                    accessor: 'totalReleasesStr'
-                },
-                {
-                    Header: "Active Borrowers", // with balance
-                    accessor: 'activeBorrowers'
-                },
-                {
-                    Header: "Total Loan Balance",
-                    accessor: 'totalLoanBalanceStr'
-                },
-                {
-                    Header: "Current Release Person",
-                    accessor: 'noCurrentReleaseStr'
-                },
-                {
-                    Header: "Current Release Amount",
-                    accessor: 'currentReleaseAmountStr'
-                },
-                {
-                    Header: "MCBU Collection",
-                    accessor: 'mcbuColStr'
-                },
-                {
-                    Header: "Target Loan Collection",
-                    accessor: 'loanTargetStr'
-                },
-                {
-                    Header: "Excess",
-                    accessor: 'excessStr'
-                },
-                {
-                    Header: "Actual Loan Collection",
-                    accessor: 'totalStr'
-                },
-                {
-                    Header: "MCBU Withdrawal",
-                    accessor: 'mcbuWithdrawalStr'
-                },
-                // {
-                //     Header: "MCBU Withdrawal",
-                //     accessor: 'mcbuDailyWithdrawalStr'
-                // },
-                {
-                    Header: "# MCBU Return",
-                    accessor: 'noMcbuReturn'
-                },
-                {
-                    Header: "MCBU Return",
-                    accessor: 'mcbuReturnAmtStr'
-                },
-                {
-                    Header: "Full Payment Person",
-                    accessor: 'noOfFullPayment'
-                },
-                {
-                    Header: "Full Payment Amount",
-                    accessor: 'fullPaymentAmountStr'
-                },
-                {
-                    Header: "Mispay",
-                    accessor: 'mispayment'
-                },
-                {
-                    Header: "PD #",
-                    accessor: 'noPastDue'
-                },
-                {
-                    Header: "PD Amount",
-                    accessor: 'pastDueStr'
-                },
-                {
-                    Header: "PND",
-                    accessor: 'pendingClients'
-                },
-                {
-                    Header: "TOC",
-                    accessor: 'transfer'
-                },
-                {
-                    Header: "COH",
-                    accessor: 'cohStr'
-                }
-            ];
+    const columns = useMemo(() => [
+        {
+            Header: "Division Name",
+            accessor: 'name',
+            width: 'w-26'
+        },
+        {
+            Header: "Active Clients", // total number of clients per group
+            accessor: 'activeClients'
+        },
+        {
+            Header: "MCBU",
+            accessor: 'mcbuStr'
+        },
+        {
+            Header: "Total Loan Releases",
+            accessor: 'totalReleasesStr'
+        },
+        {
+            Header: "Active Borrowers", // with balance
+            accessor: 'activeBorrowers'
+        },
+        {
+            Header: "Total Loan Balance",
+            accessor: 'totalLoanBalanceStr'
+        },
+        {
+            Header: "Current Release Person",
+            accessor: 'noCurrentReleaseStr'
+        },
+        {
+            Header: "Current Release Amount",
+            accessor: 'currentReleaseAmountStr'
+        },
+        {
+            Header: "MCBU Collection",
+            accessor: 'mcbuColStr'
+        },
+        {
+            Header: "Target Loan Collection",
+            accessor: 'loanTargetStr'
+        },
+        {
+            Header: "Excess",
+            accessor: 'excessStr'
+        },
+        {
+            Header: "Actual Loan Collection",
+            accessor: 'totalStr'
+        },
+        {
+            Header: "MCBU Withdrawal",
+            accessor: 'mcbuWithdrawalStr'
+        },
+        // {
+        //     Header: "MCBU Withdrawal",
+        //     accessor: 'mcbuDailyWithdrawalStr'
+        // },
+        {
+            Header: "# MCBU Return",
+            accessor: 'noMcbuReturn'
+        },
+        {
+            Header: "MCBU Return",
+            accessor: 'mcbuReturnAmtStr'
+        },
+        {
+            Header: "Full Payment Person",
+            accessor: 'noOfFullPayment'
+        },
+        {
+            Header: "Full Payment Amount",
+            accessor: 'fullPaymentAmountStr'
+        },
+        {
+            Header: "Mispay",
+            accessor: 'mispayment'
+        },
+        {
+            Header: "PD #",
+            accessor: 'noPastDue'
+        },
+        {
+            Header: "PD Amount",
+            accessor: 'pastDueStr'
+        },
+        {
+            Header: "PND",
+            accessor: 'pendingClients'
+        },
+        {
+            Header: "TOC",
+            accessor: 'transfer'
+        },
+        {
+            Header: "COH",
+            accessor: 'cohStr'
         }
-
-        setColumns(cols);
-    }, []);
+    ])
 
     // const handleRowClick = (selected) => {
     //     if (!selected?.totalData) {
