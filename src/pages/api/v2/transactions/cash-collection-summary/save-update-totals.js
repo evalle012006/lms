@@ -17,7 +17,7 @@ export default apiHandler({
 async function processLOSTotals(req, res) {
     const data = req.body;
 
-    const lo = await findUsers(data.userId);
+    const lo = await findUsers({ _id: { _eq: data.userId } });
     let officeType;
     if (lo.length > 0) {
         if (lo[0].role.rep == 4) {
