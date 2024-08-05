@@ -128,7 +128,7 @@ const WeeklyCashCollectionDetailsPage = () => {
                     dateFilter={dateFilter} handleDateFilter={handleDateFilter}
                     selectedLoGroup={selectedLoGroup} handleLoGroupChange={handleLoGroupChange}
                 />}
-                <div className='p-4 mt-[8rem]'>
+                <div className='p-4 mt-40'>
                     <ViewByLoanOfficerPage pageNo={2} dateFilter={dateFilter} type={'weekly'} />
                 </div>
             </div>

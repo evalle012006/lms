@@ -8,6 +8,7 @@ import { useRouter } from "node_modules/next/router";
 import moment from 'moment';
 import { setCashCollectionBranch } from "@/redux/actions/cashCollectionActions";
 import { getApiBaseUrl } from "@/lib/constants";
+import { useMemo } from "react";
 
 const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup, viewMode}) => {
     const dispatch = useDispatch();
@@ -48,247 +49,146 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup, viewMode}) => 
         }
     }
 
-    const [columns, setColumns] = useState();
-
     const handleRowClick = (selected) => {
         if (!selected?.totalData) {
             router.push(`/transactions/branch-manager/cash-collection/users/${selected._id}`);
             localStorage.setItem('selectedBranch', selected._id);
         }
     };
-
-    useEffect(() => {
-        let cols = [];
-        if (type === 'daily') {
-            cols = [
-                {
-                    Header: "Branch Name",
-                    accessor: 'name',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Active Clients", // total number of clients per group
-                    accessor: 'activeClients',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Total Loan Releases",
-                    accessor: 'totalReleasesStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Active Borrowers", // with balance
-                    accessor: 'activeBorrowers',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Total Loan Balance",
-                    accessor: 'totalLoanBalanceStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Current Release Person",
-                    accessor: 'noCurrentReleaseStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Current Release Amount",
-                    accessor: 'currentReleaseAmountStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Target Loan Collection",
-                    accessor: 'loanTargetStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Excess",
-                    accessor: 'excessStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Actual Loan Collection",
-                    accessor: 'totalStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Full Payment Person",
-                    accessor: 'noOfFullPayment',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Full Payment Amount",
-                    accessor: 'fullPaymentAmountStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Mispay",
-                    accessor: 'mispaymentStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "PD #",
-                    accessor: 'noPastDue'
-                },
-                {
-                    Header: "PD Amount",
-                    accessor: 'pastDueStr'
-                },
-                {
-                    Header: "PND",
-                    accessor: 'pendingClients'
-                }
-            ];
-        } else {
-            cols = [
-                {
-                    Header: "Branch Name",
-                    accessor: 'name',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Active Clients", // total number of clients per group
-                    accessor: 'activeClients',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "MCBU",
-                    accessor: 'mcbuStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Total Loan Releases",
-                    accessor: 'totalReleasesStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Active Borrowers", // with balance
-                    accessor: 'activeBorrowers',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Total Loan Balance",
-                    accessor: 'totalLoanBalanceStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Current Release Person",
-                    accessor: 'noCurrentReleaseStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Current Release Amount",
-                    accessor: 'currentReleaseAmountStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "MCBU Collection",
-                    accessor: 'mcbuColStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Target Loan Collection",
-                    accessor: 'loanTargetStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Excess",
-                    accessor: 'excessStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Actual Loan Collection",
-                    accessor: 'totalStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "MCBU Withdrawal",
-                    accessor: 'mcbuWithdrawalStr',
-                },
-                // {
-                //     Header: "MCBU Withdrawal",
-                //     accessor: 'mcbuDailyWithdrawalStr'
-                // },
-                {
-                    Header: "# MCBU Return",
-                    accessor: 'noMcbuReturn',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "MCBU Return",
-                    accessor: 'mcbuReturnAmtStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Full Payment Person",
-                    accessor: 'noOfFullPayment',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Full Payment Amount",
-                    accessor: 'fullPaymentAmountStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "Mispay",
-                    accessor: 'mispaymentStr',
-                    Filter: SelectColumnFilter,
-                    filter: 'includes'
-                },
-                {
-                    Header: "PD #",
-                    accessor: 'noPastDue'
-                },
-                {
-                    Header: "PD Amount",
-                    accessor: 'pastDueStr'
-                },
-                {
-                    Header: "PND",
-                    accessor: 'pendingClients'
-                },
-                {
-                    Header: "TOC",
-                    accessor: 'transfer'
-                },
-                {
-                    Header: "COH",
-                    accessor: 'cohStr'
-                }
-            ];
+    
+    const columns = useMemo(() => [
+        {
+            Header: "Branch Name",
+            accessor: 'name',
+            Filter: SelectColumnFilter,
+            filter: 'includes',
+            width: 'w-2/6'
+        },
+        {
+            Header: "Active Clients", // total number of clients per group
+            accessor: 'activeClients',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "MCBU",
+            accessor: 'mcbuStr',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "Total Loan Releases",
+            accessor: 'totalReleasesStr',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "Active Borrowers", // with balance
+            accessor: 'activeBorrowers',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "Total Loan Balance",
+            accessor: 'totalLoanBalanceStr',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "Current Release Person",
+            accessor: 'noCurrentReleaseStr',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "Current Release Amount",
+            accessor: 'currentReleaseAmountStr',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "MCBU Collection",
+            accessor: 'mcbuColStr',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "Target Loan Collection",
+            accessor: 'loanTargetStr',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "Excess",
+            accessor: 'excessStr',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "Actual Loan Collection",
+            accessor: 'totalStr',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "MCBU Withdrawal",
+            accessor: 'mcbuWithdrawalStr',
+        },
+        // {
+        //     Header: "MCBU Withdrawal",
+        //     accessor: 'mcbuDailyWithdrawalStr'
+        // },
+        {
+            Header: "# MCBU Return",
+            accessor: 'noMcbuReturn',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "MCBU Return",
+            accessor: 'mcbuReturnAmtStr',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "Full Payment Person",
+            accessor: 'noOfFullPayment',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "Full Payment Amount",
+            accessor: 'fullPaymentAmountStr',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "Mispay",
+            accessor: 'mispaymentStr',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "PD #",
+            accessor: 'noPastDue'
+        },
+        {
+            Header: "PD Amount",
+            accessor: 'pastDueStr'
+        },
+        {
+            Header: "PND",
+            accessor: 'pendingClients'
+        },
+        {
+            Header: "TOC",
+            accessor: 'transfer'
+        },
+        {
+            Header: "COH",
+            accessor: 'cohStr'
         }
-
-        setColumns(cols);
-    }, []);
+    ]);
 
     useEffect(() => {
         let mounted = true;

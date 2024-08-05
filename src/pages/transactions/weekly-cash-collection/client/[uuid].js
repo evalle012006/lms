@@ -827,8 +827,8 @@ const CashCollectionDetailsPage = () => {
                             amountReleaseStr: 0, 
                             loanBalance: 0,
                             loanBalanceStr: 0,
-                            targetCollection: currentLoan.history?.activeLoan,
-                            targetCollectionStr: formatPricePhp(currentLoan.history?.activeLoan),
+                            targetCollection: currentLoan.history?.activeLoan ? currentLoan.history.activeLoan : 0,
+                            targetCollectionStr: currentLoan.history?.activeLoan ? formatPricePhp(currentLoan.history.activeLoan) : '-',
                             mispayment: currentLoan.mispayment,
                             mispaymentStr: currentLoan.mispayment ? 'Yes' : 'No',
                             noMispayment: currentLoan.noMispayment,
@@ -847,10 +847,10 @@ const CashCollectionDetailsPage = () => {
                             mcbuReturnAmtStr: currentLoan.mcbuReturnAmt > 0 ? formatPricePhp(currentLoan.mcbuReturnAmt) : '-',
                             mcbuInterest: loan.mcbuInterest,
                             mcbuInterestStr: loan.mcbuInterest > 0 ? formatPricePhp(loan.mcbuInterest) : '-',
-                            excess: currentLoan.history?.excess,
-                            excessStr: formatPricePhp(currentLoan.history?.excess),
-                            paymentCollection: currentLoan.history.collection,
-                            paymentCollectionStr: formatPricePhp(currentLoan.history?.collection),
+                            excess: currentLoan.history?.excess ? currentLoan.history.excess : 0,
+                            excessStr: currentLoan.history?.excess ? formatPricePhp(currentLoan.history.excess) : '-',
+                            paymentCollection: currentLoan.history?.collection ? currentLoan.history.collection : 0,
+                            paymentCollectionStr: currentLoan.history?.collection ? formatPricePhp(currentLoan.history.collection) : '-',
                             remarks: currentLoan.history?.remarks,
                             fullPayment: currentLoan.fullPayment,
                             fullPaymentStr: currentLoan.fullPayment ? currentLoan.fullPaymentStr : 0,
@@ -937,6 +937,13 @@ const CashCollectionDetailsPage = () => {
                             cashCollection[index].prevData = loan.current[0].prevData;
                             cashCollection[index].mcbuCol = loan.current[0].mcbuCol;
                             cashCollection[index].mcbuColStr = loan.current[0].mcbuCol > 0 ? formatPricePhp(loan.current[0].mcbuCol) : '-';
+                            cashCollection[index].targetCollection = loan.current[0].history?.activeLoan ? loan.current[0].history.activeLoan : 0;
+                            cashCollection[index].targetCollectionStr = loan.current[0].history?.activeLoan ? formatPricePhp(loan.current[0].history.activeLoan) : '-';
+                            cashCollection[index].excess = loan.current[0].history?.excess ? loan.current[0].history?.excess : 0;
+                            cashCollection[index].excessStr = loan.current[0].history?.excess ? formatPricePhp(loan.current[0].history?.excess) : '-';
+                            cashCollection[index].paymentCollection = loan.current[0].history?.collection ? loan.current[0].history?.collection : 0;
+                            cashCollection[index].paymentCollectionStr = loan.current[0].history?.collection ? formatPricePhp(loan.current[0].history?.collection) : '-';
+                            cashCollection[index].remarks = loan.current[0].history?.remarks;
                         }
                     }
 
@@ -2715,7 +2722,7 @@ const CashCollectionDetailsPage = () => {
                         handleSaveUpdate={handleSaveUpdate} data={allData} setData={setFilteredData} allowMcbuWithdrawal={allowMcbuWithdrawal} allowOffsetTransaction={allowOffsetTransaction}
                         dateFilter={dateFilter} setDateFilter={setDateFilter} handleDateFilter={handleDateFilter} currentGroup={uuid} revertMode={revertMode}
                         groupFilter={groupFilter} handleGroupFilter={handleGroupFilter} groupTransactionStatus={groupSummaryIsClose ? 'close' : 'open'} 
-                        changeRemarks={changeRemarks} addMcbuInterest={addMcbuInterest} handleShowWarningDialog={handleShowWarningDialog} />}
+                        changeRemarks={changeRemarks} addMcbuInterest={addMcbuInterest} handleShowWarningDialog={handleShowWarningDialog} loading={loading} />}
                     <div className="px-4 mt-[12rem] mb-[4rem] overflow-y-auto min-h-[55rem]">
                         <div className="bg-white flex flex-col rounded-md pt-0 pb-2 px-6 overflow-auto h-[46rem]">
                             <table className="table-auto border-collapse text-sm">

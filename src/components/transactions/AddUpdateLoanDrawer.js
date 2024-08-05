@@ -14,7 +14,7 @@ import moment from 'moment'
 import SelectDropdown from "@/lib/ui/select";
 import SideBar from "@/lib/ui/SideBar";
 import RadioButton from "@/lib/ui/radio-button";
-import { setGroup, setGroupList } from "@/redux/actions/groupActions";
+import { setGroupList } from "@/redux/actions/groupActions";
 import { setClientList, setComakerList } from "@/redux/actions/clientActions";
 import { UppercaseFirstLetter, formatPricePhp } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/constants";
@@ -408,14 +408,31 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         }
     }
 
+    const getLastPNNumber = async () => {
+        const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/get-last-pn-number-by-branch?' + new URLSearchParams({ branchId: currentBranch._id, currentDate: currentDate }));
+        if (response.success) {
+            const form = formikRef.current;
+            if (response.data.length > 0) {
+                const lastPNNumber = response.data[0];
+                const numberPart = lastPNNumber.maxNumber + 1;
+                const pnNumber = `${currentUser.designatedBranch}-${moment(currentDate).format('MM-DD')}-${numberPart.toString().padStart(3, '0')}`;
+                form.setFieldValue('pnNumber', pnNumber);
+            } else {
+                const pnNumber = `${currentUser.designatedBranch}-${moment(currentDate).format('MM-DD')}-001`;
+                form.setFieldValue('pnNumber', pnNumber);
+            }
+        }
+    }
+
     const handlePNNumber = async (e) => {
         const pnNumber = e.target.value;
         if (pnNumber && currentBranch) {
-            const response = await fetchWrapper.get(getApiBaseUrl() + 'transactions/loans/check-existing-pn-number-by-branch?' + new URLSearchParams({ branchId: currentBranch._id, pnNumber: pnNumber }));
+            const response = await fetchWrapper.get(getApiBaseUrl() + 'transactions/loans/check-existing-pn-number-by-branch?' + new URLSearchParams({ branchId: currentBranch._id, pnNumber: pnNumber, currentDate: currentDate }));
             if (response.success) {
                 if (response.loans.length > 0) {
-                    const form = formikRef.current;
-                    form.setFieldValue('pnNumber', '');
+                    // const form = formikRef.current;
+                    await getLastPNNumber()
+                    // form.setFieldValue('pnNumber', '');
                     toast.error(response.message);
                 }
             }
@@ -1004,6 +1021,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                             value={values.pnNumber}
                                             onChange={handleChange}
                                             onBlur={handlePNNumber}
+                                            onFocus={getLastPNNumber}
                                             label="Promisory Note Number"
                                             placeholder="Enter PN Number"
                                             setFieldValue={setFieldValue}

@@ -1400,8 +1400,10 @@ async function processData(data, date, currentDate) {
                 branch.transferDailyGiverDetails.map(giver => {    
                     if (filter) {
                         collection.activeClients -= 1;
+                        noOfClients -= 1;
                         if (giver.status !== "completed") {
                             collection.activeBorrowers -= 1;
+                            noOfBorrowers -= 1;
                         }
                     }
 
@@ -1437,8 +1439,10 @@ async function processData(data, date, currentDate) {
                     if (!filter) {
                         if (rcv.status !== 'pending') {
                             collection.activeClients += 1;
+                            noOfClients += 1;
                             if (rcv.status !== "completed") {
                                 collection.activeBorrowers += 1;
+                                noOfBorrowers += 1;
                             }
                             collection.mcbu += rcv.mcbu ? rcv.mcbu : 0;
 
@@ -1476,8 +1480,10 @@ async function processData(data, date, currentDate) {
                 branch.transferWeeklyGiverDetails.map(giver => {
                     if (filter) {
                         collection.activeClients -= 1;
+                        noOfClients -= 1;
                         if (giver.status !== "completed") {
                             collection.activeBorrowers -= 1;
+                            noOfBorrowers -= 1;
                         }
                     }
                     collection.mcbu -= giver.mcbu;
@@ -1511,8 +1517,10 @@ async function processData(data, date, currentDate) {
                     if (!filter) {
                         if (rcv.status !== 'pending') {
                             collection.activeClients += 1;
+                            noOfClients += 1;
                             if (rcv.status !== "completed") {
                                 collection.activeBorrowers += 1;
+                                noOfBorrowers += 1;
                             }
                             collection.mcbu += rcv.mcbu ? rcv.mcbu : 0;
 
@@ -1557,7 +1565,7 @@ async function processData(data, date, currentDate) {
                 collection.activeClients = collection.activeClients > -1 ? collection.activeClients : 0;
                 collection.activeBorrowers = collection.activeBorrowers > -1 ? collection.activeBorrowers : 0;
             }
-            
+
             collection.transfer = transfer;
             collection.transferStr = transfer >= 0 ? transfer : `(${transfer * -1})`;
             totalTransfer += transfer;
