@@ -123,6 +123,16 @@ async function getAllLoanTransactionsByBranch(db, branchId, month, year) {
 
 function processData(rawData, root) {
     return rawData.map((loan, index) => {
+        let principalLoan = loan.principalLoan;
+        if (principalLoan == 0 || principalLoan == null) {
+            if (loan?.loanAmount || loan?.loanAmount > 0) {
+                principalLoan = loan.loanAmount;
+            } else {
+                principalLoan = 5000;
+            }
+        }
+
+        const amountRelease = principalLoan * 1.20;
         if (root) {
             const branchName = loan?.branch[0]?.name;
             return {
@@ -130,14 +140,14 @@ function processData(rawData, root) {
                 clientName: loan?.client[0]?.fullName,
                 branchName: branchName.toUpperCase(),
                 loanPrincipal: loan.principalLoan,
-                amountRelease: loan.amountRelease
+                amountRelease: amountRelease
             };
         } else {
             return {
                 index: index,
                 clientName: loan?.client[0]?.fullName,
                 loanPrincipal: loan.principalLoan,
-                amountRelease: loan.amountRelease
+                amountRelease: amountRelease
             };
         }
     });
