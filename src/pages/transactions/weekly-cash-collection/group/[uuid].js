@@ -192,7 +192,7 @@ const WeeklyCashCollectionDetailsPage = () => {
                         selectedLO={currentLO} handleLOFilter={handleLOFilter} handleSubmit={handleShowSubmitDialog}
                         dateFilter={dateFilter} handleDateFilter={handleDateFilter}
                     />}
-                    <div className='p-4 mt-[8rem]'>
+                    <div className='p-4 mt-40'>
                         <ViewCashCollectionPage pageNo={2} dateFilter={dateFilter} type={'weekly'} />
                     </div>
                     <Dialog show={showSubmitDialog}>

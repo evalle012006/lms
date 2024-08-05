@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
 import { PlusIcon } from '@heroicons/react/24/solid';
-import TableComponent, { AvatarCell, SelectCell, SelectColumnFilter, StatusPill } from '@/lib/table';
+import TableComponent, { StatusPill } from '@/lib/table';
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { useDispatch, useSelector } from "react-redux";
 import Spinner from "@/components/Spinner";
@@ -13,18 +13,18 @@ import ButtonSolid from "@/lib/ui/ButtonSolid";
 import { setDuplicateLoanList, setFilteredLoanList, setFilteredPendingLoanList, setFilteredTomorrowLoanList, setLoanList, setPendingLoanList, setTomorrowLoanList } from "@/redux/actions/loanActions";
 import { setGroupList } from "@/redux/actions/groupActions";
 import { setClient, setClientList } from "@/redux/actions/clientActions";
-import { formatPricePhp, getEndDate, getTotal, UppercaseFirstLetter } from "@/lib/utils";
+import { formatPricePhp, getEndDate, getMonths, getTotal, getYears, UppercaseFirstLetter } from "@/lib/utils";
 import AddUpdateLoan from "@/components/transactions/AddUpdateLoanDrawer";
 import moment from 'moment';
 import { TabPanel, useTabs } from "react-headless-tabs";
 import { TabSelector } from "@/lib/ui/tabSelector";
 import { setUserList } from "@/redux/actions/userActions";
 import Select from 'react-select';
-import { DropdownIndicator, borderStyles, borderStylesDynamic } from "@/styles/select";
+import { DropdownIndicator, borderStyles } from "@/styles/select";
 import Modal from "@/lib/ui/Modal";
 import ClientDetailPage from "@/components/clients/ClientDetailPage";
 import ReactToPrint from 'node_modules/react-to-print/lib/index';
-import { PrinterIcon } from '@heroicons/react/24/outline';
+import { PrinterIcon, CloudArrowDownIcon } from '@heroicons/react/24/outline';
 import { useRef } from "react";
 import LDFListPage from "@/components/transactions/loan-application/LDFList";
 import RadioButton from "@/lib/ui/radio-button";
@@ -90,6 +90,25 @@ const LoanApplicationPage = () => {
 
     const [ldfFilter, setLdfFilter] = useState('all');
     const [ldfOccurenceFilter, setLdfOccurenceFilter] = useState('all');
+
+    const months = getMonths();
+    const years = getYears();
+
+    const [selectedMonth, setSelectedMonth] = useState(moment().month() + 1);
+    const [selectedYear, setSelectedYear] = useState(moment().year());
+    const [selectedBranch, setSelectedBranch] = useState();
+
+    const handleBranchFilter = (selected) => {
+        setSelectedBranch(selected.value);
+    }
+
+    const handleMonthFilter = (selected) => {
+        setSelectedMonth(selected.value);
+    }
+
+    const handleYearFilter = (selected) => {
+        setSelectedYear(selected.value);
+    }
 
     const ndsFormRef = useRef();
 
@@ -174,6 +193,69 @@ const LoanApplicationPage = () => {
             setTomorrowData(tomorrowList);
             setIsTomorrowFiltering(false);
           }
+        }
+    }
+
+    const exportLoanApplications = async () => {
+        setLoading(true);
+        let apiUrl = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/export-loans';
+        const fMonth = (typeof selectedMonth === 'number' && selectedMonth < 10) ? '0' + selectedMonth : selectedMonth;
+        const userName = currentUser.firstName + ' ' + currentUser.lastName;
+        if (currentUser.role.rep == 3) {
+            apiUrl = apiUrl + '?' + new URLSearchParams({ userId: currentUser._id, userName: userName, userRole: currentUser.role.shortCode, userBranchCode: currentUser.designatedBranch, month: fMonth, year: selectedYear + "" });
+            processExportLoanApplication(apiUrl);
+        } else if (currentUser.role.rep == 2) {
+            apiUrl = apiUrl + '?' + new URLSearchParams({ userId: currentUser._id, userName: userName, userRole: currentUser.role.shortCode, month: fMonth, year: selectedYear + "" });
+            processExportLoanApplication(apiUrl);
+        } else {
+            apiUrl = apiUrl + '?' + new URLSearchParams({ userId: currentUser._id, userRole: 'root', month: fMonth, year: selectedYear + "" });
+            processExportLoanApplication(apiUrl);
+        }
+    }
+
+    const processExportLoanApplication = async (apiUrl) => {
+        try {
+            const requestOptions = {
+                keepalive: true,
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentUser.token}` },
+                credentials: 'include'
+            };
+
+            fetch(apiUrl, requestOptions)
+                .then(response => {
+                    // Get the filename from the Content-Disposition header
+                    const contentDisposition = response.headers.get('Content-Disposition');
+                    let filename = 'download.xlsx'; // default filename
+                    if (contentDisposition) {
+                        const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
+                        if (filenameMatch) {
+                            filename = filenameMatch[1];
+                        }
+                    }
+                    
+                    return Promise.all([response.blob(), filename]);
+                })
+                .then(([blob, filename]) => {
+                    const url = window.URL.createObjectURL(blob);
+
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.setAttribute('download', filename);
+                    document.body.appendChild(link);
+                    link.click();
+                    link.parentNode.removeChild(link);
+                    window.URL.revokeObjectURL(url);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    toast.error('Error exporting loan applications.');
+                });
+        } catch (error) {
+            console.error('Error downloading file:', error);
+            toast.error('Error exporting loan applications.');
+        } finally {
+            setLoading(false);
         }
     }
 
@@ -641,9 +723,11 @@ const LoanApplicationPage = () => {
     }
 
     const getHistoyListLoan = async () => {
+        setLoading(true);;
         let url = getApiBaseUrl() + 'transactions/loans/list-history';
+        const fMonth = (typeof selectedMonth === 'number' && selectedMonth < 10) ? '0' + selectedMonth : selectedMonth;
         if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
-            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id, mode: occurence });
+            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id, mode: occurence, month: fMonth, year: selectedYear + "" });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let loanList = [];
@@ -661,12 +745,13 @@ const LoanApplicationPage = () => {
                 });
 
                 setHistoryList(loanList);
+                setLoading(false);
             } else if (response.error) {
                 setLoading(false);
                 toast.error(response.message);
             }
         } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
-            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id });
+            url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, month: fMonth, year: selectedYear + "" });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let loanList = [];
@@ -684,11 +769,13 @@ const LoanApplicationPage = () => {
                 });
 
                 setHistoryList(loanList);
+                setLoading(false);
             } else if (response.error) {
                 setLoading(false);
                 toast.error(response.message);
             }
-        } else if (branchList.length > 0) {
+        } else if (currentUser.role.rep == 2) {
+            url = url + '?' + new URLSearchParams({ currentUserId: currentUser._id, month: fMonth, year: selectedYear + "" });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let loanList = [];
@@ -706,6 +793,31 @@ const LoanApplicationPage = () => {
                 });
 
                 setHistoryList(loanList);
+                setLoading(false);
+            } else if (response.error) {
+                setLoading(false);
+                toast.error(response.message);
+            }   
+        } else {
+            url = url + '?' + new URLSearchParams({ month: fMonth, year: selectedYear + "" });
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                let loanList = [];
+                await response.loans && response.loans.map(loan => {
+                    loanList.push({
+                        ...loan,
+                        groupName: loan.group.name,
+                        principalLoanStr: formatPricePhp(loan.principalLoan),
+                        mcbuStr: formatPricePhp(loan.mcbu),
+                        activeLoanStr: formatPricePhp(loan.activeLoan),
+                        loanBalanceStr: formatPricePhp(loan.loanBalance),
+                        fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
+                        selected: false
+                    });
+                });
+
+                setHistoryList(loanList);
+                setLoading(false);
             } else if (response.error) {
                 setLoading(false);
                 toast.error(response.message);
@@ -1522,6 +1634,12 @@ const LoanApplicationPage = () => {
         setActionButtons(actBtns);
     }, [selectedTab, list, pendingList, duplicateList]);
 
+    useEffect(() => {
+        if (selectedTab === 'history') {
+            getHistoyListLoan();
+        }
+    }, [selectedTab, selectedMonth, selectedYear]);
+
     return (
         <Layout actionButtons={(selectedTab !== 'history') && actionButtons}>
             <div className="pb-4">
@@ -1548,13 +1666,6 @@ const LoanApplicationPage = () => {
                                     onClick={() => handleSelectTab("application")}>
                                     Pending Applications
                                 </TabSelector>
-                                {currentUser.role.rep > 2 && (
-                                    <TabSelector
-                                        isActive={selectedTab === "history"}
-                                        onClick={() => handleSelectTab("history")}>
-                                        History
-                                    </TabSelector>
-                                )}
                                 {currentUser.role.rep < 3 && (
                                     <TabSelector
                                         isActive={selectedTab === "duplicate"}
@@ -1562,6 +1673,11 @@ const LoanApplicationPage = () => {
                                         Duplicate Clients Applications
                                     </TabSelector>
                                 )}
+                                <TabSelector
+                                    isActive={selectedTab === "history"}
+                                    onClick={() => handleSelectTab("history")}>
+                                    History
+                                </TabSelector>
                             </nav>
                             <div>
                             <TabPanel hidden={selectedTab !== "ldf"}>
@@ -1790,16 +1906,58 @@ const LoanApplicationPage = () => {
                                         </div>
                                     </footer>
                                 </TabPanel>
-                                {currentUser.role.rep > 2 && (
-                                    <TabPanel hidden={selectedTab !== 'history'}>
-                                        <TableComponent columns={columns} data={historyList} hasActionButtons={false} showFilters={false} pageSize={500} />
-                                    </TabPanel>
-                                )}
-                                {currentUser.role.rep < 3 && (
-                                    <TabPanel hidden={selectedTab !== 'duplicate'}>
-                                        <TableComponent columns={columns} data={duplicateList} hasActionButtons={false} showFilters={false} multiSelect={true} multiSelectActionFn={handleMultiSelect}  pageSize={500} />
-                                    </TabPanel>
-                                )}
+                                <TabPanel hidden={selectedTab !== 'duplicate'}>
+                                    <TableComponent columns={columns} data={duplicateList} hasActionButtons={false} showFilters={false} multiSelect={true} multiSelectActionFn={handleMultiSelect}  pageSize={500} />
+                                </TabPanel>
+                                <TabPanel hidden={selectedTab !== 'history'}>
+                                    <div className="flex flex-row bg-white p-4 justify-between">
+                                        <div className="flex flex-row justify-start">
+                                            <div className="ml-4 flex">
+                                                <Select 
+                                                    options={months}
+                                                    value={selectedMonth && months.find(m => {
+                                                        return parseInt(m.value) === parseInt(selectedMonth)
+                                                    })}
+                                                    styles={borderStyles}
+                                                    components={{ DropdownIndicator }}
+                                                    onChange={handleMonthFilter}
+                                                    isSearchable={true}
+                                                    closeMenuOnSelect={true}
+                                                    placeholder={'Month Filter'}/>
+                                            </div>
+                                            <div className="ml-4 flex">
+                                                <Select 
+                                                    options={years}
+                                                    value={selectedYear && years.find(y => {
+                                                        return y.value === selectedYear
+                                                    })}
+                                                    styles={borderStyles}
+                                                    components={{ DropdownIndicator }}
+                                                    onChange={handleYearFilter}
+                                                    isSearchable={true}
+                                                    closeMenuOnSelect={true}
+                                                    placeholder={'Year Filter'}/>
+                                            </div>
+                                            {currentUser.role.rep < 3 && (
+                                                <div className='flex flex-col ml-4'>
+                                                    <Select 
+                                                        options={branchList}
+                                                        value={branchList && branchList.find(branch => { return branch.value === selectedBranch } )}
+                                                        styles={borderStyles}
+                                                        components={{ DropdownIndicator }}
+                                                        onChange={handleBranchFilter}
+                                                        isSearchable={true}
+                                                        closeMenuOnSelect={true}
+                                                        placeholder={'Branch Filter'}/>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="flex flex-row justify-end">
+                                            <ButtonSolid label="Export" type="button" className="p-2 mr-3" onClick={exportLoanApplications} icon={[<CloudArrowDownIcon className="w-5 h-5" />, 'left']} />
+                                        </div>
+                                    </div>
+                                    <TableComponent columns={columns} data={historyList} hasActionButtons={false} showFilters={false} pageSize={500} />
+                                </TabPanel>
                             </div>
                         </React.Fragment>
                     )

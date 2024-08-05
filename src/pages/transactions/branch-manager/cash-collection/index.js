@@ -218,7 +218,7 @@ const BranchCashCollectionPage = () => {
                             viewMode={viewMode} handleViewModeChange={handleViewModeChange}
                             cohData={cohData} handleCOHDataChange={handleCOHDataChange}
                         />}
-                        <div className={`p-4 ${currentUser.role.rep < 4 ? 'mt-[8rem]' : 'mt-[6rem]'} `}>
+                        <div className={`p-4 ${currentUser.role.rep < 4 ? 'mt-40' : 'mt-24'} `}>
                             {currentUser.role.rep < 3 && (
                                 <React.Fragment>
                                     {viewMode == 'division' && <ViewByDivisionPage dateFilter={dateFilter} selectedBranchGroup={selectedBranchGroup} viewMode={viewMode} />}

@@ -1,7 +1,7 @@
 import React from 'react'
 import { XCircleIcon, CalendarDaysIcon } from '@heroicons/react/24/solid';
 
-const InputText = ({ name, value = '', label, placeholder, disabled, onChange, onBlur, setFieldValue, errors, closeIcon = true, className = '', onPaste, filter=false, autofocus=false }) => {
+const InputText = ({ name, value = '', label, placeholder, disabled, onChange, onBlur, onFocus, setFieldValue, errors, closeIcon = true, className = '', onPaste, filter=false, autofocus=false }) => {
     const handleClick = () => {
         setFieldValue(name, '');
     }
@@ -28,6 +28,7 @@ const InputText = ({ name, value = '', label, placeholder, disabled, onChange, o
                         type="text"
                         onPaste={onPaste}
                         onBlur={onBlur}
+                        onFocus={onFocus}
                         className={`
                             p-2 pl-0 text-gray-500 font-medium  border-none focus:ring-0
                             ${value ? 'text-xs' : 'text-sm'} 

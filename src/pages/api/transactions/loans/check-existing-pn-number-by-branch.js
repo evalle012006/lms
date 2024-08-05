@@ -13,9 +13,9 @@ async function checkPNNumber(req, res) {
     let statusCode = 200;
     let response = {};
 
-    const { pnNumber, branchId } = req.query;
+    const { pnNumber, branchId, currentDate } = req.query;
 
-    const loans = await db.collection('loans').find( { branchId: branchId, pnNumber: pnNumber, status: "active" } ).toArray();
+    const loans = await db.collection('loans').find( { branchId: branchId, pnNumber: pnNumber, admissionDate: currentDate, status: { $nin: ['closed', 'reject'] } } ).toArray();
     let message;
     if (loans && loans.length > 0) {
         message = "PN Number already in used.";
