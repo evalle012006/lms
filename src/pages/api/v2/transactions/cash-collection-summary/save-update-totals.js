@@ -6,6 +6,7 @@ import {
 } from "@/lib/graph.functions";
 import { GraphProvider } from "@/lib/graph/graph.provider";
 import { createGraphType, insertQl, updateQl } from "@/lib/graph/graph.util";
+import { generateUUID } from "@/lib/utils";
 
 const graph = new GraphProvider();
 const losTotalsType = createGraphType('losTotals', '_id')();
@@ -124,6 +125,7 @@ async function saveUpdateDaily(total, filter, officeType) {
             delete finalData.currentDate;
             await graph.mutation(insertQl(losTotalsType, {
               objects: [{
+                _id: generateUUID(),
                 ...finalData,
                 dateAdded: total.data.day,
                 insertedBy: 'admin',
@@ -148,6 +150,7 @@ async function saveUpdateDaily(total, filter, officeType) {
             delete finalData.currentDate;
             await graph.mutation(insertQl(losTotalsType, {
               objects: [{
+                _id: generateUUID(),
                 ...finalData,
                 dateAdded: currentDateStr,
                 officeType: officeType
@@ -195,6 +198,7 @@ async function saveUpdateCommulative(total, officeType) {
         delete finalData.currentDate;
         await graph.mutation(insertQl(losTotalsType, {
           objects: [{
+            _id: generateUUID(),
             ...finalData,
             dateAdded: currentDateStr
           }]
