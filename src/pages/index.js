@@ -120,7 +120,7 @@ const Index = () => {
     // }, []);
 
     return (
-        <Layout header={false} noPad={true}>
+        <Layout header={false} noPad={true} hScroll={false}>
             <DashboardPage />
         </Layout>
     );
