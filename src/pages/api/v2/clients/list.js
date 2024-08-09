@@ -108,9 +108,16 @@ async function list(req, res) {
             clients = await graph.query(
                 queryQl(CLIENT_TYPE(), {
                     where:{
-                       loans: {
-                            status: { _eq: 'completed' },
-                            groupId:  { _eq: groupId },
+                        groupId: { _eq: groupId },
+                        loans_aggregate: {
+                            count: {
+                            predicate: { _eq: 0 },
+                            filter: {
+                                status: {
+                                    _nin: ["active", "pending", "completed"]
+                                    }
+                                }
+                            }
                        },
                        status: {
                             _eq: status
@@ -126,9 +133,14 @@ async function list(req, res) {
                        branchId: branchId ? { _eq: branchId }: { _neq: 'null' },
                        groupId: { _eq: groupId },
                        status: { _eq: status },
-                       loans: {
-                            status: {
-                                _in: ['active', 'pending', 'completed']
+                       loans_aggregate: {
+                            count: {
+                            predicate: { _eq: 0 },
+                            filter: {
+                                status: {
+                                _nin: ["active", "pending", "completed"]
+                                }
+                            }
                             }
                        }
                     }
@@ -141,12 +153,13 @@ async function list(req, res) {
                 where: {
                     status: { _eq: 'active' },
                     groupId: { _eq: groupId },
-                    loans: {
-                        _and: [
-                            {
-                                status: { _neq: 'pending' }
-                            }
-                        ]
+                    loans_aggregate: {
+                        count: {
+                          predicate: { _eq: 0 },
+                          filter: {
+                            status: { _neq: 'pending' }
+                          }
+                        }
                     }
                 }
             })
