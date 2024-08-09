@@ -131,7 +131,7 @@ function cleanUpCollection(c) {
         ... cc,
         loanTerms: `${c.loanTerms}`,
         coMaker: c.coMaker === '-' ? null : +c.coMaker,
-        noOfPayments: c.noOfPayments === '-' ? 0 : +c.noOfPayments
+        noOfPayments: c.noOfPayments === '-' ? 0 : +c.noOfPayments,
     });
 }
 
@@ -457,7 +457,9 @@ const assignNullValues = (obj, origin) => {
     cc.transferred = cc.transferred ? cc.transferred : false;
     cc.advance = cc.advance ? cc.advance : false;
     cc.transferredReleased = cc.transferredReleased ? cc.transferredReleased : false;
-    cc.advancetransaction =  cc.advancetransaction ? cc.advancetransaction : false;
+    cc.advancetransaction =  cc.advanceTransaction ? cc.advanceTransaction : false;
+
+    delete cc.advanceTransaction;
 
     return cc;
 }

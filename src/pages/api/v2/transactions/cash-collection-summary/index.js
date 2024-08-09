@@ -86,8 +86,8 @@ async function getSummary(req, res) {
 
       summary = await findLosTotals({
         userId: { _eq: userId },
-        month: { _eq: lastMonth },
-        year: { _eq: lastYear },
+        month: { _eq: currentMonth },
+        year: { _eq: currentYear },
         losType: { _eq: "daily" },
       });
     }
