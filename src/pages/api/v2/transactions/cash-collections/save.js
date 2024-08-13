@@ -457,9 +457,7 @@ const assignNullValues = (obj, origin) => {
     cc.transferred = cc.transferred ? cc.transferred : false;
     cc.advance = cc.advance ? cc.advance : false;
     cc.transferredReleased = cc.transferredReleased ? cc.transferredReleased : false;
-    cc.advancetransaction =  cc.advanceTransaction ? cc.advanceTransaction : false;
-
-    delete cc.advanceTransaction;
+    cc.advanceTransaction =  cc.advanceTransaction ? cc.advanceTransaction : false;
 
     return cc;
 }
