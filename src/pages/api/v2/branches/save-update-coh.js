@@ -1,7 +1,7 @@
 import { BRANCH_COH_FIELDS } from '@/lib/graph.fields';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, insertQl, queryQl, updateQl } from '@/lib/graph/graph.util';
-import { getCurrentDate } from '@/lib/utils';
+import { generateUUID, getCurrentDate } from '@/lib/utils';
 import { apiHandler } from '@/services/api-handler';
 import moment from 'moment';
 
@@ -17,7 +17,7 @@ async function save(req, res) {
     
     const branchCOH = await graph.query(
         queryQl(BRANCH_COH_TYPE, {
-            where: { branchId: { _eq: data.branchId, dateAdded: data.dateAdded } }
+            where: { branchId: { _eq: data.branchId },  dateAdded: { _eq: data.dateAdded } }
         })
     ).then(res => res.data.results);
 
@@ -38,6 +38,7 @@ async function save(req, res) {
         [updatedData] = await graph.mutation(
             insertQl(BRANCH_COH_TYPE, {
                 objects: [{
+                    _id: generateUUID(),
                     amount: data.amount,
                     branchId: data.branchId,
                     insertedBy: data.insertedBy,
