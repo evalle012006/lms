@@ -2,6 +2,7 @@ import { apiHandler } from "@/services/api-handler";
 import { GraphProvider } from "@/lib/graph/graph.provider";
 import { findUserById } from "@/lib/graph.functions";
 import { gql } from "apollo-boost";
+import moment from "node_modules/moment/moment";
 
 const graph = new GraphProvider();
 
@@ -14,9 +15,8 @@ async function list(req, res) {
   let rowMapper;
   let args;
 
-  const { branchId, groupId, loId, status, currentUserId, mode, currentDate } =
-    req.query;
-
+  const { branchId, groupId, loId, status, currentUserId, mode } = req.query;
+  const currentDate = new Date(req.query).toString() === 'Invalid Date' ? moment(new Date()).format("YYYY-MM-DD") : req.query.currentDate;
   if (status) {
     // for lo
     if (loId && branchId) {
