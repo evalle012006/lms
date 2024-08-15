@@ -2,6 +2,7 @@ import { apiHandler } from "@/services/api-handler";
 import { GraphProvider } from "@/lib/graph/graph.provider";
 import { createGraphType, updateQl } from "@/lib/graph/graph.util";
 import { LOS_TOTALS_FIELDS } from "@/lib/graph.fields";
+import { gql } from "node_modules/apollo-boost/lib/index";
 
 const graph = new GraphProvider();
 const losTotalsType = createGraphType("losTotals", LOS_TOTALS_FIELDS)();
@@ -14,7 +15,7 @@ async function processLOSTotals(req, res) {
     const { branchId, loIds, currentDate } = req.body;
 
     const query = gql`
-      query find($loIds: [String!], $dateAdded: timestamptz) {
+      query find($loIds: [String!], $dateAdded: date) {
         users (where: { _id: { _in: $loIds} }) {
             firstName, lastName
             losTotal: losTotals(
@@ -30,7 +31,7 @@ async function processLOSTotals(req, res) {
       }
     `;
 
-    const checkLos = (await graph.apollo.query({ query, variables: { loIds, dateAdded }}))
+    const checkLos = await graph.apollo.query({ query, variables: { loIds, dateAdded: currentDate }})
       .then((res) => {
         if (res.errors) {
           console.error(res.errors);
