@@ -19,6 +19,7 @@ import {
   findClients,
   findLoans,
 } from "@/lib/graph.functions";
+import { generateUUID } from "@/lib/utils";
 
 const loanType = createGraphType("loans", LOAN_FIELDS)();
 const groupType = createGraphType("groups", GROUP_FIELDS)();
@@ -291,6 +292,7 @@ async function saveCashCollection(loan, group, currentDate) {
   } else {
     // this entry is only when the approve or reject is not the same day when it applies
     let data = {
+      _id: generateUUID(),
       loanId: loan._id + "",
       branchId: loan.branchId,
       groupId: loan.groupId,
