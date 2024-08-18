@@ -33,6 +33,7 @@ async function revert(req, res) {
             logger.debug({page: `Reverting Transaction Loan: ${cashCollection.clientId}`, data: cashCollection});
             let loanId = cashCollection.loanId;
             let cashCollectionId = cashCollection._id;
+            console.log(cashCollection._id, cashCollection.status);
             if (cashCollection.status == 'closed') {
                 loanId = cashCollection._id;
                 const closedCC = cashCollection?.current[0];
@@ -68,7 +69,7 @@ async function revert(req, res) {
                 client = client[0];
                 previousCC = previousCC[1]; // latest
                 // delete current transaction
-
+                console.log('cashCollectionId', cashCollectionId);
                 mutationQL.push(deleteQl(CASH_COLLECTION_TYPE('delete_cashCollections_' + (mutationQL.length + 1)), { _id: { _eq: cashCollectionId } }));
                 logger.debug({page: `Reverting Transaction Loan: ${cashCollection.clientId}`, previousCC: previousCC });
                 if (previousLoan.length > 0) { // pending, tomorrow
@@ -162,7 +163,17 @@ async function revert(req, res) {
                         currentLoan.history = previousCC.history;
                         currentLoan.status = 'completed';
                         currentLoan.fullPaymentDate = previousCC.fullPaymentDate;
-                    } else {
+                    } 
+                    else {
+
+                        if (cashCollection.remarks?.value == 'past due') {
+                            currentLoan.mispayment = currentLoan.mispayment > 0 ? currentLoan.mispayment - 1 : 0;
+                            currentLoan.noPastDue = currentLoan.noPastDue > 0 ? currentLoan.noPastDue - 1 : 0;
+                            currentLoan.pastDue = currentLoan.pastDue > 0 ? currentLoan.pastDue - currentLoan.activeLoan : 0;
+                        } else if (cashCollection.remarks?.value == 'past due collection') {
+                            currentLoan.pastDue = currentLoan.pastDue + currentLoan.activeLoan;
+                        }
+
                         currentLoan.activeLoan = previousCC.activeLoan > 0 ? previousCC.activeLoan : previousCC.history?.activeLoan;
                         currentLoan.amountRelease = previousCC.amountRelease;
                         currentLoan.loanBalance = previousCC.loanBalance;
@@ -247,6 +258,7 @@ async function revert(req, res) {
                 currentLoan = currentLoan[0];
                 logger.debug({page: `Reverting Transaction Loan: ${cashCollection.clientId}`, previousCC: previousCC, currentLoan: currentLoan });
                 // delete current transaction
+                console.log('prev cc', previousCC._id)
                 mutationQL.push(deleteQl(CASH_COLLECTION_TYPE('delete_cashCollections_' + (mutationQL.length)), { _id: { _eq: previousCC._id } }));
                 mutationQL.push(deleteQl(LOAN_TYPE('delete_loans_' + (mutationQL.length)), { _id: { _eq: currentLoan._id } }));
                 await updateGroup(mutationQL, cashCollection.group, currentLoan.slotNo);

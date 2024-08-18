@@ -8,7 +8,7 @@ const graph = new GraphProvider();
 const CLIENT_TYPE = (... additionalFields) => {
     return createGraphType('client', `
         ${CLIENT_FIELDS}
-        loans (where: { status: { _in: ["active", "completed"] } }) {
+        loans {
             ${LOAN_FIELDS}
         }
         lo {
@@ -153,17 +153,28 @@ async function list(req, res) {
                 where: {
                     status: { _eq: 'active' },
                     groupId: { _eq: groupId },
+                    loans: {
+                        status: {
+                            _eq: 'active'
+                        }
+                    },
+                    
                     loans_aggregate: {
                         count: {
                           predicate: { _eq: 0 },
                           filter: {
-                            status: { _neq: 'pending' }
+                            status: { _eq: 'pending' }
                           }
                         }
                     }
                 }
             })
-        ).then(res => res.data.clients);
+        ).then(res => res.data.clients)
+        
+        .then(clients => clients.map(c => ({
+            ... c.loans?.[0],
+            client: c,
+        })));
     } else if (mode === 'view_all_by_group_for_transfer' && groupId) {
         clients = await graph.query(
             queryQl(CLIENT_TYPE(`cashCollections (where: { dateAdded: { _eq: "${currentDate}" }, draft: { _neq: true } }) {

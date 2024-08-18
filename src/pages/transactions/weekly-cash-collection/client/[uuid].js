@@ -624,7 +624,7 @@ const CashCollectionDetailsPage = () => {
                             collection.paymentCollection = draftCC.paymentCollection;
                             collection.paymentCollectionStr = collection.paymentCollection > 0 ? formatPricePhp(collection.paymentCollection) : '-';
                             collection.mispayment = draftCC.mispayment;
-                            collection.mispaymentStr = draftCC.mispaymentStr;
+                            collection.mispaymentStr = draftCC.mispaymentStr = draftCC.mispayment ? 'Yes' : 'No';
                             collection.remarks = draftCC.remarks;
                             collection.delinquent = draftCC.delinquent ? draftCC.delinquent : false;
                             collection._id = draftCC._id;
@@ -684,7 +684,7 @@ const CashCollectionDetailsPage = () => {
                                 collection.paymentCollection = current.paymentCollection;
                                 collection.paymentCollectionStr = collection.paymentCollection > 0 ? formatPricePhp(collection.paymentCollection) : '-';
                                 collection.mispayment = current.mispayment;
-                                collection.mispaymentStr = current.mispaymentStr;
+                                collection.mispaymentStr = current.mispaymentStr = current.mispayment ? 'Yes' : 'No';
                                 collection.remarks = current.remarks;
                                 collection.delinquent = current.delinquent ? current.delinquent : false;
                                 collection._id = current._id;
@@ -2033,7 +2033,7 @@ const CashCollectionDetailsPage = () => {
                                 }
                             } else if (remarks.value === "past due collection") {
                                 // if payment > targetCollection, then put subtract it on the past due amount not on excess
-                                if (temp.pastDue > 0 && temp.paymentCollection > temp.activeLoan && !temp?.maturedPD) {
+                                if (temp.pastDue > 0 && temp.paymentCollection > temp.activeLoan && !temp?.maturedPD && (parseFloat(temp.paymentCollection) > temp.activeLoan && parseFloat(temp.paymentCollection) % parseFloat(temp.activeLoan) === 0)) {
                                     const pastDueCol = temp.paymentCollection - temp.activeLoan;
                                     if (pastDueCol > temp.pastDue) {
                                         const excessPD = pastDueCol - temp.pastDue;

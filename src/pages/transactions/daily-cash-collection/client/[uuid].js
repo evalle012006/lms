@@ -504,15 +504,8 @@ const CashCollectionDetailsPage = () => {
                         if (date) {
                             numMispayment = cc.noMispayment > 0 ? cc.noMispayment + ' / ' + cc.loanTerms : '-';
                         }
-    
-                        let mispaymentStr = '-';
-                        if (cc.mispayment !== undefined) {
-                            mispaymentStr = cc.mispayment ? 'Yes' : 'No';
-                        } else {
-                            if (cc.status === "active" || (cc.status === "completed" && cc.fullPaymentDate === currentDate)) {
-                                mispaymentStr = 'No';
-                            }
-                        }
+
+                        let mispaymentStr = (cc.status === "active" || (cc.status === "completed" && cc.fullPaymentDate === currentDate)) ? 'No' : '-';
 
                         let activeLoan = cc.activeLoan;
                         if (cc?.transfer && cc?.transferDate === currentDate) {
@@ -638,7 +631,7 @@ const CashCollectionDetailsPage = () => {
                             collection.paymentCollection = draftCC.paymentCollection;
                             collection.paymentCollectionStr = collection.paymentCollection > 0 ? formatPricePhp(collection.paymentCollection) : '-';
                             collection.mispayment = draftCC.mispayment;
-                            collection.mispaymentStr = draftCC.mispaymentStr;
+                            collection.mispaymentStr = draftCC.mispayment ? 'Yes' : 'No';
                             collection.remarks = draftCC.remarks;
                             collection.delinquent = draftCC.delinquent ? draftCC.delinquent : false;
                             collection._id = draftCC._id;
@@ -686,7 +679,7 @@ const CashCollectionDetailsPage = () => {
                                 collection.paymentCollection = current.paymentCollection;
                                 collection.paymentCollectionStr = collection.paymentCollection > 0 ? formatPricePhp(collection.paymentCollection) : '-';
                                 collection.mispayment = current.mispayment;
-                                collection.mispaymentStr = current.mispaymentStr;
+                                collection.mispaymentStr = current.mispayment ? 'Yes' : 'No';
                                 collection.remarks = current.remarks;
                                 collection.delinquent = current.delinquent ? current.delinquent : false;
                                 collection._id = current._id;
@@ -1937,7 +1930,8 @@ const CashCollectionDetailsPage = () => {
                                     }
                                 }
                             } else if (remarks.value === "past due collection") {
-                                if (temp.pastDue > 0 && temp.paymentCollection > temp.activeLoan && !temp?.maturedPD) {
+                                console.log(temp);
+                                if (temp.pastDue > 0 && temp.paymentCollection > temp.activeLoan && !temp?.maturedPD && (parseFloat(temp.paymentCollection) > temp.activeLoan && parseFloat(temp.paymentCollection) % parseFloat(temp.activeLoan) === 0)) {
                                     const pastDueCol = temp.paymentCollection - temp.activeLoan;
                                     if (pastDueCol > temp.pastDue) {
                                         const excessPD = pastDueCol - temp.pastDue;
