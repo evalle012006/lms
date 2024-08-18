@@ -182,9 +182,11 @@ async function updateLoan(mutationQL, collection, currentDate) {
             loan.revertedDateTime = collection.revertedDate;
         }
 
+        /*
         if (collection.remarks && (!collection.remarks.value?.startsWith('excused')  && collection.remarks.value !== 'delinquent')) {
             loan.activeLoan = collection.activeLoan;
         }
+        */
 
         if (collection.remarks && collection.remarks.value === 'matured-past due') {
             loan.activeLoan = 0;
