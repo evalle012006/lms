@@ -868,10 +868,11 @@ const CashCollectionDetailsPage = () => {
                             history: currentLoan.history,
                             selected: false
                         };
-                        if (currentLoan.current.length > 0) {
+
+                        if (currentLoan?.current?.length > 0) {
                             cashCollection[index]._id = currentLoan.current[0]._id;
                             cashCollection[index].prevData = currentLoan.current[0].prevData;
-                        } else if (loan.current.length > 0) {
+                        } else if (loan?.current?.length > 0) {
                             cashCollection[index]._id = loan.current[0]._id;
                             cashCollection[index].prevData = loan.current[0].prevData;
                             cashCollection[index].mcbuCol = loan.current[0].mcbuCol;
