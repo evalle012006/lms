@@ -109,12 +109,17 @@ async function list(req, res) {
                 queryQl(CLIENT_TYPE(), {
                     where:{
                         groupId: { _eq: groupId },
+                        loans: {
+                            status: {
+                                _eq: 'completed'
+                            }
+                        },
                         loans_aggregate: {
                             count: {
                             predicate: { _eq: 0 },
                             filter: {
                                 status: {
-                                    _nin: ["active", "pending", "completed"]
+                                    _in: ["pending"]
                                     }
                                 }
                             }
@@ -124,7 +129,10 @@ async function list(req, res) {
                        }
                     }
                 })
-            ).then(res => res.data.clients);
+            ).then(res => res.data.clients.map(c => ({
+                ... c.loans?.[0],
+                client: c,
+            })));
         } else {
             clients = await graph.query(
                 queryQl(CLIENT_TYPE(), {
@@ -137,10 +145,10 @@ async function list(req, res) {
                             count: {
                             predicate: { _eq: 0 },
                             filter: {
-                                status: {
-                                _nin: ["active", "pending", "completed"]
+                                    status: {
+                                        _in: ["active", "pending", "completed"]
+                                    }
                                 }
-                            }
                             }
                        }
                     }
