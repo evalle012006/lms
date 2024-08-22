@@ -166,8 +166,8 @@ async function saveUpdateCommulative(total, officeType) {
     const currentDateStr = total.currentDate;
     let resp;
     let loGroup = officeType;
-
-    if (officeType === null || officeType === undefined) { // it means it is BM
+    
+    if (!officeType) { // it means it is BM
         loGroup = total.officeType;
     }
 
@@ -176,7 +176,7 @@ async function saveUpdateCommulative(total, officeType) {
       month: { _eq: total.month },
       year: { _eq: total.year },
       losType: { _eq: "commulative" },
-      officeType: { _eq: loGroup },
+      officeType: loGroup ? { _eq: loGroup } : { _is_null: true },
     });
 
     if (losTotal.length > 0) {
