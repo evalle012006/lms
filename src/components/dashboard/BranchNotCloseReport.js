@@ -283,8 +283,8 @@ const BranchNotCloseTool = () => {
     }, [branchList]);
 
     return (
-        <div className='flex flex-col min-w-64 mt-4 p-4'>
-            <h3>{ title }</h3>
+        <div className='flex flex-col max-h-[32rem] w-full h-full overflow-auto'>
+            <h4>{ title }</h4>
             {loading ? (
                 <div className="absolute top-1/2 left-1/2">
                     <Spinner />

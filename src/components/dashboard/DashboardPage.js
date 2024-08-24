@@ -11,7 +11,7 @@ ChartJS.register(...registerables, ChartDataLabels);
 
 const DashboardPage = () => {
     const currentUser = useSelector(state => state.user.data);
-    const [timeFilter, setTimeFilter] = useState('daily');
+    const [timeFilter, setTimeFilter] = useState('overall');
     const [branchFilter, setBranchFilter] = useState('all');
 
     const overallData = {
@@ -331,8 +331,12 @@ const DashboardPage = () => {
                             onChange={(e) => setTimeFilter(e.target.value)}
                             className="block pl-3 pr-10 py-1 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
                         >
-                            <option value="daily">Daily</option>
                             <option value="overall">Overall</option>
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="monthly">Monthly</option>
+                            <option value="quarterly">Quarterly</option>
+                            <option value="yearly">Yearly</option>
                         </select>
                         <select 
                             value={branchFilter} 
