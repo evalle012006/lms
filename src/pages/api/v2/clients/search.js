@@ -16,34 +16,44 @@ const CLIENT_TYPE = createGraphType('client', `
     branch {
         name
     }
+    dateModified
 `)('clients')
 
 async function list(req, res) {
     let statusCode = 200;
     let response = {};
 
-    const { searchText, mode } = req.query;
-    const fullNameCondition = [ '%', ...  searchText.split(' ')].join('%');
+    const { searchText, mode, cursor, limit = 20 } = req.query;
+    const fullNameCondition = `%${searchText}%`;
+
+    const query = {
+        where: {
+            status: mode === 'offset' ? { _eq: 'offset' } : { _neq: 'null' },
+            fullName: { _ilike: fullNameCondition },
+            ...(cursor ? { dateModified: { _lt: cursor } } : {})
+        },
+        order_by: { dateModified: 'desc' },
+        limit: parseInt(limit)
+    };
 
     const clients = await graph.query(
-        queryQl(CLIENT_TYPE, {
-            where: {
-                status: mode === 'offset' ? {  _eq: 'offset' } : { _neq: 'null' },
-                fullName: { _ilike: fullNameCondition }
-            }
-        })
+        queryQl(CLIENT_TYPE, query)
     ).then(res => res.data.clients ?? [])
     
     response = {
         success: true,
         clients: clients.map(c => ({
-            ... c,
+            ...c,
             group: c.group ?? {},
             branch: c.branch ?? {},
-        }))
+        })),
+        nextCursor: clients.length === parseInt(limit) ? clients[clients.length - 1].dateModified : null
     }
 
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')
+        .setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
+        .setHeader('Pragma', 'no-cache')
+        .setHeader('Expires', '0')
         .end(JSON.stringify(response));
 }

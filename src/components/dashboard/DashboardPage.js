@@ -155,7 +155,7 @@ const DashboardPage = () => {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-            legend: { display: true, position: 'top' },
+            legend: { display: true, position: 'bottom', align: 'center' },
             tooltip: {
                 callbacks: {
                     label: function(context) {

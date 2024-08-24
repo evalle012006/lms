@@ -18,42 +18,56 @@ const ClientSearchTool = ({ origin = "", callback, setSelected }) => {
     const [clientList, setClientList] = useState([]);
     const [selectedClient, setSelectedClient] = useState();
     const [toolbarWidth, setToolbarWidth] = useState("40rem");
+    const [cursor, setCursor] = useState(null);
+    const [hasMore, setHasMore] = useState(true);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (searchText) {
             setSearching(true);
-            const imgpath = process.env.NEXT_PUBLIC_LOCAL_HOST !== 'local' && process.env.NEXT_PUBLIC_LOCAL_HOST;
-            const response = await fetchWrapper.get(getApiBaseUrl() + 'clients/search?' + new URLSearchParams({ searchText: searchText.toUpperCase() }));
-            const list = [];
-            if (response.success) {
-                if (response.clients.length === 0) {
-                    callback([]);
-                } else {
-                    if (origin == 'client_list') {
-                        callback(response.clients);
-                        setSearching(true);
-                    }
-                    response.clients.map(client => {
-                        list.push({
-                            ...client,
-                            imgUrl: client.profile ? imgpath + '/images/clients/' + client.profile : '',
-                            birthdate: client.birthdate?  moment(client.birthdate).format('YYYY-MM-DD') : '-',
-                            groupName: client.group.name,
-                            branchName: client.branch.name,
-                            address: client.address ? client.address.replaceAll('undefined', '') : '-',
-                            delinquentStr: client.delinquent ? 'Yes' : 'No'
-                        });
-                    });
-                }
-
-                setClientList(list);
-            }
+            setCursor(null); // Reset cursor on new search
+            setHasMore(true);
+            await fetchClients();
         } else {
             setSearching(false);
         }
-
         return false;
+    }
+
+    const fetchClients = async () => {
+        const imgpath = process.env.NEXT_PUBLIC_LOCAL_HOST !== 'local' && process.env.NEXT_PUBLIC_LOCAL_HOST;
+        const params = new URLSearchParams({ 
+            searchText: searchText.toUpperCase(),
+            cursor: cursor || ''
+        });
+        const response = await fetchWrapper.get(getApiBaseUrl() + 'clients/search?' + params);
+        
+        if (response.success) {
+            const newClients = response.clients.map(client => ({
+                ...client,
+                imgUrl: client.profile ? imgpath + '/images/clients/' + client.profile : '',
+                birthdate: client.birthdate ? moment(client.birthdate).format('YYYY-MM-DD') : '-',
+                groupName: client.group.name,
+                branchName: client.branch.name,
+                address: client.address ? client.address.replaceAll('undefined', '') : '-',
+                delinquentStr: client.delinquent ? 'Yes' : 'No'
+            }));
+
+            setClientList(prevList => cursor ? [...prevList, ...newClients] : newClients);
+            setCursor(response.nextCursor);
+            setHasMore(!!response.nextCursor);
+
+            if (origin == 'client_list') {
+                callback(newClients);
+            }
+        }
+    }
+
+    // Add a load more function
+    const loadMore = () => {
+        if (hasMore) {
+            fetchClients();
+        }
     }
 
     const handleCloseModal = () => {
@@ -64,7 +78,7 @@ const ClientSearchTool = ({ origin = "", callback, setSelected }) => {
 
     const handleRowClick = (row) => {
         setSelectedClient(row);
-        setSelected(row);
+        setSelected && setSelected(row);
     }
 
     const [columns, setColumns] = useState([
@@ -133,7 +147,21 @@ const ClientSearchTool = ({ origin = "", callback, setSelected }) => {
                             </React.Fragment>
                         )}
                         <div className="flex flex-col mt-4 md:mt-6">
-                            <TableComponent columns={columns} pageSize={8} data={clientList} rowClick={handleRowClick} hasActionButtons={false} showFilters={false} noPadding={true} border={true} />
+                            <TableComponent 
+                                columns={columns} 
+                                pageSize={8} 
+                                data={clientList} 
+                                rowClick={handleRowClick} 
+                                hasActionButtons={false} 
+                                showFilters={false} 
+                                noPadding={true} 
+                                border={true} 
+                            />
+                            {hasMore && (
+                                <button onClick={loadMore} className="mt-4 px-4 py-2 bg-blue-500 text-white rounded">
+                                    Load More
+                                </button>
+                            )}
                         </div>
                     </div>
                 </Modal>
