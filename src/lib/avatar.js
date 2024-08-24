@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 // from https://flatuicolors.com/
 const defaultColors = [
@@ -11,73 +11,41 @@ const defaultColors = [
   '#2c3e50', // midnight blue
 ];
 
-function sumChars(str) {
-  let sum = 0;
-  for (let i = 0; i < str.length; i++) {
-    sum += str.charCodeAt(i);
-  }
-
-  return sum;
-}
+const sumChars = (str) => {
+  return str.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
+};
 
 export const getInitials = (name) => {
-  if (!name) {
-    return;
+  if (!name) return '';
+  
+  // Remove special characters and extra spaces
+  const cleanName = name.replace(/[^\w\s]/gi, '').replace(/\s+/g, ' ').trim();
+  
+  const parts = cleanName.split(' ');
+  if (parts.length === 1) {
+    return cleanName.substring(0, 2).toUpperCase();
   }
-
-  return name
-    .split(" ")
-    .map(c => c.charAt(0).toUpperCase())
-    .join("")
-    .concat(name.charAt(1).toUpperCase())
-    .substring(0, 2);
-}
+  return parts.map(part => part.charAt(0).toUpperCase()).join('').substring(0, 2);
+};
 
 export const addPx = (num) => {
-  if (!isNaN(num)) {
-    return num.toString(10) + 'px';
-  }
-  return num;
-}
+  return isNaN(num) ? num : `${num}px`;
+};
 
 export const contrast = (hex) => {
-  var rgb = hexToRgb(hex);
-  var o = Math.round(((parseInt(rgb[0]) * 299) + (parseInt(rgb[1]) * 587) + (parseInt(rgb[2]) * 114)) / 1000);
+  const rgb = hexToRgb(hex);
+  const brightness = Math.round(((rgb[0] * 299) + (rgb[1] * 587) + (rgb[2] * 114)) / 1000);
+  return brightness <= 180 ? 'dark' : 'light';
+};
 
-  return (o <= 180) ? 'dark' : 'light';
-}
-
-function hexToRgb(hex) {
-  if (hex.charAt && hex.charAt(0) === '#') {
-    hex = removeHash(hex);
-  }
-
+const hexToRgb = (hex) => {
+  hex = hex.replace(/^#/, '');
   if (hex.length === 3) {
-    hex = expand(hex);
+    hex = hex.split('').map(char => char + char).join('');
   }
-
-  var bigint = parseInt(hex, 16);
-  var r = (bigint >> 16) & 255;
-  var g = (bigint >> 8) & 255;
-  var b = bigint & 255;
-
-  return [r, g, b];
-}
-
-function removeHash(hex) {
-  var arr = hex.split('');
-  arr.shift();
-  return arr.join('');
-}
-
-function expand(hex) {
-  return hex
-    .split('')
-    .reduce(function (accum, value) {
-      return accum.concat([value, value])
-    }, [])
-    .join('');
-}
+  const bigint = parseInt(hex, 16);
+  return [(bigint >> 16) & 255, (bigint >> 8) & 255, bigint & 255];
+};
 
 const Avatar = ({
   borderRadius = '100%',
@@ -86,70 +54,87 @@ const Avatar = ({
   name,
   color,
   colors = defaultColors,
-  size,
+  size = 40,
   style,
   onClick,
-  className
+  className,
+  padding = 4,
+  margin = 2
 }) => {
+  const [imageError, setImageError] = useState(false);
 
   if (!name) {
     console.error('User has no name!');
-    return;
+    return null;
   }
 
   const abbr = getInitials(name);
-  // size = addPx(size);
+  const sizeInPx = addPx(size);
+  const paddingInPx = addPx(padding);
+  const marginInPx = addPx(margin);
+
+  const containerStyle = {
+    display: 'inline-block',
+    margin: marginInPx,
+  };
 
   const imageStyle = {
     display: 'block',
-    borderRadius
+    borderRadius,
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
   };
 
   const innerStyle = {
-    lineHeight: addPx(size),
-    textAlign: 'center',
+    width: sizeInPx,
+    height: sizeInPx,
     borderRadius,
+    backgroundColor: color || colors[sumChars(name) % colors.length],
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: paddingInPx,
+    boxSizing: 'border-box',
+    fontSize: `${Math.floor(size * 0.4)}px`,
+    // fontWeight: 'bold',
+    color: '#ffffff',
   };
 
-  if (size) {
-    size = parseInt(size) + 2;
-    size = addPx(size);
-    imageStyle.width = innerStyle.width = innerStyle.maxWidth = size;
-    imageStyle.height = innerStyle.height = innerStyle.maxHeight = size;
-  }
+  const handleImageError = () => {
+    setImageError(true);
+  };
 
-  let inner, classes = ['UserAvatar'];
-  if (src || srcset) {
+  let classes = ['UserAvatar'];
+
+  if ((src || srcset) && !imageError) {
     innerStyle.backgroundImage = `url(${src || srcset})`;
-    innerStyle.backgroundSize = "contain"
-    innerStyle.backgroundRepeat = "repeat";
-    innerStyle.backgroundPosition = "center";
+    innerStyle.backgroundSize = 'cover';
+    innerStyle.backgroundRepeat = 'no-repeat';
+    innerStyle.backgroundPosition = 'center';
   } else {
-    let background;
-    if (color) {
-      background = color;
-    } else {
-      // pick a deterministic color from the list
-      let i = sumChars(name) % colors.length;
-      background = colors[i];
-    }
-
-    innerStyle.backgroundColor = background;
-
-    inner = abbr;
-  }
-
-  if (innerStyle.backgroundColor) {
-    classes.push(`UserAvatar ${contrast(innerStyle.backgroundColor)}`);
+    classes.push(`UserAvatar--${contrast(innerStyle.backgroundColor)}`);
   }
 
   return (
-    <div aria-label={name} className={classes.join(' ')} style={style}>
-      <div className={`UserAvatarInner ${className}`} style={innerStyle}>
-        {inner}
+    <div 
+      aria-label={name} 
+      className={classes.join(' ')} 
+      style={{...containerStyle, ...style}} 
+      onClick={onClick}
+    >
+      <div className={`UserAvatarInner ${className || ''}`} style={innerStyle}>
+        {(src || srcset) && !imageError ? (
+          <img
+            src={src || srcset}
+            alt={name}
+            style={imageStyle}
+            onError={handleImageError}
+          />
+        ) : abbr}
       </div>
     </div>
   );
-}
+};
 
 export default Avatar;

@@ -1,12 +1,6 @@
-import { createStore, applyMiddleware, compose } from 'redux';
-import thunk from 'redux-thunk';
+import { configureStore } from '@reduxjs/toolkit';
 import { createWrapper, HYDRATE } from 'next-redux-wrapper';
 import rootReducer from './reducers/rootReducer';
-
-const composeEnhancers =
-    typeof window === 'object' &&
-    window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__ ? 
-        window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__({}) : compose;
 
 const masterReducer = (state, action) => {
     if (action.type === HYDRATE) {
@@ -19,9 +13,11 @@ const masterReducer = (state, action) => {
     }
 };
 
-const makeStore = () => createStore(
-    masterReducer,
-    composeEnhancers(applyMiddleware(thunk))
-);
+const makeStore = () => 
+    configureStore({
+        reducer: masterReducer,
+        middleware: (getDefaultMiddleware) => getDefaultMiddleware(),
+        devTools: process.env.NODE_ENV !== 'production',
+    });
 
 export const wrapper = createWrapper(makeStore);

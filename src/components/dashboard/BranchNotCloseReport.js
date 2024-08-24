@@ -34,7 +34,7 @@ const BranchNotCloseTool = () => {
     const getList = async () => {
         setLoading(true);
         let url = getApiBaseUrl() + 'reports/get-all-branch-not-close';
-        if (currentUser.role.rep === 1) {
+        if (currentUser?.role?.rep === 1) {
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 const responseData = [];
@@ -64,7 +64,7 @@ const BranchNotCloseTool = () => {
                 setLoading(false);
                 toast.error(response.message);
             }
-        } else if (currentUser.role.rep === 2) {
+        } else if (currentUser?.role?.rep === 2) {
             // const branchCodes = typeof currentUser.designatedBranch === 'string' ? JSON.parse(currentUser.designatedBranch) : currentUser.designatedBranch;
             // const branchIds = branchList.filter(branch => branchCodes.includes(branch.code)).map(branch => branch._id);
             // url = url + '?' + new URLSearchParams({ branchIds: JSON.stringify(branchIds) });
@@ -98,7 +98,7 @@ const BranchNotCloseTool = () => {
                 setLoading(false);
                 toast.error(response.message);
             }
-        }  else if (currentUser.role.rep === 3) {
+        }  else if (currentUser?.role?.rep === 3) {
             url = url + '?' + new URLSearchParams({ branchId: currentUser.designatedBranchId });
             const response = await fetchWrapper.get(url);
             if (response.success) {
@@ -131,7 +131,7 @@ const BranchNotCloseTool = () => {
                 setLoading(false);
                 toast.error(response.message);
             }
-        } else if (currentUser.role.rep === 4) {
+        } else if (currentUser?.role?.rep === 4) {
             url = url + '?' + new URLSearchParams({ loId: currentUser._id });
             const response = await fetchWrapper.get(url);
             if (response.success) {
@@ -171,7 +171,7 @@ const BranchNotCloseTool = () => {
 
     const getListBranch = async () => {
         let url = getApiBaseUrl() + 'branches/list';
-        if (currentUser.role.rep === 1) {
+        if (currentUser?.role?.rep === 1) {
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 dispatch(setBranchList(response.branches));
@@ -180,8 +180,8 @@ const BranchNotCloseTool = () => {
                 setLoading(false);
                 toast.error(response.message);
             }
-        } else if (currentUser.role.rep === 2) {
-            const branchCodes = typeof currentUser.designatedBranch === 'string' ? JSON.parse(currentUser.designatedBranch) : currentUser.designatedBranch;
+        } else if (currentUser?.role?.rep === 2) {
+            const branchCodes = typeof currentUser?.designatedBranch === 'string' ? JSON.parse(currentUser.designatedBranch) : currentUser?.designatedBranch;
             url = url + '?' + new URLSearchParams({ branchCode: branchCodes });
             const response = await fetchWrapper.get(url);
             if (response.success) {
@@ -191,8 +191,8 @@ const BranchNotCloseTool = () => {
                 setLoading(false);
                 toast.error(response.message);
             }
-        } else if (currentUser.role.rep === 3 || currentUser.role.rep === 4) {
-            url = url + '?' + new URLSearchParams({ branchCode: currentUser.designatedBranch });
+        } else if (currentUser?.role?.rep === 3 || currentUser?.role?.rep === 4) {
+            url = url + '?' + new URLSearchParams({ branchCode: currentUser?.designatedBranch });
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 dispatch(setBranchList(response.branches));
@@ -211,7 +211,7 @@ const BranchNotCloseTool = () => {
 
         let tempCols = [];
 
-        if (currentUser.role.rep == 1 || currentUser.role.rep == 2) {
+        if (currentUser?.role?.rep == 1 || currentUser?.role?.rep == 2) {
             tempCols = [
                 {
                     Header: "Branch",
@@ -227,7 +227,7 @@ const BranchNotCloseTool = () => {
                 }
             ];
             setTitle('List of Branches Not Close');
-        } else if (currentUser.role.rep == 3) {
+        } else if (currentUser?.role?.rep == 3) {
             tempCols = [
                 {
                     Header: "Loan Officer",
@@ -243,7 +243,7 @@ const BranchNotCloseTool = () => {
                 }
             ];
             setTitle('List of Loan Officers Not Close');
-        } else if (currentUser.role.rep == 4) {
+        } else if (currentUser?.role?.rep == 4) {
             tempCols = [
                 {
                     Header: "Slot No",

@@ -16,8 +16,9 @@ import badDebtCollection from './badDebtCollectionReducer';
 import area from './areaReducer';
 import region from './regionReducer';
 import division from './divisionReducer';
+import { RESET_STATE } from '../actions/resetActions';
 
-const rootReducer = combineReducers({
+const appReducer = combineReducers({
     badDebtCollection: badDebtCollection,
     transfer: transfer,
     los: los,
@@ -36,5 +37,12 @@ const rootReducer = combineReducers({
     systemSettings: systemSettings,
     global: global
 });
+
+const rootReducer = (state, action) => {
+    if (action.type === RESET_STATE) {
+        state = undefined;
+    }
+    return appReducer(state, action);
+};
 
 export default rootReducer;

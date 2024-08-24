@@ -9,7 +9,7 @@ const ListAvatar = ({ userList, size }) => {
                 const user = data.user ? data.user : data;
                 return (
                     <div className={styles.avatarWrapper} key={index}>
-                        {data && <Avatar size={size ? size : 32} name={user.name ? user.name: user.title} src={user.photo}/>}
+                        {data && <Avatar name={user.name ? user.name: user.title} src={user.photo}/>}
                     </div>
                 )
             }) }

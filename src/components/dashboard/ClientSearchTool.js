@@ -141,7 +141,7 @@ const ClientSearchTool = ({ origin = "", callback, setSelected }) => {
                     <div className="flex flex-col items-center font-proxima">
                         {selectedClient && (
                             <React.Fragment>
-                                <Avatar name={selectedClient?.fullName} src={selectedClient?.profile ? selectedClient?.imgUrl : placeholder.src} className={`${selectedClient?.profile ? 'p-20' : 'p-12 mx-auto'} `} />
+                                <Avatar name={selectedClient?.fullName} src={selectedClient?.profile ? selectedClient?.imgUrl : placeholder.src} />
                                 <h5 className="mb-1 text-xl font-medium text-gray-900">{selectedClient?.fullName}</h5>
                                 <span className="bg-green-100 text-green-800 text-sm font-medium mr-2 px-2.5 py-0.5 rounded dark:bg-green-200 dark:text-green-900">{ selectedClient?.status }</span>
                             </React.Fragment>

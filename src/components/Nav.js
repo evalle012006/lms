@@ -37,14 +37,8 @@ import {
 import Avatar from "@/lib/avatar";
 import { userService } from "@/services/user-service";
 import { fetchWrapper } from "@/lib/fetch-wrapper";
-import { setLosList } from "@/redux/actions/losActions";
-import { setCashCollectionList } from "@/redux/actions/cashCollectionActions";
-import { setUser, setUserList } from "@/redux/actions/userActions";
-import { setBranch, setBranchList } from "@/redux/actions/branchActions";
-import { setGroup, setGroupList } from "@/redux/actions/groupActions";
-import { setClient, setClientList } from "@/redux/actions/clientActions";
-import { setLoan, setLoanList } from "@/redux/actions/loanActions";
 import { getApiBaseUrl } from '@/lib/constants';
+import { resetState } from '@/redux/actions/resetActions';
 
 const MenuItems = [
     {
@@ -559,23 +553,11 @@ const SubNav = React.memo(({ item, index, activePath, inner = false, className =
     const url = `${getApiBaseUrl()}authenticate?`;
     const params = { user: user._id };
     const response = await fetchWrapper.get(url + new URLSearchParams(params));
-    await response && response.success && response.query.acknowledged && userService.logout();
-    resetReduxState();
+    if (response && response.success && response.query.acknowledged) {
+        await userService.logout();
+        dispatch(resetState());
+    }
 }
-
-  const resetReduxState = () => {
-    dispatch(setLosList([]));
-    dispatch(setCashCollectionList([]));
-    dispatch(setUserList([]));
-    dispatch(setBranch({}));
-    dispatch(setBranchList([]));
-    dispatch(setGroup({}));
-    dispatch(setGroupList([]));
-    dispatch(setClient(null));
-    dispatch(setClientList([]));
-    dispatch(setLoan(null));
-    dispatch(setLoanList([]));
-  }
 
   const toggleSubMenu = () => {
     localDispatch({ type: 'TOGGLE_SUBMENU', payload: item.label });
@@ -657,29 +639,29 @@ const NavComponent = ({ isVisible, toggleNav, isMobile }) => {
   const filteredMenuItems = useMemo(() => {
     return menuItems.map((menu) => {
       let temp = {...menu};
-      if (userState.role.rep < 3) {
+      if (userState?.role?.rep < 3) {
         if (menu.label === 'BM Transactions') {
           temp.label = "Transactions";
         }
       }
 
-      if (rootUser || userState.role.rep === 1) {
+      if (rootUser || userState?.role?.rep === 1) {
         if (menu.label === 'Daily Transactions' || menu.label === 'Weekly Transactions') {
           temp.hidden = true;
         }
-      } else if (userState.role.rep === 2 || userState.role.rep === 3) {
+      } else if (userState?.role?.rep === 2 || userState?.role?.rep === 3) {
         if (['Divisions', 'Regions', 'Areas', 'Settings'].includes(menu.label)) {
           temp.hidden = true;
         }
         if (menu.label === 'Daily Transactions' || menu.label === 'Weekly Transactions') {
           temp.hidden = true;
         }
-      } else if (userState.role.rep === 4) {
+      } else if (userState?.role?.rep === 4) {
         if (['Divisions', 'Regions', 'Areas', 'Branches', 'Transfer', 'Settings', 'BM Transactions'].includes(menu.label)) {
           temp.hidden = true;
         }
-        if (userState.hasOwnProperty('transactionType')) {
-          if (userState.transactionType === 'daily') {
+        if (userState?.hasOwnProperty('transactionType')) {
+          if (userState?.transactionType === 'daily') {
             if (menu.label === 'Weekly Transactions') {
               temp.hidden = true;
             }
@@ -694,15 +676,15 @@ const NavComponent = ({ isVisible, toggleNav, isMobile }) => {
       if (temp.hasSub) {
         temp.subMenuItems = temp.subMenuItems.map(sItem => {
           let sm = {...sItem};
-          if (rootUser || userState.role.rep <= 2) {
+          if (rootUser || userState?.role?.rep <= 2) {
             if (['Loan Officer Summary', 'Branch Manager Summary', 'Daily Collection Sheet'].includes(sm.label)) {
               sm.hidden = true;
             }
-          } else if (userState.role.rep === 3) {
+          } else if (userState?.role?.rep === 3) {
             if (['System', 'Roles', 'Loan Officer Summary'].includes(sm.label)) {
               sm.hidden = true;
             }
-          } else if (userState.role.rep === 4) {
+          } else if (userState?.role?.rep === 4) {
             if (sm.label === 'Transfer Client') {
               sm.hidden = true;
             }
@@ -778,7 +760,7 @@ const NavComponent = ({ isVisible, toggleNav, isMobile }) => {
                 </span>
                 <div id="profile" className="flex items-center border-b border-orange-darkest px-2 py-4">
                     <div id="img" className="w-1/4 mr-6">
-                        <Avatar name={userState.firstName + " " + userState.lastName} src={userState.profile ? '/images/profiles/' + userState.profile : ""} className={`${userState.profile ? 'p-8' : 'p-6'} `} />
+                        <Avatar name={userState.firstName + " " + userState.lastName} src={userState.profile ? '/images/profiles/' + userState.profile : ""} size={70} padding={4} margin={4} />
                     </div>
                     <div id="welcome" className="text-white w-2/4 sm:ml-1 md:ml-6">
                         <p className="text-xs">Welcome,</p>

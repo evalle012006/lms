@@ -319,7 +319,16 @@ const DashboardPage = () => {
         <div className="min-h-screen bg-gray-100 flex flex-col">
             <div className="flex-grow p-4 flex flex-col">
                 <div className="flex items-center justify-between pb-6 border-b">
-                    <h1 className="text-2xl font-semibold whitespace-nowrap">Welcome, {`${currentUser.firstName} ${currentUser.lastName}`}!</h1>
+                    <div className="flex items-center">
+                        <img 
+                            src={currentUser.imageUrl || '/images/default-profile.svg'} 
+                            alt={`${currentUser.firstName} ${currentUser.lastName}`}
+                            className="h-12 w-12 rounded-full mr-4 object-cover"
+                        />
+                        <h1 className="text-2xl font-semibold whitespace-nowrap">
+                            Welcome, {`${currentUser.firstName} ${currentUser.lastName}`}!
+                        </h1>
+                    </div>
                 </div>
                 <div className="flex items-center justify-between pb-2 border-b">
                     <div className="w-64">
