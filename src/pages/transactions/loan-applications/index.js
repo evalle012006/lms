@@ -201,10 +201,10 @@ const LoanApplicationPage = () => {
         let apiUrl = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/export-loans';
         const fMonth = (typeof selectedMonth === 'number' && selectedMonth < 10) ? '0' + selectedMonth : selectedMonth;
         const userName = currentUser.firstName + ' ' + currentUser.lastName;
-        if (currentUser.role.rep == 3) {
+        if (currentUser?.role?.rep == 3) {
             apiUrl = apiUrl + '?' + new URLSearchParams({ userId: currentUser._id, userName: userName, userRole: currentUser.role.shortCode, userBranchCode: currentUser.designatedBranch, month: fMonth, year: selectedYear + "" });
             processExportLoanApplication(apiUrl);
-        } else if (currentUser.role.rep == 2) {
+        } else if (currentUser?.role?.rep == 2) {
             apiUrl = apiUrl + '?' + new URLSearchParams({ userId: currentUser._id, userName: userName, userRole: currentUser.role.shortCode, month: fMonth, year: selectedYear + "" });
             processExportLoanApplication(apiUrl);
         } else {
@@ -261,7 +261,7 @@ const LoanApplicationPage = () => {
 
     const getListBranch = async () => {
         let url = getApiBaseUrl() + 'branches/list';
-        if (currentUser.role.rep === 1) {
+        if (currentUser?.role?.rep === 1) {
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let branches = [];
@@ -280,7 +280,7 @@ const LoanApplicationPage = () => {
                 setLoading(false);
                 toast.error(response.message);
             }
-        } else if (currentUser.role.rep === 2) {
+        } else if (currentUser?.role?.rep === 2) {
             url = url + '?' + new URLSearchParams({ currentUserId: currentUser._id });
             const response = await fetchWrapper.get(url);
             if (response.success) {
@@ -300,7 +300,7 @@ const LoanApplicationPage = () => {
                 setLoading(false);
                 toast.error(response.message);
             }
-        } else if (currentUser.role.rep == 3 || currentUser.role.rep == 4) {
+        } else if (currentUser?.role?.rep == 3 || currentUser?.role?.rep == 4) {
             url = url + '?' + new URLSearchParams({ branchCode: currentUser.designatedBranch });
             const response = await fetchWrapper.get(url);
             if (response.success) {
@@ -342,7 +342,7 @@ const LoanApplicationPage = () => {
             });
             userList.sort((a, b) => { return a.loNo - b.loNo; });
 
-            if (currentUser.role.rep === 4) {
+            if (currentUser?.role?.rep === 4) {
                 const name = `${currentUser.firstName} ${currentUser.lastName}`;
                 userList = [];
                 userList.push({
@@ -353,11 +353,11 @@ const LoanApplicationPage = () => {
                 });
             }
 
-            if (currentUser.role.rep === 4) {
+            if (currentUser?.role?.rep === 4) {
                 setSelectedFilterUser(currentUser._id);
             }
 
-            if (currentUser.role.rep == 3) {
+            if (currentUser?.role?.rep == 3) {
                 dispatch(setUserList(userList));
             } else {
                 dispatch(setUserList(userList));
@@ -389,7 +389,7 @@ const LoanApplicationPage = () => {
 
     const getListLoan = async () => {
         let url = getApiBaseUrl() + 'transactions/loans/list';
-        if (currentUser.root !== true && currentUser.role.rep === 4) { 
+        if (currentUser.root !== true && currentUser?.role?.rep === 4) { 
             url = url + '?' + new URLSearchParams({ status: 'pending', branchId: currentUser.designatedBranchId, loId: currentUser._id, mode: currentUser.transactionType, currentDate: currentDate });
             const response = await fetchWrapper.get(url);
             if (response.success) {
@@ -469,7 +469,7 @@ const LoanApplicationPage = () => {
                 setLoading(false);
                 toast.error(response.message);
             }
-        } else if (currentUser.root !== true && currentUser.role.rep === 3) {
+        } else if (currentUser.root !== true && currentUser?.role?.rep === 3) {
             url = url + '?' + new URLSearchParams({ status: 'pending', branchId: currentUser.designatedBranchId, currentDate: currentDate });
             const response = await fetchWrapper.get(url);
             if (response.success) {
@@ -558,7 +558,7 @@ const LoanApplicationPage = () => {
                 setLoading(false);
                 toast.error(response.message);
             }
-        } else if (currentUser.role.rep === 2) {
+        } else if (currentUser?.role?.rep === 2) {
             url = url + '?' + new URLSearchParams({ status: 'pending', currentUserId: currentUser._id, currentDate: currentDate });
             const response = await fetchWrapper.get(url);
             if (response.success) {
@@ -726,7 +726,7 @@ const LoanApplicationPage = () => {
         setLoading(true);;
         let url = getApiBaseUrl() + 'transactions/loans/list-history';
         const fMonth = (typeof selectedMonth === 'number' && selectedMonth < 10) ? '0' + selectedMonth : selectedMonth;
-        if (currentUser.root !== true && currentUser.role.rep === 4 && branchList.length > 0) { 
+        if (currentUser.root !== true && currentUser?.role?.rep === 4 && branchList.length > 0) { 
             url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, loId: currentUser._id, mode: occurence, month: fMonth, year: selectedYear + "" });
             const response = await fetchWrapper.get(url);
             if (response.success) {
@@ -750,7 +750,7 @@ const LoanApplicationPage = () => {
                 setLoading(false);
                 toast.error(response.message);
             }
-        } else if (currentUser.root !== true && currentUser.role.rep === 3 && branchList.length > 0) {
+        } else if (currentUser.root !== true && currentUser?.role?.rep === 3 && branchList.length > 0) {
             url = url + '?' + new URLSearchParams({ branchId: branchList[0]._id, month: fMonth, year: selectedYear + "" });
             const response = await fetchWrapper.get(url);
             if (response.success) {
@@ -774,7 +774,7 @@ const LoanApplicationPage = () => {
                 setLoading(false);
                 toast.error(response.message);
             }
-        } else if (currentUser.role.rep == 2) {
+        } else if (currentUser?.role?.rep == 2) {
             url = url + '?' + new URLSearchParams({ currentUserId: currentUser._id, month: fMonth, year: selectedYear + "" });
             const response = await fetchWrapper.get(url);
             if (response.success) {
@@ -941,7 +941,7 @@ const LoanApplicationPage = () => {
         setLoan({});
         setOccurence('daily');
         getListLoan();
-        if (currentUser.role.rep === 4) {
+        if (currentUser?.role?.rep === 4) {
             getListGroup(currentUser._id, currentUser?.transactionType);
         }
         setTimeout(() => {
@@ -1223,7 +1223,7 @@ const LoanApplicationPage = () => {
         }
     }
 
-    // const actionButtons = currentUser.role.rep < 4 ? [
+    // const actionButtons = currentUser?.role?.rep < 4 ? [
     //     <ButtonOutline label="Approved Selected Loans" type="button" className="p-2 mr-3" onClick={handleMultiApprove} />,
     //     <ButtonSolid label="Add Loan" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
     // ] : [
@@ -1435,7 +1435,7 @@ const LoanApplicationPage = () => {
         let mounted = true;
         mounted && fetchData();
 
-        if (currentUser.role.rep == 3 || currentUser.role.rep == 4) {
+        if (currentUser?.role?.rep == 3 || currentUser?.role?.rep == 4) {
             mounted && getHistoyListLoan();
         }
 
@@ -1523,14 +1523,14 @@ const LoanApplicationPage = () => {
                 }
             ];
 
-            if (currentUser.role.rep === 3) {
+            if (currentUser?.role?.rep === 3) {
                 cols.unshift(
                     {
                         Header: "Loan Officer",
                         accessor: 'loanOfficerName'
                     }
                 );
-            } else if (currentUser.role.rep === 2 || currentUser.role.rep === 1 ) {
+            } else if (currentUser?.role?.rep === 2 || currentUser?.role?.rep === 1 ) {
                 cols.unshift(
                     {
                         Header: "Loan Officer",
@@ -1547,7 +1547,7 @@ const LoanApplicationPage = () => {
 
             let rowActionBtn = [];
 
-            if (currentUser.role.rep === 3) {
+            if (currentUser?.role?.rep === 3) {
                 if (!isWeekend && !isHoliday) {
                     rowActionBtn = [
                         // { label: 'Approve', action: handleApprove},
@@ -1562,7 +1562,7 @@ const LoanApplicationPage = () => {
                         { label: 'View Disclosure', action: handleShowNDSAction}
                     ];
                 }
-            } else if (currentUser.role.rep === 4) {
+            } else if (currentUser?.role?.rep === 4) {
                 rowActionBtn = [
                     { label: 'Edit Loan', action: handleEditAction},
                     // { label: 'Delete Loan', action: handleDeleteAction}
@@ -1576,12 +1576,12 @@ const LoanApplicationPage = () => {
     }, [groupList]);
 
     useEffect(() => {
-        if (currentUser.role.rep === 3 || currentUser.role.rep === 4) {
+        if (currentUser?.role?.rep === 3 || currentUser?.role?.rep === 4) {
             setSelectedFilterBranch(currentUser.designatedBranch);
             getListUser(currentUser.designatedBranch);
         }
 
-        if (currentUser.role.rep === 4) {
+        if (currentUser?.role?.rep === 4) {
             setOccurence(currentUser.transactionType);
             getListGroup(currentUser._id, currentUser.transactionType);
         }
@@ -1604,13 +1604,13 @@ const LoanApplicationPage = () => {
 
     useEffect(() => {
         let actBtns = [ <ButtonSolid label="Add Loan" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} /> ];
-        if (currentUser.role.rep < 4) {
+        if (currentUser?.role?.rep < 4) {
             actBtns = [
                 <ButtonOutline label="LDF Approved" type="button" className="p-2 mr-3" onClick={() => handleMultiApprove('ldf')} />,
                 <ButtonOutline label="LDF Unapproved" type="button" className="p-2 mr-3 !border-red-600 !text-red-500 !bg-red-100" onClick={() => handleMultiApprove('ldf', true)} />
             ];
 
-            if (currentUser.role.rep > 2)  {
+            if (currentUser?.role?.rep > 2)  {
                 actBtns.push(
                     <ButtonSolid label="Add Loan" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
                 );
@@ -1666,7 +1666,7 @@ const LoanApplicationPage = () => {
                                     onClick={() => handleSelectTab("application")}>
                                     Pending Applications
                                 </TabSelector>
-                                {currentUser.role.rep < 3 && (
+                                {currentUser?.role?.rep < 3 && (
                                     <TabSelector
                                         isActive={selectedTab === "duplicate"}
                                         onClick={() => handleSelectTab("duplicate")}>
@@ -1683,7 +1683,7 @@ const LoanApplicationPage = () => {
                             <TabPanel hidden={selectedTab !== "ldf"}>
                                     <div className="flex flex-row justify-between w-full bg-white p-4">
                                         <div className="flex flex-row">
-                                            {currentUser.role.rep < 3 && (
+                                            {currentUser?.role?.rep < 3 && (
                                                 <div className='flex flex-col ml-4'>
                                                     <span className='text-zinc-400 mb-1'>Branch:</span>
                                                     <Select 
@@ -1697,7 +1697,7 @@ const LoanApplicationPage = () => {
                                                         placeholder={'Branch Filter'}/>
                                                 </div>
                                             )}
-                                            {currentUser.role.rep <= 3 && (
+                                            {currentUser?.role?.rep <= 3 && (
                                                 <div className='flex flex-col ml-4'>
                                                     <span className='text-zinc-400 mb-1'>Loan Officer:</span>
                                                     <Select 
@@ -1723,7 +1723,7 @@ const LoanApplicationPage = () => {
                                                     closeMenuOnSelect={true}
                                                     placeholder={'Group Filter'}/>
                                             </div>
-                                            {currentUser.role.rep < 4 && (
+                                            {currentUser?.role?.rep < 4 && (
                                                 <div className="flex flex-col">
                                                     <div className="flex flex-row border border-zinc-200 rounded-lg pl-4 pb-2">
                                                         <RadioButton id={"radio_main"} name="radio-lo-type" label={"All"} checked={ldfFilter === 'all'} value="all" onChange={handleLoTypeChange} />
@@ -1738,7 +1738,7 @@ const LoanApplicationPage = () => {
                                                 </div>
                                             )}
                                         </div>
-                                        {currentUser.role.rep === 3 && (
+                                        {currentUser?.role?.rep === 3 && (
                                             <div className='flex justify-end ml-4 h-10 my-auto'>
                                                 <ReactToPrint
                                                     trigger={() => <ButtonSolid label="Print LDF" icon={[<PrinterIcon className="w-5 h-5" />, 'left']} width='!w-28'/> }
@@ -1747,18 +1747,20 @@ const LoanApplicationPage = () => {
                                             </div>
                                         )}
                                     </div>
-                                    <TableComponent 
-                                        columns={columns} 
-                                        data={data} 
-                                        pageSize={50} 
-                                        hasActionButtons={currentUser.role.rep > 2 ? true : false} 
-                                        rowActionButtons={rowActionButtons} 
-                                        showFilters={false} 
-                                        multiSelect={currentUser.role.rep === 3 ? true : false} 
-                                        multiSelectActionFn={handleMultiSelect} 
-                                        rowClick={handleShowClientInfoModal}
-                                    />
-                                    <LDFListPage ref={ndsFormRef} data={data} />
+                                    <div className="mb-6">
+                                        <TableComponent 
+                                            columns={columns} 
+                                            data={data} 
+                                            pageSize={50} 
+                                            hasActionButtons={currentUser?.role?.rep > 2 ? true : false} 
+                                            rowActionButtons={rowActionButtons} 
+                                            showFilters={false} 
+                                            multiSelect={currentUser?.role?.rep === 3 ? true : false} 
+                                            multiSelectActionFn={handleMultiSelect} 
+                                            rowClick={handleShowClientInfoModal}
+                                        />
+                                        <LDFListPage ref={ndsFormRef} data={data} />
+                                    </div>
                                     <footer className="pl-64 text-md font-bold text-center fixed inset-x-0 bottom-0 text-red-400">
                                         <div className="flex flex-row justify-center bg-white px-4 py-2 shadow-inner border-t-4 border-zinc-200">
                                             <div className="flex flex-row">
@@ -1774,7 +1776,7 @@ const LoanApplicationPage = () => {
                                 </TabPanel>
                                 <TabPanel hidden={selectedTab !== "tomorrow"}>
                                     <div className="flex flex-row bg-white p-4">
-                                        {currentUser.role.rep < 3 && (
+                                        {currentUser?.role?.rep < 3 && (
                                             <div className='flex flex-col ml-4'>
                                                 <span className='text-zinc-400 mb-1'>Branch:</span>
                                                 <Select 
@@ -1788,7 +1790,7 @@ const LoanApplicationPage = () => {
                                                     placeholder={'Branch Filter'}/>
                                             </div>
                                         )}
-                                        {currentUser.role.rep <= 3 && (
+                                        {currentUser?.role?.rep <= 3 && (
                                             <div className='flex flex-col ml-4'>
                                                 <span className='text-zinc-400 mb-1'>Loan Officer:</span>
                                                 <Select 
@@ -1819,10 +1821,10 @@ const LoanApplicationPage = () => {
                                         columns={columns} 
                                         data={tomorrowData} 
                                         pageSize={50} 
-                                        hasActionButtons={currentUser.role.rep > 2 ? true : false} 
+                                        hasActionButtons={currentUser?.role?.rep > 2 ? true : false} 
                                         rowActionButtons={rowActionButtons} 
                                         showFilters={false} 
-                                        multiSelect={currentUser.role.rep === 3 ? true : false} 
+                                        multiSelect={currentUser?.role?.rep === 3 ? true : false} 
                                         multiSelectActionFn={handleMultiSelect} 
                                         rowClick={handleShowClientInfoModal}
                                     />
@@ -1841,7 +1843,7 @@ const LoanApplicationPage = () => {
                                 </TabPanel>
                                 <TabPanel hidden={selectedTab !== "application"}>
                                     <div className="flex flex-row bg-white p-4">
-                                        {currentUser.role.rep < 3 && (
+                                        {currentUser?.role?.rep < 3 && (
                                             <div className='flex flex-col ml-4'>
                                                 <span className='text-zinc-400 mb-1'>Branch:</span>
                                                 <Select 
@@ -1855,7 +1857,7 @@ const LoanApplicationPage = () => {
                                                     placeholder={'Branch Filter'}/>
                                             </div>
                                         )}
-                                        {currentUser.role.rep <= 3 && (
+                                        {currentUser?.role?.rep <= 3 && (
                                             <div className='flex flex-col ml-4'>
                                                 <span className='text-zinc-400 mb-1'>Loan Officer:</span>
                                                 <Select 
@@ -1886,10 +1888,10 @@ const LoanApplicationPage = () => {
                                         columns={columns} 
                                         data={pendingData} 
                                         pageSize={50} 
-                                        hasActionButtons={currentUser.role.rep > 2 ? true : false} 
+                                        hasActionButtons={currentUser?.role?.rep > 2 ? true : false} 
                                         rowActionButtons={rowActionButtons} 
                                         showFilters={false} 
-                                        multiSelect={currentUser.role.rep === 3 ? true : false} 
+                                        multiSelect={currentUser?.role?.rep === 3 ? true : false} 
                                         multiSelectActionFn={handleMultiSelect} 
                                         rowClick={handleShowClientInfoModal}
                                     />
@@ -1938,7 +1940,7 @@ const LoanApplicationPage = () => {
                                                     closeMenuOnSelect={true}
                                                     placeholder={'Year Filter'}/>
                                             </div>
-                                            {currentUser.role.rep < 3 && (
+                                            {currentUser?.role?.rep < 3 && (
                                                 <div className='flex flex-col ml-4'>
                                                     <Select 
                                                         options={branchList}

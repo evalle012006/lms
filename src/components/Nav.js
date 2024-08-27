@@ -726,7 +726,7 @@ const NavComponent = ({ isVisible, toggleNav, isMobile }) => {
     if (page) {
       dispatch(setCurrentPage(page.url));
       dispatch(setCurrentPageTitle(page.label));
-      subMenu && dispatch(setCurrentSubMenu(parentMenu));
+      // subMenu && dispatch(setCurrentSubMenu(parentMenu));
     }
   }, [activePath, dispatch, getActivePath]);
 
