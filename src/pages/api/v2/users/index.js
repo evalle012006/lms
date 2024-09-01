@@ -36,8 +36,8 @@ async function updateUser(req, res) {
     const form = new formidable.IncomingForm({ keepExtensions: true });
     const promise = await new Promise((resolve, reject) => {
         form.parse(req, async function (err, fields, files) {
-            console.log(fields.email);
-            const userData = await findUserByEmail(fields.email);
+            const payload = JSON.parse(fields.data);
+            const userData = await findUserByEmail(payload.email);
 
             let file;
             if (files.file) {
@@ -49,44 +49,32 @@ async function updateUser(req, res) {
             }
 
             const profile = file ? file : userData.profile;
-            const role = fields.role;
-            let designatedBranch = fields.designatedBranch;
+            const role = payload.role;
+            let designatedBranch = payload.designatedBranch;
             // if (role.rep === 2) {
-            //     designatedBranch = JSON.parse(fields.designatedBranch);
+            //     designatedBranch = JSON.parse(payload.designatedBranch);
             // }
 
             const forUpdate = {
-                firstName: fields.firstName,
-                lastName: fields.lastName,
-                number: fields.number,
-                position: fields.position,
+                firstName: payload.firstName,
+                lastName: payload.lastName,
+                number: payload.number,
+                position: payload.position,
                 profile: profile,
-                role: role,
                 designatedBranch: designatedBranch,
-                loNo: fields.loNo,
-                transactionType: fields.transactionType
+                loNo: payload.loNo,
+                transactionType: payload.transactionType
             };
 
-            if(role.respe === 3) {
-                forUpdate.branchManagerName = fields.branchManagerName;
+            if(role.rep === 3) {
+                forUpdate.branchManagerName = payload.branchManagerName;
             }
 
             const resp = await graph.mutation(
                 updateQl(USER_TYPE, {
-                    set: {
-                        firstName: fields.firstName,
-                        lastName: fields.lastName,
-                        number: fields.number,
-                        position: fields.position,
-                        profile: profile,
-                        role: role,
-                        designatedBranch: designatedBranch,
-                        loNo: fields.loNo,
-                        transactionType: fields.transactionType,
-                        branchManagerName: fields.branchManagerName
-                    },
+                    set: forUpdate,
                     where: {
-                        email: { _eq: fields.email }
+                        email: { _eq: payload.email }
                     }
                 })
             );
@@ -115,6 +103,7 @@ async function updateUser(req, res) {
 const saveFile = async (file, uid) => {
     if (file) {
         const data = fs.readFileSync(file.filepath);
+        console.log('filename: ', file.originalFilename)
         const fileName = 'profile-00.' + file.originalFilename.split('.').pop();
         if (!fs.existsSync(`./public/images/profiles/`)) {
             fs.mkdirSync(`./public/images/profiles/`, { recursive: true });

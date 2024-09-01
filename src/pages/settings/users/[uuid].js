@@ -54,8 +54,8 @@ const UserDetailsPage = () => {
     }
 
     const handleSaveUpdate = async () => {
-        const values = {...data, _id: uuid, file: image, origin: 'updateUser'};
-        fetchWrapper.sendData(getApiBaseUrl() + 'users/', values)
+        const values = {...data, _id: uuid, origin: 'updateUser'};
+        fetchWrapper.sendData(getApiBaseUrl() + 'users/', { data: JSON.stringify(values), file: image })
             .then(response => {
                 setLoading(false);
                 getCurrentUser();
