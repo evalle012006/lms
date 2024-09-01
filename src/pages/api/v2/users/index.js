@@ -49,7 +49,7 @@ async function updateUser(req, res) {
             }
 
             const profile = file ? file : userData.profile;
-            const role = JSON.parse(fields.role);
+            const role = fields.role;
             let designatedBranch = fields.designatedBranch;
             // if (role.rep === 2) {
             //     designatedBranch = JSON.parse(fields.designatedBranch);
@@ -157,7 +157,7 @@ const findUserByEmail = async (email) => {
         })
     ).then(res => res.data.users);
     
-    return users
+    return user;
 }
 
 export const config = {
