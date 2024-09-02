@@ -853,13 +853,13 @@ const BranchManagerSummary = () => {
                 let totalActiveBorrowers = 0; // last row
                 let totalLoanBalance = 0; // last row
 
-                // let lastActiveClients = 0;
+                let lastActiveClients = 0;
                 let lastPastDueAmount = 0;
                 let lastPastDuePerson = 0;
                 let lastLoanBalance = 0;
                 let lastMcbuBalance = 0;
-                // let lastActiveLoanReleasePerson = 0;
-                // let lastActiveLoanReleaseAmount = 0;
+                let lastActiveLoanReleasePerson = 0;
+                let lastActiveLoanReleaseAmount = 0;
 
                 let totalMcbuTarget = 0;
                 let totalMcbuActual = 0;
@@ -895,9 +895,9 @@ const BranchManagerSummary = () => {
                     totalConsolidatedCollection += los.consolidatedCollection !== '-' ? los.consolidatedCollection : 0;
                     totalMispaymentPerson += los.mispaymentPerson !== '-' ? los.mispaymentPerson : 0;
                     
-                    // if (los.activeClients > 0) {
-                    //     lastActiveClients = los.activeClients;
-                    // }
+                    if (los.activeClients > 0) {
+                        lastActiveClients = los.activeClients;
+                    }
 
                     if (los.pastDuePerson !== '-') {
                         lastPastDuePerson = los.pastDuePerson;
@@ -915,13 +915,13 @@ const BranchManagerSummary = () => {
                         lastMcbuBalance = los.mcbuBalance;
                     }
 
-                    // if (los.activeLoanReleasePerson > 0) {
-                    //     lastActiveLoanReleasePerson = los.activeLoanReleasePerson;
-                    // }
+                    if (los.activeLoanReleasePerson > 0) {
+                        lastActiveLoanReleasePerson = los.activeLoanReleasePerson;
+                    }
 
-                    // if (los.activeLoanReleaseAmount > 0) {
-                    //     lastActiveLoanReleaseAmount = los.activeLoanReleaseAmount;
-                    // }
+                    if (los.activeLoanReleaseAmount > 0) {
+                        lastActiveLoanReleaseAmount = los.activeLoanReleaseAmount;
+                    }
 
                     totalFullPaymentDailyPerson += los.fullPaymentDailyPerson !== '-' ? los.fullPaymentDailyPerson : 0;
                     totalFullPaymentDailyAmount += los.fullPaymentDailyAmount !== '-' ? los.fullPaymentDailyAmount : 0;
@@ -943,22 +943,22 @@ const BranchManagerSummary = () => {
                     totalActiveLoanReleasePerson = fBal.activeLoanReleasePerson + totalConsolidatedLoanReleasePerson - totalConsolidatedFullPaymentPerson;
                     totalActiveLoanReleaseAmount = fBal.activeLoanReleaseAmount + totalConsolidatedLoanReleaseAmount - totalConsolidatedFullPaymentAmount;
                 } else {
-                    totalActiveClients = prevWeek.activeClients + totalTransfer + totalNewMember - totalNoMcbuReturn;
-                    totalActiveLoanReleasePerson = prevWeek.activeLoanReleasePerson + totalConsolidatedLoanReleasePerson - totalConsolidatedFullPaymentPerson;
-                    totalActiveLoanReleaseAmount = prevWeek.activeLoanReleaseAmount + totalConsolidatedLoanReleaseAmount - totalConsolidatedFullPaymentAmount;
+                    if (prevWeek.activeClients == 0) {
+                        totalActiveClients = lastActiveClients;
+                        totalActiveLoanReleasePerson = lastActiveLoanReleasePerson;
+                        totalActiveLoanReleaseAmount = lastActiveLoanReleaseAmount;
+                    } else {
+                        totalActiveClients = prevWeek.activeClients + totalTransfer + totalNewMember - totalNoMcbuReturn;
+                        totalActiveLoanReleasePerson = prevWeek.activeLoanReleasePerson + totalConsolidatedLoanReleasePerson - totalConsolidatedFullPaymentPerson;
+                        totalActiveLoanReleaseAmount = prevWeek.activeLoanReleaseAmount + totalConsolidatedLoanReleaseAmount - totalConsolidatedFullPaymentAmount;
+                    }
                 }
-                
-                // if (totalActiveClients == 0) {
-                //     totalActiveClients = lastActiveClients;
-                // }
 
                 totalMcbuBalance = lastMcbuBalance;
                 totalPastDuePerson = lastPastDuePerson;
                 totalPastDueAmount = lastPastDueAmount;
                 totalActiveBorrowers = losSlice[losSlice.length - 1].activeBorrowers;
                 totalLoanBalance =  lastLoanBalance;
-                // totalActiveLoanReleasePerson = totalActiveLoanReleasePerson == 0 ? lastActiveLoanReleasePerson : totalActiveLoanReleasePerson;
-                // totalActiveLoanReleaseAmount = totalActiveLoanReleaseAmount == 0 ? lastActiveLoanReleaseAmount : totalActiveLoanReleaseAmount;
 
                 // +/- with the transfer
                 // apply only to the last week total
@@ -1186,11 +1186,11 @@ const BranchManagerSummary = () => {
         let totalConsolidatedFullPaymentAmount = 0;
         let totalActiveBorrowers = 0; // last row
         let totalLoanBalance = 0; // last row
-        // let lastActiveClients = 0;
-        // let lastActiveLoanReleasePerson = 0;
-        // let lastActiveLoanReleaseAmount = 0;
-        let lastActiveBorrowers = 0;
-        let lastLoanBalance = 0;
+        let lastActiveClients = 0;
+        let lastActiveLoanReleasePerson = 0;
+        let lastActiveLoanReleaseAmount = 0;
+        // let lastActiveBorrowers = 0;
+        // let lastLoanBalance = 0;
 
         weeklyTotals.map(wt => {
             let transfer = wt.transfer;
@@ -1232,17 +1232,17 @@ const BranchManagerSummary = () => {
             totalActiveBorrowers = wt.activeBorrowers;
             totalLoanBalance = wt.loanBalance;
 
-            // if (wt.activeClients > 0) {
-            //     lastActiveClients = wt.activeClients;
-            // }
+            if (wt.activeClients > 0) {
+                lastActiveClients = wt.activeClients;
+            }
 
-            // if (wt.activeLoanReleasePerson > 0) {
-            //     lastActiveLoanReleasePerson = wt.activeLoanReleasePerson;
-            // }
+            if (wt.activeLoanReleasePerson > 0) {
+                lastActiveLoanReleasePerson = wt.activeLoanReleasePerson;
+            }
 
-            // if (wt.activeLoanReleaseAmount > 0) {
-            //     lastActiveLoanReleaseAmount = wt.activeLoanReleaseAmount;
-            // }
+            if (wt.activeLoanReleaseAmount > 0) {
+                lastActiveLoanReleaseAmount = wt.activeLoanReleaseAmount;
+            }
 
             // if (wt.activeBorrowers > 0) {
             //     lastActiveBorrowers = wt.activeBorrowers;
@@ -1254,9 +1254,15 @@ const BranchManagerSummary = () => {
         });
 
         totalMcbuBalance = fBal.mcbuBalance + totalMcbuActual - totalMcbuWithdrawal + totalMcbuInterest - totalMcbuReturnAmt;
-        totalActiveClients = fBal.activeClients + totalTransfer + totalNewMember - totalNoMcbuReturn;
-        totalActiveLoanReleasePerson = fBal.activeLoanReleasePerson + totalConsolidatedLoanReleasePerson - totalConsolidatedFullPaymentPerson;
-        totalActiveLoanReleaseAmount = fBal.activeLoanReleaseAmount + totalConsolidatedLoanReleaseAmount - totalConsolidatedFullPaymentAmount;
+        if (fBal.activeClients == 0) {
+            totalActiveClients = lastActiveClients;
+            totalActiveLoanReleasePerson = lastActiveLoanReleasePerson;
+            totalActiveLoanReleaseAmount = lastActiveLoanReleaseAmount;
+        } else {
+            totalActiveClients = fBal.activeClients + totalTransfer + totalNewMember - totalNoMcbuReturn;
+            totalActiveLoanReleasePerson = fBal.activeLoanReleasePerson + totalConsolidatedLoanReleasePerson - totalConsolidatedFullPaymentPerson;
+            totalActiveLoanReleaseAmount = fBal.activeLoanReleaseAmount + totalConsolidatedLoanReleaseAmount - totalConsolidatedFullPaymentAmount;
+        }
 
         // if (totalActiveClients == 0) {
         //     totalActiveClients = lastActiveClients;
