@@ -365,7 +365,7 @@ async function updateClient(mutationQl, loan, currentDate) {
         )
         
         if (loan.remarks && loan.remarks.value?.startsWith('offset')) {
-            // await updateLoanClose(mutationQl, loan, currentDate);
+            await updateLoanClose(mutationQl, loan, currentDate);
             await updateGroup(mutationQl, loan);
         }
     }
