@@ -19,8 +19,9 @@ async function list(req, res) {
   const currentDate = new Date(req.query).toString() === 'Invalid Date' ? moment(new Date()).format("YYYY-MM-DD") : req.query.currentDate;
   if (status) {
     // for lo
-    if (loId && branchId) {
+    if (loId) {
       args = {
+        loId,
         branchId,
         status,
         occurrence: mode,
