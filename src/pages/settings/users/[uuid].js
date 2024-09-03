@@ -53,16 +53,18 @@ const UserDetailsPage = () => {
         }
     }
 
-    const handleSaveUpdate = async () => {
+    const handleSaveUpdate = async (evt) => {
+        evt.preventDefault();
         const values = {...data, _id: uuid, origin: 'updateUser'};
         fetchWrapper.sendData(getApiBaseUrl() + 'users/', { data: JSON.stringify(values), file: image })
             .then(response => {
+                console.log('response', response);
                 setLoading(false);
                 getCurrentUser();
                 handleRemoveImage();
                 toast.success('User successfully updated.');
-                action.setSubmitting = false;
-                action.resetForm();
+                //action.setSubmitting = false;
+                // action.resetForm();
             }).catch(error => {
                 console.log(error);
             });

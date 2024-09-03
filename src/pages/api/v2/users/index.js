@@ -1,4 +1,3 @@
-import { connectToDatabase } from '@/lib/mongodb';
 import { apiHandler } from '@/services/api-handler';
 import formidable from "formidable";
 import fs from "fs";
@@ -6,6 +5,7 @@ import fs from "fs";
 import { GraphProvider } from "@/lib/graph/graph.provider";
 import { createGraphType, queryQl, updateQl } from "@/lib/graph/graph.util";
 import { USER_FIELDS } from '@/lib/graph.fields';
+import logger from '@/logger';
 
 const graph = new GraphProvider();
 const USER_TYPE = createGraphType('users', `
@@ -41,11 +41,21 @@ async function updateUser(req, res) {
 
             let file;
             if (files.file) {
-                file = await saveFile(files.file, userData._id);
+                file = await saveFile(files.file, userData._id).catch(err => {
+                    console.error(err);
+                    logger.error({page: 'User Page', message: `Error in uploading file ${JSON.stringify(err)}`});
+                    return false;
+                });
+
+                if(!file) {
+                    resolve({ formError: true });
+                    return;
+                }
             }
 
             if (err) {
-                resolve({ formError: true })
+                resolve({ formError: true });
+                return;
             }
 
             const profile = file ? file : userData.profile;
@@ -101,6 +111,7 @@ async function updateUser(req, res) {
 }
 
 const saveFile = async (file, uid) => {
+    console.log('file:', file)
     if (file) {
         const data = fs.readFileSync(file.filepath);
         console.log('filename: ', file.originalFilename)
