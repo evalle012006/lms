@@ -384,6 +384,8 @@ async function updateLoanClose(mutationQl, loanData, currentDate) {
         loan.status = 'closed';
         loan.closedDate = currentDate;
         loan.dateModified = currentDate;
+        loan.fullPaymentDate = currentDate;
+        
         delete loan._id;
         logger.debug({page: `Saving Cash Collection - Updating Loan Close`, data: loan});
 
