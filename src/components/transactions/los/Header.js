@@ -26,7 +26,7 @@ const LOSHeader = ({ pageTitle, page, selectedMonth, handleMonthFilter, selected
     };
 
     const handleBack = () => {
-        if (currentUser.role.rep == 3) {
+        if (currentUser?.role?.rep == 3) {
             router.push('/transactions/branch-manager/summary');
         } else {
             router.back();
@@ -34,7 +34,7 @@ const LOSHeader = ({ pageTitle, page, selectedMonth, handleMonthFilter, selected
     }
 
     useEffect(() => {
-        if (currentUser.role.rep === 4) {
+        if (currentUser?.role?.rep === 4) {
             setLoanOfficer(currentUser);
         } else {
             setLoanOfficer(selectedLo)
@@ -48,7 +48,7 @@ const LOSHeader = ({ pageTitle, page, selectedMonth, handleMonthFilter, selected
                     <div className="page-title">
                         {pageTitle} 
                     </div>
-                    {(currentUser.role.rep < 4 && (selectedLo != undefined && selectedLo != null)) && (
+                    {(currentUser?.role?.rep < 4 && (selectedLo != undefined && selectedLo != null)) && (
                         <div className="flex justify-between w-11/12 my-2">
                             <div className="page-title flex-row">
                                 <span><ArrowLeftCircleIcon className="w-5 h-5 mr-2 cursor-pointer" title="Back" onClick={handleBack} /></span>
@@ -119,7 +119,7 @@ const LOSHeader = ({ pageTitle, page, selectedMonth, handleMonthFilter, selected
                                 closeMenuOnSelect={true}
                                 placeholder={'Year Filter'}/>
                         </div>
-                        {(currentUser.role.rep < 4) && (
+                        {(currentUser?.role?.rep < 4) && (
                             <React.Fragment>
                                 { (currentBranch?.noOfLO?.count > 10 && pageTitle == "Branch Manager Summary") && (
                                     <div className="flex flex-row ml-4">

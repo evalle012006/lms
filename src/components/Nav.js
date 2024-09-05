@@ -556,6 +556,7 @@ const SubNav = React.memo(({ item, index, activePath, inner = false, className =
     if (response && response.success && response.query.acknowledged) {
         await userService.logout();
         dispatch(resetState());
+        window.location.reload();
     }
 }
 
