@@ -8,15 +8,17 @@ import Layout from '@/components/Layout';
 import Spinner from '@/components/Spinner';
 import { TabSelector } from '@/lib/ui/tabSelector';
 import { TabPanel, useTabs } from 'node_modules/react-headless-tabs/dist/react-headless-tabs';
-import SystemSettingsPage from './system';
+import ProfileSettingsPage from './profile';
 import HolidaysSettingsPage from './holidays';
 import TransactionsSettingsPage from './transactions';
+import SystemSettingsPage from './system';
 
 const SettingsPage = (props) => {
     const currentUser = useSelector(state => state.user.data);
     const dispatch = useDispatch();
     const [loading, setLoading] = useState(false);
     const [selectedTab, setSelectedTab] = useTabs([
+        'profile',
         'system',
         'transactions',
         'holidays'
@@ -48,6 +50,11 @@ const SettingsPage = (props) => {
                         <React.Fragment>
                             <nav className="flex pl-10 bg-white border-b border-gray-300">
                                 <TabSelector
+                                    isActive={selectedTab === "profile"}
+                                    onClick={() => setSelectedTab("profile")}>
+                                    Profile
+                                </TabSelector>
+                                <TabSelector
                                     isActive={selectedTab === "system"}
                                     onClick={() => setSelectedTab("system")}>
                                     System
@@ -64,6 +71,9 @@ const SettingsPage = (props) => {
                                 </TabSelector>
                             </nav>
                             <div className='mt-6 ml-6'>
+                                <TabPanel hidden={selectedTab !== 'profile'}>
+                                    <ProfileSettingsPage />
+                                </TabPanel>
                                 <TabPanel hidden={selectedTab !== 'system'}>
                                     <SystemSettingsPage />
                                 </TabPanel>

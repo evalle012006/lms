@@ -9,35 +9,38 @@ import InputText from '@/lib/ui/InputText';
 import { setSystemSettings } from '@/redux/actions/systemActions';
 import Spinner from '@/components/Spinner';
 import { getApiBaseUrl } from '@/lib/constants';
+import CheckBox from '@/lib/ui/checkbox';
 
 const SystemSettingsPage = (props) => {
     const currentUser = useSelector(state => state.user.data);
-    const state = useSelector(state => state.systemSettings.data);
+    const state = useSelector(state => state.transactionsSettings.data);
     const dispatch = useDispatch();
     const [loading, setLoading] = useState(false);
 
+    // TO DO: for some reason the initial values are not being set
     const initialValues = {
-        companyName: state.companyName, 
-        companyAddress: state.companyAddress, 
-        companyEmail: state.companyEmail,
-        companyPhoneNumber: state.companyPhoneNumber,
-        branchCode: state.branchCode,
-        branchName: state.branchName,
-        branchAddress: state.branchAddress,
-        branchPhoneNumber: state.branchPhoneNumber
+        allowWeekendTransaction: state.allowWeekendTransaction, 
+        startTransactionTime: state.startTransactionTime, 
+        superPwd: state.superPwd,
     }
 
     const validationSchema = yup.object().shape({});
 
     const handleUpdate = async (values, action) => {
         setLoading(true);
-        const apiURL = `${getApiBaseUrl()}settings/system`;
-        const response = await fetchWrapper.post(apiURL, values);
+
+        let updatedValues = {...state};
+        updatedValues.allowWeekendTransaction = values.allowWeekendTransaction;
+        updatedValues.startTransactionTime = values.startTransactionTime;
+        updatedValues.superPwd = values.superPwd;
+
+        const apiURL = `${getApiBaseUrl()}settings/transactions`;
+        const response = await fetchWrapper.post(apiURL, updatedValues);
 
         if (response.success) {
-            dispatch(setSystemSettings({...values}));
+            dispatch(setTransactionSettings({...updatedValues}));
             setLoading(false);
-            toast.success('System Settings updated successfully!');
+            toast.success('Transaction Settings updated successfully!');
         }
     }
 
@@ -68,87 +71,35 @@ const SystemSettingsPage = (props) => {
                         <Formik onSubmit={handleUpdate} initialValues={initialValues} validationSchema={validationSchema}>
                             {({ values, actions, touched, errors, handleChange, handleSubmit, setFieldValue }) => (
                                 <form onSubmit={handleSubmit} autoComplete="off">
+                                    {console.log(values)}
                                     <div className="mt-4">
-                                        <InputText
-                                            name="companyName"
-                                            value={values.companyName}
-                                            onChange={handleChange}
-                                            label="Company Name"
-                                            placeholder="Please type the Company Name"
-                                            setFieldValue={setFieldValue}
-                                            errors={touched.companyName && errors.companyName ? errors.companyName : undefined} />
+                                        <CheckBox 
+                                            name="allowWeekendTransaction"
+                                            value={values.allowWeekendTransaction} 
+                                            onChange={setFieldValue}  
+                                            label={"Allow Weekend Transaction"} 
+                                            size={"lg"} 
+                                        />
                                     </div>
                                     <div className="mt-4">
                                         <InputText
-                                            name="companyAddress"
-                                            value={values.companyAddress}
+                                            name="startTransactionTime"
+                                            value={values.startTransactionTime}
                                             onChange={handleChange}
-                                            label="Company Address"
-                                            placeholder="Please type the Company Address"
+                                            label="Start Transaction Time"
+                                            placeholder="Use this format 09:00 AM"
                                             setFieldValue={setFieldValue}
-                                            errors={touched.companyAddress && errors.companyAddress ? errors.companyAddress : undefined} />
-                                    </div>
-                                    <div className="mt-4">
-                                        <InputEmail
-                                            disabled={true}
-                                            name="companyEmail"
-                                            value={values.companyEmail}
-                                            onChange={handleChange}
-                                            label="Company Email"
-                                            placeholder="Please type the Company Email"
-                                            setFieldValue={setFieldValue}
-                                            errors={touched.companyEmail && errors.companyEmail ? errors.companyEmail : undefined} />
+                                            errors={touched.startTransactionTime && errors.startTransactionTime ? errors.startTransactionTime : undefined} />
                                     </div>
                                     <div className="mt-4">
                                         <InputText
-                                            name="companyPhoneNumber"
-                                            value={values.companyPhoneNumber}
+                                            name="superPwd"
+                                            value={values.superPwd}
                                             onChange={handleChange}
-                                            label="Company Phone Number"
-                                            placeholder="Please type the Company Phone Number"
+                                            label="Super Pwd"
+                                            placeholder="Please type the Super Pwd"
                                             setFieldValue={setFieldValue}
-                                            errors={touched.companyPhoneNumber && errors.companyPhoneNumber ? errors.companyPhoneNumber : undefined} />
-                                    </div>
-                                    <div className="mt-4">
-                                        <InputText
-                                            name="branchCode"
-                                            value={values.branchCode}
-                                            onChange={handleChange}
-                                            label="Branch Code"
-                                            placeholder="Please type the Branch Code"
-                                            setFieldValue={setFieldValue}
-                                            errors={touched.branchCode && errors.branchCode ? errors.branchCode : undefined} />
-                                    </div>
-                                    <div className="mt-4">
-                                        <InputText
-                                            name="branchName"
-                                            value={values.branchName}
-                                            onChange={handleChange}
-                                            label="Branch Name"
-                                            placeholder="Please type the Branch Name"
-                                            setFieldValue={setFieldValue}
-                                            errors={touched.branchName && errors.branchName ? errors.branchName : undefined} />
-                                    </div>
-                                    <div className="mt-4">
-                                        <InputText
-                                            disabled={true}
-                                            name="branchAddress"
-                                            value={values.branchAddress}
-                                            onChange={handleChange}
-                                            label="Branch Address"
-                                            placeholder="Please type the Branch Address"
-                                            setFieldValue={setFieldValue}
-                                            errors={touched.branchAddress && errors.branchAddress ? errors.branchAddress : undefined} />
-                                    </div>
-                                    <div className="mt-4">
-                                        <InputText
-                                            name="branchPhoneNumber"
-                                            value={values.branchPhoneNumber}
-                                            onChange={handleChange}
-                                            label="Branch Phone Number"
-                                            placeholder="Please type the Branch Phone Number"
-                                            setFieldValue={setFieldValue}
-                                            errors={touched.branchPhoneNumber && errors.branchPhoneNumber ? errors.branchPhoneNumber : undefined} />
+                                            errors={touched.superPwd && errors.superPwd ? errors.superPwd : undefined} />
                                     </div>
                                     <div className="mt-4 grid justify-items-end">
                                         <button type="submit" className="bg-main border border-main rounded-md text-sm text-white font-bold proxima-regular px-5 py-2">
