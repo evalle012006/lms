@@ -400,7 +400,7 @@ const LoanOfficerSummary = () => {
                 }
 
                 activeClients = activeClients + noTransfer - pendingClients;
-                activeBorrowers = activeBorrowers + noTransfer;
+                activeBorrowers = activeBorrowers + noTransfer - tdaClients;
                 activeLoanReleasePerson = activeLoanReleasePerson + noTransfer;
                 activeLoanReleaseAmount += data.totalLoanRelease //+ data.currentReleaseAmount;
                 loanBalance += (data.totalLoanRelease - data.collection) //+ data.currentReleaseAmount;
