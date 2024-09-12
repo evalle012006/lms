@@ -68,6 +68,19 @@ async function save(req, res) {
                 if (collection.status === 'completed' && (collection?.remarks?.value?.startsWith('offset') || collection.mcbuReturnAmt > 0)) {
                     collection.status = "closed";
                 }
+
+                if (collection.paymentCollection / collection.activeLoan > 1) {
+                    collection.excess = collection.paymentCollection - collection.activeLoan;
+                    if (collection.status == 'active') {
+                        const excessPayment = collection.paymentCollection / collection.activeLoan;
+                        collection.noOfPayments = collection.prevData?.noOfPayments ? collection.prevData?.noOfPayments + excessPayment : excessPayment;
+                        collection.advanceDays = collection.prevData?.advanceDays ? collection.prevData?.advanceDays + excessPayment - 1 : excessPayment - 1;
+
+                    } else {
+                        collection.noOfPayments = collection.occurence == 'daily' ? 60 : 24;
+                    }
+                }
+
                 logger.debug({page: `Saving Cash Collection - Group ID: ${data.collection[0]?.groupId}`, currentDate: currentDate, data: collection});
                 if (collection.hasOwnProperty('_id')) {
                     collection.modifiedDateTime = new Date();
@@ -99,8 +112,6 @@ async function save(req, res) {
         }
 
         // save all changes in one request
-
-        console.log('mutation qal length', mutationQl.length);
         await graph.mutation(
             ... mutationQl
         );
@@ -182,12 +193,6 @@ async function updateLoan(mutationQL, collection, currentDate) {
             loan.revertedDateTime = collection.revertedDate;
         }
 
-        /*
-        if (collection.remarks && (!collection.remarks.value?.startsWith('excused')  && collection.remarks.value !== 'delinquent')) {
-            loan.activeLoan = collection.activeLoan;
-        }
-        */
-
         if (collection.remarks && collection.remarks.value === 'matured-past due') {
             loan.activeLoan = 0;
             loan.maturedPD = true;
@@ -196,7 +201,6 @@ async function updateLoan(mutationQL, collection, currentDate) {
         
         loan.amountRelease = collection.amountRelease;
         loan.noOfPayments = collection.noOfPayments !== '-' ? collection.noOfPayments : 0;
-        // loan.fullPaymentDate = '';
         loan.status = collection.status;
         loan.pastDue = collection.pastDue;
         loan.advanceDays = collection?.advanceDays ? collection.advanceDays : 0;
@@ -269,7 +273,7 @@ async function updateLoan(mutationQL, collection, currentDate) {
             }
             
             loan.activeLoan = 0;
-            loan.fullPaymentDate = collection.fullPaymentDate;
+            loan.fullPaymentDate = currentDate;
             loan.amountRelease = 0;
             if (collection?.remarks?.value !== 'offset-matured-pd') {
                 loan.noPastDue = 0;
@@ -365,7 +369,7 @@ async function updateClient(mutationQl, loan, currentDate) {
         )
         
         if (loan.remarks && loan.remarks.value?.startsWith('offset')) {
-            await updateLoanClose(mutationQl, loan, currentDate);
+            // await updateLoanClose(mutationQl, loan, currentDate);
             await updateGroup(mutationQl, loan);
         }
     }

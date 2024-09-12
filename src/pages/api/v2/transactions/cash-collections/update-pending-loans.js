@@ -72,6 +72,7 @@ async function updatePendingLoan(collection, currentDate) {
         currentLoan.fullPaymentDate = collection.fullPaymentDate ? collection.fullPaymentDate : currentDate;
         currentLoan.mcbuWithdrawal = collection.mcbuWithdrawal > 0 ? collection.mcbuWithdrawal : 0;
         currentLoan.mcbuReturnAmt = collection.mcbuReturnAmt > 0 ? collection.mcbuReturnAmt : 0;
+        // TODO: Add history in V1
         currentLoan.history = collection.history;
 
         pendingLoan.prevLoanFullPaymentDate = currentDate;
