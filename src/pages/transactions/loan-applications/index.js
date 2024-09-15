@@ -46,7 +46,7 @@ const LoanApplicationPage = () => {
     const branchList = useSelector(state => state.branch.list);
     const userList = useSelector(state => state.user.list);
     const groupList = useSelector(state => state.group.list);
-    const clientList = useSelector(state => state.client.list);
+    const clientList = useSelector(state => state?.client.list);
     const [data, setData] = useState(list);
     const [pendingData, setPendingData] = useState(pendingList);
     const [tomorrowData, setTomorrowData] = useState(tomorrowList);
@@ -200,7 +200,7 @@ const LoanApplicationPage = () => {
         setLoading(true);
         let apiUrl = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/export-loans';
         const fMonth = (typeof selectedMonth === 'number' && selectedMonth < 10) ? '0' + selectedMonth : selectedMonth;
-        const userName = currentUser.firstName + ' ' + currentUser.lastName;
+        const userName = currentUser?.firstName + ' ' + currentUser?.lastName;
         if (currentUser?.role?.rep == 3) {
             apiUrl = apiUrl + '?' + new URLSearchParams({ userId: currentUser._id, userName: userName, userRole: currentUser.role.shortCode, userBranchCode: currentUser.designatedBranch, month: fMonth, year: selectedYear + "" });
             processExportLoanApplication(apiUrl);
@@ -330,7 +330,7 @@ const LoanApplicationPage = () => {
         if (response.success) {
             let userList = [];
             response.users && response.users.filter(u => u.role.rep === 4).map(u => {
-                const name = `${u.firstName} ${u.lastName}`;
+                const name = `${u?.firstName} ${u?.lastName}`;
                 userList.push(
                     {
                         ...u,
@@ -343,7 +343,7 @@ const LoanApplicationPage = () => {
             userList.sort((a, b) => { return a.loNo - b.loNo; });
 
             if (currentUser?.role?.rep === 4) {
-                const name = `${currentUser.firstName} ${currentUser.lastName}`;
+                const name = `${currentUser?.firstName} ${currentUser?.lastName}`;
                 userList = [];
                 userList.push({
                     ...currentUser,
@@ -412,7 +412,7 @@ const LoanApplicationPage = () => {
 
                     loanList.push({
                         ...loan,
-                        loanOfficerName: `${loan.loanOfficer.lastName}, ${loan.loanOfficer.firstName}`,
+                        loanOfficerName: `${loan.loanOfficer?.lastName}, ${loan.loanOfficer?.firstName}`,
                         groupName: loan.group.name,
                         principalLoanStr: formatPricePhp(loan.principalLoan),
                         mcbuStr: formatPricePhp(loan.mcbu),
@@ -420,7 +420,7 @@ const LoanApplicationPage = () => {
                         loanBalanceStr: formatPricePhp(loan.loanBalance),
                         loanRelease: loan.amountRelease,
                         loanReleaseStr: formatPricePhp(loan.amountRelease),
-                        fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
+                        fullName: UppercaseFirstLetter(`${loan?.client?.lastName}, ${loan?.client?.firstName} ${loan?.client?.middleName ? loan?.client?.middleName : ''}`),
                         allowApproved: allowApproved,
                         selected: false,
                         hasActiveLoan: hasActiveLoan
@@ -462,7 +462,7 @@ const LoanApplicationPage = () => {
                     }
                 });
                 dispatch(setTomorrowLoanList(tomList));
-                dispatch(setDuplicateLoanList(loanList.filter(l => l.client.duplicate)));
+                dispatch(setDuplicateLoanList(loanList.filter(l => l?.client?.duplicate)));
 
                 setLoading(false);
             } else if (response.error) {
@@ -501,7 +501,7 @@ const LoanApplicationPage = () => {
 
                     loanList.push({
                         ...loan,
-                        loanOfficerName: `${loan.loanOfficer.lastName}, ${loan.loanOfficer.firstName}`,
+                        loanOfficerName: `${loan.loanOfficer?.lastName}, ${loan.loanOfficer?.firstName}`,
                         groupName: loan.group.name,
                         principalLoanStr: formatPricePhp(loan.principalLoan),
                         mcbuStr: formatPricePhp(loan.mcbu),
@@ -509,7 +509,7 @@ const LoanApplicationPage = () => {
                         loanBalanceStr: formatPricePhp(loan.loanBalance),
                         loanRelease: loan.amountRelease,
                         loanReleaseStr: formatPricePhp(loan.amountRelease),
-                        fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
+                        fullName: UppercaseFirstLetter(`${loan?.client?.lastName}, ${loan?.client?.firstName} ${loan?.client?.middleName ? loan?.client?.middleName : ''}`),
                         allowApproved: allowApproved,
                         selected: false,
                         hasActiveLoan: hasActiveLoan,
@@ -552,7 +552,7 @@ const LoanApplicationPage = () => {
                     }
                 });
                 dispatch(setTomorrowLoanList(tomList));
-                dispatch(setDuplicateLoanList(loanList.filter(l => l.client.duplicate)));
+                dispatch(setDuplicateLoanList(loanList.filter(l => l?.client?.duplicate)));
                 setLoading(false);
             } else if (response.error) {
                 setLoading(false);
@@ -581,7 +581,7 @@ const LoanApplicationPage = () => {
                     loanList.push({
                         ...loan,
                         branchName: `${loan.branch[0].code} - ${loan.branch[0].name}`,
-                        loanOfficerName: `${loan.loanOfficer.lastName}, ${loan.loanOfficer.firstName}`,
+                        loanOfficerName: `${loan.loanOfficer?.lastName}, ${loan.loanOfficer?.firstName}`,
                         groupName: loan.group.name,
                         principalLoanStr: formatPricePhp(loan.principalLoan),
                         mcbuStr: formatPricePhp(loan.mcbu),
@@ -589,7 +589,7 @@ const LoanApplicationPage = () => {
                         loanBalanceStr: formatPricePhp(loan.loanBalance),
                         loanRelease: loan.amountRelease,
                         loanReleaseStr: formatPricePhp(loan.amountRelease),
-                        fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
+                        fullName: UppercaseFirstLetter(`${loan?.client?.lastName}, ${loan?.client?.firstName} ${loan?.client?.middleName ? loan?.client?.middleName : ''}`),
                         allowApproved: allowApproved,
                         selected: false,
                         hasActiveLoan: hasActiveLoan
@@ -631,7 +631,7 @@ const LoanApplicationPage = () => {
                     }
                 });
                 dispatch(setTomorrowLoanList(tomList));
-                dispatch(setDuplicateLoanList(loanList.filter(l => l.client.duplicate)));
+                dispatch(setDuplicateLoanList(loanList.filter(l => l?.client?.duplicate)));
                 setLoading(false);
             } else if (response.error) {
                 setLoading(false);
@@ -663,7 +663,7 @@ const LoanApplicationPage = () => {
                     loanList.push({
                         ...loan,
                         branchName: `${loan.branch[0].code} - ${loan.branch[0].name}`,
-                        loanOfficerName: `${loan.loanOfficer.lastName}, ${loan.loanOfficer.firstName}`,
+                        loanOfficerName: `${loan.loanOfficer?.lastName}, ${loan.loanOfficer?.firstName}`,
                         groupName: loan.group.name,
                         principalLoanStr: formatPricePhp(loan.principalLoan),
                         mcbuStr: formatPricePhp(loan.mcbu),
@@ -671,7 +671,7 @@ const LoanApplicationPage = () => {
                         loanBalanceStr: formatPricePhp(loan.loanBalance),
                         loanRelease: loan.amountRelease,
                         loanReleaseStr: formatPricePhp(loan.amountRelease),
-                        fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
+                        fullName: UppercaseFirstLetter(`${loan?.client?.lastName}, ${loan?.client?.firstName} ${loan?.client?.middleName ? loan?.client?.middleName : ''}`),
                         allowApproved: allowApproved,
                         selected: false,
                         hasActiveLoan: hasActiveLoan
@@ -713,7 +713,7 @@ const LoanApplicationPage = () => {
                     }
                 });
                 dispatch(setTomorrowLoanList(tomList));
-                dispatch(setDuplicateLoanList(loanList.filter(l => l.client.duplicate)));
+                dispatch(setDuplicateLoanList(loanList.filter(l => l?.client?.duplicate)));
                 setLoading(false);
             } else if (response.error) {
                 setLoading(false);
@@ -739,7 +739,7 @@ const LoanApplicationPage = () => {
                         mcbuStr: formatPricePhp(loan.mcbu),
                         activeLoanStr: formatPricePhp(loan.activeLoan),
                         loanBalanceStr: formatPricePhp(loan.loanBalance),
-                        fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
+                        fullName: UppercaseFirstLetter(`${loan?.client?.lastName}, ${loan?.client?.firstName} ${loan?.client?.middleName ? loan?.client?.middleName : ''}`),
                         selected: false
                     });
                 });
@@ -763,7 +763,7 @@ const LoanApplicationPage = () => {
                         mcbuStr: formatPricePhp(loan.mcbu),
                         activeLoanStr: formatPricePhp(loan.activeLoan),
                         loanBalanceStr: formatPricePhp(loan.loanBalance),
-                        fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
+                        fullName: UppercaseFirstLetter(`${loan?.client?.lastName}, ${loan?.client?.firstName} ${loan?.client?.middleName ? loan?.client?.middleName : ''}`),
                         selected: false
                     });
                 });
@@ -787,7 +787,7 @@ const LoanApplicationPage = () => {
                         mcbuStr: formatPricePhp(loan.mcbu),
                         activeLoanStr: formatPricePhp(loan.activeLoan),
                         loanBalanceStr: formatPricePhp(loan.loanBalance),
-                        fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
+                        fullName: UppercaseFirstLetter(`${loan?.client?.lastName}, ${loan?.client?.firstName} ${loan?.client?.middleName ? loan?.client?.middleName : ''}`),
                         selected: false
                     });
                 });
@@ -811,7 +811,7 @@ const LoanApplicationPage = () => {
                         mcbuStr: formatPricePhp(loan.mcbu),
                         activeLoanStr: formatPricePhp(loan.activeLoan),
                         loanBalanceStr: formatPricePhp(loan.loanBalance),
-                        fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
+                        fullName: UppercaseFirstLetter(`${loan?.client?.lastName}, ${loan?.client?.firstName} ${loan?.client?.middleName ? loan?.client?.middleName : ''}`),
                         selected: false
                     });
                 });
@@ -832,7 +832,7 @@ const LoanApplicationPage = () => {
 
         let loanData = {...data};
         delete loanData.group;
-        delete loanData.client;
+        delete loanData?.client;
         delete loanData.branch;
         delete loanData.principalLoanStr;
         delete loanData.activeLoanStr;
@@ -1034,11 +1034,11 @@ const LoanApplicationPage = () => {
     const validate = (loanList, origin) => {
         let errorMsg = new Set();
         loanList.map(loan => {
-            const clientData = loan.client;
-            const clientName = `${clientData.firstName} ${clientData.lastName}`;
+            const clientData = loan?.client;
+            const clientName = `${clientData?.firstName} ${clientData?.lastName}`;
             const groupName = loan.group.name;
 
-            if (clientData.firstName == null || clientData.lastName == null) {
+            if (clientData?.firstName == null || clientData?.lastName == null) {
                 errorMsg.add(`Invalid name: ${clientName} in group ${groupName}, please update it in Client page.`);
             }
 
@@ -1110,11 +1110,11 @@ const LoanApplicationPage = () => {
             selectedLoanList = selectedLoanList.map(loan => {
                 let temp = {...loan};
 
-                const client = loan.client;
+                const client = loan?.client;
                 const group = loan.group;
                 const lo = loan.loanOfficer;
 
-                if (!client.firstName || !client.lastName || client.firstName == 'null' || client.lastName == 'null') {
+                if (!client?.firstName || !client?.lastName || client?.firstName == 'null' || client?.lastName == 'null') {
                     errorMsg += `First and/or Last Name of slot no ${loan.slotNo} from group ${group.name} is missing!`;
                 }
                 if ((!client.fullName && (client.fullName && !client.fullName.length === 0))) {
@@ -1236,8 +1236,8 @@ const LoanApplicationPage = () => {
         setMode("edit");
         setLoan(row.original);
         let clientListData = [...clientList];
-        let client = row.original.client;
-        client.label = `${client.lastName}, ${client.firstName} ${client.middleName ? client.middleName : ''}`;
+        let client = row.original?.client;
+        client.label = `${client?.lastName}, ${client?.firstName} ${client?.middleName ? client?.middleName : ''}`;
         client.value = client._id;
         clientListData.push(client);
         dispatch(setClientList(clientListData));
@@ -1323,7 +1323,7 @@ const LoanApplicationPage = () => {
     const handleShowClientInfoModal = (row) => {
         const imgpath = process.env.NEXT_PUBLIC_LOCAL_HOST !== 'local' && process.env.NEXT_PUBLIC_LOCAL_HOST;
         const selected = row;
-        const selectedClient = {...selected.client, imgUrl: selected.client.profile ? imgpath + '/images/clients/' + selected.client.profile : ''};
+        const selectedClient = {...selected?.client, imgUrl: selected?.client.profile ? imgpath + '/images/clients/' + selected?.client.profile : ''};
         dispatch(setClient(selectedClient));
         setShowClientInfoModal(true);
     }

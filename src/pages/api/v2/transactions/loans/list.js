@@ -116,7 +116,7 @@ async function list(req, res) {
       }
     }
   `;
-
+  args.status = status;
   loans = await graph.apollo
     .query({ query, variables: { args } })
     .then((res) => {
