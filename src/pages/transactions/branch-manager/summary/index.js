@@ -400,7 +400,7 @@ const BranchManagerSummary = () => {
         let activeLoanReleaseAmount = 0;
         let loanBalance = 0;
 
-        losList.map((los, index) => {
+        losList.filter(los => los.day != 'Weekly Total').map((los, index) => {
             let temp = {...los};
             let transferDailyGvr = [];
             let transferDailyRcv = [];
@@ -408,7 +408,7 @@ const BranchManagerSummary = () => {
             let transferWeeklyRcv = [];
 
             activeClients = temp.activeClients;
-            activeBorrowers = temp.activeBorrowers;
+            activeBorrowers = temp.activeBorrowers != '-' ? temp.activeBorrowers : 0;
             activeLoanReleasePerson = temp.activeLoanReleasePerson;
             activeLoanReleaseAmount = temp.activeLoanReleaseAmount !== '-' ? temp.activeLoanReleaseAmount : 0;
             // loanBalance = temp.loanBalance !== '-' ? temp.loanBalance : 0;
@@ -456,7 +456,6 @@ const BranchManagerSummary = () => {
                     }
                 }
             });
-
             temp?.transferDailyRcv?.map(dailyRcv => {
                 if (dailyRcv) {
                     const data = {...dailyRcv};
@@ -496,7 +495,7 @@ const BranchManagerSummary = () => {
 
                         activeClients = activeClients + noTransfer - pendingClients;
                         activeBorrowers = activeBorrowers + noTransfer - tdaClients;
-                        activeLoanReleasePerson = activeLoanReleasePerson + noTransfer;
+                        activeLoanReleasePerson = activeLoanReleasePerson + noTransfer - tdaClients;
                         activeLoanReleaseAmount += data.totalLoanRelease ? data.totalLoanRelease : 0// + data.currentReleaseAmount ? data.currentReleaseAmount : 0;
                         loanBalance += (data.totalLoanRelease - data.collection) + data.currentReleaseAmount;
                     }

@@ -57,6 +57,19 @@ async function save(req, res) {
                 if (collection.status === 'completed' && (collection?.remarks?.value?.startsWith('offset') || collection.mcbuReturnAmt > 0)) {
                     collection.status = "closed";
                 }
+
+                if (collection.paymentCollection / collection.activeLoan > 1) {
+                    collection.excess = collection.paymentCollection - collection.activeLoan;
+                    if (collection.status == 'active') {
+                        const excessPayment = collection.paymentCollection / collection.activeLoan;
+                        collection.noOfPayments = collection.prevData?.noOfPayments ? collection.prevData?.noOfPayments + excessPayment : excessPayment;
+                        collection.advanceDays = collection.prevData?.advanceDays ? collection.prevData?.advanceDays + excessPayment - 1 : excessPayment - 1;
+
+                    } else {
+                        collection.noOfPayments = collection.occurence == 'daily' ? 60 : 24;
+                    }
+                }
+
                 logger.debug({page: `Saving Cash Collection - Group ID: ${data.collection[0]?.groupId}`, currentDate: currentDate, data: collection});
                 if (collection.hasOwnProperty('_id')) {
                     collection.modifiedDateTime = new Date();
@@ -232,6 +245,14 @@ async function updateLoan(db, collection, currentDate) {
                 loan.noPastDue = 0;
                 loan.pastDue = 0;
             }
+
+            if (collection.status == 'closed') {
+                loan.loanCycle = 0;
+                loan.remarks = collection.closeRemarks;
+                loan.status = 'closed';
+                loan.closedDate = currentDate;
+                loan.dateModified = currentDate;
+            }
         }
 
         loan.lastUpdated = currentDate;
@@ -307,7 +328,7 @@ async function updateClient(db, loan, currentDate) {
                 { upsert: false });
         
         if (loan.remarks && loan.remarks.value?.startsWith('offset')) {
-            await updateLoanClose(db, loan, currentDate);
+            // await updateLoanClose(db, loan, currentDate);
             await updateGroup(db, loan);
         }
     }
