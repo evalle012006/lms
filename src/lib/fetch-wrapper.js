@@ -11,7 +11,8 @@ function handleResponse(response) {
 
         if (!response.ok) {
             if ([401, 403, 409].includes(response.status) && userService.userValue) {
-                userService.logout();
+                // userService.logout();
+                window.location.href = '/logout';
             }
 
             const error = (data && data.message) || response.statusText;

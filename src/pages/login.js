@@ -30,8 +30,7 @@ const LoginPage = () => {
 
     const handleSuccess = (user) => {
         dispatch(setUser(user));
-        const returnUrl = router.query.returnUrl || '/';
-        router.push(returnUrl);
+        router.push('/');
         // if (user.status !== 'active') {
         //     router.push('/register?action=inactive');
         // } else {

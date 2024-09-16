@@ -25,7 +25,7 @@ function RouteGuard({ children }) {
                 setAuthorized(false);
                 router.push({
                     pathname: '/login',
-                    query: { returnUrl: router.asPath }
+                    // query: { returnUrl: router.asPath }
                 });
             } else {
                 setAuthorized(true);

@@ -546,19 +546,8 @@ const SubNav = React.memo(({ item, index, activePath, inner = false, className =
   const isSubMenuOpen = state.subMenus[item.label] || false;
 
   const handleLogout = async () => {
-    let user = userService.userValue;
-    if (user && user.hasOwnProperty('user')) {
-        user = user.user;
-    }
-    const url = `${getApiBaseUrl()}authenticate?`;
-    const params = { user: user._id };
-    const response = await fetchWrapper.get(url + new URLSearchParams(params));
-    if (response && response.success && response.query.acknowledged) {
-        await userService.logout();
-        dispatch(resetState());
-        window.location.reload();
-    }
-}
+    window.location.href = '/logout';
+  }
 
   const toggleSubMenu = () => {
     localDispatch({ type: 'TOGGLE_SUBMENU', payload: item.label });
