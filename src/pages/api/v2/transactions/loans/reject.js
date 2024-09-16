@@ -95,7 +95,7 @@ async function updateLoan(req, res) {
                         const ccId = cashCollection._id;
                         delete cashCollection._id;
                         delete cashCollection.prevLoanId;
-                        await graph.mutation(updateQl(cashCollection, {
+                        await graph.mutation(updateQl(cashCollectionType, {
                           where: { _id: { _eq: ccId } },
                           set: filterGraphFields(CASH_COLLECTIONS_FIELDS, {
                             ...cashCollection,
@@ -122,7 +122,7 @@ async function updateLoan(req, res) {
                       where: { _id: { _eq: prevLoanId } },
                       set: filterGraphFields(LOAN_FIELDS, {
                         ...prevLoan,
-                        advance: null,
+                        advance: false,
                         advanceDate: null, 
                       })
                     }))
@@ -234,7 +234,7 @@ async function saveCashCollection(loan, group, currentDate) {
         const ccId = cashCollection._id;
         delete cashCollection._id;
 
-        await graph.mutation(updateQl(cashCollection, {
+        await graph.mutation(updateQl(cashCollectionType, {
           where: { _id: { _eq: ccId } },
           set: filterGraphFields(CASH_COLLECTIONS_FIELDS, { ...cashCollection, status: status, loanCycle: loan.loanCycle, modifiedDate: currentDate })
         }))
