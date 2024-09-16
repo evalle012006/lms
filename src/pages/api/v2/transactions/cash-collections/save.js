@@ -4,6 +4,7 @@ import { createGraphType, insertQl, queryQl, updateQl } from '@/lib/graph/graph.
 import { generateUUID } from '@/lib/utils';
 import logger from '@/logger';
 import { apiHandler } from '@/services/api-handler';
+import { savePendingLoans } from './update-pending-loans';
 
 const graph = new GraphProvider();
 const COLLECTION_TYPE = createGraphType('cashCollections', '_id')
@@ -115,6 +116,9 @@ async function save(req, res) {
         await graph.mutation(
             ... mutationQl
         );
+
+        const pendingLoans = data.collection.filter(c => c.status === 'pending' && c.advance);
+        await savePendingLoans(pendingLoans);
     }
 
     response = {success: true};

@@ -1453,16 +1453,7 @@ const CashCollectionDetailsPage = () => {
             
                     const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collections/save', cashCollection);
                     if (response.success) {
-                        if (pendings.length > 0) {
-                            setTimeout(async () => {
-                                const responsePending = await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collections/update-pending-loans', pendings);
-                                if (responsePending.success) {
-                                    reloadAfterSave();
-                                }
-                            }, 3000);
-                        } else {
-                            reloadAfterSave();
-                        }
+                        reloadAfterSave();
                     }
                 } else {
                     toast.warning('No active data to be saved.');
