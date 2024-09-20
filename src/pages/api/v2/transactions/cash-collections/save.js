@@ -226,6 +226,10 @@ async function updateLoan(mutationQL, collection, currentDate) {
             loan.mcbuWithdrawal = loan.mcbuWithdrawal ? loan.mcbuWithdrawal + parseFloat(collection.mcbuWithdrawal) : collection.mcbuWithdrawal ? parseFloat(collection.mcbuWithdrawal) : 0;
         }
 
+        if (collection.mcbuWithdrawalFlag) {
+            loan.mcbuWithdrawal = collection.mcbuWithdrawal;
+        }
+
         if (collection?.mcbuDailyWithdrawal > 0) {
             if (loan.hasOwnProperty('mcbuDailyWithdrawal')) {
                 loan.mcbuDailyWithdrawal += collection.mcbuDailyWithdrawal;
@@ -277,7 +281,7 @@ async function updateLoan(mutationQL, collection, currentDate) {
             }
             
             loan.activeLoan = 0;
-            loan.fullPaymentDate = currentDate;
+            loan.fullPaymentDate = collection.fullPaymentDate;
             loan.amountRelease = 0;
             if (collection?.remarks?.value !== 'offset-matured-pd') {
                 loan.noPastDue = 0;

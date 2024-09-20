@@ -786,7 +786,7 @@ const CashCollectionDetailsPage = () => {
                     if (dateOfRelease) {
                         diff = moment(currentDate).diff(dateOfRelease);
                     }
-                    
+
                     if ((currentLoan.fullPaymentDate === currentDate && (loan?.loanFor == 'today' || (loan?.loanFor == 'tomorrow' && diff >= 0)))) { // fullpayment with pending/tomorrow
                         cashCollection[index] = {
                             client: currentLoan.client,
@@ -852,7 +852,6 @@ const CashCollectionDetailsPage = () => {
                             cashCollection[index]._id = currentLoan.current[0]._id;
                             cashCollection[index].prevData = currentLoan.current[0].prevData;
                         } else if (loan?.current?.length > 0 && loan?.current[0] != null) {
-                            console.log(loan.current)
                             cashCollection[index]._id = loan.current[0]._id;
                             cashCollection[index].prevData = loan.current[0].prevData;
                             cashCollection[index].mcbuCol = loan.current[0].mcbuCol;

@@ -75,7 +75,7 @@ async function revert(req, res) {
                 if (previousLoan.length > 0) { // pending, tomorrow
                     previousLoan = previousLoan[0];
                     delete previousLoan._id;
-                    mutationQL.push(deleteQl(LOAN_TYPE('update_loans_' + (mutationQL.length + 1)), { _id: { _eq: loanId } }));
+                    mutationQL.push(deleteQl(LOAN_TYPE('delete_loans_' + (mutationQL.length + 1)), { _id: { _eq: loanId } }));
                     // there are cases wherein the advance loan were not deleted....need proper steps
                     if (previousCC.status == 'completed') {
                         previousLoan.activeLoan = 0;
@@ -112,15 +112,14 @@ async function revert(req, res) {
                         previousLoan.reverted = true;
                         // previousLoan.revertedDate = currentDate;
                         previousLoan.revertedDateTime = new Date()
-                        delete previousLoan.advance;
-                        delete previousLoan.advanceDate;
+                        previousLoan.advanceTransaction = false;
                         logger.debug({page: `Reverting Transaction Loan: ${cashCollection.clientId}`, previousLoan: previousLoan });
 
                         mutationQL.push(
                             updateQl(LOAN_TYPE('update_loans_' + (mutationQL.length)), {
                                 set: {
                                     ... previousLoan,
-                                    advance: null,
+                                    advance: false,
                                     advanceDate: null
                                 },
                                 where: {
