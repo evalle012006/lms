@@ -67,7 +67,7 @@ export default async function handler(req, res) {
           const origin = req.body.origin || 'test';
           const uuid = req.body.uuid || 'unknown';
 
-          const prefix = `lms/${origin}/${uuid}/`;
+          const prefix = `${process.env.SPACES_ROOT}/${origin}/${uuid}/`;
 
           // Delete existing file
           await deleteExistingFile(process.env.SPACES_BUCKET, prefix);
