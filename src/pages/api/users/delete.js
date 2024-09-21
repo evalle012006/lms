@@ -26,7 +26,7 @@ async function deleteUser(req, res) {
             .collection('users')
             .deleteOne({ _id: new ObjectId(_id) });
 
-        user[0].profile && removeFile.removeFile(user[0].profile);
+        // user[0].profile && removeFile.removeFile(user[0].profile);
 
         response = {
             success: true
