@@ -37,7 +37,6 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
     // bm: all groups -> clients
     // lo: assigned groups -> clients
     const getListClient = async () => {
-        const imgpath = process.env.NEXT_PUBLIC_LOCAL_HOST !== 'local' && process.env.NEXT_PUBLIC_LOCAL_HOST;
         let url = process.env.NEXT_PUBLIC_API_URL + 'clients/list';
         if (groupId) {
             url = url + '?' + new URLSearchParams({ mode: "view_by_group", groupId: groupId });
@@ -51,7 +50,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                         ...loan,
                         name: name,
                         middleName: loan.client.middleName ? loan.client.middleName : '',
-                        imgUrl: loan.client.profile ? imgpath + '/images/clients/' + loan.client.profile : '',
+                        profile: loan.client.profile ? loan.client.profile : '',
                         loanStatus: loan.status ? loan.status : '-',
                         activeLoanStr: loan.activeLoan ? formatPricePhp(loan.activeLoan) : '0.00',
                         loanBalanceStr: loan.loanBalance ? formatPricePhp(loan.loanBalance) : '0.00',
@@ -80,7 +79,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                                 ...client,
                                 name: name,
                                 middleName: client.middleName ? client.middleName : '',
-                                imgUrl: client.profile ? imgpath + '/images/clients/' + client.profile : '',
+                                profile: client.profile ? client.profile : '',
                                 slotNo: client.loans.length > 0 ? client.loans[0].slotNo : '-',
                                 loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
                                 activeLoanStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].activeLoan) : '0.00',
@@ -108,7 +107,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                                     ...client,
                                     name: name,
                                     middleName: client.middleName ? client.middleName : '',
-                                    imgUrl: client.profile ? imgpath + '/images/clients/' + client.profile : '',
+                                    profile: client.profile ? client.profile : '',
                                     slotNo: client.loans.length > 0 ? client.loans[0].slotNo : '-',
                                     loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
                                     activeLoanStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].activeLoan) : '0.00',
@@ -135,7 +134,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                                     ...client,
                                     name: name,
                                     middleName: client.middleName ? client.middleName : '',
-                                    imgUrl: client.profile ? imgpath + '/images/clients/' + client.profile : '',
+                                    profile: client.profile ? client.profile : '',
                                     slotNo: client.loans.length > 0 ? client.loans[0].slotNo : '-',
                                     loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
                                     activeLoanStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].activeLoan) : '0.00',
@@ -165,7 +164,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                                 ...client,
                                 name: name,
                                 middleName: client.middleName ? client.middleName : '',
-                                imgUrl: client.profile ? imgpath + '/images/clients/' + client.profile : '',
+                                profile: client.profile ? client.profile : '',
                                 slotNo: client.loans.length > 0 ? client.loans[0].slotNo : '-',
                                 loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
                                 activeLoanStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].activeLoan) : '0.00',
@@ -194,7 +193,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                         ...client,
                         name: name,
                         middleName: client.middleName ? client.middleName : '',
-                        imgUrl: client.profile ? imgpath + '/images/clients/' + client.profile : '',
+                        profile: client.profile ? client.profile : '',
                         groupName: client.groupName ? client.groupName : '-',
                         slotNo: client.loans.length > 0 ? client.loans[0].slotNo : '-',
                         loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
@@ -338,7 +337,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                     Header: "Name",
                     accessor: 'name',
                     Cell: AvatarCell,
-                    imgAccessor: "imgUrl"
+                    imgAccessor: "profile"
                 },
                 {
                     Header: "Group",
@@ -389,7 +388,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                     Header: "Name",
                     accessor: 'name',
                     Cell: AvatarCell,
-                    imgAccessor: "imgUrl"
+                    imgAccessor: "profile"
                 },
                 {
                     Header: "Group",
@@ -446,7 +445,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                     Header: "Name",
                     accessor: 'name',
                     Cell: AvatarCell,
-                    imgAccessor: "imgUrl"
+                    imgAccessor: "profile"
                 },
                 {
                     Header: "Branch",

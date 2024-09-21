@@ -22,7 +22,6 @@ const ClientSearchTool = ({ origin = "", callback, setSelected }) => {
         e.preventDefault();
         if (searchText) {
             setSearching(true);
-            const imgpath = process.env.NEXT_PUBLIC_LOCAL_HOST !== 'local' && process.env.NEXT_PUBLIC_LOCAL_HOST;
             const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'clients/search?' + new URLSearchParams({ searchText: searchText.toUpperCase() }));
             const list = [];
             if (response.success) {
@@ -36,7 +35,7 @@ const ClientSearchTool = ({ origin = "", callback, setSelected }) => {
                     response.clients.map(client => {
                         list.push({
                             ...client,
-                            imgUrl: client.profile ? imgpath + '/images/clients/' + client.profile : '',
+                            profile: client.profile ? client.profile : '',
                             birthdate: client.birthdate?  moment(client.birthdate).format('YYYY-MM-DD') : '-',
                             groupName: client.group.name,
                             branchName: client.branch.name,
@@ -126,7 +125,7 @@ const ClientSearchTool = ({ origin = "", callback, setSelected }) => {
                     <div className="flex flex-col items-center font-proxima">
                         {selectedClient && (
                             <React.Fragment>
-                                <Avatar name={selectedClient?.fullName} src={selectedClient?.profile ? selectedClient?.imgUrl : placeholder.src} className={`${selectedClient?.profile ? 'p-20' : 'p-12 mx-auto'} `} />
+                                <Avatar name={selectedClient?.fullName} src={selectedClient?.profile ? selectedClient?.profile : placeholder.src} className={`${selectedClient?.profile ? 'p-20' : 'p-12 mx-auto'} `} />
                                 <h5 className="mb-1 text-xl font-medium text-gray-900">{selectedClient?.fullName}</h5>
                                 <span className="bg-green-100 text-green-800 text-sm font-medium mr-2 px-2.5 py-0.5 rounded dark:bg-green-200 dark:text-green-900">{ selectedClient?.status }</span>
                             </React.Fragment>

@@ -30,10 +30,10 @@ async function updateUser(req, res) {
         form.parse(req, async function (err, fields, files) {
             const userData = await findUserByEmail(fields.email);
 
-            let file;
-            if (files.file) {
-                file = await saveFile(files.file, userData._id);
-            }
+            let file = fields.profile;
+            // if (files.file) {
+            //     file = await saveFile(files.file, userData._id);
+            // }
 
             if (err) {
                 resolve({ formError: true })
@@ -57,7 +57,7 @@ async function updateUser(req, res) {
                         }
                     );
             } else {
-                const role = JSON.parse(fields.role);
+                const role = typeof fields.role == 'object' ? fields.role : JSON.parse(fields.role);
                 let designatedBranch = fields.designatedBranch;
                 // if (role.rep === 2) {
                 //     designatedBranch = JSON.parse(fields.designatedBranch);

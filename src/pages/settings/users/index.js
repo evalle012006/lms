@@ -38,7 +38,6 @@ const TeamPage = () => {
     const [searchFilter, setSearchFilter] = useState();
 
     const getListUsers = async () => {
-        const imgpath = process.env.NEXT_PUBLIC_LOCAL_HOST !== 'local' && process.env.NEXT_PUBLIC_LOCAL_HOST;
         let url = process.env.NEXT_PUBLIC_API_URL + 'users/list';
         // not in used since user list is for root user only
         if (currentUser.root !== true && currentUser.role.rep === 3) { 
@@ -67,7 +66,7 @@ const TeamPage = () => {
                 roleId: user.role.rep + "-" + user.role.shortCode,
                 role: UppercaseFirstLetter(user.role.name),
                 loNo: user.loNo,
-                imgUrl: user.profile ? imgpath + '/images/profiles/' + user.profile : '',
+                profile: user.profile ? user.profile : '',
                 lastActivity: user.lastLogin ? moment.utc(user.lastLogin).local().startOf('seconds').fromNow() : '-',
                 root: user.root ? user.root : false,
                 // hidden columns used for update
@@ -171,7 +170,7 @@ const TeamPage = () => {
             Header: "Name",
             accessor: 'name',
             Cell: AvatarCell,
-            imgAccessor: "imgUrl",
+            imgAccessor: "profile",
             Filter: SelectColumnFilter,
             filter: 'includes'
         },

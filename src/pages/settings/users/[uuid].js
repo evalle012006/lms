@@ -3,9 +3,9 @@ import Spinner from "@/components/Spinner";
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { setCurrentPageTitle } from "@/redux/actions/globalActions";
 import { setUser } from "@/redux/actions/userActions";
-import { useRouter } from "node_modules/next/router";
+import { useRouter } from "next/router";
 import { useRef, useState, useEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 import { toast } from "react-toastify";
 import InputText from "@/lib/ui/InputText";
 import InputEmail from "@/lib/ui/InputEmail";
@@ -20,8 +20,9 @@ const UserDetailsPage = () => {
     const dispatch = useDispatch();
     const { uuid } = router.query;
     const [loading, setLoading] = useState(true);
+    const [uploading, setUploading] = useState(false);
 
-    const [photo, setPhoto] = useState();
+    const [photo, setPhoto] = useState('');
     const [photoW, setPhotoW] = useState(200);
     const [photoH, setPhotoH] = useState(200);
     const [image, setImage] = useState('');
@@ -32,7 +33,7 @@ const UserDetailsPage = () => {
         hiddenInput.current.click();
     }
 
-    const handleFileChange = async e => {
+    const handleFileChange = async (e) => {
         const fileUploaded = e.target.files[0];
 
         const fileSizeMsg = checkFileSize(fileUploaded?.size);
@@ -41,57 +42,92 @@ const UserDetailsPage = () => {
         } else {
             setPhoto(URL.createObjectURL(fileUploaded));
             setImage(fileUploaded);
+
+            const formData = new FormData();
+            formData.append('file', fileUploaded);
+            formData.append('origin', 'profiles');
+            formData.append('uuid', uuid);
+
+            setUploading(true);
+            try {
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (!response.ok) {
+                    throw new Error('Upload failed');
+                }
+
+                const responseData = await response.json();
+                const updatedData = {...data, profile: responseData.fileUrl, role: JSON.stringify(data.role)}
+                setData(updatedData);
+                await triggerSaveUpdate(updatedData);
+                toast.success('File uploaded successfully.');
+            } catch (error) {
+                console.error('Error uploading file:', error);
+                toast.error('Failed to upload file. Please try again.');
+            } finally {
+                setUploading(false);
+            }
         }
     }
 
     const handleRemoveImage = () => {
         setPhoto('');
         setImage('');
+        setData(prevData => ({...prevData, profile: ''}));
         if (hiddenInput.current) {
             hiddenInput.current.value = '';
         }
     }
 
-    const handleSaveUpdate = async () => {
-        const values = {...data, _id: uuid, file: image, origin: 'updateUser'};
-        fetchWrapper.sendData(process.env.NEXT_PUBLIC_API_URL + 'users/', values)
-            .then(response => {
-                setLoading(false);
-                getCurrentUser();
-                handleRemoveImage();
-                toast.success('User successfully updated.');
-                action.setSubmitting = false;
-                action.resetForm();
-            }).catch(error => {
-                console.log(error);
-            });
+    const handleSaveUpdate = async (e) => {
+        e.preventDefault();
+        const values = {...data, _id: uuid, role: JSON.stringify(data.role)};
+        await triggerSaveUpdate(values);
+    }
+
+    const triggerSaveUpdate = async (userData) => {
+        setLoading(true);
+        try {
+            const response = await fetchWrapper.sendData(`${process.env.NEXT_PUBLIC_API_URL}users/`, userData);
+            getCurrentUser();
+            toast.success('User successfully updated.');
+        } catch (error) {
+            console.error(error);
+            toast.error('Failed to update user. Please try again.');
+        } finally {
+            setLoading(false);
+        }
     }
 
     const getCurrentUser = async () => {
         const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}users?`;
         const params = { _id: uuid };
-        const response = await fetchWrapper.get(apiUrl + new URLSearchParams(params));
-        const imgpath = process.env.NEXT_PUBLIC_LOCAL_HOST !== 'local' && process.env.NEXT_PUBLIC_LOCAL_HOST;
-        if (response.success) {
-            const user = {...response.user, imgUrl: response.user.profile ? `${imgpath}/images/profiles/${response.user.profile}` : ''};
-            setPhoto(user.imgUrl);
-            dispatch(setUser(user));
-            setData(user);
-
-            setLoading(false);
-        } else {
+        try {
+            const response = await fetchWrapper.get(apiUrl + new URLSearchParams(params));
+            const imgpath = process.env.NEXT_PUBLIC_LOCAL_HOST !== 'local' && process.env.NEXT_PUBLIC_LOCAL_HOST;
+            if (response.success) {
+                const user = {...response.user};
+                setPhoto(user.profile);
+                dispatch(setUser(user));
+                setData(user);
+            } else {
+                throw new Error('Failed to load user data');
+            }
+        } catch (error) {
+            console.error(error);
             toast.error('Error while loading data');
+        } finally {
+            setLoading(false);
         }
     }
     
     useEffect(() => {
-        let mounted = true;
         dispatch(setCurrentPageTitle('Edit User Details'));
-
-        mounted && uuid && getCurrentUser(uuid);
-
-        return () => {
-            mounted = false;
+        if (uuid) {
+            getCurrentUser(uuid);
         }
     }, [uuid]);
 
@@ -116,22 +152,24 @@ const UserDetailsPage = () => {
                                                 width={photoW}
                                                 height={photoH} />
                                         </div>
-                                        <input type="file" name="file" ref={hiddenInput} onChange={(e) => handleFileChange(e)} className="hidden" />
+                                        <input type="file" name="file" ref={hiddenInput} onChange={handleFileChange} className="hidden" />
                                     </div>
-                                    <div className="w-48">
-                                        <div className="flex flex-col space-y-4">
-                                            <span>Photo should be at least 300px x 300px</span>
-                                            <ButtonSolid label="Upload Photo" onClick={onUploadClick} />
-                                            <ButtonOutline label="Remove Photo" onClick={handleRemoveImage} />
+                                    {uuid && (
+                                        <div className="w-48">
+                                            <div className="flex flex-col space-y-4">
+                                                <span>Photo should be at least 300px x 300px</span>
+                                                <ButtonSolid label={uploading ? "Uploading..." : "Upload Photo"} onClick={onUploadClick} disabled={uploading} />
+                                                <ButtonOutline label="Remove Photo" onClick={handleRemoveImage} disabled={uploading} />
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
                                 </div>
                             </div>
                             <div className="mt-4">
                                 <InputText
                                     name="firstName"
                                     value={data.firstName}
-                                    onChange={() => setData({ ...data, firstName: event.target.value })}
+                                    onChange={(e) => setData({ ...data, firstName: e.target.value })}
                                     label="First Name"
                                     placeholder="Enter First Name"
                                 />
@@ -140,7 +178,7 @@ const UserDetailsPage = () => {
                                 <InputText
                                     name="lastName"
                                     value={data.lastName}
-                                    onChange={() => setData({ ...data, lastName: event.target.value })}
+                                    onChange={(e) => setData({ ...data, lastName: e.target.value })}
                                     label="Last Name"
                                     placeholder="Enter Last Name"
                                 />
@@ -158,13 +196,13 @@ const UserDetailsPage = () => {
                                 <InputText
                                     name="number"
                                     value={data.number}
-                                    onChange={() => data.number = event.target.value}
+                                    onChange={(e) => setData({ ...data, number: e.target.value })}
                                     label="Phone Number"
                                     placeholder="Enter Phone Number"
                                 />
                             </div>
                             <div className="flex flex-row mt-5 pb-6 justify-end">
-                                <ButtonSolid label="Submit" type="submit" width="w-64"/>
+                                <ButtonSolid label="Submit" type="submit" width="w-64" disabled={uploading}/>
                             </div>
                         </form>
                     </div>

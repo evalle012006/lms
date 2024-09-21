@@ -1,7 +1,6 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
 import formidable from "formidable";
-import fs from "fs";
 
 export default apiHandler({
     post: updateClient,
@@ -48,32 +47,6 @@ async function getClient(req, res) {
         .end(JSON.stringify(response));
 }
 
-// async function updateClient(req, res) {
-//     const { db } = await connectToDatabase();
-//     const ObjectId = require('mongodb').ObjectId;
-//     let statusCode = 200;
-//     let response = {};
-
-//     const client = req.body;
-//     const clientId = client._id;
-//     delete client._id;
-
-//     const clientResp = await db
-//         .collection('client')
-//         .updateOne(
-//             { _id: new ObjectId(clientId) }, 
-//             {
-//                 $set: { ...client }
-//             }, 
-//             { upsert: false });
-
-//     response = { success: true, client: clientResp };
-
-//     res.status(statusCode)
-//         .setHeader('Content-Type', 'application/json')
-//         .end(JSON.stringify(response));
-// }
-
 async function updateClient(req, res) {
     const { db } = await connectToDatabase();
     const ObjectId = require('mongodb').ObjectId;
@@ -86,10 +59,7 @@ async function updateClient(req, res) {
             let clientData = await db.collection('client').find({ _id: new ObjectId(fields._id) }).toArray();
             clientData = clientData.length > 0 && clientData[0];
 
-            let file;
-            if (files.file) {
-                file = await saveFile(files.file, clientData._id);
-            }
+            let file = fields.profile;
 
             if (err) {
                 resolve({ formError: true })
@@ -113,7 +83,7 @@ async function updateClient(req, res) {
                 delinquent: fields.delinquent,
                 loId: fields.loId,
                 groupId: fields.groupId,
-                profile: profile
+                profile: profile,
             };
 
             if (fields.hasOwnProperty('archived')) {
@@ -140,30 +110,6 @@ async function updateClient(req, res) {
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')
         .end(JSON.stringify(response));
-}
-
-const saveFile = async (file, uid) => {
-    if (file) {
-        const data = fs.readFileSync(file.filepath);
-        const fileName = 'profile-00.' + file.originalFilename.split('.').pop();
-        if (!fs.existsSync(`./public/images/clients/`)) {
-            fs.mkdirSync(`./public/images/clients/`, { recursive: true });
-        }
-
-        if (fs.existsSync(`./public/images/clients/${uid}/`)) {
-            // check if file exists 
-            fs.existsSync(`./public/images/clients/${uid}/${fileName}`) && fs.unlinkSync(`./public/images/clients/${uid}/${fileName}`);
-        } else {
-            fs.mkdirSync(`./public/images/clients/${uid}/`);
-        }
-
-        fs.writeFileSync(`./public/images/clients/${uid}/${fileName}`, data);
-        await fs.unlinkSync(file.filepath);
-
-        return uid + '/' + fileName;
-    } else {
-        return false;
-    }
 }
 
 export const config = {
