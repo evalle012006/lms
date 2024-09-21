@@ -44,35 +44,37 @@ async function updatePendingLoan(db, collection, currentDate) {
         pendingLoan = pendingLoan[0];
         cashCollection = cashCollection[0];
 
-        pendingLoan.mcbu = cashCollection.mcbu;
-
-        currentLoan.status = 'closed';
-        currentLoan.loanBalance = 0;
-        currentLoan.amountRelease = 0;
-        currentLoan.activeLoan = 0;
-        currentLoan.mcbu = 0;
-        currentLoan.mcbuCollection = collection.mcbu;
-        currentLoan.noOfPayments = collection.noOfPayments;
-        currentLoan.fullPaymentDate = collection.fullPaymentDate ? collection.fullPaymentDate : currentDate;
-        currentLoan.mcbuWithdrawal = collection.mcbuWithdrawal > 0 ? collection.mcbuWithdrawal : 0;
-        currentLoan.mcbuReturnAmt = collection.mcbuReturnAmt > 0 ? collection.mcbuReturnAmt : 0;
-        currentLoan.history = collection.history;
-
-        pendingLoan.prevLoanFullPaymentDate = currentDate;
-        pendingLoan.prevLoanFullPaymentAmount = collection.fullPayment;
-        cashCollection.loanId = pendingLoan._id + "";
-        cashCollection.currentReleaseAmount = pendingLoan.amountRelease;
-        cashCollection.prevLoanId = currentLoan._id + "";
-
         const currentLoanId = currentLoan._id;
         const pendingLoanId = pendingLoan._id;
         const cashCollectionId = cashCollection._id;
         delete currentLoan._id;
         delete pendingLoan._id;
         delete cashCollection._id;
-        logger.debug({page: `Saving Cash Collection - Updating Pending Loan`, currentLoan: currentLoan, pendingLoan: pendingLoan, cashCollection: collection});
-        await db.collection('loans').updateOne({ _id: currentLoanId}, { $set: { ...currentLoan } });
-        await db.collection('loans').updateOne({ _id: pendingLoanId}, { $set: { ...pendingLoan } });
-        await db.collection('cashCollections').updateOne({ _id: cashCollectionId}, { $set: { ...cashCollection } });
+        logger.debug({page: `Saving Cash Collection - Updating Pending Loan`, currentLoan: currentLoan, pendingLoan: pendingLoan, cashCollection: cashCollection, collection: collection});
+        await db.collection('loans').updateOne({ _id: currentLoanId}, { $set: { 
+            status: 'closed',
+            loanBalance: 0,
+            amountRelease: 0,
+            activeLoan: 0,
+            mcbu: 0,
+            mcbuCollection: collection.mcbu,
+            noOfPayments: collection.noOfPayments,
+            fullPaymentDate: collection.fullPaymentDate ? collection.fullPaymentDate : currentDate,
+            mcbuWithdrawal: collection.mcbuWithdrawal > 0 ? collection.mcbuWithdrawal : 0,
+            mcbuReturnAmt: collection.mcbuReturnAmt > 0 ? collection.mcbuReturnAmt : 0,
+            history: cashCollection.history ? cashCollection.history : collection.history
+         } });
+        await db.collection('loans').updateOne({ _id: pendingLoanId}, { $set: {
+            mcbu: cashCollection.mcbu,
+            prevLoanFullPaymentDate: currentDate,
+            prevLoanFullPaymentAmount: collection.fullPayment,
+            mcbu: collection.mcbu,
+            mcbuWithdrawal: collection.mcbuWithdrawal
+        } });
+        await db.collection('cashCollections').updateOne({ _id: cashCollectionId}, { $set: {
+            loanId: pendingLoan._id + "",
+            currentReleaseAmount: pendingLoan.amountRelease,
+            prevLoanId: currentLoan._id + ""
+        } });
     }
 }
