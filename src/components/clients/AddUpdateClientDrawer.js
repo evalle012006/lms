@@ -19,6 +19,7 @@ import Image from 'next/image';
 import { calculateAge, checkFileSize } from "@/lib/utils";
 import { useRouter } from "next/router";
 import ClientSearchTool from "../dashboard/ClientSearchTool";
+import { getApiBaseUrl } from "@/lib/constants";
 
 const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSidebar, onClose }) => {
     const hiddenInput = useRef(null);
@@ -138,7 +139,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
             if (mode === 'add') {
                 processedValues.status = 'pending';
                 processedValues.delinquent = false;
-                const response = await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}clients/save/`, processedValues);
+                const response = await fetchWrapper.post(getApiBaseUrl() + 'clients/save/', processedValues);
                 if (response.success) {
                     toast.success('Client successfully added.');
                 } else {
@@ -167,7 +168,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
     }, [currentUser, selectedGroup, mode, client, image, branchList, duplicate, onClose, setShowSidebar]);
 
     const handleUpdateClient = async (clientData) => {
-        return await fetchWrapper.sendData(`${process.env.NEXT_PUBLIC_API_URL}clients/`, clientData);
+        return await fetchWrapper.sendData(getApiBaseUrl() + 'clients/', clientData);
     };
 
     const handleFileChange = useCallback(async (e) => {

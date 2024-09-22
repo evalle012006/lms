@@ -1235,12 +1235,13 @@ const LoanApplicationPage = () => {
     const handleEditAction = (row) => {
         setMode("edit");
         setLoan(row.original);
-        let clientListData = [...clientList];
-        let client = row.original?.client;
-        client.label = `${client?.lastName}, ${client?.firstName} ${client?.middleName ? client?.middleName : ''}`;
-        client.value = client._id;
-        clientListData.push(client);
-        dispatch(setClientList(clientListData));
+        const updatedClient = {
+            ...row.original.client,
+            label: `${row.original.client.lastName}, ${row.original.client.firstName} ${row.original.client.middleName || ''}`,
+            value: row.original.client._id
+        };
+        const updatedClientList = [...clientList, updatedClient];
+        dispatch(setClientList(updatedClientList));
         setOccurence(row.original.occurence);
         handleShowAddDrawer();
     }

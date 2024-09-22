@@ -2715,7 +2715,7 @@ const CashCollectionDetailsPage = () => {
                         groupFilter={groupFilter} handleGroupFilter={handleGroupFilter} groupTransactionStatus={groupSummaryIsClose ? 'close' : 'open'} 
                         changeRemarks={changeRemarks} addMcbuInterest={addMcbuInterest} handleShowWarningDialog={handleShowWarningDialog} loading={loading} />}
                     <div className="px-4 mt-[12rem] mb-[4rem] overflow-y-auto min-h-[55rem]">
-                        <div className="bg-white flex flex-col rounded-md pt-0 pb-2 px-6 overflow-auto h-[46rem]">
+                        <div className="bg-white flex flex-col rounded-md pt-0 pb-2 px-6 overflow-auto min-h-[46rem]">
                             <table className="table-auto border-collapse text-sm">
                                 <thead className="border-b border-b-gray-300">
                                     <tr className="sticky top-0 column py-0 pr-0 pl-4 text-left text-gray-500 uppercase tracking-wider bg-white z-20">

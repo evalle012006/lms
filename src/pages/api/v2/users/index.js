@@ -39,19 +39,19 @@ async function updateUser(req, res) {
             const payload = JSON.parse(fields.data);
             const userData = await findUserByEmail(payload.email);
 
-            let file;
-            if (files.file) {
-                file = await saveFile(files.file, userData._id).catch(err => {
-                    console.error(err);
-                    logger.error({page: 'User Page', message: `Error in uploading file ${JSON.stringify(err)}`});
-                    return false;
-                });
+            let file = fields.profile;
+            // if (files.file) {
+            //     file = await saveFile(files.file, userData._id).catch(err => {
+            //         console.error(err);
+            //         logger.error({page: 'User Page', message: `Error in uploading file ${JSON.stringify(err)}`});
+            //         return false;
+            //     });
 
-                if(!file) {
-                    resolve({ formError: true });
-                    return;
-                }
-            }
+            //     if(!file) {
+            //         resolve({ formError: true });
+            //         return;
+            //     }
+            // }
 
             if (err) {
                 resolve({ formError: true });

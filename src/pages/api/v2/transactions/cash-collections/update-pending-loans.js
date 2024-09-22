@@ -69,6 +69,8 @@ async function updatePendingLoan(collection, currentDate) {
           mcbu: cashCollection.mcbu,
           prevLoanFullPaymentDate: currentDate,
           prevLoanFullPaymentAmount: collection.fullPayment,
+          mcbu: collection.mcbu,
+          mcbuWithdrawal: collection.mcbuWithdrawal
         };
 
         const toUpdateCurrentLoan = {
@@ -82,8 +84,7 @@ async function updatePendingLoan(collection, currentDate) {
           fullPaymentDate:  collection.fullPaymentDate ? collection.fullPaymentDate : currentDate,
           mcbuWithdrawal: collection.mcbuWithdrawal > 0 ? collection.mcbuWithdrawal : 0,
           mcbuReturnAmt: collection.mcbuReturnAmt > 0 ? collection.mcbuReturnAmt : 0,
-          // TODO: Add history in V1
-          history: collection.history,
+          history: cashCollection.history ? cashCollection.history : collection.history
         };
 
         const toUpdateCollection = {

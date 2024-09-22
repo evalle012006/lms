@@ -99,6 +99,10 @@ async function save(req, res) {
                     await updateLoan(mutationQl, collection, currentDate)
                     await updateClient(mutationQl, collection, currentDate);
                 }
+
+                if (collection.status == 'tomorrow' && collection.mcbuWithdrawal > 0) {
+                    await updateLoanMcbuWithdrawal(mutationQl, collection)
+                }
             }
         });
 
@@ -117,7 +121,8 @@ async function save(req, res) {
             ... mutationQl
         );
 
-        const pendingLoans = data.collection.filter(c => c.status === 'pending' && c.advance);
+        const pendingLoans = data.collection.filter(c => c.status === 'pending' && c.advance == true);
+        console.log(pendingLoans)
         await savePendingLoans(pendingLoans);
     }
 
@@ -310,6 +315,39 @@ async function updateLoan(mutationQL, collection, currentDate) {
                 },
                 where: {
                     _id: { _eq: loanId }
+                }
+            })
+        )
+
+        return { success: true }
+    }
+}
+
+async function updateLoanMcbuWithdrawal(mutationQL, collection) {
+    let loan = await graph.query(queryQl(LOAN_TYPE('loans'), { where: { _id: { _eq: collection.loanId } } })).then(res => res.data.loans);
+    logger.debug({page: `Saving Cash Collection - Updating Loan Due to Withdrawal: ${collection.loanId}`});
+    if (loan.length > 0) {
+        loan = loan[0];
+        delete loan.groupStatus;
+        
+        delete loan.groupCashCollections;
+        delete loan.loanOfficer;
+        delete loan.loanReleaseStr;
+        delete loan.reverted;
+        
+        loan.mcbu = collection.mcbu;
+        loan.mcbuWithdrawal = collection.mcbuWithdrawal;
+
+        logger.debug({page: `Saving Cash Collection - Updating Loan Due to Withdrawal`, data: loan});
+        delete loan._id;
+
+        mutationQL.push(
+            updateQl(LOAN_TYPE('loans_' + (mutationQL.length + 1)), {
+                set: {
+                    ... assignNullValues(loan)
+                },
+                where: {
+                    _id: { _eq: collection.loanId }
                 }
             })
         )

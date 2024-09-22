@@ -143,7 +143,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
     }, [mode, image, currentDate, roles, branchList, onClose, setShowSidebar]);
 
     const handleUpdateUser = async (userData) => {
-        return await fetchWrapper.sendData(`${process.env.NEXT_PUBLIC_API_URL}users/`, userData);
+        return await fetchWrapper.sendData(getApiBaseUrl() + 'users/', userData);
     };
 
     const handleFileChange = useCallback(async (e) => {

@@ -60,10 +60,10 @@ async function updateClient(req, res) {
                 })
             ).then(res => res.data.clients);
         
-            let file;
-            if (files.file) {
-                file = await saveFile(files.file, clientData._id);
-            }
+            let file = fields.profile;
+            // if (files.file) {
+            //     file = await saveFile(files.file, clientData._id);
+            // }
 
             if (err) {
                 resolve({ formError: true })
