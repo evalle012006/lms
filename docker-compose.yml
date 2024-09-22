@@ -34,7 +34,14 @@ services:
   nginx:
     image: nginx:latest
     restart: unless-stopped
+    expose:
+      - "80"
     ports:
       - 3000:80
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./public/images:/app/public/images
+    environment:
+      - VIRTUAL_HOST=${LMS_APP_DOMAIN}
+      - LETSENCRYPT_HOST=${LMS_APP_DOMAIN}
+
