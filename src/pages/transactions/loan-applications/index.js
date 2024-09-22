@@ -1321,9 +1321,8 @@ const LoanApplicationPage = () => {
     }
 
     const handleShowClientInfoModal = (row) => {
-        const imgpath = process.env.NEXT_PUBLIC_LOCAL_HOST !== 'local' && process.env.NEXT_PUBLIC_LOCAL_HOST;
         const selected = row;
-        const selectedClient = {...selected?.client, imgUrl: selected?.client.profile ? imgpath + '/images/clients/' + selected?.client.profile : ''};
+        const selectedClient = {...selected.client, profile: selected.client.profile ? selected.client.profile : ''};
         dispatch(setClient(selectedClient));
         setShowClientInfoModal(true);
     }

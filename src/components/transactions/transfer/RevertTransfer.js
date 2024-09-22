@@ -117,7 +117,7 @@ const RevertTransferPage = () => {
             Header: "Last Name",
             accessor: 'lastName',
             Cell: AvatarCell,
-            imgAccessor: "imgUrl",
+            imgAccessor: "profile",
         },
         {
             Header: "First Name",

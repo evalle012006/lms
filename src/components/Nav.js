@@ -750,7 +750,7 @@ const NavComponent = ({ isVisible, toggleNav, isMobile }) => {
                 </span>
                 <div id="profile" className="flex items-center border-b border-orange-darkest px-2 py-4">
                     <div id="img" className="w-1/4 mr-6">
-                        <Avatar name={userState.firstName + " " + userState.lastName} src={userState.profile ? '/images/profiles/' + userState.profile : ""} size={70} padding={4} margin={4} />
+                        <Avatar name={userState.firstName + " " + userState.lastName} src={userState.profile ? userState.profile : ""} className={`${userState.profile ? 'p-8' : 'p-6'} `} />
                     </div>
                     <div id="welcome" className="text-white w-2/4 sm:ml-1 md:ml-6">
                         <p className="text-xs">Welcome,</p>

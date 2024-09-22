@@ -7,14 +7,6 @@ module.exports = {
         apiUrl: process.env.NEXT_PUBLIC_API_URL
     },
     images: {
-        domains: [process.env.NEXT_PUBLIC_IMAGE_HOST],
-        remotePatterns: [
-            {
-                protocol: 'http',
-                hostname: process.env.NEXT_PUBLIC_IMAGE_HOST,
-                // port: '',
-                pathname: '/public/images/**',
-            },
-        ],
+        domains: ['ambercashph.sgp1.digitaloceanspaces.com'],
     }
 }

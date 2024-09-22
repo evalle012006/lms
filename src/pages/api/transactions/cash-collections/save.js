@@ -92,6 +92,10 @@ async function save(req, res) {
                     await updateClient(db, collection, currentDate);
                 }
 
+                if ((collection.status == 'tomorrow' || collection.status == 'pending') && collection.mcbuWithdrawal > 0) {
+                    await updateLoanMcbuWithdrawal(db, collection)
+                }
+
                 // if (collection.status === 'pending' && collection?.advance) {
                 //     collection = await updatePendingLoan(db, collection, currentDate);
                 // }
@@ -270,6 +274,36 @@ async function updateLoan(db, collection, currentDate) {
     }
 }
 
+async function updateLoanMcbuWithdrawal(db, collection) {
+    const ObjectId = require('mongodb').ObjectId;
+
+    let loan = await db.collection('loans').find({ _id: new ObjectId(collection.loanId) }).toArray();
+    logger.debug({page: `Saving Cash Collection - Updating Loan Due to Withdrawal: ${collection.loanId}`});
+    if (loan.length > 0) {
+        loan = loan[0];
+        delete loan.groupStatus;
+        
+        delete loan.groupCashCollections;
+        delete loan.loanOfficer;
+        delete loan.loanReleaseStr;
+        delete loan.reverted;
+        
+        loan.mcbu = collection.mcbu;
+        loan.mcbuWithdrawal = collection.mcbuWithdrawal;
+
+        logger.debug({page: `Saving Cash Collection - Updating Loan Due to Withdrawal`, data: loan});
+        delete loan._id;
+        await db.collection('loans').updateOne(
+            { _id: new ObjectId(collection.loanId) }, 
+            {
+                $set: { ...loan }
+            }
+        );
+
+        return { success: true }
+    }
+}
+
 async function updateClient(db, loan, currentDate) {
     const ObjectId = require('mongodb').ObjectId;
 
@@ -286,33 +320,6 @@ async function updateClient(db, loan, currentDate) {
             client.groupId = null;
             client.loId = null;
         }
-
-        // let mcbuHistory = [];
-        // const currentMonth = moment(currentDate).month() + 1;
-        // const currentYear = moment(currentDate).year();
-        // if (client.hasOwnProperty('mcbuHistory')) {
-        //     mcbuHistory = [...client.mcbuHistory];
-        //     const yearIndex = mcbuHistory.findIndex(h => h.year === currentYear);
-        //     if (yearIndex > -1) {
-        //         let mcbuMonths = mcbuHistory[yearIndex].mcbuMonths;
-        //         const monthIndex = mcbuMonths.findIndex(m => m.month === currentMonth);
-        //         if (monthIndex > -1) {
-        //             let mcbuMonth = {...mcbuMonths[monthIndex]};
-        //             mcbuMonth.mcbu = loan.mcbu;
-        //             mcbuMonths[monthIndex] = mcbuMonth;
-        //         } else {
-        //             mcbuMonths.push({ month: currentMonth, mcbu: loan.mcbu });
-        //         }
-
-        //         mcbuHistory[yearIndex] = mcbuMonths;
-        //     } else {
-        //         mcbuHistory.push({ year: currentYear, mcbuMonths: [ {month: currentMonth, mcbu: loan.mcbu} ] });
-        //     }
-        // } else {
-        //     mcbuHistory.push({ year: currentYear, mcbuMonths: [ {month: currentMonth, mcbu: loan.mcbu} ] });
-        // }
-
-        // client.mcbuHistory = mcbuHistory;
 
         if (loan.remarks && loan.remarks.value?.startsWith('delinquent')) {
             client.delinquent = true;

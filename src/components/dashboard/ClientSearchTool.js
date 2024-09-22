@@ -25,9 +25,31 @@ const ClientSearchTool = ({ origin = "", callback, setSelected }) => {
         e.preventDefault();
         if (searchText) {
             setSearching(true);
-            setCursor(null); // Reset cursor on new search
-            setHasMore(true);
-            await fetchClients();
+            const response = await fetchWrapper.get(getApiBaseUrl() + 'clients/search?' + new URLSearchParams({ searchText: searchText?.toUpperCase() }));
+            const list = [];
+            if (response.success) {
+                if (response.clients.length === 0) {
+                    callback([]);
+                } else {
+                    if (origin == 'client_list') {
+                        callback(response.clients);
+                        setSearching(true);
+                    }
+                    response.clients.map(client => {
+                        list.push({
+                            ...client,
+                            profile: client.profile ? client.profile : '',
+                            birthdate: client.birthdate?  moment(client.birthdate).format('YYYY-MM-DD') : '-',
+                            groupName: client.group.name,
+                            branchName: client.branch.name,
+                            address: client.address ? client.address.replaceAll('undefined', '') : '-',
+                            delinquentStr: client.delinquent ? 'Yes' : 'No'
+                        });
+                    });
+                }
+
+                setClientList(list);
+            }
         } else {
             setSearching(false);
         }
@@ -141,7 +163,7 @@ const ClientSearchTool = ({ origin = "", callback, setSelected }) => {
                     <div className="flex flex-col items-center font-proxima">
                         {selectedClient && (
                             <React.Fragment>
-                                <Avatar name={selectedClient?.fullName} src={selectedClient?.profile ? selectedClient?.imgUrl : placeholder.src} />
+                                <Avatar name={selectedClient?.fullName} src={selectedClient?.profile ? selectedClient?.profile : placeholder.src} className={`${selectedClient?.profile ? 'p-20' : 'p-12 mx-auto'} `} />
                                 <h5 className="mb-1 text-xl font-medium text-gray-900">{selectedClient?.fullName}</h5>
                                 <span className="bg-green-100 text-green-800 text-sm font-medium mr-2 px-2.5 py-0.5 rounded dark:bg-green-200 dark:text-green-900">{ selectedClient?.status }</span>
                             </React.Fragment>

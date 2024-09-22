@@ -92,8 +92,7 @@ const CashCollectionDetailsPage = () => {
 
     const handleShowClientInfoModal = (selected) => {
         if (selected.status !== 'totals') {
-            const imgpath = process.env.NEXT_PUBLIC_LOCAL_HOST !== 'local' && process.env.NEXT_PUBLIC_LOCAL_HOST;
-            const selectedClient = {...selected.client, imgUrl: selected.client.profile ? imgpath + '/images/clients/' + selected.client.profile : ''};
+            const selectedClient = {...selected.client, profile: selected.client.profile ? selected.client.profile : ''};
             dispatch(setClient(selectedClient));
             setShowClientInfoModal(true);
         }
@@ -788,6 +787,7 @@ const CashCollectionDetailsPage = () => {
                     }
 
                     if ((currentLoan.fullPaymentDate === currentDate && (loan?.loanFor == 'today' || (loan?.loanFor == 'tomorrow' && diff >= 0)))) { // fullpayment with pending/tomorrow
+                        const mcbuWithdrawal = loan.mcbuWithdrawal > 0 ? loan.mcbuWithdrawal : currentLoan.mcbuWithdrawal;
                         cashCollection[index] = {
                             client: currentLoan.client,
                             coMaker: (loan.coMaker && typeof loan.coMaker == 'number') ? loan.coMaker : '-',
@@ -808,8 +808,8 @@ const CashCollectionDetailsPage = () => {
                             mcbuStr: loan.mcbu > 0 ? formatPricePhp(loan.mcbu) : '-',
                             mcbuCol: currentLoan.mcbuCol,
                             mcbuColStr: currentLoan.mcbuCol > 0 ? formatPricePhp(currentLoan.mcbuCol) : '-',
-                            mcbuWithdrawal: currentLoan.mcbuWithdrawal,
-                            mcbuWithdrawalStr: currentLoan.mcbuWithdrawal > 0 ? formatPricePhp(currentLoan.mcbuWithdrawal) : '-',
+                            mcbuWithdrawal: mcbuWithdrawal,
+                            mcbuWithdrawalStr: mcbuWithdrawal > 0 ? formatPricePhp(mcbuWithdrawal) : '-',
                             mcbuReturnAmt: currentLoan.mcbuReturnAmt,
                             mcbuReturnAmtStr: currentLoan.mcbuReturnAmt > 0 ? formatPricePhp(currentLoan.mcbuReturnAmt) : '-',
                             mcbuInterest: loan.mcbuInterest,
@@ -1628,8 +1628,6 @@ const CashCollectionDetailsPage = () => {
 
                     if (temp.loanCycle == 1) {
                         toast.error('Error occured. MCBU Withdrawal is not allowed on first loan cycle.');
-                    } else if (temp.status != 'completed') {
-                        toast.error('Error occured. MCBU Withdrawal is only allowed on completed transactions.');
                     } else if (diff < 1000) {
                         toast.error('Error occured. MCBU Withdrawal should have at least ₱1,000 remaining balance.');
                     } else if (mcbuWithdrawal > temp.mcbu) {
@@ -1639,9 +1637,11 @@ const CashCollectionDetailsPage = () => {
                         temp.mcbuWithdrawal = mcbuWithdrawal;
                         temp.mcbuWithdrawalStr = formatPricePhp(mcbuWithdrawal);
                         if (temp.mcbu > 0) {
-                            temp.mcbu = parseFloat(temp.mcbu) - mcbuWithdrawal;
+                            temp.mcbu = diff;
                             temp.mcbuStr = formatPricePhp(temp.mcbu);
-                            temp.prevData.mcbu = temp.mcbu;
+                            if (temp.prevData?.mcbu) {
+                                temp.prevData.mcbu = temp.mcbu;
+                            }
                         }
                     }
                 }
@@ -2364,8 +2364,8 @@ const CashCollectionDetailsPage = () => {
     const handleMcbuWithdrawal = (selected, index) => {
         if (selected.loanCycle == 1) {
             toast.error('Error occured. MCBU Withdrawal is not allowed on first loan cycle.');
-        } else if (selected.status != 'completed') {
-            toast.error('Error occured. MCBU Withdrawal is only allowed on completed transactions.');
+        } else if (selected.mcbuWithdrawal > 0) {
+            toast.error('Error occured. MCBU Withdrawal has already been processed.');
         } else if (selected.mcbu <= 1000) {
             toast.error('Error occured. MCBU Withdrawal should have more than ₱1,000 remaining MCBU balance.');
         } else if (parseFloat(selected.mcbu) > 0) {

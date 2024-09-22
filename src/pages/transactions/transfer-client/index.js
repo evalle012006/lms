@@ -56,7 +56,7 @@ const TransferClientPage = () => {
             Header: "Name",
             accessor: 'fullName',
             Cell: AvatarCell,
-            imgAccessor: "imgUrl",
+            imgAccessor: "profile",
         },
         {
             Header: "Amount Release",

@@ -314,7 +314,7 @@ const TransferClientTransactionPage = ({ mode = "group", setLoading }) => {
             Header: "Last Name",
             accessor: 'lastName',
             Cell: AvatarCell,
-            imgAccessor: "imgUrl",
+            imgAccessor: "profile",
         },
         {
             Header: "First Name",

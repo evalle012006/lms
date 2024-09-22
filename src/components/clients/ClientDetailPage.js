@@ -34,6 +34,8 @@ const ClientDetailPage = () => {
     const [showPnNumberDialog, setShowPnNumberDialog] = useState(false);
     const [showPrincipalLoanDialog, setShowPrincipalLoanDialog] = useState(false);
 
+    const [uploading, setUploading] = useState(false);
+
     const handleShowPnNumberDialog = (row) => {
         if (row.status == 'closed') {
             toast.error('Loan already closed!');
@@ -155,17 +157,39 @@ const ClientDetailPage = () => {
             setLoading(false);
             toast.error(fileSizeMsg);
         } else {
-            const clientData = {...client, file: fileUploaded};
-            fetchWrapper.sendData(getApiBaseUrl() + 'clients/', clientData)
-                    .then(response => {
-                        setLoading(false);
-                        const imgpath = process.env.NEXT_PUBLIC_LOCAL_HOST !== 'local' && process.env.NEXT_PUBLIC_LOCAL_HOST;
-                        const updatedClient = {...response.client, imgUrl: response.client.profile ? imgpath + '/images/clients/' + response.client.profile : ''};
-                        dispatch(setClient(updatedClient));
-                        toast.success('Photo successfully updated.');
-                    }).catch(error => {
-                        console.log(error);
-                    });
+            const formData = new FormData();
+            formData.append('file', fileUploaded);
+            formData.append('origin', 'clients');
+            formData.append('uuid', client?._id);
+
+            setUploading(true);
+            try {
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (!response.ok) {
+                    throw new Error('Upload failed');
+                }
+
+                const responseData = await response.json();
+                const updatedData = {...client, profile: responseData.fileUrl};
+                fetchWrapper.sendData(process.env.NEXT_PUBLIC_API_URL + 'clients/', updatedData)
+                        .then(response => {
+                            setLoading(false);
+                            const updatedClient = {...response.client, profile: response.client.profile ? response.client.profile : ''};
+                            dispatch(setClient(updatedClient));
+                            toast.success('Photo successfully updated.');
+                        }).catch(error => {
+                            console.log(error);
+                        });
+            } catch (error) {
+                console.error('Error uploading file:', error);
+                toast.error('Failed to upload file. Please try again.');
+            } finally {
+                setUploading(false);
+            }
         }
       }
 
@@ -276,12 +300,12 @@ const ClientDetailPage = () => {
                 <React.Fragment>
                     <div className="flex flex-col items-center font-proxima">
                         <div className="rounded-full flex items-center justify-center mx-auto group">
-                            <div className="ml-24 top-3 text-xs cursor-pointer absolute z-20 bg-black/20 text-white rounded-3xl p-2 invisible group-hover:visible" onClick={() => imageRef.current.click()}>
+                            <div className="ml-72 top-3 text-xs cursor-pointer absolute z-20 bg-black/20 text-white rounded-3xl p-2 invisible group-hover:visible" onClick={() => imageRef.current.click()}>
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
                                 </svg>
                             </div>
-                            <Avatar name={`${client.lastName}, ${client.firstName}`} src={client.profile ? client.imgUrl : placeholder.src} />
+                            <Avatar name={`${client.lastName}, ${client.firstName}`} src={client.profile ? client.profile : placeholder.src} className={`${client.profile ? 'p-32 px-36' : 'p-12'} `} shape={`${client.profile ? 'square' : 'circle'}`} />
                             <input ref={imageRef} type="file" className="hidden" onChange={updatePhoto} />
                         </div>
                         <h5 className="mb-1 text-xl font-medium text-gray-900">{`${client.lastName}, ${client.firstName}`}</h5>
