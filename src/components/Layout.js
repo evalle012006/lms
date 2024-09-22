@@ -86,7 +86,7 @@ const Layout = ({
         
             if (dayName === 'Saturday' || dayName === 'Sunday') {
                 // RESET
-                dispatch(setWeekend(false));
+                dispatch(setWeekend(true));
             } else {
                 dispatch(setWeekend(false));
             }
