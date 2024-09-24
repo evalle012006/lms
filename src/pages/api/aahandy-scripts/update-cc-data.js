@@ -16,16 +16,42 @@ async function updateCCData(req, res) {
 
 
     const cashCollections = await db.collection('cashCollections').aggregate([
-        { $match: { transferred: true, dateAdded: "2024-06-28" } },
-        { $addFields: { "loanIdObj": { $toObjectId: "$loanId" }, transferIdObj: { $toObjectId: "" } } },
-    ]).toArray();
+        { $match: { dateAdded: "2024-09-23", loanId: "undefined" } },
+        {
+            $lookup: {
+                from: 'loans',
+                localField: "clientId",
+                foreignField: "clientId",
+                pipeline: [
+                    { $match: { status: { $in: ['active', 'completed', 'pending'] } } }
+                ],
+                as: 'loans'
+            }
+        }
+    ]).limit(100).toArray();
     cashCollections.map(async cc => {
         let temp = {...cc};
-
-        // temp.oldLoanId = cc.oldLoanId + '';
-        temp.loanId = cc.loanId + '';
-        delete temp._id;
-        await db.collection('cashCollections').updateOne({_id: cc._id}, {$set: {...temp}});
+        const activeLoan = cc.loans.find(l => l.status == 'active');
+        const completedLoan = cc.loans.find(l => l.status == 'completed');
+        const pendingLoan = cc.loans.find(l => l.status == 'pending');
+        if (activeLoan) {
+            temp.loanId = activeLoan._id + '';
+            delete temp._id;
+            await db.collection('cashCollections').updateOne({_id: cc._id}, {$set: {...temp}});
+            console.log('Remediatted active loan for client: ', temp.clientId, 'cc _id: ', cc._id)
+        } else if (completedLoan) {
+            temp.loanId = completedLoan._id + '';
+            delete temp._id;
+            await db.collection('cashCollections').updateOne({_id: cc._id}, {$set: {...temp}});
+            console.log('Remediatted completed loan for client: ', temp.clientId, 'cc _id: ', cc._id)
+        } else if (pendingLoan) {
+            temp.loanId = pendingLoan._id + '';
+            delete temp._id;
+            await db.collection('cashCollections').updateOne({_id: cc._id}, {$set: {...temp}});
+            console.log('Remediatted pending loan for client: ', temp.clientId, 'cc _id: ', cc._id)
+        } else {
+            console.log('No active/completed loan for client: ', temp.clientId, 'cc _id: ', cc._id)
+        }
     });
 
     response = { success: true };
@@ -34,6 +60,34 @@ async function updateCCData(req, res) {
         .setHeader('Content-Type', 'application/json')
         .end(JSON.stringify(response));
 }
+
+// async function updateCCData(req, res) {
+//     const { db } = await connectToDatabase();
+//     const ObjectId = require('mongodb').ObjectId;
+
+//     let statusCode = 200;
+//     let response = {};
+
+
+//     const cashCollections = await db.collection('cashCollections').aggregate([
+//         { $match: { transferred: true, dateAdded: "2024-06-28" } },
+//         { $addFields: { "loanIdObj": { $toObjectId: "$loanId" }, transferIdObj: { $toObjectId: "" } } },
+//     ]).toArray();
+//     cashCollections.map(async cc => {
+//         let temp = {...cc};
+
+//         // temp.oldLoanId = cc.oldLoanId + '';
+//         temp.loanId = cc.loanId + '';
+//         delete temp._id;
+//         await db.collection('cashCollections').updateOne({_id: cc._id}, {$set: {...temp}});
+//     });
+
+//     response = { success: true };
+
+//     res.status(statusCode)
+//         .setHeader('Content-Type', 'application/json')
+//         .end(JSON.stringify(response));
+// }
 
 // async function updateCCData(req, res) {
 //     const { db } = await connectToDatabase();

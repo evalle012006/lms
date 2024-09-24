@@ -1402,7 +1402,7 @@ const CashCollectionDetailsPage = () => {
                                 if (responsePending.success) {
                                     reloadAfterSave();
                                 }
-                            }, 3000);
+                            }, 5000);
                         } else {
                             reloadAfterSave();
                         }
