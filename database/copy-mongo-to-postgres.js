@@ -9,7 +9,7 @@
  *
  * NOTE: Records that had been copied to PostgreSQL will not be overwritten when re-running this script.
  */
-const { MongoClient } = require('mongodb');
+const { MongoClient, Db, ObjectId } = require('mongodb');
 const { Connection } = require('postgresql-client');
 const env = require('@next/env');
 const moment = require('moment');
@@ -34,49 +34,80 @@ const cliArgs = require('args-parser')(process.argv);
 const runDate = moment().format();
 const fs = require('fs');
 
+let currentLogMarker;
+
+
+/** @type {Record<string, ((mongo: Db) => Promise<any>)>} */
 const cliCommands = {
-  'migrate-master': async () => {
-    return migrate(masterFileTableNames);
+  'migrate-master': async (mongo) => {
+    return migrate(mongo, masterFileTableNames);
   },
-  'migrate-tx': async () => {
+  'migrate-tx': async (mongo) => {
     if (!cliArgs.branchId || typeof cliArgs.branchId !== 'string') {
       console.error('Argument "-branchId=[ID or all]" is required.')
       return;
     }
+
+    let branchIds = [];
     if (cliArgs.branchId !== 'all') {
-      const branchIds = cliArgs.branchId.split(',');
-      for (const id of branchIds) {
-        const mongoFilter = { branchId: { $eq: id } };
-        await migrate(transactionTableNames, mongoFilter);
-      }
-    } else {
-      await migrate(transactionTableNames);
+      branchIds = cliArgs.branchId.split(',');
+    }
+
+    const branches = await mongo
+      .collection("branches")
+      .aggregate([
+        ...(branchIds?.length
+          ? [
+              {
+                $match: {
+                  $expr: {
+                    $in: ["$_id", branchIds.map((id) => new ObjectId(id))],
+                  },
+                },
+              },
+            ]
+          : []),
+        { $project: { _id: 1, name: 1 } },
+      ]);
+    for await (const branch of branches) {
+      const mongoFilter = { branchId: { $eq: branch._id.toString() } };
+      currentLogMarker = branch.name;
+      logInfo(`**** Migrating transactions for Branch: ${branch.name} ****`);
+      await migrate(mongo, transactionTableNames, mongoFilter);
+      currentLogMarker = null;
     }
 
     await updateActiveLoanAmount();
   },
   'print-new-fields-in-mongo': async () => {
-    printNewFieldsInMongo();
+    return printNewFieldsInMongo();
   }
-}
+};
 
-const cliCmd = process.argv?.[2];
-const handler = cliCommands[cliCmd];
-if (handler) {
-  handler();
-} else {
-  logInfo('CLI commands:\n' + Object.keys(cliCommands).map(s => `  ${s}`).join('\n'));
-}
+// Main function
+(async function () {
+  const cliCmd = process.argv?.[2];
+  const handler = cliCommands[cliCmd];
+  if (handler) {
+    const mClient = await MongoClient.connect(MONGODB_URL);
+    const mDb = await mClient.db(MONGODB_NAME);
+
+    await handler(mDb);
+
+    await mClient.close();
+  } else {
+    logInfo('CLI commands:\n' + Object.keys(cliCommands).map(s => `  ${s}`).join('\n'));
+  }
+
+})();
 
 /**
+ * @param {Db} mongo
  * @param {string[]} tableNames
  * @param {Record<string, any> | null} mongoFilter
  * @returns {Promise<void>}
  */
-async function migrate(tableNames, mongoFilter = null) {
-    const mClient = await MongoClient.connect(MONGODB_URL);
-    const mDb = await mClient.db(MONGODB_NAME);
-
+async function migrate(mongo, tableNames, mongoFilter = null) {
     const collectionNamesFilter = [];
     if (cliArgs.tables && typeof cliArgs.tables === 'string') {
       collectionNamesFilter.push(...cliArgs.tables
@@ -113,7 +144,7 @@ async function migrate(tableNames, mongoFilter = null) {
           }
         }
 
-        const cursor = mDb.collection(tableName).find(queryFilter).batchSize(BATCH_SIZE * 2);
+        const cursor = mongo.collection(tableName).find(queryFilter).batchSize(BATCH_SIZE * 2);
 
         const asyncBatchInsert = async (batchData) => {
           const batchParams = batchData.map(doc =>
@@ -180,8 +211,6 @@ async function migrate(tableNames, mongoFilter = null) {
           break;
         }
     }
-
-    await mClient.close();
 }
 
 async function updateActiveLoanAmount() {
@@ -417,6 +446,10 @@ function appendLog(fileName, row) {
     row = JSON.stringify(row);
   }
 
+  if (currentLogMarker) {
+    fileName = escapeFilename(currentLogMarker + '__' + fileName);
+  }
+
   const logDir = `${__dirname}/logs-${runDate}`
   const logFile = `${logDir}/${fileName}.log`;
   if (!fs.existsSync(logDir)) {
@@ -434,4 +467,8 @@ function logInfo(message) {
 function logError(message) {
   console.error(message);
   appendLog('status_error', message);
+}
+
+function escapeFilename(filename) {
+  return filename.replace(/[\W]/g, '_');
 }
