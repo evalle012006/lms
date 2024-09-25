@@ -5,12 +5,21 @@ import { apiHandler } from '@/services/api-handler';
 
 const graph = new GraphProvider();
 
+const DEFAULT_LOANS = `
+loans (where: { status: { _eq: "completed" } }, order_by: [{ loanCycle: desc }], limit: 1) {
+    ${LOAN_FIELDS}
+}
+`;
+
+const RELOAN_CLIENT_LOANS = `
+loans (where: { status: { _eq: "active" } }, order_by: [{ loanCycle: desc }], limit: 1) {
+    ${LOAN_FIELDS}
+}
+`;
+
 const CLIENT_TYPE = (... additionalFields) => {
     return createGraphType('client', `
         ${CLIENT_FIELDS}
-        loans (order_by: [{ loanCycle:  desc }], limit: 1) {
-            ${LOAN_FIELDS}
-        }
         lo {
             ${USER_FIELDS}
         }
@@ -106,7 +115,7 @@ async function list(req, res) {
     } else if (mode === 'view_only_no_exist_loan') {
         if (status === 'active') {
             clients = await graph.query(
-                queryQl(CLIENT_TYPE(), {
+                queryQl(CLIENT_TYPE(DEFAULT_LOANS), {
                     where:{
                         groupId: { _eq: groupId },
                         loans: {
@@ -157,7 +166,7 @@ async function list(req, res) {
         }
     } else if (mode === 'view_existing_loan') {
         clients = await graph.query(
-            queryQl(CLIENT_TYPE(), {
+            queryQl(CLIENT_TYPE(RELOAN_CLIENT_LOANS), {
                 where: {
                     status: { _eq: 'active' },
                     groupId: { _eq: groupId },
