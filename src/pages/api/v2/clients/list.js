@@ -6,19 +6,19 @@ import { apiHandler } from '@/services/api-handler';
 const graph = new GraphProvider();
 
 const DEFAULT_LOANS = `
-loans (where: { status: { _eq: "completed" } }, order_by: [{ loanCycle: desc }], limit: 1) {
+loans (where: { status: { _eq: "completed" } }, order_by: [{ insertedDateTime: desc, loanCycle: desc }], limit: 1) {
     ${LOAN_FIELDS}
 }
 `;
 
 const TRANSFER_LOANS = `
-loans (where: { status: { _in: ["completed", "active", "pending"] } }, order_by: [{ loanCycle: desc }], limit: 1) {
+loans (where: { status: { _in: ["completed", "active", "pending"] } }, order_by: [{ insertedDateTime: desc, loanCycle: desc }], limit: 1) {
     ${LOAN_FIELDS}
 }
 `
 
 const RELOAN_CLIENT_LOANS = `
-loans (where: { status: { _eq: "active" } }, order_by: [{ loanCycle: desc }], limit: 1) {
+loans (where: { status: { _eq: "active" } }, order_by: [{ insertedDateTime: desc, loanCycle: desc }], limit: 1) {
     ${LOAN_FIELDS}
 }
 `;
@@ -200,7 +200,7 @@ async function list(req, res) {
         })));
     } else if (mode === 'view_all_by_group_for_transfer' && groupId) {
         clients = await graph.query(
-            queryQl(TRANSFER_LOANS, CLIENT_TYPE(`cashCollections (where: { dateAdded: { _eq: "${currentDate}" }, draft: { _neq: true } }) {
+            queryQl(CLIENT_TYPE(TRANSFER_LOANS, `cashCollections (where: { dateAdded: { _eq: "${currentDate}" }, draft: { _neq: true } }) {
                 status
             }`), {
                 where: {
