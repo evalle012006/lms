@@ -8,7 +8,7 @@ const graph = new GraphProvider();
 const CLIENT_TYPE = (... additionalFields) => {
     return createGraphType('client', `
         ${CLIENT_FIELDS}
-        loans {
+        loans (order_by: [{ loanCycle:  desc }], limit: 1) {
             ${LOAN_FIELDS}
         }
         lo {
