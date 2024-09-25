@@ -122,7 +122,6 @@ async function save(req, res) {
         );
 
         const pendingLoans = data.collection.filter(c => c.status === 'pending' && c.advance == true);
-        console.log(pendingLoans)
         await savePendingLoans(pendingLoans);
     }
 
@@ -339,6 +338,7 @@ async function updateLoanMcbuWithdrawal(mutationQL, collection) {
         loan.mcbuWithdrawal = collection.mcbuWithdrawal;
 
         logger.debug({page: `Saving Cash Collection - Updating Loan Due to Withdrawal`, data: loan});
+        const loanId = loan._id;
         delete loan._id;
 
         mutationQL.push(
@@ -347,7 +347,7 @@ async function updateLoanMcbuWithdrawal(mutationQL, collection) {
                     ... assignNullValues(loan)
                 },
                 where: {
-                    _id: { _eq: collection.loanId }
+                    _id: { _eq: loanId }
                 }
             })
         )
