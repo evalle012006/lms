@@ -83,12 +83,14 @@ async function save(req, res) {
                 }
 
                 logger.debug({page: `Saving Cash Collection - Group ID: ${data.collection[0]?.groupId}`, currentDate: currentDate, data: collection});
-                if (collection.hasOwnProperty('_id')) {
+                if (collection.hasOwnProperty('_id') && collection._id != collection?.loanId) {
+                    console.log('EXIST SLOT NO: ', collection.slotNo)
                     collection.modifiedDateTime = new Date();
                     const existCollection = {...assignNullValues(collection)};
                     delete existCollection.mcbuHistory;
                     existCC.push(existCollection);
                 } else {
+                    console.log('NEW SLOT NO: ', collection.slotNo)
                     collection.insertedDateTime = new Date();
                     const newCollection = {...assignNullValues(collection)};
                     delete newCollection.mcbuHistory;
@@ -109,7 +111,7 @@ async function save(req, res) {
         await Promise.all(promiseData);
 
         if (newCC.length > 0) {
-            await saveCollection(mutationQl, newCC);
+            await saveCollection(mutationQl, newCC, currentDate);
         }
 
         if (existCC.length > 0) {
@@ -154,13 +156,18 @@ function cleanUpCollection(c) {
     });
 }
 
-async function saveCollection(mutationQL, collections) {
+async function saveCollection(mutationQL, collections, currentDate) {
+    const objects = collections.map(c => ({
+        ... cleanUpCollection(c),
+        _id: generateUUID(),
+        dateAdded: currentDate,
+    }))
+
+    console.log(JSON.stringify(objects))
+
     mutationQL.push(
         insertQl(COLLECTION_TYPE('collections_' + (mutationQL.length + 1)),{
-                objects: collections.map(c => ({
-                    _id: generateUUID(),
-                    ... cleanUpCollection(c),
-                }))
+                objects: objects
             }
         )
     )
