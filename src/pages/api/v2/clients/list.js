@@ -150,7 +150,7 @@ async function list(req, res) {
             })));
         } else {
             clients = await graph.query(
-                queryQl(CLIENT_TYPE(), {
+                queryQl(CLIENT_TYPE(DEFAULT_LOANS), {
                     where:{
                        loId: loId ? { _eq: loId } : { _neq: 'null' },
                        branchId: branchId ? { _eq: branchId }: { _neq: 'null' },
