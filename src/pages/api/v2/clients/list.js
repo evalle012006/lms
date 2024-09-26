@@ -57,7 +57,7 @@ async function list(req, res) {
         };
 
         clients = await graph.query(
-            queryQl(CLIENT_TYPE(), {
+            queryQl(CLIENT_TYPE(DEFAULT_LOANS), {
                 where
             })
         ).then(res => res.data.clients.map(o => ({
@@ -67,7 +67,7 @@ async function list(req, res) {
 
     } else if (mode === 'view_active_by_group' && groupId) {
         clients = await graph.query(
-            queryQl(CLIENT_TYPE(), {
+            queryQl(CLIENT_TYPE(DEFAULT_LOANS), {
                 where:{
                     status: { _eq: 'active' },
                     loans: {
@@ -81,7 +81,7 @@ async function list(req, res) {
     } else if (mode === 'view_by_group' && groupId) {
 
         clients = await graph.query(
-            queryQl(CLIENT_TYPE(), {
+            queryQl(CLIENT_TYPE(DEFAULT_LOANS), {
                 where:{
                     loans: {
                         status: { _in: ['completed', 'active', 'pending'] }
@@ -93,7 +93,7 @@ async function list(req, res) {
 
     } else if (mode === 'view_by_lo' && loId) {
         clients = await graph.query(
-            queryQl(CLIENT_TYPE(), {
+            queryQl(CLIENT_TYPE(DEFAULT_LOANS), {
                 where:{
                     loId: { _eq: loId },
                     status: { _eq: status }
@@ -102,7 +102,7 @@ async function list(req, res) {
         ).then(res => res.data.clients);
     } else if (mode === 'view_all_by_branch' && branchId) {
         clients = await graph.query(
-            queryQl(CLIENT_TYPE(), {
+            queryQl(CLIENT_TYPE(DEFAULT_LOANS), {
                 where:{
                     branchId: { _eq: branchId },
                     status: { _eq: status }
@@ -112,7 +112,7 @@ async function list(req, res) {
     } else if (mode === 'view_all_by_branch_codes' && branchCodes) {
         const codes = branchCodes?.trim()?.split(",");
         clients = await graph.query(
-            queryQl(CLIENT_TYPE(), {
+            queryQl(CLIENT_TYPE(DEFAULT_LOANS), {
                 where:{
                    code: { _in: codes }
                 }
@@ -210,7 +210,7 @@ async function list(req, res) {
         ).then(res => res.data.clients);
     } else {
         clients = await graph.query(
-            queryQl(CLIENT_TYPE(''), {
+            queryQl(CLIENT_TYPE(DEFAULT_LOANS), {
                 where: {
                     status: { _eq: status }
                 }
