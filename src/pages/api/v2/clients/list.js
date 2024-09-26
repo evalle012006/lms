@@ -5,13 +5,13 @@ import { apiHandler } from '@/services/api-handler';
 
 const graph = new GraphProvider();
 
-const DEFAULT_LOANS = `
+const COMPLETED_LOANS = `
 loans (where: { status: { _eq: "completed" } }, order_by: [{ insertedDateTime: desc, loanCycle: desc }], limit: 1) {
     ${LOAN_FIELDS}
 }
 `;
 
-const TRANSFER_LOANS = `
+const DEFAULT_LOANS = `
 loans (where: { status: { _in: ["completed", "active", "pending"] } }, order_by: [{ insertedDateTime: desc, loanCycle: desc }], limit: 1) {
     ${LOAN_FIELDS}
 }
@@ -57,7 +57,7 @@ async function list(req, res) {
         };
 
         clients = await graph.query(
-            queryQl(CLIENT_TYPE(DEFAULT_LOANS), {
+            queryQl(CLIENT_TYPE(COMPLETED_LOANS), {
                 where
             })
         ).then(res => res.data.clients.map(o => ({
@@ -121,7 +121,7 @@ async function list(req, res) {
     } else if (mode === 'view_only_no_exist_loan') {
         if (status === 'active') {
             clients = await graph.query(
-                queryQl(CLIENT_TYPE(DEFAULT_LOANS), {
+                queryQl(CLIENT_TYPE(COMPLETED_LOANS), {
                     where:{
                         groupId: { _eq: groupId },
                         loans: {
@@ -200,7 +200,7 @@ async function list(req, res) {
         })));
     } else if (mode === 'view_all_by_group_for_transfer' && groupId) {
         clients = await graph.query(
-            queryQl(CLIENT_TYPE(TRANSFER_LOANS, `cashCollections (where: { dateAdded: { _eq: "${currentDate}" }, draft: { _neq: true } }) {
+            queryQl(CLIENT_TYPE(DEFAULT_LOANS, `cashCollections (where: { dateAdded: { _eq: "${currentDate}" }, draft: { _neq: true } }) {
                 status
             }`), {
                 where: {
