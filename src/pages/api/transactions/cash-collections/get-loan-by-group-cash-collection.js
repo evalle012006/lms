@@ -76,8 +76,8 @@ async function getLoanWithCashCollection(req, res) {
                 {
                     $lookup: {
                         from: "cashCollections",
-                        localField: "loanIdStr",
-                        foreignField: "loanId",
+                        localField: "clientId",
+                        foreignField: "clientId",
                         pipeline: [
                             { $match: { dateAdded: date } }
                         ],
