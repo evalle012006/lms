@@ -97,7 +97,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
     const handleSaveUpdate = useCallback(async (values, actions) => {
         setLoading(true);
         try {
-            const roleArr = values.roleId.split('-');
+            const roleArr = values.role.split('-');
             const roleShortCode = roleArr[1];
             const selectedRole = roles.find(role => role.shortCode === roleShortCode);
             values.role = JSON.stringify(selectedRole);

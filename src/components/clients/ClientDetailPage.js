@@ -299,8 +299,8 @@ const ClientDetailPage = () => {
             ): (
                 <React.Fragment>
                     <div className="flex flex-col items-center font-proxima">
-                        <div className="rounded-full flex items-center justify-center mx-auto group">
-                            <div className="ml-72 top-3 text-xs cursor-pointer absolute z-20 bg-black/20 text-white rounded-3xl p-2 invisible group-hover:visible" onClick={() => imageRef.current.click()}>
+                        <div className="rounded-full flex items-center justify-center mx-auto group cursor-pointer">
+                            <div className={`${client.profile ? 'ml-72' : 'ml-28'} top-3 text-xs cursor-pointer absolute z-20 bg-black/20 text-white rounded-3xl p-2 invisible group-hover:visible`} onClick={() => imageRef.current.click()}>
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
                                 </svg>
@@ -317,7 +317,8 @@ const ClientDetailPage = () => {
                                 <div><span className="font-proxima-bold">Registered Date:</span> { moment(client.dateAdded).format('YYYY-MM-DD') }</div>
                                 <div><span className="font-proxima-bold">Contact Number:</span> { client.contactNumber }</div>
                                 <div><span className="font-proxima-bold">Registered in Branch:</span> { client.branchName }</div>
-                                <div className="col-span-2"><span className="font-proxima-bold">Address: </span>{clientAddress}</div>
+                                <div><span className="font-proxima-bold">Address: </span>{clientAddress}</div>
+                                <div><span className="font-proxima-bold">CI Name:</span> { client?.ciName }</div>
                             </div>
                         </div>
                         <div className="flex flex-col mt-4 md:mt-6">
