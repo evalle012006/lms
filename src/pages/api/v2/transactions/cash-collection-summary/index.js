@@ -4,6 +4,7 @@ import { GraphProvider } from "@/lib/graph/graph.provider";
 import { findLosTotals, findUserById } from "@/lib/graph.functions";
 import { gql } from "apollo-boost";
 import { createGraphType, insertQl } from "@/lib/graph/graph.util";
+import { generateUUID } from "@/lib/utils";
 
 const graph = new GraphProvider();
 
@@ -69,7 +70,6 @@ async function getSummary(req, res) {
         .query({ query, variables: { args } })
         .then((res) => {
           if (res.errors) {
-            console.error(res.errors);
             throw res.errors[0];
           }
           return res.data?.summary ?? [];
@@ -134,13 +134,12 @@ const getFBalanceMigration = async (branchId, lastMonth, lastYear, userId, loGro
       .query({ query, variables: { args } })
       .then((res) => {
         if (res.errors) {
-          console.error(res.errors);
           throw res.errors[0];
         }
         return res.data?.summary ?? [];
       })
       .then((transfers) => transfers.map(({ data }) => data));
-
+    
     if (migratedFBalance.length > 0) {
       const monthStr = lastMonth < 10 ? "0" + lastMonth : lastMonth;
       const dateAdded = lastYear + "-" + monthStr + "-30";
@@ -163,7 +162,10 @@ const getFBalanceMigration = async (branchId, lastMonth, lastYear, userId, loGro
 
       await graph.mutation(
         insertQl(createGraphType("losTotals", "_id")(), {
-          objects: [{ ...bmsFwBalance }],
+          objects: [{ 
+            _id: generateUUID(),
+            ...bmsFwBalance 
+          }],
         })
       );
     }
