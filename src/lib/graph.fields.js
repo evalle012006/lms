@@ -64,7 +64,8 @@ export const CLIENT_FIELDS = `
   addressProvince
   addressStreetNo
   addressZipCode
-  oldGroupid
+  oldGroupid,
+  ciName
   `;
 
 export const LOAN_FIELDS = `

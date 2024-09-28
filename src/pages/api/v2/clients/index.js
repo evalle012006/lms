@@ -110,6 +110,7 @@ async function updateClient(req, res) {
                         loId: fields.loId,
                         groupId: fields.groupId,
                         profile: profile,
+                        ciName: files.ciName,
                         dateModified: moment(getCurrentDate()).format('YYYY-MM-DD')
                     },
                     where: {
