@@ -64,14 +64,12 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
         loId: client.loId || (currentUser.role.rep === 4 ? currentUser._id : ''),
         status: client.status || 'pending',
         delinquent: client.delinquent === "Yes",
-        ciName: client?.ciName || ''
     }), [client, currentUser]);
 
     const validationSchema = yup.object().shape({
         firstName: yup.string().required('Please enter first name'),
         lastName: yup.string().required('Please enter last name'),
-        loId: yup.string().required('Please select a Loan Officer'),
-        ciName: yup.string().required('Please enter C.I. name'),
+        loId: yup.string().required('Please select a Loan Officer')
     });
 
     const hasDuplicates = useCallback(async (field, value) => {
@@ -294,7 +292,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                             name="groupId"
                                             field="groupId"
                                             value={values.groupId}
-                                            label="Group (Required)"
+                                            label="Group"
                                             options={groupList}
                                             onChange={setFieldValue}
                                             onBlur={setFieldTouched}
@@ -309,7 +307,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                         value={values.lastName}
                                         onChange={handleChange}
                                         onBlur={(field, value) => hasDuplicates(field, value)}
-                                        label="Last Name (Required)"
+                                        label="Last Name"
                                         placeholder="Enter Last Name"
                                         setFieldValue={setFieldValue}
                                         errors={touched.lastName && errors.lastName ? errors.lastName : undefined} />
@@ -320,7 +318,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                         value={values.firstName}
                                         onChange={handleChange}
                                         onBlur={(field, value) => hasDuplicates(field, value)}
-                                        label="First Name (Required)"
+                                        label="First Name"
                                         placeholder="Enter First Name"
                                         setFieldValue={setFieldValue}
                                         errors={touched.firstName && errors.firstName ? errors.firstName : undefined} />
@@ -445,7 +443,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                             name="loId"
                                             field="loId"
                                             value={values.loId}
-                                            label="Loan Officer (Required)"
+                                            label="Loan Officer"
                                             options={loUsers}
                                             onChange={setFieldValue}
                                             onBlur={setFieldTouched}
@@ -454,16 +452,6 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                         />
                                     </div>
                                 )}
-                                <div className="mt-4">
-                                    <InputText
-                                        name="ciName"
-                                        value={values.ciName}
-                                        onChange={handleChange}
-                                        label="CI Name (Required)"
-                                        placeholder="Enter CI Name"
-                                        setFieldValue={setFieldValue}
-                                        errors={touched.ciName && errors.ciName ? errors.ciName : undefined} />
-                                </div>
                                 <div className="flex flex-row mt-5 pb-5">
                                     <ButtonOutline label="Cancel" onClick={handleCancel} className="mr-3" />
                                     <ButtonSolid label="Submit" type="submit" isSubmitting={isValidating && isSubmitting} />
