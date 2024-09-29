@@ -55,7 +55,6 @@ const LDFListPage = React.forwardRef((props, ref) => {
                 // const monthStr = month < 10 ? '0' + month : month;
                 // loanDetails.loanApplicationNo = loanDetails.designatedOfficer + '-' + monthStr + 
                 loanDetails.loNo = loanOfficer?.loNo;
-                loanDetails.ciName = clientData?.ciName;
                 
                 arr.push(loanDetails);
             });
@@ -192,7 +191,7 @@ const LDFListPage = React.forwardRef((props, ref) => {
                                                     <td className='border border-gray-900'></td>
                                                     <td className='border border-gray-900'></td>
                                                     <td className='border border-gray-900'></td>
-                                                    <td className='border border-gray-900'>{ loan?.ciName }</td>
+                                                    <td className='border border-gray-900'></td>
                                                     <td className='border border-gray-900'>{ loan.designatedOfficer }</td>
                                                 </tr>
                                             )
