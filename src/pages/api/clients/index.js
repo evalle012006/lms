@@ -84,7 +84,6 @@ async function updateClient(req, res) {
                 loId: fields.loId,
                 groupId: fields.groupId,
                 profile: profile,
-                ciName: fields.ciName
             };
 
             if (fields.hasOwnProperty('archived')) {

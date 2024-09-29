@@ -421,8 +421,7 @@ const LoanApplicationPage = () => {
                         fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
                         allowApproved: allowApproved,
                         selected: false,
-                        hasActiveLoan: hasActiveLoan,
-                        ciName: UppercaseFirstLetter(loan.client?.ciName)
+                        hasActiveLoan: hasActiveLoan
                     });
                 });
                 loanList.sort((a, b) => {
@@ -512,8 +511,7 @@ const LoanApplicationPage = () => {
                         allowApproved: allowApproved,
                         selected: false,
                         hasActiveLoan: hasActiveLoan,
-                        hasTdaLoan: hasTdaLoan,
-                        ciName: UppercaseFirstLetter(loan.client?.ciName)
+                        hasTdaLoan: hasTdaLoan
                     });
                 });
                 loanList.sort((a, b) => {
@@ -592,8 +590,7 @@ const LoanApplicationPage = () => {
                         fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
                         allowApproved: allowApproved,
                         selected: false,
-                        hasActiveLoan: hasActiveLoan,
-                        ciName: UppercaseFirstLetter(loan.client?.ciName)
+                        hasActiveLoan: hasActiveLoan
                     });
                 });
                 loanList.sort((a, b) => {
@@ -675,8 +672,7 @@ const LoanApplicationPage = () => {
                         fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
                         allowApproved: allowApproved,
                         selected: false,
-                        hasActiveLoan: hasActiveLoan,
-                        ciName: UppercaseFirstLetter(loan.client?.ciName)
+                        hasActiveLoan: hasActiveLoan
                     });
                 });
                 loanList.sort((a, b) => {
@@ -742,8 +738,7 @@ const LoanApplicationPage = () => {
                         activeLoanStr: formatPricePhp(loan.activeLoan),
                         loanBalanceStr: formatPricePhp(loan.loanBalance),
                         fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
-                        selected: false,
-                        ciName: UppercaseFirstLetter(loan.client?.ciName)
+                        selected: false
                     });
                 });
 
@@ -1518,11 +1513,7 @@ const LoanApplicationPage = () => {
                     Header: "Status",
                     accessor: 'status',
                     Cell: StatusPill,
-                },
-                {
-                    Header: "CI Name",
-                    accessor: 'ciName'
-                },
+                }
             ];
 
             if (currentUser.role.rep === 3) {
