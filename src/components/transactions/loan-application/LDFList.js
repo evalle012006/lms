@@ -191,8 +191,8 @@ const LDFListPage = React.forwardRef((props, ref) => {
                                                     <td className='border border-gray-900'></td>
                                                     <td className='border border-gray-900'></td>
                                                     <td className='border border-gray-900'></td>
-                                                    <td className='border border-gray-900'></td>
                                                     <td className='border border-gray-900'>{ loan?.ciName }</td>
+                                                    <td className='border border-gray-900'></td>
                                                     <td className='border border-gray-900'>{ loan.designatedOfficer }</td>
                                                 </tr>
                                             )

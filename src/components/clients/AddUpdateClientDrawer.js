@@ -129,6 +129,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                 address: `${values.addressStreetNo} ${values.addressBarangayDistrict} ${values.addressMunicipalityCity} ${values.addressProvince} ${values.addressZipCode}`,
                 groupName: selectedGroup ? selectedGroup.name : '',
                 duplicate,
+                ciName: values?.ciName?.toUpperCase()
             };
 
             if (currentUser.root !== true && (currentUser.role.rep === 4 || currentUser.role.rep === 3) && branchList.length > 0) {
