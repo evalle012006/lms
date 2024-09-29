@@ -316,7 +316,8 @@ const ClientDetailPage = () => {
                                 <div><span className="font-proxima-bold">Registered Date:</span> { moment(client.dateAdded).format('YYYY-MM-DD') }</div>
                                 <div><span className="font-proxima-bold">Contact Number:</span> { client.contactNumber }</div>
                                 <div><span className="font-proxima-bold">Registered in Branch:</span> { client.branchName }</div>
-                                <div className="col-span-2"><span className="font-proxima-bold">Address: </span>{clientAddress}</div>
+                                <div><span className="font-proxima-bold">Address: </span>{clientAddress}</div>
+                                <div><span className="font-proxima-bold">CI Name:</span> { client?.ciName }</div>
                             </div>
                         </div>
                         <div className="flex flex-col mt-4 md:mt-6">

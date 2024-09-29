@@ -71,7 +71,7 @@ async function save(req, res) {
                 }
 
                 logger.debug({page: `Saving Cash Collection - Group ID: ${data.collection[0]?.groupId}`, currentDate: currentDate, data: collection});
-                if (collection.hasOwnProperty('_id')) {
+                if (collection.hasOwnProperty('_id') && collection._id != collection?.loanId) {
                     collection.modifiedDateTime = new Date();
                     const existCollection = {...collection};
                     delete existCollection.mcbuHistory;
@@ -80,7 +80,9 @@ async function save(req, res) {
                     // if (collection.status === 'completed' && collection?.previousDraft) {
                     //     prevCommpleted.push(collection);
                     // } else {
+                        delete collection._id;
                         collection.insertedDateTime = new Date();
+                        collection.dateAdded = currentDate;
                         const newCollection = {...collection};
                         delete newCollection.mcbuHistory;
                         newCC.push(collection);
