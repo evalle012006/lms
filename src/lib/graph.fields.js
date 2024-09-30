@@ -151,6 +151,7 @@ export const LOAN_FIELDS = `
   excess
   transferredReleased
   dateOfRelease
+  ciName
   `;
 
 export const GROUP_FIELDS = `

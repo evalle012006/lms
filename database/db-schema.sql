@@ -296,7 +296,8 @@ create table public.loans (
   excess numeric(10,2),
   "transferredReleased" boolean not null default false,
   "dateOfRelease" date,
-  advancetransaction boolean not null default false
+  advancetransaction boolean not null default false,
+  "ciName" character varying
 );
 create index "ix_loans__branchId" on loans using btree ("branchId");
 create index "ix_loans__maturedPD" on loans using btree ("maturedPD");
