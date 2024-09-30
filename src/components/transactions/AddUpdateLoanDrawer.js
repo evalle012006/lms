@@ -78,7 +78,8 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         guarantorFirstName: loan.guarantorFirstName,
         guarantorMiddleName: loan.guarantorMiddleName,
         guarantorLastName: loan.guarantorLastName,
-        status: mode !== 'reloan' ? loan.status : 'pending'
+        status: mode !== 'reloan' ? loan.status : 'pending',
+        ciName: loan?.ciName || ''
     }
 
     const validationSchema = yup.object().shape({
@@ -112,7 +113,8 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             .required('Please enter guarantor first name'),
         guarantorLastName: yup
             .string()
-            .required('Please enter guarantor last name')
+            .required('Please enter guarantor last name'),
+        ciName: yup.string().required('Please enter C.I. name'),
     });
 
     const handleLoanForChange = (value) => {
@@ -795,7 +797,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                                             name="oldBranchId"
                                                             field="oldBranchId"
                                                             value={selectedOldBranch}
-                                                            label="Previous Branch"
+                                                            label="Previous Branch (Required)"
                                                             options={branchList}
                                                             onChange={(field, value) => handleOldBranchIdChange(field, value)}
                                                             onBlur={setFieldTouched}
@@ -808,7 +810,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                                             name="oldLOId"
                                                             field="oldLOId"
                                                             value={selectedOldLO}
-                                                            label="Previous Loan Officer"
+                                                            label="Previous Loan Officer (Required)"
                                                             options={oldLOList}
                                                             onChange={(field, value) => handleOldLoIdChange(field, value)}
                                                             onBlur={setFieldTouched}
@@ -821,7 +823,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                                             name="oldGroupId"
                                                             field="oldGroupId"
                                                             value={selectedOldGroup}
-                                                            label="Previous Group"
+                                                            label="Previous Group (Required)"
                                                             options={oldGroupList}
                                                             onChange={(field, value) => handleOldGroupIdChange(field, value)}
                                                             onBlur={setFieldTouched}
@@ -834,7 +836,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                                             name="clientId"
                                                             field="clientId"
                                                             value={clientId}
-                                                            label="Client"
+                                                            label="Client (Required)"
                                                             options={clientList}
                                                             onChange={(field, value) => handleClientIdChange(field, value)}
                                                             onBlur={setFieldTouched}
@@ -850,7 +852,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                                         name="loId"
                                                         field="loId"
                                                         value={selectedLo}
-                                                        label="Loan Officer"
+                                                        label="Loan Officer (Required)"
                                                         options={userList}
                                                         onChange={(field, value) => handleLoIdChange(field, value)}
                                                         onBlur={setFieldTouched}
@@ -864,7 +866,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                                     name="groupId"
                                                     field="groupId"
                                                     value={selectedGroup}
-                                                    label="Group"
+                                                    label="Group (Required)"
                                                     options={groupList}
                                                     onChange={(field, value) => handleGroupIdChange(field, value)}
                                                     onBlur={setFieldTouched}
@@ -878,7 +880,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                                         name="clientId"
                                                         field="clientId"
                                                         value={clientId}
-                                                        label="Client"
+                                                        label="Client (Required)"
                                                         options={clientList}
                                                         onChange={(field, value) => handleClientIdChange(field, value)}
                                                         onBlur={setFieldTouched}
@@ -916,7 +918,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                                         name="slotNo"
                                                         field="slotNo"
                                                         value={slotNo}
-                                                        label="Slot Number"
+                                                        label="Slot Number (Required)"
                                                         options={slotNumber}
                                                         onChange={(field, value) => handleSlotNoChange(field, value)}
                                                         onBlur={setFieldTouched}
@@ -961,26 +963,15 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                         </React.Fragment>
                                     )}
                                     <div className="mt-4">
-                                        {((clientType === 'pending' || clientType === 'offset') && mode !== 'reloan') ? (
-                                            <InputNumber
-                                                name="loanCycle"
-                                                value={1}
-                                                onChange={handleChange}
-                                                label="Loan Cycle"
-                                                placeholder="Enter Loan Cycle"
-                                                setFieldValue={setFieldValue}
-                                                disabled={true}
-                                                errors={touched.loanCycle && errors.loanCycle ? errors.loanCycle : undefined} />
-                                        ) : (
-                                            <InputNumber
-                                                name="loanCycle"
-                                                value={values.loanCycle}
-                                                onChange={handleChange}
-                                                label="Loan Cycle"
-                                                placeholder="Enter Loan Cycle"
-                                                setFieldValue={setFieldValue}
-                                                errors={touched.loanCycle && errors.loanCycle ? errors.loanCycle : undefined} />
-                                        )}
+                                        <InputNumber
+                                            name="loanCycle"
+                                            value={((clientType === 'pending' || clientType === 'offset') && mode !== 'reloan') ? 1 : values.loanCycle}
+                                            onChange={handleChange}
+                                            label="Loan Cycle (Required)"
+                                            placeholder="Enter Loan Cycle"
+                                            setFieldValue={setFieldValue}
+                                            disabled={(clientType === 'pending' || clientType === 'offset') && mode !== 'reloan'}
+                                            errors={touched.loanCycle && errors.loanCycle ? errors.loanCycle : undefined} />
                                     </div>
                                     {(mode === 'reloan' || groupOccurence === 'weekly' || (groupOccurence === 'daily' && (mode !== 'add' && mode !== 'edit'))) && (
                                         <div className="mt-4">
@@ -1008,7 +999,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                             name="principalLoan"
                                             value={values.principalLoan}
                                             onChange={handleChange}
-                                            label="Principal Loan"
+                                            label="Principal Loan (Required)"
                                             disabled={values.status === 'active'}
                                             placeholder="Enter Principal Loan"
                                             setFieldValue={setFieldValue}
@@ -1021,7 +1012,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                             onChange={handleChange}
                                             onBlur={handlePNNumber}
                                             onFocus={getLastPNNumber}
-                                            label="Promisory Note Number"
+                                            label="Promisory Note Number (Required)"
                                             placeholder="Enter PN Number"
                                             setFieldValue={setFieldValue}
                                             errors={touched.pnNumber && errors.pnNumber ? errors.pnNumber : undefined} />
@@ -1044,7 +1035,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                             name="guarantorFirstName"
                                             value={values.guarantorFirstName}
                                             onChange={handleChange}
-                                            label="Guarantor First Name"
+                                            label="Guarantor First Name (Required)"
                                             placeholder="Enter Guarantor First Name"
                                             setFieldValue={setFieldValue}
                                             errors={touched.guarantorFirstName && errors.guarantorFirstName ? errors.guarantorFirstName : undefined} />
@@ -1064,10 +1055,20 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                             name="guarantorLastName"
                                             value={values.guarantorLastName}
                                             onChange={handleChange}
-                                            label="Guarantor Last Name"
+                                            label="Guarantor Last Name (Required)"
                                             placeholder="Enter Guarantor Last Name"
                                             setFieldValue={setFieldValue}
                                             errors={touched.guarantorLastName && errors.guarantorLastName ? errors.guarantorLastName : undefined} />
+                                    </div>
+                                    <div className="mt-4">
+                                        <InputText
+                                            name="ciName"
+                                            value={values.ciName}
+                                            onChange={handleChange}
+                                            label="CI Name (Required)"
+                                            placeholder="Enter CI Name"
+                                            setFieldValue={setFieldValue}
+                                            errors={touched.ciName && errors.ciName ? errors.ciName : undefined} />
                                     </div>
                                     <div className="flex flex-row mt-5">
                                         <ButtonOutline label="Cancel" onClick={handleCancel} className="mr-3" />

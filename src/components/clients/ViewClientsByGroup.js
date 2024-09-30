@@ -45,6 +45,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                 let clients = [];
                 await response.clients && response.clients.map(loan => {
                     const name = `${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName}`;
+                    const ciName = loan.client?.ciName ? loan.client.ciName : '';
                     clients.push({
                         ...loan.client,
                         ...loan,
@@ -59,7 +60,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                         delinquent: loan.client.delinquent === true ? 'Yes' : 'No',
                         loName: loan.lo.length > 0 ? `${loan.lo[0].lastName}, ${loan.lo[0].firstName}` : '',
                         coMaker: (loan?.coMaker && typeof loan?.coMaker === 'number') ? loan.coMaker : '',
-                        ciName: loan.client?.ciName ? loan.client.ciName : '',
+                        ciName: loan?.ciName ? loan.ciName : ciName,
                     });
                 });
                 dispatch(setClientList(clients));
@@ -76,6 +77,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                         let clients = [];
                         await response.clients && response.clients.map(client => {
                             const name = `${client.lastName}, ${client.firstName} ${client.middleName}`;
+                            const ciName = client?.ciName ? client.ciName : '';
                             clients.push({
                                 ...client,
                                 name: name,
@@ -90,7 +92,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                                 delinquent: client.delinquent === true ? 'Yes' : 'No',
                                 loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : '',
                                 coMaker: (client.loans[0]?.coMaker && typeof client.loans[0]?.coMaker === 'number') ? client.loans[0]?.coMaker : '',
-                                ciName: client?.ciName ? client.ciName : '',
+                                ciName: client.loans.length > 0 ? client.loans[0]?.ciName : ciName
                             });
                         });
                         dispatch(setClientList(clients));
@@ -105,6 +107,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                             let clients = [];
                             await response.clients && response.clients.map(client => {
                                 const name = `${client.lastName}, ${client.firstName} ${client.middleName}`;
+                                const ciName = client?.ciName ? client.ciName : '';
                                 clients.push({
                                     ...client,
                                     name: name,
@@ -119,7 +122,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                                     delinquent: client.delinquent === true ? 'Yes' : 'No',
                                     loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : '',
                                     coMaker: (client.loans[0]?.coMaker && typeof client.loans[0]?.coMaker === 'number') ? client.loans[0]?.coMaker : '',
-                                    ciName: client?.ciName ? client.ciName : '',
+                                    ciName: client.loans.length > 0 ? client.loans[0]?.ciName : ciName
                                 });
                             });
                             dispatch(setClientList(clients));
@@ -133,6 +136,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                             let clients = [];
                             await response.clients && response.clients.map(client => {
                                 const name = `${client.lastName}, ${client.firstName} ${client.middleName}`;
+                                const ciName = client?.ciName ? client.ciName : '';
                                 clients.push({
                                     ...client,
                                     name: name,
@@ -147,7 +151,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                                     delinquent: client.delinquent === true ? 'Yes' : 'No',
                                     loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : '',
                                     coMaker: (client.loans[0]?.coMaker && typeof client.loans[0]?.coMaker === 'number') ? client.loans[0]?.coMaker : '',
-                                    ciName: client?.ciName ? client.ciName : '',
+                                    ciName: client.loans.length > 0 ? client.loans[0]?.ciName : ciName
                                 });
                             });
                             dispatch(setClientList(clients));
@@ -164,6 +168,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                     await response.clients && response.clients.map(branch => {
                         branch.clients.map(client => {
                             const name = `${client.lastName}, ${client.firstName} ${client.middleName}`;
+                            const ciName = client?.ciName ? client.ciName : '';
                             clients.push({
                                 ...client,
                                 name: name,
@@ -179,7 +184,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                                 loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : '',
                                 branchName: branch.name,
                                 coMaker: (client.loans[0]?.coMaker && typeof client.loans[0]?.coMaker === 'number') ? client.loans[0]?.coMaker : '',
-                                ciName: client?.ciName ? client.ciName : '',
+                                ciName: client.loans.length > 0 ? client.loans[0]?.ciName : ciName
                             });
                         });
                     });
@@ -194,6 +199,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                 let clients = [];
                 await response.clients && response.clients.map(client => {
                     const name = `${client.lastName}, ${client.firstName} ${client.middleName}`;
+                    const ciName = client?.ciName ? client.ciName : '';
                     clients.push({
                         ...client,
                         name: name,
@@ -209,7 +215,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                         delinquent: client.delinquent === true ? 'Yes' : 'No',
                         loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : '',
                         coMaker: (client.loans?.coMaker && typeof client?.loans.coMaker === 'number') ? client.loans.coMaker : '',
-                        ciName: client?.ciName ? client.ciName : '',
+                        ciName: client.loans.length > 0 ? client.loans[0]?.ciName : ciName
                     });
                 });
                 dispatch(setClientList(clients));
