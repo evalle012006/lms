@@ -7,6 +7,10 @@
  * To migrate the transactions:
  *   node database/copy-mongo-to-postgres.js migrate-tx -branchId=[(required) the-specific-branch-ID or all]
  *
+ * Migrate from a json file.
+ * This will insert rows line by line to find out which record actually causes an insert error.
+ *   node database/copy-mongo-to-postgres.js from-json --table=tableNae --file=/full/path/to/error_json.log
+ *
  * NOTE: Records that had been copied to PostgreSQL will not be overwritten when re-running this script.
  */
 const { MongoClient, Db, ObjectId } = require('mongodb');
@@ -27,7 +31,7 @@ const PG_CON_OPTIONS = {
   user: process.env.MIGRATION_TARGET_DB_USER,
   password: process.env.MIGRATION_TARGET_DB_PASSWORD,
 };
-const BATCH_SIZE = 100;
+const BATCH_SIZE = 50;
 const BATCH_PARALLEL_SIZE = 50;
 
 const cliArgs = require('args-parser')(process.argv);
@@ -81,6 +85,9 @@ const cliCommands = {
   },
   'print-new-fields-in-mongo': async () => {
     return printNewFieldsInMongo();
+  },
+  'from-json': async () => {
+    return migrateTableDataFromJson();
   }
 };
 
@@ -471,4 +478,46 @@ function logError(message) {
 
 function escapeFilename(filename) {
   return filename.replace(/[\W]/g, '_');
+}
+
+async function migrateTableDataFromJson() {
+  if (typeof cliArgs.table !== 'string') {
+    console.error('"--table" argument is required');
+    return;
+  }
+
+  if (typeof cliArgs.file !== 'string') {
+    console.error('"--file" argument is required');
+    return;
+  }
+
+  const tableName = cliArgs.table;
+  const filePath = cliArgs.file;
+  const columnDef = await getColumnNames(tableName);
+  const columns = columnDef.map(cd => cd.name);
+
+  const fs = require('fs');
+  const readline = require('readline');
+  const fileStream = fs.createReadStream(filePath);
+
+  const rl = readline.createInterface({
+    input: fileStream,
+    crlfDelay: Infinity
+  });
+
+  let lineNum = 1;
+  for await (const line of rl) {
+    const doc = JSON.parse(line);
+    try {
+      console.log(`Inserting ${tableName} from file: Line #${lineNum}, ID = ${doc._id}`);
+      const params = columnDef.map((cd) => mapValue(cd, doc[cd.name], doc));
+      await batchInsert(tableName, columns, [params]);
+    } catch (e) {
+      appendLog(`from_json__${tableName}_error`, e);
+      appendLog(`from_json__${tableName}_error`, `Line ${lineNum}: ${JSON.stringify(doc)}`);
+      console.error(`Exited with error: ${e.message}`)
+      break;
+    }
+    lineNum++;
+  }
 }
