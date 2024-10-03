@@ -777,7 +777,10 @@ const CashCollectionDetailsPage = () => {
             });
 
             response.data.tomorrowPending.map(loan => {
-                const currentLoan = cashCollection.find(l => l.slotNo === loan.slotNo);
+                const currentLoan = cashCollection.find(l => l.slotNo == loan.slotNo);
+                console.log(currentLoan)
+                console.log(cashCollection)
+                console.log(loan)
                 if (currentLoan && currentLoan.status !== 'pending') {
                     const index = cashCollection.indexOf(currentLoan);
                     const dateOfRelease = loan?.dateOfRelease ? loan?.dateOfRelease : null;
@@ -974,7 +977,7 @@ const CashCollectionDetailsPage = () => {
                         } else {
                             pendingTomorrow.prevLoanId = prevLoan._id;
                             pendingTomorrow.loanId = loan._id;
-                            pendingTomorrow._id = current?._id;
+                            pendingTomorrow._id = current?._id ? current?._id : loan._id;
                         }
                     }
 

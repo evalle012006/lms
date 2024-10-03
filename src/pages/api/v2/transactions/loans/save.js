@@ -135,6 +135,8 @@ async function save(req, res) {
                 finalData.dateGranted = tomorrowDate;
             }
 
+            finalData.prevLoanId = oldLoanId;
+
             const loanId = generateUUID();
             const loan = (await graph.mutation(insertQl(loansType, {
               objects: [filterGraphFields(LOAN_FIELDS, {
