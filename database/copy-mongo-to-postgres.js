@@ -320,7 +320,7 @@ function mapValue({ name, dataType }, value, doc) {
     value = doc.dateAdded;
   }
   if (name === '_id') {
-    return value.toString();
+    return value.$oid ?? value.toString();
   }
   if (dataType.match(/json/) || !!value && typeof value === 'object' || Array.isArray(value)) {
     return (value === null || value === undefined) ? null : JSON.stringify(value);
@@ -500,24 +500,43 @@ async function migrateTableDataFromJson() {
   const readline = require('readline');
   const fileStream = fs.createReadStream(filePath);
 
-  const rl = readline.createInterface({
-    input: fileStream,
-    crlfDelay: Infinity
-  });
-
-  let lineNum = 1;
-  for await (const line of rl) {
-    const doc = JSON.parse(line);
+  const doMigrate = async (doc, lineNum) => {
     try {
-      console.log(`Inserting ${tableName} from file: Line #${lineNum}, ID = ${doc._id}`);
+      console.log(`Inserting ${tableName} from file: Line #${lineNum}, ID = ${doc._id.$oid ?? doc._id}`);
       const params = columnDef.map((cd) => mapValue(cd, doc[cd.name], doc));
-      await batchInsert(tableName, columns, [params]);
+      return batchInsert(tableName, columns, [params]);
     } catch (e) {
       appendLog(`from_json__${tableName}_error`, e);
       appendLog(`from_json__${tableName}_error`, `Line ${lineNum}: ${JSON.stringify(doc)}`);
       console.error(`Exited with error: ${e.message}`)
-      break;
+      return false;
     }
-    lineNum++;
+  };
+
+  let lineNum = 1;
+  try {
+    // For the migration error logs, it contains one JSON record per line.
+    const rl = readline.createInterface({
+      input: fileStream,
+      crlfDelay: Infinity
+    });
+
+    for await (const line of rl) {
+      const doc = JSON.parse(line);
+      if (await doMigrate(doc, lineNum) === false)
+        break;
+
+      lineNum++;
+    }
+  } catch (e) {
+    // IF failed to parse the line, try parsing the whole file (this is for JSON file exported from mongodb)
+    console.log('Failed to parse line by line. Trying to parse the whole file.')
+    const rows = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    for (const doc of rows) {
+      if (await doMigrate(doc, lineNum) === false)
+        break;
+
+      lineNum++;
+    }
   }
 }
