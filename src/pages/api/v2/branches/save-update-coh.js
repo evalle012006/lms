@@ -27,11 +27,12 @@ async function save(req, res) {
     let updatedData;
 
     if (branchCOH.length > 0) {
+        const cohId = branchCOH[0]._id;
 
         [updatedData] = await graph.mutation(
             updateQl(BRANCH_COH_TYPE, {
                 set: { amount: data.amount, modifiedBy: data.modifiedBy, modifiedDateTime: new Date() },
-                where: { _id: branchCOH[0]._id },
+                where: { _id: { _eq: cohId } },
             })
         ).then(res => res.data.results.returning);
     } else {

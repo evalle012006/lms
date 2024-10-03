@@ -38,7 +38,7 @@ async function getData (req, res) {
         
         const result = await Promise.all(areaIds.map(async (areaId) => {
             logger.debug({page: 'Area Collections', message: `Getting data for area id: ${areaId}`});
-            data.push.apply(data, await getAllLoanTransactionsByArea(db, areaId, date, dayName, currentDate));
+            data.push.apply(data, await getAllLoanTransactionsByArea(areaId, date, dayName, currentDate));
         }));
 
         if (result) {
@@ -68,7 +68,7 @@ async function getData (req, res) {
         .end(JSON.stringify(response));
 }
 
-async function getAllLoanTransactionsByArea(db, areaId, date, dayName, currentDate) {
+async function getAllLoanTransactionsByArea(areaId, date, dayName, currentDate) {
     let cashCollection;
     
     if (currentDate === date) {
@@ -116,6 +116,31 @@ async function processData(data, date, currentDate) {
 
     const filter = date !== currentDate;
 
+    let noOfClients = 0;
+    let noOfBorrowers = 0;
+    let noOfPendings = 0;
+    let totalsLoanRelease = 0;
+    let totalsLoanBalance = 0;
+    let noOfNewCurrentRelease = 0;
+    let noOfReCurrentRelease = 0;
+    let currentReleaseAmount = 0;
+    let targetLoanCollection = 0;
+    let excess = 0;
+    let totalLoanCollection = 0;
+    let noOfFullPayment = 0;
+    let fullPaymentAmount = 0;
+    let mispayment = 0;
+    let totalPastDue = 0;
+    let totalNoPastDue = 0;
+    let totalMcbu = 0;
+    let totalMcbuCol = 0;
+    let totalMcbuWithdrawal = 0;
+    let totalMcbuReturnNo = 0;
+    let totalMcbuReturnAmt = 0;
+    let totalMcbuDailyWithdrawal = 0;
+    let totalTransfer = 0;
+    let totalCOH = 0;
+
     data.map(area => {
         let groupStatus = 'open';
 
@@ -151,7 +176,7 @@ async function processData(data, date, currentDate) {
                 if (transactionStatus.length == 0 && draft.length == 0) {
                     groupStatus = 'close';
                 }
-            } else if (branch.cashCollections.length > 0) {
+            } else if (branch.cashCollections?.length > 0) {
                 const transactionStatus = branch.cashCollections[0].groupStatusArr.filter(status => status === "pending");
                 const draft = branch.cashCollections[0].hasDraftsArr.filter(d => d === true);
                 if (transactionStatus.length == 0 && draft.length == 0) {
@@ -452,31 +477,6 @@ async function processData(data, date, currentDate) {
 
         collectionData.push(collection);
     });
-
-    let noOfClients = 0;
-    let noOfBorrowers = 0;
-    let noOfPendings = 0;
-    let totalsLoanRelease = 0;
-    let totalsLoanBalance = 0;
-    let noOfNewCurrentRelease = 0;
-    let noOfReCurrentRelease = 0;
-    let currentReleaseAmount = 0;
-    let targetLoanCollection = 0;
-    let excess = 0;
-    let totalLoanCollection = 0;
-    let noOfFullPayment = 0;
-    let fullPaymentAmount = 0;
-    let mispayment = 0;
-    let totalPastDue = 0;
-    let totalNoPastDue = 0;
-    let totalMcbu = 0;
-    let totalMcbuCol = 0;
-    let totalMcbuWithdrawal = 0;
-    let totalMcbuReturnNo = 0;
-    let totalMcbuReturnAmt = 0;
-    let totalMcbuDailyWithdrawal = 0;
-    let totalTransfer = 0;
-    let totalCOH = 0;
 
     collectionData.map(collection => {
         if (collection.activeClients != '-') {

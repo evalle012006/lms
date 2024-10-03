@@ -35,7 +35,7 @@ async function getData (req, res) {
         
         const result = await Promise.all(regionIds.map(async (regionId) => {
             logger.debug({page: 'Region Collections', message: `Getting data for region id: ${regionId}`});
-            data.push.apply(data, await getAllLoanTransactionsByRegion(db, regionId, date, dayName, currentDate));
+            data.push.apply(data, await getAllLoanTransactionsByRegion(regionId, date, dayName, currentDate));
         }));
 
         if (result) {
@@ -65,7 +65,7 @@ async function getData (req, res) {
         .end(JSON.stringify(response));
 }
 
-async function getAllLoanTransactionsByRegion(db, regionId, date, dayName, currentDate) {
+async function getAllLoanTransactionsByRegion(regionId, date, dayName, currentDate) {
     let cashCollection;
 
     if (currentDate === date) {
@@ -112,6 +112,31 @@ async function processData(data, date, currentDate) {
     let collectionData = [];
 
     const filter = date !== currentDate;
+
+    let noOfClients = 0;
+    let noOfBorrowers = 0;
+    let noOfPendings = 0;
+    let totalsLoanRelease = 0;
+    let totalsLoanBalance = 0;
+    let noOfNewCurrentRelease = 0;
+    let noOfReCurrentRelease = 0;
+    let currentReleaseAmount = 0;
+    let targetLoanCollection = 0;
+    let excess = 0;
+    let totalLoanCollection = 0;
+    let noOfFullPayment = 0;
+    let fullPaymentAmount = 0;
+    let mispayment = 0;
+    let totalPastDue = 0;
+    let totalNoPastDue = 0;
+    let totalMcbu = 0;
+    let totalMcbuCol = 0;
+    let totalMcbuWithdrawal = 0;
+    let totalMcbuReturnNo = 0;
+    let totalMcbuReturnAmt = 0;
+    let totalMcbuDailyWithdrawal = 0;
+    let totalTransfer = 0;
+    let totalCOH = 0;
 
     data.map(region => {
         let groupStatus = 'open';
@@ -449,31 +474,6 @@ async function processData(data, date, currentDate) {
 
         collectionData.push(collection);
     });
-
-    let noOfClients = 0;
-    let noOfBorrowers = 0;
-    let noOfPendings = 0;
-    let totalsLoanRelease = 0;
-    let totalsLoanBalance = 0;
-    let noOfNewCurrentRelease = 0;
-    let noOfReCurrentRelease = 0;
-    let currentReleaseAmount = 0;
-    let targetLoanCollection = 0;
-    let excess = 0;
-    let totalLoanCollection = 0;
-    let noOfFullPayment = 0;
-    let fullPaymentAmount = 0;
-    let mispayment = 0;
-    let totalPastDue = 0;
-    let totalNoPastDue = 0;
-    let totalMcbu = 0;
-    let totalMcbuCol = 0;
-    let totalMcbuWithdrawal = 0;
-    let totalMcbuReturnNo = 0;
-    let totalMcbuReturnAmt = 0;
-    let totalMcbuDailyWithdrawal = 0;
-    let totalTransfer = 0;
-    let totalCOH = 0;
 
     collectionData.map(collection => {
         if (collection.activeClients != '-') {
