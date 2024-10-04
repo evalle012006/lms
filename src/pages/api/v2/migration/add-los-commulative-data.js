@@ -37,7 +37,7 @@ async function addLOSCommulative(req, res) {
                     modifiedDateTime: new Date(),
                 },
                 where: {
-                    id: { _eq: exist._id }
+                    id: { _eq: los._id }
                 }
             })
         );

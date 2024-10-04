@@ -4,6 +4,10 @@ import { formatPricePhp } from '@/lib/utils';
 import { transferBranchDetailsTotal } from '@/lib/transfer-util';
 import { findRegions, findUsers } from '@/lib/graph.functions';
 import { gql } from 'apollo-boost';
+import { GraphProvider } from '@/lib/graph/graph.provider';
+
+
+const graph = new GraphProvider();
 
 export default apiHandler({
     get: getData
@@ -18,18 +22,18 @@ async function getData (req, res) {
     const data = [];
 
     const user = await findUsers({ _id: { _eq: currentUserId } });
-    if (user.length > 0) {
+    if (user?.length > 0) {
         let regionIds = [];
         if (selectedBranchGroup === 'mine' && user[0].role.rep !== 1) {
             if (user[0].regionId && user[0].role.shortCode === 'regional_manager') {
-                const regions = await findRegions({ _id: { _eq: user[0].regionId } }).toArray();
+                const regions = await findRegions({ _id: { _eq: user[0].regionId } });
                 regionIds = regions.map(region => region._id.toString());
             } else if (user[0].divisionId && user[0].role.shortCode === 'deputy_director') {
-                const regions = await findRegions({ divisionId: { _eq: user[0].divisionId } }).toArray();
+                const regions = await findRegions({ divisionId: { _eq: user[0].divisionId } });
                 regionIds = regions.map(region => region._id.toString());
             }
         } else {
-            const regions = await findRegions({ }).toArray();
+            const regions = await findRegions({ });
             regionIds = regions.map(region => region._id.toString());
         }
         
@@ -80,7 +84,7 @@ async function getAllLoanTransactionsByRegion(regionId, date, dayName, currentDa
               }
           }
       `;
-      const variables = { areaId, date, dayName };
+      const variables = { regionId, date, dayName };
       cashCollection = await graph.apollo.query({ query, variables})
         .then(res => res.data?.cashCollections?.map(({ data }) => data) ?? []);
 
@@ -96,7 +100,7 @@ async function getAllLoanTransactionsByRegion(regionId, date, dayName, currentDa
               }
           }
       `;
-      const variables = { areaId, date, dayName };
+      const variables = { regionId, date, dayName };
       cashCollection = await graph.apollo.query({ query, variables})
         .then(res => res.data?.cashCollections?.map(({ data }) => data) ?? []);
     }
@@ -168,28 +172,28 @@ async function processData(data, date, currentDate) {
 
         region.branchCollection.map(branch => {
             if (branch?.draftCollections?.length > 0) {
-                const transactionStatus = branch.draftCollections[0].groupStatusArr.filter(status => status === "pending");
-                const draft = branch.draftCollections[0].hasDraftsArr.filter(d => d === true);
-                if (transactionStatus.length == 0 && draft.length == 0) {
+                const transactionStatus = branch.draftCollections[0].groupStatusArr?.filter(status => status === "pending") ?? []
+                const draft = branch.draftCollections[0].hasDraftsArr?.filter(d => d === true) ?? [];
+                if (transactionStatus?.length == 0 && draft?.length == 0) {
                     groupStatus = 'close';
                 }
-            } else if (branch.cashCollections.length > 0) {
-                const transactionStatus = branch.cashCollections[0].groupStatusArr.filter(status => status === "pending");
-                const draft = branch.cashCollections[0].hasDraftsArr.filter(d => d === true);
-                if (transactionStatus.length == 0 && draft.length == 0) {
+            } else if (branch.cashCollections?.length > 0) {
+                const transactionStatus = branch.cashCollections[0].groupStatusArr?.filter(status => status === "pending") ?? []
+                const draft = branch.cashCollections[0].hasDraftsArr?.filter(d => d === true) ?? [];
+                if (transactionStatus?.length == 0 && draft?.length == 0) {
                     groupStatus = 'close';
                 }
             }
 
             if (!filter) {
                 let mcbu = 0;
-                if (branch.activeLoans.length > 0) {
+                if (branch.activeLoans?.length > 0) {
                     branchNoOfClients += branch.activeLoans[0].activeClients;
                     branchNoOfBorrowers += branch.activeLoans[0].activeBorrowers;
                     branchNoOfPendings += branch.activeLoans[0].pendingClients;
                 }
 
-                if (branch.loans.length > 0) {
+                if (branch.loans?.length > 0) {
                     branchTotalsLoanRelease += branch.loans[0].totalRelease;
                     branchTotalsLoanBalance += branch.loans[0].totalLoanBalance;
                     branchTargetLoanCollection += branch.loans[0].loanTarget;
@@ -198,7 +202,7 @@ async function processData(data, date, currentDate) {
                     mcbu = branch.loans[0].mcbu;
                 }
 
-                if (branch.cashCollections.length > 0 && branch.cashCollections[0].collection > 0) {
+                if (branch.cashCollections?.length > 0 && branch.cashCollections[0].collection > 0) {
                     branchTargetLoanCollection = branchTargetLoanCollection - branch.cashCollections[0].loanTarget;
                     branchExcess += branch.cashCollections[0].excess;
                     branchTotalLoanCollection += branch.cashCollections[0].collection;
@@ -211,7 +215,7 @@ async function processData(data, date, currentDate) {
                     branchTotalMcbuDailyWithdrawal += branch.cashCollections[0].mcbuDailyWithdrawal;
                 }
 
-                if (branch.currentRelease.length > 0) {
+                if (branch.currentRelease?.length > 0) {
                     const newReleasePerson = branch.currentRelease[0].newCurrentRelease ? branch.currentRelease[0].newCurrentRelease : 0;
                     branchNoOfNewCurrentRelease += branch.currentRelease[0].newCurrentRelease;
                     branchNoOfReCurrentRelease += branch.currentRelease[0].reCurrentRelease;
@@ -222,14 +226,14 @@ async function processData(data, date, currentDate) {
                     }
                 }
 
-                if (branch.fullPayment.length > 0) {
+                if (branch.fullPayment?.length > 0) {
                     branchFullPaymentAmount += branch.fullPayment[0].fullPaymentAmount;
                     branchNoOfFullPayment += branch.fullPayment[0].noOfFullPayment;
                 }
 
                 branchTotalMcbu += mcbu;
             } else {
-                if (branch.cashCollections.length > 0) {
+                if (branch.cashCollections?.length > 0) {
                     branchNoOfClients += branch.cashCollections[0].activeClients;
                     branchNoOfBorrowers += branch.cashCollections[0].activeBorrowers;
                     branchNoOfPendings += branch.cashCollections[0].pendingClients;
@@ -260,19 +264,19 @@ async function processData(data, date, currentDate) {
                 }
             }
 
-            if (branch.cashOnHand.length > 0) {
+            if (branch.cashOnHand?.length > 0) {
                 branchTotalCOH = branch.cashOnHand[0].amount ? branch.cashOnHand[0].amount : 0;
             }
 
-            if (branch.transferDailyGiverDetails.length > 0 || branch.transferDailyReceivedDetails.length > 0 || branch.transferWeeklyGiverDetails.length > 0 || branch.transferWeeklyReceivedDetails.length > 0) {
+            if (branch.transferDailyGiverDetails?.length > 0 || branch.transferDailyReceivedDetails?.length > 0 || branch.transferWeeklyGiverDetails?.length > 0 || branch.transferWeeklyReceivedDetails?.length > 0) {
                 let transfer = 0;
                 let totalTransferMcbu = 0;
                 let totalTransferTargetCollection = 0;
                 let totalTransferActualCollection = 0;
 
-                if (branch.transferDailyGiverDetails.length > 0) {
+                if (branch.transferDailyGiverDetails?.length > 0) {
                     collectionDailyReceived.push.apply(collectionDailyReceived, branch.transferDailyGiverDetails);
-                    transfer = transfer - branch.transferDailyGiverDetails.length;
+                    transfer = transfer - branch.transferDailyGiverDetails?.length;
 
                     branch.transferDailyGiverDetails.map(giver => {
                         if (filter) {
@@ -295,9 +299,9 @@ async function processData(data, date, currentDate) {
                     });
                 }
 
-                if (branch.transferDailyReceivedDetails.length > 0) {
+                if (branch.transferDailyReceivedDetails?.length > 0) {
                     collectionDailyTransferred.push.apply(collectionDailyTransferred, branch.transferDailyReceivedDetails);
-                    transfer = transfer + branch.transferDailyReceivedDetails.length;
+                    transfer = transfer + branch.transferDailyReceivedDetails?.length;
 
                     branch.transferDailyReceivedDetails.map(rcv => {
                         totalTransferMcbu += rcv.mcbu;
@@ -330,9 +334,9 @@ async function processData(data, date, currentDate) {
                     });
                 }
 
-                if (branch.transferWeeklyGiverDetails.length > 0) {
+                if (branch.transferWeeklyGiverDetails?.length > 0) {
                     collectionWeeklyReceived.push.apply(collectionWeeklyReceived, branch.transferWeeklyGiverDetails);
-                    transfer = transfer - branch.transferWeeklyGiverDetails.length;
+                    transfer = transfer - branch.transferWeeklyGiverDetails?.length;
 
                     branch.transferWeeklyGiverDetails.map(giver => {
                         if (filter) {
@@ -355,9 +359,9 @@ async function processData(data, date, currentDate) {
                     });
                 }
 
-                if (branch.transferWeeklyReceivedDetails.length > 0) {
+                if (branch.transferWeeklyReceivedDetails?.length > 0) {
                     collectionWeeklyTransferred.push.apply(collectionWeeklyTransferred, branch.transferWeeklyReceivedDetails);
-                    transfer = transfer + branch.transferWeeklyReceivedDetails.length;
+                    transfer = transfer + branch.transferWeeklyReceivedDetails?.length;
 
                     branch.transferWeeklyReceivedDetails.map(rcv => {
                         totalTransferMcbu += rcv.mcbu;
@@ -390,7 +394,7 @@ async function processData(data, date, currentDate) {
                     });
                 }
 
-                if (branch.transferDailyReceivedDetails.length > 0 || branch.transferDailyGiverDetails.length > 0 || branch.transferWeeklyReceivedDetails.length > 0 || branch.transferWeeklyGiverDetails.length > 0) {
+                if (branch.transferDailyReceivedDetails?.length > 0 || branch.transferDailyGiverDetails?.length > 0 || branch.transferWeeklyReceivedDetails?.length > 0 || branch.transferWeeklyGiverDetails?.length > 0) {
                     branchTotalMcbuCol += totalTransferMcbu;
                     branchTargetLoanCollection += totalTransferTargetCollection;
                     branchTotalLoanCollection += totalTransferActualCollection;
@@ -429,7 +433,7 @@ async function processData(data, date, currentDate) {
             status: '-'
         }
 
-        if (region.branchCollection.length > 0) {
+        if (region.branchCollection?.length > 0) {
             collection.activeClients = branchNoOfClients;
             collection.activeBorrowers = branchNoOfBorrowers;
             collection.pendingClients = branchNoOfPendings;
@@ -506,10 +510,10 @@ async function processData(data, date, currentDate) {
 
     const transferGvr = transferBranchDetailsTotal(collectionDailyTransferred, collectionWeeklyTransferred, 'Transfer GVR');
     const transferRcv = transferBranchDetailsTotal(collectionDailyReceived, collectionWeeklyReceived, 'Transfer RCV');
-    if (collectionDailyTransferred.length > 0 || collectionWeeklyTransferred.length > 0) {
+    if (collectionDailyTransferred?.length > 0 || collectionWeeklyTransferred?.length > 0) {
         collectionData.push(transferGvr);
     }
-    if (collectionDailyReceived.length > 0 || collectionWeeklyReceived.length > 0) {
+    if (collectionDailyReceived?.length > 0 || collectionWeeklyReceived?.length > 0) {
         collectionData.push(transferRcv);
     }
 
