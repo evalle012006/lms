@@ -3,7 +3,7 @@ import moment from "moment";
 import { GraphProvider } from "@/lib/graph/graph.provider";
 import { findLosTotals, findUserById } from "@/lib/graph.functions";
 import { gql } from "apollo-boost";
-import { createGraphType, insertQl } from "@/lib/graph/graph.util";
+import { createGraphType, insertQl, updateQl } from "@/lib/graph/graph.util";
 import { generateUUID } from "@/lib/utils";
 
 const graph = new GraphProvider();
@@ -160,14 +160,43 @@ const getFBalanceMigration = async (branchId, lastMonth, lastYear, userId, loGro
         officeType: loGroup,
       };
 
-      await graph.mutation(
-        insertQl(createGraphType("losTotals", "_id")(), {
-          objects: [{ 
-            _id: generateUUID(),
-            ...bmsFwBalance 
-          }],
-        })
-      );
+      // check if los exists
+      const [los] = await graph.query(
+                      queryQl(createGraphType("losTotals", "_id")(), {
+                          where: { 
+                              user_id: { _eq: bmsFwBalance.userId },
+                              month: { _eq: bmsFwBalance.month },
+                              year: { _eq: bmsFwBalance.year },
+                          }
+                      })
+                    ).then(res => res.data.los_totals ?? []);
+
+      if(los) {
+
+        await graph.mutation(
+          updateQl(createGraphType("losTotals", "_id")(), {
+            set: {
+              data: bmsFwBalance.data,
+              modifiedDateTime: new Date(),
+            },
+            where: {
+              _id: { _eq: los._id }
+            }
+          })
+        );
+
+      } else {
+
+        await graph.mutation(
+          insertQl(createGraphType("losTotals", "_id")(), {
+            objects: [{ 
+              _id: generateUUID(),
+              ...bmsFwBalance 
+            }],
+          })
+        );
+
+      }
     }
   }
 };
