@@ -70,7 +70,12 @@ async function save(req, res) {
                     collection.status = "closed";
                 }
 
-                if (collection.paymentCollection / collection.activeLoan > 1) {
+                let activeLoan = collection?.activeLoan;
+                if (collection.status != 'pending' && collection.activeLoan == 0) {
+                    activeLoan = collection?.prevData?.activeLoan ? collection.prevData?.activeLoan : 0;
+                }
+
+                if (collection.paymentCollection / activeLoan > 1) {
                     collection.excess = collection.paymentCollection - collection.activeLoan;
                     if (collection.status == 'active') {
                         const excessPayment = collection.paymentCollection / collection.activeLoan;
@@ -80,17 +85,17 @@ async function save(req, res) {
                     } else {
                         collection.noOfPayments = collection.occurence == 'daily' ? 60 : 24;
                     }
+                } else {
+                    collection.excess = 0;
                 }
 
                 logger.debug({page: `Saving Cash Collection - Group ID: ${data.collection[0]?.groupId}`, currentDate: currentDate, data: collection});
                 if (collection.hasOwnProperty('_id') && collection._id != collection?.loanId) {
-                    console.log('EXIST SLOT NO: ', collection.slotNo)
                     collection.modifiedDateTime = new Date();
                     const existCollection = {...assignNullValues(collection)};
                     delete existCollection.mcbuHistory;
                     existCC.push(existCollection);
                 } else {
-                    console.log('NEW SLOT NO: ', collection.slotNo)
                     collection.insertedDateTime = new Date();
                     const newCollection = {...assignNullValues(collection)};
                     delete newCollection.mcbuHistory;

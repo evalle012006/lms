@@ -67,7 +67,7 @@ async function revert(req, res) {
             // - set loan to rejected
             if (client.length > 0 && previousCC.length == 2) {
                 client = client[0];
-                cashCollection = previousCC[0]._id;
+                cashCollectionId = previousCC[0]._id;
                 previousCC = previousCC[1]; // latest
                 // delete current transaction
                 console.log('cashCollectionId', cashCollectionId);

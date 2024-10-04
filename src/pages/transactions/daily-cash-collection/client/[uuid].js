@@ -778,9 +778,6 @@ const CashCollectionDetailsPage = () => {
 
             response.data.tomorrowPending.map(loan => {
                 const currentLoan = cashCollection.find(l => l.slotNo == loan.slotNo);
-                console.log(currentLoan)
-                console.log(cashCollection)
-                console.log(loan)
                 if (currentLoan && currentLoan.status !== 'pending') {
                     const index = cashCollection.indexOf(currentLoan);
                     const dateOfRelease = loan?.dateOfRelease ? loan?.dateOfRelease : null;
@@ -950,8 +947,8 @@ const CashCollectionDetailsPage = () => {
                         mcbuStr: loan.mcbu > 0 ? formatPricePhp(loan.mcbu) : '-',
                         mcbuCol: loan.mcbuCol, // get the prevLoan cashCollections
                         mcbuColStr: loan.mcbuCol > 0 ? formatPricePhp(loan.mcbuCol) : '-',
-                        mcbuWithdrawal: prevLoan?.mcbuWithdrawal ? prevLoan.mcbuWithdrawal : 0,
-                        mcbuWithdrawalStr: prevLoan?.mcbuWithdrawal > 0 ? formatPricePhp(prevLoan.mcbuWithdrawal) : '-',
+                        mcbuWithdrawal: loan?.mcbuWithdrawal ? loan.mcbuWithdrawal : 0,
+                        mcbuWithdrawalStr: loan?.mcbuWithdrawal > 0 ? formatPricePhp(loan.mcbuWithdrawal) : '-',
                         mcbuReturnAmt: prevLoan?.mcbuReturnAmt ? prevLoan?.mcbuReturnAmt : 0,
                         mcbuReturnAmtStr: prevLoan?.mcbuReturnAmt > 0 ? formatPricePhp(prevLoan.mcbuReturnAmt) : '-',
                         mcbuInterest: loan.mcbuInterest,
@@ -1643,7 +1640,7 @@ const CashCollectionDetailsPage = () => {
                             temp.mcbu = diff;
                             temp.mcbuStr = formatPricePhp(temp.mcbu);
                             if (temp.prevData?.mcbu) {
-                                temp.prevData.mcbu = temp.mcbu;
+                                temp.prevData = { ...temp.prevData, mcbu: temp.mcbu };
                             }
                         }
                     }
