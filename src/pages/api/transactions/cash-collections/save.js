@@ -62,24 +62,24 @@ async function save(req, res) {
                     collection.status = "closed";
                 }
 
-                let activeLoan = collection?.activeLoan;
-                if (collection.status != 'pending' && collection.activeLoan == 0) {
-                    activeLoan = collection?.prevData?.activeLoan ? collection.prevData?.activeLoan : 0;
-                }
+                // let activeLoan = collection?.activeLoan;
+                // if (collection.status != 'pending' && collection.activeLoan == 0) {
+                //     activeLoan = collection?.prevData?.activeLoan ? collection.prevData?.activeLoan : 0;
+                // }
 
-                if (collection.paymentCollection / activeLoan > 1) {
-                    collection.excess = collection.paymentCollection - collection.activeLoan;
-                    if (collection.status == 'active') {
-                        const excessPayment = collection.paymentCollection / collection.activeLoan;
-                        collection.noOfPayments = collection.prevData?.noOfPayments ? collection.prevData?.noOfPayments + excessPayment : excessPayment;
-                        collection.advanceDays = collection.prevData?.advanceDays ? collection.prevData?.advanceDays + excessPayment - 1 : excessPayment - 1;
+                // if (collection.paymentCollection / activeLoan > 1) {
+                //     collection.excess = collection.paymentCollection - collection.activeLoan;
+                //     if (collection.status == 'active') {
+                //         const excessPayment = collection.paymentCollection / collection.activeLoan;
+                //         collection.noOfPayments = collection.prevData?.noOfPayments ? collection.prevData?.noOfPayments + excessPayment : excessPayment;
+                //         collection.advanceDays = collection.prevData?.advanceDays ? collection.prevData?.advanceDays + excessPayment - 1 : excessPayment - 1;
 
-                    } else {
-                        collection.noOfPayments = collection.occurence == 'daily' ? 60 : 24;
-                    }
-                } else {
-                    collection.excess = 0;
-                }
+                //     } else {
+                //         collection.noOfPayments = collection.occurence == 'daily' ? 60 : 24;
+                //     }
+                // } else {
+                //     collection.excess = 0;
+                // }
 
                 logger.debug({page: `Saving Cash Collection - Group ID: ${data.collection[0]?.groupId}`, currentDate: currentDate, data: collection});
                 if (collection.hasOwnProperty('_id')) {
