@@ -864,7 +864,10 @@ const CashCollectionDetailsPage = () => {
                             loanTerms: loan.loanTerms,
                             reverted: currentLoan.reverted,
                             history: currentLoan.history,
-                            selected: false
+                            selected: false,
+                            advance: loan?.advance,
+                            advanceTransaction: loan?.advanceTransaction,
+                            dateOfRelease: dateOfRelease,
                         };
 
                         if (currentLoan?.current?.length > 0) {
@@ -926,7 +929,10 @@ const CashCollectionDetailsPage = () => {
                             tomorrow: loan.status === 'active' ? true : false,
                             reverted: currentLoan.reverted,
                             history: currentLoan.history,
-                            selected: false
+                            selected: false,
+                            advance: loan?.advance,
+                            advanceTransaction: loan?.advanceTransaction,
+                            dateOfRelease: dateOfRelease,
                         };
 
                         if (currentLoan.current.length > 0) {
@@ -992,7 +998,9 @@ const CashCollectionDetailsPage = () => {
                         loanTerms: loan.loanTerms,
                         selected: false,
                         loanFor: loan.loanFor ? loan.loanFor : 'today',
-                        dateOfRelease: loan.dateOfRelease ? loan.dateOfRelease : null
+                        dateOfRelease: loan.dateOfRelease ? loan.dateOfRelease : null,
+                        advance: loan?.advance,
+                        advanceTransaction: loan?.advanceTransaction,
                     };
 
                     if (prevLoan) {
