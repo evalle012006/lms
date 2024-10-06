@@ -34,7 +34,7 @@ async function save(req, res) {
         logger.debug({page: `Saving Cash Collection - Group ID: ${data.collection[0]?.groupId}`});
         const promiseData = data.collection.map(async cc => {
             if (cc.status !== "totals") {
-                const collection = JSON.parse(JSON.stringify(entry))// clone entry to avoid reference update
+                const collection = JSON.parse(JSON.stringify(cc))// clone entry to avoid reference update
                 delete collection.reverted;
 
                 const timeArgs = currentTime.split(" ");
