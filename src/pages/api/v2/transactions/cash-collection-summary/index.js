@@ -35,6 +35,7 @@ async function getSummary(req, res) {
     let summary = [];
 
     if (user.role.rep === 3) {
+      /*
       await getFBalanceMigration(
         branchId,
         lastMonth,
@@ -42,6 +43,7 @@ async function getSummary(req, res) {
         userId,
         loGroup
       );
+      */
       fBalance = await findLosTotals({
         userId: { _eq: userId },
         month: { _eq: lastMonth },

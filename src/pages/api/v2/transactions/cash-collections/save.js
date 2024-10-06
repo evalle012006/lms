@@ -34,7 +34,7 @@ async function save(req, res) {
         logger.debug({page: `Saving Cash Collection - Group ID: ${data.collection[0]?.groupId}`});
         const promiseData = data.collection.map(async cc => {
             if (cc.status !== "totals") {
-                let collection = {...cc};
+                const collection = JSON.parse(JSON.stringify(entry))// clone entry to avoid reference update
                 delete collection.reverted;
 
                 const timeArgs = currentTime.split(" ");
@@ -180,7 +180,7 @@ async function saveCollection(mutationQL, collections, currentDate) {
 
 async function updateCollection(mutationQL, collections) {
 
-    collections.map(async c => {
+    collections.map(c => {
         const collectionId = c._id;
         delete c._id;
         if (c?.origin === 'pre-save') {

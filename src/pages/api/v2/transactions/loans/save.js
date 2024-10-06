@@ -242,7 +242,7 @@ async function updateLoan(loanId, loanData, currentDate, mode) {
             await graph.mutation(updateQl(cashCollectionsType, {
               set: { status: 'closed' },
               where: {
-                loanId: { _eq: loanId },
+                clientId: { _eq: loan.clientId },
                 dateAdded: { _eq: currentDate },
               }
             }));
