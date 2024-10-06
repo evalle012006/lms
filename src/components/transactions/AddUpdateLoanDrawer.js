@@ -190,6 +190,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         setClientId(value);
         
         if (clientType === 'active' || clientType == 'advance') {
+            console.log(currentClient)
             const currentClient = clientList.find(c => c._id === value);
             const currentSlotNo = currentClient && currentClient.loans[0].slotNo;
             const currentLoanCycle = currentClient && currentClient.loans[0].loanCycle;
@@ -687,6 +688,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         } else if (mode === 'reloan') {
             setTitle('Reloan');
             setLoanTerms(loan.loanTerms);
+            setSelectedLoanId(loan.loanId);
         }
 
         mounted && setLoading(false);
