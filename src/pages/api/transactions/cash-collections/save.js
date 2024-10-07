@@ -58,18 +58,6 @@ async function save(req, res) {
                     collection.status = "closed";
                 }
 
-                if (collection.paymentCollection / collection.activeLoan > 1) {
-                    collection.excess = collection.paymentCollection - collection.activeLoan;
-                    if (collection.status == 'active') {
-                        const excessPayment = collection.paymentCollection / collection.activeLoan;
-                        collection.noOfPayments = collection.prevData?.noOfPayments ? collection.prevData?.noOfPayments + excessPayment : excessPayment;
-                        collection.advanceDays = collection.prevData?.advanceDays ? collection.prevData?.advanceDays + excessPayment - 1 : excessPayment - 1;
-
-                    } else {
-                        collection.noOfPayments = collection.occurence == 'daily' ? 60 : 24;
-                    }
-                }
-
                 logger.debug({page: `Saving Cash Collection - Group ID: ${data.collection[0]?.groupId}`, currentDate: currentDate, data: collection});
                 if (collection.hasOwnProperty('_id') && collection._id != collection?.loanId) {
                     collection.modifiedDateTime = new Date();
