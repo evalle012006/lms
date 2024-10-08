@@ -1345,6 +1345,10 @@ const CashCollectionDetailsPage = () => {
                     if (prevDraft && !draft) {
                         temp.groupStatus = "closed";
                     }
+
+                    if (!temp.dateAdded) {
+                        temp.dateAdded = currentDate;
+                    }
                 
                     return temp;   
                 }).filter(cc => cc.status !== "totals");
