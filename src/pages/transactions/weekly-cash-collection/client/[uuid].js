@@ -1003,8 +1003,13 @@ const CashCollectionDetailsPage = () => {
                         advanceTransaction: loan?.advanceTransaction,
                     };
 
+                    const current = loan.current.length > 0 ? loan.current[0] : null;
+                    if (current) {
+                        pendingTomorrow.loanId = loan._id;
+                        pendingTomorrow._id = current?._id ? current?._id : loan._id;
+                    }
+
                     if (prevLoan) {
-                        const current = loan.current.length > 0 ? loan.current[0] : null;
                         if (loan?.transferred) {
                             pendingTomorrow.transferred = true;
                             pendingTomorrow.transferStr = 'TCG';
@@ -1014,7 +1019,6 @@ const CashCollectionDetailsPage = () => {
                         } else {
                             pendingTomorrow.prevLoanId = prevLoan._id;
                             pendingTomorrow.loanId = loan._id;
-                            pendingTomorrow._id = current?._id;
                         }
                     }
 
