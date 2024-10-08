@@ -69,7 +69,6 @@ async function updatePendingLoan(collection, currentDate) {
           mcbu: cashCollection.mcbu,
           prevLoanFullPaymentDate: currentDate,
           prevLoanFullPaymentAmount: cashCollection.fullPayment,
-          mcbu: cashCollection.mcbu,
           mcbuWithdrawal: cashCollection.mcbuWithdrawal
         };
 
