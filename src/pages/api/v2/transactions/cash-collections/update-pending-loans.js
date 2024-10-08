@@ -68,9 +68,8 @@ async function updatePendingLoan(collection, currentDate) {
         const toUpdatePendingLoan = {
           mcbu: cashCollection.mcbu,
           prevLoanFullPaymentDate: currentDate,
-          prevLoanFullPaymentAmount: collection.fullPayment,
-          mcbu: collection.mcbu,
-          mcbuWithdrawal: collection.mcbuWithdrawal
+          prevLoanFullPaymentAmount: cashCollection.fullPayment,
+          mcbuWithdrawal: cashCollection.mcbuWithdrawal
         };
 
         const toUpdateCurrentLoan = {
