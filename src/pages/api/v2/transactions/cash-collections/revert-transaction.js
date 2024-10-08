@@ -37,7 +37,7 @@ async function revert(req, res) {
             if (cashCollection.status == 'closed') {
                 loanId = cashCollection._id;
                 const closedCC = cashCollection?.current[0];
-                cashCollectionId = closedCC._id;
+                cashCollectionId = closedCC?._id;
             }
 
             let client =  await getClientById(cashCollection.clientId);
@@ -67,7 +67,9 @@ async function revert(req, res) {
             // - set loan to rejected
             if (client.length > 0 && previousCC.length == 2) {
                 client = client[0];
-                cashCollectionId = previousCC[0]._id;
+                // if (!cashCollectionId) {
+                //     cashCollectionId = previousCC[0]._id; // will delete the previous cashcollection in case no cashcollection today (THIS SHOULD NOT BE)
+                // }
                 previousCC = previousCC[1]; // latest
                 // delete current transaction
                 console.log('cashCollectionId', cashCollectionId);
@@ -78,6 +80,8 @@ async function revert(req, res) {
                     delete previousLoan._id;
                     mutationQL.push(deleteQl(LOAN_TYPE('delete_loans_' + (mutationQL.length + 1)), { _id: { _eq: loanId } }));
                     // there are cases wherein the advance loan were not deleted....need proper steps
+
+                    // reloan already cashcollection status = tomorrow when revert the previous loan was not updated back to the previous CC status
                     if (previousCC.status == 'completed') {
                         previousLoan.activeLoan = 0;
                         previousLoan.amountRelease = 0;
