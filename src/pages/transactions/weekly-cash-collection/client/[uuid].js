@@ -401,6 +401,7 @@ const CashCollectionDetailsPage = () => {
                         let draft = false;
                         let reverted = false;
                         let remarks = cc.remarks ? cc.remarks : '';
+                        let ccId = cc._id;
                         if (cc?.current?.length > 0) {
                             const current = cc.current.find(cur => cur?.transfer !== true);
                             if (current) {
@@ -418,6 +419,7 @@ const CashCollectionDetailsPage = () => {
                                 draft = current.draft;
                                 reverted = current.reverted;
                                 remarks = current.remarks ? current.remarks : '';
+                                ccId = current._id;
                             }
                         }
 
@@ -433,6 +435,7 @@ const CashCollectionDetailsPage = () => {
                         
                         collection = {
                             ...cc,
+                            _id: ccId,
                             group: cc.group,
                             coMaker: (cc.coMaker && typeof cc.coMaker == 'number') ? cc.coMaker : '-',
                             loId: cc.loId,
