@@ -75,7 +75,12 @@ export class GraphProvider {
             `,
             variables: resp.variables,
             context: resp.context,
-        });
+        }).then(resp => {
+            if(resp.errors) {
+                throw resp.errors;
+            }
+            return resp;
+        })
     }
 
     subscription(statement: QueryQLStatementFunction) {
