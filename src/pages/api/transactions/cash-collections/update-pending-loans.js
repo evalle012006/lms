@@ -59,10 +59,13 @@ async function updatePendingLoan(db, collection, currentDate) {
         pendingLoan.mcbu = cashCollection.mcbu;
         pendingLoan.prevLoanFullPaymentDate = currentDate;
         pendingLoan.prevLoanFullPaymentAmount = collection.fullPayment;
+
+        const excess = cashCollection?.history?.excess > 0 ? cashCollection?.history?.excess : collection.excess;
         
         cashCollection.loanId = pendingLoan._id + "";
         cashCollection.currentReleaseAmount = pendingLoan.amountRelease;
         cashCollection.prevLoanId = currentLoan._id + "";
+        cashCollection.excess = excess;
 
         const currentLoanId = currentLoan._id;
         const pendingLoanId = pendingLoan._id;
