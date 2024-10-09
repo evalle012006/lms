@@ -63,6 +63,7 @@ async function updatePendingLoan(db, collection, currentDate) {
         cashCollection.loanId = pendingLoan._id + "";
         cashCollection.currentReleaseAmount = pendingLoan.amountRelease;
         cashCollection.prevLoanId = currentLoan._id + "";
+        cashCollection.excess = collection.excess;
 
         const currentLoanId = currentLoan._id;
         const pendingLoanId = pendingLoan._id;
