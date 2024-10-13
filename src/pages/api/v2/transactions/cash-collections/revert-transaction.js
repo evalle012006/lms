@@ -33,11 +33,14 @@ async function revert(req, res) {
             logger.debug({page: `Reverting Transaction Loan: ${cashCollection.clientId}`, data: cashCollection});
             let loanId = cashCollection.loanId;
             let cashCollectionId = cashCollection._id;
-            console.log(cashCollection._id, cashCollection.status);
             if (cashCollection.status == 'closed') {
                 loanId = cashCollection._id;
                 const closedCC = cashCollection?.current[0];
                 cashCollectionId = closedCC?._id;
+
+                if (loanId == cashCollectionId) {
+                    loanId = cashCollection.loanId;
+                }
             }
 
             let client =  await getClientById(cashCollection.clientId);
@@ -60,6 +63,8 @@ async function revert(req, res) {
                     limit: 2
                 })
             ).then(res => res.data.cashCollections);
+
+            logger.debug({page: `Reverting Transaction Loan: ${cashCollection.clientId}`, currentLoan: currentLoan, previousLoan: previousLoan, previousCC: previousCC });
             
             logger.debug({page: `Reverting Transaction Loan: ${cashCollection.clientId}`, clientSize: client.length, previousLoanSize: previousLoan.length, previousCCSize: previousCC.length });
             // NEED TO ACCOMODATE REVERT FOR NEW CLIENT PENDING/TOMORROW
@@ -67,12 +72,8 @@ async function revert(req, res) {
             // - set loan to rejected
             if (client.length > 0 && previousCC.length == 2) {
                 client = client[0];
-                // if (!cashCollectionId) {
-                //     cashCollectionId = previousCC[0]._id; // will delete the previous cashcollection in case no cashcollection today (THIS SHOULD NOT BE)
-                // }
                 previousCC = previousCC[1]; // latest
                 // delete current transaction
-                console.log('cashCollectionId', cashCollectionId);
                 mutationQL.push(deleteQl(CASH_COLLECTION_TYPE('delete_cashCollections_' + (mutationQL.length + 1)), { _id: { _eq: cashCollectionId } }));
                 logger.debug({page: `Reverting Transaction Loan: ${cashCollection.clientId}`, previousCC: previousCC });
                 if (previousLoan.length > 0) { // pending, tomorrow
@@ -167,9 +168,7 @@ async function revert(req, res) {
                         currentLoan.history = previousCC.history;
                         currentLoan.status = 'completed';
                         currentLoan.fullPaymentDate = previousCC.fullPaymentDate;
-                    } 
-                    else {
-
+                    } else {
                         if (cashCollection.remarks?.value == 'past due') {
                             currentLoan.mispayment = currentLoan.mispayment > 0 ? currentLoan.mispayment - 1 : 0;
                             currentLoan.noPastDue = currentLoan.noPastDue > 0 ? currentLoan.noPastDue - 1 : 0;

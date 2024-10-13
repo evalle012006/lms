@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { XCircleIcon } from '@heroicons/react/24/solid';
+import { useEffect } from 'react';
 
 const InputNumber = ({ name, value=0, label, placeholder, disabled, onChange, onBlur, setFieldValue, errors, className = '', filter = false }) => {
     const [inputValue, setInputValue] = useState('');
@@ -7,6 +8,17 @@ const InputNumber = ({ name, value=0, label, placeholder, disabled, onChange, on
     const handleClick = () => {
         setInputValue(0);
     }
+
+    useEffect(() => {
+        const numberInputs = document.querySelectorAll('input[type="number"]');
+        
+        numberInputs.forEach(input => {
+            input.addEventListener('wheel', function(e) {
+              // Prevent the default scroll behavior
+              e.preventDefault();
+            });
+          });
+    }, [])
 
     return (
         <>

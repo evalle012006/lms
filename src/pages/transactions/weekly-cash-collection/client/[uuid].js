@@ -402,6 +402,7 @@ const CashCollectionDetailsPage = () => {
                         let reverted = false;
                         let remarks = cc.remarks ? cc.remarks : '';
                         let ccId = cc._id;
+                        let loanId = cc._id;
                         if (cc?.current?.length > 0) {
                             const current = cc.current.find(cur => cur?.transfer !== true);
                             if (current) {
@@ -420,6 +421,7 @@ const CashCollectionDetailsPage = () => {
                                 reverted = current.reverted;
                                 remarks = current.remarks ? current.remarks : '';
                                 ccId = current._id;
+                                loanId = current.loanId;
                             }
                         }
 
@@ -436,10 +438,10 @@ const CashCollectionDetailsPage = () => {
                         collection = {
                             ...cc,
                             _id: ccId,
+                            loanId: loanId,
                             group: cc.group,
                             coMaker: (cc.coMaker && typeof cc.coMaker == 'number') ? cc.coMaker : '-',
                             loId: cc.loId,
-                            loanId: cc?.current?.length > 0 ? cc.current[0].loanId : cc.loanId,
                             branchId: cc.branchId,
                             groupId: cc.groupId,
                             groupName: cc.groupName,
@@ -818,7 +820,7 @@ const CashCollectionDetailsPage = () => {
                             coMaker: (loan.coMaker && typeof loan.coMaker == 'number') ? loan.coMaker : '-',
                             slotNo: loan.slotNo,
                             loanId: loan._id,
-                            prevLoanId: currentLoan.loanId ? currentLoan.loanId : currentLoan._id,
+                            prevLoanId: loan.prevLoanId,
                             groupId: loan.groupId,
                             branchId: loan.branchId,
                             loId: loan.loId,
@@ -895,7 +897,7 @@ const CashCollectionDetailsPage = () => {
                             coMaker: (loan.coMaker && typeof loan.coMaker == 'number') ? loan.coMaker : '-',
                             slotNo: loan.slotNo,
                             loanId: loan._id,
-                            prevLoanId: currentLoan.loanId ? currentLoan.loanId : currentLoan._id,
+                            prevLoanId: loan.prevLoanId,
                             groupId: loan.groupId,
                             loId: loan.loId,
                             branchId: loan.branchId,
@@ -1004,6 +1006,7 @@ const CashCollectionDetailsPage = () => {
                         dateOfRelease: loan.dateOfRelease ? loan.dateOfRelease : null,
                         advance: loan?.advance,
                         advanceTransaction: loan?.advanceTransaction,
+                        prevLoanId: loan?.prevLoanId,
                     };
 
                     const current = loan.current.length > 0 ? loan.current[0] : null;
@@ -1020,7 +1023,7 @@ const CashCollectionDetailsPage = () => {
                             pendingTomorrow.transfer = true;
                             pendingTomorrow.transferStr = 'TCR';
                         } else {
-                            pendingTomorrow.prevLoanId = prevLoan._id;
+                            // pendingTomorrow.prevLoanId = prevLoan._id;
                             pendingTomorrow.loanId = loan._id;
                         }
                     }

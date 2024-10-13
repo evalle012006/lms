@@ -86,13 +86,10 @@ async function updatePendingLoan(collection, currentDate) {
           history: cashCollection.history
         };
 
-        const excess = cashCollection?.history?.excess > 0 ? cashCollection?.history?.excess : collection.excess;
-
         const toUpdateCollection = {
           loanId: pendingLoan._id,
           currentReleaseAmount: pendingLoan.amountRelease,
           prevLoanId: currentLoan._id,
-          excess: excess,
           status: 'tomorrow',
         };
 

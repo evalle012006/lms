@@ -85,7 +85,6 @@ const Layout = ({
             const dayName = moment(currentDate).format('dddd');
         
             if (dayName === 'Saturday' || dayName === 'Sunday') {
-                // RESET
                 dispatch(setWeekend(true));
             } else {
                 dispatch(setWeekend(false));

@@ -75,20 +75,6 @@ async function save(req, res) {
                     activeLoan = collection?.prevData?.activeLoan ? collection.prevData?.activeLoan : 0;
                 }
 
-                if (collection.paymentCollection / activeLoan > 1) {
-                    collection.excess = collection.paymentCollection - collection.activeLoan;
-                    if (collection.status == 'active') {
-                        const excessPayment = collection.paymentCollection / collection.activeLoan;
-                        collection.noOfPayments = collection.prevData?.noOfPayments ? collection.prevData?.noOfPayments + excessPayment : excessPayment;
-                        collection.advanceDays = collection.prevData?.advanceDays ? collection.prevData?.advanceDays + excessPayment - 1 : excessPayment - 1;
-
-                    } else {
-                        collection.noOfPayments = collection.occurence == 'daily' ? 60 : 24;
-                    }
-                } else {
-                    collection.excess = 0;
-                }
-
                 logger.debug({page: `Saving Cash Collection - Group ID: ${data.collection[0]?.groupId}`, currentDate: currentDate, data: collection});
                 if (collection.hasOwnProperty('_id') && collection._id != collection?.loanId) {
                     collection.modifiedDateTime = new Date();
@@ -168,8 +154,6 @@ async function saveCollection(mutationQL, collections, currentDate) {
         dateAdded: currentDate,
     }))
 
-    console.log(JSON.stringify(objects))
-
     mutationQL.push(
         insertQl(COLLECTION_TYPE('collections_' + (mutationQL.length + 1)),{
                 objects: objects
@@ -185,7 +169,7 @@ async function updateCollection(mutationQL, collections) {
         delete c._id;
         if (c?.origin === 'pre-save') {
             delete c.origin;
-        } 
+        }
 
         mutationQL.push(
             updateQl(COLLECTION_TYPE('collections_' + (mutationQL.length + 1)), {
@@ -317,7 +301,6 @@ async function updateLoan(mutationQL, collection, currentDate) {
         logger.debug({page: `Saving Cash Collection - Updating Loan`, data: loan});
         const loanId = loan._id;
         delete loan._id;
-
 
         mutationQL.push(
             updateQl(LOAN_TYPE('loans_' + (mutationQL.length + 1)), {
