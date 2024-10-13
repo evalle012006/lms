@@ -8,6 +8,17 @@ const InputNumber = ({ name, value=0, label, placeholder, disabled, onChange, on
         setInputValue(0);
     }
 
+    useEffect(() => {
+        const numberInputs = document.querySelectorAll('input[type="number"]');
+        
+        numberInputs.forEach(input => {
+            input.addEventListener('wheel', function(e) {
+              // Prevent the default scroll behavior
+              e.preventDefault();
+            });
+          });
+    }, [])
+
     return (
         <>
             <div className={`
