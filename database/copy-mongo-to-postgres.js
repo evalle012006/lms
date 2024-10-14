@@ -17,7 +17,12 @@ const { MongoClient, Db, ObjectId } = require('mongodb');
 const { Connection } = require('postgresql-client');
 const env = require('@next/env');
 const moment = require('moment');
-const { masterFileTableNames, transactionTableNames, getDateAddedFilterFieldForCollection } = require('./db-schema')
+const {
+  masterFileTableNames,
+  transactionTableNames,
+  getDateAddedFilterFieldForCollection,
+  getCustomBranchFilterForCollection
+} = require('./db-schema')
 
 env.loadEnvConfig(__dirname + '/../');
 
@@ -74,10 +79,10 @@ const cliCommands = {
         { $project: { _id: 1, name: 1 } },
       ]);
     for await (const branch of branches) {
-      const mongoFilter = { branchId: { $eq: branch._id.toString() } };
+      const branchFilter = { branchId: { $eq: branch._id.toString() } };
       currentLogMarker = branch.name;
       logInfo(`**** Migrating transactions for Branch: ${branch.name} ****`);
-      await migrate(mongo, transactionTableNames, mongoFilter);
+      await migrate(mongo, transactionTableNames, branchFilter);
       currentLogMarker = null;
     }
 
@@ -111,10 +116,10 @@ const cliCommands = {
 /**
  * @param {Db} mongo
  * @param {string[]} tableNames
- * @param {Record<string, any> | null} mongoFilter
+ * @param {Record<string, any> | null} branchFilter
  * @returns {Promise<void>}
  */
-async function migrate(mongo, tableNames, mongoFilter = null) {
+async function migrate(mongo, tableNames, branchFilter = null) {
     const collectionNamesFilter = [];
     if (cliArgs.tables && typeof cliArgs.tables === 'string') {
       collectionNamesFilter.push(...cliArgs.tables
@@ -136,6 +141,11 @@ async function migrate(mongo, tableNames, mongoFilter = null) {
         const columns = columnDef.map(cd => cd.name);
 
         let processed = 0;
+        let mongoFilter = branchFilter;
+        if (branchFilter) {
+          mongoFilter = await getCustomBranchFilterForCollection(tableName, branchFilter, mongo);
+        }
+
         const queryFilter = mongoFilter ?? {};
         const dateFilterField = getDateAddedFilterFieldForCollection(tableName);
         let dateFilters = [];
@@ -155,7 +165,7 @@ async function migrate(mongo, tableNames, mongoFilter = null) {
 
         const asyncBatchInsert = async (batchData) => {
           const batchParams = batchData.map(doc =>
-            columnDef.map((cd) => mapValue(cd, doc[cd.name], doc)))
+            columnDef.map((cd) => mapValue(cd, doc[cd.name], doc, tableName)))
 
           const batchResult = await batchInsert(tableName, columns, batchParams);
 
@@ -315,7 +325,10 @@ const dateAutoCorrectionPattern = [
   [/(\d{4}-\d)['\-](\d-\d{2})/, '$1$2'],
 ];
 
-function mapValue({ name, dataType }, value, doc) {
+function mapValue({ name, dataType }, value, doc, tableName) {
+  if (tableName === 'losTotals' && name === 'officeType' && !value) {
+    return 'all';
+  }
   if (name === 'insertedDateTime' && !value) {
     value = doc.dateAdded;
   }
@@ -506,7 +519,7 @@ async function migrateTableDataFromJson() {
   const doMigrate = async (doc, lineNum) => {
     try {
       console.log(`Inserting ${tableName} from file: Line #${lineNum}, ID = ${doc._id.$oid ?? doc._id}`);
-      const params = columnDef.map((cd) => mapValue(cd, doc[cd.name], doc));
+      const params = columnDef.map((cd) => mapValue(cd, doc[cd.name], doc, tableName));
       return batchInsert(tableName, columns, [params]);
     } catch (e) {
       appendLog(`from_json__${tableName}_error`, e);
