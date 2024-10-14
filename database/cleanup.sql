@@ -5,7 +5,6 @@ delete from "badDebtCollections" where (true);
 delete from "cashCollections" where (true);
 delete from "branchCOH" where (true);
 delete from "branches" where (true);
-delete from "client" where (true);
 delete from "divisions" where (true);
 delete from "groups" where (true);
 delete from "holidays" where (true);
@@ -21,6 +20,7 @@ delete from "users" where (true);
 
 
 -- transactions only
+delete from "client" where (true);
 delete from "badDebtCollections" where (true);
 delete from "cashCollections" where (true);
 delete from "branchCOH" where (true);
