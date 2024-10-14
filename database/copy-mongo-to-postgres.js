@@ -338,6 +338,9 @@ function mapValue({ name, dataType }, value, doc) {
     return dateInvalidValues.includes(value) ? null : value;
   }
   if (dataType.match(/date|timestamp/)) {
+    if (value?.$date) {
+      return value.$date;
+    }
     if (dateInvalidValues.includes(value)) {
       return null;
     }
