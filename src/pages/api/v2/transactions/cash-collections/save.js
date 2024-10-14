@@ -62,6 +62,7 @@ async function save(req, res) {
                     }
                 }
                 
+                // possible issue with completed and null loan and reloan fullpayment date 
                 if (collection.status === 'completed' || (collection.status == 'pending' && collection.loanCycle > 1) || collection.status === 'closed') {
                     collection.fullPaymentDate = (collection.fullPaymentDate || collection.fullPaymentDate == "") ? collection.fullPaymentDate : currentDate;
                 }
@@ -281,7 +282,10 @@ async function updateLoan(mutationQL, collection, currentDate) {
             }
             
             loan.activeLoan = 0;
-            loan.fullPaymentDate = collection.fullPaymentDate;
+            if (!loan.fullPaymentDate) {
+                loan.fullPaymentDate = collection.fullPaymentDate;
+            }
+            
             loan.amountRelease = 0;
             if (collection?.remarks?.value !== 'offset-matured-pd') {
                 loan.noPastDue = 0;
