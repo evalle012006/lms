@@ -256,7 +256,10 @@ async function updateLoan(db, collection, currentDate) {
             }
             
             loan.activeLoan = 0;
-            loan.fullPaymentDate = collection.fullPaymentDate;
+            if (!loan.fullPaymentDate)  {
+                loan.fullPaymentDate = collection.fullPaymentDate;
+            }
+
             loan.amountRelease = 0;
             if (collection?.remarks?.value !== 'offset-matured-pd') {
                 loan.noPastDue = 0;
