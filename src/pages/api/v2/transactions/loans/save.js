@@ -107,12 +107,6 @@ async function save(req, res) {
             };
         } else {
             let finalData = {...loanData};
-
-            if (mode == 'advance' || mode == 'active') {
-                finalData.advance = true;
-                finalData.advanceDate = currentDate;
-            }
-
             if (finalData.occurence === 'weekly') {
                 if (finalData.loanCycle === 1) {
                     finalData.mcbu = 50;
@@ -238,7 +232,10 @@ async function updateLoan(loanId, loanData, currentDate, mode) {
         delete loan.loanOfficer;
         delete loan.groupCashCollections;
 
-        if (mode != 'advance' && mode != 'active') {
+        if (mode === 'advance' || mode === 'active') {
+            loan.advance = true;
+            loan.advanceDate = currentDate;
+        } else {
             loan.mcbu = loan.mcbu - loanData.mcbu;
             loan.status = 'closed';
             logger.debug({page: `Updating Cash Collection: ${loanId}`, data: loan});
