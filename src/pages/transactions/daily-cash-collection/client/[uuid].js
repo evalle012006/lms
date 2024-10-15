@@ -864,8 +864,8 @@ const CashCollectionDetailsPage = () => {
                             history: currentLoan.history,
                             prevData: currentLoan?.prevData,
                             selected: false,
-                            advance: currentLoan.advance,
-                            advanceTransaction: currentLoan.advanceTransaction,
+                            advance: currentLoan?.advance ? currentLoan?.advance : false,
+                            advanceTransaction: currentLoan.advanceTransaction ? currentLoan.advanceTransaction : false,
                             dateOfRelease: dateOfRelease,
                         };
 
@@ -924,8 +924,8 @@ const CashCollectionDetailsPage = () => {
                             reverted: currentLoan.reverted,
                             history: currentLoan.history,
                             selected: false,
-                            advance: currentLoan.advance,
-                            advanceTransaction: currentLoan.advanceTransaction,
+                            advance: currentLoan?.advance ? currentLoan?.advance : false,
+                            advanceTransaction: currentLoan.advanceTransaction ? currentLoan.advanceTransaction : false,
                             dateOfRelease: dateOfRelease,
                         };
                         if (currentLoan?.current?.length > 0) {
@@ -987,8 +987,8 @@ const CashCollectionDetailsPage = () => {
                         selected: false,
                         loanFor: loan.hasOwnProperty('loanFor') ? loan.loanFor : 'today',
                         dateOfRelease: loan.hasOwnProperty('dateOfRelease') ? loan.dateOfRelease : null,
-                        advance: currentLoan.advance,
-                        advanceTransaction: currentLoan.advanceTransaction,
+                        advance: currentLoan?.advance ? currentLoan?.advance : false,
+                        advanceTransaction: currentLoan.advanceTransaction ? currentLoan.advanceTransaction : false,
                     };
 
                     if (prevLoan) {
