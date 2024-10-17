@@ -479,13 +479,15 @@ const LoanApplicationPage = () => {
                     let allowApproved = false;
                     let hasActiveLoan = false;
                     let hasTdaLoan = false;
-                    
+                    let transactionClosed = false;
                     if (loan.groupStatus.length > 0 && loan.groupStatus[0].hasOwnProperty('groupStatusArr')) {
                         const transactionStatus = loan.groupStatus[0].groupStatusArr.filter(s => s === "pending");
                         if (transactionStatus.length > 0) {
                             allowApproved = true;
                         } else if (loan.loanCycle == 1) {
                             allowApproved = true;
+                        } else {
+                            transactionClosed = true;
                         }
                     } else if (loan.pendings.length > 0) {
                         allowApproved = false;
@@ -515,7 +517,8 @@ const LoanApplicationPage = () => {
                         selected: false,
                         hasActiveLoan: hasActiveLoan,
                         hasTdaLoan: hasTdaLoan,
-                        ciName: UppercaseFirstLetter(loan.client?.ciName)
+                        ciName: UppercaseFirstLetter(loan.client?.ciName),
+                        transactionClosed: transactionClosed
                     });
                 });
                 loanList.sort((a, b) => {
@@ -568,6 +571,7 @@ const LoanApplicationPage = () => {
                 await response.loans && response.loans.map(loan => {
                     let allowApproved = false;
                     let hasActiveLoan = false;
+                    let transactionClosed = false;
                     
                     if (loan.groupStatus.length > 0 && loan.groupStatus[0].hasOwnProperty('groupStatusArr')) {
                         const transactionStatus = loan.groupStatus[0].groupStatusArr.filter(s => s === "pending");
@@ -575,6 +579,8 @@ const LoanApplicationPage = () => {
                             allowApproved = true;
                         } else if (loan.loanCycle == 1) {
                             allowApproved = true;
+                        } else {
+                            transactionClosed = true;
                         }
                     } else {
                         allowApproved = true;
@@ -595,7 +601,8 @@ const LoanApplicationPage = () => {
                         allowApproved: allowApproved,
                         selected: false,
                         hasActiveLoan: hasActiveLoan,
-                        ciName: UppercaseFirstLetter(loan.client?.ciName)
+                        ciName: UppercaseFirstLetter(loan.client?.ciName),
+                        transactionClosed: transactionClosed
                     });
                 });
                 loanList.sort((a, b) => {
@@ -1339,7 +1346,7 @@ const LoanApplicationPage = () => {
     }
     
     const handleShowWarningModal = (row) => {
-        if (row.original.allowApproved) {
+        if (!row.original.transactionClosed) {
             setLoan(row.original);
             setShowRejectModal(true);
         } else {

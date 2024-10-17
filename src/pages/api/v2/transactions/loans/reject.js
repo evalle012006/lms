@@ -92,6 +92,7 @@ async function updateLoan(req, res) {
                         cashCollection.status = cashCollection.loanBalance <= 0 ? 'completed' : 'active';
                         cashCollection.currentReleaseAmount = 0;
                         cashCollection.loanId = prevLoan._id + "";
+                        cashCollection.advance = false;
                         const ccId = cashCollection._id;
                         delete cashCollection._id;
                         delete cashCollection.prevLoanId;
