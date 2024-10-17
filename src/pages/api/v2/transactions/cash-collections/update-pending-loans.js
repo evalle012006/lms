@@ -48,7 +48,10 @@ export async function savePendingLoans(collections) {
 async function updatePendingLoan(collection, currentDate) {
     logger.debug({page: `Saving Cash Collection - Updating Pending Loan: ${collection.loanId}`, currentDate: currentDate});
 
-    let currentLoan = await findLoans({ _id: { _eq: collection.loanId } });
+    let currentLoan = await findLoans({
+      clientId: { _eq: collection.clientId },
+      status: { _eq: "active" },
+    });
     let pendingLoan = await findLoans({
       clientId: { _eq: collection.clientId },
       status: { _eq: "pending" },
