@@ -50,7 +50,7 @@ async function updatePendingLoan(collection, currentDate) {
 
     let currentLoan = await findLoans({
       clientId: { _eq: collection.clientId },
-      status: { _eq: "active" },
+      status: { _in: ["active", "completed"] },
     });
     let pendingLoan = await findLoans({
       clientId: { _eq: collection.clientId },
