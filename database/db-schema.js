@@ -2,7 +2,6 @@ const masterFileTableNames = [
   'regions',
   'areas',
   'branches',
-  'groups',
   'divisions',
   'holidays',
   'roles',
@@ -13,6 +12,7 @@ const masterFileTableNames = [
 ];
 
 const transactionTableNames = [
+  'groups',
   'client',
   'badDebtCollections',
   'branchCOH',

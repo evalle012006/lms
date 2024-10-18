@@ -27,6 +27,7 @@ delete from "branchCOH" where (true);
 delete from "loans" where (true);
 delete from "losTotals" where (true);
 delete from "transferClients" where (true);
+delete from "groups" where (true);
 
 
 --- data verification
