@@ -22,7 +22,7 @@ async function save(req, res) {
 }
 
 export async function savePendingLoans(collections) {
-  logger.debug({page: `Update Cash Collection For Pending Loans`, pendingLoans: collections});
+  logger.debug({page: `Update Cash Collection For Pending Loans`, cashCollectionsFromFrontEnd: collections});
   const currentDate = moment(getCurrentDate()).format('YYYY-MM-DD');
   await Promise.all(collections.map(async cc => {
       if ((cc?.loanFor === 'today' || (cc?.loanFor === 'tomorrow' && cc?.dateOfRelease === currentDate))) {
@@ -52,6 +52,11 @@ async function updatePendingLoan(collection, currentDate) {
       clientId: { _eq: collection.clientId },
       status: { _in: ["active", "completed"] },
     });
+    let currentLoanClosed = await findLoans({
+      clientId: { _eq: collection.clientId },
+      status: { _eq: "closed" },
+      fullPaymentDate: { _eq: currentDate },
+    });
     let pendingLoan = await findLoans({
       clientId: { _eq: collection.clientId },
       status: { _eq: "pending" },
@@ -62,13 +67,16 @@ async function updatePendingLoan(collection, currentDate) {
       dateAdded: { _eq: currentDate },
     });
     
-    logger.debug({page: `Saving Cash Collection - Updating Pending Loan: ${collection.loanId}`, currentLoanSize: currentLoan.length, pendingLoanSize: pendingLoan.length, cashCollectionSize: cashCollection.length, currentLoan});
+    logger.debug({page: `Saving Cash Collection - Updating Pending Loan Sizes: ${collection.loanId}`, currentLoanSize: currentLoan.length, pendingLoanSize: pendingLoan.length, cashCollectionSize: cashCollection.length});
+    logger.debug({page: `Saving Cash Collection - Updating Pending Loan CurrentLoans: ${collection.loanId}`, currentLoan: currentLoan, currentLoanClosed: currentLoanClosed});
+
     if (currentLoan.length > 0 && pendingLoan.length > 0 && cashCollection.length > 0) {
         currentLoan = currentLoan[0];
         pendingLoan = pendingLoan[0];
         cashCollection = cashCollection[0];
 
         const toUpdatePendingLoan = {
+          advanceTransaction: true,
           mcbu: cashCollection.mcbu,
           prevLoanFullPaymentDate: currentDate,
           prevLoanFullPaymentAmount: cashCollection.fullPayment,
@@ -86,7 +94,8 @@ async function updatePendingLoan(collection, currentDate) {
           fullPaymentDate:  cashCollection.fullPaymentDate,
           mcbuWithdrawal: cashCollection.mcbuWithdrawal,
           mcbuReturnAmt: cashCollection.mcbuReturnAmt,
-          history: cashCollection.history
+          history: cashCollection.history,
+          advanceTransaction: false
         };
 
         const toUpdateCollection = {
@@ -123,6 +132,43 @@ async function updatePendingLoan(collection, currentDate) {
         ).catch(err => {
           logger.error(err);
           throw err;
+        }) 
+    } else if (currentLoanClosed.length > 0 && pendingLoan.length > 0 && cashCollection.length > 0) {
+      currentLoanClosed = currentLoanClosed[0];
+      pendingLoan = pendingLoan[0];
+      cashCollection = cashCollection[0];
+
+      logger.debug({page: `Saving Cash Collection - Updating Pending Loan CLOSED`, message: 'Current Loan is already closed', currentLoanClosed: currentLoanClosed});
+
+      const toUpdatePendingLoan = {
+        status: "closed",
+        remarks: "Previous loan is already closed"
+      };
+
+      const toUpdateCollection = {
+        currentReleaseAmount: 0,
+        prevLoanId: "",
+        status: 'closed',
+      };
+
+      const pendingLoanId = pendingLoan._id;
+      const cashCollectionId = cashCollection._id;
+      
+      delete pendingLoan._id;
+      delete cashCollection._id;
+
+      await graph.mutation(
+        updateQl(loansType('pending'), {
+          set: { ... toUpdatePendingLoan },
+          where: { _id: { _eq: pendingLoanId } }
+        }),
+        updateQl(ccType, {
+          set: { ... toUpdateCollection },
+          where: { _id: { _eq: cashCollectionId } }
         })
+      ).catch(err => {
+        logger.error(err);
+        throw err;
+      })
     }
 }

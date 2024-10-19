@@ -3,6 +3,7 @@ import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, updateQl } from '@/lib/graph/graph.util';
 import { apiHandler } from '@/services/api-handler';
 import { gql } from 'node_modules/apollo-boost/lib/index';
+import moment from 'moment';
 
 let response = {};
 let statusCode = 200;
@@ -16,10 +17,11 @@ export default apiHandler({
 });
 
 async function processLOSummary(req, res) {
-    const { loId, mode, currentDate, currentTime } = req.body;
+    const { loId, mode, currentDate, currentTime, transactionType } = req.body;
 
     if (loId) {
-        const cashCollectionCounts = await checkLoTransactions(loId, currentDate);
+        const dayName = moment(currentDate).format('dddd').toLowerCase();
+        const cashCollectionCounts = await checkLoTransactions(loId, currentDate, dayName, transactionType);
         if (cashCollectionCounts) {
             const noCollections = cashCollectionCounts.filter(cc => { 
                 if (cc.cashCollections.length === 0) {
@@ -37,7 +39,7 @@ async function processLOSummary(req, res) {
                     return cc;
                 }
             });
-
+            console.log('noCollections', noCollections);
             if (mode === 'close' && noCollections?.length > 0) {
                 response = { error: true, message: "Some groups have no current transactions for the selected Loan Officer." };
             } else if (mode === 'close' && hasDrafts?.length > 0) {
@@ -108,7 +110,7 @@ async function getLOSummary(req, res) {
         .end(JSON.stringify(response));
 }
 
-const checkLoTransactions = async (loId, currentDate) => {
+const checkLoTransactions = async (loId, currentDate, dayName, transactionType) => {
 
     const collections = await graph.apollo.query({
         query: gql`
@@ -123,6 +125,8 @@ const checkLoTransactions = async (loId, currentDate) => {
            args: {
             loId,
             dateAdded: currentDate,
+            dayName: dayName,
+            transactionType: transactionType,
            }
         }
     })

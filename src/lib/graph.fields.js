@@ -152,6 +152,7 @@ export const LOAN_FIELDS = `
   transferredReleased
   dateOfRelease
   ciName
+  advanceTransaction
   `;
 
 export const GROUP_FIELDS = `

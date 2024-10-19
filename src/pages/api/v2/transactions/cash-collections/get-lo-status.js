@@ -17,7 +17,7 @@ async function getLOStatus(req, res) {
     if (cashCollections.length === 0) {
         status = 'open';
     } else {
-        const pendingCC = cashCollections.filter(cc => cc.status === 'pending');
+        const pendingCC = cashCollections.filter(cc => cc.groupStatus === 'pending');
         if (pendingCC.length > 0) {
             status = 'open';
         }

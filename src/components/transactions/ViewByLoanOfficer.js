@@ -1113,7 +1113,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
         if (row.original.activeClients > 0 && !row.original.hasOwnProperty("allNew")) {
             setLoading(true);
 
-            let data = { loId: row.original._id, mode: 'open', currentDate: currentDate };
+            let data = { loId: row.original._id, mode: 'open', currentDate: currentDate, transactionType: row.original.transactionType };
 
             const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collections/update-group-transaction-status', data);
             
@@ -1136,7 +1136,7 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
         if (row.original.activeClients > 0 && !row.original.hasOwnProperty("allNew")) {
             setLoading(true);
 
-            let data = { loId: row.original._id, mode: 'close', currentDate: currentDate, currentTime: currentTime };
+            let data = { loId: row.original._id, mode: 'close', currentDate: currentDate, currentTime: currentTime, transactionType: row.original.transactionType };
 
             const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collections/update-group-transaction-status', data);
             if (response.success) {

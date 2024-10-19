@@ -115,7 +115,7 @@ async function save(req, res) {
             ... mutationQl
         );
 
-        const pendingLoans = data.collection.filter(c => c.status === 'pending' && c.advance == true);
+        const pendingLoans = data.collection.filter(c => (c.status === 'pending' || c.status === 'closed') && c.advance == true);
         await savePendingLoans(pendingLoans);
     }
 

@@ -118,7 +118,7 @@ async function save(req, res) {
             if (mode === 'reloan') {
                 finalData.modifiedDateTime = new Date();
             }
-            logger.debug({page: `Saving Loan: ${loanData.clientId}`, message: 'Final Data', data: finalData});
+
             delete finalData.currentReleaseAmount;
             delete finalData.currentDate;
             if (finalData?.loanFor == 'tomorrow') {
@@ -136,6 +136,12 @@ async function save(req, res) {
             }
 
             finalData.prevLoanId = oldLoanId;
+
+            if (mode == 'advance' || mode == 'active') {
+                finalData.advanceTransaction = true;
+            }
+
+            logger.debug({page: `Saving Loan: ${loanData.clientId}`, message: 'Final Data', data: finalData});
 
             const loanId = generateUUID();
             const loan = (await graph.mutation(insertQl(loansType, {
