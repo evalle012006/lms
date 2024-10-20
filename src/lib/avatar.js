@@ -54,7 +54,7 @@ const Avatar = ({
   name,
   color,
   colors = defaultColors,
-  size = 40,
+  size = 50,
   style,
   onClick,
   className,
@@ -76,6 +76,11 @@ const Avatar = ({
   const containerStyle = {
     display: 'inline-block',
     margin: marginInPx,
+    width: sizeInPx,
+    height: sizeInPx,
+    backgroundColor: 'transparent',
+    overflow: 'hidden',
+    borderRadius,
   };
 
   const imageStyle = {
@@ -86,19 +91,22 @@ const Avatar = ({
     objectFit: 'cover',
   };
 
+  const hasImage = (src || srcset) && !imageError;
+
   const innerStyle = {
-    width: sizeInPx,
-    height: sizeInPx,
+    width: '100%',
+    height: '100%',
     borderRadius,
-    backgroundColor: color || colors[sumChars(name) % colors.length],
+    backgroundColor: hasImage ? 'transparent' : (color || colors[sumChars(name) % colors.length]),
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     padding: paddingInPx,
     boxSizing: 'border-box',
     fontSize: `${Math.floor(size * 0.4)}px`,
-    // fontWeight: 'bold',
     color: '#ffffff',
+    border: 'none',
+    outline: 'none',
   };
 
   const handleImageError = () => {
@@ -107,11 +115,8 @@ const Avatar = ({
 
   let classes = ['UserAvatar'];
 
-  if ((src || srcset) && !imageError) {
-    innerStyle.backgroundImage = `url(${src || srcset})`;
-    innerStyle.backgroundSize = 'cover';
-    innerStyle.backgroundRepeat = 'no-repeat';
-    innerStyle.backgroundPosition = 'center';
+  if (hasImage) {
+    classes.push(`UserAvatar--image`);
   } else {
     classes.push(`UserAvatar--${contrast(innerStyle.backgroundColor)}`);
   }
@@ -124,7 +129,7 @@ const Avatar = ({
       onClick={onClick}
     >
       <div className={`UserAvatarInner ${className || ''}`} style={innerStyle}>
-        {(src || srcset) && !imageError ? (
+        {hasImage ? (
           <img
             src={src || srcset}
             alt={name}

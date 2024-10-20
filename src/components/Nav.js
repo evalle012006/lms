@@ -737,27 +737,27 @@ const NavComponent = ({ isVisible, toggleNav, isMobile }) => {
         )}
         <div className={`bg-main fixed top-0 left-0 h-full w-full lg:w-64 overflow-y-auto transition-transform duration-300 ease-in-out transform z-40 
           ${isVisible || !isMobile ? 'translate-x-0' : '-translate-x-full'}`}>
-            <header className="flex justify-center items-center border-b border-orange-darkest py-4">
-            <div id="logo">
-                <Link href="/" className="no-underline text-white md:text-2xl sm:text-4xl font-bold">
-                <img src={logo.src} className="cursor-pointer duration-500" alt="Logo" />
-                </Link>
-            </div>
+            <header className="flex justify-center items-center py-4">
+              <div id="logo">
+                  <Link href="/" className="no-underline text-white md:text-2xl sm:text-4xl font-bold">
+                  <img src={logo.src} className="cursor-pointer duration-500" alt="Logo" />
+                  </Link>
+              </div>
             </header>
-            <div className="group relative">
+            {/* <div className="group relative">
                 <span className="hidden group-hover:block absolute right-2 pt-1 cursor-pointer" onClick={() => router.push(`/settings/users/${userState._id}`)}>
                     <PencilSquareIcon className="text-white w-6 h-6" />
                 </span>
                 <div id="profile" className="flex items-center border-b border-orange-darkest px-2 py-4">
-                    <div id="img" className="w-1/4 mr-6">
-                        <Avatar name={userState.firstName + " " + userState.lastName} src={userState.profile ? userState.profile : ""} className={`${userState.profile ? 'p-8' : 'p-6'} `} />
+                    <div id="img" className="w-1/4">
+                        <Avatar name={userState.firstName + " " + userState.lastName} src={userState.profile ? userState.profile : ""} className={`${userState.profile ? '' : 'p-6'} `} />
                     </div>
                     <div id="welcome" className="text-white w-2/4 sm:ml-1 md:ml-6">
                         <p className="text-xs">Welcome,</p>
                         <span className="text-lg">{userState.firstName + " " + userState.lastName}</span>
                     </div>
                 </div>
-            </div>
+            </div> */}
             <nav className="flex-grow">
                 <ul className="flex flex-col list-reset">
                     {filteredMenuItems.map((item, index) => (
