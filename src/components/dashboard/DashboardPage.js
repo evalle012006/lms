@@ -42,6 +42,8 @@ const DashboardPage = () => {
     const [loanCollectionData, setLoanCollectionData] = useState({ labels: [], datasets: [] });
     const [misPastDueData, setMisPastDueData] = useState({ labels: [], datasets: [] });
 
+    const [coh, setCoh] = useState(new Intl.NumberFormat('en-US', { style: 'currency', currency: 'PHP' }).format(Math.floor(Math.random() * 1000000)));
+    const [bankBalance, setBankBalance] = useState(new Intl.NumberFormat('en-US', { style: 'currency', currency: 'PHP' }).format(Math.floor(Math.random() * 1000000)));
 
     const summaryData = {
         activeClients: 51019,
@@ -297,7 +299,7 @@ const DashboardPage = () => {
     return (
         <div className="min-h-screen bg-gray-100 flex flex-col">
             <div className="flex-grow p-4 flex flex-col">
-                <div className="flex items-center justify-between pb-6 border-b">
+            <div className="flex items-center justify-between pb-6 border-b">
                     <div className="flex items-center">
                         <div className='group relative'>
                             <span className="hidden group-hover:block absolute right-2 pt-1 cursor-pointer" onClick={() => router.push(`/settings/users/${currentUser._id}`)}>
@@ -308,6 +310,10 @@ const DashboardPage = () => {
                         <h1 className="text-2xl font-semibold whitespace-nowrap">
                             Welcome, {`${currentUser.firstName} ${currentUser.lastName}`}!
                         </h1>
+                    </div>
+                    <div className="flex flex-col items-end">
+                        <p className="text-sm font-semibold">Cash On Hand: {formatNumber(coh)}</p>
+                        <p className="text-sm font-semibold">Bank Balance: {formatNumber(bankBalance)}</p>
                     </div>
                 </div>
                 <div className="flex items-center justify-between pb-2 border-b">
