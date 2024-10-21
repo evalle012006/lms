@@ -133,8 +133,6 @@ async function allLoans(req, res) {
 
         if (loData) {
             loData.map(lo => {
-                console.log(Object.keys(lo))
-                console.log('lo here', lo );
                 let temp = {
                     _id: lo._id,
                     loName: `${lo.firstName} ${lo.lastName}`
