@@ -1244,6 +1244,10 @@ const CashCollectionDetailsPage = () => {
                         errorMsg.add('Error occured. Only offset transaction allowed.');
                     }
                 }
+
+                if (cc.dcmc && cc.remarks?.value == 'delinquent-mcbu' && cc.mcbuCol <= 0) {
+                    errorMsg.add('Error occured. Please add MCBU amount.');
+                }
             } else if (cc.status !== 'totals' && (cc?.transferStr == null || cc?.transferStr == '-') && (cc.status === 'completed' || (cc?.status !== 'closed' && cc?.loanBalance <= 0)) && (!cc.remarks || (cc.remarks && (cc.remarks.value !== 'pending' && !cc.remarks.value?.startsWith('reloaner') && !cc.remarks.value?.startsWith('offset'))))) {
                 errorMsg.add("Invalid remarks. Fullpayment transaction has no remarks. Please set the remarks to RELOANER OR OFFSET.");
             }
@@ -1682,24 +1686,37 @@ const CashCollectionDetailsPage = () => {
 
                         if (temp?.dcmc || temp?.mpdc) {
                             if (mcbuCol > 0) {
-                                temp.mcbuCol = mcbuCol;
-                                temp.mcbuColStr = formatPricePhp(mcbuCol);
-                                temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + mcbuCol : 0 + mcbuCol;
-                                temp.mcbuStr = formatPricePhp(temp.mcbu);
-                                temp.prevData.mcbuCol = mcbuCol;
+                                if (temp?.prevData?.activeLoan > 0 && temp?.prevData?.activeLoan == mcbuCol) {
+                                    toast.error('Error occured. MCBU Collection should not be equal to the target collection. You can use the normal transaction');
+                                    temp.mcbuCol = 0;
+                                } else {
+                                    temp.mcbuCol = mcbuCol;
+                                    temp.mcbuColStr = formatPricePhp(mcbuCol);
+                                    temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + mcbuCol : 0 + mcbuCol;
+                                    temp.mcbuStr = formatPricePhp(temp.mcbu);
+                                    temp.prevData = {
+                                        ...temp.prevData,
+                                        mcbuCol: mcbuCol
+                                    };
+                                }
                             } else {
                                 toast.error('MCBU Collection must be greater than 0.');
+                                temp.mcbuCol = 0;
                             }
                         } else {
                             if (mcbuCol < 50) {
                                 temp.mcbuError = true;
+                                temp.mcbuCol = 0;
                             } else {
                                 temp.mcbuError = false;
                                 temp.mcbuCol = mcbuCol;
                                 temp.mcbuColStr = formatPricePhp(mcbuCol);
                                 temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + mcbuCol : 0 + mcbuCol;
                                 temp.mcbuStr = formatPricePhp(temp.mcbu);
-                                temp.prevData.mcbuCol = mcbuCol;
+                                temp.prevData = {
+                                    ...temp.prevData,
+                                    mcbuCol: mcbuCol
+                                };
                             }
                         }
                     }
@@ -2017,6 +2034,7 @@ const CashCollectionDetailsPage = () => {
                                     }
                                     temp.paymentCollection = 0;
                                     temp.paymentCollectionStr = '-';
+                                    toast.warning("Please don't forget to add the collection in MCBU Collection field.");
                                 } else {
                                     if (remarks.value === 'delinquent-offset') {
                                         temp.mispayment = false;

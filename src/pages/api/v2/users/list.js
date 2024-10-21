@@ -51,7 +51,7 @@ async function list(req, res) {
                             root: { _eq: false },
                             role: { _contains: { rep: 4 } },
                             designatedBranch: { _eq: branchCode },
-                            loNo: { _lt: 10 }
+                            loNo: { _gt: 10 }
                         },
                         order_by: [{
                             loNo: 'asc'
