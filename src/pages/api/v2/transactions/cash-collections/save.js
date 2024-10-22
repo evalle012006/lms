@@ -17,6 +17,7 @@ export default apiHandler({
 });
 
 async function save(req, res) {
+    const user_id = req.auth.sub;
     let response = {};
     let statusCode = 200;
     let data = req.body;
@@ -31,7 +32,7 @@ async function save(req, res) {
         let newCC = [];
         // let prevCommpleted = [];
         
-        logger.debug({page: `Saving Cash Collection - Group ID: ${data.collection[0]?.groupId}`});
+        logger.debug({user_id, page: `Saving Cash Collection - Group ID: ${data.collection[0]?.groupId}`});
         const promiseData = data.collection.map(async cc => {
             if (cc.status !== "totals") {
                 const collection = JSON.parse(JSON.stringify(cc))// clone entry to avoid reference update
@@ -76,7 +77,7 @@ async function save(req, res) {
                     activeLoan = collection?.prevData?.activeLoan ? collection.prevData?.activeLoan : 0;
                 }
 
-                logger.debug({page: `Saving Cash Collection - Group ID: ${data.collection[0]?.groupId}`, currentDate: currentDate, data: collection});
+                logger.debug({user_id, page: `Saving Cash Collection - Group ID: ${data.collection[0]?.groupId}`, currentDate: currentDate, data: collection});
                 if (collection.hasOwnProperty('_id') && collection._id != collection?.loanId) {
                     collection.modifiedDateTime = new Date();
                     const existCollection = {...assignNullValues(collection)};
@@ -90,12 +91,12 @@ async function save(req, res) {
                 }
                 
                 if (collection.status !== "tomorrow" && collection.status !== "pending" && !collection.draft) {
-                    await updateLoan(mutationQl, collection, currentDate)
-                    await updateClient(mutationQl, collection, currentDate);
+                    await updateLoan(user_id, mutationQl, collection, currentDate)
+                    await updateClient(user_id, mutationQl, collection, currentDate);
                 }
 
                 if (collection.status == 'tomorrow' && collection.mcbuWithdrawal > 0) {
-                    await updateLoanMcbuWithdrawal(mutationQl, collection)
+                    await updateLoanMcbuWithdrawal(user_id, mutationQl, collection)
                 }
             }
         });
@@ -116,7 +117,7 @@ async function save(req, res) {
         );
 
         const pendingLoans = data.collection.filter(c => (c.status === 'pending' || c.status === 'closed') && c.advance == true);
-        await savePendingLoans(pendingLoans);
+        await savePendingLoans(user_id, pendingLoans);
     }
 
     response = {success: true};
@@ -185,9 +186,9 @@ async function updateCollection(mutationQL, collections) {
     });
 }
 
-async function updateLoan(mutationQL, collection, currentDate) {
+async function updateLoan(user_id, mutationQL, collection, currentDate) {
     let loan = await graph.query(queryQl(LOAN_TYPE('loans'), { where: { _id: { _eq: collection.loanId } } })).then(res => res.data.loans);
-    logger.debug({page: `Saving Cash Collection - Updating Loan: ${collection.loanId}`});
+    logger.debug({user_id, page: `Saving Cash Collection - Updating Loan: ${collection.loanId}`});
     if (loan.length > 0) {
         loan = loan[0];
         delete loan.groupStatus;
@@ -302,7 +303,7 @@ async function updateLoan(mutationQL, collection, currentDate) {
         }
 
         loan.lastUpdated = currentDate;
-        logger.debug({page: `Saving Cash Collection - Updating Loan`, data: loan});
+        logger.debug({user_id, page: `Saving Cash Collection - Updating Loan`, data: loan});
         const loanId = loan._id;
         delete loan._id;
 
@@ -321,9 +322,9 @@ async function updateLoan(mutationQL, collection, currentDate) {
     }
 }
 
-async function updateLoanMcbuWithdrawal(mutationQL, collection) {
+async function updateLoanMcbuWithdrawal(user_id, mutationQL, collection) {
     let loan = await graph.query(queryQl(LOAN_TYPE('loans'), { where: { _id: { _eq: collection.loanId } } })).then(res => res.data.loans);
-    logger.debug({page: `Saving Cash Collection - Updating Loan Due to Withdrawal: ${collection.loanId}`});
+    logger.debug({user_id, page: `Saving Cash Collection - Updating Loan Due to Withdrawal: ${collection.loanId}`});
     if (loan.length > 0) {
         loan = loan[0];
         delete loan.groupStatus;
@@ -336,7 +337,7 @@ async function updateLoanMcbuWithdrawal(mutationQL, collection) {
         loan.mcbu = collection.mcbu;
         loan.mcbuWithdrawal = collection.mcbuWithdrawal;
 
-        logger.debug({page: `Saving Cash Collection - Updating Loan Due to Withdrawal`, data: loan});
+        logger.debug({user_id, page: `Saving Cash Collection - Updating Loan Due to Withdrawal`, data: loan});
         const loanId = loan._id;
         delete loan._id;
 
@@ -355,7 +356,7 @@ async function updateLoanMcbuWithdrawal(mutationQL, collection) {
     }
 }
 
-async function updateClient(mutationQl, loan, currentDate) {
+async function updateClient(user_id, mutationQl, loan, currentDate) {
 
     let client = await graph.query(queryQl(CLIENT_TYPE('client'), { where: { _id: { _eq: loan.clientId } } })).then(res => res.data.client);
     if (client.length > 0) {
@@ -415,16 +416,16 @@ async function updateClient(mutationQl, loan, currentDate) {
         
         if (loan.remarks && loan.remarks.value?.startsWith('offset')) {
             // await updateLoanClose(mutationQl, loan, currentDate);
-            await updateGroup(mutationQl, loan);
+            await updateGroup(user_id, mutationQl, loan);
         }
     }
 }
 
-async function updateLoanClose(mutationQl, loanData, currentDate) {
+async function updateLoanClose(user_id, mutationQl, loanData, currentDate) {
     let loan = await graph.query(
         queryQl(LOAN_TYPE('loans'), { where: { _id: { _eq: loanData.loanId } } })
     ).then(res => res.data.loans);
-    logger.debug({page: `Saving Cash Collection - Updating Loan Close`, loanSize: loan.length});
+    logger.debug({user_id, page: `Saving Cash Collection - Updating Loan Close`, loanSize: loan.length});
     if (loan.length > 0) {
         loan = loan[0];
 
@@ -449,7 +450,7 @@ async function updateLoanClose(mutationQl, loanData, currentDate) {
     }
 }
 
-async function updateGroup(mutationQl, loan) {
+async function updateGroup(user_id, mutationQl, loan) {
     let group = await graph.query(
         queryQl(GROUP_TYPE('groups'), {where: { _id: { _eq: loan.groupId } }})
     ).then(res => res.data.groups);
