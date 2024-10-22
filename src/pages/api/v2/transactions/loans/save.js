@@ -4,19 +4,21 @@ import logger from '@/logger';
 import moment from 'moment';
 import { GraphProvider } from '@/lib/graph/graph.provider'
 import { createGraphType, insertQl, queryQl, updateQl } from '@/lib/graph/graph.util'
-import { CASH_COLLECTIONS_FIELDS, LOAN_FIELDS } from '@/lib/graph.fields'
+import { CASH_COLLECTIONS_FIELDS, GROUP_FIELDS, LOAN_FIELDS } from '@/lib/graph.fields'
 import { generateUUID } from '@/lib/utils'
 import { filterGraphFields } from '@/lib/graph.functions';
 
 const graph = new GraphProvider();
 const loansType = createGraphType("loans", LOAN_FIELDS)();
 const cashCollectionsType = createGraphType("cashCollections", CASH_COLLECTIONS_FIELDS)();
+const groupType =createGraphType("groups", GROUP_FIELDS)();
 
 export default apiHandler({
     post: save
 });
 
 async function save(req, res) {
+    const user_id = req.auth.sub;
     let response = {};
 
     const loanData = req.body;
@@ -47,7 +49,7 @@ async function save(req, res) {
         delete loanData.loanOfficer;
     }
 
-    logger.debug({page: `Saving Loan: ${loanData.clientId}`, mode: mode, data: loanData});
+    logger.debug({user_id, page: `Saving Loan: ${loanData.clientId}`, mode: mode, data: loanData});
     const spotExist = (await graph.query(queryQl(loansType, {
       where: {
         slotNo: { _eq: loanData.slotNo },
@@ -141,7 +143,7 @@ async function save(req, res) {
                 finalData.advanceTransaction = true;
             }
 
-            logger.debug({page: `Saving Loan: ${loanData.clientId}`, message: 'Final Data', data: finalData});
+            logger.debug({user_id, page: `Saving Loan: ${loanData.clientId}`, message: 'Final Data', data: finalData});
 
             const loanId = generateUUID();
             const loan = (await graph.mutation(insertQl(loansType, {
@@ -203,10 +205,8 @@ async function updateUser(loan) {
 
 
 async function updateGroup(loan) {
-    const { db } = await connectToDatabase();
-    const ObjectId = require('mongodb').ObjectId;
-
-    let group = await db.collection('groups').find({ _id: new ObjectId(loan.groupId) }).toArray();
+    //let group = await db.collection('groups').find({ _id: new ObjectId(loan.groupId) }).toArray();
+    let group = await graph.query(queryQl(groupType, { where: { _id: { _eq: loan.groupId } } })).then(res => res.data.groups);
     if (group.length > 0) {
         group = group[0];
         group.noOfClients = group.noOfClients ? group.noOfClients : 0;
@@ -218,13 +218,17 @@ async function updateGroup(loan) {
             group.status = 'full';
         }
 
-        delete group._id;
-        await db.collection('groups').updateOne(
-            {  _id: new ObjectId(loan.groupId) },
-            {
-                $set: { ...group }
-            }, 
-            { upsert: false }
+        await graph.mutation(
+            updateQl(groupType, {
+                set: {
+                    noOfClients: group.noOfClients,
+                    availableSlots: group.availableSlots,
+                    status: group.status,
+                },
+                where: {
+                    _id: { _eq: loan.groupId }
+                }
+            })
         );
     }
 }
