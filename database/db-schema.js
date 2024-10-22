@@ -24,9 +24,6 @@ const transactionTableNames = [
 
 const getDateAddedFilterFieldForCollection = (collectionName) => {
   switch (collectionName) {
-    // don't filter by date
-    case 'groups':
-      return null;
     case 'loans':
       return 'insertedDateTime';
     default:
