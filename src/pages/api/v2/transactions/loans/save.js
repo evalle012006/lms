@@ -9,9 +9,9 @@ import { generateUUID } from '@/lib/utils'
 import { filterGraphFields } from '@/lib/graph.functions';
 
 const graph = new GraphProvider();
-const loansType = createGraphType("loans", LOAN_FIELDS)();
-const cashCollectionsType = createGraphType("cashCollections", CASH_COLLECTIONS_FIELDS)();
-const groupType =createGraphType("groups", GROUP_FIELDS)();
+const loansType = createGraphType("loans", LOAN_FIELDS)
+const cashCollectionsType = createGraphType("cashCollections", CASH_COLLECTIONS_FIELDS)
+const groupType =createGraphType("groups", GROUP_FIELDS)
 
 export default apiHandler({
     post: save
@@ -19,6 +19,8 @@ export default apiHandler({
 
 async function save(req, res) {
     const user_id = req.auth.sub;
+    const mutationList = [];
+    const addToMutationList = addToList => mutationList.push(addToList(`bulk_update_${mutationList.length}`));
     let response = {};
 
     const loanData = req.body;
@@ -50,7 +52,7 @@ async function save(req, res) {
     }
 
     logger.debug({user_id, page: `Saving Loan: ${loanData.clientId}`, mode: mode, data: loanData});
-    const spotExist = (await graph.query(queryQl(loansType, {
+    const spotExist = (await graph.query(queryQl(loansType(), {
       where: {
         slotNo: { _eq: loanData.slotNo },
         groupId: { _eq: loanData.groupId },
@@ -58,7 +60,7 @@ async function save(req, res) {
       }
     }))).data?.loans;
 
-    const pendingExist = (await graph.query(queryQl(loansType, {
+    const pendingExist = (await graph.query(queryQl(loansType(), {
       where: {
         slotNo: { _eq: loanData.slotNo },
         clientId: { _eq: loanData.clientId },
@@ -66,7 +68,7 @@ async function save(req, res) {
       }
     }))).data?.loans;
       
-    const groupCashCollections = (await graph.query(queryQl(cashCollectionsType, {
+    const groupCashCollections = (await graph.query(queryQl(cashCollectionsType(), {
       where: {
         groupId: { _eq: loanData.groupId },
         dateAdded: { _eq: currentDate },
@@ -94,7 +96,7 @@ async function save(req, res) {
             message: `Client has a PENDING release already!`
         };
     } else {
-        const loans = (await graph.query(queryQl(loansType, {
+        const loans = (await graph.query(queryQl(loansType(), {
           where: {
             clientId: { _eq: loanData.clientId },
             status: { _eq: 'active' }
@@ -146,28 +148,34 @@ async function save(req, res) {
             logger.debug({user_id, page: `Saving Loan: ${loanData.clientId}`, message: 'Final Data', data: finalData});
 
             const loanId = generateUUID();
-            const loan = (await graph.mutation(insertQl(loansType, {
-              objects: [filterGraphFields(LOAN_FIELDS, {
-                ...finalData,
-                _id: loanId,
-                dateGranted: currentDate,
-                insertedDateTime: new Date()
-              })]
-            }))).data?.loans?.returning?.[0];
+            addToMutationList(alias => insertQl((loansType(alias)), {
+                objects: [filterGraphFields(LOAN_FIELDS, {
+                  ...finalData,
+                  _id: loanId,
+                  dateGranted: currentDate,
+                  insertedDateTime: new Date()
+                })]
+              }));
 
             if (mode === 'reloan') {
                 reloan = true;
-                await updateLoan(oldLoanId, finalData, currentDate);
+                await updateLoan(oldLoanId, finalData, currentDate, addToMutationList);
             } else if (mode === 'advance' || mode === 'active') {
-                await updateLoan(oldLoanId, finalData, currentDate, mode, groupStatus);
+                await updateLoan(oldLoanId, finalData, currentDate, mode, groupStatus, addToMutationList);
             } else {
-                await updateGroup(loanData);
+                await updateGroup(loanData, addToMutationList);
             }
 
             if (mode !== 'advance' && mode !== 'active' && finalData?.loanFor !== 'tomorrow') {
-                await saveCashCollection(loanData, reloan, group, loanId, currentDate, groupStatus);
+                await saveCashCollection(loanData, reloan, group, loanId, currentDate, groupStatus, addToMutationList);
                 // await updateUser(loanData);
             }
+
+            await graph.mutation(
+                ... mutationList
+            );
+
+            const [loan] = (await graph.query(queryQl(loansType(), { where: { _id: { _eq: loanId } } }))).data.loans;
 
             response = {
                 success: true,
@@ -179,34 +187,10 @@ async function save(req, res) {
     res.send(response);
 }
 
-// this will reflect on next login
-async function updateUser(loan) {
-    const { db } = await connectToDatabase();
-    const ObjectId = require('mongodb').ObjectId;
 
-    let user = await db.collection('users').find({ _id: new ObjectId(loan.loId) }).toArray();
-    if (user.length > 0) {
-        user = user[0];
-        
-        if (!user.hasOwnProperty('transactionType')) {
-            user.transactionType = loan.occurence;
-
-            delete user._id;
-            await db.collection('users').updateOne(
-                {  _id: new ObjectId(loan.loId) },
-                {
-                    $set: { ...user }
-                }, 
-                { upsert: false }
-            );
-        }
-    }
-}
-
-
-async function updateGroup(loan) {
+async function updateGroup(loan, addToMutationList) {
     //let group = await db.collection('groups').find({ _id: new ObjectId(loan.groupId) }).toArray();
-    let group = await graph.query(queryQl(groupType, { where: { _id: { _eq: loan.groupId } } })).then(res => res.data.groups);
+    let group = await graph.query(queryQl(groupType(), { where: { _id: { _eq: loan.groupId } } })).then(res => res.data.groups);
     if (group.length > 0) {
         group = group[0];
         group.noOfClients = group.noOfClients ? group.noOfClients : 0;
@@ -218,8 +202,7 @@ async function updateGroup(loan) {
             group.status = 'full';
         }
 
-        await graph.mutation(
-            updateQl(groupType, {
+        addToMutationList(alias => updateQl(groupType(alias), {
                 set: {
                     noOfClients: group.noOfClients,
                     availableSlots: group.availableSlots,
@@ -233,8 +216,8 @@ async function updateGroup(loan) {
     }
 }
 
-async function updateLoan(loanId, loanData, currentDate, mode) {
-    let loan = (await graph.query(queryQl(loansType, { where: { _id: { _eq: loanId }}}))).data?.loans;
+async function updateLoan(loanId, loanData, currentDate, mode, addToMutationList) {
+    let loan = (await graph.query(queryQl(loansType(), { where: { _id: { _eq: loanId }}}))).data?.loans;
     logger.debug({page: `Updating Old Loan: ${loanId}`, mode: mode, data: loan});
     if (loan.length > 0) {
         loan = loan[0];
@@ -249,26 +232,26 @@ async function updateLoan(loanId, loanData, currentDate, mode) {
             loan.mcbu = loan.mcbu - loanData.mcbu;
             loan.status = 'closed';
             logger.debug({page: `Updating Cash Collection: ${loanId}`, data: loan});
-            await graph.mutation(updateQl(cashCollectionsType, {
-              set: { status: 'closed' },
-              where: {
-                clientId: { _eq: loan.clientId },
-                dateAdded: { _eq: currentDate },
-              }
-            }));
+            addToMutationList(alias =>updateQl(cashCollectionsType(alias), {
+                set: { status: 'closed' },
+                where: {
+                  clientId: { _eq: loan.clientId },
+                  dateAdded: { _eq: currentDate },
+                }
+              }));
         }
 
-        await graph.mutation(updateQl(loansType, {
+        addToMutationList(alias => updateQl(loansType(alias), {
           set: filterGraphFields(LOAN_FIELDS, { ...loan }),
           where: { _id: { _eq: loanId } },
-        }))
+        }));
     }
 }
 
-async function saveCashCollection(loan, reloan, group, loanId, currentDate, groupStatus) {
+async function saveCashCollection(loan, reloan, group, loanId, currentDate, groupStatus, addToMutationList) {
     const currentReleaseAmount = loan.amountRelease;
 
-    const cashCollection = (await graph.query(queryQl(cashCollectionsType, {
+    const cashCollection = (await graph.query(queryQl(cashCollectionsType(), {
       where: {
         clientId: { _eq: loan.clientId },
         dateAdded: { _eq: currentDate }
@@ -336,13 +319,14 @@ async function saveCashCollection(loan, reloan, group, loanId, currentDate, grou
             data.rejectReason = loan.rejectReason;
         }
         logger.debug({page: `Saving Cash Collection: ${loan.clientId}`, data: data});
-        await graph.mutation(insertQl(cashCollectionsType, { objects: [filterGraphFields(CASH_COLLECTIONS_FIELDS, {
+        addToMutationList(alias => insertQl(cashCollectionsType(alias), { objects: [filterGraphFields(CASH_COLLECTIONS_FIELDS, {
             ...data,
             _id: generateUUID(),
         })]}));
     } else {
         logger.debug({page: `Updating Loan: ${loan.clientId}`});
-        await graph.mutation(updateQl(cashCollectionsType, {
+
+        addToMutationList(alias => updateQl(cashCollectionsType(alias), {
           set: {
             currentReleaseAmount: currentReleaseAmount,
             status: loan.status,
