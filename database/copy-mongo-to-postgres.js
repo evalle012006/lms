@@ -335,9 +335,6 @@ function mapValue({ name, dataType }, value, doc, tableName) {
   if (name === '_id') {
     return value.$oid ?? value.toString();
   }
-  if (dataType.match(/json/) || !!value && typeof value === 'object' || Array.isArray(value)) {
-    return (value === null || value === undefined) ? null : JSON.stringify(value);
-  }
   if (dataType.match(/numeric/)) {
     return isNaN(value) ? null : value || 0;
   }
@@ -362,6 +359,9 @@ function mapValue({ name, dataType }, value, doc, tableName) {
         return value.replace(pattern, replacement);
       }
     }
+  }
+  if (dataType.match(/json/) || !!value && typeof value === 'object' || Array.isArray(value)) {
+    return (value === null || value === undefined) ? null : JSON.stringify(value);
   }
   return value;
 }
