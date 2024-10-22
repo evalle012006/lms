@@ -21,7 +21,7 @@ class DBLoggerTransport extends Transport {
   }
 
   log(info, callback) {
-    if(process.env.ENABLE_DB_LOGGING) {
+    if(process.env.ENABLE_DB_LOGGING === 'true') {
       graph.mutation(insertQl(LMS_LOG_TYPE, { objects: [{ info }] }))
       .finally(() => {
         callback();
