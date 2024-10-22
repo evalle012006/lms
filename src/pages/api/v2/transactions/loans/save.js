@@ -159,15 +159,15 @@ async function save(req, res) {
 
             if (mode === 'reloan') {
                 reloan = true;
-                await updateLoan(oldLoanId, finalData, currentDate, addToMutationList);
+                await updateLoan(user_id, oldLoanId, finalData, currentDate, addToMutationList);
             } else if (mode === 'advance' || mode === 'active') {
-                await updateLoan(oldLoanId, finalData, currentDate, mode, groupStatus, addToMutationList);
+                await updateLoan(user_id, oldLoanId, finalData, currentDate, mode, groupStatus, addToMutationList);
             } else {
-                await updateGroup(loanData, addToMutationList);
+                await updateGroup(user_id, loanData, addToMutationList);
             }
 
             if (mode !== 'advance' && mode !== 'active' && finalData?.loanFor !== 'tomorrow') {
-                await saveCashCollection(loanData, reloan, group, loanId, currentDate, groupStatus, addToMutationList);
+                await saveCashCollection(user_id, loanData, reloan, group, loanId, currentDate, groupStatus, addToMutationList);
                 // await updateUser(loanData);
             }
 
@@ -188,8 +188,9 @@ async function save(req, res) {
 }
 
 
-async function updateGroup(loan, addToMutationList) {
+async function updateGroup(user_id, loan, addToMutationList) {
     //let group = await db.collection('groups').find({ _id: new ObjectId(loan.groupId) }).toArray();
+    logger.debug({user_id, page: `Updating Group Fro Loan: ${loanId}`, data: loan});
     let group = await graph.query(queryQl(groupType(), { where: { _id: { _eq: loan.groupId } } })).then(res => res.data.groups);
     if (group.length > 0) {
         group = group[0];
@@ -216,9 +217,9 @@ async function updateGroup(loan, addToMutationList) {
     }
 }
 
-async function updateLoan(loanId, loanData, currentDate, mode, addToMutationList) {
+async function updateLoan(user_id, loanId, loanData, currentDate, mode, addToMutationList) {
     let loan = (await graph.query(queryQl(loansType(), { where: { _id: { _eq: loanId }}}))).data?.loans;
-    logger.debug({page: `Updating Old Loan: ${loanId}`, mode: mode, data: loan});
+    logger.debug({user_id, page: `Updating Old Loan: ${loanId}`, mode: mode, data: loan});
     if (loan.length > 0) {
         loan = loan[0];
 
@@ -231,7 +232,7 @@ async function updateLoan(loanId, loanData, currentDate, mode, addToMutationList
         } else {
             loan.mcbu = loan.mcbu - loanData.mcbu;
             loan.status = 'closed';
-            logger.debug({page: `Updating Cash Collection: ${loanId}`, data: loan});
+            logger.debug({user_id, page: `Updating Cash Collection: ${loanId}`, data: loan});
             addToMutationList(alias =>updateQl(cashCollectionsType(alias), {
                 set: { status: 'closed' },
                 where: {
@@ -248,7 +249,7 @@ async function updateLoan(loanId, loanData, currentDate, mode, addToMutationList
     }
 }
 
-async function saveCashCollection(loan, reloan, group, loanId, currentDate, groupStatus, addToMutationList) {
+async function saveCashCollection(user_id, loan, reloan, group, loanId, currentDate, groupStatus, addToMutationList) {
     const currentReleaseAmount = loan.amountRelease;
 
     const cashCollection = (await graph.query(queryQl(cashCollectionsType(), {
@@ -258,7 +259,7 @@ async function saveCashCollection(loan, reloan, group, loanId, currentDate, grou
       }
     }))).data?.cashCollections;
 
-    logger.debug({page: `Saving Cash Collection: ${loanId}`, cashCollection: cashCollection});
+    logger.debug({user_id, page: `Saving Cash Collection: ${loanId}`, cashCollection: cashCollection});
     if (cashCollection.length === 0) {
         let mcbu = loan.mcbu ? loan.mcbu : 0;
         let mcbuCol = 0;
@@ -318,13 +319,13 @@ async function saveCashCollection(loan, reloan, group, loanId, currentDate, grou
         if (loan.status === 'reject') {
             data.rejectReason = loan.rejectReason;
         }
-        logger.debug({page: `Saving Cash Collection: ${loan.clientId}`, data: data});
+        logger.debug({user_id, page: `Saving Cash Collection: ${loan.clientId}`, data: data});
         addToMutationList(alias => insertQl(cashCollectionsType(alias), { objects: [filterGraphFields(CASH_COLLECTIONS_FIELDS, {
             ...data,
             _id: generateUUID(),
         })]}));
     } else {
-        logger.debug({page: `Updating Loan: ${loan.clientId}`});
+        logger.debug({user_id, page: `Updating Loan: ${loan.clientId}`});
 
         addToMutationList(alias => updateQl(cashCollectionsType(alias), {
           set: {
