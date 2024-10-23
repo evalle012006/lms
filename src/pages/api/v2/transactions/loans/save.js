@@ -159,9 +159,9 @@ async function save(req, res) {
 
             if (mode === 'reloan') {
                 reloan = true;
-                await updateLoan(user_id, oldLoanId, finalData, currentDate, addToMutationList);
+                await updateLoan(user_id, oldLoanId, finalData, currentDate, mode, addToMutationList);
             } else if (mode === 'advance' || mode === 'active') {
-                await updateLoan(user_id, oldLoanId, finalData, currentDate, mode, groupStatus, addToMutationList);
+                await updateLoan(user_id, oldLoanId, finalData, currentDate, mode, addToMutationList);
             } else {
                 await updateGroup(user_id, loanData, addToMutationList, loanId);
             }
