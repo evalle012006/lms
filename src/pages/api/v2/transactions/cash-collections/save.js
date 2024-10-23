@@ -17,7 +17,7 @@ export default apiHandler({
 });
 
 async function save(req, res) {
-    const user_id = req.auth.sub;
+    const user_id = req?.auth?.sub;
     let response = {};
     let statusCode = 200;
     let data = req.body;

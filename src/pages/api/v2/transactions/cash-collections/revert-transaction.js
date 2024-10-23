@@ -23,7 +23,7 @@ const getClientById = (_id) => graph.query(queryQl(CLIENT_TYPE('clients'), { whe
 const getLoanById = (_id) => graph.query(queryQl(LOAN_TYPE('loans'), {where: { _id: { _eq: _id } }})).then(res =>  res.data.loans);
  
 async function revert(req, res) {
-    const user_id = req.auth?.sub;
+    const user_id = req?.auth?.sub;
     const cashCollections = req.body;
     const currentDate = moment(getCurrentDate()).format('YYYY-MM-DD');
     

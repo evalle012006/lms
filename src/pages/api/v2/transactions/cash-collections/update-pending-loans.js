@@ -17,7 +17,7 @@ export default apiHandler({
 async function save(req, res) {
     let data = req.body;
     logger.debug({page: `Update Cash Collection For Pending Loans - Group ID: ${data[0].groupId}`});
-    await savePendingLoans(req.auth?.sub, data)
+    await savePendingLoans(req?.auth?.sub, data)
     res.send({ success: true });
 }
 

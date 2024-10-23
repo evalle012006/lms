@@ -18,7 +18,7 @@ export default apiHandler({
 });
 
 async function save(req, res) {
-    const user_id = req.auth.sub;
+    const user_id = req?.auth?.sub;
     const mutationList = [];
     const addToMutationList = addToList => mutationList.push(addToList(`bulk_update_${mutationList.length}`));
     let response = {};
@@ -163,7 +163,7 @@ async function save(req, res) {
             } else if (mode === 'advance' || mode === 'active') {
                 await updateLoan(user_id, oldLoanId, finalData, currentDate, mode, groupStatus, addToMutationList);
             } else {
-                await updateGroup(user_id, loanData, addToMutationList);
+                await updateGroup(user_id, loanData, addToMutationList, loanId);
             }
 
             if (mode !== 'advance' && mode !== 'active' && finalData?.loanFor !== 'tomorrow') {
@@ -188,9 +188,9 @@ async function save(req, res) {
 }
 
 
-async function updateGroup(user_id, loan, addToMutationList) {
+async function updateGroup(user_id, loan, addToMutationList, loanId) {
     //let group = await db.collection('groups').find({ _id: new ObjectId(loan.groupId) }).toArray();
-    logger.debug({user_id, page: `Updating Group Fro Loan: ${loanId}`, data: loan});
+    logger.debug({user_id, page: `Updating Group For Loan: ${loanId}`, data: loan});
     let group = await graph.query(queryQl(groupType(), { where: { _id: { _eq: loan.groupId } } })).then(res => res.data.groups);
     if (group.length > 0) {
         group = group[0];
