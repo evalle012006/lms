@@ -18,7 +18,7 @@ async function save(req, res) {
     const loans = await graph.apollo.query({
         query: gql`
         query groups ($where:pre_save_collection_model_bool_exp_bool_exp,  $args: get_pre_save_collection_data_arguments!) {
-            collections: get_pre_save_collection_data(args: $args, where: $where, limit:10) {
+            collections: get_pre_save_collection_data(args: $args, where: $where) {
               _id,
               loan
               group
@@ -31,11 +31,13 @@ async function save(req, res) {
                 curr_date: currentDate
            }
         }
-    }).then(res => res.collections.map(c => ({
+    }).then(res => res.data.collections.map(c => ({
         ... c.loan,
         groupIdObj: null,
-        group: group,
+        group: c.group,
     })));
+
+    console.log('loansSize: ', loans.length)
 
     const cashCollections = loans.map(loan => ({
         _id: generateUUID(),
@@ -48,8 +50,8 @@ async function save(req, res) {
         slotNo: loan.slotNo,
         loanCycle: loan.loanCycle,
         mispayment: false,
-        mispaymentStr: 'No',
-        collection: 0,
+        // mispaymentStr: 'No',
+        // collection: 0,
         excess: 0,
         total: 0,
         noOfPayments: 0,
@@ -74,6 +76,8 @@ async function save(req, res) {
         insertedDateTime: new Date(),
         origin: 'pre-save'
     }));
+
+
 
     await graph.mutation(
         insertQl(createGraphType('cashCollections', '_id')('collections'), {
