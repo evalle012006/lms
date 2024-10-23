@@ -9,6 +9,8 @@ const { combine, timestamp, label, prettyPrint } = format;
 const graph = new GraphProvider();
 const LMS_LOG_TYPE = createGraphType('lms_logs', `id`)('logs');
 
+const isString = value => typeof value === 'string' || value instanceof String;
+
 class DBLoggerTransport extends Transport {
   constructor(opts) {
     super(opts);
@@ -21,8 +23,19 @@ class DBLoggerTransport extends Transport {
   }
 
   log(info, callback) {
+    let log_info = { ... info };
+    const { message } = log_info;
+    if(!!message && !isString(message)) {
+      log_info = { 
+        ... info,
+        ... message
+      }
+      delete log_info.message;
+    }
+
     if(process.env.ENABLE_DB_LOGGING === 'true') {
-      graph.mutation(insertQl(LMS_LOG_TYPE, { objects: [{ info }] }))
+      const { user_id } = log_info;
+      graph.mutation(insertQl(LMS_LOG_TYPE, { objects: [{ info: log_info, user_id: user_id ?? null }] }))
       .finally(() => {
         callback();
       })
