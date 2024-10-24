@@ -55,7 +55,7 @@ async function updatePendingLoan(user_id, collection, currentDate) {
     let currentLoanClosed = await findLoans({
       clientId: { _eq: collection.clientId },
       status: { _eq: "closed" },
-      fullPaymentDate: { _eq: currentDate },
+      closedDate: { _eq: currentDate },
     });
     let pendingLoan = await findLoans({
       clientId: { _eq: collection.clientId },
