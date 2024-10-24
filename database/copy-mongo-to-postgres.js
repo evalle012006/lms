@@ -336,7 +336,7 @@ function mapValue({ name, dataType }, value, doc, tableName) {
     return value.$oid ?? value.toString();
   }
   if (dataType.match(/numeric/)) {
-    return isNaN(value) ? null : value || 0;
+    return isNaN(value) || value === Infinity ? null : value || 0;
   }
   if (dataType.match(/boolean/)) {
     return value?.toString()?.toLowerCase() === 'true';
