@@ -175,7 +175,7 @@ async function processData(req, res) {
 async function updateLoan(loanId, loan) {
   return await graph.mutation(
     updateQl(loanType, {
-      set: filterGraphFields(LOAN_FIELDS, { ...loan }),
+      set: filterGraphFields(LOAN_FIELDS, { ...loan, coMaker: loan.coMaker + "" }),
       where: { _id: { _eq: loanId } },
     })
   );
