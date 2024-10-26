@@ -1309,6 +1309,7 @@ const CashCollectionDetailsPage = () => {
                     if (temp.reverted) {
                         delete temp.reverted;
                         temp.revertedDate = currentDate;
+                        temp.fromReverted = true;
                     }
     
                     delete temp.targetCollectionStr;

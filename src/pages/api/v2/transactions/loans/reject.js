@@ -116,6 +116,8 @@ async function updateLoan(req, res) {
                         prevLoan.status = 'completed';
                         prevLoan.mcbu = loan.mcbu ? loan.mcbu : 0;
                         prevLoan.mcbuCollection = loan.mcbu ? loan.mcbu : 0;
+                        prevLoan.advance = false;
+                        prevLoan.advanceDate = null;
                     } else {
                         prevLoan.status = 'active';
                     }

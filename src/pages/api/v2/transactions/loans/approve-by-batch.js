@@ -182,7 +182,7 @@ async function processData(req, res) {
 
 async function updateLoan(loanId, loan, addToMutationList) {
   addToMutationList(alias => loanType(alias), {
-    set: filterGraphFields(LOAN_FIELDS, { ...loan }),
+    set: filterGraphFields(LOAN_FIELDS, { ...loan, coMaker: loan.coMaker + "" }),
     where: { _id: { _eq: loanId } },
   });
 }

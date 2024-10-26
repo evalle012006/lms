@@ -1209,8 +1209,13 @@ const CashCollectionDetailsPage = () => {
         
         let save = false;
         const transactionStatus = data.filter(cc => cc.groupStatus === 'closed');
+        const pendingWithdrawal = data.filter(cc => cc.mcbuWithdrawFlag);
         if (transactionStatus.length > 0) {
             toast.error('Updating this record is not allowed since the Group Summary is already closed by the Branch Manager.');
+            setLoading(false);
+        } else if (pendingWithdrawal.length > 0) {
+            toast.error('Error occured. Please wait Withdrawal still calculating. Please click Submit button again.');
+            setLoading(false);
         } else {
             const errorMsgArr = Array.from(validation(draft));
             if (errorMsgArr.length > 0) {
@@ -1228,6 +1233,7 @@ const CashCollectionDetailsPage = () => {
                     if (temp.reverted && !draft) {
                         temp.reverted = false;
                         temp.revertedDate = currentDate;
+                        temp.fromReverted = true;
                     }
     
                     delete temp.targetCollectionStr;
@@ -1677,6 +1683,8 @@ const CashCollectionDetailsPage = () => {
                             }
                         }
                     }
+
+                    temp.mcbuWithdrawFlag = false;
                 }
 
                 return temp;
