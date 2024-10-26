@@ -18,6 +18,7 @@ import {
   findTransferClients,
   findUsers,
 } from "@/lib/graph.functions";
+import { formatPricePhp, generateUUID } from "@/lib/utils";
 
 const graph = new GraphProvider();
 const transferClientsType = createGraphType("transferClients", TRANSFER_CLIENT_FIELDS)();
@@ -46,7 +47,7 @@ async function saveUpdate(req, res) {
         });
 
         if (exist.length === 0) {
-            await graph.mutation(insertQl(transferClientsType, { objects: [{...clientData, modifiedDateTime: new Date()}]}))
+            await graph.mutation(insertQl(transferClientsType, { objects: [{ ...clientData, _id: generateUUID(), modifiedDateTime: new Date()}]}))
             response = { success: true };
         } else {
             response = { error: true, message: "Client has an existing pending transfer." };

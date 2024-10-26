@@ -20,10 +20,10 @@ import {
   findLoans,
 } from "@/lib/graph.functions";
 
-const groupType = createGraphType("groups", GROUP_FIELDS)();
-const loanType = createGraphType("loans", LOAN_FIELDS)();
-const clientType = createGraphType("clients", LOAN_FIELDS)();
-const cashCollectionType = createGraphType("cashCollections", CASH_COLLECTIONS_FIELDS)();
+const groupType = createGraphType("groups", GROUP_FIELDS);
+const loanType = createGraphType("loans", LOAN_FIELDS);
+const clientType = createGraphType("clients", LOAN_FIELDS);
+const cashCollectionType = createGraphType("cashCollections", CASH_COLLECTIONS_FIELDS);
 const graph = new GraphProvider();
 
 export default apiHandler({
@@ -31,6 +31,10 @@ export default apiHandler({
 });
 
 async function updateLoan(req, res) {
+
+  const mutationList = [];
+  const addToMutationList = addToList => mutationList.push(addToList(`bulk_update_${mutationList.length}`));
+
     let response;
 
     let loan = req.body;
@@ -50,7 +54,7 @@ async function updateLoan(req, res) {
     if (groupData.length > 0) {
         groupData = groupData[0];
         if (loan.status === 'active') {
-            await updateClient(loan.clientId);
+            await updateClient(loan.clientId, addToMutationList);
             if (loan.coMaker) {
                 if (typeof loan.coMaker === 'string') {
                     loan.coMakerId = loan.coMaker;
@@ -96,13 +100,13 @@ async function updateLoan(req, res) {
                         const ccId = cashCollection._id;
                         delete cashCollection._id;
                         delete cashCollection.prevLoanId;
-                        await graph.mutation(updateQl(cashCollectionType, {
+                        addToMutationList(alias => updateQl(cashCollectionType(alias), {
                           where: { _id: { _eq: ccId } },
                           set: filterGraphFields(CASH_COLLECTIONS_FIELDS, {
                             ...cashCollection,
                             prevLoanId: null,
                           })
-                        }))
+                        }));
                         // await db.collection('cashCollections').updateOne({ _id: ccId }, { $unset: { prevLoanId: 1 }, $set: { ...cashCollection } });
                     }
 
@@ -119,19 +123,19 @@ async function updateLoan(req, res) {
                     delete prevLoan.advance;
                     delete prevLoan.advanceDate;
                     
-                    await graph.mutation(updateQl(loanType, {
+                    addToMutationList(alias => updateQl(loanType(alias), {
                       where: { _id: { _eq: prevLoanId } },
                       set: filterGraphFields(LOAN_FIELDS, {
                         ...prevLoan,
                         advance: false,
                         advanceDate: null, 
                       })
-                    }))
+                    }));
                     // await db.collection('loans').updateOne({ _id: prevLoanId }, {$unset: {advance: 1, advanceDate: 1}, $set: { ...prevLoan }});
                 }
             } else {
                 logger.debug({page: `Rejecting Loan: ${loanId}`, message: 'Deleting cashCollection data.'});
-                await graph.mutation(deleteQl(cashCollectionType, { loanId: { _eq: loanId } }));
+                addToMutationList(alias => deleteQl(cashCollectionType(alias), { loanId: { _eq: loanId } }));
             }
 
             loan.loanCycle = 0;
@@ -141,22 +145,26 @@ async function updateLoan(req, res) {
                 groupData.availableSlots.sort((a, b) => { return a - b; });
                 groupData.noOfClients = groupData.noOfClients - 1;
                 groupData.status = groupData.status === 'full' ? 'available' : groupData.status;
-                await updateGroup(groupData);
+                await updateGroup(groupData, addToMutationList);
             }
         }
 
         if (loan.status === 'active' || loan.status === 'reject') {
             logger.debug({page: `Loan: ${loanId}`, message: 'Updating loan data.', status: loan.status});
-            await graph.mutation(updateQl(loanType, {
+            addToMutationList(alias => updateQl(loanType(alias), {
               where: { _id: { _eq: loanId } },
               set: filterGraphFields(LOAN_FIELDS, { ...loan })
             }));
 
             loan._id = loanId;
             if (loan.status === 'active') {
-                await saveCashCollection(loan, groupData, currentDate);
+                await saveCashCollection(loan, groupData, currentDate, addToMutationList);
             }
         }
+
+        await graph.mutation(
+          ... mutationList
+        );
 
         response = { success: true };   
     } else {
@@ -166,11 +174,11 @@ async function updateLoan(req, res) {
     res.send(response);
 }
 
-async function updateGroup(group) {
+async function updateGroup(group, addToMutationList) {
     const groupId = group._id;
     delete group._id;
 
-    const groupResp = await graph.mutation(updateQl(groupType, {
+    addToMutationList(alias => updateQl(groupType(alias), {
       where: { _id: { _eq: groupId } },
       set: { ...group }
     }));
@@ -178,7 +186,7 @@ async function updateGroup(group) {
     return {success: true, groupResp}
 }
 
-async function updateClient(clientId) {
+async function updateClient(clientId, addToMutationList) {
     let client = await findClients({ _id: { _eq: clientId }});
 
     if (client.length > 0) {
@@ -187,7 +195,7 @@ async function updateClient(clientId) {
         client.status = 'active';
         delete client._id;
 
-        await graph.mutation(updateQl(clientType, {
+        addToMutationList(alias => updateQl(clientType(alias), {
           where: { _id: { _eq: clientId } },
           set: filterGraphFields(CLIENT_FIELDS, { ...client })
         }));
@@ -222,7 +230,7 @@ async function getCoMakerInfo(coMaker, groupId) {
     return {success: true, client}
 }
 
-async function saveCashCollection(loan, group, currentDate) {
+async function saveCashCollection(loan, group, currentDate, addToMutationList) {
     const status = loan.status === "active" ? "tomorrow" : loan.status;
 
     let cashCollection = await findCashCollections({
@@ -235,10 +243,11 @@ async function saveCashCollection(loan, group, currentDate) {
         const ccId = cashCollection._id;
         delete cashCollection._id;
 
-        await graph.mutation(updateQl(cashCollectionType, {
+        addToMutationList(alias =>updateQl(cashCollectionType(alias), {
           where: { _id: { _eq: ccId } },
           set: filterGraphFields(CASH_COLLECTIONS_FIELDS, { ...cashCollection, status: status, loanCycle: loan.loanCycle, modifiedDate: currentDate })
-        }))
+        }));
+
     } else {
         // this entry is only when the approve or reject is not the same day when it applies
         let data = {
@@ -284,7 +293,7 @@ async function saveCashCollection(loan, group, currentDate) {
             data.groupDay = group.day;
         }
 
-        await graph.mutation(insertQl(cashCollectionType, {
+        addToMutationList(alias => insertQl(cashCollectionType(alias), {
           objects: [filterGraphFields(CASH_COLLECTIONS_FIELDS, {...data})]
         }));
     }

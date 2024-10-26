@@ -11,18 +11,19 @@ import {
   TRANSFER_CLIENT_FIELDS,
 } from "@/lib/graph.fields";
 import logger from "@/logger";
+import { generateUUID } from "@/lib/utils";
 
-const groupsType = createGraphType("groups", GROUP_FIELDS)();
-const loansType = createGraphType("loans", LOAN_FIELDS)();
-const clientType = createGraphType("client", CLIENT_FIELDS)();
+const groupsType = createGraphType("groups", GROUP_FIELDS);
+const loansType = createGraphType("loans", LOAN_FIELDS);
+const clientType = createGraphType("client", CLIENT_FIELDS);
 const transferClientsType = createGraphType(
   "transferClients",
   TRANSFER_CLIENT_FIELDS
-)();
+)
 const cashCollectionsType = createGraphType(
   "cashCollections",
   CASH_COLLECTIONS_FIELDS
-)();
+)
 
 const graph = new GraphProvider();
 
@@ -34,13 +35,16 @@ let statusCode = 200;
 let response;
 
 async function approveReject(req, res) {
+    const user_id = req.auth?.sub;
     const transfers = req.body;
+    const mutationList = [];
+    const addToMutationList = addToList => mutationList.push(addToList(`bulk_update_${mutationList.length}`));
 
     const errorMsg = new Set();
     const promise = await new Promise(async (resolve) => {
         const promiseResponse = await Promise.all(transfers.map(async (transfer) => {
             if (transfer.status === "approved") {
-                logger.debug({page: `Processing Transfer: ${transfer.selectedClientId}`, data: transfer});
+                logger.debug({user_id, page: `Processing Transfer: ${transfer.selectedClientId}`, data: transfer});
                 const currentDate = transfer.currentDate;
                 delete transfer.currentDate;
 
@@ -57,7 +61,7 @@ async function approveReject(req, res) {
                   groupId: { _eq: transfer.sourceGroupId },
                   dateAdded: { _eq: currentDate },
                 });
-                logger.debug({page: `Exsiting CashCollection: ${existingCashCollection.length}`});
+                logger.debug({user_id, page: `Exsiting CashCollection: ${existingCashCollection.length}`});
                 targetGroup.noOfClients = targetGroup.noOfClients ? targetGroup.noOfClients : 0;
                 
                 if (targetGroup.status === 'full') {
@@ -68,9 +72,9 @@ async function approveReject(req, res) {
                       clientId: { _eq: transfer.selectedClientId },
                       status: { _in: ['active', 'completed', 'pending'] } 
                     });
-                    logger.debug({page: `Client Loans: ${clientLoans.length}`, data: clientLoans});
+                    logger.debug({user_id, page: `Client Loans: ${clientLoans.length}`, data: clientLoans});
                     const validateLoan = getAndValidateLoan(clientLoans);
-                    logger.debug({page: `Validate Loan: ${clientLoans.length}`, data: validateLoan});
+                    logger.debug({user_id, page: `Validate Loan: ${clientLoans.length}`, data: validateLoan});
                     const loan = validateLoan.loan;
 
                     if (validateLoan.error) {
@@ -97,16 +101,15 @@ async function approveReject(req, res) {
                             }
                             sourceGroup.noOfClients = sourceGroup.noOfClients - 1;
 
-                            await graph.mutation(
-                              updateQl(groupsType, {
+                            addToMutationList(alias => updateQl(groupsType(alias), {
                                 where: { _id: { _eq: sourceGroupId } },
                                 set: { ...sourceGroup }
-                              }),
-                              updateQl(groupsType, {
+                              }));
+
+                            addToMutationList(alias => updateQl(groupsType(alias), {
                                 where: { _id: { _eq: targetGroup } },
                                 set: { ...targetGroup }
-                              })
-                            );
+                              }));
 
                             if (loan) {
                                 const loanId = loan._id;
@@ -151,68 +154,70 @@ async function approveReject(req, res) {
                                         }
                                     }
                                     delete prevLoan._id;
-                                    logger.debug({page: `Previous Loan: ${prevLoanId}`, data: prevLoan});
-                                    await graph.mutation(updateQl(loansType, {
-                                      where: { _id: { _eq: prevLoanId } },
-                                      set: { ...prevLoan },
-                                    }));
+                                    logger.debug({user_id, page: `Previous Loan: ${prevLoanId}`, data: prevLoan});
+                                    addToMutationList(alias => updateQl(loansType(alias), {
+                                        where: { _id: { _eq: prevLoanId } },
+                                        set: { ...prevLoan },
+                                      }));
                                 }
 
-                                const newLoan = await graph.mutation(insertQl(loansType, { objects: [{...updatedLoan}]}))
-                                  .then(res => res.data?.loans);
+                                const newLoanId = generateUUID();
+                                addToMutationList(alias => insertQl(loansType(alias), { objects: [{ ...updatedLoan, _id: newLoanId }]}))
+                                .then(res => res.data?.loans)
 
-                                if (newLoan) {
-                                    logger.debug({page: `New Loan: ${newLoan._id}`, data: newLoan});
+                                if (newLoanId) {
                                     loan.status = "closed"
                                     loan.transferred = true;
                                     loan.transferId = transfer._id;
                                     loan.transferredDate = currentDate;
                                     loan.modifiedDateTime = new Date();
-                                    await graph.mutation(updateQl(loansType, {
-                                      where: { _id: { _eq: loanId } },
-                                      set: { ...loan }
-                                    }));
 
-                                    loan._id = newLoan._id;
+                                    addToMutationList(alias => updateQl(loansType(alias), {
+                                        where: { _id: { _eq: loanId } },
+                                        set: { ...loan }
+                                      }))
+
+                                    loan._id = newLoanId;
                                     loan.oldId = loanId + "";
                                 }
                             }
                         }
 
+                        await saveCashCollection(transfer, loan, sourceGroup, targetGroup, selectedSlotNo, existingCashCollection, currentDate, addToMutationList);
 
+                        logger.debug({user_id, page: `Updating Client: ${transfer.selectedClientId}`});
 
-                        await saveCashCollection(transfer, loan, sourceGroup, targetGroup, selectedSlotNo, existingCashCollection, currentDate);
-
-                        logger.debug({page: `Updating Client: ${transfer.selectedClientId}`});
-
-                        await graph.mutation(
-                          updateQl(clientType, {
+                        addToMutationList(alias => updateQl(clientType(alias), {
                             where: { _id: { _eq: transfer.selectedClientId } },
                             set: { branchId: transfer.targetBranchId, loId: transfer.targetUserId, groupId: transfer.targetGroupId, groupName: targetGroup.name }
-                          }),
-                          updateQl(transferClientsType, {
+                          }));
+                        
+                        addToMutationList(updateQl(transferClientsType(alias), {
                             where: { _id: { _eq: transfer._id } },
                             set: {
-                              oldLoanId: loan?.oldId,
-                              newLoanId: loan?._id,
-                              status: "approved",
-                              occurence: sourceGroup.occurence,
-                              approveRejectDate: currentDate,
-                              modifiedDateTime: new Date()
+                                oldLoanId: loan?.oldId,
+                                newLoanId: loan?._id,
+                                status: "approved",
+                                occurence: sourceGroup.occurence,
+                                approveRejectDate: currentDate,
+                                modifiedDateTime: new Date()
                             }
-                          })
-                        );
+                        }));
                     }
 
                     response = { success: true };
                 }
             } else {
-                await graph.mutation(updateQl(transferClientsType, {
-                  where: { _id: { _eq: transfer._id } },
-                  set: {status: "reject", modifiedDateTime: new Date()}
-                }));
+                addToMutationList(alias => updateQl(transferClientsType(alias), {
+                    where: { _id: { _eq: transfer._id } },
+                    set: {status: "reject", modifiedDateTime: new Date()}
+                  }));
             }
         }));
+
+        await graph.mutation(
+            ... mutationList
+        );
 
         resolve(promiseResponse);
     });
@@ -232,7 +237,7 @@ async function approveReject(req, res) {
         .end(JSON.stringify(response));
 }
 
-async function saveCashCollection(transfer, loan, sourceGroup, targetGroup, selectedSlotNo, existingCashCollection, currentDate) {
+async function saveCashCollection(transfer, loan, sourceGroup, targetGroup, selectedSlotNo, existingCashCollection, currentDate, addToMutationList) {
     // add new cash collection entry with updated data
     const cashCollection = await findCashCollections({
       clientId: { _eq: transfer.selectedClientId },
@@ -306,9 +311,9 @@ async function saveCashCollection(transfer, loan, sourceGroup, targetGroup, sele
             }
         }
 
-        await graph.mutation(insertQl(cashCollectionsType, { objects: [{ ...data }]}));
+        addToMutationList(alias => insertQl(cashCollectionsType(alias), { objects: [{ ...data, _id: generateUUID() }]}));
     } else {
-        await graph.mutation(updateQl(cashCollectionsType, {
+        addToMutationList(alias => updateQl(cashCollectionsType(alias), {
             where: { _id: { _eq: cashCollection[0]._id } },
             set: {
                 transfer: true,
@@ -379,9 +384,9 @@ async function saveCashCollection(transfer, loan, sourceGroup, targetGroup, sele
             data.groupDay = sourceGroup.groupDay;
         }
 
-        await graph.mutation(insertQl(cashCollectionsType, { objects: [{ ...data }]}));
+        addToMutationList(alias => insertQl(cashCollectionsType(alias), { objects: [{ ...data, _id: generateUUID() }]}));
     } else {
-        await graph.mutation(updateQl(cashCollectionsType, {
+        addToMutationList(alias => updateQl(cashCollectionsType(alias), {
             where: { _id: { _eq: existingCashCollection[0]._id } }, 
             set: {
                 transferred: true,

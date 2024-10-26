@@ -21,10 +21,10 @@ import {
 } from "@/lib/graph.functions";
 import { generateUUID } from "@/lib/utils";
 
-const loanType = createGraphType("loans", LOAN_FIELDS)();
-const groupType = createGraphType("groups", GROUP_FIELDS)();
-const clientType = createGraphType("clients", CLIENT_FIELDS)();
-const cashCollectionType = createGraphType("cashCollections", CASH_COLLECTIONS_FIELDS)();
+const loanType = createGraphType("loans", LOAN_FIELDS);
+const groupType = createGraphType("groups", GROUP_FIELDS);
+const clientType = createGraphType("clients", CLIENT_FIELDS);
+const cashCollectionType = createGraphType("cashCollections", CASH_COLLECTIONS_FIELDS);
 const graph = new GraphProvider();
 
 export default apiHandler({
@@ -32,6 +32,10 @@ export default apiHandler({
 });
 
 async function processData(req, res) {
+
+  const mutationList = [];
+  const addToMutationList = addToList => mutationList.push(addToList(`bulk_update_${mutationList.length}`));
+
   let response = {};
   const errorMsg = [];
 
@@ -58,13 +62,13 @@ async function processData(req, res) {
 
           const active = await findLoans({
             clientId: { _eq: loan.clientId },
-            status: { _eq: "active" },
+            status: { _in: ["active", "completed"] },
           });
           if (active.length > 0) {
             const error = `Client ${active[0].fullName} with slot ${active[0].slotNo} of group ${active[0].groupName}, still have active loan.`;
             errorMsg.push(error);
           } else {
-            await updateLoan(loanId, loan);
+            await updateLoan(loanId, loan, addToMutationList);
           }
         })
       );
@@ -84,7 +88,7 @@ async function processData(req, res) {
       loanData.map(async (loan) => {
         const active = await findLoans({
           clientId: { _eq: loan.clientId },
-          status: { _eq: "active" },
+          status: { _in: ["active", "completed"] },
         });
         if (active.length > 0) {
           const error = `Client ${active[0].fullName} with slot ${active[0].slotNo} of group ${active[0].groupName}, still have active loan.`;
@@ -109,7 +113,7 @@ async function processData(req, res) {
             groupData = groupData[0];
 
             if (loan.status === "active") {
-              await updateClient(loan);
+              await updateClient(loan, addToMutationList);
               if (loan.coMaker) {
                 if (typeof loan.coMaker === "string") {
                   loan.coMakerId = loan.coMaker;
@@ -141,7 +145,7 @@ async function processData(req, res) {
                   groupData.status === "full"
                     ? "available"
                     : groupData.status;
-                await updateGroup(groupData);
+                await updateGroup(groupData, addToMutationList);
               }
             }
 
@@ -151,13 +155,17 @@ async function processData(req, res) {
                 message: "Updating loan data.",
                 status: loan.status,
               });
-              await updateLoan(loanId, loan);
+              await updateLoan(loanId, { ... loan, status: 'active' }, addToMutationList);
               loan._id = loanId;
-              await saveCashCollection(loan, groupData, currentDate);
+              await saveCashCollection(loan, groupData, currentDate, addToMutationList);
             }
           }
         }
       })
+    );
+
+    await graph.mutation(
+      ... mutationList,
     );
 
     if (result) {
@@ -172,13 +180,11 @@ async function processData(req, res) {
   res.send(response);
 }
 
-async function updateLoan(loanId, loan) {
-  return await graph.mutation(
-    updateQl(loanType, {
-      set: filterGraphFields(LOAN_FIELDS, { ...loan }),
-      where: { _id: { _eq: loanId } },
-    })
-  );
+async function updateLoan(loanId, loan, addToMutationList) {
+  addToMutationList(alias => loanType(alias), {
+    set: filterGraphFields(LOAN_FIELDS, { ...loan }),
+    where: { _id: { _eq: loanId } },
+  });
 }
 
 async function checkGroupStatus(groupId) {
@@ -191,21 +197,19 @@ async function checkGroupStatus(groupId) {
   );
 }
 
-async function updateGroup(group) {
+async function updateGroup(group, addToMutationList) {
   const groupId = group._id;
   delete group._id;
 
-  const groupResp = await graph.mutation(
-    updateQl(groupType, {
-      where: { _id: { _eq: groupId } },
-      set: { ...group },
-    })
-  );
+  addToMutationList(alias => updateQl(groupType(alias), {
+    where: { _id: { _eq: groupId } },
+    set: { ...group },
+  }))
 
   return { success: true, groupResp };
 }
 
-async function updateClient(loan) {
+async function updateClient(loan, addToMutationList) {
   const clientId = loan.clientId;
   let client = await findClients({ _id: { _eq: clientId } });
   if (client.length > 0) {
@@ -224,12 +228,10 @@ async function updateClient(loan) {
     client.status = "active";
     delete client._id;
 
-    await graph.mutation(
-      updateQl(clientType, {
-        where: { _id: { _eq: clientId } },
-        set: filterGraphFields(CLIENT_FIELDS, { ...client }),
-      })
-    );
+    addToMutationList(alias => updateQl(clientType(alias), {
+      where: { _id: { _eq: clientId } },
+      set: filterGraphFields(CLIENT_FIELDS, { ...client }),
+    }));
   }
 
   return { success: true, client };
@@ -261,7 +263,7 @@ async function getCoMakerInfo(coMaker, groupId) {
   return { success: true, client };
 }
 
-async function saveCashCollection(loan, group, currentDate) {
+async function saveCashCollection(loan, group, currentDate, addToMutationList) {
   const status = loan.status === "active" ? "tomorrow" : loan.status;
   let cashCollection = await findCashCollections({
     clientId: { _eq: loan.clientId },
@@ -278,17 +280,16 @@ async function saveCashCollection(loan, group, currentDate) {
     cashCollection = cashCollection[0];
     const ccId = cashCollection._id;
     delete cashCollection._id;
-    await graph.mutation(
-      updateQl(cashCollectionType, {
-        where: { _id: { _eq: ccId } },
-        set: filterGraphFields(CASH_COLLECTIONS_FIELDS, {
-          ...cashCollection,
-          status: status,
-          loanCycle: loan.loanCycle,
-          modifiedDate: currentDate,
-        }),
-      })
-    );
+
+    addToMutationList(alias => updateQl(cashCollectionType(alias), {
+      where: { _id: { _eq: ccId } },
+      set: filterGraphFields(CASH_COLLECTIONS_FIELDS, {
+        ...cashCollection,
+        status: status,
+        loanCycle: loan.loanCycle,
+        modifiedDate: currentDate,
+      }),
+    }));
   } else {
     // this entry is only when the approve or reject is not the same day when it applies
     let data = {
@@ -340,8 +341,6 @@ async function saveCashCollection(loan, group, currentDate) {
       data: data,
     });
 
-    await graph.mutation(
-      insertQl(cashCollectionType, { objects: [filterGraphFields(CASH_COLLECTIONS_FIELDS, { ...data })] })
-    );
+    addToMutationList(alias => insertQl(cashCollectionType(alias), { objects: [filterGraphFields(CASH_COLLECTIONS_FIELDS, { ...data })] }));
   }
 }

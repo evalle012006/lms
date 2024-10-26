@@ -233,7 +233,7 @@ async function updateLoan(user_id, loanId, loanData, currentDate, mode, addToMut
             loan.mcbu = loan.mcbu - loanData.mcbu;
             loan.status = 'closed';
             logger.debug({user_id, page: `Updating Cash Collection: ${loanId}`, data: loan});
-            addToMutationList(alias =>updateQl(cashCollectionsType(alias), {
+            addToMutationList(alias => updateQl(cashCollectionsType(alias), {
                 set: { status: 'closed' },
                 where: {
                   clientId: { _eq: loan.clientId },
