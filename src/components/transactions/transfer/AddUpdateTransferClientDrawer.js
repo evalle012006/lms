@@ -163,22 +163,18 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
                 let clients = [];
                 await response.clients && response.clients.map(client => {
                     const hasTransfer = transferList.find(t => t.selectedClientId === client._id);
-                    console.log(hasTransfer)
                     if (!hasTransfer) {
-                        // const clientCollections = client.cashCollections.length > 0 ? client.cashCollections[0] : null;
-                        // const clientLoans = client.loans.length > 0 ? client.loans[0] : null;
-                        
                         clients.push({
                             ...client,
                             slotNo: client.loans.length > 0 ? client.loans[0].slotNo : 100, // for sorting purposes
                             label: UppercaseFirstLetter(`${client.lastName}, ${client.firstName}`),
                             value: client._id
                         }); 
-                    }  
+                    } 
                 });
                 clients.sort((a, b) => { return a.slotNo - b.slotNo });
                 setClientList(clients);
-                setTimeout(() => { setLoading(false); }, 1000);
+                setLoading(false);
             } else if (response.error) {
                 setLoading(false);
                 toast.error(response.message);
@@ -359,7 +355,7 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
             }
         }
 
-        mounted && setLoading(false);
+        // mounted && setLoading(false);
 
         return () => {
             mounted = false;
@@ -390,6 +386,8 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
     useEffect(() => {
         if (selectedClientId) {
             const selected = clientList.find(b => b._id === selectedClientId);
+            const form = formikRef.current;
+            form.setFieldValue("selectedClientId", selectedClientId);
             setSelectedClient(selected);
         }
     }, [selectedClientId]);

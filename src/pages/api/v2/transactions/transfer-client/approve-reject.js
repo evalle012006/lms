@@ -12,27 +12,19 @@ import {
 } from "@/lib/graph.fields";
 import logger from "@/logger";
 import { generateUUID } from "@/lib/utils";
+import { logGraphQLError } from "@/lib/graphql-utils";
 
 const groupsType = createGraphType("groups", GROUP_FIELDS);
 const loansType = createGraphType("loans", LOAN_FIELDS);
 const clientType = createGraphType("client", CLIENT_FIELDS);
-const transferClientsType = createGraphType(
-  "transferClients",
-  TRANSFER_CLIENT_FIELDS
-)
-const cashCollectionsType = createGraphType(
-  "cashCollections",
-  CASH_COLLECTIONS_FIELDS
-)
+const transferClientsType = createGraphType("transferClients", TRANSFER_CLIENT_FIELDS);
+const cashCollectionsType = createGraphType("cashCollections", CASH_COLLECTIONS_FIELDS);
 
 const graph = new GraphProvider();
 
 export default apiHandler({
   post: approveReject,
 });
-
-let statusCode = 200;
-let response;
 
 async function approveReject(req, res) {
     const user_id = req.auth?.sub;
@@ -41,8 +33,8 @@ async function approveReject(req, res) {
     const addToMutationList = addToList => mutationList.push(addToList(`bulk_update_${mutationList.length}`));
 
     const errorMsg = new Set();
-    const promise = await new Promise(async (resolve) => {
-        const promiseResponse = await Promise.all(transfers.map(async (transfer) => {
+    try {
+        await Promise.all(transfers.map(async (transfer) => {
             if (transfer.status === "approved") {
                 logger.debug({user_id, page: `Processing Transfer: ${transfer.selectedClientId}`, data: transfer});
                 const currentDate = transfer.currentDate;
@@ -57,21 +49,23 @@ async function approveReject(req, res) {
                 delete targetGroup._id;
     
                 const existingCashCollection = await findCashCollections({
-                  clientId: { _eq: transfer.selectedClientId },
-                  groupId: { _eq: transfer.sourceGroupId },
-                  dateAdded: { _eq: currentDate },
+                    clientId: { _eq: transfer.selectedClientId },
+                    groupId: { _eq: transfer.sourceGroupId },
+                    dateAdded: { _eq: currentDate },
                 });
-                logger.debug({user_id, page: `Exsiting CashCollection: ${existingCashCollection.length}`});
+                
+                logger.debug({user_id, page: `Existing CashCollection: ${existingCashCollection.length}`});
                 targetGroup.noOfClients = targetGroup.noOfClients ? targetGroup.noOfClients : 0;
                 
                 if (targetGroup.status === 'full') {
-                    errorMsg.add("Some client were not successfuly transfered due to selected group is full.");
+                    errorMsg.add("Some client were not successfully transferred due to selected group is full.");
                 } else {
                     let selectedSlotNo = transfer.selectedSlotNo;
                     const clientLoans = await findLoans({
-                      clientId: { _eq: transfer.selectedClientId },
-                      status: { _in: ['active', 'completed', 'pending'] } 
+                        clientId: { _eq: transfer.selectedClientId },
+                        status: { _in: ['active', 'completed', 'pending'] } 
                     });
+                    
                     logger.debug({user_id, page: `Client Loans: ${clientLoans.length}`, data: clientLoans});
                     const validateLoan = getAndValidateLoan(clientLoans);
                     logger.debug({user_id, page: `Validate Loan: ${clientLoans.length}`, data: validateLoan});
@@ -81,9 +75,7 @@ async function approveReject(req, res) {
                         errorMsg.add(validateLoan.errorMsg);
                     } else {
                         if (selectedSlotNo !== '-') {
-                            // if slot is not available assigned new slot   slotNo = 1
-                            if (!targetGroup.availableSlots.includes(selectedSlotNo)) { // [6,7,8,9,10]
-                                // get always the first available slot
+                            if (!targetGroup.availableSlots.includes(selectedSlotNo)) {
                                 selectedSlotNo = targetGroup.availableSlots[0];
                             }
 
@@ -94,7 +86,6 @@ async function approveReject(req, res) {
                                 targetGroup.status = 'full';
                             }
 
-                            // put back the slotNo in the source group
                             if (!sourceGroup.availableSlots.includes(transfer.currentSlotNo)) {
                                 sourceGroup.availableSlots.push(transfer.currentSlotNo);
                                 sourceGroup.availableSlots.sort((a, b) => { return a - b; });
@@ -104,12 +95,12 @@ async function approveReject(req, res) {
                             addToMutationList(alias => updateQl(groupsType(alias), {
                                 where: { _id: { _eq: sourceGroupId } },
                                 set: { ...sourceGroup }
-                              }));
+                            }));
 
                             addToMutationList(alias => updateQl(groupsType(alias), {
-                                where: { _id: { _eq: targetGroup } },
+                                where: { _id: { _eq: targetGroupId } },
                                 set: { ...targetGroup }
-                              }));
+                            }));
 
                             if (loan) {
                                 const loanId = loan._id;
@@ -158,28 +149,28 @@ async function approveReject(req, res) {
                                     addToMutationList(alias => updateQl(loansType(alias), {
                                         where: { _id: { _eq: prevLoanId } },
                                         set: { ...prevLoan },
-                                      }));
+                                    }));
                                 }
 
                                 const newLoanId = generateUUID();
-                                addToMutationList(alias => insertQl(loansType(alias), { objects: [{ ...updatedLoan, _id: newLoanId }]}))
-                                .then(res => res.data?.loans)
+                                // Remove the .then() chain and just add to mutation list
+                                addToMutationList(alias => insertQl(loansType(alias), { 
+                                    objects: [{ ...updatedLoan, _id: newLoanId }]
+                                }));
 
-                                if (newLoanId) {
-                                    loan.status = "closed"
-                                    loan.transferred = true;
-                                    loan.transferId = transfer._id;
-                                    loan.transferredDate = currentDate;
-                                    loan.modifiedDateTime = new Date();
+                                loan.status = "closed";
+                                loan.transferred = true;
+                                loan.transferId = transfer._id;
+                                loan.transferredDate = currentDate;
+                                loan.modifiedDateTime = new Date();
 
-                                    addToMutationList(alias => updateQl(loansType(alias), {
-                                        where: { _id: { _eq: loanId } },
-                                        set: { ...loan }
-                                      }))
+                                addToMutationList(alias => updateQl(loansType(alias), {
+                                    where: { _id: { _eq: loanId } },
+                                    set: { ...loan }
+                                }));
 
-                                    loan._id = newLoanId;
-                                    loan.oldId = loanId + "";
-                                }
+                                loan._id = newLoanId;
+                                loan.oldId = loanId + "";
                             }
                         }
 
@@ -190,9 +181,9 @@ async function approveReject(req, res) {
                         addToMutationList(alias => updateQl(clientType(alias), {
                             where: { _id: { _eq: transfer.selectedClientId } },
                             set: { branchId: transfer.targetBranchId, loId: transfer.targetUserId, groupId: transfer.targetGroupId, groupName: targetGroup.name }
-                          }));
+                        }));
                         
-                        addToMutationList(updateQl(transferClientsType(alias), {
+                        addToMutationList(alias => updateQl(transferClientsType(alias), {
                             where: { _id: { _eq: transfer._id } },
                             set: {
                                 oldLoanId: loan?.oldId,
@@ -204,37 +195,73 @@ async function approveReject(req, res) {
                             }
                         }));
                     }
-
-                    response = { success: true };
                 }
             } else {
                 addToMutationList(alias => updateQl(transferClientsType(alias), {
                     where: { _id: { _eq: transfer._id } },
                     set: {status: "reject", modifiedDateTime: new Date()}
-                  }));
+                }));
             }
         }));
 
-        await graph.mutation(
-            ... mutationList
-        );
+        try {
+            const result = await graph.mutation(...mutationList);
+            
+            const errors = Array.from(errorMsg);
+            const response = errors.length > 0 
+                ? { success: true, message: errors.join('<br/>')}
+                : { success: true };
 
-        resolve(promiseResponse);
-    });
+            res.status(200)
+                .setHeader('Content-Type', 'application/json')
+                .end(JSON.stringify(response));
 
-    if (promise) {
-        const errors = Array.from(errorMsg);
-        console.log(errors)
-        if (errors.length > 0) {
-            response = { success: true, message: errors.join('<br/>')};
-        } else {
-            response = { success: true }
+        } catch (graphqlError) {
+            // Format and log the error
+            const formattedErrors = logGraphQLError(graphqlError, {
+                user_id,
+                page: 'Transfer Client Approve/Reject',
+                operation: 'mutation'
+            });
+
+            // Create a user-friendly error message
+            const errorMessages = formattedErrors.map(err => {
+                if (err.details?.type === 'TypeMismatch') {
+                    return `Field "${err.details.field}" expected ${err.details.expected} but received ${err.details.received}`;
+                }
+                return err.message;
+            });
+
+            logger.error({
+                user_id,
+                page: 'Transfer Client Approve/Reject',
+                error: formattedErrors
+            });
+
+            res.status(400)
+                .setHeader('Content-Type', 'application/json')
+                .end(JSON.stringify({
+                    success: false,
+                    message: errorMessages.join('\n'),
+                    details: formattedErrors
+                }));
         }
-    }
 
-    res.status(statusCode)
-        .setHeader('Content-Type', 'application/json')
-        .end(JSON.stringify(response));
+    } catch (error) {
+        logger.error({
+            user_id,
+            page: 'Transfer Client Approve/Reject',
+            error: error
+        });
+
+        res.status(500)
+            .setHeader('Content-Type', 'application/json')
+            .end(JSON.stringify({
+                success: false,
+                message: 'An internal server error occurred',
+                details: error.message
+            }));
+    }
 }
 
 async function saveCashCollection(transfer, loan, sourceGroup, targetGroup, selectedSlotNo, existingCashCollection, currentDate, addToMutationList) {
@@ -252,8 +279,7 @@ async function saveCashCollection(transfer, loan, sourceGroup, targetGroup, sele
             loId: transfer.targetUserId,
             clientId: transfer.selectedClientId,
             mispayment: false,
-            mispaymentStr: 'No',
-            collection: 0,
+            // collection: 0,
             excess: 0,
             total: 0,
             activeLoan: 0,
@@ -273,10 +299,10 @@ async function saveCashCollection(transfer, loan, sourceGroup, targetGroup, sele
             groupStatus: 'closed',
             transferId: transfer._id,
             transferDate: currentDate,
-            sameLo: transfer.sameLo, 
+            // sameLo: transfer.sameLo, 
             transfer: true,
-            loToLo: transfer.loToLo,
-            branchToBranch: transfer.branchToBranch,
+            // loToLo: transfer.loToLo,
+            // branchToBranch: transfer.branchToBranch,
             insertedDateTime: new Date(),
             origin: 'automation-trf'
         };
@@ -294,7 +320,7 @@ async function saveCashCollection(transfer, loan, sourceGroup, targetGroup, sele
             data.mcbu = loan.mcbu;
             data.pastDue = loan.pastDue;
             data.noPastDue = loan.noPastDue;
-            data.loanTerms = loan.loanTerms;
+            data.loanTerms = loan.loanTerms + "";
             data.remarks = existingCashCollection.length > 0 ? existingCashCollection[0].remarks : null;
             data.status = existingCashCollection.length > 0 ? existingCashCollection[0].status : null;
 
@@ -317,11 +343,11 @@ async function saveCashCollection(transfer, loan, sourceGroup, targetGroup, sele
             where: { _id: { _eq: cashCollection[0]._id } },
             set: {
                 transfer: true,
-                sameLo: transfer.sameLo, 
+                // sameLo: transfer.sameLo, 
                 transferId: transfer._id, 
                 transferDate: currentDate,
-                loToLo: transfer.loToLo, 
-                branchToBranch: transfer.branchToBranch,
+                // loToLo: transfer.loToLo, 
+                // branchToBranch: transfer.branchToBranch,
                 modifiedDateTime: new Date()
             }
         }));
@@ -335,8 +361,7 @@ async function saveCashCollection(transfer, loan, sourceGroup, targetGroup, sele
             loId: transfer.oldLoId,
             clientId: transfer.selectedClientId,
             mispayment: false,
-            mispaymentStr: 'No',
-            collection: 0,
+            // collection: 0,
             excess: 0,
             total: 0,
             activeLoan: 0,
@@ -351,15 +376,15 @@ async function saveCashCollection(transfer, loan, sourceGroup, targetGroup, sele
             mcbuCol: 0,
             mcbuWithdrawal: 0,
             mcbuReturnAmt: 0,
-            remarks: '',
+            remarks: null,
             dateAdded: currentDate,
             groupStatus: 'closed',
             transferId: transfer._id,
             transferredDate: currentDate,
-            sameLo: transfer.sameLo, 
+            // sameLo: transfer.sameLo, 
             transferred: true,
-            loToLo: transfer.loToLo,
-            branchToBranch: transfer.branchToBranch,
+            // loToLo: transfer.loToLo,
+            // branchToBranch: transfer.branchToBranch,
             insertedDateTime: new Date(),
             origin: 'automation-trf'
         };
@@ -375,7 +400,7 @@ async function saveCashCollection(transfer, loan, sourceGroup, targetGroup, sele
             data.noOfPayments = loan.noOfPayments;
             data.status = loan.status;
             data.mcbu = loan.mcbu;
-            data.loanTerms = loan.loanTerms;
+            data.loanTerms = loan.loanTerms + "";
             data.remarks = loan?.history?.remarks;
         }
 
@@ -390,11 +415,11 @@ async function saveCashCollection(transfer, loan, sourceGroup, targetGroup, sele
             where: { _id: { _eq: existingCashCollection[0]._id } }, 
             set: {
                 transferred: true,
-                sameLo: transfer.sameLo, 
+                // sameLo: transfer.sameLo, 
                 transferId: transfer._id, 
                 transferredDate: currentDate,
-                loToLo: transfer.loToLo, 
-                branchToBranch: transfer.branchToBranch,
+                // loToLo: transfer.loToLo, 
+                // branchToBranch: transfer.branchToBranch,
                 modifiedDateTime: new Date()
             }
         }));

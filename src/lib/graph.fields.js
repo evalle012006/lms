@@ -376,7 +376,6 @@ export const TRANSFER_CLIENT_FIELDS = `
   currentSlotNo
   dateAdded
   loToLo
-  loanId
   modifiedDateTime
   occurence
   sameLo
@@ -389,6 +388,8 @@ export const TRANSFER_CLIENT_FIELDS = `
   targetUserId
   selectedSlotNo
   sourceUserId
+  newLoanId
+  oldLoanId
   `;
 
   export const BRANCH_COH_FIELDS = `

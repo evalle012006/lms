@@ -417,34 +417,36 @@ const TransferClientPage = () => {
     const getTransferList = async () => {
         const previousMonthEndDate = getLastWeekdayOfTheMonth(moment().subtract(1, 'months').format('YYYY'), moment().subtract(1, 'months').format('MM'), holidayList);
         const endMonthDate = isEndMonthDate(currentDate, holidayList);
-
-        let url = getApiBaseUrl() + 'transactions/transfer-client';
-        if (currentUser.role.rep === 1) {
-            url = url + '?' + new URLSearchParams({ previousLastMonthDate: endMonthDate ? currentDate : previousMonthEndDate });
-            const response = await fetchWrapper.get(url);
-            if (response.success) {
-                dispatch(setTransferList(response.data));
-            } else if (response.error) {
-                setLoading(false);
-                toast.error(response.message);
-            }
-        } else if (currentUser.role.rep === 2) {
-            url = url + '?' + new URLSearchParams({ _id: currentUser._id, previousLastMonthDate: endMonthDate ? currentDate : previousMonthEndDate });
-            const response = await fetchWrapper.get(url);
-            if (response.success) {
-                dispatch(setTransferList(response.data));
-            } else if (response.error) {
-                setLoading(false);
-                toast.error(response.message);
-            }
-        }  else if (currentUser.role.rep === 3) {
-            url = url + '?' + new URLSearchParams({ branchId: currentUser.designatedBranchId, previousLastMonthDate: endMonthDate ? currentDate : previousMonthEndDate });
-            const response = await fetchWrapper.get(url);
-            if (response.success) {
-                dispatch(setTransferList(response.data));
-            } else if (response.error) {
-                setLoading(false);
-                toast.error(response.message);
+        const previousLastMonthDate = endMonthDate ? currentDate : previousMonthEndDate;
+        if (previousLastMonthDate) {
+            let url = getApiBaseUrl() + 'transactions/transfer-client';
+            if (currentUser.role.rep === 1) {
+                url = url + '?' + new URLSearchParams({ previousLastMonthDate: previousLastMonthDate });
+                const response = await fetchWrapper.get(url);
+                if (response.success) {
+                    dispatch(setTransferList(response.data));
+                } else if (response.error) {
+                    setLoading(false);
+                    toast.error(response.message);
+                }
+            } else if (currentUser.role.rep === 2) {
+                url = url + '?' + new URLSearchParams({ _id: currentUser._id, previousLastMonthDate: previousLastMonthDate });
+                const response = await fetchWrapper.get(url);
+                if (response.success) {
+                    dispatch(setTransferList(response.data));
+                } else if (response.error) {
+                    setLoading(false);
+                    toast.error(response.message);
+                }
+            }  else if (currentUser.role.rep === 3) {
+                url = url + '?' + new URLSearchParams({ branchId: currentUser.designatedBranchId, previousLastMonthDate: previousLastMonthDate });
+                const response = await fetchWrapper.get(url);
+                if (response.success) {
+                    dispatch(setTransferList(response.data));
+                } else if (response.error) {
+                    setLoading(false);
+                    toast.error(response.message);
+                }
             }
         }
     }
@@ -475,7 +477,7 @@ const TransferClientPage = () => {
         return (() => {
             mounted = false;
         })
-    }, [currentDate]);
+    }, [currentDate, holidayList]);
 
     useEffect(() => {
         if (currentUser.role.rep < 4) {
@@ -532,19 +534,8 @@ const TransferClientPage = () => {
                             <TabSelector
                                 isActive={selectedTab === "transfer-transaction"}
                                 onClick={() => setSelectedTab("transfer-transaction")}>
-                                {/* List of all outgoing transfer that is pending or not successful */}
                                     Transactions
                             </TabSelector>
-                            {/* <TabSelector
-                                isActive={selectedTab === "history-branch"}
-                                onClick={() => setSelectedTab("history-branch")}>
-                                History Branch to Branch
-                            </TabSelector> */}
-                            {/* <TabSelector
-                                isActive={selectedTab === "history-lo"}
-                                onClick={() => setSelectedTab("history-lo")}>
-                                History LO to LO
-                            </TabSelector> */}
                             {currentUser.role.rep < 3 && (
                                 <TabSelector
                                     isActive={selectedTab === "history-revert-transfer"}
@@ -557,12 +548,6 @@ const TransferClientPage = () => {
                             <TabPanel hidden={selectedTab !== "transfer-transaction"}>
                                 <TableComponent columns={columns} data={transferList} pageSize={20} hasActionButtons={false} dropDownActions={dropDownActions} dropDownActionOrigin="transfer" showFilters={false} multiSelect={currentUser.role.rep <= 2 ? true : false} multiSelectActionFn={handleMultiSelect} />
                             </TabPanel>
-                            {/* <TabPanel hidden={selectedTab !== "history-branch"}>
-                                <div>UNDER CONSTRUCTION</div>
-                            </TabPanel>
-                            <TabPanel className="px-4" hidden={selectedTab !== "history-lo"}>
-                                <TransferHistoryLOToLOPage />
-                            </TabPanel> */}
                             {currentUser.role.rep < 3 && (
                                 <TabPanel className="px-4" hidden={selectedTab !== "history-revert-transfer"}>
                                     <RevertTransferPage />
