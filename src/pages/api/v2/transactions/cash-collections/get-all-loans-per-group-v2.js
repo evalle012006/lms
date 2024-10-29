@@ -18,11 +18,26 @@ async function getData(req, res) {
     const data = [];
 
     const promise = await new Promise(async (resolve) => {
-        const response = await Promise.all(groupIdsObj.map(async (groupId) => {
-            data.push.apply(data, await getAllLoansPerGroup(date, mode, groupId, dayName, currentDate));
-        }));
+        let batch_ids = [];
+        for (const id of groupIdsObj) {
+          if(batch_ids.length === 10) {
+            await Promise.all(batch_ids.map(async (groupId) => {
+              data.push.apply(data, await getAllLoansPerGroup(date, mode, groupId, dayName, currentDate));
+            }));
+            batch_ids = [];
+          } else {
+            batch_ids.push(id);
+          }
+        }
 
-        resolve(response);
+        if (batch_ids.length) {
+          await Promise.all(batch_ids.map(async (groupId) => {
+            data.push.apply(data, await getAllLoansPerGroup(date, mode, groupId, dayName, currentDate));
+          }));
+          batch_ids = [];
+        }
+
+        resolve(true);
     });
 
     if (promise) {

@@ -41,13 +41,34 @@ async function getData (req, res) {
         }
         
         const data = [];
-        const promise = await new Promise(async (resolve) => {
-            const response = await Promise.all(branchIds.map(async (branchId) => {
-                logger.debug({page: 'Branch Collections', message: `Getting data for branch id: ${branchId}`});
-                data.push.apply(data, await getAllLoanTransactionsByBranch(branchId, date, dayName, currentDate));
-            }));
+        const promise = await new Promise(async (resolve, reject) => {
+            try {
+                let batch_ids = [];
+                for(const id of branchIds) {
+                    if(batch_ids.length == 10) {
+                        await Promise.all(batch_ids.map(async (branchId) => {
+                            logger.debug({page: 'Branch Collections', message: `Getting data for branch id: ${branchId}`});
+                            data.push.apply(data, await getAllLoanTransactionsByBranch(branchId, date, dayName, currentDate));
+                        }));
+                        batch_ids = [];
+                    } else {
+                        batch_ids.push(id);
+                    }
+                }
 
-            resolve(response);
+                if(batch_ids.length) {
+                    await Promise.all(batch_ids.map(async (branchId) => {
+                        logger.debug({page: 'Branch Collections', message: `Getting data for branch id: ${branchId}`});
+                        data.push.apply(data, await getAllLoanTransactionsByBranch(branchId, date, dayName, currentDate));
+                    }));
+
+                    batch_ids = [];
+                }
+
+                resolve(true);
+            } catch(err) {
+                reject(err)
+            }
         }).catch(err => {
             console.error(err)
         })
