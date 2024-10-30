@@ -18,15 +18,9 @@ async function testOnly(req, res) {
     let response;
     let statusCode = 200;
 
-    // B099 - 66fb75409aa16a5721017de8
-    // B100 - 66fccd7907494604573d0127
-    // B101 - 66fccdba4ba8643bc94e77e7
-    // B102 - 66fd2718c8e1b50de14095b8
-    // B103 - 66fe8fefc8e1b50de140f5cb
+    const branchId = '670c70740c496bea94a65f0d'
 
-    const branchId = '66fe8fefc8e1b50de140f5cb'
-
-    const users = await db.collection('users').find({ designatedBranch: "B103", "role.rep": 4 }).toArray();
+    const users = await db.collection('users').find({ designatedBranch: "B104", "role.rep": 4 }).toArray();
     users.map(async user => {
       let temp = {...user};
       temp.designatedBranchId = branchId;
