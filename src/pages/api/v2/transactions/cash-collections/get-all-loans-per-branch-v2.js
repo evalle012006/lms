@@ -45,14 +45,13 @@ async function getData (req, res) {
             try {
                 let batch_ids = [];
                 for(const id of branchIds) {
+                    batch_ids.push(id);
                     if(batch_ids.length == 10) {
                         await Promise.all(batch_ids.map(async (branchId) => {
                             logger.debug({page: 'Branch Collections', message: `Getting data for branch id: ${branchId}`});
                             data.push.apply(data, await getAllLoanTransactionsByBranch(branchId, date, dayName, currentDate));
                         }));
                         batch_ids = [];
-                    } else {
-                        batch_ids.push(id);
                     }
                 }
 
