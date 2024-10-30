@@ -1682,7 +1682,7 @@ const LoanApplicationPage = () => {
                                     onClick={() => handleSelectTab("application")}>
                                     Pending Applications
                                 </TabSelector>
-                                {currentUser?.role?.rep < 3 && (
+                                {currentUser?.role?.rep < 2 && (
                                     <TabSelector
                                         isActive={selectedTab === "duplicate"}
                                         onClick={() => handleSelectTab("duplicate")}>

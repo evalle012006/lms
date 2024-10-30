@@ -120,7 +120,7 @@ const ViewByBranchPage = ({ dateFilter, remarks }) => {
                 </div>
             ) : (
                 <div className='flex flex-col mt-2 p-4'>
-                    <TableComponent columns={columns} data={list} pageSize={100} showPagination={false} showFilters={false} hasActionButtons={false} rowClick={handleRowClick} />
+                    <TableComponent columns={columns} data={list} pageSize={500} showPagination={false} showFilters={false} hasActionButtons={false} rowClick={handleRowClick} />
                 </div>
             )}
         </React.Fragment>
