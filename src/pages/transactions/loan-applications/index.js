@@ -952,87 +952,51 @@ const LoanApplicationPage = () => {
         }, 1000);
     }
 
-    const handleMultiSelect = (mode, selectAll, row, rowIndex) => {
-        if (selectedTab == 'ldf') {
-            if (list) {
-                if (mode === 'all') {
-                    const tempList = list.map(loan => {
-                        let temp = {...loan};
+    const handleMultiSelect = (mode, selectAll, rows, currentPageIndex) => {
+        const pageSize = 50; // Make sure this matches your table's pageSize
+        const startIndex = currentPageIndex * pageSize;
+        const endIndex = startIndex + pageSize;
     
-                        // if (temp.allowApproved) {
-                            temp.selected = selectAll;
-                        // }
-                        
-                        return temp;
-                    });
-                    dispatch(setLoanList(tempList));
-                } else if (mode === 'row') {
-                    const tempList = list.map((loan, index) => {
-                        let temp = {...loan};
-        
-                        if (index === rowIndex) {
-                            temp.selected = !temp.selected;
-                        }
-        
-                        return temp;
-                    });
-                    dispatch(setLoanList(tempList));
-                }
+        const updateList = (sourceList, setAction) => {
+            if (mode === 'all') {
+                const tempList = sourceList.map((loan, index) => {
+                    let temp = {...loan};
+                    
+                    // Only update items on the current page
+                    if (index >= startIndex && index < endIndex) {
+                        temp.selected = selectAll;
+                    }
+                    
+                    return temp;
+                });
+                setAction(tempList);
+            } else if (mode === 'row') {
+                // For single row selection
+                const absoluteIndex = startIndex + rows.index;
+                
+                const tempList = sourceList.map((loan, index) => {
+                    let temp = {...loan};
+                    
+                    if (index === absoluteIndex) {
+                        temp.selected = !temp.selected;
+                    }
+                    
+                    return temp;
+                });
+                setAction(tempList);
             }
-        } else if (selectedTab == 'application') {
-            if (pendingList) {
-                if (mode === 'all') {
-                    const tempList = pendingList.map(loan => {
-                        let temp = {...loan};
+        };
     
-                        // if (temp.allowApproved) {
-                            temp.selected = selectAll;
-                        // }
-                        
-                        return temp;
-                    });
-                    dispatch(setPendingLoanList(tempList));
-                } else if (mode === 'row') {
-                    const tempList = pendingList.map((loan, index) => {
-                        let temp = {...loan};
-        
-                        if (index === rowIndex) {
-                            temp.selected = !temp.selected;
-                        }
-        
-                        return temp;
-                    });
-                    dispatch(setPendingLoanList(tempList));
-                }
-            }
-        } else if (selectedTab == 'duplicate') {
-            if (duplicateList) {
-                if (mode === 'all') {
-                    const tempList = duplicateList.map(loan => {
-                        let temp = {...loan};
-    
-                        // if (temp.allowApproved) {
-                            temp.selected = selectAll;
-                        // }
-                        
-                        return temp;
-                    });
-                    dispatch(setDuplicateLoanList(tempList));
-                } else if (mode === 'row') {
-                    const tempList = duplicateList.map((loan, index) => {
-                        let temp = {...loan};
-        
-                        if (index === rowIndex) {
-                            temp.selected = !temp.selected;
-                        }
-        
-                        return temp;
-                    });
-                    dispatch(setDuplicateLoanList(tempList));
-                }
-            }
+        if (selectedTab === 'ldf' && list) {
+            updateList(list, (tempList) => dispatch(setLoanList(tempList)));
+        } 
+        else if (selectedTab === 'application' && pendingList) {
+            updateList(pendingList, (tempList) => dispatch(setPendingLoanList(tempList)));
+        } 
+        else if (selectedTab === 'duplicate' && duplicateList) {
+            updateList(duplicateList, (tempList) => dispatch(setDuplicateLoanList(tempList)));
         }
-    }
+    };
 
     const validate = (loanList, origin) => {
         let errorMsg = new Set();
@@ -1668,7 +1632,7 @@ const LoanApplicationPage = () => {
                                     onClick={() => handleSelectTab("application")}>
                                     Pending Applications
                                 </TabSelector>
-                                {currentUser.role.rep < 3 && (
+                                {currentUser.role.rep < 2 && (
                                     <TabSelector
                                         isActive={selectedTab === "duplicate"}
                                         onClick={() => handleSelectTab("duplicate")}>

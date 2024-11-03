@@ -111,6 +111,10 @@ const Index = () => {
         };
     }, [currentTime]);
 
+    const updateUserNoGroups = async () => {
+        await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}aahandy-scripts/update-user-no-groups`, {});
+    }
+
     // useEffect(() => {
     //     const updateCCData = async () => {
     //         await fetchWrapper.post(`${process.env.NEXT_PUBLIC_API_URL}aahandy-scripts/update-cc-data`);
@@ -121,6 +125,7 @@ const Index = () => {
 
     return (
         <Layout header={false} noPad={true}>
+            {/* <button onClick={() => updateUserNoGroups()}>Update</button> */}
             <DashboardPage />
         </Layout>
     );
