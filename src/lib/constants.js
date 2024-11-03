@@ -1,4 +1,4 @@
-export const getApiBaseUrl = () => process.env.NEXT_PUBLIC_API_URL + 'v2/';
+export const getApiBaseUrl = () => process.env.NEXT_PUBLIC_API_URL;
     //(localStorage.getItem('api_version') ? localStorage.getItem('api_version') + '/' : '');
 
 export const LOR_DAILY_REMARKS = [
