@@ -585,7 +585,7 @@ const TableComponent = React.memo(({
                             value={row.original.selected}
                             onChange={() => handleSelectRow(row.original, i)}
                             size="md"
-                            disabled={row.original.withError || row.original.status !== 'pending'}
+                            disabled={checkBoxDisable}
                           />
                         </td>
                       )}
