@@ -37,6 +37,12 @@ root
 dateModified
 designatedBranch
 designatedBranchId
+transactionType
+areaId
+regionId
+divisionId
+profile
+loNo
 `)('users');
 
 async function authenticate(req, res) {
