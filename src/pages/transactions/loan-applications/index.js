@@ -953,20 +953,22 @@ const LoanApplicationPage = () => {
     }
 
     const handleMultiSelect = (mode, selectAll, rows, currentPageIndex) => {
-        const pageSize = 50; // Make sure this matches your table's pageSize
+        const pageSize = 30; // Make sure this matches your table's pageSize
         const startIndex = currentPageIndex * pageSize;
         const endIndex = startIndex + pageSize;
     
         const updateList = (sourceList, setAction) => {
             if (mode === 'all') {
+                // Create a new array with the updated selection state
                 const tempList = sourceList.map((loan, index) => {
-                    let temp = {...loan};
-                    
+                    let temp = { ...loan };
+    
                     // Only update items on the current page
-                    if (index >= startIndex && index < endIndex) {
+                    if (index >= startIndex && index < Math.min(endIndex, sourceList.length)) {
+                        // Set selected property to the selectAll value (true or false)
                         temp.selected = selectAll;
                     }
-                    
+    
                     return temp;
                 });
                 setAction(tempList);
@@ -975,9 +977,10 @@ const LoanApplicationPage = () => {
                 const absoluteIndex = startIndex + rows.index;
                 
                 const tempList = sourceList.map((loan, index) => {
-                    let temp = {...loan};
+                    let temp = { ...loan };
                     
                     if (index === absoluteIndex) {
+                        // Toggle the selected state for the clicked row
                         temp.selected = !temp.selected;
                     }
                     
@@ -987,6 +990,7 @@ const LoanApplicationPage = () => {
             }
         };
     
+        // Handle different tabs
         if (selectedTab === 'ldf' && list) {
             updateList(list, (tempList) => dispatch(setLoanList(tempList)));
         } 
