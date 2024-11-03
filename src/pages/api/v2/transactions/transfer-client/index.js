@@ -81,127 +81,164 @@ async function getPendingTransfer(_id, branchId) {
     let filter = null;
 
     if (_id) {
-        const user = await findUsers({ _id: { _eq: _id } }).toArray();
-        if (user.length > 0) {
+        console.log(_id);
+        const users = await findUsers({ _id: { _eq: _id } }); // Removed .toArray()
+        if (users.length > 0) {
             let branchIds = [];
-            if (user[0].areaId && user[0].role.shortCode === 'area_admin') {
-                const branches = await findBranches({ areaId: { _eq: user[0].areaId }}, '_id');
-                branchIds = branches.map(branch => branch._id.toString());
-            } else if (user[0].regionId && user[0].role.shortCode === 'regional_manager') {
-                const branches = await findBranches({ regionId: { _eq: user[0].regionId } }, '_id');
-                branchIds = branches.map(branch => branch._id.toString());
-            } else if (user[0].divisionId && user[0].role.shortCode === 'deputy_director') {
-                const branches = await findBranches({ divisionId: { _eq: user[0].divisionId } }, '_id');
+            const user = users[0];
+            
+            // Simplified branch fetching logic based on user role
+            const roleBasedQueries = {
+                'area_admin': { areaId: { _eq: user.areaId } },
+                'regional_manager': { regionId: { _eq: user.regionId } },
+                'deputy_director': { divisionId: { _eq: user.divisionId } }
+            };
+
+            const roleQuery = roleBasedQueries[user.role.shortCode];
+            if (roleQuery) {
+                const branches = await findBranches(roleQuery, '_id');
                 branchIds = branches.map(branch => branch._id.toString());
             }
 
             filter = {
-              status: { _eq: 'pending'},
-              sourceBranchId: { _in: branchIds }
+                status: { _eq: 'pending' },
+                sourceBranchId: { _in: branchIds }
             };
         }
     } else if (branchId) {
         filter = {
-          status: { _eq: 'pending' },
-          sourceBranchId: { _eq: branchId }
+            status: { _eq: 'pending' },
+            sourceBranchId: { _eq: branchId }
         };
-
     } else {
         filter = { status: { _eq: 'pending' } };
     }
 
     if (filter) {
-      const fields = `
-        ${TRANSFER_CLIENT_FIELDS}
-        client {${CLIENT_FIELDS}}
-        loans: selectedClientLoans(where: {status: { _in: ["active", "completed", "pending"] }}) {${LOAN_FIELDS}}
-        closedLoans: selectedClientLoans(where: {status: { _eq: "closed" }}) {${LOAN_FIELDS}}
-        sourceBranch {${BRANCH_FIELDS}}
-        sourceGroup {${GROUP_FIELDS}}
-        sourceUser {${USER_FIELDS}}
-        targetBranch {${BRANCH_FIELDS}}
-        targetGroup {${GROUP_FIELDS}}
-        targetUser {${USER_FIELDS}}
-      `;
-      return findTransferClients(filter, fields)
-        .then(row => row.map(({client, sourceBranch, sourceGroup, sourceUser, targetBranch, targetGroup, targetUser, ...info}) => ({
-            ...info,
-            client: [client],
-            sourceGroup: [sourceGroup],
-            targetGroup: [targetGroup],
-            sourceBranch: [sourceBranch],
-            targetBranch: [targetBranch],
-            sourceUser: [sourceUser],
-            targetUser: [targetUser],
-          })));
-    } else {
-      return [];
+        const fields = `
+            ${TRANSFER_CLIENT_FIELDS}
+            client {${CLIENT_FIELDS}}
+            loans: selectedClientLoans(where: {status: { _in: ["active", "completed", "pending"] }}) {${LOAN_FIELDS}}
+            closedLoans: selectedClientLoans(where: {status: { _eq: "closed" }}) {${LOAN_FIELDS}}
+            sourceBranch {${BRANCH_FIELDS}}
+            sourceGroup {${GROUP_FIELDS}}
+            sourceUser {${USER_FIELDS}}
+            targetBranch {${BRANCH_FIELDS}}
+            targetGroup {${GROUP_FIELDS}}
+            targetUser {${USER_FIELDS}}
+        `;
+
+        return findTransferClients(filter, fields)
+            .then(rows => rows.map(({
+                client,
+                sourceBranch,
+                sourceGroup,
+                sourceUser,
+                targetBranch,
+                targetGroup,
+                targetUser,
+                ...info
+            }) => ({
+                ...info,
+                client: [client],
+                sourceGroup: [sourceGroup],
+                targetGroup: [targetGroup],
+                sourceBranch: [sourceBranch],
+                targetBranch: [targetBranch],
+                sourceUser: [sourceUser],
+                targetUser: [targetUser],
+            })));
     }
+    
+    return [];
 }
 
 async function getApprovedTransfer(_id, branchId, previousLastMonthDate) {
     let filter = null;
+    
     if (_id) {
-        const user = await findUsers({ _id: { _eq: _id } }).toArray();
-        if (user.length > 0) {
+        const users = await findUsers({ _id: { _eq: _id } }); // Removed .toArray()
+        if (users.length > 0) {
             let branchIds = [];
-            if (user[0].areaId && user[0].role.shortCode === 'area_admin') {
-                const branches = await findBranches({ areaId: { _eq: user[0].areaId } }).toArray();
-                branchIds = branches.map(branch => branch._id.toString());
-            } else if (user[0].regionId && user[0].role.shortCode === 'regional_manager') {
-                const branches = await findBranches({ regionId: { _eq: user[0].regionId } }).toArray();
-                branchIds = branches.map(branch => branch._id.toString());
-            } else if (user[0].divisionId && user[0].role.shortCode === 'deputy_director') {
-                const branches = await findBranches({ divisionId: { _eq: user[0].divisionId } }).toArray();
-                branchIds = branches.map(branch => branch._id.toString());
+            const user = users[0];
+
+            // Simplified branch fetching logic based on user role
+            if (user.role.shortCode) {
+                let branchQuery = null;
+                
+                switch (user.role.shortCode) {
+                    case 'area_admin':
+                        branchQuery = user.areaId ? { areaId: { _eq: user.areaId } } : null;
+                        break;
+                    case 'regional_manager':
+                        branchQuery = user.regionId ? { regionId: { _eq: user.regionId } } : null;
+                        break;
+                    case 'deputy_director':
+                        branchQuery = user.divisionId ? { divisionId: { _eq: user.divisionId } } : null;
+                        break;
+                }
+
+                if (branchQuery) {
+                    const branches = await findBranches(branchQuery); // Removed .toArray()
+                    branchIds = branches.map(branch => branch._id.toString());
+                }
             }
 
             filter = {
-              status: { _eq: 'approved' },
-              sourceBranchId: { _in: branchIds },
-              approveRejectDate: { _eq: previousLastMonthDate }
+                status: { _eq: 'approved' },
+                sourceBranchId: { _in: branchIds },
+                approveRejectDate: { _eq: previousLastMonthDate }
             };
         }
     } else if (branchId) {
         filter = {
-          status: { _eq: 'approved' },
-          sourceBranchId: { _eq: branchId },
-          approveRejectDate: { _eq: previousLastMonthDate }
+            status: { _eq: 'approved' },
+            sourceBranchId: { _eq: branchId },
+            approveRejectDate: { _eq: previousLastMonthDate }
         };
-
     } else {
         filter = {
-          status: { _eq: 'approved' },
-          approveRejectDate: { _eq: previousLastMonthDate }
+            status: { _eq: 'approved' },
+            approveRejectDate: { _eq: previousLastMonthDate }
         };
     }
 
-  if (filter) {
-    const fields = `
-        ${TRANSFER_CLIENT_FIELDS}
-        client {${CLIENT_FIELDS}}
-        loans (where: {transfer: { _eq: true }, status: { _neq: "closed" }}) {${LOAN_FIELDS}}
-        sourceBranch {${BRANCH_FIELDS}}
-        sourceGroup {${GROUP_FIELDS}}
-        sourceUser {${USER_FIELDS}}
-        targetBranch {${BRANCH_FIELDS}}
-        targetGroup {${GROUP_FIELDS}}
-        targetUser {${USER_FIELDS}}
-      `;
-    return findTransferClients(filter, fields)
-      .then(row => row.map(({client, sourceBranch, sourceGroup, sourceUser, targetBranch, targetGroup, targetUser, ...info}) => ({
-        ...info,
-        client: [client],
-        sourceGroup: [sourceGroup],
-        targetGroup: [targetGroup],
-        sourceBranch: [sourceBranch],
-        targetBranch: [targetBranch],
-        sourceUser: [sourceUser],
-        targetUser: [targetUser],
-      })));
-  } else {
+    if (filter) {
+        const fields = `
+            ${TRANSFER_CLIENT_FIELDS}
+            client {${CLIENT_FIELDS}}
+            loans (where: {transfer: { _eq: true }, status: { _neq: "closed" }}) {${LOAN_FIELDS}}
+            sourceBranch {${BRANCH_FIELDS}}
+            sourceGroup {${GROUP_FIELDS}}
+            sourceUser {${USER_FIELDS}}
+            targetBranch {${BRANCH_FIELDS}}
+            targetGroup {${GROUP_FIELDS}}
+            targetUser {${USER_FIELDS}}
+        `;
+        
+        return findTransferClients(filter, fields)
+            .then(rows => rows.map(({
+                client,
+                sourceBranch,
+                sourceGroup,
+                sourceUser,
+                targetBranch,
+                targetGroup,
+                targetUser,
+                ...info
+            }) => ({
+                ...info,
+                client: [client],
+                sourceGroup: [sourceGroup],
+                targetGroup: [targetGroup],
+                sourceBranch: [sourceBranch],
+                targetBranch: [targetBranch],
+                sourceUser: [sourceUser],
+                targetUser: [targetUser],
+            })));
+    }
+    
     return [];
-  }
 }
 
 function processData(data, status) {

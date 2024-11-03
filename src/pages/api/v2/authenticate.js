@@ -35,6 +35,8 @@ dateAdded
 role
 root
 dateModified
+designatedBranch
+designatedBranchId
 `)('users');
 
 async function authenticate(req, res) {

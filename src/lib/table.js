@@ -13,6 +13,7 @@ import { ExclamationCircleIcon } from '@heroicons/react/24/outline';
 import CheckBox from './ui/checkbox';
 import ActionDropDown from './ui/action-dropdown';
 import Avatar from './avatar';
+import { useEffect } from 'react';
 
 // Define a default UI for filtering
 function GlobalFilter({
@@ -389,6 +390,27 @@ const TableComponent = React.memo(({
   actionDropDownDataOptions = [],
   dropDownActionOrigin
 }) => {
+  // Add state for current page
+  const [currentPageIndex, setCurrentPageIndex] = useState(0);
+  const [selectAll, setSelectAll] = useState(false);
+  
+  const tableInstance = useTable(
+    {
+      columns,
+      data,
+      initialState: { 
+        pageIndex: currentPageIndex, 
+        pageSize: initialPageSize 
+      },
+      // Remove manualPagination to let react-table handle the pagination
+      autoResetPage: false, // Prevent page reset on data changes
+    },
+    useFilters,
+    useGlobalFilter,
+    useSortBy,
+    usePagination
+  );
+
   const {
     getTableProps,
     getTableBodyProps,
@@ -406,28 +428,73 @@ const TableComponent = React.memo(({
     state,
     preGlobalFilteredRows,
     setGlobalFilter,
-  } = useTable(
-    {
-      columns,
-      data,
-      initialState: { pageIndex: 0, pageSize: initialPageSize },
-    },
-    useFilters,
-    useGlobalFilter,
-    useSortBy,
-    usePagination
-  );
+  } = tableInstance;
 
-  const [selectAll, setSelectAll] = useState(false);
+  // And update the TableComponent's select all handler:
+const handleSelectAll = useCallback(() => {
+  const newSelectAll = !selectAll;
+  setSelectAll(newSelectAll);
+  
+  if (multiSelectActionFn) {
+      multiSelectActionFn('all', newSelectAll, null, currentPageIndex);
+  }
+}, [selectAll, currentPageIndex, multiSelectActionFn]);
 
-  const handleSelectAll = useCallback(() => {
-    setSelectAll(!selectAll);
-    multiSelectActionFn && multiSelectActionFn('all', !selectAll);
-  }, [selectAll, multiSelectActionFn]);
+// Also update the individual row selection handler:
+const handleSelectRow = useCallback((row, index) => {
+  if (multiSelectActionFn) {
+      const rowWithIndex = {
+          ...row,
+          index: index
+      };
+      multiSelectActionFn('row', null, rowWithIndex, currentPageIndex);
+  }
+}, [multiSelectActionFn, currentPageIndex]);
 
-  const handleSelectRow = useCallback((row, index) => {
-    multiSelectActionFn && multiSelectActionFn('row', null, row, index);
-  }, [multiSelectActionFn]);
+  // Calculate if any items on current page are selected
+  const updateSelectAllState = useCallback(() => {
+    if (page && page.length > 0) {
+      const currentPageSelected = page.every(row => row.original.selected);
+      setSelectAll(currentPageSelected);
+    }
+  }, [page]);
+
+  // Update select all state when page changes
+  useEffect(() => {
+    updateSelectAllState();
+  }, [currentPageIndex, data, updateSelectAllState]);
+
+  // Enhanced pagination handlers with state updates
+  const handleGotoPage = useCallback((pageIndex) => {
+    setCurrentPageIndex(pageIndex);
+    gotoPage(pageIndex);
+    setSelectAll(false); // Reset select all when changing pages
+  }, [gotoPage]);
+
+  const handleNextPage = useCallback(() => {
+    const nextPageIndex = currentPageIndex + 1;
+    setCurrentPageIndex(nextPageIndex);
+    nextPage();
+    setSelectAll(false); // Reset select all when changing pages
+  }, [nextPage, currentPageIndex]);
+
+  const handlePreviousPage = useCallback(() => {
+    const prevPageIndex = currentPageIndex - 1;
+    setCurrentPageIndex(prevPageIndex);
+    previousPage();
+    setSelectAll(false); // Reset select all when changing pages
+  }, [previousPage, currentPageIndex]);
+
+  const handleSetPageSize = useCallback((size) => {
+    setPageSize(size);
+    setCurrentPageIndex(0);
+    setSelectAll(false); // Reset select all when changing page size
+  }, [setPageSize]);
+
+  // Calculate pagination details
+  const startIndex = currentPageIndex * state.pageSize;
+  const endIndex = Math.min(startIndex + state.pageSize, data.length);
+  const currentPageData = data.slice(startIndex, endIndex);
 
   return (
     <div className="relative w-full shadow-md rounded-lg overflow-hidden">
@@ -446,6 +513,7 @@ const TableComponent = React.memo(({
                         value={selectAll}
                         onChange={handleSelectAll}
                         size="md"
+                        disabled={page.every(row => row.original.withError || row.original.status !== 'pending')}
                       />
                     </th>
                   )}
@@ -511,7 +579,7 @@ const TableComponent = React.memo(({
                         <td className="px-4 py-3 w-10">
                           <CheckBox
                             name={`select-${i}`}
-                            value={selected}
+                            value={row.original.selected}
                             onChange={() => handleSelectRow(row.original, i)}
                             size="md"
                             disabled={checkBoxDisable}
@@ -547,49 +615,49 @@ const TableComponent = React.memo(({
                       )}
                     </tr>
                   );
-                }) 
+                })
               ) : (
-                  <tr>
-                    <td colSpan={columns.length + (multiSelect ? 1 : 0) + ((hasActionButtons || dropDownActions.length > 0) ? 1 : 0)} className="px-4 py-8 text-center text-gray-500">
-                      NO DATA
-                    </td>
-                  </tr>
-                )}
+                <tr>
+                  <td colSpan={columns.length + (multiSelect ? 1 : 0) + ((hasActionButtons || dropDownActions.length > 0) ? 1 : 0)} className="px-4 py-8 text-center text-gray-500">
+                    NO DATA
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
-        
-        {/* Pagination */}
-        {showPagination && page.length > 0 && (
+
+        {/* Pagination Controls */}
+        {showPagination && data.length > 0 && (
           <div className="flex flex-col sm:flex-row items-center justify-end space-y-3 sm:space-y-0 mt-4">
             <div className="flex items-center space-x-2">
               <span className="text-sm text-gray-700 mr-4">
-                Page <span className="font-medium">{state.pageIndex + 1}</span> of{' '}
+                Page <span className="font-medium">{currentPageIndex + 1}</span> of{' '}
                 <span className="font-medium">{pageOptions.length}</span>
               </span>
               <button
-                onClick={() => gotoPage(0)}
+                onClick={() => handleGotoPage(0)}
                 disabled={!canPreviousPage}
                 className="p-1 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
               >
                 <ChevronDoubleLeftIcon className="w-5 h-5" />
               </button>
               <button
-                onClick={() => previousPage()}
+                onClick={handlePreviousPage}
                 disabled={!canPreviousPage}
                 className="p-1 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
               >
                 <ChevronLeftIcon className="w-5 h-5" />
               </button>
               <button
-                onClick={() => nextPage()}
+                onClick={handleNextPage}
                 disabled={!canNextPage}
                 className="p-1 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
               >
                 <ChevronRightIcon className="w-5 h-5" />
               </button>
               <button
-                onClick={() => gotoPage(pageCount - 1)}
+                onClick={() => handleGotoPage(pageCount - 1)}
                 disabled={!canNextPage}
                 className="p-1 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
               >
@@ -597,9 +665,7 @@ const TableComponent = React.memo(({
               </button>
               <select
                 value={state.pageSize}
-                onChange={e => {
-                  setPageSize(Number(e.target.value));
-                }}
+                onChange={e => handleSetPageSize(Number(e.target.value))}
                 className="block w-20 px-2 py-1 text-sm text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
               >
                 {[10, 20, 30, 40, 50].map(pageSize => (

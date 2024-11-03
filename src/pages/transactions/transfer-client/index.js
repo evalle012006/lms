@@ -262,34 +262,54 @@ const TransferClientPage = () => {
         }, 800);
     }
 
-    const handleMultiSelect = (mode, selectAll, row, rowIndex) => {
-        if (transferList) {
+    const handleMultiSelect = (mode, selectAll, rows, currentPageIndex) => {
+        if (!transferList) return;
+    
+        const pageSize = 20; // Match this with your table's pageSize
+        const startIndex = currentPageIndex * pageSize;
+        const endIndex = Math.min(startIndex + pageSize, transferList.length);
+    
+        const updateTransferList = () => {
             if (mode === 'all') {
-                const tempList = transferList.map(loan => {
-                    let temp = {...loan};
+                return transferList.map((loan, index) => {
+                    let temp = { ...loan };
                     
-                    if (temp.status == 'pending') {
-                        temp.selected = selectAll;
+                    // Only update items on the current page that meet the conditions
+                    if (index >= startIndex && index < endIndex) {
+                        // Check conditions before updating selection
+                        if (temp.status === 'pending' && !temp.withError) {
+                            // Set to the new selectAll value (true or false)
+                            temp.selected = selectAll;
+                        }
                     }
                     
                     return temp;
                 });
-
-                dispatch(setTransferList(tempList));
             } else if (mode === 'row') {
-                const tempList = transferList.map((loan, index) => {
-                    let temp = {...loan};
+                const absoluteIndex = currentPageIndex * pageSize + rows.index;
+                
+                return transferList.map((loan, index) => {
+                    let temp = { ...loan };
                     
-                    if (temp.status == 'pending' && index === rowIndex) {
+                    // Toggle selection for the specific row if conditions met
+                    if (index === absoluteIndex && temp.status === 'pending' && !temp.withError) {
                         temp.selected = !temp.selected;
                     }
     
                     return temp;
                 });
-                dispatch(setTransferList(tempList));
             }
+    
+            return transferList; // Return unchanged list if mode is invalid
+        };
+    
+        try {
+            const updatedList = updateTransferList();
+            dispatch(setTransferList(updatedList));
+        } catch (error) {
+            console.error('Error updating transfer list:', error);
         }
-    }
+    };
 
     const handleMultiApprove = async () => {
         let selectedList = transferList && transferList.filter(t => t.selected === true);
