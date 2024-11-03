@@ -262,48 +262,54 @@ const TransferClientPage = () => {
     }
 
     // Updated handleMultiSelect function
-const handleMultiSelect = (mode, selectAll, rows, currentPageIndex) => {
-    if (transferList) {
+    const handleMultiSelect = (mode, selectAll, rows, currentPageIndex) => {
+        if (!transferList) return;
+    
         const pageSize = 30; // Match this with your table's pageSize
-        
-        if (mode === 'all') {
-            // Calculate the start and end indices for the current page
-            const startIndex = currentPageIndex * pageSize;
-            const endIndex = Math.min(startIndex + pageSize, transferList.length);
-            
-            const tempList = transferList.map((loan, index) => {
-                let temp = {...loan};
-                
-                // Only modify items that are on the current page
-                if (index >= startIndex && index < endIndex) {
-                    // Only update if status is pending and no error
-                    if (temp.status === 'pending' && !temp.withError) {
-                        temp.selected = selectAll;
+        const startIndex = currentPageIndex * pageSize;
+        const endIndex = Math.min(startIndex + pageSize, transferList.length);
+    
+        const updateTransferList = () => {
+            if (mode === 'all') {
+                return transferList.map((loan, index) => {
+                    let temp = { ...loan };
+                    
+                    // Only update items on the current page that meet the conditions
+                    if (index >= startIndex && index < endIndex) {
+                        // Check conditions before updating selection
+                        if (temp.status === 'pending' && !temp.withError) {
+                            // Set to the new selectAll value (true or false)
+                            temp.selected = selectAll;
+                        }
                     }
-                }
+                    
+                    return temp;
+                });
+            } else if (mode === 'row') {
+                const absoluteIndex = currentPageIndex * pageSize + rows.index;
                 
-                return temp;
-            });
-
-            dispatch(setTransferList(tempList));
-        } else if (mode === 'row') {
-            // For single row selection
-            const row = rows; // rows parameter contains the single row data
-            const absoluteIndex = currentPageIndex * pageSize + rows.index;
-            
-            const tempList = transferList.map((loan, index) => {
-                let temp = {...loan};
-                
-                if (index === absoluteIndex && temp.status === 'pending' && !temp.withError) {
-                    temp.selected = !temp.selected;
-                }
-
-                return temp;
-            });
-            dispatch(setTransferList(tempList));
+                return transferList.map((loan, index) => {
+                    let temp = { ...loan };
+                    
+                    // Toggle selection for the specific row if conditions met
+                    if (index === absoluteIndex && temp.status === 'pending' && !temp.withError) {
+                        temp.selected = !temp.selected;
+                    }
+    
+                    return temp;
+                });
+            }
+    
+            return transferList; // Return unchanged list if mode is invalid
+        };
+    
+        try {
+            const updatedList = updateTransferList();
+            dispatch(setTransferList(updatedList));
+        } catch (error) {
+            console.error('Error updating transfer list:', error);
         }
-    }
-};
+    };
 
     const handleMultiApprove = async () => {
         let selectedList = transferList && transferList.filter(t => t.selected === true);

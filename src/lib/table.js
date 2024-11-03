@@ -430,29 +430,26 @@ const TableComponent = React.memo(({
     setGlobalFilter,
   } = tableInstance;
 
-  // Modified select all handler
-  const handleSelectAll = useCallback(() => {
-    const newSelectAll = !selectAll;
-    setSelectAll(newSelectAll);
-    
-    // Get current page data
-    const pageStartIndex = currentPageIndex * state.pageSize;
-    const pageEndIndex = Math.min(pageStartIndex + state.pageSize, data.length);
-    const currentPageData = data.slice(pageStartIndex, pageEndIndex);
-    
-    if (multiSelectActionFn) {
-      multiSelectActionFn('all', newSelectAll, currentPageData, currentPageIndex);
-    }
-  }, [selectAll, data, currentPageIndex, state.pageSize, multiSelectActionFn]);
+  // And update the TableComponent's select all handler:
+const handleSelectAll = useCallback(() => {
+  const newSelectAll = !selectAll;
+  setSelectAll(newSelectAll);
+  
+  if (multiSelectActionFn) {
+      multiSelectActionFn('all', newSelectAll, null, currentPageIndex);
+  }
+}, [selectAll, currentPageIndex, multiSelectActionFn]);
 
-  // Modified select row handler
-  const handleSelectRow = useCallback((row, index) => {
-    if (multiSelectActionFn) {
-      // Pass the row with its index in page
-      row.index = index;
-      multiSelectActionFn('row', null, row, currentPageIndex);
-    }
-  }, [multiSelectActionFn, currentPageIndex]);
+// Also update the individual row selection handler:
+const handleSelectRow = useCallback((row, index) => {
+  if (multiSelectActionFn) {
+      const rowWithIndex = {
+          ...row,
+          index: index
+      };
+      multiSelectActionFn('row', null, rowWithIndex, currentPageIndex);
+  }
+}, [multiSelectActionFn, currentPageIndex]);
 
   // Calculate if any items on current page are selected
   const updateSelectAllState = useCallback(() => {
