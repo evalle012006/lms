@@ -28,7 +28,6 @@ async function save(req, res) {
 
     let mode;
     let oldLoanId;
-    let reloan = false;
 
     const currentDate = loanData.currentDate;
 
@@ -158,7 +157,6 @@ async function save(req, res) {
               }));
 
             if (mode === 'reloan') {
-                reloan = true;
                 await updateLoan(user_id, oldLoanId, finalData, currentDate, mode, addToMutationList);
             } else if (mode === 'advance' || mode === 'active') {
                 await updateLoan(user_id, oldLoanId, finalData, currentDate, mode, addToMutationList);
@@ -167,6 +165,7 @@ async function save(req, res) {
             }
 
             if (mode !== 'advance' && mode !== 'active' && finalData?.loanFor !== 'tomorrow') {
+                const reloan = mode === 'reloan';
                 await saveCashCollection(user_id, loanData, reloan, group, loanId, currentDate, groupStatus, addToMutationList);
                 // await updateUser(loanData);
             }
@@ -233,7 +232,7 @@ async function updateLoan(user_id, loanId, loanData, currentDate, mode, addToMut
             loan.mcbu = loan.mcbu - loanData.mcbu;
             loan.status = 'closed';
             logger.debug({user_id, page: `Updating Cash Collection: ${loanId}`, data: loan});
-            addToMutationList(alias =>updateQl(cashCollectionsType(alias), {
+            addToMutationList(alias => updateQl(cashCollectionsType(alias), {
                 set: { status: 'closed' },
                 where: {
                   clientId: { _eq: loan.clientId },
