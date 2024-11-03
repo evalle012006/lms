@@ -261,34 +261,49 @@ const TransferClientPage = () => {
         }, 800);
     }
 
-    const handleMultiSelect = (mode, selectAll, row, rowIndex) => {
-        if (transferList) {
-            if (mode === 'all') {
-                const tempList = transferList.map(loan => {
-                    let temp = {...loan};
-                    
-                    if (temp.status == 'pending') {
+    // Updated handleMultiSelect function
+const handleMultiSelect = (mode, selectAll, rows, currentPageIndex) => {
+    if (transferList) {
+        const pageSize = 30; // Match this with your table's pageSize
+        
+        if (mode === 'all') {
+            // Calculate the start and end indices for the current page
+            const startIndex = currentPageIndex * pageSize;
+            const endIndex = Math.min(startIndex + pageSize, transferList.length);
+            
+            const tempList = transferList.map((loan, index) => {
+                let temp = {...loan};
+                
+                // Only modify items that are on the current page
+                if (index >= startIndex && index < endIndex) {
+                    // Only update if status is pending and no error
+                    if (temp.status === 'pending' && !temp.withError) {
                         temp.selected = selectAll;
                     }
-                    
-                    return temp;
-                });
+                }
+                
+                return temp;
+            });
 
-                dispatch(setTransferList(tempList));
-            } else if (mode === 'row') {
-                const tempList = transferList.map((loan, index) => {
-                    let temp = {...loan};
-                    
-                    if (temp.status == 'pending' && index === rowIndex) {
-                        temp.selected = !temp.selected;
-                    }
-    
-                    return temp;
-                });
-                dispatch(setTransferList(tempList));
-            }
+            dispatch(setTransferList(tempList));
+        } else if (mode === 'row') {
+            // For single row selection
+            const row = rows; // rows parameter contains the single row data
+            const absoluteIndex = currentPageIndex * pageSize + rows.index;
+            
+            const tempList = transferList.map((loan, index) => {
+                let temp = {...loan};
+                
+                if (index === absoluteIndex && temp.status === 'pending' && !temp.withError) {
+                    temp.selected = !temp.selected;
+                }
+
+                return temp;
+            });
+            dispatch(setTransferList(tempList));
         }
     }
+};
 
     const handleMultiApprove = async () => {
         let selectedList = transferList && transferList.filter(t => t.selected === true);
@@ -553,7 +568,7 @@ const TransferClientPage = () => {
                         </nav>
                         <React.Fragment>
                             <TabPanel hidden={selectedTab !== "transfer-transaction"}>
-                                <TableComponent columns={columns} data={transferList} pageSize={20} hasActionButtons={false} dropDownActions={dropDownActions} dropDownActionOrigin="transfer" showFilters={false} multiSelect={currentUser.role.rep <= 2 ? true : false} multiSelectActionFn={handleMultiSelect} />
+                                <TableComponent columns={columns} data={transferList} pageSize={30} hasActionButtons={false} dropDownActions={dropDownActions} dropDownActionOrigin="transfer" showFilters={false} multiSelect={currentUser.role.rep <= 2 ? true : false} multiSelectActionFn={handleMultiSelect} />
                             </TabPanel>
                             {/* <TabPanel hidden={selectedTab !== "history-branch"}>
                                 <div>UNDER CONSTRUCTION</div>
