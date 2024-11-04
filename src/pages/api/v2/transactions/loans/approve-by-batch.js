@@ -195,7 +195,7 @@ async function checkGroupStatus(groupId) {
   return (
     (
       await graph.query(
-        queryQl(groupType, { where: { _id: { _eq: groupId } } })
+        queryQl(groupType(), { where: { _id: { _eq: groupId } } })
       )
     ).data?.groups ?? []
   );
