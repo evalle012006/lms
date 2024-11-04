@@ -15,6 +15,12 @@ const graph = new GraphProvider();
 const USER_TYPE = createGraphType('users', `${USER_FIELDS}`)('users');
 const BRANCH_TYPE = createGraphType('branches', `_id`)('branches');
 
+const sleep = (millis) => {
+    return new Promise((resolve) => {
+        setTimeout(() => { resolve(true)}, millis)
+    })
+}
+
 async function getData (req, res) {
     let statusCode = 200;
     let response = {};
@@ -46,21 +52,23 @@ async function getData (req, res) {
                 let batch_ids = [];
                 for(const id of branchIds) {
                     batch_ids.push(id);
-                    if(batch_ids.length == 10) {
+                    if(batch_ids.length == 100) {
                         await Promise.all(batch_ids.map(async (branchId) => {
-                            logger.debug({page: 'Branch Collections', message: `Getting data for branch id: ${branchId}`});
                             data.push.apply(data, await getAllLoanTransactionsByBranch(branchId, date, dayName, currentDate));
                         }));
+
+                        await sleep(500);
                         batch_ids = [];
                     }
+                    
                 }
 
                 if(batch_ids.length) {
                     await Promise.all(batch_ids.map(async (branchId) => {
-                        logger.debug({page: 'Branch Collections', message: `Getting data for branch id: ${branchId}`});
                         data.push.apply(data, await getAllLoanTransactionsByBranch(branchId, date, dayName, currentDate));
                     }));
 
+                    await sleep(500);
                     batch_ids = [];
                 }
 
@@ -70,6 +78,7 @@ async function getData (req, res) {
             }
         }).catch(err => {
             console.error(err)
+            throw err;
         })
 
         if (promise) {
@@ -100,31 +109,99 @@ async function getData (req, res) {
 
 async function getAllLoanTransactionsByBranch(branchId, date, dayName, currentDate) {
 
+    const version = 2; // change here to use old query
     let cashCollection;
     if (currentDate === date) {
-        cashCollection = await graph.apollo.query({
-            query: gql`
-            query loan_group ($day_name: String!, $curr_date: date!, $branchId: String!) {
-                collections: get_all_loans_per_branch_by_curr_date_and_day_name(limit: 1, args: {
-                  day_name: $day_name,
-                  curr_date: $curr_date
-                }, where: {
-                  _id: {
-                    _eq: $branchId
-                  }
-                }) {
-                  _id
-                  data
+
+        if(version == 2) {
+            cashCollection = await graph.apollo.query({
+                query: gql`
+                query get_all_loans_per_branch_a($branch_id: String!, $curr_date: date!, $day_name: String!) {
+                    branches: get_all_loans_per_branch_a(args: {
+                        branch_id: $branch_id, curr_date: $curr_date
+                    }) { _id data }
+                    
+                    cashCollections: get_all_loans_per_branch_a_cashCollections(args: {
+                        branch_id: $branch_id, curr_date: $curr_date, day_name: $day_name
+                    }) { _id data }
+
+                    loans: get_all_loans_per_branch_a_loans(args: {
+                        branch_id: $branch_id, curr_date: $curr_date, day_name: $day_name
+                    }) { _id data }
+                    
+                    activeLoans: get_all_loans_per_branch_a_activeLoans(args: {
+                        branch_id: $branch_id, curr_date: $curr_date
+                    }) { _id data }
+                    
+                    currentRelease: get_all_loans_per_branch_a_currentRelease(args: {
+                        branch_id: $branch_id, curr_date: $curr_date,
+                    }) { _id data }
+                    
+                    fullPayment: get_all_loans_per_branch_a_fullPayment(args: {
+                        branch_id: $branch_id, curr_date: $curr_date
+                    }) { _id data }
+                    
+                    transferDailyReceivedDetails: get_all_loans_per_branch_a_tdrd(args: {
+                        branch_id: $branch_id, curr_date: $curr_date
+                    }) { _id data }
+                    
+                    transferDailyGiverDetails: get_all_loans_per_branch_a_tdgd(args: {
+                        branch_id: $branch_id, curr_date: $curr_date
+                    }) { _id data }
+                    
+                    transferWeeklyReceivedDetails: get_all_loans_per_branch_a_twrd(args: {
+                        branch_id: $branch_id, curr_date: $curr_date
+                    }) { _id data }
+                    
+                    transferWeeklyGiverDetails: get_all_loans_per_branch_a_twgd(args: {
+                        branch_id: $branch_id, curr_date: $curr_date
+                    }) { _id data }
                 }
-            }
-            `,
-            variables: {
-                day_name: dayName,
-                curr_date: date,
-                branchId,
-            }
-        })
-        .then(res => res.data.collections.map(c => c.data));
+                `,
+                variables: {
+                    day_name: dayName,
+                    curr_date: date,
+                    branch_id: branchId,
+                }
+            })
+            .then(res => res.data.branches?.map(c => ({
+                ... c.data,
+                cashCollections: res.data.cashCollections.map(c => c.data),
+                activeLoans: res.data.activeLoans.map(c => c.data),
+                currentRelease: res.data.currentRelease.map(c => c.data),
+                loans: res.data.loans.map(c => c.data),
+                fullPayment: res.data.fullPayment.map(c => c.data),
+                transferDailyReceivedDetails: res.data.transferDailyReceivedDetails.map(c => c.data),
+                transferDailyGiverDetails: res.data.transferDailyGiverDetails.map(c => c.data),
+                transferWeeklyReceivedDetails: res.data.transferWeeklyReceivedDetails.map(c => c.data),
+                transferWeeklyGiverDetails: res.data.transferWeeklyGiverDetails.map(c => c.data),
+            })));
+        } else {
+            cashCollection = await graph.apollo.query({
+                query: gql`
+                query loan_group ($day_name: String!, $curr_date: date!, $branchId: String!) {
+                    collections: get_all_loans_per_branch_by_curr_date_and_day_name(limit: 1, args: {
+                      day_name: $day_name,
+                      curr_date: $curr_date
+                    }, where: {
+                      _id: {
+                        _eq: $branchId
+                      }
+                    }) {
+                      _id
+                      data
+                    }
+                }
+                `,
+                variables: {
+                    day_name: dayName,
+                    curr_date: date,
+                    branchId,
+                }
+            })
+            .then(res => res.data.collections.map(c => c.data));
+        }
+       
     } else {
         cashCollection = await graph.apollo.query({
             query: gql`
