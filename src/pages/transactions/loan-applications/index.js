@@ -655,20 +655,20 @@ const LoanApplicationPage = () => {
                 await response.loans && response.loans.map(loan => {
                     let allowApproved = false;
                     let hasActiveLoan = false;
+                    let transactionClosed = false;
                     
-                    // if (loan.groupStatus.length > 0 && loan.groupStatus[0].hasOwnProperty('groupStatusArr')) {
-                    //     const transactionStatus = loan.groupStatus[0].groupStatusArr.filter(s => s === "pending");
-                    //     if (transactionStatus.length > 0) {
-                    //         allowApproved = true;
-                    //     } else if (loan.loanCycle == 1) {
-                    //         allowApproved = true;
-                    //     }
-                    // } else if (loan.pendings.length > 0) {
-                    //     allowApproved = false;
-                    //     hasActiveLoan = true;
-                    // } else {
-                    //     allowApproved = true;
-                    // }
+                    if (loan.groupStatus.length > 0 && loan.groupStatus[0].hasOwnProperty('groupStatusArr')) {
+                        const transactionStatus = loan.groupStatus[0].groupStatusArr.filter(s => s === "pending");
+                        if (transactionStatus.length > 0) {
+                            allowApproved = true;
+                        } else if (loan.loanCycle == 1) {
+                            allowApproved = true;
+                        } else {
+                            transactionClosed = true;
+                        }
+                    } else {
+                        allowApproved = true;
+                    }
                     
                     loanList.push({
                         ...loan,
@@ -685,7 +685,8 @@ const LoanApplicationPage = () => {
                         allowApproved: allowApproved,
                         selected: false,
                         hasActiveLoan: hasActiveLoan,
-                        ciName: UppercaseFirstLetter(loan?.ciName ? loan?.ciName : loan.client?.ciName)
+                        ciName: UppercaseFirstLetter(loan?.ciName ? loan?.ciName : loan.client?.ciName),
+                        transactionClosed: transactionClosed
                     });
                 });
                 loanList.sort((a, b) => {
