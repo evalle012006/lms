@@ -77,6 +77,10 @@ async function processData(req, res) {
     });
 
     if (promise) {
+      await graph.mutation(
+        ... mutationList,
+      );
+
       response = {
         success: true,
         withError: errorMsg.length > 0,
@@ -181,10 +185,10 @@ async function processData(req, res) {
 }
 
 async function updateLoan(loanId, loan, addToMutationList) {
-  addToMutationList(alias => loanType(alias), {
+  addToMutationList(alias => updateQl(loanType(alias), {
     set: filterGraphFields(LOAN_FIELDS, { ...loan, coMaker: loan.coMaker + "" }),
     where: { _id: { _eq: loanId } },
-  });
+  }));
 }
 
 async function checkGroupStatus(groupId) {
