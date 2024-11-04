@@ -185,7 +185,7 @@ async function updateGroup(group, addToMutationList) {
       set: { ...group }
     }));
 
-    return {success: true, groupResp}
+    return {success: true}
 }
 
 async function updateClient(clientId, addToMutationList) {
