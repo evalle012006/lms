@@ -52,7 +52,7 @@ async function getData (req, res) {
                 let batch_ids = [];
                 for(const id of branchIds) {
                     batch_ids.push(id);
-                    if(batch_ids.length == 100) {
+                    if(batch_ids.length == 1000) {
                         await Promise.all(batch_ids.map(async (branchId) => {
                             data.push.apply(data, await getAllLoanTransactionsByBranch(branchId, date, dayName, currentDate));
                         }));
