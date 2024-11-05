@@ -35,11 +35,10 @@ async function updateUser(req, res) {
 
     const form = new formidable.IncomingForm({ keepExtensions: true });
     const promise = await new Promise((resolve, reject) => {
-        form.parse(req, async function (err, fields, files) {
-            const payload = JSON.parse(fields.data);
+        form.parse(req, async function (err, payload, files) {
             const userData = await findUserByEmail(payload.email);
 
-            let file = fields.profile;
+            let file = payload.profile;
             // if (files.file) {
             //     file = await saveFile(files.file, userData._id).catch(err => {
             //         console.error(err);
@@ -72,7 +71,7 @@ async function updateUser(req, res) {
                 position: payload.position,
                 profile: profile,
                 designatedBranch: designatedBranch,
-                loNo: payload.loNo,
+                loNo: +payload.loNo,
                 transactionType: payload.transactionType
             };
 
