@@ -14,13 +14,13 @@ function jwtMiddleware(req, res) {
     }).unless({
         // for open access pages, add the path here. 
         path: [
-            '/api/authenticate',
             '/api/v2/authenticate',
-            '/api/register',
-            '/api/users',
-            '/api/activate',
-            '/api/reset-request',
-            '/api/reset-password'
+            '/api/v2/authenticate',
+            '/api/v2/register',
+            '/api/v2/users',
+            '/api/v2/activate',
+            '/api/v2/reset-request',
+            '/api/v2/reset-password'
         ]
     });
 
