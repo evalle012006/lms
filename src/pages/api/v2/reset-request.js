@@ -31,7 +31,7 @@ async function resetRequest(req, res) {
 
     if (!!user) {
         const subject = 'HybridAG Password Reset';
-        const template = sendForgotPasswordRequest(ObjectId(user._id));
+        const template = sendForgotPasswordRequest(user._id);
         const emailResponse = await sendMail(email, subject, template);
 
         response = {
