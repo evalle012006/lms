@@ -58,7 +58,7 @@ async function updateUser(req, res) {
             }
 
             const profile = file ? file : userData.profile;
-            const role = payload.role;
+            const role = JSON.parse(payload.role);
             let designatedBranch = payload.designatedBranch;
             // if (role.rep === 2) {
             //     designatedBranch = JSON.parse(payload.designatedBranch);

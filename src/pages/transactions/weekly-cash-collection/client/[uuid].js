@@ -613,7 +613,8 @@ const CashCollectionDetailsPage = () => {
                             guarantorLastName: cc.guarantorLastName,
                             loanRelease: cc.loanRelease,
                             maturedPD: cc.maturedPD ? cc.maturedPD : false,
-                            advance: cc.advance ? cc.advance : false
+                            advance: cc.advance ? cc.advance : false,
+                            _dirty: false
                         }
     
                         delete cc._id;
@@ -1300,7 +1301,7 @@ const CashCollectionDetailsPage = () => {
                 setLoading(false);
             } else {
                 let prevDraftDate =  null;
-                let dataArr = data.filter(cc => cc.status !== 'open').map(cc => {
+                let dataArr = data.filter(cc => cc.status !== 'open').filter(cc => !!cc._dirty).map(cc => {
                     let temp = {...cc};
                     if (cc.status !== 'totals') {
                         temp.groupDay = temp.group.day;
@@ -1647,6 +1648,8 @@ const CashCollectionDetailsPage = () => {
                             temp.remarks = "";
                         }
                     } 
+
+                    temp._dirty = true;
                 } 
                 return temp;
             });
@@ -1719,6 +1722,8 @@ const CashCollectionDetailsPage = () => {
                                     mcbuCol: mcbuCol
                                 };
                             }
+
+                            temp._dirty = true;
                         }
                     }
 
@@ -1789,6 +1794,8 @@ const CashCollectionDetailsPage = () => {
                                 temp.mcbu = parseFloat(temp.mcbu) - mcbuWithdrawal;
                                 temp.mcbuStr = formatPricePhp(temp.mcbu);   
                             }
+                            
+                            temp._dirty = true;
                         }
                     }
 
@@ -1834,6 +1841,8 @@ const CashCollectionDetailsPage = () => {
                         temp.mcbuInterestStr = formatPricePhp(mcbuInterest);
                         temp.mcbu = temp.mcbu + mcbuInterest;
                         temp.mcbuStr = formatPricePhp(temp.mcbu);
+                        
+                        temp._dirty = true;
                     }
 
                     return temp;
@@ -2297,6 +2306,7 @@ const CashCollectionDetailsPage = () => {
                             }
     
                             temp.remarks = remarks;
+                            temp._dirty = true;
                         }
                     }
                 }

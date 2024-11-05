@@ -619,7 +619,8 @@ const CashCollectionDetailsPage = () => {
                             guarantorLastName: cc.guarantorLastName,
                             loanRelease: cc.loanRelease,
                             maturedPD: cc.maturedPD ? cc.maturedPD : false,
-                            advance: cc.advance ? cc.advance : false
+                            advance: cc.advance ? cc.advance : false,
+                            _dirty: false
                         }
 
                         delete cc._id;
@@ -1227,7 +1228,7 @@ const CashCollectionDetailsPage = () => {
                 setLoading(false);
             } else {
                 let prevDraftDate =  null;
-                const dataArr = data.filter(cc => cc.status !== 'open').map(cc => {
+                const dataArr = data.filter(cc => cc.status !== 'open').filter(cc => !!cc._dirty ).map(cc => {
                     let temp = {...cc};
 
                     if (temp.reverted && !draft) {
@@ -1587,6 +1588,8 @@ const CashCollectionDetailsPage = () => {
                             temp.mispaymentStr = 'No';
                             temp.remarks = "";
                         }
+
+                        temp._dirty = true;
                     } 
                 } 
                 return temp;
@@ -1636,7 +1639,10 @@ const CashCollectionDetailsPage = () => {
                             mcbuCol: mcbuCol
                         };
                     }
+
+                    temp._dirty = true;
                 } else {
+                    temp._dirty = false;
                     toast.error('MCBU Collection must be greater than 0.');
                     temp.mcbuCol = 0;
                 }
@@ -1682,6 +1688,8 @@ const CashCollectionDetailsPage = () => {
                                 temp.prevData = { ...temp.prevData, mcbu: temp.mcbu };
                             }
                         }
+
+                        temp._dirty = true;
                     }
 
                     temp.mcbuWithdrawFlag = false;
@@ -1729,6 +1737,8 @@ const CashCollectionDetailsPage = () => {
                         temp.mcbuInterestStr = formatPricePhp(mcbuInterest);
                         temp.mcbu = temp.mcbu + mcbuInterest;
                         temp.mcbuStr = formatPricePhp(temp.mcbu);
+
+                        temp._dirty = true;
                     }
 
                     return temp;
@@ -2242,6 +2252,7 @@ const CashCollectionDetailsPage = () => {
                             }
     
                             temp.remarks = remarks;
+                            temp._dirty = true;
                         }   
                     }
                 }
