@@ -62,7 +62,7 @@ async function processData(req, res) {
 
           const active = await findLoans({
             clientId: { _eq: loan.clientId },
-            status: { _in: ["active"] },
+            status: { _in: ["active", "completed"] },
           });
 
           console.log(active)
@@ -98,7 +98,7 @@ async function processData(req, res) {
       loanData.map(async (loan) => {
         const active = await findLoans({
           clientId: { _eq: loan.clientId },
-          status: { _in: ["active"] },
+          status: { _in: ["active", "completed"] },
         });
         if (active.length > 0) {
           const error = `Client ${active[0].fullName} with slot ${active[0].slotNo} of group ${active[0].groupName}, still have active loan.`;
@@ -195,7 +195,11 @@ async function processData(req, res) {
 
 async function updateLoan(loanId, loan, addToMutationList) {
   addToMutationList(alias => updateQl(loanType(alias), {
-    set: filterGraphFields(LOAN_FIELDS, { ...loan, coMaker: loan.coMaker + "" }),
+    set: filterGraphFields(LOAN_FIELDS, { 
+      ...loan, 
+      coMaker: loan.coMaker + "",
+      ldfApprovedDate: loan.ldfApprovedDate || null,
+    }),
     where: { _id: { _eq: loanId } },
   }));
 }
