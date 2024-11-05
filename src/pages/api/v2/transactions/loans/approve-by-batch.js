@@ -78,7 +78,7 @@ async function processData(req, res) {
 
     if (promise) {
 
-      if(mutationList.length) {
+      if(mutationList.length && errorMsg.length == 0) {
 
         await graph.mutation(
           ... mutationList,
@@ -172,7 +172,7 @@ async function processData(req, res) {
       })
     );
 
-    if(mutationList.length) {
+    if(mutationList.length && errorMsg.length == 0) {
 
       await graph.mutation(
         ... mutationList,
