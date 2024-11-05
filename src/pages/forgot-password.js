@@ -10,6 +10,7 @@ import { toast } from "react-toastify";
 import InputEmail from '@/lib/ui/InputEmail';
 import ButtonSolid from '@/lib/ui/ButtonSolid';
 import InputPassword from '@/lib/ui/InputPassword';
+import { getApiBaseUrl } from '@/lib/constants';
 
 const ForgotPasswordPage = () => {
     const router = useRouter();
@@ -32,7 +33,8 @@ const ForgotPasswordPage = () => {
     };
 
     const handleResetReqeust = (values, actions) => {
-        fetchWrapper.post('/api/reset-request', { email: values.email })
+        const apiUrl = getApiBaseUrl() + 'reset-request';
+        fetchWrapper.post(apiUrl, { email: values.email })
             .then(response => {
                 const emailAddress = values.email.split('@');
                 setEmail('xxx@' + emailAddress[1]);
@@ -46,7 +48,8 @@ const ForgotPasswordPage = () => {
             password: values.newPassword
         };
 
-        fetchWrapper.post('/api/reset-password', updatedValues)
+        const apiUrl = getApiBaseUrl() + 'reset-password';
+        fetchWrapper.post(apiUrl, updatedValues)
             .then(response => {
                 if (response.error) {
                     toast.error('Something went wrong! ' + response.message)
