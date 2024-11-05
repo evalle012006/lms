@@ -77,9 +77,13 @@ async function processData(req, res) {
     });
 
     if (promise) {
-      await graph.mutation(
-        ... mutationList,
-      );
+
+      if(mutationList.length) {
+
+        await graph.mutation(
+          ... mutationList,
+        );
+      }
 
       response = {
         success: true,
@@ -168,9 +172,12 @@ async function processData(req, res) {
       })
     );
 
-    await graph.mutation(
-      ... mutationList,
-    );
+    if(mutationList.length) {
+
+      await graph.mutation(
+        ... mutationList,
+      );
+    }
 
     if (result) {
       response = {
