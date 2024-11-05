@@ -1169,16 +1169,21 @@ const LoanApplicationPage = () => {
                         if (response.withError) {
                             let errors = '';
                             if (selectedLoanList.length > response.errorMsg.length) {
-                                errors = <span>Some selected loan list have errors:<br/><br/></span>; 
+                                // errors = '<span>Some selected loan list have errors:<br/><br/></span>'; 
                             }
                             response.errorMsg.map((err, index) => {
+                                /*
                                 if (response.errorMsg.length - 1 == index) {
-                                    errors += err;
+                                   
                                 } else {
-                                    errors += <span>{ err }<br/><br/></span>
+                                    errors += `<span>${ err }<br/><br/></span>`
                                 }
+                                    */
+
+                                errors +=  err + '\n';
                             });
 
+                            console.log(errors);
                             toast.error(errors);
                             setTimeout(() => {
                                 getListLoan();
