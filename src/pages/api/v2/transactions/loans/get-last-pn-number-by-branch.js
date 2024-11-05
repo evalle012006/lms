@@ -33,7 +33,12 @@ async function getLastPNNumber(req, res) {
               branchId,
          }
       }
-    }).then(res => res.data.last_pn.map(c => ({
+    })
+    .then(res => {
+      console.log(res);
+      return res;
+    })
+    .then(res => res.data.last_pn.map(c => ({
       data: c.data,
       maxNumber: +(c.data.maxNumber || '-1'),
     })));

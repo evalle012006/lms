@@ -25,7 +25,8 @@ export async function savePendingLoans(user_id, collections) {
   logger.debug({user_id, page: `Update Cash Collection For Pending Loans`, cashCollectionsFromFrontEnd: collections});
   const currentDate = moment(getCurrentDate()).format('YYYY-MM-DD');
   await Promise.all(collections.map(async cc => {
-      if ((cc?.loanFor === 'today' || (cc?.loanFor === 'tomorrow' && cc?.dateOfRelease === currentDate))) {
+    logger.debug({user_id, page: `Update Cash Collection For Pending Loan savePendingLoans`, clientId: cc.clientId, loanId: cc.loanId, cc, currentDate });
+    if ((cc?.loanFor === 'today' || (cc?.loanFor === 'tomorrow' && cc?.dateOfRelease === currentDate))) {
         await updatePendingLoan(user_id, cc, currentDate);
     } else {
         await graph.mutation(
@@ -68,7 +69,7 @@ async function updatePendingLoan(user_id, collection, currentDate) {
     });
     
     logger.debug({user_id, page: `Saving Cash Collection - Updating Pending Loan Sizes: ${collection.loanId}`, currentLoanSize: currentLoan.length, pendingLoanSize: pendingLoan.length, cashCollectionSize: cashCollection.length});
-    logger.debug({user_id, page: `Saving Cash Collection - Updating Pending Loan CurrentLoans: ${collection.loanId}`, currentLoan: currentLoan, currentLoanClosed: currentLoanClosed});
+    logger.debug({user_id, page: `Saving Cash Collection - Updating Pending Loan CurrentLoans: ${collection.loanId}`, clientId: currentLoan.clientId, loanId: currentLoan._id,  currentLoan: currentLoan, currentLoanClosed: currentLoanClosed});
 
     if (currentLoan.length > 0 && pendingLoan.length > 0 && cashCollection.length > 0) {
         currentLoan = currentLoan[0];
