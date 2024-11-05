@@ -1,3 +1,4 @@
+import { USER_FIELDS } from '@/lib/graph.fields';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, updateQl } from '@/lib/graph/graph.util';
 import { apiHandler } from '@/services/api-handler';
@@ -16,14 +17,14 @@ async function resetPassword(req, res) {
     const bcrypt = require("bcryptjs");
 
     const { objectId, password } = req.body;
-
+    console.log(objectId, password);
     const [dbResponse] = await graph.mutation(
         updateQl(USER_TYPE, {
             set: {
                 password: bcrypt.hashSync(password, bcrypt.genSaltSync(8), null),
             },
             where: {
-                _id: objectId ?? null,
+                _id: { _eq: objectId ?? null }
             }
         })
     ).then(res => res.data.users.returning);
