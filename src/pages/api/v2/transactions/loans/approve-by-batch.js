@@ -98,7 +98,7 @@ async function processData(req, res) {
       loanData.map(async (loan) => {
         const active = await findLoans({
           clientId: { _eq: loan.clientId },
-          status: { _in: ["active", "completed"] },
+          status: { _in: ["active"] },
         });
         if (active.length > 0) {
           const error = `Client ${active[0].fullName} with slot ${active[0].slotNo} of group ${active[0].groupName}, still have active loan.`;
