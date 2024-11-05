@@ -34,10 +34,6 @@ async function getLastPNNumber(req, res) {
          }
       }
     })
-    .then(res => {
-      console.log(res);
-      return res;
-    })
     .then(res => res.data.last_pn.map(c => ({
       data: c.data,
       maxNumber: +(c.data.maxNumber || '-1'),
