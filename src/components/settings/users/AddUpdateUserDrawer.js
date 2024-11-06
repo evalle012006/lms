@@ -29,6 +29,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
     const currentDate = useSelector(state => state.systemSettings.currentDate);
     const [occurence, setOccurence] = useState('daily');
     const branchList = useSelector(state => state.branch.list);
+    const [role, setRole] = useState();
 
     // Use useEffect to set the initial photo state
     useEffect(() => {
@@ -40,6 +41,9 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
             user.profile && setPhoto(user.profile);
             user.transactionType && setOccurence(user.transactionType);
         }
+
+        setRole(role ?? user.roleId);
+
     }, [mode, user]);
 
     const initialValues = useMemo(() => ({
@@ -56,12 +60,15 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
     }), [user]);
 
     const selectedRole = useMemo(() => {
-        if (user?.roleId) {
-            const roleArr = user.roleId.split('-');
-            return roles.find(r => r.shortCode === roleArr[1]);
+        if (role) {
+           
+            const [rep] = role.split('-') ?? [];
+            const selected = roles.find(r => r.rep === +rep);
+
+            return selected;
         }
         return null;
-    }, [user, roles]);
+    }, [role]);
 
     const selectedBranches = useMemo(() => {
         if (user?.roleId?.startsWith('2-') && user.designatedBranch) {
@@ -92,6 +99,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
     const handleRoleChange = useCallback((field, value) => {
         const form = formikRef.current;
         form.setFieldValue(field, value);
+        setRole(value);
     }, []);
 
     const handleSaveUpdate = useCallback(async (values, actions) => {
@@ -131,7 +139,6 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
                 onClose();
             }
         } catch (error) {
-            console.error(error);
             toast.error('An error occurred. Please try again.');
         } finally {
             setLoading(false);
