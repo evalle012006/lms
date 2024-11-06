@@ -162,6 +162,11 @@ const CashCollectionDetailsPage = () => {
                 setEditMode(false);
                 setGroupSummaryIsClose(true);
             }
+
+            const currentCollections = dataCollection.filter(cc => !!cc.current?.[0]);
+            if (currentCollections.length == dataCollection.length) {
+                setEditMode(false);
+            }
             
             dataCollection.map(cc => {
                 let collection;
@@ -501,7 +506,6 @@ const CashCollectionDetailsPage = () => {
                             collection.transferred = true;
                         }
     
-                        setEditMode(false);
                     } else if (cc.status !== "closed" || (type !== 'filter' && cc?.current?.length < 2)) {
                         let noPaymentsStr = (cc.status === "active" || (cc.status === "completed" && cc.fullPaymentDate === currentDate)) ? cc.noOfPayments + ' / ' + maxDays : '-';
                         let numMispayment = cc.mispayment > 0 ? cc.mispayment + ' / ' + maxDays : '-';

@@ -156,6 +156,11 @@ const CashCollectionDetailsPage = () => {
                 setGroupSummaryIsClose(true);
             }
 
+            const currentCollections = dataCollection.filter(cc => !!cc.current?.[0]);
+            if (currentCollections.length == dataCollection.length) {
+                setEditMode(false);
+            }
+
             dataCollection.map(cc => {
                 let collection;
                 let transferStr = '-';
@@ -500,7 +505,6 @@ const CashCollectionDetailsPage = () => {
                             collection.transferred = true;
                         }
     
-                        setEditMode(false);
                     } else if (cc.status !== "closed" || (type !== 'filter' && cc?.current?.length < 2)) {
                         let noPaymentsStr = (cc.status === "active" || (cc.status === "completed" && cc.fullPaymentDate === currentDate)) ? cc.noOfPayments + ' / ' + cc.loanTerms : '-';
                         let numMispayment = cc.mispayment > 0 ? cc.mispayment + ' / ' + cc.loanTerms : '-';
@@ -620,7 +624,7 @@ const CashCollectionDetailsPage = () => {
                             loanRelease: cc.loanRelease,
                             maturedPD: cc.maturedPD ? cc.maturedPD : false,
                             advance: cc.advance ? cc.advance : false,
-                            _dirty: false
+                            _dirty: true
                         }
 
                         delete cc._id;
@@ -677,7 +681,8 @@ const CashCollectionDetailsPage = () => {
                         } else if (cc.current.length > 0) {
                             const current = cc.current.find(cur => !cur.transferId);
                             if (current) {
-                                setEditMode(false);
+                                console.log('set cash collection read only 6', current);
+                                // setEditMode(false);
                                 collection.targetCollection = current.targetCollection;
                                 collection.targetCollectionStr = collection.targetCollection > 0 ? formatPricePhp(collection.targetCollection) : '-';
                                 collection.excess = current.excess;
