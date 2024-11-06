@@ -618,7 +618,7 @@ const CashCollectionDetailsPage = () => {
                             loanRelease: cc.loanRelease,
                             maturedPD: cc.maturedPD ? cc.maturedPD : false,
                             advance: cc.advance ? cc.advance : false,
-                            _dirty: false
+                            _dirty: true
                         }
     
                         delete cc._id;
