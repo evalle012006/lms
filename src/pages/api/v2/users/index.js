@@ -57,7 +57,7 @@ async function updateUser(req, res) {
                 return;
             }
 
-            const profile = file ? file : userData.profile;
+            const profile = file || userData.profile;
             const role = JSON.parse(payload.role);
             let designatedBranch = payload.designatedBranch;
             // if (role.rep === 2) {
@@ -69,7 +69,7 @@ async function updateUser(req, res) {
                 lastName: payload.lastName,
                 number: payload.number,
                 position: payload.position,
-                profile: profile,
+                profile: profile === 'null' ? null : profile,
                 designatedBranch: designatedBranch,
                 loNo: +payload.loNo,
                 transactionType: payload.transactionType
