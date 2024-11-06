@@ -711,6 +711,7 @@ const CashCollectionDetailsPage = () => {
                                 collection.excused = current.excused ? current.excused : false;
                                 collection.latePayment = current.latePayment ? current.latePayment : false;
                                 collection.mcbuInterestFlag = false;
+                                collection._dirty = !!current.draft;
     
                                 if (current?.origin) {
                                     collection.origin = current.origin;

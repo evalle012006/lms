@@ -673,6 +673,7 @@ const CashCollectionDetailsPage = () => {
                             collection.amountReleaseStr = formatPricePhp(draftCC.amountRelease);
                             collection.previousDraft = true;
                             collection.dateAdded = draftCC.dateAdded;
+
                         } else if (cc.current.length > 0) {
                             const current = cc.current.find(cur => !cur.transferId);
                             if (current) {
@@ -706,6 +707,7 @@ const CashCollectionDetailsPage = () => {
                                 collection.latePayment = current.latePayment ? current.latePayment : false;
                                 collection.mpdc = current.mpdc ? current.mpdc : false;
                                 collection.mcbuInterestFlag = false;
+                                collection._dirty = !!current.draft;
 
                                 if (current.draft) {
                                     collection.error = current.error;
