@@ -165,7 +165,7 @@ const CashCollectionDetailsPage = () => {
 
             const currentCollections = dataCollection.filter(cc => !!cc.current?.[0]);
             if (currentCollections.length == dataCollection.length) {
-                setEditMode(false);
+                // setEditMode(false);
             }
             
             dataCollection.map(cc => {
