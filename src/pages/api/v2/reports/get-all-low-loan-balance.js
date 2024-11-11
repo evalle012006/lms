@@ -29,7 +29,7 @@ async function allLoans(req, res) {
             query: gql`
             query all_low_loan_balance_by_lo ($loId: String!, $amount: numeric!, $noOfPayments: numeric!, $amountOperator: String!, $noOfPaymentsOperator: String!) {
                 collections: get_all_low_loan_balance_by_lo( args: {
-                    lo_id: $loId,
+                    loId: $loId,
                     amount: $amount,
                     amountOperator: $amountOperator,
                     noOfPaymentsOperator: $noOfPaymentsOperator,
@@ -42,15 +42,21 @@ async function allLoans(req, res) {
             variables: {
                 loId,
                 amount: +amountOptionObj.amount,
-                amountPperator: amountOptionObj.operator,
+                amountOperator: amountOptionObj.operator,
                 noOfPayments: noOfPaymentsOptionObj.noOfPayments,
                 noOfPaymentsOperator: noOfPaymentsOptionObj.operator,
             }
-        }).then(res => res.data.collections)
-           .map(collections => collections.map(c => ({
-            ... c,
-            clientStatus: [c.clientStatus]
-        })));
+        })
+            .then(res => {
+                const collections = res.data.collections;
+                const newCollections = collections.map(c => ({
+                    ... c.data,
+                    clientStatus: c.data.clientStatus,
+                }));
+
+                return newCollections;
+            })
+
 
         if (groupData) {
             let totalClients = 0;
@@ -59,7 +65,7 @@ async function allLoans(req, res) {
             let totalMCBU = 0;
 
             groupData.map(group => {
-                group.loans.map(loan => {
+                group.loans?.map(loan => {
                     const delinquent = loan.client.length > 0 ? loan.client[0].delinquent == true ? 'Yes' : 'No' : 'No';
                     let fullName = loan.client.length > 0 ? loan.client[0].fullName : null;
                     if (loan.client.length > 0 && fullName == null) {
@@ -127,7 +133,8 @@ async function allLoans(req, res) {
                 noOfPayments: noOfPaymentsOptionObj.noOfPayments,
                 noOfPaymentsOperator: noOfPaymentsOptionObj.operator,
             }
-        }).then(res => res.data.collections ?? [])
+        })
+            .then(res => res.data.collections ?? [])
           .then(collections => collections.map(a => a.data))
 
         let totalNoOfClients = 0;
@@ -177,7 +184,14 @@ async function allLoans(req, res) {
             });
         }
     } else {
-        
+        const variables = {
+            userId: currentUserId,
+            amount: +amountOptionObj.amount,
+            amountOperator: amountOptionObj.operator,
+            noOfPayments: noOfPaymentsOptionObj.noOfPayments,
+            noOfPaymentsOperator: noOfPaymentsOptionObj.operator,
+        };
+
         const branchData = await graph.apollo.query({
             query: gql`
             query get_all_low_balance_by_branches ($userId: String!, $amount: numeric!, $noOfPayments: numeric!, $amountOperator: String!, $noOfPaymentsOperator: String!) {
@@ -192,13 +206,7 @@ async function allLoans(req, res) {
                     data 
                 }
             }`,
-            variables: {
-                userId: currentUserId,
-                amount: +amountOptionObj.amount,
-                amountOperator: amountOptionObj.operator,
-                noOfPayments: noOfPaymentsOptionObj.noOfPayments,
-                noOfPaymentsOperator: noOfPaymentsOptionObj.operator,
-            }
+            variables
         }).then(res => res.data.collections ?? [])
           .then(collections => collections.map(a => a.data))
 
@@ -208,7 +216,8 @@ async function allLoans(req, res) {
             let totalLoanBalance = 0;
             let totalMCBU = 0;
 
-            branchData.map(branch => {
+            branchData.map(entry => {
+                const branch = Array.isArray(entry) ? entry?.[0] : entry;
                 let temp = {
                     _id: branch._id,
                     code: branch.code,
@@ -278,62 +287,3 @@ async function allLoans(req, res) {
         .end(JSON.stringify(response));
 }
 
-
-const getByBranch = async (db, branchId, amount, operator) => {
-    const ObjectId = require('mongodb').ObjectId;
-
-    return await db.collection('branches')
-        .aggregate([
-            { $match: { _id: new ObjectId(branchId) } },
-            { $addFields: {
-                branchIdStr: { $toString: '$_id' },
-            } },
-            {
-                $lookup: {
-                    from: 'loans',
-                    localField: 'branchIdStr',
-                    foreignField: 'branchId',
-                    pipeline: [
-                        { $match: { $expr: { 
-                            $and: [ 
-                                {$eq: ['$status', 'active']},
-                                { $or: [
-                                    {$cond: {
-                                        if: { $eq: [operator, 'less_than_equal'] },
-                                        then: {$lte: ['$loanBalance', parseInt(amount)]},
-                                        else: null
-                                    }},
-                                    {$cond: {
-                                        if: { $eq: [operator, 'greater_than_equal'] },
-                                        then: {$gte: ['$loanBalance', parseInt(amount)]},
-                                        else: null
-                                    }},
-                                    {$cond: {
-                                        if: { $eq: [operator, 'equal'] },
-                                        then: {$eq: ['$loanBalance', parseInt(amount)]},
-                                        else: null
-                                    }}
-                                ] }
-                            ] 
-                        } } },
-                        { $group: {
-                            _id: '$branchid',
-                            totalClients: { $sum: 1 },
-                            totalAmountRelease: { $sum: '$amountRelease' },
-                            totalLoanBalance: { $sum: '$loanBalance' },
-                            totalMCBU: { $sum: '$mcbu' }
-                        } }
-                    ],
-                    as: 'loans'
-                }
-            },
-            {
-                $project: {
-                    name: '$name',
-                    code: '$code',
-                    loans: '$loans'
-                }
-            }
-        ])
-        .toArray();
-}
