@@ -1,5 +1,4 @@
 import { apiHandler } from '@/services/api-handler';
-import { connectToDatabase } from '@/lib/mongodb';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { gql } from 'node_modules/apollo-boost/lib/index';
 import { formatPricePhp } from '@/lib/utils';
@@ -11,11 +10,16 @@ export default apiHandler({
 });
 
 async function allLoans(req, res) {
-    const { db } = await connectToDatabase();
     let response;
     let statusCode = 200;
 
-    const { loId, currentUserId, branchId, amountOption, noOfPaymentsOption } = req.query;
+    const { loId, branchId, amountOption, noOfPaymentsOption } = req.query;
+    const currentUserId = req.auth?.sub;
+
+    if(!currentUserId) {
+        throw { message: 'Unuathorized access' };
+    }
+
     let data = [];
     const amountOptionObj = JSON.parse(amountOption);
     const noOfPaymentsOptionObj = JSON.parse(noOfPaymentsOption);
