@@ -1,0 +1,143 @@
+Common:
+- (ccc) collection data sent by frontend
+- delete always the current date cashCollection of that clientId and dateAdded
+- (pcc) get the previous cashCollection transaction
+- (cl) get the current loan
+- (pl) get the previous loan that was closed | filter should be clientId and loanCycle and status not reject (for reloan)
+
+
+PCC is null
+	- delete cl
+	- set client status to pending
+
+PCC is tomorrow (meaning yesterday released and first payment now)
+	- set the following to the cl from pcc
+		- loanBalance = amountRelease
+		- mcbu = 0
+		- mcbuCollection = 0
+		- advanceDays = 0
+		- noOfPayments = 0
+		- mcbuWithdrawal = 0
+		- history = null
+
+Normal Transaction (not reloan):
+- 1 payment ccc (remarks is empty)
+	- set the following to cl from pcc:
+		- loanBalance
+		- mcbu
+		- mcbuCollection
+		- noOfPayments
+		- mcbuWithdrawal
+		- history
+- delinquent ccc (remarks is delinquent)
+	- set the following to cl
+		- noOfMispayment - 1 if greater than 0
+		- after above, if noOfMispayment == 0 set client delinquent flag to false
+		- history
+		- mcbuWithdrawal
+- excused ccc (remarks is excused)
+	- set the following to cl
+		- noOfMispayment - 1 if greater than 0
+		- history
+		- mcbuWithdrawal
+- advance payment ccc (remarks is advance payment)
+	- set the following to cl from pcc:
+		- loanBalance
+		- mcbu
+		- mcbuCollection
+		- noOfPayments
+		- advanceDays
+		- history
+		- mcbuWithdrawal
+- excused advance payment ccc (remarks is excused advance payment)
+	- set the following to cl from pcc:
+		- advanceDays
+		- history
+		- mcbuWithdrawal
+- completed ccc (remarks is Reloaner)
+	- if pcc status is completed
+		- mcbuWithdrawal
+	- if pccc status is active
+		- set the following to cl from pcc:
+			- loanBalance
+			- mcbu
+			- mcbuCollection
+			- noOfPayments
+			- advanceDays - possible multiple payments
+			- history
+			- fullPaymentDate = null
+			- status = active
+			- mcbuWithdrawal
+- past due ccc (remarks is pastdue)
+	- set the following to cl from pcc:
+		- history
+		- pastDue
+		- noOfPastDue
+		- mcbuWithdrawal
+- past due collection ccc (remarks is past due collection)
+	- set the following to cl from pcc:
+		- loanBalance
+		- mcbu
+		- mcbuCollection
+		- history
+		- pastDue
+		- mcbuWithdrawal
+- matured past due ccc (remarks is matured-past due)
+	- set the following to cl from pcc:
+		- history
+		- pastDue
+		- mcbuWithdrawal
+- matured past due collection ccc
+	- set the following to cl from pcc:
+		- history
+		- loanBalance
+		- mcbu
+		- mcbuWithdrawal
+- offset
+	- update groups: 
+		- noOfClients + 1
+		- removed slotNo in availableSlotNo
+	- if pcc status is active
+		- set the following to cl from pcc:
+			- loanBalance
+			- mcbu
+			- mcbuCollection
+			- noOfPayments
+			- advanceDays - possible multiple payments
+			- history
+			- fullPaymentDate = null
+			- closedDate = null
+			- remarks = null
+			- status = active
+			- mcbuWithdrawal
+	- if pcc status is completed
+		- set the following to cl from pcc:
+			- mcbu
+			- mcbuReturnAmt = 0
+			- status = completed
+			- closedDate = null
+			- remarks = null
+			- history
+			- mcbuWithdrawal
+
+Reloaner (CL is PENDING or ACTIVE)
+	- common
+		- delete cl after copying
+	- pcc status = completed
+		- set the following to pl from pcc:
+			- status = completed
+			- mcbu
+			- mcbuWithdrawal
+	- pcc status = active
+		- set the following to pl from pcc:
+			- status = active
+			- fullPaymentDate = null
+			- mcbu
+			- mcbuCollection
+			- advanceDays
+			- mcbuWithdrawal
+			- history
+			- noOfPayments
+
+
+
