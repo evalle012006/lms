@@ -905,7 +905,6 @@ const LoanApplicationPage = () => {
     
         const updateList = (sourceList, setAction) => {
             if (mode === 'all') {
-                // Create a new array with the updated selection state
                 const tempList = sourceList.map((loan, index) => {
                     let temp = { ...loan };
     
