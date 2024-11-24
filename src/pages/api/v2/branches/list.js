@@ -18,7 +18,7 @@ const BRANCH_TYPE = (date) => createGraphType('branches', `
         aggregate {  count }
     }
     
-    cashOnHand: branchCOHs (where: { dateAdded: ${addDatedAddedCondition(date) } }){
+    cashOnHand: branchCOHs (order_by: [{ dateAdded: desc_nulls_last }], limit: 1) {
         ${BRANCH_COH_FIELDS}
     }
 `)('branches');
