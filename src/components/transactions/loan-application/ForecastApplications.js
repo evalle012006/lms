@@ -155,20 +155,34 @@ const ForeCastApplication = ({
       </div>
 
       <div className="flex-grow">
-        {uniqueDates.map((date) => (
-          <TabPanel key={date} hidden={selectedTab !== date}>
+        {uniqueDates?.length > 0 ? (
+            uniqueDates.map((date) => (
+                <TabPanel key={date} hidden={selectedTab !== date}>
+                  <TableComponent
+                    columns={columns}
+                    data={filteredData}
+                    pageSize={50}
+                    hasActionButtons={currentUser?.role?.rep > 2}
+                    rowActionButtons={rowActionButtons}
+                    showFilters={false}
+                    multiSelect={false}
+                    rowClick={handleShowClientInfoModal}
+                  />
+                </TabPanel>
+              ))
+        ) : (
             <TableComponent
-              columns={columns}
-              data={filteredData}
-              pageSize={50}
-              hasActionButtons={currentUser?.role?.rep > 2}
-              rowActionButtons={rowActionButtons}
-              showFilters={false}
-              multiSelect={false}
-              rowClick={handleShowClientInfoModal}
-            />
-          </TabPanel>
-        ))}
+                columns={columns}
+                data={filteredData}
+                pageSize={50}
+                hasActionButtons={currentUser?.role?.rep > 2}
+                rowActionButtons={rowActionButtons}
+                showFilters={false}
+                multiSelect={false}
+                rowClick={handleShowClientInfoModal}
+                />
+        )}
+        
       </div>
 
       <footer className="text-md font-bold text-center bg-white px-4 py-2 shadow-inner border-t-4 border-zinc-200">

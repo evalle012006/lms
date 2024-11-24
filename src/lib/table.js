@@ -332,8 +332,8 @@ const ActionButton = ({ row, rowActionButtons }) => {
 };
 
 const TableComponent = React.memo(({
-  columns,
-  data,
+  columns = [],
+  data = [],
   showPagination = true,
   showFilters = true,
   columnSorting = true,
@@ -603,9 +603,10 @@ const handleSelectRow = useCallback((row, index) => {
                           />
                         </td>
                       )}
-                      {row.cells.map(cell => (
+                      {row.cells.map((cell, index) => (
                         <td 
                           {...cell.getCellProps()}
+                          key={`row-data-${index}`}
                           className={`px-4 py-3 ${totalData ? 'font-bold text-red-500' : ''} ${rowClick ? 'cursor-pointer' : ''} ${cell.column.width || 'w-auto'}`}
                           onClick={() => rowClick && rowClick(row.original)}
                         >

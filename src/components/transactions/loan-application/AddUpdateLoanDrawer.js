@@ -16,7 +16,7 @@ import SideBar from "@/lib/ui/SideBar";
 import RadioButton from "@/lib/ui/radio-button";
 import { setGroupList } from "@/redux/actions/groupActions";
 import { setClientList, setComakerList } from "@/redux/actions/clientActions";
-import { UppercaseFirstLetter, formatPricePhp, getNextValidDate } from "@/lib/utils";
+import { UppercaseFirstLetter, checkIfWeekend, formatPricePhp, getNextValidDate } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/constants";
 import DatePicker2 from "@/lib/ui/DatePicker2";
 
@@ -766,16 +766,17 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             }
         }
     }, [mode, currentUser, selectedLo]);
-
+    // const ddddate = "2024-11-24";
     useEffect(() => {
         if (mode == 'add' && currentDate) {
             const dayName = moment(currentDate).format('dddd');
             if (dayName == 'Friday') {
                 setInitialDateRelease(getNextValidDate(moment(currentDate).add(4, 'days').format('YYYY-MM-DD'), holidayList).format('YYYY-MM-DD'));
             } else if (isWeekend) {
-                setInitialDateRelease(getNextValidDate(moment(currentDate).add(dayName == 'Saturday' ? 3 : 2, 'days').format('YYYY-MM-DD'), holidayList).format('YYYY-MM-DD'));
+                setInitialDateRelease(getNextValidDate(moment(currentDate).add(dayName == 'Saturday' ? 4 : 3, 'days').format('YYYY-MM-DD'), holidayList).format('YYYY-MM-DD'));
             } else {
-                setInitialDateRelease(getNextValidDate(moment(currentDate).add(2, 'days').format('YYYY-MM-DD'), holidayList).format('YYYY-MM-DD'));
+                const nextValidDate = getNextValidDate(moment(currentDate).add(2, 'days').format('YYYY-MM-DD'), holidayList);
+                setInitialDateRelease(nextValidDate.format('YYYY-MM-DD'));
             }
         } else if (mode == 'edit' && loan.dateOfRelease) {
             setInitialDateRelease(loan.dateOfRelease);
@@ -785,24 +786,27 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     const [minDate, setMinDate] = useState();
     const [maxDate, setMaxDate] = useState();
     useEffect(() => {
-        if (currentDate) {
-            let initialMinDate = moment(currentDate).add(2, 'days').format("YYYY-MM-DD");
-            const allowedAdmissionDate = moment(loan.admissionDate).add(2, 'days').isSameOrAfter(moment(currentDate));
-            if (mode == 'edit' && allowedAdmissionDate) {
-                initialMinDate = currentDate;
-            }
-            initialMinDate = getNextValidDate(initialMinDate, holidayList);
-            setMinDate(initialMinDate.toDate());
+        if (currentDate && initialDateRelease) {
+            let initialMinDate = initialDateRelease;
+            if (mode == 'edit') {
+                let admissionDate = loan?.admissionDate;
+                let allowedAdmissionDate = moment(admissionDate).add(2, 'days').isSameOrAfter(moment(currentDate));
+                if (admissionDate && moment(admissionDate).isBefore(currentDate)) {
+                    allowedAdmissionDate = true;
+                }
 
-            const minDateDay = initialMinDate.format('dddd');
-            if (minDateDay != 'Monday' && minDateDay != 'Tuesday') {
-                initialMinDate = initialMinDate.add(2, 'days');
+                if (allowedAdmissionDate) {
+                    initialMinDate = getNextValidDate(currentDate, holidayList);
+                }
             }
+
+            initialMinDate = moment(initialMinDate);
+            setMinDate(initialMinDate.toDate());
 
             const initialMaxDate = moment(initialMinDate).add(4, 'days').format("YYYY-MM-DD");
             setMaxDate(getNextValidDate(initialMaxDate, holidayList).toDate());
         }
-    }, [mode, loan.admissionDate, currentDate, holidayList]);
+    }, [mode, loan.admissionDate, currentDate, holidayList, initialDateRelease]);
 
     return (
         <React.Fragment>
