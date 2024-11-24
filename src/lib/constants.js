@@ -74,7 +74,7 @@ export const LOR_ONLY_OFFSET_REMARKS = [
 
 export const LOR_MISPAY_REMARKS = [
     { label: 'Past Due', value: 'past due'},
-    { label: 'Matured Past Due', value: 'matured-past due'},
+    // { label: 'Matured Past Due', value: 'matured-past due'},
     { label: 'Delinquent', value: 'delinquent'},
     { label: 'Delinquent Client for MCBU', value: 'delinquent-mcbu'},
     { label: 'Excused Due to Calamity', value: 'excused-calamity'},
