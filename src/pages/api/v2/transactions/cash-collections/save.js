@@ -55,6 +55,10 @@ async function save(req, res) {
                     collection.pastDue = 0;
                 }
 
+                if (collection.remarks?.value == 'matured-past due') {
+                    collection.mispayment = false;
+                }
+
                 if (collection.loanBalance <= 0) {
                     if (collection.occurence == 'daily') {
                         collection.noOfPayments = 60;
