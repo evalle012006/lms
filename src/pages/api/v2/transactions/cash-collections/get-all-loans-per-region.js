@@ -265,7 +265,7 @@ async function processData(data, date, currentDate) {
             }
 
             if (branch.cashOnHand?.length > 0) {
-                branchTotalCOH = branch.cashOnHand[0].amount ? branch.cashOnHand[0].amount : 0;
+                branchTotalCOH += branch.cashOnHand[0].amount ? branch.cashOnHand[0].amount : 0;
             }
 
             if (branch.transferDailyGiverDetails?.length > 0 || branch.transferDailyReceivedDetails?.length > 0 || branch.transferWeeklyGiverDetails?.length > 0 || branch.transferWeeklyReceivedDetails?.length > 0) {

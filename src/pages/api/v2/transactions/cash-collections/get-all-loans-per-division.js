@@ -70,8 +70,10 @@ async function getData (req, res) {
 
 async function getAllLoanTransactionsByDivision(divisionId, date, dayName, currentDate) {
     let cashCollection;
-    
+
+    console.log('test', currentDate, date);
     if (currentDate === date) {
+        console.log('get current date division loans')
       const query = gql`
           query get($divisionId: String!, $date: date!, $dayName: String!) {
               cashCollections: get_all_loans_per_division_current_date(args: {
@@ -264,7 +266,7 @@ async function processData(data, date, currentDate) {
             }
 
             if (branch.cashOnHand?.length > 0) {
-                branchTotalCOH = branch.cashOnHand[0].amount ? branch.cashOnHand[0].amount : 0;
+                branchTotalCOH += branch.cashOnHand[0].amount ? branch.cashOnHand[0].amount : 0;
             }
 
             if (branch.transferDailyGiverDetails?.length > 0 || branch.transferDailyReceivedDetails?.length > 0 || branch.transferWeeklyGiverDetails?.length > 0 || branch.transferWeeklyReceivedDetails?.length > 0) {

@@ -1,11 +1,13 @@
-import { apiHandler } from '@/services/api-handler';
+import { BRANCH_COH_FIELDS, BRANCH_FIELDS } from '@/lib/graph.fields';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl } from '@/lib/graph/graph.util';
-import { BRANCH_COH_FIELDS, BRANCH_FIELDS } from '@/lib/graph.fields';
+import { apiHandler } from '@/services/api-handler';
 
 
 const graph = new GraphProvider();
+
 const addDatedAddedCondition = (date) => !date ? ` { _is_null: true } ` : ` { _eq: "${date}" }`; 
+
 const BRANCH_TYPE = (date) => createGraphType('branches', `
     ${BRANCH_FIELDS}
     noOfLO: users_aggregate(where: {
