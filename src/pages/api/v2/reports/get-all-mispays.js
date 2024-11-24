@@ -237,6 +237,12 @@ async function allLoans(req, res) {
                         totalNet: loan.totalNetLoanBalance,
                         totalNetStr: formatPricePhp(loan.totalNetLoanBalance),
                     }
+
+                    totalMispays += loan.totalMispayments;
+                    totalAmountRelease += loan.totalAmountRelease;
+                    totalLoanBalance += loan.totalLoanBalance;
+                    totalMCBU += loan.totalMCBU;
+                    totalNetLoanBalance += loan.totalNetLoanBalance;
                 });
 
                 data.push(temp);
