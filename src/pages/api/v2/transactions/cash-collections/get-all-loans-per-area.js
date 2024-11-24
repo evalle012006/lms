@@ -169,7 +169,7 @@ async function processData(data, date, currentDate) {
         let branchTotalMcbuDailyWithdrawal = 0;
         let branchTotalCOH = 0;
 
-        area.branchCollection.map(branch => {
+        area?.branchCollection?.map(branch => {
             if (branch?.draftCollections?.length > 0) {
                 const transactionStatus = branch.draftCollections[0].groupStatusArr?.filter(status => status === "pending") ?? [];
                 const draft = branch.draftCollections[0].hasDraftsArr?.filter(d => d === true) ?? [];
@@ -432,7 +432,7 @@ async function processData(data, date, currentDate) {
             status: '-'
         }
 
-        if (area.branchCollection?.length > 0) {
+        if (area?.branchCollection?.length > 0) {
             collection.activeClients = branchNoOfClients;
             collection.activeBorrowers = branchNoOfBorrowers;
             collection.pendingClients = branchNoOfPendings;
