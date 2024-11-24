@@ -8,20 +8,22 @@ import InputText from "@/lib/ui/InputText";
 import InputNumber from "@/lib/ui/InputNumber";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
-import Spinner from "../Spinner";
+import Spinner from "../../Spinner";
 import 'react-calendar/dist/Calendar.css';
-import moment from 'moment'
+import moment, { min } from 'moment'
 import SelectDropdown from "@/lib/ui/select";
 import SideBar from "@/lib/ui/SideBar";
 import RadioButton from "@/lib/ui/radio-button";
 import { setGroupList } from "@/redux/actions/groupActions";
 import { setClientList, setComakerList } from "@/redux/actions/clientActions";
-import { UppercaseFirstLetter, formatPricePhp } from "@/lib/utils";
+import { UppercaseFirstLetter, formatPricePhp, getNextValidDate } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/constants";
+import DatePicker2 from "@/lib/ui/DatePicker2";
 
 const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, onClose, type }) => {
     const formikRef = useRef();
     const dispatch = useDispatch();
+    const holidayList = useSelector(state => state.holidays.list);
     const isHoliday = useSelector(state => state.systemSettings.holiday);
     const isWeekend = useSelector(state => state.systemSettings.weekend);
     const list = useSelector(state => state.loan.list);
@@ -55,8 +57,9 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     const [oldGroupList, setOldGroupList] = useState();
     const [selectedLoanId, setSelectedLoanId] = useState();
 
-    const [loanFor, setLoanFor] = useState('today');
+    // const [loanFor, setLoanFor] = useState('today');
     const [loStatus, setLoStatus] = useState();
+    const [initialDateRelease, setInitialDateRelease] = useState();
 
     const initialValues = {
         branchId: loan.branchId,
@@ -80,7 +83,8 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         guarantorMiddleName: loan.guarantorMiddleName,
         guarantorLastName: loan.guarantorLastName,
         status: mode !== 'reloan' ? loan.status : 'pending',
-        ciName: loan?.ciName || ''
+        ciName: loan?.ciName || '',
+        dateOfRelease: loan.dateOfRelease,
     }
 
     const validationSchema = yup.object().shape({
@@ -118,9 +122,9 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         ciName: yup.string().required('Please enter C.I. name'),
     });
 
-    const handleLoanForChange = (value) => {
-        setLoanFor(value);
-    }
+    // const handleLoanForChange = (value) => {
+    //     setLoanFor(value);
+    // }
 
     const handleLoIdChange = (field, value) => {
         setLoading(true);
@@ -244,7 +248,12 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         let group;
         values.currentDate = currentDate;
         values.clientId = clientId;
-        values.loanFor = loanFor;
+        values.loanFor = 'tomorrow';
+        values.dateOfRelease = values.dateOfRelease ? values.dateOfRelease : initialDateRelease;
+
+        if (values.dateOfRelease == currentDate)  {
+            values.loanFor = 'today';
+        }
 
         if (mode !== 'reloan') {
             values.groupId = selectedGroup;
@@ -319,7 +328,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                     const apiUrl = getApiBaseUrl() + 'transactions/loans/save/';
 
                     values.lastUpdated = null;  // use only when updating the mispayments
-                    values.admissionDate = moment(values.admissionDate).format('YYYY-MM-DD');
+                    values.admissionDate = currentDate;
                     values.status = 'pending';
                     values.loanCycle = values.loanCycle ? values.loanCycle : 1;
                     values.noOfPayments = 0;
@@ -328,7 +337,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                     values.mcbuWithdrawal = 0;
                     values.mcbuInterest = 0;
                     values.mcbuReturnAmt = 0;
-
+                    console.log(values.admissionDate, currentDate)
                     fetchWrapper.post(apiUrl, values)
                         .then(response => {
                             setLoading(false);
@@ -353,7 +362,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                 setSlotNumber();
                                 setSelectedCoMaker();
                                 setGroupOccurence('daily');
-                                setLoanFor('today');
+                                // setLoanFor('today');
                                 onClose();
                             }
                         }).catch(error => {
@@ -656,6 +665,16 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         setLoading(false);
     }
 
+    const handleDateOfRelease = (selected) => {
+        const form = formikRef.current;
+        form.setFieldValue('dateOfRelease', selected);
+    }
+
+    const [showCalendar, setShowCalendar] = useState(false);
+    const openCalendar = () => {
+        setShowCalendar(true);
+    };
+
     const getAllLoanPerGroup = async (groupId) => {
         const response = await fetchWrapper.get(getApiBaseUrl() + 'transactions/loans/get-comaker-by-group?' + new URLSearchParams({ groupId: groupId }));
 
@@ -678,7 +697,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             setSelectedGroup(loan.groupId);
             setSlotNo(loan.slotNo);
             setSelectedCoMaker(loan.coMaker);
-            setLoanFor(loan?.loanFor);
+            // setLoanFor(loan?.loanFor);
 
             form.setFieldValue('clientId', loan.clientId);
             form.setFieldValue('groupId', loan.groupId);
@@ -727,15 +746,15 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             if (response.success) {
                 setLoStatus(response.status);
 
-                if (response.status === 'open') {
-                    setLoanFor('today');
-                } else {
-                    setLoanFor('tomorrow');
-                }
+                // if (response.status === 'open') {
+                //     setLoanFor('today');
+                // } else {
+                //     setLoanFor('tomorrow');
+                // }
 
-                if (isHoliday || isWeekend) {
-                    setLoanFor('tomorrow');
-                }
+                // if (isHoliday || isWeekend) {
+                //     setLoanFor('tomorrow');
+                // }
             }
         }
 
@@ -746,7 +765,44 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                 getLOStatus(selectedLo);
             }
         }
-    }, [mode, currentUser, selectedLo]);;
+    }, [mode, currentUser, selectedLo]);
+
+    useEffect(() => {
+        if (mode == 'add' && currentDate) {
+            const dayName = moment(currentDate).format('dddd');
+            if (dayName == 'Friday') {
+                setInitialDateRelease(getNextValidDate(moment(currentDate).add(4, 'days').format('YYYY-MM-DD'), holidayList).format('YYYY-MM-DD'));
+            } else if (isWeekend) {
+                setInitialDateRelease(getNextValidDate(moment(currentDate).add(dayName == 'Saturday' ? 3 : 2, 'days').format('YYYY-MM-DD'), holidayList).format('YYYY-MM-DD'));
+            } else {
+                setInitialDateRelease(getNextValidDate(moment(currentDate).add(2, 'days').format('YYYY-MM-DD'), holidayList).format('YYYY-MM-DD'));
+            }
+        } else if (mode == 'edit' && loan.dateOfRelease) {
+            setInitialDateRelease(loan.dateOfRelease);
+        }
+    }, [mode, loan.dateOfRelease, currentDate, isWeekend, isHoliday, holidayList]);
+
+    const [minDate, setMinDate] = useState();
+    const [maxDate, setMaxDate] = useState();
+    useEffect(() => {
+        if (currentDate) {
+            let initialMinDate = moment(currentDate).add(2, 'days').format("YYYY-MM-DD");
+            const allowedAdmissionDate = moment(loan.admissionDate).add(2, 'days').isSameOrAfter(moment(currentDate));
+            if (mode == 'edit' && allowedAdmissionDate) {
+                initialMinDate = currentDate;
+            }
+            initialMinDate = getNextValidDate(initialMinDate, holidayList);
+            setMinDate(initialMinDate.toDate());
+
+            const minDateDay = initialMinDate.format('dddd');
+            if (minDateDay != 'Monday' && minDateDay != 'Tuesday') {
+                initialMinDate = initialMinDate.add(2, 'days');
+            }
+
+            const initialMaxDate = moment(initialMinDate).add(4, 'days').format("YYYY-MM-DD");
+            setMaxDate(getNextValidDate(initialMaxDate, holidayList).toDate());
+        }
+    }, [mode, loan.admissionDate, currentDate, holidayList]);
 
     return (
         <React.Fragment>
@@ -775,13 +831,25 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                 setFieldTouched
                             }) => (
                                 <form onSubmit={handleSubmit} autoComplete="off">
-                                    <div className="flex flex-col mt-4 text-gray-500">
+                                    {/* <div className="flex flex-col mt-4 text-gray-500">
                                         <div>Loan for</div>
                                         <div className="flex flex-row ml-4">
                                             <RadioButton id={"radio_today"} name="radio-loan-type" label={"Today"} checked={loanFor === 'today'} value="today" onChange={() => setLoanFor('today')} />
                                             <RadioButton id={"radio_tomorrow"} name="radio-loan-type" label={"Tomorrow"} checked={loanFor === 'tomorrow'} value="tomorrow" onChange={() => setLoanFor('tomorrow')} />
                                         </div>
-                                    </div>
+                                    </div> */}
+                                    {(initialDateRelease && minDate && maxDate) && (
+                                        <div className="relative w-full mt-4" onClick={openCalendar}>
+                                            <span className="text-sm">Date of Release</span>
+                                            <DatePicker2
+                                                name="dateOfRelease"
+                                                value={initialDateRelease}
+                                                onChange={handleDateOfRelease}
+                                                minDate={minDate}
+                                                maxDate={maxDate}
+                                            />
+                                        </div>
+                                    )}
                                     {mode === 'add' ? (
                                         <React.Fragment>
                                             <div className="mt-4 flex flex-row">
@@ -1007,18 +1075,6 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                             errors={touched.principalLoan && errors.principalLoan ? errors.principalLoan : undefined} />
                                     </div>
                                     <div className="mt-4">
-                                        <InputText
-                                            name="pnNumber"
-                                            value={values.pnNumber}
-                                            onChange={handleChange}
-                                            onBlur={handlePNNumber}
-                                            onFocus={getLastPNNumber}
-                                            label="Promisory Note Number (Required)"
-                                            placeholder="Enter PN Number"
-                                            setFieldValue={setFieldValue}
-                                            errors={touched.pnNumber && errors.pnNumber ? errors.pnNumber : undefined} />
-                                    </div>
-                                    <div className="mt-4">
                                         <SelectDropdown
                                             name="coMaker"
                                             field="coMaker"
@@ -1070,6 +1126,18 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                             placeholder="Enter CI Name"
                                             setFieldValue={setFieldValue}
                                             errors={touched.ciName && errors.ciName ? errors.ciName : undefined} />
+                                    </div>
+                                    <div className="mt-4">
+                                        <InputText
+                                            name="pnNumber"
+                                            value={values.pnNumber}
+                                            onChange={handleChange}
+                                            onBlur={handlePNNumber}
+                                            onFocus={getLastPNNumber}
+                                            label="Promisory Note Number"
+                                            placeholder="Enter PN Number"
+                                            setFieldValue={setFieldValue}
+                                            errors={touched.pnNumber && errors.pnNumber ? errors.pnNumber : undefined} />
                                     </div>
                                     <div className="flex flex-row mt-5">
                                         <ButtonOutline label="Cancel" onClick={handleCancel} className="mr-3" />

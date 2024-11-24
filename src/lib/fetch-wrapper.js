@@ -28,7 +28,7 @@ function isApiUrl(url) {
   if (apiUrl.startsWith('/') && url.startsWith('http')) {
     url = new URL(url).pathname;
   }
-  console.log(url, apiUrl, url.startsWith(apiUrl))
+//   console.log(url, apiUrl, url.startsWith(apiUrl))
   return url.startsWith(apiUrl);
 }
 

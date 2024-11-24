@@ -14,7 +14,7 @@ import { containsAnyLetters, formatPricePhp, UppercaseFirstLetter } from '@/lib/
 import { ArrowPathIcon, CurrencyDollarIcon, ReceiptPercentIcon } from '@heroicons/react/24/outline';
 import Select from 'react-select';
 import { DropdownIndicator, borderStyles, styles } from "@/styles/select";
-import AddUpdateLoan from '@/components/transactions/AddUpdateLoanDrawer';
+import AddUpdateLoan from '@/components/transactions/loan-application/AddUpdateLoanDrawer';
 import Dialog from '@/lib/ui/Dialog';
 import ButtonSolid from '@/lib/ui/ButtonSolid';
 import ButtonOutline from '@/lib/ui/ButtonOutline';
@@ -681,7 +681,6 @@ const CashCollectionDetailsPage = () => {
                         } else if (cc.current.length > 0) {
                             const current = cc.current.find(cur => !cur.transferId);
                             if (current) {
-                                console.log('set cash collection read only 6', current);
                                 // setEditMode(false);
                                 collection.targetCollection = current.targetCollection;
                                 collection.targetCollectionStr = collection.targetCollection > 0 ? formatPricePhp(collection.targetCollection) : '-';
@@ -1315,7 +1314,7 @@ const CashCollectionDetailsPage = () => {
                         }
     
                         if (temp.loanBalance <= 0 && temp.remarks?.value !== 'offset-matured-pd') {
-                            temp.status = temp?.advance ? 'pending' : 'completed';
+                            temp.status = (temp?.advance && temp?.dateOfRelease == currentDate) ? 'pending' : 'completed';
                             temp.fullPaymentDate = currentDate;
                         }
     
@@ -1980,7 +1979,6 @@ const CashCollectionDetailsPage = () => {
                                     }
                                 }
                             } else if (remarks.value === "past due collection") {
-                                console.log(temp);
                                 if (temp.pastDue > 0 && temp.paymentCollection > temp.activeLoan && !temp?.maturedPD && (parseFloat(temp.paymentCollection) > temp.activeLoan && parseFloat(temp.paymentCollection) % parseFloat(temp.activeLoan) === 0)) {
                                     const pastDueCol = temp.paymentCollection - temp.activeLoan;
                                     if (pastDueCol > temp.pastDue) {
@@ -2663,12 +2661,12 @@ const CashCollectionDetailsPage = () => {
 
     useEffect(() => {
         setDropDownActions([
-            {
-                label: 'Reloan',
-                action: handleReloan,
-                icon: <ArrowPathIcon className="w-5 h-5" title="Reloan" />,
-                hidden: true
-            },
+            // {
+            //     label: 'Reloan',
+            //     action: handleReloan,
+            //     icon: <ArrowPathIcon className="w-5 h-5" title="Reloan" />,
+            //     hidden: true
+            // },
             {
                 label: 'MCBU Withdrawal',
                 action: handleMcbuWithdrawal,

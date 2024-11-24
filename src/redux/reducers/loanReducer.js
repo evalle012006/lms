@@ -1,4 +1,4 @@
-import { SET_ADD_UPDATE_LOAN, SET_ADD_UPDATE_PENDING_LOAN, SET_ADD_UPDATE_TOMORROW_LOAN, SET_DUPLICATE_LOAN_LIST, SET_FILTERED_LOAN_LIST, SET_FILTERED_PENDING_LOAN_LIST, SET_FILTERED_TOMORROW_LOAN_LIST, SET_LOAN, SET_LOAN_LIST, SET_PENDING_LOAN, SET_PENDING_LOAN_LIST, SET_TOMORROW_LOAN, SET_TOMORROW_LOAN_LIST } from "../actions/loanActions";
+import { SET_ADD_UPDATE_FORECASTED_LOAN, SET_ADD_UPDATE_LOAN, SET_ADD_UPDATE_PENDING_LOAN, SET_ADD_UPDATE_TOMORROW_LOAN, SET_DUPLICATE_LOAN_LIST, SET_FILTERED_FORECASTED_LOAN_LIST, SET_FILTERED_LOAN_LIST, SET_FILTERED_PENDING_LOAN_LIST, SET_FILTERED_TOMORROW_LOAN_LIST, SET_FORECASTED_LOAN, SET_FORECASTED_LOAN_LIST, SET_LOAN, SET_LOAN_LIST, SET_PENDING_LOAN, SET_PENDING_LOAN_LIST, SET_TOMORROW_LOAN, SET_TOMORROW_LOAN_LIST } from "../actions/loanActions";
 
 
 const initialLoanState = {
@@ -14,6 +14,10 @@ const initialLoanState = {
     addUpdateTomorrow: {},
     tomorrowList: [],
     filteredTomorrowList: [],
+    forecastedData: {},
+    addUpdateForecasted: {},
+    forecastedList: [],
+    filteredForecastedList: [],
     duplicateLoanList: [],
 };
 
@@ -45,6 +49,14 @@ const loanReducer = (state = initialLoanState, action) => {
             return { ...state, filteredTomorrowList: action.payload }
         case SET_DUPLICATE_LOAN_LIST:
             return { ...state, duplicateLoanList: action.payload }
+        case SET_FORECASTED_LOAN:
+            return { ...state, forecastedData: action.payload }
+        case SET_FORECASTED_LOAN_LIST:
+            return { ...state, forecastedList: action.payload }
+        case SET_ADD_UPDATE_FORECASTED_LOAN:
+            return { ...state, addUpdateForecasted: action.payload }
+        case SET_FILTERED_FORECASTED_LOAN_LIST:
+            return { ...state, filteredForecastedList: action.payload }
         default:
             return { ...state }
     }

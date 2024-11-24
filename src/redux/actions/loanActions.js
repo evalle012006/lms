@@ -10,6 +10,10 @@ export const SET_TOMORROW_LOAN = 'SET_TOMORROW_LOAN';
 export const SET_TOMORROW_LOAN_LIST = 'SET_TOMORROW_LOAN_LIST';
 export const SET_ADD_UPDATE_TOMORROW_LOAN = 'SET_ADD_UPDATE_TOMORROW_LOAN';
 export const SET_FILTERED_TOMORROW_LOAN_LIST = 'SET_FILTERED_TOMORROW_LOAN_LIST';
+export const SET_FORECASTED_LOAN = 'SET_FORECASTED_LOAN';
+export const SET_FORECASTED_LOAN_LIST = 'SET_FORECASTED_LOAN_LIST';
+export const SET_ADD_UPDATE_FORECASTED_LOAN = 'SET_ADD_UPDATE_FORECASTED_LOAN';
+export const SET_FILTERED_FORECASTED_LOAN_LIST = 'SET_FILTERED_FORECASTED_LOAN_LIST';
 export const SET_DUPLICATE_LOAN_LIST = 'SET_DUPLICATE_LOAN_LIST';
 
 export const setLoan = (loan) => ({
@@ -74,5 +78,25 @@ export const setFilteredTomorrowLoanList = (loanList) => ({
 
 export const setDuplicateLoanList = (loanList) => ({
     type: SET_DUPLICATE_LOAN_LIST,
+    payload: loanList
+});
+
+export const setForecastedLoan = (loan) => ({
+    type: SET_FORECASTED_LOAN,
+    payload: loan
+});
+
+export const setForecastedLoanList = (loanList) => ({
+    type: SET_FORECASTED_LOAN_LIST,
+    payload: loanList
+});
+
+export const setAddUpdateForecastedLoan = (loan) => ({
+    type: SET_ADD_UPDATE_FORECASTED_LOAN,
+    payload: loan
+});
+
+export const setFilteredForecastedLoanList = (loanList) => ({
+    type: SET_FILTERED_FORECASTED_LOAN_LIST,
     payload: loanList
 });

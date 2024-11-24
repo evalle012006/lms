@@ -14,7 +14,7 @@ import { containsAnyLetters, formatPricePhp, UppercaseFirstLetter } from '@/lib/
 import { ArrowPathIcon, ArrowUturnLeftIcon, CurrencyDollarIcon, CalculatorIcon, ReceiptPercentIcon, StopCircleIcon } from '@heroicons/react/24/outline';
 import Select from 'react-select';
 import { DropdownIndicator, borderStyles } from "@/styles/select";
-import AddUpdateLoan from '@/components/transactions/AddUpdateLoanDrawer';
+import AddUpdateLoan from '@/components/transactions/loan-application/AddUpdateLoanDrawer';
 import Dialog from '@/lib/ui/Dialog';
 import ButtonSolid from '@/lib/ui/ButtonSolid';
 import ButtonOutline from '@/lib/ui/ButtonOutline';
@@ -2729,12 +2729,12 @@ const CashCollectionDetailsPage = () => {
     useEffect(() => {
         setDropDownActions(
             [
-                {
-                    label: 'Reloan',
-                    action: handleReloan,
-                    icon: <ArrowPathIcon className="w-5 h-5" title="Reloan" />,
-                    hidden: true
-                },
+                // {
+                //     label: 'Reloan',
+                //     action: handleReloan,
+                //     icon: <ArrowPathIcon className="w-5 h-5" title="Reloan" />,
+                //     hidden: true
+                // },
                 {
                     label: 'MCBU Withdrawal',
                     action: handleMcbuWithdrawal,

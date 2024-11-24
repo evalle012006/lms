@@ -324,3 +324,22 @@ export const jsonTryParse = (str, defVal) => {
 }
 
 export const generateUUID = () => uuidv4();
+
+export const checkIfWeekend = (date) => {
+    const day = new Date(date).getDay();
+    return day === 0 || day === 6;
+}
+
+export const checkIfHoliday = (date, holidays = []) => {
+    const dateArr = date.split('-');
+    const dateStr = dateArr[1] + "-" + dateArr[2];
+    return holidays.includes(dateStr);
+}
+
+export const getNextValidDate = (date, holidays = []) => {
+    let nextDate = moment(date);
+    while (checkIfWeekend(nextDate) || checkIfHoliday(nextDate.format("YYYY-MM-DD"), holidays)) {
+      nextDate = nextDate.add(1, 'days');
+    }
+    return nextDate;
+}

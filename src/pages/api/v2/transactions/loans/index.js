@@ -42,12 +42,12 @@ async function updateLoan(req, res) {
   const { _id: loanId, group, ...loan } = req.body;
 
   logger.debug({ page: `Updating Loan: ${loan.clientId}`, data: loan });
-  const currentDate = moment(getCurrentDate()).format("YYYY-MM-DD");
-  let dateOfRelease = null;
+  // const currentDate = moment(getCurrentDate()).format("YYYY-MM-DD");
+  // let dateOfRelease = loan.dateOfRelease;
 
-  if (loan?.loanFor === "tomorrow") {
-    dateOfRelease = moment(currentDate).add(1, "days").format("YYYY-MM-DD");
-  }
+  // if (loan?.loanFor === "tomorrow" && !dateOfRelease) {
+  //   dateOfRelease = moment(currentDate).add(1, "days").format("YYYY-MM-DD");
+  // }
 
   // the mixed type from mongo during migration
   loan.coMaker = loan.coMaker?.toString();
@@ -55,7 +55,7 @@ async function updateLoan(req, res) {
   const loanResp = await graph.mutation(
     updateQl(loanType, {
       where: { _id: { _eq: loanId } },
-      set: filterGraphFields(LOAN_FIELDS, { ...loan, dateOfRelease }),
+      set: filterGraphFields(LOAN_FIELDS, { ...loan }),
     })
   );
 
