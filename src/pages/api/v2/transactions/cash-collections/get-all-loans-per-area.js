@@ -529,7 +529,7 @@ async function processData(data, date, currentDate) {
         loanTargetStr: targetLoanCollection > 0 ? formatPricePhp(targetLoanCollection) : 0,
         excessStr: formatPricePhp(excess),
         totalStr: formatPricePhp(totalLoanCollection),
-        mispaymentStr: mispayment + ' / ' + noOfClients,
+        mispayment: mispayment + ' / ' + noOfClients,
         fullPaymentAmountStr: formatPricePhp(fullPaymentAmount),
         noOfFullPayment: noOfFullPayment,
         pastDueStr: formatPricePhp(totalPastDue),
