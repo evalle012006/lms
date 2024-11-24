@@ -1,28 +1,12 @@
 import { BRANCH_COH_FIELDS, BRANCH_FIELDS, USER_FIELDS } from '@/lib/graph.fields';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, updateQl } from '@/lib/graph/graph.util';
-import { getCurrentDate } from '@/lib/utils';
 import { apiHandler } from '@/services/api-handler';
-import moment from 'node_modules/moment/moment';
 
 const graph = new GraphProvider();
 
-const addCOH = (date) => {
-    const currDate = moment(getCurrentDate()).format('YYYY-MM-DD');
-    if(date === currDate) {
-        return `
-            cashOnHand: branchCOHs (order_by: [{ dateAdded: desc_nulls_last }], limit: 1) {
-                ${BRANCH_COH_FIELDS}
-            }
-        `
-    }
+const addDatedAddedCondition = (date) => !date ? ` { _is_null: true } ` : ` { _eq: "${date}" }`; 
 
-    return `
-    cashOnHand: branchCOHs (where: { dateAdded: { _eq: "${date}" } }) {
-        ${BRANCH_COH_FIELDS}
-    }
-    `
-}
 const BRANCH_TYPE = (date) => createGraphType('branches', `
     ${BRANCH_FIELDS}
     branchManager: users (where: {
@@ -44,7 +28,10 @@ const BRANCH_TYPE = (date) => createGraphType('branches', `
         aggregate {  count }
     }
 
-    ${addCOH(date)}
+    cashOnHand: branchCOHs (where: { dateAdded: ${addDatedAddedCondition(date) } }){
+        ${BRANCH_COH_FIELDS}
+    }
+        
 `)('branches');
 
 export default apiHandler({
