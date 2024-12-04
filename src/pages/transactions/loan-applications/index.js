@@ -106,6 +106,13 @@ const LoanApplicationPage = () => {
     const [selectedYear, setSelectedYear] = useState(moment().year());
     const [selectedBranch, setSelectedBranch] = useState();
 
+    const [selectedFilterLoanCycle, setSelectedFilterLoanCycle] = useState('all');
+    const loanCycleFilterList = [
+        { label: 'All', value: 'all' },
+        { label: 'New Member', value: 'new_member' },
+        { label: 'Reloaner', value: 'reloaner' }
+    ]
+
     const handleBranchFilter = (selected) => {
         setSelectedBranch(selected.value);
     }
@@ -132,6 +139,13 @@ const LoanApplicationPage = () => {
             setSelectedTab(selected);
             setLoading(false);
         }, 500);
+    }
+
+    const handleLoanCycleChange = (selected) => {
+        setSelectedFilterLoanCycle(selected.value);
+        if (selectedTab == 'ldf') {
+            handleFilter('loanCycle', selected.value, data);
+        }
     }
 
     const handleBranchChange = (selected) => {
@@ -185,6 +199,14 @@ const LoanApplicationPage = () => {
             searchResult = dataArr.filter(b => b.loId === value);
           } else if (field === 'group') {
             searchResult = dataArr.filter(b => b.groupId === value);
+          } else if (field === 'loanCycle') {
+            if (value == 'new_member') {
+                searchResult = dataArr.filter(b => b.loanCycle === 1);
+            } else if (value == 'reloaner') {
+                searchResult = dataArr.filter(b => b.loanCycle > 1);
+            } else {
+                searchResult = dataArr;
+            }
           }
 
           if (selectedTab == 'ldf') {
@@ -1668,6 +1690,18 @@ const LoanApplicationPage = () => {
                                                     isSearchable={true}
                                                     closeMenuOnSelect={true}
                                                     placeholder={'Group Filter'}/>
+                                            </div>
+                                            <div className='flex flex-col ml-4 mr-4'>
+                                                <span className='text-zinc-400 mb-1'>Loan Type:</span>
+                                                <Select 
+                                                    options={loanCycleFilterList}
+                                                    value={loanCycleFilterList && loanCycleFilterList.find(loanCycle => { return loanCycle.value === selectedFilterLoanCycle } )}
+                                                    styles={borderStyles}
+                                                    components={{ DropdownIndicator }}
+                                                    onChange={handleLoanCycleChange}
+                                                    isSearchable={true}
+                                                    closeMenuOnSelect={true}
+                                                    placeholder={'Loan Type Filter'}/>
                                             </div>
                                             {currentUser?.role?.rep < 4 && (
                                                 <div className="flex flex-col">
