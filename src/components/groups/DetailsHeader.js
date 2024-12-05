@@ -13,7 +13,7 @@ import ButtonOutline from "@/lib/ui/ButtonOutline";
 
 const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, dateFilter, setDateFilter, handleDateFilter, revertMode = false,
                             groupFilter, handleGroupFilter, groupTransactionStatus, allowMcbuWithdrawal, allowOffsetTransaction, hasDraft, changeRemarks,
-                            addMcbuInterest, handleShowWarningDialog, loading }) => {
+                            handleShowWarningDialog, loading, allowMcbuInterest }) => {
     const router = useRouter();
     const currentUser = useSelector(state => state.user.data);
     const groupList = useSelector(state => state.group.list);
@@ -151,9 +151,10 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
                             </div>
                         </div>
                     </div>
-                    {((showSaveButton || allowMcbuWithdrawal || allowOffsetTransaction) && groupTransactionStatus != 'close') && (
+
+                    {((showSaveButton || allowMcbuWithdrawal || allowOffsetTransaction || allowMcbuInterest) && groupTransactionStatus != 'close') && (
                         <div className={`flex items-center`}>
-                            {((hasDraft && !revertMode) || hasDraft || (hasDraft && !changeRemarks) || !addMcbuInterest) && (
+                            {((hasDraft && !revertMode) || hasDraft || (hasDraft && !changeRemarks) && !allowMcbuInterest && !allowMcbuWithdrawal) && (
                                 <div className="w-40 mr-4">
                                     <ButtonOutline label="Save Draft" type="button" className="p-2 mr-3" onClick={() => handleSaveUpdate(true)} disabled={loading} />
                                 </div>
@@ -164,7 +165,7 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
                         </div>
                     )}
 
-                    {( (!showSaveButton && groupTransactionStatus != 'close' && !isHoliday && !isWeekend && currentUser.role.rep == 3) && (
+                    {( (!showSaveButton && groupTransactionStatus != 'close' && !isHoliday && !isWeekend && currentUser.role.rep == 3 && !allowMcbuInterest && !allowMcbuWithdrawal) && (
                         <div className="w-40 ml-4">
                             <ButtonSolid label="Revert" onClick={(e) => handleShowWarningDialog(e)} disabled={loading} />
                         </div>

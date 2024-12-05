@@ -63,6 +63,7 @@ const CashCollectionDetailsPage = () => {
     const [filter, setFilter] = useState(false);
     const [groupFilter, setGroupFilter] = useState();
     const [allowMcbuWithdrawal, setAllowMcbuWithdrawal] = useState(false);
+    const [allowMcbuInterest, setAllowMcbuInterest] = useState(false);
 
     const [selectedSlot, setSelectedSlot] = useState();
 
@@ -75,7 +76,6 @@ const CashCollectionDetailsPage = () => {
     const [changeRemarks, setChangeRemarks] = useState(false);
     const [prevDraft, setPrevDraft] = useState(false);
     const [selectedNewRemarks, setSelectedNewRemarks] = useState();
-    const [addMcbuInterest, setAddMcbuInterest] = useState(false);
 
     const [selectAll, setSelectAll] = useState(false);
 
@@ -2457,7 +2457,13 @@ const CashCollectionDetailsPage = () => {
                 let temp = {...cc};
 
                 if (selected.slotNo === cc.slotNo) {
-                    temp.mcbuInterestFlag = true;
+                    temp.mcbuInterestFlag = !temp.mcbuInterestFlag;
+
+                    if (temp.mcbuInterestFlag) {
+                        setAllowMcbuInterest(true);
+                    } else {
+                        setAllowMcbuInterest(false);
+                    }
                 }
 
                 return temp;
@@ -2702,7 +2708,8 @@ const CashCollectionDetailsPage = () => {
                         handleSaveUpdate={handleSaveUpdate} data={allData} setData={setFilteredData} allowMcbuWithdrawal={allowMcbuWithdrawal} hasDraft={hasDraft}
                         dateFilter={dateFilter} setDateFilter={setDateFilter} handleDateFilter={handleDateFilter} currentGroup={uuid} revertMode={revertMode}
                         groupFilter={groupFilter} handleGroupFilter={handleGroupFilter} groupTransactionStatus={groupSummaryIsClose ? 'close' : 'open'}
-                        changeRemarks={changeRemarks} addMcbuInterest={addMcbuInterest} handleShowWarningDialog={handleShowWarningDialog} loading={loading} />}
+                        changeRemarks={changeRemarks} handleShowWarningDialog={handleShowWarningDialog} loading={loading} 
+                        allowMcbuInterest={allowMcbuInterest} />}
                     <div className="px-4 mt-[12rem] mb-[4rem] overflow-y-auto min-h-[55rem]">
                         <div className="bg-white flex flex-col rounded-md pt-0 pb-2 px-6 overflow-auto min-h-[46rem]">
                             <table className="table-auto border-collapse text-sm">

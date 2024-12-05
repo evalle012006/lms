@@ -73,7 +73,7 @@ const CashCollectionDetailsPage = () => {
     const [showWaningDialog, setShowWarningDialog] = useState(false);
     const [changeRemarks, setChangeRemarks] = useState(false);
     const [prevDraft, setPrevDraft] = useState(false);
-    const [addMcbuInterest, setAddMcbuInterest] = useState(false);
+    const [allowMcbuInterest, setAllowMcbuInterest] = useState(false);
 
     const [selectAll, setSelectAll] = useState(false);
 
@@ -2465,7 +2465,7 @@ const CashCollectionDetailsPage = () => {
 
                 if (selected.slotNo === cc.slotNo) {
                     setEditMode(true);
-                    setAddMcbuInterest(true);
+                    setAllowMcbuInterest(true);
 
                     temp.mcbuInterestFlag = true;
                 }
@@ -2769,7 +2769,7 @@ const CashCollectionDetailsPage = () => {
                         handleSaveUpdate={handleSaveUpdate} data={allData} setData={setFilteredData} allowMcbuWithdrawal={allowMcbuWithdrawal} allowOffsetTransaction={allowOffsetTransaction}
                         dateFilter={dateFilter} setDateFilter={setDateFilter} handleDateFilter={handleDateFilter} currentGroup={uuid} revertMode={revertMode}
                         groupFilter={groupFilter} handleGroupFilter={handleGroupFilter} groupTransactionStatus={groupSummaryIsClose ? 'close' : 'open'} 
-                        changeRemarks={changeRemarks} addMcbuInterest={addMcbuInterest} handleShowWarningDialog={handleShowWarningDialog} loading={loading} />}
+                        changeRemarks={changeRemarks} allowMcbuInterest={allowMcbuInterest} handleShowWarningDialog={handleShowWarningDialog} loading={loading} />}
                     <div className="px-4 mt-[12rem] mb-[4rem] overflow-y-auto min-h-[55rem]">
                         <div className="bg-white flex flex-col rounded-md pt-0 pb-2 px-6 overflow-auto min-h-[46rem]">
                             <table className="table-auto border-collapse text-sm">
