@@ -1573,7 +1573,7 @@ const BranchManagerSummary = () => {
     useEffect(() => {
         let mounted = true;
 
-        if (currentUser.role.rep === 3 || currentUser.role.rep === 4) {
+        if ((currentUser.role.rep === 3 || currentUser.role.rep === 4) && currentDate) {
             const getCurrentBranch = async () => {
                 const apiUrl = `${getApiBaseUrl()}branches?`;
                 const params = { code: currentUser.designatedBranch, date: currentDate };
@@ -1593,7 +1593,7 @@ const BranchManagerSummary = () => {
         return (() => {
             mounted = false;
         })
-    }, [currentUser]);
+    }, [currentUser, currentDate]);
 
     useEffect(() => {
         setDays(getDaysOfMonth(selectedYear, selectedMonth));
@@ -1639,186 +1639,143 @@ const BranchManagerSummary = () => {
     }, [selectedLoGroup, currentBranch]);
 
     return (
-        <Layout header={false} noPad={false} hScroll={false}>
+        <Layout header={false} noPad={false} hScroll={false} noVScrollBody={true} vScroll={false}>
             {loading ? (
                 <div className="absolute top-1/2 left-1/2">
                     <Spinner />
                 </div>
             ) : (
                 <div className="flex flex-col">
-                    <LOSHeader page={1} pageTitle="Branch Manager Summary" selectedBranch={currentBranch} 
-                            selectedMonth={selectedMonth} setSelectedMonth={setSelectedMonth} handleMonthFilter={handleMonthFilter}
-                            selectedYear={selectedYear} setSelectedYear={setSelectedYear} handleYearFilter={handleYearFilter}
-                            selectedLoGroup={selectedLoGroup} handleSelectedLoGroupChange={handleSelectedLoGroupChange}
-                            selectedLo={selectedLo} handleSelectedLoChange={handleSelectedLoChange} />
-                    <div className="flex flex-col min-h-[55rem] mt-40 pl-6 pr-2 overflow-y-auto">
-                        <div className="block rounded-xl overflow-auto h-screen">
-                            <table className="relative w-full table-auto border-collapse text-sm bg-white" style={{ marginBottom: "14em" }}>
+                    <LOSHeader 
+                        page={1} 
+                        pageTitle="Branch Manager Summary" 
+                        selectedBranch={currentBranch}
+                        selectedMonth={selectedMonth} 
+                        setSelectedMonth={setSelectedMonth} 
+                        handleMonthFilter={handleMonthFilter}
+                        selectedYear={selectedYear} 
+                        setSelectedYear={setSelectedYear} 
+                        handleYearFilter={handleYearFilter}
+                        selectedLoGroup={selectedLoGroup} 
+                        handleSelectedLoGroupChange={handleSelectedLoGroupChange}
+                        selectedLo={selectedLo} 
+                        handleSelectedLoChange={handleSelectedLoChange} 
+                    />
+                    <div className="flex flex-col min-h-[55rem] mt-32 px-6 overflow-y-auto">
+                        <div className="shadow-lg rounded-lg bg-white">
+                            <div className="block rounded-xl overflow-auto h-screen">
+                                <table className="w-full table-auto border-collapse text-sm" style={{ marginBottom: "14em" }}>
                                 <thead>
-                                    <tr>
-                                        <th rowSpan={3} className="sticky top-0 bg-white border border-gray-300 border-l-0 border-t-0  px-2 py-2 text-gray-500 uppercase">Date</th>
-                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">TOC</th>
-                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">NM</th>
-                                        <th colSpan={6} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 text-gray-500 uppercase">MCBU</th> 
-                                        {/* <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">OFST Pers.</th> */}
-                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">Act. Clie.</th>
-                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">MCBU Bal.</th>
-                                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-4 text-gray-500 uppercase">Curr. Loan Rel. w/SC (Regular Loan Daily)</th>
-                                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-4 text-gray-500 uppercase">Curr. Loan Rel. w/SC (Other Loan Weekly)</th>
-                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">Pers.</th>
-                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">Consol. Total Loan Release w/SC</th>
-                                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 py-4 text-gray-500 uppercase">ACT LOAN RELEASE W/ Serv. Charge</th>
-                                        <th colSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 text-gray-500 uppercase">COLLECTION (w/SC)</th>
-                                        <th colSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 text-gray-500 uppercase">COLLECTION (w/SC)</th>
-                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">Consol. Total Act. Collection</th>
-                                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 text-gray-500 uppercase">Pastdue</th>
-                                        {/* <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">Mispay Pers.</th> */}
-                                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 text-gray-500 uppercase">FULL PAYMENT (w/SC Daily)</th>
-                                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 text-gray-500 uppercase">FULL PAYMENT (w/SC Weekly)</th>
-                                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 text-gray-500 uppercase">Consol. FULL PAYMENT</th>
-                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-t-0 px-2 py-2 text-gray-500 uppercase">Act. Bwr.</th>
-                                        <th rowSpan={3} className="sticky top-0 bg-white  border border-gray-300 border-r-0 border-t-0 px-2 py-2 text-gray-500 uppercase">Loan Balance</th>
-                                    </tr>
-                                    <tr>
-                                        <th rowSpan={2} className="sticky top-[1.4rem] bg-white  border border-gray-300 text-gray-500 uppercase">Target Deposit</th>
-                                        <th rowSpan={2} className="sticky top-[1.4rem] bg-white  border border-gray-300 text-gray-500 uppercase">Actual Deposit</th>
-                                        <th rowSpan={2} className="sticky top-[1.4rem] bg-white  border border-gray-300 text-gray-500 uppercase">WD</th>
-                                        <th rowSpan={2} className="sticky top-[1.4rem] bg-white  border border-gray-300 text-gray-500 uppercase">Int.</th>
-                                        <th colSpan={2} className="sticky top-[1.4rem] bg-white  border border-gray-300 text-gray-500 uppercase">MCBU Return</th>
-                                        <th colSpan={3} className="sticky top-[1.4rem] bg-white  border border-gray-300 text-gray-500 uppercase">REG. LOAN (Daily)</th>
-                                        <th colSpan={3} className="sticky top-[1.4rem] bg-white  border border-gray-300 text-gray-500 uppercase">OTHER LOAN (Weekly)</th>
-                                    </tr>
-                                    <tr>
-                                        {/* MCBU Return */}
-                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Pers.</th>
-                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Amt</th>
-                                        {/* Loan Release Daily */}
-                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Pers.</th>
-                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Amt</th>
-                                        {/* Loan Release Weekly */}
-                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Pers.</th>
-                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Amt</th>
-                                        {/* ACTIVE LOAN RELEASE W/ Service Charge */}
-                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Pers.</th>
-                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Amt</th>
-                                        {/* REGULAR LOAN (Daily) */}
-                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Target</th>
-                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Adv. Pmt</th>
-                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Actl</th>
-                                        {/* OTHER LOAN (Weekly) */}
-                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Target</th>
-                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Adv. Pmt</th>
-                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Actl</th>
-                                        {/* PAST DUE */}
-                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Pers.</th>
-                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Amt</th>
-                                        {/* FULL PAYMENT (w/SC Daily) */}
-                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Pers.</th>
-                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Amt</th>
-                                        {/* FULL PAYMENT (w/SC Weekly) */}
-                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Pers.</th>
-                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Amt</th>
-                                        {/* Consolidated FULL PAYMENT (w/SC) */}
-                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Pers.</th>
-                                        <th className="sticky top-[7.02rem] bg-white  border border-gray-300 text-gray-500 uppercase">Amt</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y">
-                                    {list.map((item, index) => {
-                                        let rowBg = 'even:bg-gray-100';
+                                        <tr>
+                                            <th rowSpan={3} className="sticky top-0 bg-white px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">Date</th>
+                                            <th rowSpan={3} className="sticky top-0 bg-white px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">TOC</th>
+                                            <th rowSpan={3} className="sticky top-0 bg-white px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">NM</th>
+                                            <th colSpan={6} className="sticky top-0 bg-white px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">MCBU</th> 
+                                            <th rowSpan={3} className="sticky top-0 bg-white px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">Act. Clie.</th>
+                                            <th rowSpan={3} className="sticky top-0 bg-white px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">MCBU Bal.</th>
+                                            <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">Curr. Loan Rel. w/SC (Regular Loan Daily)</th>
+                                            <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">Curr. Loan Rel. w/SC (Other Loan Weekly)</th>
+                                            <th rowSpan={3} className="sticky top-0 bg-white px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">Pers.</th>
+                                            <th rowSpan={3} className="sticky top-0 bg-white px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">Consol. Total Loan Release w/SC</th>
+                                            <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">ACT LOAN RELEASE W/ Serv. Charge</th>
+                                            <th colSpan={3} className="sticky top-0 bg-white px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">COLLECTION (w/SC)</th>
+                                            <th colSpan={3} className="sticky top-0 bg-white px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">COLLECTION (w/SC)</th>
+                                            <th rowSpan={3} className="sticky top-0 bg-white px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">Consol. Total Act. Collection</th>
+                                            <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">Pastdue</th>
+                                            <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">FULL PAYMENT (w/SC Daily)</th>
+                                            <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">FULL PAYMENT (w/SC Weekly)</th>
+                                            <th rowSpan={2} colSpan={2} className="sticky top-0 bg-white px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">Consol. FULL PAYMENT</th>
+                                            <th rowSpan={3} className="sticky top-0 bg-white px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">Act. Bwr.</th>
+                                            <th rowSpan={3} className="sticky top-0 bg-white px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">Loan Balance</th>
+                                        </tr>
+                                        <tr>
+                                            <th rowSpan={2} className="sticky top-[2.2rem] bg-white px-4 py-3 text-gray-600 uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">Target Deposit</th>
+                                            <th rowSpan={2} className="sticky top-[2.2rem] bg-white px-4 py-3 text-gray-600 uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">Actual Deposit</th>
+                                            <th rowSpan={2} className="sticky top-[2.2rem] bg-white px-4 py-3 text-gray-600 uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">WD</th>
+                                            <th rowSpan={2} className="sticky top-[2.2rem] bg-white px-4 py-3 text-gray-600 uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">Int.</th>
+                                            <th colSpan={2} className="sticky top-[2.2rem] bg-white px-4 py-3 text-gray-600 uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">MCBU Return</th>
+                                            <th colSpan={3} className="sticky top-[2.2rem] bg-white px-4 py-3 text-gray-600 uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">REG. LOAN (Daily)</th>
+                                            <th colSpan={3} className="sticky top-[2.2rem] bg-white px-4 py-3 text-gray-600 uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">OTHER LOAN (Weekly)</th>
+                                        </tr>
+                                        <tr>
+                                            <th className="sticky top-[4.5rem] bg-white px-4 py-3 text-gray-600 uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">Pers.</th>
+                                            <th className="sticky top-[4.5rem] bg-white px-4 py-3 text-gray-600 uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">Amt</th>
+                                            <th className="sticky top-[4.5rem] bg-white px-4 py-3 text-gray-600 uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">Target</th>
+                                            <th className="sticky top-[4.5rem] bg-white px-4 py-3 text-gray-600 uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">Adv. Pmt</th>
+                                            <th className="sticky top-[4.5rem] bg-white px-4 py-3 text-gray-600 uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">Actl</th>
+                                            <th className="sticky top-[4.5rem] bg-white px-4 py-3 text-gray-600 uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">Target</th>
+                                            <th className="sticky top-[4.5rem] bg-white px-4 py-3 text-gray-600 uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">Adv. Pmt</th>
+                                            <th className="sticky top-[4.5rem] bg-white px-4 py-3 text-gray-600 uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">Actl</th>
+                                            <th className="sticky top-[4.5rem] bg-white px-4 py-3 text-gray-600 uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">Pers.</th>
+                                            <th className="sticky top-[4.5rem] bg-white px-4 py-3 text-gray-600 uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">Amt</th>
+                                            <th className="sticky top-[4.5rem] bg-white px-4 py-3 text-gray-600 uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">Pers.</th>
+                                            <th className="sticky top-[4.5rem] bg-white px-4 py-3 text-gray-600 uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">Amt</th>
+                                            <th className="sticky top-[4.5rem] bg-white px-4 py-3 text-gray-600 uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">Pers.</th>
+                                            <th className="sticky top-[4.5rem] bg-white px-4 py-3 text-gray-600 uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">Amt</th>
+                                            <th className="sticky top-[4.5rem] bg-white px-4 py-3 text-gray-600 uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">Pers.</th>
+                                            <th className="sticky top-[4.5rem] bg-white px-4 py-3 text-gray-600 uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200">Amt</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200">
+                                        {list.map((item, index) => {
+                                            let rowStyles = 'hover:bg-gray-50 transition-colors duration-150';
+                                            let textStyles = '';
 
-                                        if (item.weekTotal || item.monthTotal || item.grandTotal || item?.flag === 'transfer') {
-                                            rowBg = 'bg-blue-100';
-                                        }
+                                            if (item.weekTotal || item.monthTotal || item.grandTotal) {
+                                                rowStyles = 'bg-blue-50 hover:bg-blue-100 transition-colors duration-150';
+                                                textStyles = 'text-blue-700 font-semibold';
+                                            } else if (item.flag === 'transfer') {
+                                                rowStyles = 'bg-orange-50 hover:bg-orange-100 transition-colors duration-150';
+                                                textStyles = 'text-orange-700 font-semibold';
+                                            } else if (item.fBalance) {
+                                                rowStyles = 'bg-gray-50 hover:bg-gray-100 transition-colors duration-150';
+                                                textStyles = 'font-semibold';
+                                            }
 
-                                        return (
-                                            <React.Fragment key={index}>
-                                                {(item.fBalance || item.grandTotal ) ? (
-                                                    <tr className={`${rowBg} text-red-400 font-bold`}>
-                                                        <td className={`${item.fBalance && 'text-black'} px-4 py-4 text-center border border-gray-300 border-l-0`}>{ item.day }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.transfer }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.newMember }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.mcbuTargetStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.mcbuActualStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.mcbuWithdrawalStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.mcbuInterestStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.noMcbuReturn }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.mcbuReturnAmtStr }</td>
-                                                        {/* <td className="px-2 py-4 text-center border border-gray-300">{ item.offsetPerson }</td> */}
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.activeClients }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.mcbuBalanceStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.loanReleaseDailyPerson }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.loanReleaseDailyAmountStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.loanReleaseWeeklyPerson }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.loanReleaseWeeklyAmountStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.consolidatedLoanReleasePerson }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.consolidatedLoanReleaseAmountStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.activeLoanReleasePerson }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.activeLoanReleaseAmountStr }</td>
-                                                        <td colSpan={2} className="px-2 py-4 text-center border border-gray-300">{ item.collectionAdvancePaymentDailyStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.collectionActualDailyStr }</td>
-                                                        <td colSpan={2} className="px-2 py-4 text-center border border-gray-300">{ item.collectionAdvancePaymentWeeklyStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.collectionActualWeeklyStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.consolidatedCollectionStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.pastDuePerson }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.pastDueAmountStr }</td>
-                                                        {/* <td className="px-2 py-4 text-center border border-gray-300">{ item.mispaymentPerson }</td> */}
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.fullPaymentDailyPerson }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.fullPaymentDailyAmountStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.fullPaymentWeeklyPerson }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.fullPaymentWeeklyAmountStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.consolidatedFullPaymentPerson }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.consolidatedFullPaymentAmountStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.activeBorrowers }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300 border-r-0">{ item.loanBalanceStr }</td>
-                                                    </tr>
-                                                ) : (
-                                                    <tr className={`${rowBg} ${(item.weekTotal || item.monthTotal) && 'text-red-400 font-bold'} ${item?.flag === 'transfer' && 'text-orange-400 font-bold'}`}>
-                                                        <td className="px-2 py-4 text-center border border-gray-300 border-l-0">{ item.day }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.transfer }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.newMember }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.mcbuTargetStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.mcbuActualStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.mcbuWithdrawalStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.mcbuInterestStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.noMcbuReturn }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.mcbuReturnAmtStr }</td>
-                                                        {/* <td className="px-2 py-4 text-center border border-gray-300">{ item.offsetPerson }</td> */}
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.activeClients }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.mcbuBalanceStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.loanReleaseDailyPerson }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.loanReleaseDailyAmountStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.loanReleaseWeeklyPerson }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.loanReleaseWeeklyAmountStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.consolidatedLoanReleasePerson }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.consolidatedLoanReleaseAmountStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.activeLoanReleasePerson }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.activeLoanReleaseAmountStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.collectionTargetDailyStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.collectionAdvancePaymentDailyStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.collectionActualDailyStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.collectionTargetWeeklyStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.collectionAdvancePaymentWeeklyStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.collectionActualWeeklyStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.consolidatedCollectionStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.pastDuePerson }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.pastDueAmountStr }</td>
-                                                        {/* <td className="px-2 py-4 text-center border border-gray-300">{ item.mispaymentPerson }</td> */}
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.fullPaymentDailyPerson }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.fullPaymentDailyAmountStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.fullPaymentWeeklyPerson }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.fullPaymentWeeklyAmountStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.consolidatedFullPaymentPerson }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.consolidatedFullPaymentAmountStr }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300">{ item.activeBorrowers }</td>
-                                                        <td className="px-2 py-4 text-center border border-gray-300 border-r-0">{ item.loanBalanceStr }</td>
-                                                    </tr>
-                                                )}
-                                            </React.Fragment>
-                                        )
-                                    })}
-                                </tbody>
-                            </table>
+                                            return (
+                                                <tr key={index} className={`${rowStyles} ${textStyles}`}>
+                                                    <td className="px-4 py-3 text-center whitespace-nowrap">{item.day}</td>
+                                                    <td className="px-4 py-3 text-center whitespace-nowrap">{item.transfer}</td>
+                                                    <td className="px-4 py-3 text-center whitespace-nowrap">{item.newMember}</td>
+                                                    <td className="px-4 py-3 text-center whitespace-nowrap">{item.mcbuTargetStr}</td>
+                                                    <td className="px-4 py-3 text-center whitespace-nowrap">{item.mcbuActualStr}</td>
+                                                    <td className="px-4 py-3 text-center whitespace-nowrap">{item.mcbuWithdrawalStr}</td>
+                                                    <td className="px-4 py-3 text-center whitespace-nowrap">{item.mcbuInterestStr}</td>
+                                                    <td className="px-4 py-3 text-center whitespace-nowrap">{item.noMcbuReturn}</td>
+                                                    <td className="px-4 py-3 text-center whitespace-nowrap">{item.mcbuReturnAmtStr}</td>
+                                                    <td className="px-4 py-3 text-center whitespace-nowrap">{item.activeClients}</td>
+                                                    <td className="px-4 py-3 text-center whitespace-nowrap">{item.mcbuBalanceStr}</td>
+                                                    <td className="px-4 py-3 text-center whitespace-nowrap">{item.loanReleaseDailyPerson}</td>
+                                                    <td className="px-4 py-3 text-center whitespace-nowrap">{item.loanReleaseDailyAmountStr}</td>
+                                                    <td className="px-4 py-3 text-center whitespace-nowrap">{item.loanReleaseWeeklyPerson}</td>
+                                                    <td className="px-4 py-3 text-center whitespace-nowrap">{item.loanReleaseWeeklyAmountStr}</td>
+                                                    <td className="px-4 py-3 text-center whitespace-nowrap">{item.consolidatedLoanReleasePerson}</td>
+                                                    <td className="px-4 py-3 text-center whitespace-nowrap">{item.consolidatedLoanReleaseAmountStr}</td>
+                                                    <td className="px-4 py-3 text-center whitespace-nowrap">{item.activeLoanReleasePerson}</td>
+                                                    <td className="px-4 py-3 text-center whitespace-nowrap">{item.activeLoanReleaseAmountStr}</td>
+                                                    <td className="px-4 py-3 text-center whitespace-nowrap">{item.collectionTargetDailyStr}</td>
+                                                    <td className="px-4 py-3 text-center whitespace-nowrap">{item.collectionAdvancePaymentDailyStr}</td>
+                                                    <td className="px-4 py-3 text-center whitespace-nowrap">{item.collectionActualDailyStr}</td>
+                                                    <td className="px-4 py-3 text-center whitespace-nowrap">{item.collectionTargetWeeklyStr}</td>
+                                                    <td className="px-4 py-3 text-center whitespace-nowrap">{item.collectionAdvancePaymentWeeklyStr}</td>
+                                                    <td className="px-4 py-3 text-center whitespace-nowrap">{item.collectionActualWeeklyStr}</td>
+                                                    <td className="px-4 py-3 text-center whitespace-nowrap">{item.consolidatedCollectionStr}</td>
+                                                    <td className="px-4 py-3 text-center whitespace-nowrap">{item.pastDuePerson}</td>
+                                                    <td className="px-4 py-3 text-center whitespace-nowrap">{item.pastDueAmountStr}</td>
+                                                    <td className="px-4 py-3 text-center whitespace-nowrap">{item.fullPaymentDailyPerson}</td>
+                                                    <td className="px-4 py-3 text-center whitespace-nowrap">{item.fullPaymentDailyAmountStr}</td>
+                                                    <td className="px-4 py-3 text-center whitespace-nowrap">{item.fullPaymentWeeklyPerson}</td>
+                                                    <td className="px-4 py-3 text-center whitespace-nowrap">{item.fullPaymentWeeklyAmountStr}</td>
+                                                    <td className="px-4 py-3 text-center whitespace-nowrap">{item.consolidatedFullPaymentPerson}</td>
+                                                    <td className="px-4 py-3 text-center whitespace-nowrap">{item.consolidatedFullPaymentAmountStr}</td>
+                                                    <td className="px-4 py-3 text-center whitespace-nowrap">{item.activeBorrowers}</td>
+                                                    <td className="px-4 py-3 text-center whitespace-nowrap">{item.loanBalanceStr}</td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
