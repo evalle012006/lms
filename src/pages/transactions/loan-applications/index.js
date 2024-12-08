@@ -144,7 +144,7 @@ const LoanApplicationPage = () => {
     const handleLoanCycleChange = (selected) => {
         setSelectedFilterLoanCycle(selected.value);
         if (selectedTab == 'ldf') {
-            handleFilter('loanCycle', selected.value, data);
+            handleFilter('loanCycle', selected.value, list);
         }
     }
 
@@ -152,13 +152,13 @@ const LoanApplicationPage = () => {
         setSelectedFilterBranch(selected.value);
         getListUser(selected.code);
         if (selectedTab == 'ldf') {
-            handleFilter('branch', selected.value, data);
+            handleFilter('branch', selected.value, list);
         } else if (selectedTab == 'application') {
-            handleFilter('branch', selected.value, pendingData);
+            handleFilter('branch', selected.value, pendingList);
         } else if (selectedTab == 'tomorrow') {
-            handleFilter('branch', selected.value, tomorrowData);
+            handleFilter('branch', selected.value, tomorrowList);
         } else if (selectedTab == 'forecast')  {
-            handleFilter('branch', selected.value, forecastedData);
+            handleFilter('branch', selected.value, forecastedList);
         }
     }
 
@@ -167,13 +167,13 @@ const LoanApplicationPage = () => {
         getListGroup(selected.value, selected.transactionType);
         setOccurence(selected.transactionType);
         if (selectedTab == 'ldf') {
-            handleFilter('user', selected.value, data);
+            handleFilter('user', selected.value, list);
         } else if (selectedTab == 'application') {
-            handleFilter('user', selected.value, pendingData);
+            handleFilter('user', selected.value, pendingList);
         } else if (selectedTab == 'tomorrow') {
-            handleFilter('user', selected.value, tomorrowData);
+            handleFilter('user', selected.value, tomorrowList);
         } else if (selectedTab == 'forecast') {
-            handleFilter('user', selected.value, forecastedData);
+            handleFilter('user', selected.value, forecastedList);
         }
     }
 
@@ -184,9 +184,9 @@ const LoanApplicationPage = () => {
         } else if (selectedTab == 'application') {
             handleFilter('group', selected.value, pendingList);
         } else if (selectedTab == 'tomorrow') {
-            handleFilter('group', selected.value, tomorrowData);
+            handleFilter('group', selected.value, tomorrowList);
         } else if (selectedTab == 'forecast') {
-            handleFilter('group', selected.value, forecastedData);
+            handleFilter('group', selected.value, forecastedList);
         }
     }
 
