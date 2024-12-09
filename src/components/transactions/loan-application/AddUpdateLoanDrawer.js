@@ -766,14 +766,14 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             }
         }
     }, [mode, currentUser, selectedLo]);
-    // const ddddate = "2024-11-24";
+    // const ddddate = "2024-12-10";
     useEffect(() => {
         if (mode == 'add' && currentDate) {
             const dayName = moment(currentDate).format('dddd');
             if (dayName == 'Friday') {
                 setInitialDateRelease(getNextValidDate(moment(currentDate).add(4, 'days').format('YYYY-MM-DD'), holidayList).format('YYYY-MM-DD'));
             } else if (isWeekend) {
-                setInitialDateRelease(getNextValidDate(moment(currentDate).add(dayName == 'Saturday' ? 4 : 3, 'days').format('YYYY-MM-DD'), holidayList).format('YYYY-MM-DD'));
+                setInitialDateRelease(getNextValidDate(moment(currentDate).add(dayName == 'Saturday' ? 3 : 2, 'days').format('YYYY-MM-DD'), holidayList).format('YYYY-MM-DD'));
             } else {
                 const nextValidDate = getNextValidDate(moment(currentDate).add(2, 'days').format('YYYY-MM-DD'), holidayList);
                 setInitialDateRelease(nextValidDate.format('YYYY-MM-DD'));
@@ -787,7 +787,8 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     const [maxDate, setMaxDate] = useState();
     useEffect(() => {
         if (currentDate && initialDateRelease) {
-            let initialMinDate = initialDateRelease;
+            // let initialMinDate = initialDateRelease;
+            let initialMinDate = currentDate;
             if (mode == 'edit') {
                 let admissionDate = loan?.admissionDate;
                 let allowedAdmissionDate = moment(admissionDate).add(2, 'days').isSameOrAfter(moment(currentDate));
@@ -803,7 +804,9 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
             initialMinDate = moment(initialMinDate);
             setMinDate(initialMinDate.toDate());
 
-            const initialMaxDate = moment(initialMinDate).add(4, 'days').format("YYYY-MM-DD");
+            const initialMinDateDay = moment(initialMinDate).format('dddd');
+            let numberOfDays = initialMinDateDay == 'Monday' ? 4 : 8;
+            const initialMaxDate = moment(initialMinDate).add(numberOfDays, 'days').format("YYYY-MM-DD");
             setMaxDate(getNextValidDate(initialMaxDate, holidayList).toDate());
         }
     }, [mode, loan.admissionDate, currentDate, holidayList, initialDateRelease]);
