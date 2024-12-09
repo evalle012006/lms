@@ -15,35 +15,6 @@ import ActionDropDown from './ui/action-dropdown';
 import Avatar from './avatar';
 import { useEffect } from 'react';
 
-// Define a default UI for filtering
-function GlobalFilter({
-  preGlobalFilteredRows,
-  globalFilter,
-  setGlobalFilter,
-}) {
-  const count = preGlobalFilteredRows.length;
-  const [value, setValue] = React.useState(globalFilter);
-  const onChange = useAsyncDebounce((value) => {
-    setGlobalFilter(value || undefined);
-  }, 200);
-
-  return (
-    <label className="flex gap-x-2 items-baseline">
-      <span className="text-gray-700">Search: </span>
-      <input
-        type="text"
-        className="rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-        value={value || ""}
-        onChange={(e) => {
-          setValue(e.target.value);
-          onChange(e.target.value);
-        }}
-        placeholder={`${count} records...`}
-      />
-    </label>
-  );
-}
-
 // This is a custom filter UI for selecting
 // a unique option from a list
 export function SelectColumnFilter({
@@ -360,19 +331,9 @@ const ActionButton = ({ row, rowActionButtons }) => {
   );
 };
 
-const GenerateButtons = (pageSize) => {
-  let count = 1;
-  let comp = [];
-  while (count <= pageSize) {
-    comp.push(count);
-    count++;
-  }
-  return comp;
-};
-
 const TableComponent = React.memo(({
-  columns,
-  data,
+  columns = [],
+  data = [],
   showPagination = true,
   showFilters = true,
   columnSorting = true,
@@ -429,6 +390,49 @@ const TableComponent = React.memo(({
     preGlobalFilteredRows,
     setGlobalFilter,
   } = tableInstance;
+
+  const generateEmptyRows = (columnCount) => {
+    return (
+      <>
+        <tr>
+          <td 
+            colSpan={columnCount + (multiSelect ? 1 : 0) + ((hasActionButtons || dropDownActions.length > 0) ? 1 : 0)} 
+            className="px-4 py-6 text-center"
+          >
+            <div className="flex flex-col items-center justify-center space-y-2">
+              <ExclamationCircleIcon className="h-8 w-8 text-gray-400" />
+              <span className="text-gray-500 text-lg font-medium">No data collections</span>
+            </div>
+          </td>
+        </tr>
+        {/* {Array(5).fill(null).map((_, index) => (
+          <tr key={`empty-row-${index}`} className="bg-white border-b">
+            {multiSelect && (
+              <td key={`empty-checkbox-${index}`} className="px-4 py-3 w-10">
+                <CheckBox
+                  name={`select-empty-${index}`}
+                  value={false}
+                  onChange={() => {}}
+                  size="md"
+                  disabled={true}
+                />
+              </td>
+            )}
+            {Array(columnCount).fill(null).map((_, colIndex) => (
+              <td key={`empty-col-${index}-${colIndex}`} className="px-4 py-3">
+                <div className="h-4 bg-gray-100 rounded"></div>
+              </td>
+            ))}
+            {(hasActionButtons || dropDownActions.length > 0) && (
+              <td key={`empty-actions-${index}`} className="px-4 py-3 w-24">
+                <div className="h-4 bg-gray-100 rounded"></div>
+              </td>
+            )}
+          </tr>
+        ))} */}
+      </>
+    )
+  };
 
   // And update the TableComponent's select all handler:
 const handleSelectAll = useCallback(() => {
@@ -494,7 +498,54 @@ const handleSelectRow = useCallback((row, index) => {
   // Calculate pagination details
   const startIndex = currentPageIndex * state.pageSize;
   const endIndex = Math.min(startIndex + state.pageSize, data.length);
-  const currentPageData = data.slice(startIndex, endIndex);
+  
+  const renderHeaderGroups = () => {
+    return headerGroups.map((headerGroup, groupIndex) => {
+      const { key, ...headerGroupProps } = headerGroup.getHeaderGroupProps();
+      return (
+        <tr key={`header-group-${groupIndex}`} {...headerGroupProps}>
+          {multiSelect && (
+            <th key="header-checkbox" className="px-4 py-3 w-10">
+              <CheckBox
+                name="selectAll"
+                value={selectAll}
+                onChange={handleSelectAll}
+                size="md"
+                disabled={page.every(row => row.original.withError || row.original.status !== 'pending')}
+              />
+            </th>
+          )}
+          {headerGroup.headers.map((column, columnIndex) => {
+            const { key, ...columnProps } = column.getHeaderProps(column.getSortByToggleProps());
+            return (
+              <th
+                key={`header-${columnIndex}`}
+                scope="col"
+                className={`px-4 py-3 ${column.width || 'w-auto'}`}
+                {...columnProps}
+              >
+                <div className="flex items-center">
+                  {column.render('Header')}
+                  <span>
+                    {column.isSorted
+                      ? column.isSortedDesc
+                        ? ' 🔽'
+                        : ' 🔼'
+                      : ''}
+                  </span>
+                </div>
+              </th>
+            );
+          })}
+          {(hasActionButtons || dropDownActions.length > 0) && (
+            <th key="header-actions" scope="col" className="px-4 py-3 w-24">
+              Actions
+            </th>
+          )}
+        </tr>
+      );
+    });
+  };
 
   return (
     <div className="relative w-full shadow-md rounded-lg overflow-hidden">
@@ -504,42 +555,7 @@ const handleSelectRow = useCallback((row, index) => {
         <div className="overflow-x-auto">
           <table {...getTableProps()} className="w-full text-sm text-left text-gray-500">
             <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-              {headerGroups.map(headerGroup => (
-                <tr {...headerGroup.getHeaderGroupProps()}>
-                  {multiSelect && (
-                    <th className="px-4 py-3 w-10">
-                      <CheckBox
-                        name="selectAll"
-                        value={selectAll}
-                        onChange={handleSelectAll}
-                        size="md"
-                        disabled={page.every(row => row.original.withError || row.original.status !== 'pending')}
-                      />
-                    </th>
-                  )}
-                  {headerGroup.headers.map(column => (
-                    <th 
-                      scope="col" 
-                      className={`px-4 py-3 ${column.width || 'w-auto'}`}
-                      {...column.getHeaderProps(column.getSortByToggleProps())}
-                    >
-                      <div className="flex items-center">
-                        {column.render('Header')}
-                        <span>
-                          {column.isSorted
-                            ? column.isSortedDesc
-                              ? ' 🔽'
-                              : ' 🔼'
-                            : ''}
-                        </span>
-                      </div>
-                    </th>
-                  ))}
-                  {(hasActionButtons || dropDownActions.length > 0) && (
-                    <th scope="col" className="px-4 py-3 w-24">Actions</th>
-                  )}
-                </tr>
-              ))}
+              {renderHeaderGroups()}
             </thead>
             <tbody {...getTableBodyProps()}>
               {page.length > 0 ? (
@@ -559,7 +575,6 @@ const handleSelectRow = useCallback((row, index) => {
                   } = row.original;
 
                   const checkBoxDisable = disable || error;
-
                   let rowClass = 'bg-white border-b hover:bg-gray-50';
                   if (delinquent === 'Yes' || error) {
                     rowClass = 'bg-red-100 border-b hover:bg-red-200';
@@ -569,9 +584,11 @@ const handleSelectRow = useCallback((row, index) => {
                     rowClass = 'bg-green-100 border-b hover:bg-green-200';
                   }
 
+                  const { key, ...rowProps } = row.getRowProps();
                   return (
-                    <tr 
-                      {...row.getRowProps()}
+                    <tr
+                      key={`row-${i}`}
+                      {...rowProps}
                       className={rowClass}
                       style={isDraft ? { backgroundColor: "#F9DFB3" } : {}}
                     >
@@ -586,9 +603,10 @@ const handleSelectRow = useCallback((row, index) => {
                           />
                         </td>
                       )}
-                      {row.cells.map(cell => (
+                      {row.cells.map((cell, index) => (
                         <td 
                           {...cell.getCellProps()}
+                          key={`row-data-${index}`}
                           className={`px-4 py-3 ${totalData ? 'font-bold text-red-500' : ''} ${rowClick ? 'cursor-pointer' : ''} ${cell.column.width || 'w-auto'}`}
                           onClick={() => rowClick && rowClick(row.original)}
                         >
@@ -617,11 +635,7 @@ const handleSelectRow = useCallback((row, index) => {
                   );
                 })
               ) : (
-                <tr>
-                  <td colSpan={columns.length + (multiSelect ? 1 : 0) + ((hasActionButtons || dropDownActions.length > 0) ? 1 : 0)} className="px-4 py-8 text-center text-gray-500">
-                    NO DATA
-                  </td>
-                </tr>
+                generateEmptyRows(columns.length)
               )}
             </tbody>
           </table>

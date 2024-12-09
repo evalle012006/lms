@@ -35,6 +35,7 @@ ChartJS.register(...registerables, ChartDataLabels);
 const DashboardPage = () => {
     const router = useRouter();
     const currentUser = useSelector(state => state.user.data);
+    const branch = useSelector(state => state.branch.data);
     const [timeFilter, setTimeFilter] = useState('overall');
     const [branchFilter, setBranchFilter] = useState('all');
     const [mcbuData, setMcbuData] = useState({ labels: [], datasets: [] });
@@ -300,16 +301,23 @@ const DashboardPage = () => {
         <div className="min-h-screen bg-gray-100 flex flex-col">
             <div className="flex-grow p-4 flex flex-col">
             <div className="flex items-center justify-between pb-6 border-b">
-                    <div className="flex items-center">
-                        <div className='group relative'>
-                            <span className="hidden group-hover:block absolute right-2 pt-1 cursor-pointer" onClick={() => router.push(`/settings/users/${currentUser._id}`)}>
-                                <PencilSquareIcon className="w-4 h-4" />
-                            </span>
-                            <Avatar name={currentUser.firstName + " " + currentUser.lastName} src={currentUser.profile ? currentUser.profile : ""} className={`${currentUser.profile ? '' : 'p-6'} `} />
+                    <div className='flex flex-col'>
+                        <div className="flex items-center">
+                            <div className='group relative'>
+                                <span className="hidden group-hover:block absolute right-2 pt-1 cursor-pointer" onClick={() => router.push(`/settings/users/${currentUser._id}`)}>
+                                    <PencilSquareIcon className="w-4 h-4" />
+                                </span>
+                                <Avatar name={currentUser.firstName + " " + currentUser.lastName} src={currentUser.profile ? currentUser.profile : ""} className={`${currentUser.profile ? '' : 'p-6'} `} />
+                            </div>
+                            <h1 className="text-2xl font-semibold whitespace-nowrap">
+                                Welcome, {`${currentUser.firstName} ${currentUser.lastName}`}!
+                            </h1>
                         </div>
-                        <h1 className="text-2xl font-semibold whitespace-nowrap">
-                            Welcome, {`${currentUser.firstName} ${currentUser.lastName}`}!
-                        </h1>
+                        {/* { (currentUser?.role?.rep > 2 && branch) && (
+                            <h1 className="text-lg font-semibold whitespace-nowrap">
+                                Branch: {`${branch?.code} - ${branch?.name}`}
+                            </h1>
+                        ) } */}
                     </div>
                     <div className="flex flex-col items-end">
                         <p className="text-sm font-semibold">Cash On Hand: {formatNumber(coh)}</p>

@@ -10,11 +10,11 @@ import { setBranch, setBranchList } from "@/redux/actions/branchActions";
 import Dialog from "@/lib/ui/Dialog";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
-import { setDuplicateLoanList, setFilteredLoanList, setFilteredPendingLoanList, setFilteredTomorrowLoanList, setLoanList, setPendingLoanList, setTomorrowLoanList } from "@/redux/actions/loanActions";
+import { setDuplicateLoanList, setFilteredForecastedLoanList, setFilteredLoanList, setFilteredPendingLoanList, setFilteredTomorrowLoanList, setForecastedLoanList, setLoanList, setPendingLoanList, setTomorrowLoanList } from "@/redux/actions/loanActions";
 import { setGroupList } from "@/redux/actions/groupActions";
 import { setClient, setClientList } from "@/redux/actions/clientActions";
-import { formatPricePhp, getEndDate, getMonths, getTotal, getYears, UppercaseFirstLetter } from "@/lib/utils";
-import AddUpdateLoan from "@/components/transactions/AddUpdateLoanDrawer";
+import { formatPricePhp, getEndDate, getMonths, getNextValidDate, getTotal, getYears, UppercaseFirstLetter } from "@/lib/utils";
+import AddUpdateLoan from "@/components/transactions/loan-application/AddUpdateLoanDrawer";
 import moment from 'moment';
 import { TabPanel, useTabs } from "react-headless-tabs";
 import { TabSelector } from "@/lib/ui/tabSelector";
@@ -28,10 +28,11 @@ import { PrinterIcon, CloudArrowDownIcon } from '@heroicons/react/24/outline';
 import { useRef } from "react";
 import LDFListPage from "@/components/transactions/loan-application/LDFList";
 import RadioButton from "@/lib/ui/radio-button";
-import CheckBox from "@/lib/ui/checkbox";
 import { getApiBaseUrl } from "@/lib/constants";
+import ForeCastApplication from "@/components/transactions/loan-application/ForecastApplications";
 
 const LoanApplicationPage = () => {
+    const holidayList = useSelector(state => state.systemSettings.holidayList);
     const isHoliday = useSelector(state => state.systemSettings.holiday);
     const isWeekend = useSelector(state => state.systemSettings.weekend);
     const dispatch = useDispatch();
@@ -39,9 +40,11 @@ const LoanApplicationPage = () => {
     const list = useSelector(state => state.loan.list);
     const pendingList = useSelector(state => state.loan.pendingList);
     const tomorrowList = useSelector(state => state.loan.tomorrowList);
+    const forecastedList = useSelector(state => state.loan.forecastedList);
     const filteredList = useSelector(state => state.loan.filteredList);
     const filteredPendingList = useSelector(state => state.loan.filteredPendingList);
     const filteredTomorrowList = useSelector(state => state.loan.filteredTomorrowList);
+    const filteredForcastedList = useSelector(state => state.loan.filteredForecastedList);
     const duplicateList = useSelector(state => state.loan.duplicateLoanList);
     const branchList = useSelector(state => state.branch.list);
     const userList = useSelector(state => state.user.list);
@@ -50,10 +53,12 @@ const LoanApplicationPage = () => {
     const [data, setData] = useState(list);
     const [pendingData, setPendingData] = useState(pendingList);
     const [tomorrowData, setTomorrowData] = useState(tomorrowList);
+    const [forecastedData, setForecastedData] = useState(forecastedList);
     const [loading, setLoading] = useState(true);
     const [isFiltering, setIsFiltering] = useState(false);
     const [isPendingFiltering, setIsPendingFiltering] = useState(false);
     const [isTomorrowFiltering, setIsTomorrowFiltering] = useState(false);
+    const [isForecastedFiltering, setIsForecastedFiltering] = useState(false);
 
     const [showAddDrawer, setShowAddDrawer] = useState(false);
     const [mode, setMode] = useState('add');
@@ -70,7 +75,8 @@ const LoanApplicationPage = () => {
         'tomorrow',
         'application',
         'history',
-        'duplicate'
+        'duplicate',
+        'forecast'
     ]);
 
     const [noOfLDFLoans, setNoOfLDFLoans] = useState(0);
@@ -79,6 +85,8 @@ const LoanApplicationPage = () => {
     const [totalAmountRelease, setTotalAmountRelease] = useState(0);
     const [noOfTomorrowLoans, setNoOfTomorrowLoans] = useState(0);
     const [totalTomorrowAmountRelease, setTotalTomorrowAmountRelease] = useState(0);
+    const [noOfForecastedLoans, setNoOfForecastedLoans] = useState(0);
+    const [totalForecastedAmountRelease, setTotalForecastedAmountRelease] = useState(0);
 
     const [selectedFilterBranch, setSelectedFilterBranch] = useState();
     const [selectedFilterUser, setSelectedFilterUser] = useState();
@@ -98,6 +106,13 @@ const LoanApplicationPage = () => {
     const [selectedYear, setSelectedYear] = useState(moment().year());
     const [selectedBranch, setSelectedBranch] = useState();
 
+    const [selectedFilterLoanCycle, setSelectedFilterLoanCycle] = useState('all');
+    const loanCycleFilterList = [
+        { label: 'All', value: 'all' },
+        { label: 'New Member', value: 'new_member' },
+        { label: 'Reloaner', value: 'reloaner' }
+    ]
+
     const handleBranchFilter = (selected) => {
         setSelectedBranch(selected.value);
     }
@@ -114,6 +129,7 @@ const LoanApplicationPage = () => {
 
     const handleSelectTab = (selected) => {
         setLoading(true);
+        setShowAddDrawer(false);
         setIsFiltering(false);
         setSelectedFilterBranch();
         setSelectedFilterUser(null);
@@ -125,15 +141,24 @@ const LoanApplicationPage = () => {
         }, 500);
     }
 
+    const handleLoanCycleChange = (selected) => {
+        setSelectedFilterLoanCycle(selected.value);
+        if (selectedTab == 'ldf') {
+            handleFilter('loanCycle', selected.value, list);
+        }
+    }
+
     const handleBranchChange = (selected) => {
         setSelectedFilterBranch(selected.value);
         getListUser(selected.code);
         if (selectedTab == 'ldf') {
-            handleFilter('branch', selected.value, data);
+            handleFilter('branch', selected.value, list);
         } else if (selectedTab == 'application') {
-            handleFilter('branch', selected.value, pendingData);
+            handleFilter('branch', selected.value, pendingList);
         } else if (selectedTab == 'tomorrow') {
-            handleFilter('branch', selected.value, tomorrowData);
+            handleFilter('branch', selected.value, tomorrowList);
+        } else if (selectedTab == 'forecast')  {
+            handleFilter('branch', selected.value, forecastedList);
         }
     }
 
@@ -142,11 +167,13 @@ const LoanApplicationPage = () => {
         getListGroup(selected.value, selected.transactionType);
         setOccurence(selected.transactionType);
         if (selectedTab == 'ldf') {
-            handleFilter('user', selected.value, data);
+            handleFilter('user', selected.value, list);
         } else if (selectedTab == 'application') {
-            handleFilter('user', selected.value, pendingData);
+            handleFilter('user', selected.value, pendingList);
         } else if (selectedTab == 'tomorrow') {
-            handleFilter('user', selected.value, tomorrowData);
+            handleFilter('user', selected.value, tomorrowList);
+        } else if (selectedTab == 'forecast') {
+            handleFilter('user', selected.value, forecastedList);
         }
     }
 
@@ -157,7 +184,9 @@ const LoanApplicationPage = () => {
         } else if (selectedTab == 'application') {
             handleFilter('group', selected.value, pendingList);
         } else if (selectedTab == 'tomorrow') {
-            handleFilter('group', selected.value, tomorrowData);
+            handleFilter('group', selected.value, tomorrowList);
+        } else if (selectedTab == 'forecast') {
+            handleFilter('group', selected.value, forecastedList);
         }
     }
 
@@ -170,6 +199,14 @@ const LoanApplicationPage = () => {
             searchResult = dataArr.filter(b => b.loId === value);
           } else if (field === 'group') {
             searchResult = dataArr.filter(b => b.groupId === value);
+          } else if (field === 'loanCycle') {
+            if (value == 'new_member') {
+                searchResult = dataArr.filter(b => b.loanCycle === 1);
+            } else if (value == 'reloaner') {
+                searchResult = dataArr.filter(b => b.loanCycle > 1);
+            } else {
+                searchResult = dataArr;
+            }
           }
 
           if (selectedTab == 'ldf') {
@@ -181,6 +218,9 @@ const LoanApplicationPage = () => {
           } else if (selectedTab == 'tomorrow') {
             dispatch(setFilteredTomorrowLoanList(searchResult));
             setIsTomorrowFiltering(true);
+          } else if (selectedTab == 'forecast') {
+            dispatch(setFilteredForecastedLoanList(searchResult));
+            setIsForecastedFiltering(true);
           }
         } else {
           if (selectedTab == 'ldf') {
@@ -192,6 +232,9 @@ const LoanApplicationPage = () => {
           } else if (selectedTab == 'tomorrow') {
             setTomorrowData(tomorrowList);
             setIsTomorrowFiltering(false);
+          } else if (selectedTab == 'forecast') {
+            setForecastedData(forecastedList);
+            setIsForecastedFiltering(false);
           }
         }
     }
@@ -438,32 +481,12 @@ const LoanApplicationPage = () => {
 
                     return 0;
                 } );
-                const ldfList = loanList.filter(l => {
-                    const dateOfRelease = l?.dateOfRelease ? l?.dateOfRelease : null;
-                    let diff = 0;
-                    if (dateOfRelease) {
-                        diff = moment(currentDate).diff(dateOfRelease);
-                    }
 
-                    if (l?.loanFor == 'today' || diff >= 0) {
-                        return l;
-                    }
-                });
-
-                dispatch(setLoanList(ldfList));
+                dispatch(setLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSameOrBefore(moment(currentDate)))));
                 dispatch(setPendingLoanList(loanList.filter(l => l.ldfApproved)));
-                const tomList = loanList.filter(l => {
-                    const dateOfRelease = l?.dateOfRelease ? l?.dateOfRelease : null;
-                    let diff = 0;
-                    if (dateOfRelease) {
-                        diff = moment(currentDate).diff(dateOfRelease);
-                    }
-                    if (l?.loanFor == 'tomorrow' && diff < 0) {
-                        return l;
-                    }
-                });
-                dispatch(setTomorrowLoanList(tomList));
+                dispatch(setTomorrowLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSame(moment(currentDate).add(1, 'days')))));
                 dispatch(setDuplicateLoanList(loanList.filter(l => l?.client?.duplicate)));
+                dispatch(setForecastedLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSameOrAfter(moment(currentDate).add(2, 'days')))));
 
                 setLoading(false);
             } else if (response.error) {
@@ -532,32 +555,12 @@ const LoanApplicationPage = () => {
 
                     return 0;
                 } );
-                const ldfList = loanList.filter(l => {
-                    const dateOfRelease = l?.dateOfRelease ? l?.dateOfRelease : null;
-                    let diff = 0;
-                    if (dateOfRelease) {
-                        diff = moment(currentDate).diff(dateOfRelease);
-                    }
-
-                    if (l?.loanFor == 'today' || diff >= 0) {
-                        return l;
-                    }
-                });
-
-                dispatch(setLoanList(ldfList));
+                
+                dispatch(setLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSameOrBefore(moment(currentDate)))));
                 dispatch(setPendingLoanList(loanList.filter(l => l.ldfApproved)));
-                const tomList = loanList.filter(l => {
-                    const dateOfRelease = l?.dateOfRelease ? l?.dateOfRelease : null;
-                    let diff = 0;
-                    if (dateOfRelease) {
-                        diff = moment(currentDate).diff(dateOfRelease);
-                    }
-                    if (l?.loanFor == 'tomorrow' && diff < 0) {
-                        return l;
-                    }
-                });
-                dispatch(setTomorrowLoanList(tomList));
+                dispatch(setTomorrowLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSame(moment(currentDate).add(1, 'days')))));
                 dispatch(setDuplicateLoanList(loanList.filter(l => l?.client?.duplicate)));
+                dispatch(setForecastedLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSameOrAfter(moment(currentDate).add(2, 'days')))));
                 setLoading(false);
             } else if (response.error) {
                 setLoading(false);
@@ -616,32 +619,12 @@ const LoanApplicationPage = () => {
 
                     return 0;
                 } );
-                const ldfList = loanList.filter(l => {
-                    const dateOfRelease = l?.dateOfRelease ? l?.dateOfRelease : null;
-                    let diff = 0;
-                    if (dateOfRelease) {
-                        diff = moment(currentDate).diff(dateOfRelease);
-                    }
-
-                    if (l?.loanFor == 'today' || diff >= 0) {
-                        return l;
-                    }
-                });
-
-                dispatch(setLoanList(ldfList));
+                
+                dispatch(setLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSameOrBefore(moment(currentDate)))));
                 dispatch(setPendingLoanList(loanList.filter(l => l.ldfApproved)));
-                const tomList = loanList.filter(l => {
-                    const dateOfRelease = l?.dateOfRelease ? l?.dateOfRelease : null;
-                    let diff = 0;
-                    if (dateOfRelease) {
-                        diff = moment(currentDate).diff(dateOfRelease);
-                    }
-                    if (l?.loanFor == 'tomorrow' && diff < 0) {
-                        return l;
-                    }
-                });
-                dispatch(setTomorrowLoanList(tomList));
+                dispatch(setTomorrowLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSame(moment(currentDate).add(1, 'days')))));
                 dispatch(setDuplicateLoanList(loanList.filter(l => l?.client?.duplicate)));
+                dispatch(setForecastedLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSameOrAfter(moment(currentDate).add(2, 'days')))));
                 setLoading(false);
             } else if (response.error) {
                 setLoading(false);
@@ -700,32 +683,11 @@ const LoanApplicationPage = () => {
 
                     return 0;
                 } );
-                const ldfList = loanList.filter(l => {
-                    const dateOfRelease = l?.dateOfRelease ? l?.dateOfRelease : null;
-                    let diff = 0;
-                    if (dateOfRelease) {
-                        diff = moment(currentDate).diff(dateOfRelease);
-                    }
-
-                    if (l?.loanFor == 'today' || diff >= 0) {
-                        return l;
-                    }
-                });
-
-                dispatch(setLoanList(ldfList));
+                dispatch(setLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSameOrBefore(moment(currentDate)))));
                 dispatch(setPendingLoanList(loanList.filter(l => l.ldfApproved)));
-                const tomList = loanList.filter(l => {
-                    const dateOfRelease = l?.dateOfRelease ? l?.dateOfRelease : null;
-                    let diff = 0;
-                    if (dateOfRelease) {
-                        diff = moment(currentDate).diff(dateOfRelease);
-                    }
-                    if (l?.loanFor == 'tomorrow' && diff < 0) {
-                        return l;
-                    }
-                });
-                dispatch(setTomorrowLoanList(tomList));
+                dispatch(setTomorrowLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSame(moment(currentDate).add(1, 'days')))));
                 dispatch(setDuplicateLoanList(loanList.filter(l => l?.client?.duplicate)));
+                dispatch(setForecastedLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSameOrAfter(moment(currentDate).add(2, 'days')))));
                 setLoading(false);
             } else if (response.error) {
                 setLoading(false);
@@ -938,6 +900,10 @@ const LoanApplicationPage = () => {
             accessor: 'pnNumber'
         },
         {
+            Header: "Date of Release",
+            accessor: 'dateOfRelease'
+        },
+        {
             Header: "Status",
             accessor: 'status',
             Cell: StatusPill,
@@ -949,17 +915,9 @@ const LoanApplicationPage = () => {
     }
 
     const handleCloseAddDrawer = () => {
-        setLoading(true);
-        setMode('add');
-        setLoan({});
-        setOccurence('daily');
-        getListLoan();
-        if (currentUser?.role?.rep === 4) {
-            getListGroup(currentUser._id, currentUser?.transactionType);
-        }
         setTimeout(() => {
-            setLoading(false);
-        }, 1000);
+            window.location.reload();
+        }, 500);
     }
 
     const handleMultiSelect = (mode, selectAll, rows, currentPageIndex) => {
@@ -969,7 +927,6 @@ const LoanApplicationPage = () => {
     
         const updateList = (sourceList, setAction) => {
             if (mode === 'all') {
-                // Create a new array with the updated selection state
                 const tempList = sourceList.map((loan, index) => {
                     let temp = { ...loan };
     
@@ -1126,7 +1083,7 @@ const LoanApplicationPage = () => {
                     temp.dateGranted = currentDate
                     temp.status = 'active';
                     temp.startDate = moment(currentDate).add(1, 'days').format('YYYY-MM-DD');
-                    temp.endDate = getEndDate(temp.dateGranted, group.occurence === lo.transactionType ? 60 : 24 );
+                    temp.endDate = getEndDate(currentDate, group.occurence === lo.transactionType ? 60 : 24 );
                     temp.mispayment = 0;
                     temp.insertedBy = currentUser._id;
                     temp.currentDate = currentDate;
@@ -1316,7 +1273,6 @@ const LoanApplicationPage = () => {
 
     const handleCloseClientInfoModal = () => {
         setShowClientInfoModal(false);
-        getListLoan();
     }
     
     const handleShowWarningModal = (row) => {
@@ -1455,6 +1411,14 @@ const LoanApplicationPage = () => {
     }, [isTomorrowFiltering, filteredTomorrowList, tomorrowList]);
 
     useEffect(() => {
+        if (isForecastedFiltering) {
+            setForecastedData(filteredForcastedList);
+        } else {
+            setForecastedData(forecastedList);
+        }
+    }, [isForecastedFiltering, filteredForcastedList, forecastedList]);
+
+    useEffect(() => {
         if (groupList) {
             let cols = [
                 {
@@ -1503,13 +1467,17 @@ const LoanApplicationPage = () => {
                     accessor: 'pnNumber'
                 },
                 {
-                    Header: "Status",
-                    accessor: 'status',
-                    Cell: StatusPill,
+                    Header: "Date of Release",
+                    accessor: 'dateOfRelease'
                 },
                 {
                     Header: "CI Name",
                     accessor: 'ciName'
+                },
+                {
+                    Header: "Status",
+                    accessor: 'status',
+                    Cell: StatusPill,
                 },
             ];
 
@@ -1593,8 +1561,13 @@ const LoanApplicationPage = () => {
     }, [tomorrowData]);
 
     useEffect(() => {
+        setNoOfTomorrowLoans(forecastedData.length);
+        setTotalTomorrowAmountRelease(getTotal(forecastedData, 'principalLoan'));
+    }, [forecastedData]);
+
+    useEffect(() => {
         let actBtns = [ <ButtonSolid label="Add Loan" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} /> ];
-        if (currentUser?.role?.rep < 4) {
+        if (currentUser?.role?.rep < 4 && selectedTab !== 'forecast') {
             actBtns = [
                 <ButtonOutline label="LDF Approved" type="button" className="p-2 mr-3" onClick={() => handleMultiApprove('ldf')} />,
                 <ButtonOutline label="LDF Unapproved" type="button" className="p-2 mr-3 !border-red-600 !text-red-500 !bg-red-100" onClick={() => handleMultiApprove('ldf', true)} />
@@ -1606,7 +1579,7 @@ const LoanApplicationPage = () => {
                 );
             }
 
-            if ((selectedTab == 'application' || selectedTab == 'tomorrow') && !isWeekend && !isHoliday) {
+            if ((selectedTab == 'application' || selectedTab == 'tomorrow') && !isWeekend && !isHoliday && currentDate) {
                 // actBtns.splice(0, 1);
                 actBtns.splice(0, 2);
                 if (selectedTab == 'application') {
@@ -1616,7 +1589,7 @@ const LoanApplicationPage = () => {
                 }
             }
 
-            if (selectedTab == 'duplicate') { // && !isWeekend && !isHoliday
+            if (selectedTab == 'duplicate' && !isWeekend && !isHoliday && currentDate) {
                 actBtns.push(<ButtonOutline label="Approved Selected Duplicate Loans" type="button" className="p-2 mr-3" onClick={() => handleMultiApprove('duplicate')} />);
             }
         }
@@ -1644,7 +1617,7 @@ const LoanApplicationPage = () => {
                                 <TabSelector
                                     isActive={selectedTab === "ldf"}
                                     onClick={() => handleSelectTab("ldf")}>
-                                    Loan Disbursement Form
+                                    LDF Pending Applications
                                 </TabSelector>
                                 <TabSelector
                                     isActive={selectedTab === "tomorrow"}
@@ -1652,9 +1625,14 @@ const LoanApplicationPage = () => {
                                     Tomorrow Applications
                                 </TabSelector>
                                 <TabSelector
+                                    isActive={selectedTab === "forecast"}
+                                    onClick={() => handleSelectTab("forecast")}>
+                                    Forecasted Applications
+                                </TabSelector>
+                                <TabSelector
                                     isActive={selectedTab === "application"}
                                     onClick={() => handleSelectTab("application")}>
-                                    Pending Applications
+                                    LDF Approved Applications
                                 </TabSelector>
                                 {currentUser?.role?.rep < 2 && (
                                     <TabSelector
@@ -1670,7 +1648,7 @@ const LoanApplicationPage = () => {
                                 </TabSelector>
                             </nav>
                             <div>
-                            <TabPanel hidden={selectedTab !== "ldf"}>
+                                <TabPanel hidden={selectedTab !== "ldf"}>
                                     <div className="flex flex-row justify-between w-full bg-white p-4">
                                         <div className="flex flex-row">
                                             {currentUser?.role?.rep < 3 && (
@@ -1712,6 +1690,18 @@ const LoanApplicationPage = () => {
                                                     isSearchable={true}
                                                     closeMenuOnSelect={true}
                                                     placeholder={'Group Filter'}/>
+                                            </div>
+                                            <div className='flex flex-col ml-4 mr-4'>
+                                                <span className='text-zinc-400 mb-1'>Loan Type:</span>
+                                                <Select 
+                                                    options={loanCycleFilterList}
+                                                    value={loanCycleFilterList && loanCycleFilterList.find(loanCycle => { return loanCycle.value === selectedFilterLoanCycle } )}
+                                                    styles={borderStyles}
+                                                    components={{ DropdownIndicator }}
+                                                    onChange={handleLoanCycleChange}
+                                                    isSearchable={true}
+                                                    closeMenuOnSelect={true}
+                                                    placeholder={'Loan Type Filter'}/>
                                             </div>
                                             {currentUser?.role?.rep < 4 && (
                                                 <div className="flex flex-col">
@@ -1897,6 +1887,9 @@ const LoanApplicationPage = () => {
                                             </div>
                                         </div>
                                     </footer>
+                                </TabPanel>
+                                <TabPanel hidden={selectedTab !== "forecast"}>
+                                    <ForeCastApplication data={forecastedData} handleShowClientInfoModal={handleShowClientInfoModal} rowActionButtons={rowActionButtons} currentUser={currentUser} setShowAddDrawer={setShowAddDrawer} />
                                 </TabPanel>
                                 <TabPanel hidden={selectedTab !== 'duplicate'}>
                                     <TableComponent columns={columns} data={duplicateList} hasActionButtons={false} showFilters={false} multiSelect={true} multiSelectActionFn={handleMultiSelect}  pageSize={500} />

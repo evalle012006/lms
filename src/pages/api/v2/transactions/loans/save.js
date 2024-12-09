@@ -1,7 +1,5 @@
 import { apiHandler } from '@/services/api-handler';
-import { connectToDatabase } from '@/lib/mongodb';
 import logger from '@/logger';
-import moment from 'moment';
 import { GraphProvider } from '@/lib/graph/graph.provider'
 import { createGraphType, insertQl, queryQl, updateQl } from '@/lib/graph/graph.util'
 import { CASH_COLLECTIONS_FIELDS, GROUP_FIELDS, LOAN_FIELDS } from '@/lib/graph.fields'
@@ -124,19 +122,21 @@ async function save(req, res) {
 
             delete finalData.currentReleaseAmount;
             delete finalData.currentDate;
-            if (finalData?.loanFor == 'tomorrow') {
-                let tomorrowDate = moment(currentDate).add(1, 'days').format('YYYY-MM-DD');
-                const dayName = moment(tomorrowDate).format('dddd');
-                if (dayName == 'Saturday') {
-                    tomorrowDate = moment(tomorrowDate).add(2, 'days').format('YYYY-MM-DD');
-                } else if (dayName == 'Sunday') {
-                    tomorrowDate = moment(tomorrowDate).add(1, 'days').format('YYYY-MM-DD');
-                }
+            // if (finalData?.loanFor == 'tomorrow') {
+            //     let dateOfRelease = finalData.dateOfRelease;
+            //     const dayName = moment(dateOfRelease).format('dddd');
+                // if (dayName == 'Saturday') {
+                //     dateOfRelease = moment(dateOfRelease).add(2, 'days').format('YYYY-MM-DD');
+                // } else if (dayName == 'Sunday') {
+                //     dateOfRelease = moment(dateOfRelease).add(1, 'days').format('YYYY-MM-DD');
+                // }
                 
-                finalData.dateOfRelease = tomorrowDate;
-                finalData.admissionDate = tomorrowDate;
-                finalData.dateGranted = tomorrowDate;
-            }
+            //     // finalData.dateOfRelease = tomorrowDate;
+            //     finalData.admissionDate = dateOfRelease;
+            //     finalData.dateGranted = dateOfRelease;
+            // } else {
+            //     finalData.dateOfRelease = finalData.admissionDate;
+            // }
 
             finalData.prevLoanId = oldLoanId;
 
@@ -164,7 +164,7 @@ async function save(req, res) {
                 await updateGroup(user_id, loanData, addToMutationList, loanId);
             }
 
-            if (mode !== 'advance' && mode !== 'active' && finalData?.loanFor !== 'tomorrow') {
+            if (mode !== 'advance' && mode !== 'active' && finalData?.loanFor !== 'tomorrow' && finalData.loanCycle > 1) {
                 const reloan = mode === 'reloan';
                 await saveCashCollection(user_id, loanData, reloan, group, loanId, currentDate, groupStatus, addToMutationList);
                 // await updateUser(loanData);
@@ -254,7 +254,7 @@ async function saveCashCollection(user_id, loan, reloan, group, loanId, currentD
     const cashCollection = (await graph.query(queryQl(cashCollectionsType(), {
       where: {
         clientId: { _eq: loan.clientId },
-        dateAdded: { _eq: currentDate }
+        dateAdded: { _eq: currentDate },
       }
     }))).data?.cashCollections;
 
