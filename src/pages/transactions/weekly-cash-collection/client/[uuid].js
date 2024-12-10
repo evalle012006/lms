@@ -1070,18 +1070,18 @@ const CashCollectionDetailsPage = () => {
             cashCollection.sort((a, b) => a.slotNo - b.slotNo);
             dispatch(setCashCollectionGroup(cashCollection));
             // RESET
-            // setTimeout(() => {
-            //     if (currentTime) {
-            //         const time24h = moment(currentTime, 'h:mm:ss A').format('HH:mm');
-            //         const timeArr = time24h.split(':');
-            //         const hour = parseInt(timeArr[0]);
-            //         if (hour < 9) {
-            //             setEditMode(false);
-            //             setGroupSummaryIsClose(true);
-            //         }
-            //     }
+            setTimeout(() => {
+                if (currentTime) {
+                    const time24h = moment(currentTime, 'h:mm:ss A').format('HH:mm');
+                    const timeArr = time24h.split(':');
+                    const hour = parseInt(timeArr[0]);
+                    if (hour < 9) {
+                        setEditMode(false);
+                        setGroupSummaryIsClose(true);
+                    }
+                }
                 setLoading(false);
-            // }, 1000);
+            }, 1000);
         } else if (response.error){
             toast.error('Error retrieving cash collection list.');
             setTimeout(() => {
