@@ -585,6 +585,7 @@ const CashCollectionDetailsPage = () => {
                             mcbuWithdrawalStr: mcbuWithdrawal > 0 ? formatPricePhp(mcbuWithdrawal) : '-',
                             mcbuReturnAmt: 0,
                             mcbuReturnAmtStr: '-',
+                            hasMcbuInterest: cc.mcbuInterest > 0 ? true : false,
                             mcbuInterest: 0,
                             mcbuInterestStr: '-',
                             // mcbuDailyWithdrawal: cc.mcbuDailyWithdrawal ? cc.mcbuDailyWithdrawal : 0,
@@ -710,7 +711,6 @@ const CashCollectionDetailsPage = () => {
                                 collection.excused = current.excused ? current.excused : false;
                                 collection.latePayment = current.latePayment ? current.latePayment : false;
                                 collection.mpdc = current.mpdc ? current.mpdc : false;
-                                collection.mcbuInterestFlag = false;
                                 collection._dirty = !!current.draft;
 
                                 if (current.draft) {
@@ -774,6 +774,7 @@ const CashCollectionDetailsPage = () => {
                 }
 
                 collection.mcbuWithdrawFlag = false;
+                collection.mcbuInterestFlag = false;
 
                 if (collection.status === 'completed') {
                     collection.noOfPayments = 60;
@@ -1341,9 +1342,9 @@ const CashCollectionDetailsPage = () => {
                             temp.fullPaymentDate = currentDate;
                         }
 
-                        if (temp.remarks?.value == 'reloaner-cont' && temp.mcbu < 600) {
-                            temp.mcbu = 600;
-                        }
+                        // if (temp.remarks?.value == 'reloaner-cont' && temp.mcbu < 600) {
+                        //     temp.mcbu = 600;
+                        // }
                     }
 
                     if (temp?.advance && temp?.status == 'pending' && temp?.loanFor == 'tomorrow' && temp?.dateOfRelease != currentDate) {
@@ -1377,7 +1378,7 @@ const CashCollectionDetailsPage = () => {
                     return cc?.advance && cc.status == 'pending';
                 });
                 // console.log(pendings)
-                // console.log(dataArr)
+                console.log(dataArr)
                 if (save) {
                     let cashCollection;
                     if (editMode) {

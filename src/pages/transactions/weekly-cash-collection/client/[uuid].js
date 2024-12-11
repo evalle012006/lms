@@ -714,7 +714,6 @@ const CashCollectionDetailsPage = () => {
                                 collection.dcmc = current.dcmc;
                                 collection.excused = current.excused ? current.excused : false;
                                 collection.latePayment = current.latePayment ? current.latePayment : false;
-                                collection.mcbuInterestFlag = false;
                                 collection._dirty = !!current.draft;
     
                                 if (current?.origin) {
@@ -788,6 +787,7 @@ const CashCollectionDetailsPage = () => {
                 collection.groupDay = collection.group.day;
                 collection.mcbuWithdrawFlag = false;
                 collection.offsetTransFlag = false;
+                collection.mcbuInterestFlag = false;
 
                 if (!date || currentDate === date) {
                     if (selectedGroup && selectedGroup.day !== dayName) {

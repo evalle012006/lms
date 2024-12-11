@@ -148,7 +148,7 @@ const DailyCashCollectionPage = () => {
         }
 
         mounted && getListBranch();
-        mounted && syncLoans();
+        // mounted && syncLoans();
 
         return () => {
             mounted = false;

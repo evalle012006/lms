@@ -788,7 +788,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     useEffect(() => {
         if (currentDate && initialDateRelease) {
             // let initialMinDate = initialDateRelease;
-            let initialMinDate = currentDate;
+            let initialMinDate = moment(currentDate).add(1, 'days').format('YYYY-MM-DD');
             if (mode == 'edit') {
                 let admissionDate = loan?.admissionDate;
                 let allowedAdmissionDate = moment(admissionDate).add(2, 'days').isSameOrAfter(moment(currentDate));

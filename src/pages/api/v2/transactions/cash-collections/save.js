@@ -62,6 +62,10 @@ async function save(req, res) {
                 if (collection.loanBalance <= 0) {
                     if (collection.occurence == 'daily') {
                         collection.noOfPayments = 60;
+                        if (collection.mcbu % 600 !== 0 && !collection.mcbuWithdrawalFlag && collection.remarks?.value == 'reloaner-cont') {
+                            const remainder = collection.mcbu % 600;
+                            collection.mcbu += (600 - remainder);
+                        }
                     } else {
                         collection.noOfPayments = 24;
                     }

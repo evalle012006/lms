@@ -138,7 +138,7 @@ const WeeklyCashCollectionPage = () => {
         }
 
         mounted && getListBranch();
-        mounted && syncLoans();
+        // mounted && syncLoans();
 
         return () => {
             mounted = false;
