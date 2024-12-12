@@ -68,6 +68,10 @@ async function save(req, res) {
                             const remainder = collection.mcbu % 600;
                             collection.mcbu += (600 - remainder);
                         }
+
+                        if (!collection.mcbuInterestFlag) {
+                            collection.mcbuInterest = 0;
+                        }
                     } else {
                         collection.noOfPayments = 24;
                     }
