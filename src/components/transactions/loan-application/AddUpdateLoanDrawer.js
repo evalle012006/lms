@@ -248,8 +248,8 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         let group;
         values.currentDate = currentDate;
         values.clientId = clientId;
-        values.loanFor = 'tomorrow';
         values.dateOfRelease = values.dateOfRelease ? values.dateOfRelease : initialDateRelease;
+        values.loanFor = values.dateOfRelease == currentDate ? 'today' : 'tomorrow';
 
         if (values.dateOfRelease == currentDate)  {
             values.loanFor = 'today';
@@ -788,7 +788,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     useEffect(() => {
         if (currentDate && initialDateRelease) {
             // let initialMinDate = initialDateRelease;
-            let initialMinDate = moment(currentDate).add(1, 'days').format('YYYY-MM-DD');
+            let initialMinDate = currentDate;
             if (mode == 'edit') {
                 let admissionDate = loan?.admissionDate;
                 let allowedAdmissionDate = moment(admissionDate).add(2, 'days').isSameOrAfter(moment(currentDate));
