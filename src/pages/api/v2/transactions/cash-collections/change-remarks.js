@@ -99,7 +99,7 @@ async function revert(req, res) {
                     },
                     jsonAppend: {
                         history: {
-                            remarks: previousLoan.history.remarks
+                            remarks: previousLoan.history?.remarks
                         }
                     },
                     where: { _id: { _eq: previousLoanId } }
