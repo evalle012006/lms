@@ -21,13 +21,17 @@ async function save(req, res) {
     res.send({ success: true });
 }
 
-export async function savePendingLoans(user_id, collections) {
+export async function savePendingLoans(user_id, collections, loanId) {
   logger.debug({user_id, page: `Update Cash Collection For Pending Loans`, cashCollectionsFromFrontEnd: collections});
   const currentDate = moment(getCurrentDate()).format('YYYY-MM-DD');
   await Promise.all(collections.map(async cc => {
     logger.debug({user_id, page: `Update Cash Collection For Pending Loan savePendingLoans`, clientId: cc.clientId, loanId: cc.loanId, cc, currentDate });
     if ((cc?.loanFor === 'today' || (cc?.loanFor === 'tomorrow' && cc?.dateOfRelease === currentDate))) {
-        await updatePendingLoan(user_id, cc, currentDate);
+        let updatedCc = { ... cc };;
+        if (loanId) {
+          updatedCc.loanId = loanId;
+        }
+        await updatePendingLoan(user_id, updatedCc, currentDate);
     } else {
         await graph.mutation(
           updateQl(loansType(), {

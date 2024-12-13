@@ -8,7 +8,6 @@ import { setHolidayList } from "@/redux/actions/holidayActions";
 import moment from 'moment';
 import { getLastWeekdayOfTheMonth } from "@/lib/utils";
 import { getApiBaseUrl } from '@/lib/constants';
-import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/solid';
 import useIsMobile from "@/lib/useIsMobile";
 
 const Layout = ({ 
@@ -17,8 +16,10 @@ const Layout = ({
     header = true, 
     noPad = false, 
     actionButtons = [], 
-    vScroll = false,  // New prop for vertical scroll
-    hScroll = true  // Changed default to false for horizontal scroll
+    vScroll = true,
+    hScroll = true,
+    noVScrollBody = false,
+    noHScrollBody = false
   }) => {
     const state = useSelector(state => state.global);
     const pageTitle = state.title;
@@ -49,6 +50,20 @@ const Layout = ({
         getCurrentDate();
         getTransactionSettings();
     }, []);
+
+    useEffect(() => {
+        if (noVScrollBody) {
+            document.body.classList.add('overflow-y-hidden');
+        } else {
+            document.body.classList.remove('overflow-y-auto');
+        }
+
+        if (noHScrollBody) {
+            document.body.classList.add('overflow-x-hidden');
+        } else {
+            document.body.classList.remove('overflow-x-auto');
+        }
+    }, [noVScrollBody, noHScrollBody]);
 
     useEffect(() => {
         if (currentDate) {
@@ -114,22 +129,16 @@ const Layout = ({
     }, [isMobile]);
 
     return (
-        <div className="flex bg-white">
-            <NavComponent isVisible={isNavVisible} toggleNav={toggleNav} isMobile={isMobile} />
-            <div className={`flex flex-col bg-neutral-200 duration-300 min-h-full ${isNavVisible && !isMobile ? 'lg:ml-64' : 'ml-0'} flex-1`}>
+        <div className={`flex bg-white w-full h-screen ${vScroll ? 'overflow-y-auto' : 'overflow-hidden'}`}>
+            <div className={`fixed top-0 h-full ${isNavVisible && !isMobile ? 'w-64' : 'w-0'} transition-all duration-300`}>
+                <NavComponent isVisible={isNavVisible} toggleNav={toggleNav} isMobile={isMobile} />
+            </div>
+            
+            <div className={`flex flex-col flex-1 bg-neutral-200 ${isNavVisible && !isMobile ? 'ml-64' : 'ml-0'} transition-all duration-300 overflow-y-auto`}>
                 {header && (
-                    <div className="bg-white p-6 gap-6 h-20">
+                    <div className="bg-white p-6 gap-6 h-20 flex-shrink-0">
                         <div className="flex flex-row justify-between items-center">
                             <div className="flex items-center">
-                                {/* {isMobile && (
-                                    <button onClick={toggleNav} className="mr-4">
-                                        {isNavVisible ? (
-                                            <XMarkIcon className="h-6 w-6" />
-                                        ) : (
-                                            <Bars3Icon className="h-6 w-6" />
-                                        )}
-                                    </button>
-                                )} */}
                                 <div className="page-title">
                                     {pageTitle}
                                 </div>
@@ -144,13 +153,15 @@ const Layout = ({
                         </div>
                     </div>
                 )}
+                
                 <div className={`
                     ${bgwhite ? 'bg-white' : ''} 
-                    flex-grow 
+                    flex-1
                     ${vScroll ? 'overflow-y-auto' : 'overflow-y-hidden'}
                     ${hScroll ? 'overflow-x-auto' : 'overflow-x-hidden'}
-                    `}>
-                        {children}
+                    pb-8
+                `}>
+                    {children}
                 </div>
             </div>
         </div>

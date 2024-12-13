@@ -43,7 +43,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
 
     const { status } = router.query;
 
-    const loUsers = useMemo(() => userList.filter(u => u.role.rep === 4), [userList]);
+    // const loUsers = useMemo(() => userList.filter(u => u.role.rep === 4), [userList]);
 
     const openCalendar = () => {
         setShowCalendar(true);
@@ -71,7 +71,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
     const validationSchema = yup.object().shape({
         firstName: yup.string().required('Please enter first name'),
         lastName: yup.string().required('Please enter last name'),
-        loId: yup.string().required('Please select a Loan Officer'),
+        // loId: yup.string().required('Please select a Loan Officer'),
         ciName: yup.string().required('Please enter C.I. name'),
     });
 
@@ -129,6 +129,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                 fullName: `${values.firstName} ${values.middleName} ${values.lastName}`.toUpperCase(),
                 address: `${values.addressStreetNo} ${values.addressBarangayDistrict} ${values.addressMunicipalityCity} ${values.addressProvince} ${values.addressZipCode}`,
                 groupName: selectedGroup ? selectedGroup.name : '',
+                loId: selectedGroup ? selectedGroup.loId : '',
                 duplicate,
                 ciName: values?.ciName?.toUpperCase()
             };
@@ -440,7 +441,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                         />
                                     </div>
                                 )}
-                                {currentUser.role.rep < 4 && (
+                                {/* {currentUser.role.rep < 4 && (
                                     <div className="mt-4">
                                         <SelectDropdown
                                             name="loId"
@@ -454,7 +455,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                             errors={touched.loId && errors.loId ? errors.loId : undefined}
                                         />
                                     </div>
-                                )}
+                                )} */}
                                 <div className="mt-4">
                                     <InputText
                                         name="ciName"
