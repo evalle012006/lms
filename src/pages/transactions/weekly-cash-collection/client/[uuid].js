@@ -1072,10 +1072,11 @@ const CashCollectionDetailsPage = () => {
             // RESET
             setTimeout(() => {
                 if (currentTime) {
+                    const staging = process.env.NEXT_PUBLIC_STAGING ? true : false;
                     const time24h = moment(currentTime, 'h:mm:ss A').format('HH:mm');
                     const timeArr = time24h.split(':');
                     const hour = parseInt(timeArr[0]);
-                    if (hour < 9) {
+                    if (hour < 9 && !staging) {
                         setEditMode(false);
                         setGroupSummaryIsClose(true);
                     }
