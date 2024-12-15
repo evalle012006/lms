@@ -179,7 +179,7 @@ async function save(req, res) {
             );
 
             const [loan] = (await graph.query(queryQl(loansType(), { where: { _id: { _eq: loanId } } }))).data.loans;
-            console.log(hasExistingCC, loanId)
+
             if (hasExistingCC) {
                 await savePendingLoans(user_id, [finalData], loanId);
             }
@@ -240,6 +240,7 @@ async function updateLoan(user_id, loanId, loanData, currentDate, mode, addToMut
             loan.mcbu = loan.mcbu - loanData.mcbu;
             loan.status = 'closed';
             logger.debug({user_id, page: `Updating Cash Collection: ${loanId}`, data: loan});
+            console.log(loanId)
             addToMutationList(alias => updateQl(cashCollectionsType(alias), {
                 set: { status: 'closed' },
                 where: {

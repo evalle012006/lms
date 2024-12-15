@@ -1530,7 +1530,7 @@ const CashCollectionDetailsPage = () => {
                                     temp.mispaymentStr = "No";
                                     const noPayments = parseInt(payment) / parseInt(temp.activeLoan);
                                     temp.noOfPayments = temp.noOfPayments + noPayments;
-    
+                                    // console.log(temp)
                                     // compute excess mcbu collection here...
                                     const excessMcbu = temp.excess / temp.activeLoan;
                                     const finalMcbu = (excessMcbu * 10) + 10;
@@ -2297,7 +2297,7 @@ const CashCollectionDetailsPage = () => {
         const selectedRows = data.filter(d => d.selected);
         if (selectedRows.length > 0) {
             setLoading(true);
-            const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collections/revert-transaction', selectedRows);
+            const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collections/revert-transaction-v2', selectedRows);
             if (response.success) {
                 setTimeout(() => {
                     setLoading(false);
@@ -2306,6 +2306,9 @@ const CashCollectionDetailsPage = () => {
                         window.location.reload();
                     }, 1000);
                 }, 1000);
+            } else if (response.error) {
+                setLoading(false);
+                toast.error(response.message);
             }
         } else {
             toast.error('No row(s) selected!');
