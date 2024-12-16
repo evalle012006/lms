@@ -1,7 +1,4 @@
 import { apiHandler } from '@/services/api-handler';
-import { connectToDatabase } from '@/lib/mongodb';
-import { getWeekDaysCount, getCurrentDate } from '@/lib/utils';
-import moment from 'moment';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { gql } from 'node_modules/apollo-boost/lib/index';
 

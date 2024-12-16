@@ -70,8 +70,10 @@ async function getData (req, res) {
 
 async function getAllLoanTransactionsByDivision(divisionId, date, dayName, currentDate) {
     let cashCollection;
-    
+
+    console.log('test', currentDate, date);
     if (currentDate === date) {
+        console.log('get current date division loans')
       const query = gql`
           query get($divisionId: String!, $date: date!, $dayName: String!) {
               cashCollections: get_all_loans_per_division_current_date(args: {
@@ -169,7 +171,7 @@ async function processData(data, date, currentDate) {
         let branchTotalMcbuDailyWithdrawal = 0;
         let branchTotalCOH = 0;
 
-        division.branchCollection.map(branch => {
+        division?.branchCollection?.map(branch => {
             if (branch?.draftCollections?.length > 0) {
                 const transactionStatus = branch.draftCollections[0].groupStatusArr?.filter(status => status === "pending") ?? [];
                 const draft = branch.draftCollections[0].hasDraftsArr?.filter(d => d === true) ?? [];
@@ -264,7 +266,7 @@ async function processData(data, date, currentDate) {
             }
 
             if (branch.cashOnHand?.length > 0) {
-                branchTotalCOH = branch.cashOnHand[0].amount ? branch.cashOnHand[0].amount : 0;
+                branchTotalCOH += branch.cashOnHand[0].amount ? branch.cashOnHand[0].amount : 0;
             }
 
             if (branch.transferDailyGiverDetails?.length > 0 || branch.transferDailyReceivedDetails?.length > 0 || branch.transferWeeklyGiverDetails?.length > 0 || branch.transferWeeklyReceivedDetails?.length > 0) {
@@ -432,7 +434,7 @@ async function processData(data, date, currentDate) {
             status: '-'
         }
 
-        if (division.branchCollection?.length > 0) {
+        if (division?.branchCollection?.length > 0) {
             collection.activeClients = branchNoOfClients;
             collection.activeBorrowers = branchNoOfBorrowers;
             collection.pendingClients = branchNoOfPendings;
@@ -529,7 +531,7 @@ async function processData(data, date, currentDate) {
         loanTargetStr: targetLoanCollection > 0 ? formatPricePhp(targetLoanCollection) : 0,
         excessStr: formatPricePhp(excess),
         totalStr: formatPricePhp(totalLoanCollection),
-        mispaymentStr: mispayment + ' / ' + noOfClients,
+        mispayment: mispayment + ' / ' + noOfClients,
         fullPaymentAmountStr: formatPricePhp(fullPaymentAmount),
         noOfFullPayment: noOfFullPayment,
         pastDueStr: formatPricePhp(totalPastDue),

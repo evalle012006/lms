@@ -14,7 +14,7 @@ import { containsAnyLetters, formatPricePhp, UppercaseFirstLetter } from '@/lib/
 import { ArrowPathIcon, ArrowUturnLeftIcon, CurrencyDollarIcon, CalculatorIcon, ReceiptPercentIcon, StopCircleIcon } from '@heroicons/react/24/outline';
 import Select from 'react-select';
 import { DropdownIndicator, borderStyles } from "@/styles/select";
-import AddUpdateLoan from '@/components/transactions/AddUpdateLoanDrawer';
+import AddUpdateLoan from '@/components/transactions/loan-application/AddUpdateLoanDrawer';
 import Dialog from '@/lib/ui/Dialog';
 import ButtonSolid from '@/lib/ui/ButtonSolid';
 import ButtonOutline from '@/lib/ui/ButtonOutline';
@@ -73,7 +73,7 @@ const CashCollectionDetailsPage = () => {
     const [showWaningDialog, setShowWarningDialog] = useState(false);
     const [changeRemarks, setChangeRemarks] = useState(false);
     const [prevDraft, setPrevDraft] = useState(false);
-    const [addMcbuInterest, setAddMcbuInterest] = useState(false);
+    const [allowMcbuInterest, setAllowMcbuInterest] = useState(false);
 
     const [selectAll, setSelectAll] = useState(false);
 
@@ -582,8 +582,8 @@ const CashCollectionDetailsPage = () => {
                             mcbuWithdrawalStr: type == 'filter' ? formatPricePhp(cc.mcbuWithdrawal) : '-',
                             mcbuReturnAmt: type == 'filter' ? cc.mcbuReturnAmt : 0,
                             mcbuReturnAmtStr: type == 'filter' ? formatPricePhp(cc.mcbuReturnAmt) : '-',
-                            mcbuInterest: cc.mcbuInterest ? cc.mcbuInterest : 0,
-                            mcbuInterestStr: cc.mcbuInterest > 0 ? formatPricePhp(cc.mcbuInterest) : '-',
+                            mcbuInterest: 0,
+                            mcbuInterestStr: '-',
                             activeLoan: activeLoan,
                             targetCollection: activeLoan,
                             targetCollectionStr: activeLoan > 0 ? formatPricePhp(activeLoan) : '-',
@@ -714,7 +714,6 @@ const CashCollectionDetailsPage = () => {
                                 collection.dcmc = current.dcmc;
                                 collection.excused = current.excused ? current.excused : false;
                                 collection.latePayment = current.latePayment ? current.latePayment : false;
-                                collection.mcbuInterestFlag = false;
                                 collection._dirty = !!current.draft;
     
                                 if (current?.origin) {
@@ -788,6 +787,7 @@ const CashCollectionDetailsPage = () => {
                 collection.groupDay = collection.group.day;
                 collection.mcbuWithdrawFlag = false;
                 collection.offsetTransFlag = false;
+                collection.mcbuInterestFlag = false;
 
                 if (!date || currentDate === date) {
                     if (selectedGroup && selectedGroup.day !== dayName) {
@@ -1070,18 +1070,19 @@ const CashCollectionDetailsPage = () => {
             cashCollection.sort((a, b) => a.slotNo - b.slotNo);
             dispatch(setCashCollectionGroup(cashCollection));
             // RESET
-            // setTimeout(() => {
-            //     if (currentTime) {
-            //         const time24h = moment(currentTime, 'h:mm:ss A').format('HH:mm');
-            //         const timeArr = time24h.split(':');
-            //         const hour = parseInt(timeArr[0]);
-            //         if (hour < 9) {
-            //             setEditMode(false);
-            //             setGroupSummaryIsClose(true);
-            //         }
-            //     }
+            setTimeout(() => {
+                if (currentTime) {
+                    const staging = process.env.NEXT_PUBLIC_STAGING ? true : false;
+                    const time24h = moment(currentTime, 'h:mm:ss A').format('HH:mm');
+                    const timeArr = time24h.split(':');
+                    const hour = parseInt(timeArr[0]);
+                    if (hour < 9 && !staging) {
+                        setEditMode(false);
+                        setGroupSummaryIsClose(true);
+                    }
+                }
                 setLoading(false);
-            // }, 1000);
+            }, 1000);
         } else if (response.error){
             toast.error('Error retrieving cash collection list.');
             setTimeout(() => {
@@ -2465,7 +2466,7 @@ const CashCollectionDetailsPage = () => {
 
                 if (selected.slotNo === cc.slotNo) {
                     setEditMode(true);
-                    setAddMcbuInterest(true);
+                    setAllowMcbuInterest(true);
 
                     temp.mcbuInterestFlag = true;
                 }
@@ -2729,12 +2730,12 @@ const CashCollectionDetailsPage = () => {
     useEffect(() => {
         setDropDownActions(
             [
-                {
-                    label: 'Reloan',
-                    action: handleReloan,
-                    icon: <ArrowPathIcon className="w-5 h-5" title="Reloan" />,
-                    hidden: true
-                },
+                // {
+                //     label: 'Reloan',
+                //     action: handleReloan,
+                //     icon: <ArrowPathIcon className="w-5 h-5" title="Reloan" />,
+                //     hidden: true
+                // },
                 {
                     label: 'MCBU Withdrawal',
                     action: handleMcbuWithdrawal,
@@ -2769,7 +2770,7 @@ const CashCollectionDetailsPage = () => {
                         handleSaveUpdate={handleSaveUpdate} data={allData} setData={setFilteredData} allowMcbuWithdrawal={allowMcbuWithdrawal} allowOffsetTransaction={allowOffsetTransaction}
                         dateFilter={dateFilter} setDateFilter={setDateFilter} handleDateFilter={handleDateFilter} currentGroup={uuid} revertMode={revertMode}
                         groupFilter={groupFilter} handleGroupFilter={handleGroupFilter} groupTransactionStatus={groupSummaryIsClose ? 'close' : 'open'} 
-                        changeRemarks={changeRemarks} addMcbuInterest={addMcbuInterest} handleShowWarningDialog={handleShowWarningDialog} loading={loading} />}
+                        changeRemarks={changeRemarks} allowMcbuInterest={allowMcbuInterest} handleShowWarningDialog={handleShowWarningDialog} loading={loading} />}
                     <div className="px-4 mt-[12rem] mb-[4rem] overflow-y-auto min-h-[55rem]">
                         <div className="bg-white flex flex-col rounded-md pt-0 pb-2 px-6 overflow-auto min-h-[46rem]">
                             <table className="table-auto border-collapse text-sm">

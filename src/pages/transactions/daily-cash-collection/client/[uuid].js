@@ -14,7 +14,7 @@ import { containsAnyLetters, formatPricePhp, UppercaseFirstLetter } from '@/lib/
 import { ArrowPathIcon, CurrencyDollarIcon, ReceiptPercentIcon } from '@heroicons/react/24/outline';
 import Select from 'react-select';
 import { DropdownIndicator, borderStyles, styles } from "@/styles/select";
-import AddUpdateLoan from '@/components/transactions/AddUpdateLoanDrawer';
+import AddUpdateLoan from '@/components/transactions/loan-application/AddUpdateLoanDrawer';
 import Dialog from '@/lib/ui/Dialog';
 import ButtonSolid from '@/lib/ui/ButtonSolid';
 import ButtonOutline from '@/lib/ui/ButtonOutline';
@@ -63,6 +63,7 @@ const CashCollectionDetailsPage = () => {
     const [filter, setFilter] = useState(false);
     const [groupFilter, setGroupFilter] = useState();
     const [allowMcbuWithdrawal, setAllowMcbuWithdrawal] = useState(false);
+    const [allowMcbuInterest, setAllowMcbuInterest] = useState(false);
 
     const [selectedSlot, setSelectedSlot] = useState();
 
@@ -75,7 +76,6 @@ const CashCollectionDetailsPage = () => {
     const [changeRemarks, setChangeRemarks] = useState(false);
     const [prevDraft, setPrevDraft] = useState(false);
     const [selectedNewRemarks, setSelectedNewRemarks] = useState();
-    const [addMcbuInterest, setAddMcbuInterest] = useState(false);
 
     const [selectAll, setSelectAll] = useState(false);
 
@@ -585,8 +585,9 @@ const CashCollectionDetailsPage = () => {
                             mcbuWithdrawalStr: mcbuWithdrawal > 0 ? formatPricePhp(mcbuWithdrawal) : '-',
                             mcbuReturnAmt: 0,
                             mcbuReturnAmtStr: '-',
-                            mcbuInterest: cc.mcbuInterest ? cc.mcbuInterest : 0,
-                            mcbuInterestStr: cc.mcbuInterest > 0 ? formatPricePhp(cc.mcbuInterest) : '-',
+                            hasMcbuInterest: cc.mcbuInterest > 0 ? true : false,
+                            mcbuInterest: 0,
+                            mcbuInterestStr: '-',
                             // mcbuDailyWithdrawal: cc.mcbuDailyWithdrawal ? cc.mcbuDailyWithdrawal : 0,
                             // mcbuDailyWithdrawalStr: cc.mcbuDailyWithdrawal > 0 ? formatPricePhp(cc.mcbuDailyWithdrawal) : '-',
                             activeLoan: activeLoan,
@@ -681,7 +682,6 @@ const CashCollectionDetailsPage = () => {
                         } else if (cc.current.length > 0) {
                             const current = cc.current.find(cur => !cur.transferId);
                             if (current) {
-                                console.log('set cash collection read only 6', current);
                                 // setEditMode(false);
                                 collection.targetCollection = current.targetCollection;
                                 collection.targetCollectionStr = collection.targetCollection > 0 ? formatPricePhp(collection.targetCollection) : '-';
@@ -711,7 +711,6 @@ const CashCollectionDetailsPage = () => {
                                 collection.excused = current.excused ? current.excused : false;
                                 collection.latePayment = current.latePayment ? current.latePayment : false;
                                 collection.mpdc = current.mpdc ? current.mpdc : false;
-                                collection.mcbuInterestFlag = false;
                                 collection._dirty = !!current.draft;
 
                                 if (current.draft) {
@@ -775,6 +774,7 @@ const CashCollectionDetailsPage = () => {
                 }
 
                 collection.mcbuWithdrawFlag = false;
+                collection.mcbuInterestFlag = false;
 
                 if (collection.status === 'completed') {
                     collection.noOfPayments = 60;
@@ -1040,18 +1040,19 @@ const CashCollectionDetailsPage = () => {
             cashCollection.sort((a, b) => a.slotNo - b.slotNo);
             dispatch(setCashCollectionGroup(cashCollection));
             // RESET
-            // setTimeout(() => {
-            //     if (currentTime) {
-            //         const time24h = moment(currentTime, 'h:mm:ss A').format('HH:mm');
-            //         const timeArr = time24h.split(':');
-            //         const hour = parseInt(timeArr[0]);
-            //         if (hour < 9) {
-            //             setEditMode(false);
-            //             setGroupSummaryIsClose(true);
-            //         }
-            //     }
+            setTimeout(() => {
+                if (currentTime) {
+                    const staging = process.env.NEXT_PUBLIC_STAGING ? true : false;
+                    const time24h = moment(currentTime, 'h:mm:ss A').format('HH:mm');
+                    const timeArr = time24h.split(':');
+                    const hour = parseInt(timeArr[0]);
+                    if (hour < 9 && !staging) {
+                        setEditMode(false);
+                        setGroupSummaryIsClose(true);
+                    }
+                }
                 setLoading(false);
-            // }, 1000);
+            }, 1000);
         } else if (response.error){
             toast.error('Error retrieving cash collection list.');
             setTimeout(() => {
@@ -1315,7 +1316,7 @@ const CashCollectionDetailsPage = () => {
                         }
     
                         if (temp.loanBalance <= 0 && temp.remarks?.value !== 'offset-matured-pd') {
-                            temp.status = temp?.advance ? 'pending' : 'completed';
+                            temp.status = (temp?.advance && temp?.dateOfRelease == currentDate) ? 'pending' : 'completed';
                             temp.fullPaymentDate = currentDate;
                         }
     
@@ -1342,9 +1343,9 @@ const CashCollectionDetailsPage = () => {
                             temp.fullPaymentDate = currentDate;
                         }
 
-                        if (temp.remarks?.value == 'reloaner-cont' && temp.mcbu < 600) {
-                            temp.mcbu = 600;
-                        }
+                        // if (temp.remarks?.value == 'reloaner-cont' && temp.mcbu < 600) {
+                        //     temp.mcbu = 600;
+                        // }
                     }
 
                     if (temp?.advance && temp?.status == 'pending' && temp?.loanFor == 'tomorrow' && temp?.dateOfRelease != currentDate) {
@@ -1378,7 +1379,7 @@ const CashCollectionDetailsPage = () => {
                     return cc?.advance && cc.status == 'pending';
                 });
                 // console.log(pendings)
-                // console.log(dataArr)
+                console.log(dataArr)
                 if (save) {
                     let cashCollection;
                     if (editMode) {
@@ -1980,7 +1981,6 @@ const CashCollectionDetailsPage = () => {
                                     }
                                 }
                             } else if (remarks.value === "past due collection") {
-                                console.log(temp);
                                 if (temp.pastDue > 0 && temp.paymentCollection > temp.activeLoan && !temp?.maturedPD && (parseFloat(temp.paymentCollection) > temp.activeLoan && parseFloat(temp.paymentCollection) % parseFloat(temp.activeLoan) === 0)) {
                                     const pastDueCol = temp.paymentCollection - temp.activeLoan;
                                     if (pastDueCol > temp.pastDue) {
@@ -2457,7 +2457,13 @@ const CashCollectionDetailsPage = () => {
                 let temp = {...cc};
 
                 if (selected.slotNo === cc.slotNo) {
-                    temp.mcbuInterestFlag = true;
+                    temp.mcbuInterestFlag = !temp.mcbuInterestFlag;
+
+                    if (temp.mcbuInterestFlag) {
+                        setAllowMcbuInterest(true);
+                    } else {
+                        setAllowMcbuInterest(false);
+                    }
                 }
 
                 return temp;
@@ -2663,12 +2669,12 @@ const CashCollectionDetailsPage = () => {
 
     useEffect(() => {
         setDropDownActions([
-            {
-                label: 'Reloan',
-                action: handleReloan,
-                icon: <ArrowPathIcon className="w-5 h-5" title="Reloan" />,
-                hidden: true
-            },
+            // {
+            //     label: 'Reloan',
+            //     action: handleReloan,
+            //     icon: <ArrowPathIcon className="w-5 h-5" title="Reloan" />,
+            //     hidden: true
+            // },
             {
                 label: 'MCBU Withdrawal',
                 action: handleMcbuWithdrawal,
@@ -2702,7 +2708,8 @@ const CashCollectionDetailsPage = () => {
                         handleSaveUpdate={handleSaveUpdate} data={allData} setData={setFilteredData} allowMcbuWithdrawal={allowMcbuWithdrawal} hasDraft={hasDraft}
                         dateFilter={dateFilter} setDateFilter={setDateFilter} handleDateFilter={handleDateFilter} currentGroup={uuid} revertMode={revertMode}
                         groupFilter={groupFilter} handleGroupFilter={handleGroupFilter} groupTransactionStatus={groupSummaryIsClose ? 'close' : 'open'}
-                        changeRemarks={changeRemarks} addMcbuInterest={addMcbuInterest} handleShowWarningDialog={handleShowWarningDialog} loading={loading} />}
+                        changeRemarks={changeRemarks} handleShowWarningDialog={handleShowWarningDialog} loading={loading} 
+                        allowMcbuInterest={allowMcbuInterest} />}
                     <div className="px-4 mt-[12rem] mb-[4rem] overflow-y-auto min-h-[55rem]">
                         <div className="bg-white flex flex-col rounded-md pt-0 pb-2 px-6 overflow-auto min-h-[46rem]">
                             <table className="table-auto border-collapse text-sm">

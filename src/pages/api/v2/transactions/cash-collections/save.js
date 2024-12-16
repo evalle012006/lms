@@ -55,9 +55,23 @@ async function save(req, res) {
                     collection.pastDue = 0;
                 }
 
+                if (collection.remarks?.value == 'matured-past due') {
+                    collection.mispayment = false;
+                }
+
                 if (collection.loanBalance <= 0) {
                     if (collection.occurence == 'daily') {
                         collection.noOfPayments = 60;
+                        // if (collection.mcbu % 600 !== 0 && collection.remarks?.value == 'reloaner-cont'
+                        //     && !collection.mcbuWithdrawalFlag && collection.mcbuWithdrawal == 0 
+                        //     && collection.fullPaymentDate == currentDate) {
+                        //     const remainder = collection.mcbu % 600;
+                        //     collection.mcbu += (600 - remainder);
+                        // }
+
+                        if (!collection.mcbuInterestFlag) {
+                            collection.mcbuInterest = 0;
+                        }
                     } else {
                         collection.noOfPayments = 24;
                     }

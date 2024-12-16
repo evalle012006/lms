@@ -200,6 +200,7 @@ async function saveUpdateCommulative(total, officeType) {
           objects: [{
             _id: generateUUID(),
             ...finalData,
+            officeType: loGroup,
             dateAdded: currentDateStr
           }]
         }))
