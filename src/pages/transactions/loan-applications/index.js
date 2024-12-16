@@ -917,7 +917,7 @@ const LoanApplicationPage = () => {
     const handleCloseAddDrawer = () => {
         setTimeout(() => {
             window.location.reload();
-        }, 500);
+        }, 1000);
     }
 
     const handleMultiSelect = (mode, selectAll, rows, currentPageIndex) => {
@@ -1140,12 +1140,11 @@ const LoanApplicationPage = () => {
                                 errors +=  err + '\n';
                             });
 
-                            console.log(errors);
                             toast.error(errors);
                             setTimeout(() => {
                                 getListLoan();
                                 window.location.reload();
-                            }, 4000);
+                            }, 1000);
                         } else {
                             if (origin == 'ldf') {
                                 toast.success('Selected loans successfully updated');

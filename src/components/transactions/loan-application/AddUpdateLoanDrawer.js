@@ -362,7 +362,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                 setSlotNumber();
                                 setSelectedCoMaker();
                                 setGroupOccurence('daily');
-                                // setLoanFor('today');
+                                setLoanFor('today');
                                 onClose();
                             }
                         }).catch(error => {
@@ -845,6 +845,14 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                             <RadioButton id={"radio_tomorrow"} name="radio-loan-type" label={"Tomorrow"} checked={loanFor === 'tomorrow'} value="tomorrow" onChange={() => setLoanFor('tomorrow')} />
                                         </div>
                                     </div> */}
+                                    {mode == 'add' && (
+                                        <div className="mt-4 flex flex-row">
+                                            <RadioButton id={"radio_pending"} name="radio-client-type" label={"Prospect Clients"} checked={clientType === 'pending'} value="pending" onChange={handleClientTypeChange} />
+                                            <RadioButton id={"radio_advance"} name="radio-client-type" label={"Reloan Clients"} checked={clientType === 'advance'} value="advance" onChange={handleClientTypeChange} />
+                                            <RadioButton id={"radio_active"} name="radio-client-type" label={"Pending Clients"} checked={clientType === 'active'} value="active" onChange={handleClientTypeChange} />
+                                            <RadioButton id={"radio_offset"} name="radio-client-type" label={"Balik Clients"} checked={clientType === 'offset'} value="offset" onChange={handleClientTypeChange} />
+                                        </div>
+                                    )}
                                     {(initialDateRelease && minDate && maxDate) && (
                                         <div className="relative w-full mt-4" onClick={openCalendar}>
                                             <span className="text-sm">Date of Release</span>
@@ -859,12 +867,6 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                     )}
                                     {mode === 'add' ? (
                                         <React.Fragment>
-                                            <div className="mt-4 flex flex-row">
-                                                <RadioButton id={"radio_pending"} name="radio-client-type" label={"Prospect Clients"} checked={clientType === 'pending'} value="pending" onChange={handleClientTypeChange} />
-                                                <RadioButton id={"radio_advance"} name="radio-client-type" label={"Reloan Clients"} checked={clientType === 'advance'} value="advance" onChange={handleClientTypeChange} />
-                                                <RadioButton id={"radio_active"} name="radio-client-type" label={"Pending Clients"} checked={clientType === 'active'} value="active" onChange={handleClientTypeChange} />
-                                                <RadioButton id={"radio_offset"} name="radio-client-type" label={"Balik Clients"} checked={clientType === 'offset'} value="offset" onChange={handleClientTypeChange} />
-                                            </div>
                                             {clientType == 'offset' && (
                                                 <div className="mt-4">
                                                     <span className="text-sm font-bold">Search Client</span>

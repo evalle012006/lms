@@ -542,6 +542,7 @@ function reducer(state, action) {
 
 const SubNav = React.memo(({ item, index, activePath, inner = false, className = '' }) => {
   const dispatch = useDispatch();
+  const router = useRouter();
   const [state, localDispatch] = useReducer(reducer, initialState);
   const isSubMenuOpen = state.subMenus[item.label] || false;
 
@@ -549,8 +550,17 @@ const SubNav = React.memo(({ item, index, activePath, inner = false, className =
     window.location.href = '/logout';
   }
 
-  const toggleSubMenu = () => {
-    localDispatch({ type: 'TOGGLE_SUBMENU', payload: item.label });
+  const handleClick = (e) => {
+    if (item.hasSub) {
+      e.preventDefault();
+      localDispatch({ type: 'TOGGLE_SUBMENU', payload: item.label });
+    } else {
+      // Remove hash from URL after navigation
+      setTimeout(() => {
+        const newUrl = window.location.href.split('#')[0];
+        window.history.replaceState({}, document.title, newUrl);
+      }, 0);
+    }
   }
 
   const IconComponent = activePath === item.url ? item.icon?.active : item.icon?.notActive;
@@ -561,7 +571,7 @@ const SubNav = React.memo(({ item, index, activePath, inner = false, className =
         <Link href={item.url}>
           <div 
             className="flex flex-row rounded-md p-2 cursor-pointer hover:opacity-70 text-sm items-center gap-x-4 mr-4 whitespace-nowrap transition duration-300 ease-in-out"
-            onClick={item.hasSub ? toggleSubMenu : undefined}
+            onClick={handleClick}
           >
             <IconComponent className={`w-5 h-5 ${activePath === item.url ? 'text-gray-800' : 'text-white'}`} />
             <span className="origin-left duration-200">
@@ -599,6 +609,7 @@ const SubNav = React.memo(({ item, index, activePath, inner = false, className =
     )
   }
 });
+
 
 const NavComponent = ({ isVisible, toggleNav, isMobile }) => {
     const router = useRouter();
