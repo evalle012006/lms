@@ -1,0 +1,92 @@
+import { CASH_COLLECTIONS_FIELDS, CLIENT_FIELDS, GROUP_FIELDS, LOAN_FIELDS } from '@/lib/graph.fields';
+import { GraphProvider } from '@/lib/graph/graph.provider';
+import { createGraphType, deleteQl, queryQl, updateQl } from '@/lib/graph/graph.util';
+import { getCurrentDate } from '@/lib/utils';
+import logger from '@/logger';
+import { apiHandler } from '@/services/api-handler';
+import moment from 'moment';
+
+const graph = new GraphProvider();
+const CASH_COLLECTION_TYPE = createGraphType('cashCollections', `${CASH_COLLECTIONS_FIELDS}`)
+const LOAN_TYPE = createGraphType('loans', `${LOAN_FIELDS}`)
+const CLIENT_TYPE = createGraphType('client', `${CLIENT_FIELDS}`);
+const GROUP_TYPE = createGraphType('groups', `${GROUP_FIELDS}`)
+
+export default apiHandler({
+    post: revert,
+});
+
+let statusCode = 200;
+let response = {};
+
+/*
+const getClientById = (_id) => graph.query(queryQl(CLIENT_TYPE('clients'), { where: { _id: { _eq: _id } } })).then(res => res.data.clients);
+const getLoanById = (_id) => graph.query(queryQl(LOAN_TYPE('loans'), {where: { _id: { _eq: _id } }})).then(res =>  res.data.loans);
+ */
+
+async function revert(req, res) {
+    const user_id = req?.auth?.sub;
+    const cashCollections = req.body;
+    const currentDate = moment(getCurrentDate()).format('YYYY-MM-DD');
+    
+    const mutationQL = [];
+    
+    await Promise.all(cashCollections.map(async (cc) => {
+        let cashCollection = {...cc};
+        logger.debug({user_id, page: `Reverting Transaction Loan: ${cashCollection.clientId}`, data: cashCollection});
+        let loanId = cashCollection.loanId;
+        let cashCollectionId = cashCollection._id;
+
+        // get loan history 
+        const [loan_history] = await graph.query(
+            queryQl(createGraphType('loans_history', `_id data`)('loan'), {
+                where: {
+                    loan_id: { _eq: loanId ?? 'null' }
+                },
+                limit: 1,
+                order_by: [{
+                    created_dt: 'desc'
+                }]
+            })
+        ).then(res => res.data.loan);
+
+        if (loan_history) {
+
+            // first delete cashCollection
+            mutationQL.push(
+                deleteQl(CASH_COLLECTION_TYPE('cash_collections_' + mutationQL.length + 1), {
+                    _id: { _eq: cashCollectionId }
+                })
+            );
+
+            // update loan
+            mutationQL.push(
+                updateQl(createGraphType('loans', `_id`)('update_loan'), {
+                    set: loan_history.data,
+                    where: {
+                        _id: { _eq: loanId ?? 'null' }
+                    }
+                })
+            );
+
+            // delete loan history
+            mutationQL.push(
+                deleteQl(createGraphType('loans_history', `_id`)('loan_history'), {
+                    _id: { _eq: loan_history._id ?? 'null' }
+                })
+            );
+        }
+    }));
+
+    const result = await graph.mutation(
+        ... mutationQL
+    );
+
+    if (result) {
+        response = { success: true };
+    }
+
+    res.status(statusCode)
+        .setHeader('Content-Type', 'application/json')
+        .end(JSON.stringify(response));
+}

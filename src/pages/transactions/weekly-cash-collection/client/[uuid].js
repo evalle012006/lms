@@ -2350,7 +2350,7 @@ const CashCollectionDetailsPage = () => {
         const selectedRows = data.filter(d => d.selected);
         if (selectedRows.length > 0) {
             setLoading(true);
-            const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collections/revert-transaction', selectedRows);
+            const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collections/rollback-transaction', selectedRows);
             if (response.success) {
                 setTimeout(() => {
                     setLoading(false);

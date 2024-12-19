@@ -35,8 +35,24 @@ async function save(req, res) {
         logger.debug({user_id, page: `Saving Cash Collection - Group ID: ${data.collection[0]?.groupId}`});
         const promiseData = data.collection.map(async cc => {
             if (cc.status !== "totals") {
+
                 const collection = JSON.parse(JSON.stringify(cc))// clone entry to avoid reference update
                 delete collection.reverted;
+
+                // get loan snapshot 
+                let [loan] = await graph.query(queryQl(LOAN_TYPE('loans'), { where: { _id: { _eq: collection.loanId } } })).then(res => res.data.loans);
+                const loan_history = {
+                    loan_id: loan._id,
+                    client_id: loan.clientId,
+                    user_id: user_id,
+                    data: loan
+                };
+
+                mutationQl.push(
+                    insertQl(createGraphType('loans_history', `_id`)('loans_history_' + (mutationQl.length + 1)), {
+                        objects: [loan_history]
+                    })
+                );
 
                 const timeArgs = currentTime.split(" ");
                 // put this in the config settings should be by hour and minute?
