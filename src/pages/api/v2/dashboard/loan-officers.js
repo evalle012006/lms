@@ -26,7 +26,13 @@ async function getLoanOfficers(req, res) {
     const user_id = req.auth.sub;
     const user = await findUserByID(user_id);
     
-    const where = [];
+    const where = [{
+        role: {
+            _contains: {
+                rep: 4
+            }
+        }
+    }];
 
     if (user.regionId) {
         where.push({

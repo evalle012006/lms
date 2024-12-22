@@ -29,7 +29,7 @@ async function getSummary(req, res) {
         }
     }).then(res => res.data.get_dashboard_data.map(c => c.data));
 
-    res.status(statusCode)
+    res.status(200)
         .setHeader('Content-Type', 'application/json')
         .end(JSON.stringify({
             data: result

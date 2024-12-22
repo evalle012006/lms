@@ -5,7 +5,7 @@ import { apiHandler } from '@/services/api-handler';
 const graph = new GraphProvider();
 
 const USER_TYPE = createGraphType('users', `_id firstName lastName areaId divisionId designatedBranchId regionId`)('users');
-const REGION_TYPE = createGraphType('regions', `_id name`)('regions');
+const REGION_TYPE = createGraphType('regions', `_id name divisionId`)('regions');
 
 export default apiHandler({
     get: getRegions

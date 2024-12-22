@@ -31,6 +31,7 @@ import Avatar from '@/lib/avatar';
 import { useRouter } from 'node_modules/next/router';
 import { getApiBaseUrl } from '@/lib/constants';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
+import { useMemo } from 'react';
 
 ChartJS.register(...registerables, ChartDataLabels);
 
@@ -38,21 +39,38 @@ const DashboardPage = () => {
     const router = useRouter();
     const currentUser = useSelector(state => state.user.data);
     const branch = useSelector(state => state.branch.data);
-    const [timeFilter, setTimeFilter] = useState('overall');
+    const [timeFilter, setTimeFilter] = useState('all');
     const [branchFilter, setBranchFilter] = useState('all');
+    const [areaFilter, setAreaFilter] = useState('all');
+    const [regionFilter, setRegionFilter] = useState('all');
+    const [divisionFilter, setDivisionFilter] = useState('all');
+    const [loanOfficerFilter, setLoanOfficerFilter] = useState('all');
+    const [summaryData, setSummaryData] = useState({});
+
     const [mcbuData, setMcbuData] = useState({ labels: [], datasets: [] });
     const [personData, setPersonData] = useState({ labels: [], datasets: [] });
     const [loanCollectionData, setLoanCollectionData] = useState({ labels: [], datasets: [] });
     const [misPastDueData, setMisPastDueData] = useState({ labels: [], datasets: [] });
 
-    const [branches, setBranches] = useState([]);
-    const [areas, setAreas] = useState([]);
+    const [branchList, setBranches] = useState([]);
+    const [regionList, setRegions] = useState([]);
+    const [areaList, setAreas] = useState([]);
     const [divisions, setDivisions] = useState([]);
-    const [loanOfficers, setLoanOfficers] = useState([]);
+    const [loanOfficerList, setLoanOfficers] = useState([]);
+
+    const regions = useMemo(() => regionList.filter(r => divisionFilter === 'all' || r._id === 'all' || r.divisionId === divisionFilter), [regionList, divisionFilter]);
+    const areas = useMemo(() => areaList.filter(a => regionFilter === 'all' || a._id === 'all' || a.regionId === regionFilter ), [regionFilter, areaList]);
+    const branches = useMemo(() => branchList.filter(b => areaFilter === 'all' || b._id === 'all' || b.areaId === areaFilter ), [areaFilter, branchList]);
+    const loanOfficers = useMemo(() =>loanOfficerList.filter(l => branchFilter === 'all' || l._id === 'all' || l.designatedBranchId === branchFilter), [branchFilter, loanOfficerList]);
 
     const [coh, setCoh] = useState(new Intl.NumberFormat('en-US', { style: 'currency', currency: 'PHP' }).format(Math.floor(Math.random() * 1000000)));
     const [bankBalance, setBankBalance] = useState(new Intl.NumberFormat('en-US', { style: 'currency', currency: 'PHP' }).format(Math.floor(Math.random() * 1000000)));
 
+    useEffect(() => {
+        fetchSummaries();
+    }, [divisionFilter, regionFilter, areaFilter, branchFilter, loanOfficerFilter]);
+
+    /*
     const summaryData = {
         activeClients: 51019,
         mcbu: 16378730,
@@ -89,6 +107,7 @@ const DashboardPage = () => {
         pastDueCollection: 50000,
         pending: 25
     };
+    */
 
     const loLabels = ['LO1', 'LO2', 'LO3', 'LO4', 'LO5', 'LO6', 'LO7', 'LO8', 'LO9', 'LO10'];
 
@@ -286,11 +305,30 @@ const DashboardPage = () => {
 
     // const branches = ['All Branches', 'Branch A', 'Branch B', 'Branch C']; // Add your actual branch list here
 
+    const fetchSummaries = () => {
+        const queries = [
+            { value: divisionFilter, field: 'divisionId'},
+            { value: regionFilter, field: 'regionId' }, 
+            { value: areaFilter, field: 'areaId' }, 
+            { valie: branchFilter, field: 'branchId' }, 
+            { value: loanOfficerFilter, field: 'loId' }].filter(a => a.value !== 'all' && !!a.value)
+                            .map(a => `${a.field}=${a.value}`).join('&');
+        const apiUrl = getApiBaseUrl() + '/dashboard?' + queries;
+        
+        fetchWrapper.get(apiUrl)
+            .then(resp => {
+                console.log(resp);
+                setSummaryData(resp.data);
+            }).catch(error => {
+                console.log(error)
+            });
+    };
+
     const fetchBranches = () => {
         const apiUrl = getApiBaseUrl() + '/dashboard/branches';
         fetchWrapper.get(apiUrl)
-            .then(branches => {
-                console.log('branches', branches);
+            .then(resp => {
+                setBranches([ { _id: 'all', name: '-', code: '' }, ... resp.data]);
             }).catch(error => {
                 console.log(error)
             });
@@ -299,8 +337,8 @@ const DashboardPage = () => {
     const fetchRegions = () => {
         const apiUrl = getApiBaseUrl() + '/dashboard/regions';
         fetchWrapper.get(apiUrl)
-            .then(regions => {
-                console.log('regions', regions);
+            .then(resp => {
+                setRegions([ { _id: 'all', name: '-' }, ... resp.data]);
             }).catch(error => {
                 console.log(error)
             });
@@ -309,8 +347,8 @@ const DashboardPage = () => {
     const fetchAreas = () => {
         const apiUrl = getApiBaseUrl() + '/dashboard/areas';
         fetchWrapper.get(apiUrl)
-            .then(areas => {
-                console.log('areas', areas);
+            .then(resp => {
+                setAreas([ { _id: 'all', name: '-' }, ... resp.data])
             }).catch(error => {
                 console.log(error)
             });
@@ -319,8 +357,19 @@ const DashboardPage = () => {
     const fetchDivisions = () => {
         const apiUrl = getApiBaseUrl() + '/dashboard/divisions';
         fetchWrapper.get(apiUrl)
-            .then(division => {
-                console.log('division', division);
+            .then(resp => {
+                setDivisions([ { _id: 'all', name: '-' }, ... resp.data])
+            }).catch(error => {
+                console.log(error)
+            });
+    };
+
+    const fetchLoanOfficers = () => {
+        const apiUrl = getApiBaseUrl() + '/dashboard/loan-officers';
+        fetchWrapper.get(apiUrl)
+            .then(resp => {
+                console.log(resp);
+                setLoanOfficers([ { _id: 'all', firstName: '-', lastName: '' }, ... resp.data])
             }).catch(error => {
                 console.log(error)
             });
@@ -331,6 +380,8 @@ const DashboardPage = () => {
         fetchRegions();
         fetchAreas();
         fetchDivisions();
+        fetchLoanOfficers();
+        fetchSummaries();
 
         generateRandomMcbuData();
         generateRandomPersonData();
@@ -377,9 +428,11 @@ const DashboardPage = () => {
                     </div>
                 </div>
                 <div className="flex items-center justify-between pb-2 border-b">
-                    <div className="w-64">
+                    {/* 
+                    <div className="w-10">
                         <ClientSearchTool />
                     </div>
+                    */}
                     <div className="flex mb-2 mt-4 gap-2">
                         <select 
                             value={timeFilter} 
@@ -394,12 +447,45 @@ const DashboardPage = () => {
                             <option value="yearly">Yearly</option>
                         </select>
                         <select 
+                            onChange={(e) => setDivisionFilter(e.target.value)}
+                            className="block pl-3 pr-10 py-1 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
+                        >
+                            {divisions.map((division, index) => (
+                                <option key={index} value={division._id}>{division.name}</option>
+                            ))}
+                        </select>
+                        <select 
+                            onChange={(e) => setRegionFilter(e.target.value)}
+                            className="block pl-3 pr-10 py-1 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
+                        >
+                            {regions.map((region, index) => (
+                                <option key={index} value={region._id}>{region.name}</option>
+                            ))}
+                        </select>
+                        <select 
+                            onChange={(e) => setAreaFilter(e.target.value)}
+                            className="block pl-3 pr-10 py-1 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
+                        >
+                            {areas.map((area, index) => (
+                                <option key={index} value={area._id}>{area.name}</option>
+                            ))}
+                        </select>
+                        <select 
                             value={branchFilter} 
                             onChange={(e) => setBranchFilter(e.target.value)}
                             className="block pl-3 pr-10 py-1 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
                         >
                             {branches.map((branch, index) => (
-                                <option key={index} value={branch.toLowerCase().replace(' ', '-')}>{branch}</option>
+                                <option key={index} value={branch._id}>{branch.code} {branch.name}</option>
+                            ))}
+                        </select>
+                        <select 
+                            value={loanOfficerFilter} 
+                            onChange={(e) => setLoanOfficerFilter(e.target.value)}
+                            className="block pl-3 pr-10 py-1 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
+                        >
+                            {loanOfficers.map((lo, index) => (
+                                <option key={index} value={lo._id}>{lo.firstName} {lo.lastName}</option>
                             ))}
                         </select>
                     </div>
