@@ -29,6 +29,8 @@ import { Chart as ChartJS, registerables } from 'chart.js';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 import Avatar from '@/lib/avatar';
 import { useRouter } from 'node_modules/next/router';
+import { getApiBaseUrl } from '@/lib/constants';
+import { fetchWrapper } from '@/lib/fetch-wrapper';
 
 ChartJS.register(...registerables, ChartDataLabels);
 
@@ -42,6 +44,11 @@ const DashboardPage = () => {
     const [personData, setPersonData] = useState({ labels: [], datasets: [] });
     const [loanCollectionData, setLoanCollectionData] = useState({ labels: [], datasets: [] });
     const [misPastDueData, setMisPastDueData] = useState({ labels: [], datasets: [] });
+
+    const [branches, setBranches] = useState([]);
+    const [areas, setAreas] = useState([]);
+    const [divisions, setDivisions] = useState([]);
+    const [loanOfficers, setLoanOfficers] = useState([]);
 
     const [coh, setCoh] = useState(new Intl.NumberFormat('en-US', { style: 'currency', currency: 'PHP' }).format(Math.floor(Math.random() * 1000000)));
     const [bankBalance, setBankBalance] = useState(new Intl.NumberFormat('en-US', { style: 'currency', currency: 'PHP' }).format(Math.floor(Math.random() * 1000000)));
@@ -277,9 +284,54 @@ const DashboardPage = () => {
         return num; // If it's already a string, return as is
     };
 
-    const branches = ['All Branches', 'Branch A', 'Branch B', 'Branch C']; // Add your actual branch list here
+    // const branches = ['All Branches', 'Branch A', 'Branch B', 'Branch C']; // Add your actual branch list here
+
+    const fetchBranches = () => {
+        const apiUrl = getApiBaseUrl() + '/dashboard/branches';
+        fetchWrapper.get(apiUrl)
+            .then(branches => {
+                console.log('branches', branches);
+            }).catch(error => {
+                console.log(error)
+            });
+    };
+
+    const fetchRegions = () => {
+        const apiUrl = getApiBaseUrl() + '/dashboard/regions';
+        fetchWrapper.get(apiUrl)
+            .then(regions => {
+                console.log('regions', regions);
+            }).catch(error => {
+                console.log(error)
+            });
+    };
+
+    const fetchAreas = () => {
+        const apiUrl = getApiBaseUrl() + '/dashboard/areas';
+        fetchWrapper.get(apiUrl)
+            .then(areas => {
+                console.log('areas', areas);
+            }).catch(error => {
+                console.log(error)
+            });
+    };
+
+    const fetchDivisions = () => {
+        const apiUrl = getApiBaseUrl() + '/dashboard/divisions';
+        fetchWrapper.get(apiUrl)
+            .then(division => {
+                console.log('division', division);
+            }).catch(error => {
+                console.log(error)
+            });
+    };
 
     useEffect(() => {
+        fetchBranches();
+        fetchRegions();
+        fetchAreas();
+        fetchDivisions();
+
         generateRandomMcbuData();
         generateRandomPersonData();
         generateRandomLoanCollectionData();
