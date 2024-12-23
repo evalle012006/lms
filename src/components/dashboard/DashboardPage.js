@@ -310,14 +310,13 @@ const DashboardPage = () => {
             { value: divisionFilter, field: 'divisionId'},
             { value: regionFilter, field: 'regionId' }, 
             { value: areaFilter, field: 'areaId' }, 
-            { valie: branchFilter, field: 'branchId' }, 
+            { value: branchFilter, field: 'branchId' }, 
             { value: loanOfficerFilter, field: 'loId' }].filter(a => a.value !== 'all' && !!a.value)
                             .map(a => `${a.field}=${a.value}`).join('&');
         const apiUrl = getApiBaseUrl() + '/dashboard?' + queries;
         
         fetchWrapper.get(apiUrl)
             .then(resp => {
-                console.log(resp);
                 setSummaryData(resp.data);
             }).catch(error => {
                 console.log(error)
@@ -368,7 +367,6 @@ const DashboardPage = () => {
         const apiUrl = getApiBaseUrl() + '/dashboard/loan-officers';
         fetchWrapper.get(apiUrl)
             .then(resp => {
-                console.log(resp);
                 setLoanOfficers([ { _id: 'all', firstName: '-', lastName: '' }, ... resp.data])
             }).catch(error => {
                 console.log(error)
@@ -383,10 +381,12 @@ const DashboardPage = () => {
         fetchLoanOfficers();
         fetchSummaries();
 
+        /*
         generateRandomMcbuData();
         generateRandomPersonData();
         generateRandomLoanCollectionData();
         generateRandomMisPastDueData();
+        */
     }, []);
 
     const CardItem = ({ title, value, Icon }) => {
