@@ -60,7 +60,7 @@ async function getRegions(req, res) {
     }
 
     const result =  await graph.query(
-        queryQl(REGION_TYPE, { where: where?.[0] ?? undefined })
+        queryQl(REGION_TYPE, { where: where?.[0] ?? undefined,  order_by: [{ name: 'asc' }] })
     ).then(res => res.data.regions ?? []);
 
     res.status(200)

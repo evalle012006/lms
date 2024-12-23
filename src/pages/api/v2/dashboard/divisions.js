@@ -56,7 +56,7 @@ async function getDivisions(req, res) {
     }
 
     const result =  await graph.query(
-        queryQl(DIVISION_TYPE, { where: where?.[0] ?? undefined })
+        queryQl(DIVISION_TYPE, { where: where?.[0] ?? undefined,  order_by: [{ name: 'asc' }] })
     ).then(res => res.data.divisions ?? []);
 
     res.status(200)

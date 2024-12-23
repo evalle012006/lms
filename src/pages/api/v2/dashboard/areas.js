@@ -56,7 +56,7 @@ async function getAreas(req, res) {
     }
 
     const result =  await graph.query(
-        queryQl(AREA_TYPE, { where: where?.[0] ?? undefined })
+        queryQl(AREA_TYPE, { where: where?.[0] ?? undefined,  order_by: [{ name: 'asc' }] })
     ).then(res => res.data.areas ?? []);
 
     res.status(200)
