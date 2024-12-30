@@ -1776,6 +1776,9 @@ const CashCollectionDetailsPage = () => {
                             toast.error("Error occured. Invalid remarks. Should only choose a reloaner/offset remarks.");
                         } else if (temp.status == 'completed' && temp?.advance && remarks.value?.startsWith('offset')) {
                             toast.error(`Error occured. Slot No ${temp.slotNo} has a pending loan release.`);
+                        } else if (!temp.maturedPD && remarks.value == 'offset-matured-pd' ) {
+                            temp.error = true;
+                            toast.error("Invalid remarks. Client was not mark as matured past due.");
                         } else {
                             // always reset these fields
                             temp.error = false;
@@ -2151,42 +2154,47 @@ const CashCollectionDetailsPage = () => {
                                     toast.error("Invalid remarks. No Overstated / Understated in loan balance.");
                                 }
                             } else if (remarks.value === 'matured-past due') {
-                                const today = moment(currentDate);
-                                const endDate = moment(temp.endDate);
-    
-                                // if (today.diff(endDate, 'days') > 0) {
-                                    const paymentCollection = parseFloat(temp.paymentCollection);
-                                    let loanBalance = parseFloat(temp.loanBalance);
+                                if (temp.pastDue && temp.pastDue > 0) {
+                                    const today = moment(currentDate);
+                                    const endDate = moment(temp.endDate);
+        
+                                    // if (today.diff(endDate, 'days') > 0) {
+                                        const paymentCollection = parseFloat(temp.paymentCollection);
+                                        let loanBalance = parseFloat(temp.loanBalance);
 
-                                    if (paymentCollection > 0 && temp.prevData.loanBalance != loanBalance) {
-                                        loanBalance += paymentCollection;
-                                        temp.paymentCollection = 0;
-                                        temp.paymentCollectionStr = '-';
-                                    }
-    
-                                    temp.mispayment = false;
-                                    temp.mispaymentStr = 'No';
-                                    temp.targetCollection = 0;
-                                    temp.targetCollectionStr = '-';
-                                    temp.activeLoan = 0;
-                                    temp.loanBalance = loanBalance;
-                                    temp.loanBalanceStr = loanBalance > 0 ? formatPricePhp(loanBalance) : '-';
-                                    temp.pastDue = loanBalance;
-                                    temp.pastDueStr = formatPricePhp(temp.pastDue);
-    
-                                    temp.excused = true;
-                                    temp.mcbuError = false;
-                                    if (temp.mcbuCol && temp.mcbuCol > 0) {
-                                        temp.mcbu = temp.mcbu - temp.mcbuCol;
-                                        temp.mcbuStr = temp.mcbu > 0 ? formatPricePhp(temp.mcbu) : '-';
-                                    }
-    
-                                    temp.mcbuCol = 0;
-                                    temp.mcbuColStr = '-';
-                                // } else {
-                                //     temp.error = true;
-                                //     toast.error(`Invalid remarks. Loan is not yet past ${temp.loanTerms} days.`);
-                                // }
+                                        if (paymentCollection > 0 && temp.prevData.loanBalance != loanBalance) {
+                                            loanBalance += paymentCollection;
+                                            temp.paymentCollection = 0;
+                                            temp.paymentCollectionStr = '-';
+                                        }
+        
+                                        temp.mispayment = false;
+                                        temp.mispaymentStr = 'No';
+                                        temp.targetCollection = 0;
+                                        temp.targetCollectionStr = '-';
+                                        temp.activeLoan = 0;
+                                        temp.loanBalance = loanBalance;
+                                        temp.loanBalanceStr = loanBalance > 0 ? formatPricePhp(loanBalance) : '-';
+                                        temp.pastDue = loanBalance;
+                                        temp.pastDueStr = formatPricePhp(temp.pastDue);
+        
+                                        temp.excused = true;
+                                        temp.mcbuError = false;
+                                        if (temp.mcbuCol && temp.mcbuCol > 0) {
+                                            temp.mcbu = temp.mcbu - temp.mcbuCol;
+                                            temp.mcbuStr = temp.mcbu > 0 ? formatPricePhp(temp.mcbu) : '-';
+                                        }
+        
+                                        temp.mcbuCol = 0;
+                                        temp.mcbuColStr = '-';
+                                    // } else {
+                                    //     temp.error = true;
+                                    //     toast.error(`Invalid remarks. Loan is not yet past ${temp.loanTerms} days.`);
+                                    // }
+                                } else {
+                                    temp.error = true;
+                                    toast.error('Invalid remarks. No past due balance.');
+                                }
                             } else if (remarks.value === 'matured_past_due_collection') {
                                 if (temp?.maturedPD) {
                                     temp.mpdc = true;
