@@ -11,7 +11,7 @@ import { setGroup, setGroupList } from '@/redux/actions/groupActions';
 import DetailsHeader from '@/components/groups/DetailsHeader';
 import moment from 'moment';
 import { containsAnyLetters, formatPricePhp, UppercaseFirstLetter } from '@/lib/utils';
-import { ArrowPathIcon, CurrencyDollarIcon, ReceiptPercentIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, ClockIcon, CurrencyDollarIcon, ExclamationTriangleIcon, ReceiptPercentIcon } from '@heroicons/react/24/outline';
 import Select from 'react-select';
 import { DropdownIndicator, borderStyles, styles } from "@/styles/select";
 import AddUpdateLoan from '@/components/transactions/loan-application/AddUpdateLoanDrawer';
@@ -1259,7 +1259,7 @@ const CashCollectionDetailsPage = () => {
                         delete temp.dcmc;
                         delete temp.mpdc;
                     }
-                    delete temp.dirty;
+                    delete temp._dirty;
                     delete temp.group;
                     delete temp.pastDueStr;
                     delete temp.groupCashCollections;
@@ -1375,9 +1375,9 @@ const CashCollectionDetailsPage = () => {
                     return temp;   
                 }).filter(cc => cc.status !== "totals");
 
-                const pendings = dataArr.filter(cc => {
-                    return cc?.advance && cc.status == 'pending';
-                });
+                // const pendings = dataArr.filter(cc => {
+                //     return cc?.advance && cc.status == 'pending';
+                // });
                 // console.log(pendings)
                 console.log(dataArr)
                 if (save) {
@@ -1504,7 +1504,7 @@ const CashCollectionDetailsPage = () => {
                                 || (parseFloat(payment) > temp.activeLoan && parseFloat(payment) % parseFloat(temp.activeLoan) === 0)
                                 || parseFloat(payment) === parseFloat(temp.loanBalance)
                                 || (parseFloat(payment) > 0 && parseFloat(payment) < parseFloat(temp.activeLoan))) {
-                                temp.dirty = true;
+                                temp._dirty = true;
                                 temp.error = false;
     
                                 temp.paymentCollection = parseFloat(payment);
@@ -2381,7 +2381,7 @@ const CashCollectionDetailsPage = () => {
             delete temp.paymentCollectionStr;
             delete temp.noOfPaymentStr;
             delete temp.error;
-            delete temp.dirty;
+            delete temp._dirty;
             delete temp.pastDueStr;
             delete temp.groupCashCollections;
             delete temp.loanOfficer;
@@ -2480,6 +2480,46 @@ const CashCollectionDetailsPage = () => {
             dispatch(setCashCollectionGroup(list));
         } else {
             toast.error('Client has not reached the minimum of 1000 MCBU to accumulate interest.');
+        }
+    }
+
+    const handleMarkLate = (selected) => {
+        if (selected?.status == 'active') {
+            const list = data.map((cc, idx) => {
+                let temp = {...cc};
+
+                if (selected.slotNo === cc.slotNo) {
+                    temp.latePayment = !temp.latePayment;
+                    temp._dirty = true;
+                    setEditMode(true);
+                }
+
+                return temp;
+            });
+
+            dispatch(setCashCollectionGroup(list));
+        } else {
+            toast.error('Loan should be active.')
+        }
+    }
+
+    const handleMarkDelinquent = (selected) => {
+        if (selected?.status == 'active') {
+            const list = data.map((cc, idx) => {
+                let temp = {...cc};
+
+                if (selected.slotNo === cc.slotNo) {
+                    temp.delinquent = !temp.delinquent;
+                    temp._dirty = true;
+                    setEditMode(true);
+                }
+
+                return temp;
+            });
+
+            dispatch(setCashCollectionGroup(list));
+        } else {
+            toast.error('Loan should be active.')
         }
     }
 
@@ -2677,6 +2717,18 @@ const CashCollectionDetailsPage = () => {
 
     useEffect(() => {
         setDropDownActions([
+            {
+                label: 'Mark as Late',
+                action: handleMarkLate,
+                icon: <ClockIcon className="w-5 h-5" title="Mark as Late" />,
+                hidden: true
+            },
+            {
+                label: 'Mark as Delinquent',
+                action: handleMarkDelinquent,
+                icon: <ExclamationTriangleIcon className="w-5 h-5" title="Mark as Delinquent" />,
+                hidden: true
+            },
             // {
             //     label: 'Reloan',
             //     action: handleReloan,
@@ -2761,7 +2813,7 @@ const CashCollectionDetailsPage = () => {
                                             rowBg = 'bg-lime-100';
                                         } else if (cc.status === "closed") {
                                             rowBg = 'bg-zinc-200';
-                                        } else if (cc.excused) {
+                                        } else if (cc.excused || cc.delinquent) {
                                             rowBg = 'bg-orange-100';
                                         } else if (cc.latePayment) {
                                             rowBg = 'bg-pink-100';

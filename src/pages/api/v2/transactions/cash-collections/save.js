@@ -56,7 +56,7 @@ async function save(req, res) {
 
                 const timeArgs = currentTime.split(" ");
                 // put this in the config settings should be by hour and minute?
-                collection.latePayment = (timeArgs[1] == 'PM' && timeArgs[0].startsWith('6')) ? true : false;
+                // collection.latePayment = (timeArgs[1] == 'PM' && timeArgs[0].startsWith('6')) ? true : false;
                 collection.timeAdded = currentTime;
 
                 if (cc.occurence === "weekly") {
@@ -122,7 +122,7 @@ async function save(req, res) {
                 
                 if (collection.status !== "tomorrow" && collection.status !== "pending" && !collection.draft) {
                     await updateLoan(user_id, mutationQl, collection, currentDate)
-                    await updateClient(user_id, mutationQl, collection, currentDate);
+                    await updateClient(user_id, mutationQl, collection);
                 }
 
                 if (collection.status == 'tomorrow' && collection.mcbuWithdrawal > 0) {
@@ -389,7 +389,7 @@ async function updateLoanMcbuWithdrawal(user_id, mutationQL, collection) {
     }
 }
 
-async function updateClient(user_id, mutationQl, loan, currentDate) {
+async function updateClient(user_id, mutationQl, loan) {
 
     let client = await graph.query(queryQl(CLIENT_TYPE('client'), { where: { _id: { _eq: loan.clientId } } })).then(res => res.data.client);
     if (client.length > 0) {
@@ -431,7 +431,7 @@ async function updateClient(user_id, mutationQl, loan, currentDate) {
 
         // client.mcbuHistory = mcbuHistory;
 
-        if (loan.remarks && loan.remarks.value?.startsWith('delinquent')) {
+        if ((loan.remarks && loan.remarks.value?.startsWith('delinquent') && loan.delinquent)) {
             client.delinquent = true;
         }
 

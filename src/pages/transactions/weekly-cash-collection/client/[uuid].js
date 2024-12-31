@@ -11,7 +11,7 @@ import { setGroup, setGroupList } from '@/redux/actions/groupActions';
 import DetailsHeader from '@/components/groups/DetailsHeader';
 import moment from 'moment';
 import { containsAnyLetters, formatPricePhp, UppercaseFirstLetter } from '@/lib/utils';
-import { ArrowPathIcon, ArrowUturnLeftIcon, CurrencyDollarIcon, CalculatorIcon, ReceiptPercentIcon, StopCircleIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, ArrowUturnLeftIcon, ClockIcon, CurrencyDollarIcon, ExclamationTriangleIcon, ReceiptPercentIcon, StopCircleIcon } from '@heroicons/react/24/outline';
 import Select from 'react-select';
 import { DropdownIndicator, borderStyles } from "@/styles/select";
 import AddUpdateLoan from '@/components/transactions/loan-application/AddUpdateLoanDrawer';
@@ -2498,6 +2498,46 @@ const CashCollectionDetailsPage = () => {
         }
     }
 
+    const handleMarkLate = (selected) => {
+        if (selected?.status == 'active') {
+            const list = data.map((cc, idx) => {
+                let temp = {...cc};
+
+                if (selected.slotNo === cc.slotNo) {
+                    temp.latePayment = !temp.latePayment;
+                    temp._dirty = true;
+                    setEditMode(true);
+                }
+
+                return temp;
+            });
+
+            dispatch(setCashCollectionGroup(list));
+        } else {
+            toast.error('Loan should be active.')
+        }
+    }
+
+    const handleMarkDelinquent = (selected) => {
+        if (selected?.status == 'active') {
+            const list = data.map((cc, idx) => {
+                let temp = {...cc};
+
+                if (selected.slotNo === cc.slotNo) {
+                    temp.delinquent = !temp.delinquent;
+                    temp._dirty = true;
+                    setEditMode(true);
+                }
+
+                return temp;
+            });
+
+            dispatch(setCashCollectionGroup(list));
+        } else {
+            toast.error('Loan should be active.')
+        }
+    }
+
     const addBlankAndTotal = (isFiltering, dataArr) => {
         let cashCollection = [...dataArr];
         const groupCapacity = currentGroup && currentGroup.capacity;
@@ -2748,6 +2788,18 @@ const CashCollectionDetailsPage = () => {
     useEffect(() => {
         setDropDownActions(
             [
+                {
+                    label: 'Mark as Late',
+                    action: handleMarkLate,
+                    icon: <ClockIcon className="w-5 h-5" title="Mark as Late" />,
+                    hidden: true
+                },
+                {
+                    label: 'Mark as Delinquent',
+                    action: handleMarkDelinquent,
+                    icon: <ExclamationTriangleIcon className="w-5 h-5" title="Mark as Delinquent" />,
+                    hidden: true
+                },
                 // {
                 //     label: 'Reloan',
                 //     action: handleReloan,
@@ -2831,7 +2883,7 @@ const CashCollectionDetailsPage = () => {
                                             rowBg = 'bg-lime-100';
                                         } else if (cc.status === "closed") {
                                             rowBg = 'bg-zinc-200';
-                                        } else if (cc.excused) {
+                                        } else if (cc.excused || cc.delinquent) {
                                             rowBg = 'bg-orange-100';
                                         } else if (cc.latePayment) {
                                             rowBg = 'bg-pink-100';
@@ -2851,7 +2903,7 @@ const CashCollectionDetailsPage = () => {
                                             <tr key={index} className={`w-full hover:bg-slate-200 border-b border-b-gray-300 font-proxima 
                                                                 ${rowBg} ${cc.status === 'totals' ? 'font-bold font-proxima-bold text-red-400' : 'text-gray-600'}`} >
                                                 {currentUser.role.rep == 3 && <th className="p-2 text-center">{(cc.status !== 'totals' && cc.clientId && (cc?.transferStr == null || cc?.transferStr == '-')) && <CheckBox size={"md"} value={cc.selected} onChange={() => handleSelectRow(index)} />}</th>}
-                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.status !== 'totals' ? cc.slotNo : '' }</td>
+                                                <td className="bg- px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.status !== 'totals' ? cc.slotNo : '' }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer" onClick={() => handleShowClientInfoModal(cc)}>{ cc.fullName }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.coMaker }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.loanCycle }</td>
