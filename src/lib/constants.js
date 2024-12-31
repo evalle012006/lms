@@ -62,14 +62,16 @@ export const LOR_ONLY_WEEKLY_RELOAN_OFFSET_REMARKS = [
     { label: 'Reloaner', value: 'reloaner'},
     { label: 'For Close/Offset - Good Client', value: 'offset-good'},
     { label: 'For Close/Offset - Delinquent Client', value: 'offset-delinquent'},
-    { label: 'For Close/Offset - Unclaimed Amount', value: 'offset-unclaimed'}
+    { label: 'For Close/Offset - Unclaimed Amount', value: 'offset-unclaimed'},
+    { label: 'For Close/Offset - Matured PD Client', value: 'offset-matured-pd'}
 ];
 
 export const LOR_ONLY_OFFSET_REMARKS = [
     { label: 'Remarks', value: ''},
     { label: 'For Close/Offset - Good Client', value: 'offset-good'},
     { label: 'For Close/Offset - Delinquent Client', value: 'offset-delinquent'},
-    { label: 'For Close/Offset - Unclaimed Amount', value: 'offset-unclaimed'}
+    { label: 'For Close/Offset - Unclaimed Amount', value: 'offset-unclaimed'},
+    { label: 'For Close/Offset - Matured PD Client', value: 'offset-matured-pd'}
 ];
 
 export const LOR_MISPAY_REMARKS = [

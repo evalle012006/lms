@@ -280,7 +280,7 @@ const LoanOfficerSummary = () => {
                     };
                 }
             });
-
+            console.log(losList)
             losList = calculatePersons(losList);
             losList = calculateWeeklyTotals(losList);
             losList.push(calculateMonthlyTotals(losList[0], losList.filter(los => los.weekTotal)));
@@ -529,7 +529,14 @@ const LoanOfficerSummary = () => {
                     temp.activeLoanReleaseAmount = temp.activeLoanReleaseAmount > 0 ? temp.activeLoanReleaseAmount : fBal.activeLoanReleaseAmount;
                     temp.activeLoanReleaseAmountStr = formatPricePhp(temp.activeLoanReleaseAmount);
                     temp.activeBorrowers = temp.activeBorrowers > 0 ? temp.activeBorrowers : fBal.activeBorrowers;
-                    temp.loanBalance = temp.loanBalance > 0 ? temp.loanBalance : fBal.loanBalance;
+                    temp.loanBalance =
+                        !isNaN(temp.loanBalance) && temp.loanBalance > 0 
+                          ? temp.loanBalance 
+                          : (!isNaN(fBal.loanBalance) && fBal.loanBalance > 0)
+                            ? fBal.loanBalance 
+                            : !isNaN(temp.loanBalance)
+                              ? temp.loanBalance
+                              : 0;
                     temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
                     temp.mcbuBalance = fBalMcbuBalance + mcbuActual - mcbuWithdrawal + mcbuInterest - mcbuReturnAmt + mcbuTransfer;
                     temp.mcbuBalanceStr = formatPricePhp(temp.mcbuBalance);
@@ -539,7 +546,14 @@ const LoanOfficerSummary = () => {
                     temp.activeLoanReleaseAmount = temp.activeLoanReleaseAmount > 0 ? temp.activeLoanReleaseAmount : prevLos.activeLoanReleaseAmount;
                     temp.activeLoanReleaseAmountStr = formatPricePhp(temp.activeLoanReleaseAmount);
                     temp.activeBorrowers = temp.activeBorrowers > 0 ? temp.activeBorrowers : prevLos.activeBorrowers;
-                    temp.loanBalance = temp.loanBalance > 0 ? temp.loanBalance : prevLos.loanBalance;
+                    temp.loanBalance =
+                        !isNaN(temp.loanBalance) && temp.loanBalance > 0 
+                          ? temp.loanBalance 
+                          : (!isNaN(prevLos.loanBalance) && prevLos.loanBalance > 0)
+                            ? prevLos.loanBalance 
+                            : !isNaN(temp.loanBalance)
+                              ? temp.loanBalance
+                              : 0;
                     temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
                     temp.mcbuBalance = prevLos.mcbuBalance + mcbuActual - mcbuWithdrawal + mcbuInterest - mcbuReturnAmt + mcbuTransfer;
                     temp.mcbuBalanceStr = formatPricePhp(temp.mcbuBalance);
