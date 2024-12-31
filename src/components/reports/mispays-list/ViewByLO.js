@@ -78,9 +78,9 @@ const ViewByLOPage = ({ dateFilter, remarks }) => {
     return (
         <React.Fragment>
             {loading ? (
-                <div className="absolute top-1/2 left-1/2">
+                // <div className="absolute top-1/2 left-1/2">
                     <Spinner />
-                </div>
+                // </div>
             ) : (
                 <div className='flex flex-col mt-2 p-4'>
                     <TableComponent columns={columns} data={list} showPagination={false} showFilters={false} hasActionButtons={false} rowClick={handleRowClick} />

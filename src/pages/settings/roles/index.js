@@ -199,9 +199,9 @@ const RolesPage = () => {
             <div className="pb-4">
                 {loading ?
                     (
-                        <div className="absolute top-1/2 left-1/2">
+                        // <div className="absolute top-1/2 left-1/2">
                             <Spinner />
-                        </div>
+                        // </div>
                     ) : <TableComponent columns={columns} data={list} hasActionButtons={true} rowActionButtons={rowActionButtons} showFilters={false} />}
             </div>
             <AddUpdateRole mode={mode} permissions={permissions} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />

@@ -546,9 +546,9 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
             <div className="pb-4">
                 {loading ?
                     (
-                        <div className="absolute top-1/2 left-1/2">
+                        // <div className="absolute top-1/2 left-1/2">
                             <Spinner />
-                        </div>
+                        // </div>
                     ) : (
                         <React.Fragment>
                             {status == 'pending' ? (

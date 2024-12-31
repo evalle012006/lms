@@ -135,9 +135,9 @@ const UserDetailsPage = () => {
     return (
         <Layout>
             {loading ? (
-                <div className="absolute top-1/2 left-1/2">
+                // <div className="absolute top-1/2 left-1/2">
                     <Spinner />
-                </div>
+                // </div>
             ) : (
                 <div className="flex flex-col">
                     <div className="mx-auto my-4 bg-white w-3/4 p-4 rounded-lg">

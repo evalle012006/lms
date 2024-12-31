@@ -1178,9 +1178,9 @@ const LoanOfficerSummary = () => {
     return (
         <Layout header={false} noPad={false} hScroll={false} noVScrollBody={true} vScroll={false}>
             {loading ? (
-                <div className="absolute top-1/2 left-1/2">
+                // <div className="absolute top-1/2 left-1/2">
                     <Spinner />
-                </div>
+                // </div>
             ) : (
                 <div className="flex flex-col">
                     <LOSHeader 

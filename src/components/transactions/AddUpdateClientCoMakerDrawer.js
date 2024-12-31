@@ -91,9 +91,9 @@ const AddUpdateClientCoMaker = ({ client = {}, showSidebar, setShowSidebar, onCl
         <React.Fragment>
             <SideBar title={title} showSidebar={showSidebar} setShowSidebar={setShowSidebar} hasCloseButton={false}>
                 {loading ? (
-                    <div className="flex items-center justify-center h-screen">
+                    // <div className="flex items-center justify-center h-screen">
                         <Spinner />
-                    </div>
+                    // </div>
                 ) : (
                     <div className="px-2 pb-4">
                         <Formik enableReinitialize={true}

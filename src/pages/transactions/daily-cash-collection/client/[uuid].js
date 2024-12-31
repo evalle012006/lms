@@ -2305,7 +2305,7 @@ const CashCollectionDetailsPage = () => {
         const selectedRows = data.filter(d => d.selected);
         if (selectedRows.length > 0) {
             setLoading(true);
-            const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collections/revert-transaction', selectedRows);
+            const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collections/rollback-transaction', selectedRows);
             if (response.success) {
                 setTimeout(() => {
                     setLoading(false);
@@ -2707,9 +2707,9 @@ const CashCollectionDetailsPage = () => {
     return (
         <Layout header={false} noPad={true} hScroll={false}>
             {loading ? (
-                <div className="absolute top-1/2 left-1/2">
+                // <div className="absolute top-1/2 left-1/2">
                     <Spinner />
-                </div>
+                // </div>
             ) : (
                 <div className="overflow-x-auto">
                     {data && <DetailsHeader page={'transaction'} showSaveButton={currentUser.role.rep > 2 ? (isWeekend || isHoliday) ? false : editMode : false}

@@ -1274,9 +1274,9 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
     return (
         <React.Fragment>
             {loading ? (
-                <div className="absolute top-1/2 left-1/2">
+                // <div className="absolute top-1/2 left-1/2">
                     <Spinner />
-                </div>
+                // </div>
             ) : (
                 <TableComponent columns={columns} data={cashCollectionList} showPagination={false} showFilters={false} hasActionButtons={false} rowClick={handleRowClick} />
             )}

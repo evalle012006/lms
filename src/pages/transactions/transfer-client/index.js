@@ -545,9 +545,9 @@ const TransferClientPage = () => {
         <Layout actionButtons={currentUser.role.rep <= 3 && actionButtons}>
             <div className="pb-4">
                 { loading ? (
-                    <div className="absolute top-1/2 left-1/2">
+                    // <div className="absolute top-1/2 left-1/2">
                         <Spinner />
-                    </div>
+                    // </div>
                 ) : (
                     <React.Fragment>
                         <nav className="flex pl-10 bg-white border-b border-gray-300">

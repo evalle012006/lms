@@ -205,9 +205,9 @@ const RevertTransferPage = () => {
             <div className="pb-4">
                 {loading ?
                     (
-                        <div className="absolute top-1/2 left-1/2">
+                        // <div className="absolute top-1/2 left-1/2">
                             <Spinner />
-                        </div>
+                        // </div>
                     ) : <TableComponent columns={columns} data={list} hasActionButtons={(currentUser.role.rep <= 2 && !isWeekend && !isHoliday) ? true : false} rowActionButtons={!isWeekend && !isHoliday && rowActionButtons} showFilters={false} />}
             </div>
             <Dialog show={showWarningDialog}>

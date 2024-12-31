@@ -44,9 +44,9 @@ const ClientNDSPage = () => {
     return (
         <React.Fragment>
             {loading ? (
-                <div className="absolute top-1/2 left-1/2">
+                // <div className="absolute top-1/2 left-1/2">
                     <Spinner />
-                </div>
+                // </div>
             ): (
                 <div className='flex flex-col w-full p-12'>
                     <div className='flex justify-end mr-8'>

@@ -183,9 +183,9 @@ const WeeklyCashCollectionDetailsPage = () => {
     return (
         <Layout header={false} noPad={true}>
             {loading ? (
-                <div className="absolute top-1/2 left-1/2">
+                // <div className="absolute top-1/2 left-1/2">
                     <Spinner />
-                </div>
+                // </div>
             ) : (
                 <div className="overflow-x-auto">
                     {currentLO && <DetailsHeader page={2} pageName="lo-view" mode={'weekly'} currentDate={moment(currentDate).format('dddd, MMMM DD, YYYY')} 

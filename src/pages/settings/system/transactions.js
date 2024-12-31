@@ -60,9 +60,9 @@ const TransactionsSettingsPage = (props) => {
     return (
         <React.Fragment>
             {loading ? (
-                    <div className="absolute top-1/2 left-1/2">
+                    // <div className="absolute top-1/2 left-1/2">
                         <Spinner />
-                    </div>
+                    // </div>
                 ) : (
                     <div className="profile-photo bg-white rounded-lg p-3 proxima-regular mt-10 lg:w-5/6 w-80 lg:mt-0 m-4">
                         <div className="proxima-bold mt-2">Transaction Settings</div>

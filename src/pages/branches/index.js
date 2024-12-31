@@ -172,9 +172,9 @@ const BranchesPage = () => {
             <div className="pb-4">
                 {loading ?
                     (
-                        <div className="absolute top-1/2 left-1/2">
+                        // <div className="absolute top-1/2 left-1/2">
                             <Spinner />
-                        </div>
+                        // </div>
                     ) : <TableComponent columns={columns} data={list} hasActionButtons={true} rowActionButtons={rowActionButtons} showFilters={false} />}
             </div>
             <AddUpdateBranch mode={mode} branch={branch} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
