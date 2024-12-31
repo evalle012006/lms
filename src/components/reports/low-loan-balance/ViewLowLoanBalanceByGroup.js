@@ -127,9 +127,9 @@ const ViewLowBalanceByGroupsPage = ({ amount, amountOperator, noOfPayments, noOf
     return (
         <React.Fragment>
             {loading ? (
-                <div className="absolute top-1/2 left-1/2">
+                // <div className="absolute top-1/2 left-1/2">
                     <Spinner />
-                </div>
+                // </div>
             ) : (
                 <div className='flex flex-col mt-2 p-4'>
                     <div className='flex justify-end mr-6 h-10 my-auto'>

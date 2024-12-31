@@ -235,9 +235,9 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
     return (
         <SideBar title={mode === 'add' ? 'Add Client' : 'Edit Client'} showSidebar={showSidebar} setShowSidebar={setShowSidebar} hasCloseButton={false}>
             {loading ? (
-                <div className="flex items-center justify-center h-screen">
+                // <div className="flex items-center justify-center h-screen">
                     <Spinner />
-                </div>
+                // </div>
             ) : (
                 <div className="px-2">
                     {mode === "add" && (

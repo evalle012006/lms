@@ -133,9 +133,9 @@ const HolidaysSettingsPage = (props) => {
     return (
         <React.Fragment>
             {loading ? (
-                    <div className="absolute top-1/2 left-1/2">
+                    // <div className="absolute top-1/2 left-1/2">
                         <Spinner />
-                    </div>
+                    // </div>
                 ) : (
                     <div className="profile-photo bg-white rounded-lg p-3 proxima-regular mt-10 w-11/12 lg:mt-0 m-4">
                         <div className='flex flex-row justify-between'>

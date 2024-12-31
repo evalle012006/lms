@@ -164,9 +164,9 @@ const DailyCashCollectionPage = () => {
     return (
         <Layout header={false} noPad={true}>
             {loading ? (
-                <div className="absolute top-1/2 left-1/2">
+                // <div className="absolute top-1/2 left-1/2">
                     <Spinner />
-                </div>
+                // </div>
             ) : (
                 <React.Fragment>
                     <div className="overflow-x-auto">

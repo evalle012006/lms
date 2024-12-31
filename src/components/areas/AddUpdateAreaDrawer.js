@@ -113,9 +113,9 @@ const AddUpdateArea = ({ mode = 'add', area = {}, managerList=[], showSidebar, s
         <React.Fragment>
             <SideBar title={mode === 'add' ? 'Add Area' : 'Edit Area'} showSidebar={showSidebar} setShowSidebar={setShowSidebar} hasCloseButton={false}>
                 {loading ? (
-                    <div className="flex items-center justify-center h-screen">
+                    // <div className="flex items-center justify-center h-screen">
                         <Spinner />
-                    </div>
+                    // </div>
                 ) : (
                     <div className="px-2">
                         <Formik enableReinitialize={true}

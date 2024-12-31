@@ -304,9 +304,9 @@ const ViewByGroupsPage = () => {
                 <div className="pb-4">
                     {loading ?
                         (
-                            <div className="absolute top-1/2 left-1/2">
+                            // <div className="absolute top-1/2 left-1/2">
                                 <Spinner />
-                            </div>
+                            // </div>
                         ) : <TableComponent columns={columns} data={list} pageSize={50} hasActionButtons={false} showFilters={false} rowClick={handleRowClick} />}
                 </div>
             ) : (
@@ -314,9 +314,9 @@ const ViewByGroupsPage = () => {
                     <div className="pb-4">
                         {loading ?
                             (
-                                <div className="absolute top-1/2 left-1/2">
+                                // <div className="absolute top-1/2 left-1/2">
                                     <Spinner />
-                                </div>
+                                // </div>
                             ) : (
                                 <div>
                                     <TableComponent columns={columns} data={list} pageSize={50} hasActionButtons={currentUser.role.rep > 2 ? true : false} rowActionButtons={currentUser.role.rep > 2 && rowActionButtons} showFilters={false} rowClick={handleRowClick} />

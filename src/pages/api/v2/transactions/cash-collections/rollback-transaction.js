@@ -27,66 +27,114 @@ const getLoanById = (_id) => graph.query(queryQl(LOAN_TYPE('loans'), {where: { _
 async function revert(req, res) {
     const user_id = req?.auth?.sub;
     const cashCollections = req.body;
-    const currentDate = moment(getCurrentDate()).format('YYYY-MM-DD');
-    
+    let statusCode = 200;
+    let response = {};
     const mutationQL = [];
-    
-    await Promise.all(cashCollections.map(async (cc) => {
+  
+    try {
+      // Process each cash collection sequentially to avoid race conditions
+      for (const cc of cashCollections) {
         let cashCollection = {...cc};
-        logger.debug({user_id, page: `Reverting Transaction Loan: ${cashCollection.clientId}`, data: cashCollection});
         let loanId = cashCollection.loanId;
-        let cashCollectionId = cashCollection._id;
-
-        // get loan history 
-        const [loan_history] = await graph.query(
-            queryQl(createGraphType('loans_history', `_id data`)('loan'), {
-                where: {
-                    loan_id: { _eq: loanId ?? 'null' }
-                },
-                limit: 1,
-                order_by: [{
-                    created_dt: 'desc'
-                }]
-            })
-        ).then(res => res.data.loan);
-
-        if (loan_history) {
-
-            // first delete cashCollection
-            mutationQL.push(
-                deleteQl(CASH_COLLECTION_TYPE('cash_collections_' + mutationQL.length + 1), {
-                    _id: { _eq: cashCollectionId }
-                })
-            );
-
-            // update loan
-            mutationQL.push(
-                updateQl(createGraphType('loans', `_id`)('update_loan'), {
-                    set: loan_history.data,
-                    where: {
-                        _id: { _eq: loanId ?? 'null' }
-                    }
-                })
-            );
-
-            // delete loan history
-            mutationQL.push(
-                deleteQl(createGraphType('loans_history', `_id`)('loan_history'), {
-                    _id: { _eq: loan_history._id ?? 'null' }
-                })
-            );
+        if (cashCollection.status == 'pending' || cashCollection.status == 'tomorrow') {
+            loanId = cashCollection.prevLoanId;
         }
-    }));
 
-    const result = await graph.mutation(
-        ... mutationQL
-    );
+        logger.debug({
+          user_id, 
+          page: `Reverting Transaction Loan: ${cashCollection.clientId}`, 
+          data: cashCollection
+        });
+        
+        // Get loan history
+        const loanHistoryResult = await graph.query(
+          queryQl(createGraphType('loans_history', `_id data`)('loan_history'), {
+            where: {
+              loan_id: { _eq: loanId }
+            },
+            limit: 1,
+            order_by: [{
+              created_dt: 'desc'
+            }]
+          })
+        );
+  
+        const loan_history = loanHistoryResult.data?.loan_history?.[0];
+  
+        if (loan_history) {
+          // Delete cash collection
+          mutationQL.push(
+            deleteQl(
+              CASH_COLLECTION_TYPE(`cash_collection_${mutationQL.length}`),
+              {
+                _id: { _eq: cashCollection._id }
+              }
+            )
+          );
 
-    if (result) {
-        response = { success: true };
-    }
-
-    res.status(statusCode)
+          console.log('status:', cashCollection.status)
+          if (cashCollection.status == 'pending' || cashCollection.status == 'tomorrow') {
+            // Delete new loan
+            mutationQL.push(
+                deleteQl(
+                createGraphType('loans', `_id`)(`loans_${mutationQL.length}`),
+                {
+                    _id: { _eq: cashCollection.loanId }
+                }
+                )
+            );
+          }
+  
+          // Update loan with history data
+          mutationQL.push(
+            updateQl(
+              LOAN_TYPE(`loan_${mutationQL.length}`),
+              {
+                set: loan_history.data,
+                where: {
+                  _id: { _eq: loanId }
+                }
+              }
+            )
+          );
+  
+          // Delete loan history
+          mutationQL.push(
+            deleteQl(
+              createGraphType('loans_history', `_id`)(`loan_history_${mutationQL.length}`),
+              {
+                _id: { _eq: loan_history._id }
+              }
+            )
+          );
+        }
+      }
+  
+      // Execute mutations if there are any
+      if (mutationQL.length > 0) {
+        const result = await graph.mutation(...mutationQL);
+        response = { success: true, data: result?.data };
+      } else {
+        response = { success: false, message: "No valid records to revert" };
+      }
+  
+    } catch (error) {
+      logger.error({
+        user_id,
+        page: 'Rollback Transaction Error',
+        error: error.message,
+        stack: error.stack
+      });
+  
+      statusCode = 500;
+      response = { 
+        success: false, 
+        error: error.message 
+      };
+    } finally {
+      // Always send a response
+      res.status(statusCode)
         .setHeader('Content-Type', 'application/json')
         .end(JSON.stringify(response));
-}
+    }
+  }

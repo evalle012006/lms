@@ -2779,9 +2779,9 @@ const CashCollectionDetailsPage = () => {
     return (
         <Layout header={false} noPad={true} hScroll={false}>
             {loading ? (
-                <div className="absolute top-1/2 left-1/2">
+                // <div className="absolute top-1/2 left-1/2">
                     <Spinner />
-                </div>
+                // </div>
             ) : (
                 <div className="overflow-x-auto">
                     {data && <DetailsHeader page={'transaction'} showSaveButton={currentUser.role.rep > 2 ? (isWeekend || isHoliday) ? false : editMode : false}  hasDraft={hasDraft}
