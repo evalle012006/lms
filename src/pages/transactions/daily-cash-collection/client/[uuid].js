@@ -1634,18 +1634,34 @@ const CashCollectionDetailsPage = () => {
                 }
         
                 if (mcbuCol > 0) {
-                    if (temp?.prevData?.activeLoan > 0 && temp?.prevData?.activeLoan == mcbuCol) {
-                        toast.error('Error occured. MCBU Collection should not be equal to the target collection. You can use the normal transaction');
-                        temp.mcbuCol = 0;
+                    if (temp.dcmc || temp.mpdc) {
+                        if (temp?.prevData?.activeLoan > 0 && temp?.prevData?.activeLoan == mcbuCol) {
+                            toast.error('Error occured. MCBU Collection should not be equal to the target collection. You can use the normal transaction');
+                            temp.mcbuCol = 0;
+                        } else {
+                            temp.mcbuCol = mcbuCol;
+                            temp.mcbuColStr = formatPricePhp(mcbuCol);
+                            temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + mcbuCol : 0 + mcbuCol;
+                            temp.mcbuStr = formatPricePhp(temp.mcbu);
+                            temp.prevData = {
+                                ...temp.prevData,
+                                mcbuCol: mcbuCol
+                            };
+                        }
                     } else {
-                        temp.mcbuCol = mcbuCol;
-                        temp.mcbuColStr = formatPricePhp(mcbuCol);
-                        temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + mcbuCol : 0 + mcbuCol;
-                        temp.mcbuStr = formatPricePhp(temp.mcbu);
-                        temp.prevData = {
-                            ...temp.prevData,
-                            mcbuCol: mcbuCol
-                        };
+                        if (mcbuCol < 5) {
+                            temp.mcbuError = true;
+                            temp.mcbuCol = 0;
+                        } else {
+                            temp.mcbuCol = mcbuCol;
+                            temp.mcbuColStr = formatPricePhp(mcbuCol);
+                            temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + mcbuCol : 0 + mcbuCol;
+                            temp.mcbuStr = formatPricePhp(temp.mcbu);
+                            temp.prevData = {
+                                ...temp.prevData,
+                                mcbuCol: mcbuCol
+                            };
+                        }
                     }
 
                     temp._dirty = true;
@@ -2300,6 +2316,31 @@ const CashCollectionDetailsPage = () => {
         return temp;
     }
 
+    const handlePaymentValidation = (e, selected, index, col) => {
+        const value = e.target.value ? parseFloat(e.target.value) : 0;
+        let temp = {...selected};
+        switch (col) {
+            case 'mcbuCol':
+                if (!value || value < 5) {
+                    toast.error('Error occured. Minimum MCBU collection is 5.');
+                    temp.mcbuError = true;
+                } else if (value > 5 && value % 5 !== 0) {
+                    toast.error('Error occured. MCBU collection must be divisible by 5.');
+                    temp.mcbuError = true;
+                } else {
+                    temp.mcbuError = false;
+                }
+                break;
+            default: break;
+        }
+
+        let tempList = [...data];
+        tempList[index] = temp;
+
+        tempList.sort((a, b) => { return a.slotNo - b.slotNo; });
+        dispatch(setCashCollectionGroup(tempList));
+    }
+
     const handleNewRevert = async () => {
         setShowWarningDialog(false);
         const selectedRows = data.filter(d => d.selected);
@@ -2846,11 +2887,11 @@ const CashCollectionDetailsPage = () => {
                                                     { cc.mcbuColStr }
                                                 </td> */}
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
-                                                    { (!isWeekend && !isHoliday && currentUser.role.rep > 2 && cc.status === 'active' && editMode
-                                                            && ((cc.dcmc || (cc.draft && cc.dcmc)) || (cc.mpdc || (cc.draft && cc.mpdc)) ) ) ? (
+                                                    { (!isWeekend && !isHoliday && currentUser.role.rep > 2 && cc.status === 'active' && editMode) ? (
+                                                            // && ((cc.dcmc || (cc.draft && cc.dcmc)) || (cc.mpdc || (cc.draft && cc.mpdc)) ) ) ? (
                                                         <React.Fragment>
-                                                            <input type="number" name={`${cc.clientId}-mcbuCol`} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'mcbuCol')}
-                                                                onClick={(e) => e.stopPropagation()} value={cc.mcbuCol ? cc.mcbuCol : 0} tabIndex={index + 1} onWheel={(e) => e.target.blur()}
+                                                            <input type="number" name={`${cc.clientId}-mcbuCol`} min={0} step={5} onChange={(e) => handlePaymentCollectionChange(e, index, 'mcbuCol')}
+                                                                onClick={(e) => e.stopPropagation()} onBlur={(e) => handlePaymentValidation(e, cc, index, 'mcbuCol')} defaultValue={cc.mcbuCol ? cc.mcbuCol : 0} tabIndex={index + 1} onWheel={(e) => e.target.blur()}
                                                                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg 
                                                                             focus:ring-main focus:border-main block p-2.5" style={{ width: '100px' }}/>
                                                         </React.Fragment>
