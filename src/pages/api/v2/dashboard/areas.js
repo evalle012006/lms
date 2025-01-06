@@ -27,6 +27,9 @@ async function getAreas(req, res) {
     const user_id = req.auth.sub;
     const user = await findUserByID(user_id);
     
+
+    console.log(user);
+
     const where = [];
 
     if(user.regionId) {
@@ -50,7 +53,7 @@ async function getAreas(req, res) {
     if(user.designatedBranchId) {
         where.push({
             branches: { 
-                _id: { _eq: designatedBranchId }
+                _id: { _eq: user.designatedBranchId }
             }
         })
     }

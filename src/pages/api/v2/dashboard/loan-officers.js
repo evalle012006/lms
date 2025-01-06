@@ -4,7 +4,7 @@ import { apiHandler } from '@/services/api-handler';
 
 const graph = new GraphProvider();
 
-const USER_TYPE = createGraphType('users', `_id firstName lastName areaId divisionId designatedBranchId regionId`)('users');
+const USER_TYPE = createGraphType('users', `_id firstName lastName areaId divisionId designatedBranchId regionId role`)('users');
 
 export default apiHandler({
     get: getLoanOfficers
@@ -65,6 +65,7 @@ async function getLoanOfficers(req, res) {
     }
 
     if (user.designatedBranchId) {
+        console.log(user);
         where.push( user.role.rep === 4 ? { _id: { _eq: user._id } } : {
             group: {
                 branch: {

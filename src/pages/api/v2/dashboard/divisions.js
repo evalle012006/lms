@@ -49,8 +49,10 @@ async function getDivisions(req, res) {
 
     if(user.designatedBranchId) {
         where.push({
-            branches: { 
-                _id: { _eq: designatedBranchId }
+            regions: {
+                branches: { 
+                    _id: { _eq: user.designatedBranchId }
+                }
             }
         })
     }
