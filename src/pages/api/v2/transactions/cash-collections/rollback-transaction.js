@@ -72,7 +72,7 @@ async function revert(req, res) {
             )
           );
 
-          console.log('status:', cashCollection.status)
+
           if (cashCollection.status == 'pending' || cashCollection.status == 'tomorrow') {
             // Delete new loan
             mutationQL.push(
@@ -90,7 +90,7 @@ async function revert(req, res) {
             updateQl(
               LOAN_TYPE(`loan_${mutationQL.length}`),
               {
-                set: loan_history.data,
+                set: { ...loan_history.data, reverted: true, revertedDateTime: new Date() },
                 where: {
                   _id: { _eq: loanId }
                 }

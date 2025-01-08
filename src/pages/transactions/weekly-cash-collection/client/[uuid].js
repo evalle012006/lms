@@ -1000,13 +1000,13 @@ const CashCollectionDetailsPage = () => {
                         mcbuWithdrawal: loan?.mcbuWithdrawal ? loan.mcbuWithdrawal : 0,
                         mcbuWithdrawalStr: loan?.mcbuWithdrawal > 0 ? formatPricePhp(loan.mcbuWithdrawal) : '-',
                         mcbuReturnAmt: prevLoan?.mcbuReturnAmt ? prevLoan?.mcbuReturnAmt : 0,
-                        mcbuReturnAmtStr: prevLoan?.mcbuReturnAmt > 0 ? formatPricePhp(prevLoan.mcbuReturnAmt) : '-',
+                        mcbuReturnAmtStr: prevLoan?.mcbuReturnAmt > 0 ? formatPricePhp(prevLoan?.mcbuReturnAmt) : '-',
                         mcbuInterest: loan.mcbuInterest,
                         mcbuInterestStr: loan.mcbuInterest > 0 ? formatPricePhp(loan.mcbuInterest) : '-',
                         targetCollectionStr: '-',
                         excessStr: '-',
                         paymentCollectionStr: '-',
-                        remarks: prevLoan ? prevLoan.history.remarks : '-',
+                        remarks: prevLoan ? prevLoan?.history?.remarks : '-',
                         pastDueStr: '-',
                         fullPaymentStr: '-',
                         status: loan.status === 'active' ? 'tomorrow' : 'pending',
@@ -2794,12 +2794,12 @@ const CashCollectionDetailsPage = () => {
                     icon: <ClockIcon className="w-5 h-5" title="Mark as Late" />,
                     hidden: true
                 },
-                {
-                    label: 'Mark as Delinquent',
-                    action: handleMarkDelinquent,
-                    icon: <ExclamationTriangleIcon className="w-5 h-5" title="Mark as Delinquent" />,
-                    hidden: true
-                },
+                // {
+                //     label: 'Mark as Delinquent',
+                //     action: handleMarkDelinquent,
+                //     icon: <ExclamationTriangleIcon className="w-5 h-5" title="Mark as Delinquent" />,
+                //     hidden: true
+                // },
                 // {
                 //     label: 'Reloan',
                 //     action: handleReloan,
