@@ -200,11 +200,12 @@ const AddUpdateDebtCollection = ({ mode = 'add', data = {}, showSidebar, setShow
         if (response.success) {
             let clients = [];
             await response.data.map(loan => {
-                const client = loan.client[0];
+                const client = loan.client;
+
                 clients.push({
                     ...client,
                     loanId: loan._id,
-                    label: client.name,
+                    label: client.fullName,
                     value: client._id,
                     loanRelease: loan.loanRelease,
                     maturedPastDue: loan.maturedPastDue,
