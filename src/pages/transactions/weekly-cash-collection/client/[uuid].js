@@ -1234,7 +1234,6 @@ const CashCollectionDetailsPage = () => {
                         if (!cc.remarks || (cc.remarks 
                             && (cc.remarks.value !== 'past due' && cc.remarks.value?.startsWith('excused-')
                             && cc.remarks.value?.startsWith('delinquent') && cc.remarks.value?.startsWith('offset') && cc.remarks.value !== 'past due collection'))) {
-                                console.log(cc)
                             errorMsg.add('Error occured. Invalid MCBU Collection.');
                         }
                     } else if (parseFloat(cc.mcbuCol) > 50 && parseFloat(cc.mcbuCol) % 10 !== 0) {
@@ -1694,7 +1693,8 @@ const CashCollectionDetailsPage = () => {
                                 noOfPayments: temp.noOfPayments,
                                 total: temp.total,
                                 pastDue: temp.pastDue,
-                                mcbu: temp.mcbu
+                                mcbu: temp.mcbu,
+                                advanceDays: temp.advanceDays,
                             };
                         }
 
@@ -1872,6 +1872,8 @@ const CashCollectionDetailsPage = () => {
                 if (idx === index) {
                     if (temp.status === 'completed' && prevDraft) {
                         toast.error('Changing of completed remarks while there are previous draft transactions is not allowed.');
+                    } else if (temp.advanceDays > 0 && (!temp.remarks || temp.remarks == '-') && remarks.value != 'excused advance payment' && temp.loanBalance > 0) {
+                        toast.error('Error occured. Please set remarks as Excused Advance Payment.');
                     } else {
                         if (temp.status === 'completed' && (remarks?.value && remarks?.value.startsWith('collection-') || (remarks.value?.startsWith('offset') || remarks.value?.startsWith('reloaner')))) {
                             setEditMode(true);
@@ -2122,7 +2124,7 @@ const CashCollectionDetailsPage = () => {
                                     temp.error = false;
                                 } else {
                                     temp.error = true;
-                                    toast.error('Invalid remarks. You already hit 0 advance days.');
+                                    toast.error("Invalid remarks. There's no excess amount to be considered as advance payment.");
                                 }
     
                                 if (temp.loanBalance <= 0) {
