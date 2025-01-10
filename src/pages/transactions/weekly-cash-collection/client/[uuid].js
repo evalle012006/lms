@@ -610,7 +610,7 @@ const CashCollectionDetailsPage = () => {
                             delinquent: cc.client.delinquent,
                             fullPaymentDate: cc.fullPaymentDate ? cc.fullPaymentDate : null,
                             history: cc.history,
-                            advanceDays: cc.advanceDays,
+                            advanceDays: cc.advanceDays ? cc.advanceDays : 0,
                             status: cc.status,
                             loanTerms: cc.loanTerms,
                             startDate: cc.startDate,
@@ -713,7 +713,7 @@ const CashCollectionDetailsPage = () => {
                                 collection.mcbuReturnAmtStr = current.mcbuReturnAmt > 0 ? formatPricePhp(current.mcbuReturnAmt) : '-';
                                 collection.mcbuInterest = current.mcbuInterest ? cc.mcbuInterest : 0,
                                 collection.mcbuInterestStr = current.mcbuInterest > 0 ? formatPricePhp(current.mcbuInterest) : '-',
-                                collection.advanceDays = current.advanceDays;
+                                collection.advanceDays = current.advanceDays ? current.advanceDays : 0;
                                 collection.draft = current.draft;
                                 collection.dcmc = current.dcmc;
                                 collection.excused = current.excused ? current.excused : false;
