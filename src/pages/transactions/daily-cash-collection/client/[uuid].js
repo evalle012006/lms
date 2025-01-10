@@ -1799,8 +1799,8 @@ const CashCollectionDetailsPage = () => {
                 if (idx === index) {
                     if (temp.status === 'completed' && prevDraft) {
                         toast.error('Changing of completed remarks while there are previous draft transactions is not allowed.');
-                    } if (temp.advanceDays > 0 && (!temp.remarks || temp.remarks == '-') && remarks.value != 'excused advance payment' && temp.loanBalance > 0) {
-                        toast.error('Error occured. Please set remarks as Excused Advance Payment.');
+                    // } if (temp.advanceDays > 0 && (!temp.remarks || temp.remarks == '-') && remarks.value != 'excused advance payment' && temp.loanBalance > 0) {
+                    //     toast.error('Error occured. Please set remarks as Excused Advance Payment.');
                     } else {
                         if (temp.status === 'completed' && (remarks?.value && (remarks.value?.startsWith('offset') || remarks.value?.startsWith('reloaner') || remarks?.value.startsWith('collection-')))) {
                             setEditMode(true);
@@ -2906,7 +2906,7 @@ const CashCollectionDetailsPage = () => {
                                                     { cc.mcbuColStr }
                                                 </td> */}
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
-                                                    { (!isWeekend && !isHoliday && currentUser.role.rep > 2 && cc.status === 'active' && editMode && (cc.advanceDays == 0 && cc.remarks?.value != 'excused advance payment')) ? (
+                                                    { (!isWeekend && !isHoliday && currentUser.role.rep > 2 && cc.status === 'active' && editMode ) ? (
                                                             // && ((cc.dcmc || (cc.draft && cc.dcmc)) || (cc.mpdc || (cc.draft && cc.mpdc)) ) ) ? (
                                                         <React.Fragment>
                                                             <input type="number" name={`${cc.clientId}-mcbuCol`} min={0} step={5} onChange={(e) => handlePaymentCollectionChange(e, index, 'mcbuCol')}
@@ -2923,7 +2923,7 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.targetCollectionStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.excessStr }</td>
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
-                                                    { (!isWeekend && !isHoliday && currentUser.role.rep > 2 && cc.status === 'active' && editMode && (cc.advanceDays == 0 && cc.remarks?.value != 'excused advance payment') && (!cc?._id 
+                                                    { (!isWeekend && !isHoliday && currentUser.role.rep > 2 && cc.status === 'active' && editMode && (!cc?._id 
                                                         || cc?.reverted || cc.draft) && !cc?.dcmc && !cc?.mpdc && !cc?.maturedPD && (cc?.transferStr == null || cc?.transferStr == '-')) ? (
                                                             <React.Fragment>
                                                                 <input type="number" name={cc.clientId} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'amount', cc.activeLoan)}

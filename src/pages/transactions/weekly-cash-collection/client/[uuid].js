@@ -1872,8 +1872,8 @@ const CashCollectionDetailsPage = () => {
                 if (idx === index) {
                     if (temp.status === 'completed' && prevDraft) {
                         toast.error('Changing of completed remarks while there are previous draft transactions is not allowed.');
-                    } else if (temp.advanceDays > 0 && (!temp.remarks || temp.remarks == '-') && remarks.value != 'excused advance payment' && temp.loanBalance > 0) {
-                        toast.error('Error occured. Please set remarks as Excused Advance Payment.');
+                    // } else if (temp.advanceDays > 0 && (!temp.remarks || temp.remarks == '-') && remarks.value != 'excused advance payment' && temp.loanBalance > 0) {
+                    //     toast.error('Error occured. Please set remarks as Excused Advance Payment.');
                     } else {
                         if (temp.status === 'completed' && (remarks?.value && remarks?.value.startsWith('collection-') || (remarks.value?.startsWith('offset') || remarks.value?.startsWith('reloaner')))) {
                             setEditMode(true);
