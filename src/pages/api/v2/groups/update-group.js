@@ -1,5 +1,4 @@
 import { apiHandler } from '@/services/api-handler';
-import { connectToDatabase } from '@/lib/mongodb';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, updateQl } from '@/lib/graph/graph.util';
 

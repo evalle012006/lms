@@ -2,7 +2,6 @@ import { LO_10_DAILY_GROUPS, LO_11_DAILY_GROUPS, LO_12_DAILY_GROUPS, LO_13_DAILY
 import { USER_FIELDS } from '@/lib/graph.fields';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, insertQl, queryQl } from '@/lib/graph/graph.util';
-import { connectToDatabase } from '@/lib/mongodb';
 import { generateUUID } from '@/lib/utils';
 import { apiHandler } from '@/services/api-handler';
 

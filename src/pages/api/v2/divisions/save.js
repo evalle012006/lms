@@ -1,5 +1,4 @@
 import { apiHandler } from '@/services/api-handler';
-import { connectToDatabase } from '@/lib/mongodb';
 import { generateUUID, getCurrentDate } from '@/lib/utils';
 import moment from 'moment'
 import { createGraphType, insertQl, queryQl, updateQl } from '@/lib/graph/graph.util';
@@ -31,7 +30,6 @@ export default apiHandler({
 
 async function save(req, res) {
     const division = req.body;
-    const { db } = await connectToDatabase();
 
     const divisions = await graph.query(
         queryQl(DIVISION_TYPE(), {

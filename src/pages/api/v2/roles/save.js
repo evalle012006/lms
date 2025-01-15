@@ -1,5 +1,4 @@
 import { apiHandler } from '@/services/api-handler';
-import { connectToDatabase } from '@/lib/mongodb';
 import { getCurrentDate } from '@/lib/utils';
 import moment from 'moment'
 import { GraphProvider } from '@/lib/graph/graph.provider';
