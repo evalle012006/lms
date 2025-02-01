@@ -57,6 +57,7 @@ const WeeklyCashCollectionDetailsPage = () => {
         if ((currentUser.role.rep === 1 || currentUser.role.rep === 3) && (cashCollectionList.length > 0 || loCollectionList.length > 0)) {
             const pending = cashCollectionList.filter(cc => cc.status === 'pending');
             const draft = cashCollectionList.filter(cc => cc.draft);
+            const pendingLoans = cashCollectionList.filter(cc => cc.group == "GRAND TOTALS").map(cc => cc.totalPendingLoans);
 
             if (pending.length > 0) {
                 setLoading(false);
@@ -64,6 +65,9 @@ const WeeklyCashCollectionDetailsPage = () => {
             } else if (draft.length > 0) {
                 setLoading(false);
                 toast.error("One or more group/s transaction has a draft data.");
+            } else if (pendingLoans > 0) {
+                setLoading(false);
+                toast.error("One or more group/s transaction has pending loans. Please move the date of release or reject the loan/s.");
             } else {
                 if (loSummary && Object.keys(loSummary).length > 0) {
                     const resp = await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collection-summary/save-update-totals', loSummary);

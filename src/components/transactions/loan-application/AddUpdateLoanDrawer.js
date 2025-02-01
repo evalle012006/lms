@@ -56,6 +56,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     const [oldLOList, setOldLOList] = useState();
     const [oldGroupList, setOldGroupList] = useState();
     const [selectedLoanId, setSelectedLoanId] = useState();
+    const [groupLeader, setGroupLeader] = useState(false);
 
     // const [loanFor, setLoanFor] = useState('today');
     const [loStatus, setLoStatus] = useState();
@@ -193,9 +194,10 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         setLoading(true);
         const form = formikRef.current;
         setClientId(value);
-        
+        const currentClient = clientList.find(c => c._id === value);
+        setGroupLeader(currentClient.groupLeader);
+
         if (clientType === 'active' || clientType == 'advance') {
-            const currentClient = clientList.find(c => c._id === value);
             const currentSlotNo = currentClient && currentClient.loans[0].slotNo;
             const currentLoanCycle = currentClient && currentClient.loans[0].loanCycle;
             setSlotNo(currentSlotNo);
@@ -1051,7 +1053,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                             disabled={(clientType === 'pending' || clientType === 'offset') && mode !== 'reloan'}
                                             errors={touched.loanCycle && errors.loanCycle ? errors.loanCycle : undefined} />
                                     </div>
-                                    {(mode === 'reloan' || groupOccurence === 'weekly' || (groupOccurence === 'daily' && (mode !== 'add' && mode !== 'edit'))) && (
+                                    {(mode === 'reloan' || groupOccurence === 'weekly' || (groupOccurence === 'daily' && (mode !== 'add' && mode !== 'edit')) || groupLeader == true) && (
                                         <div className="mt-4">
                                             <InputNumber
                                                 name="mcbu"

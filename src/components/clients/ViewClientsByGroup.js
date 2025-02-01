@@ -19,10 +19,10 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
     const branchList = useSelector(state => state.branch.list);
-    const groupList = useSelector(state => state.group.list);
     const list = useSelector(state => state.client.list);
     const [activeList, setActiveList] = useState();
     const [excludedList, setExcludedList] = useState();
+    const [duplicateList, setDuplicateList] = useState();
     const [loading, setLoading] = useState(true);
 
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -30,6 +30,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
 
     const [selectedTab, setSelectedTab] = useTabs([
         'new-prospects',
+        'duplicate-prospects',
         'excluded-prospects'
     ]);
 
@@ -43,11 +44,10 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
             url = url + '?' + new URLSearchParams({ mode: "view_by_group", groupId: groupId });
             const response = await fetchWrapper.get(url);
             if (response.success) {
-                let clients = [];
-                await response.clients && response.clients.map(loan => {
+                const clients = await response.clients && response.clients.map(loan => {
                     const name = `${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName}`;
                     const ciName = loan.client?.ciName ? loan.client.ciName : '';
-                    clients.push({
+                    return {
                         ...loan.client,
                         ...loan,
                         name: name,
@@ -62,7 +62,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                         loName: loan.lo.length > 0 ? `${loan.lo[0].lastName}, ${loan.lo[0].firstName}` : '',
                         coMaker: (loan?.coMaker && typeof loan?.coMaker === 'number') ? loan.coMaker : '',
                         ciName: loan?.ciName ? loan.ciName : ciName,
-                    });
+                    };
                 });
                 dispatch(setClientList(clients));
             } else if (response.error) {
@@ -75,11 +75,10 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                     url = url + '?' + new URLSearchParams({ mode: "view_offset", status: status, origin: 'client' });
                     const response = await fetchWrapper.get(url);
                     if (response.success) {
-                        let clients = [];
-                        await response.clients && response.clients.map(client => {
+                        const clients = await response.clients && response.clients.map(client => {
                             const name = `${client.lastName}, ${client.firstName} ${client.middleName}`;
                             const ciName = client?.ciName ? client.ciName : '';
-                            clients.push({
+                            return {
                                 ...client,
                                 name: name,
                                 middleName: client.middleName ? client.middleName : '',
@@ -94,7 +93,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                                 loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : '',
                                 coMaker: (client.loans[0]?.coMaker && typeof client.loans[0]?.coMaker === 'number') ? client.loans[0]?.coMaker : '',
                                 ciName: client.loans.length > 0 ? client.loans[0]?.ciName : ciName
-                            });
+                            };
                         });
                         dispatch(setClientList(clients));
                     } else if (response.error) {
@@ -105,11 +104,10 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                         url = url + '?' + new URLSearchParams({ mode: "view_by_lo", loId: currentUser._id, status: status });
                         const response = await fetchWrapper.get(url);
                         if (response.success) {
-                            let clients = [];
-                            await response.clients && response.clients.map(client => {
+                            const clients = await response.clients && response.clients.map(client => {
                                 const name = `${client.lastName}, ${client.firstName} ${client.middleName}`;
                                 const ciName = client?.ciName ? client.ciName : '';
-                                clients.push({
+                                return {
                                     ...client,
                                     name: name,
                                     middleName: client.middleName ? client.middleName : '',
@@ -124,7 +122,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                                     loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : '',
                                     coMaker: (client.loans[0]?.coMaker && typeof client.loans[0]?.coMaker === 'number') ? client.loans[0]?.coMaker : '',
                                     ciName: client.loans.length > 0 ? client.loans[0]?.ciName : ciName
-                                });
+                                };
                             });
                             dispatch(setClientList(clients));
                         } else if (response.error) {
@@ -134,11 +132,10 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                         url = url + '?' + new URLSearchParams({ mode: "view_all_by_branch", branchId: currentUserBranch._id, status: status });
                         const response = await fetchWrapper.get(url);
                         if (response.success) {
-                            let clients = [];
-                            await response.clients && response.clients.map(client => {
+                            const clients = await response.clients && response.clients?.map(client => {
                                 const name = `${client.lastName}, ${client.firstName} ${client.middleName}`;
                                 const ciName = client?.ciName ? client.ciName : '';
-                                clients.push({
+                                return {
                                     ...client,
                                     name: name,
                                     middleName: client.middleName ? client.middleName : '',
@@ -153,7 +150,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                                     loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : '',
                                     coMaker: (client.loans[0]?.coMaker && typeof client.loans[0]?.coMaker === 'number') ? client.loans[0]?.coMaker : '',
                                     ciName: client.loans.length > 0 ? client.loans[0]?.ciName : ciName
-                                });
+                                }
                             });
                             dispatch(setClientList(clients));
                         } else if (response.error) {
@@ -165,12 +162,11 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                 url = url + '?' + new URLSearchParams({ mode: "view_all_by_branch_codes", currentUserId: currentUser._id, status: status });
                 const response = await fetchWrapper.get(url);
                 if (response.success) {
-                    let clients = [];
-                    await response.clients && response.clients.map(branch => {
+                    const clients = await response.clients && response.clients.map(branch => {
                         branch.clients.map(client => {
                             const name = `${client.lastName}, ${client.firstName} ${client.middleName}`;
                             const ciName = client?.ciName ? client.ciName : '';
-                            clients.push({
+                            return {
                                 ...client,
                                 name: name,
                                 middleName: client.middleName ? client.middleName : '',
@@ -186,7 +182,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                                 branchName: branch.name,
                                 coMaker: (client.loans[0]?.coMaker && typeof client.loans[0]?.coMaker === 'number') ? client.loans[0]?.coMaker : '',
                                 ciName: client.loans.length > 0 ? client.loans[0]?.ciName : ciName
-                            });
+                            };
                         });
                     });
                     dispatch(setClientList(clients));
@@ -197,11 +193,10 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
         }  else {
             const response = await fetchWrapper.get(url + '?' + new URLSearchParams({ status: status }));
             if (response.success) {
-                let clients = [];
-                await response.clients && response.clients.map(client => {
+                const clients = await response.clients && response.clients.map(client => {
                     const name = `${client.lastName}, ${client.firstName} ${client.middleName}`;
                     const ciName = client?.ciName ? client.ciName : '';
-                    clients.push({
+                    return {
                         ...client,
                         name: name,
                         middleName: client.middleName ? client.middleName : '',
@@ -217,7 +212,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                         loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : '',
                         coMaker: (client.loans?.coMaker && typeof client?.loans.coMaker === 'number') ? client.loans.coMaker : '',
                         ciName: client.loans.length > 0 ? client.loans[0]?.ciName : ciName
-                    });
+                    };
                 });
                 dispatch(setClientList(clients));
             } else if (response.error) {
@@ -290,6 +285,21 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
         setShowClientInfoModal(false);
     }
 
+    const handleUnmarkDuplicateAction = async (row) => {
+        let clientData = row.original.hasOwnProperty("client") ? row.original.client : row.original;
+        clientData.duplicate = false;
+        
+        const response = await fetchWrapper.sendData(getApiBaseUrl() + 'clients/', clientData);
+        if (response.success) {
+            toast.success('Client successfully updated.');
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            toast.error('Failed to update client.');
+        }
+    }
+
     const [rowActionButtons, setRowActionButtons] = useState(status !== 'active' ? [
         { label: 'Edit', action: handleEditAction },
         { label: 'Transfer', action: handleTransferAction },
@@ -298,6 +308,13 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
         { label: 'Edit', action: handleEditAction },
         { label: 'Update', action: handleCoMakerAction, title: 'Update CoMaker' },
         // { label: 'Delete', action: handleDeleteAction }
+    ]);
+
+    const [rowActionButtonsAdmin, setRowActionButtonsAdmin] = useState([
+        { label: 'Edit', action: handleEditAction },
+        { label: 'Transfer', action: handleTransferAction },
+        { label: 'Update', action: handleCoMakerAction, title: 'Update CoMaker' },
+        { label: 'Unmark as Duplicate', action: handleUnmarkDuplicateAction, title: 'Unmark as Duplicate' },
     ]);
 
     const handleDelete = () => {
@@ -534,10 +551,12 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
 
     useEffect(() => {
         if (list) {
-            const active = list.filter(client => !client?.archived);
+            const active = list.filter(client => !client.archived && !client?.duplicate);
             setActiveList(active);
-            const excluded = list.filter(client => client?.archived);
+            const excluded = list.filter(client => client.archived);
             setExcludedList(excluded);
+            const duplicates = list.filter(client => client.duplicate);
+            setDuplicateList(duplicates);
         }
     }, [list]);
 
@@ -559,6 +578,13 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                                             onClick={() => setSelectedTab("new-prospects")}>
                                                 New Prospects
                                         </TabSelector>
+                                        {currentUser.role.rep < 3 && (
+                                            <TabSelector
+                                                isActive={selectedTab === "duplicate-prospects"}
+                                                onClick={() => setSelectedTab("duplicate-prospects")}>
+                                                    Marked as Duplicate Prospects
+                                            </TabSelector>
+                                        )}
                                         <TabSelector
                                             isActive={selectedTab === "excluded-prospects"}
                                             onClick={() => setSelectedTab("excluded-prospects")}>
@@ -568,6 +594,11 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                                     <TabPanel hidden={selectedTab !== "new-prospects"}>
                                         <TableComponent columns={columns} data={activeList} hasActionButtons={groupId ? false : true} rowActionButtons={currentUser.role.rep > 2 && rowActionButtons} showFilters={true} rowClick={handleShowClientInfoModal}/>
                                     </TabPanel>
+                                    {currentUser.role.rep < 3 && (
+                                        <TabPanel hidden={selectedTab !== "duplicate-prospects"}>
+                                            <TableComponent columns={columns} data={duplicateList} hasActionButtons={currentUser.role.rep < 3} rowActionButtons={currentUser.role.rep < 3 ? rowActionButtonsAdmin : []} showFilters={true} rowClick={handleShowClientInfoModal}/>
+                                        </TabPanel>
+                                    )}
                                     <TabPanel hidden={selectedTab !== "excluded-prospects"}>
                                         <TableComponent columns={columns} data={excludedList} hasActionButtons={groupId ? false : true} rowActionButtons={currentUser.role.rep > 2 && rowActionButtons} showFilters={true} rowClick={handleShowClientInfoModal}/>
                                     </TabPanel>

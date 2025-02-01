@@ -830,7 +830,11 @@ const LoanApplicationPage = () => {
             if (response.success) {
                 setLoading(false);
                 toast.success('Loan successfully updated.');
-                window.location.reload();
+                // window.location.reload();
+                setTimeout(() => {
+                    getListLoan();
+                    // window.location.reload();
+                }, 1000);
             } else if (response.error) {
                 setLoading(false);
                 toast.error(response.message);
@@ -844,7 +848,7 @@ const LoanApplicationPage = () => {
                 toast.success('Loan successfully updated.');
                 setTimeout(() => {
                     getListLoan();
-                    window.location.reload();
+                    // window.location.reload();
                 }, 1000);
             } else if (response.error) {
                 setLoading(false);

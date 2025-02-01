@@ -323,6 +323,16 @@ const ActionButton = ({ row, rowActionButtons }) => {
                           <ArrowsRightLeftIcon className="cursor-pointer h-5" />
                         </div>
                       )}
+                      {item.label === 'Unmark as Duplicate' && (
+                        <div className="px-2" onClick={() => item.action(row)} title={item.title}>
+                          {/* <ArrowPathIcon className="cursor-pointer h-5" /> */}
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="cursor-pointer h-5">
+                            <rect x="6" y="6" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2"/>
+                            <rect x="3" y="3" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2"/>
+                            <line x1="2" y1="2" x2="18" y2="18" stroke="currentColor" strokeWidth="2"/>
+                          </svg>
+                        </div>
+                      )}
                     </React.Fragment>
                 );
               })}

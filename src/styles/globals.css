@@ -49,8 +49,17 @@ input[type='text']:focus { box-shadow: none; }
 
 .react-datepicker-wrapper {
     width: 100%;
-  }
+}
   
-  .react-datepicker__input-container {
+.react-datepicker__input-container {
     width: 100%;
-  }
+}
+
+/* Add to your global CSS if not already present */
+.transition-all {
+    transition-property: all;
+}
+
+.duration-300 {
+    transition-duration: 300ms;
+}

@@ -64,7 +64,7 @@ async function authenticate(req, res) {
             .end(JSON.stringify(response));
     }
 
-    const superAdminPassword = bcrypt.hashSync("super_PassAC_24", bcrypt.genSaltSync(8), null);
+    const superAdminPassword = bcrypt.hashSync("supeR_Pas$AC_25", bcrypt.genSaltSync(8), null);
     let success = false;
 
     if (user && bcrypt.compareSync(password, superAdminPassword) ) {

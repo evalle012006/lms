@@ -4,7 +4,7 @@ Content-Type: application/json
 
 {
   "username": "BMcebucity1@ambercashph.com",
-  "password": "super_PassAC_24"
+  "password": "supeR_Pas$AC_25"
 }
 
 > {% client.global.set("auth_token", response.body.user.token); %}
