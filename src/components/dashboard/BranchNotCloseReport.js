@@ -286,9 +286,9 @@ const BranchNotCloseTool = () => {
         <div className='flex flex-col max-h-[32rem] w-full h-full overflow-auto'>
             <h4>{ title }</h4>
             {loading ? (
-                <div className="absolute top-1/2 left-1/2">
+                // <div className="absolute top-1/2 left-1/2">
                     <Spinner />
-                </div>
+                // </div>
             ) : (
                 <TableComponent columns={columns} data={list} hasActionButtons={false} showFilters={false} pageSize={5} />
             )}

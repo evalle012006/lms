@@ -261,9 +261,9 @@ const ResetPage = () => {
         <Layout>
             <div className="mt-5">
                 {loading ? (
-                        <div className="absolute top-1/2 left-1/2">
+                        // <div className="absolute top-1/2 left-1/2">
                             <Spinner />
-                        </div>
+                        // </div>
                     ) : (
                         <div className="flex flex-1 lg:mt-0 mt-5">
                             <div className="profile-photo bg-white rounded-lg p-3 proxima-regular mt-10 lg:w-5/6 w-80 lg:mt-0 m-4">

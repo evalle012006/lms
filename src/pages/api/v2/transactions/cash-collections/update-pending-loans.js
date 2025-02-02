@@ -33,13 +33,20 @@ export async function savePendingLoans(user_id, collections, loanId) {
         }
         await updatePendingLoan(user_id, updatedCc, currentDate);
     } else {
+      let ccLoanId = cc.loanId ? cc.loanId : cc._id;
+      let ccStatus = 'completed';
+
+      if (loanId) {
+        ccLoanId = loanId;
+        ccStatus = 'closed'
+      }
         await graph.mutation(
           updateQl(loansType(), {
-            set: { status: 'completed' },
-            where: { _id: { _eq: cc.loanId } }
+            set: { status: ccStatus },
+            where: { _id: { _eq: ccLoanId } }
           }),
           updateQl(ccType, {
-            set: { status: 'completed' },
+            set: { status: ccStatus },
             where: {
               clientId: { _eq: cc.clientId },
               dateAdded: { _eq: currentDate },
@@ -74,7 +81,7 @@ async function updatePendingLoan(user_id, collection, currentDate) {
     
     logger.debug({user_id, page: `Saving Cash Collection - Updating Pending Loan Sizes: ${collection.loanId}`, currentLoanSize: currentLoan.length, pendingLoanSize: pendingLoan.length, cashCollectionSize: cashCollection.length});
     logger.debug({user_id, page: `Saving Cash Collection - Updating Pending Loan CurrentLoans: ${collection.loanId}`, clientId: currentLoan.clientId, loanId: currentLoan._id,  currentLoan: currentLoan, currentLoanClosed: currentLoanClosed});
-
+    // console.log('lengths: ', currentLoan.length, pendingLoan.length, cashCollection.length > 0)
     if (currentLoan.length > 0 && pendingLoan.length > 0 && cashCollection.length > 0) {
         currentLoan = currentLoan[0];
         pendingLoan = pendingLoan[0];

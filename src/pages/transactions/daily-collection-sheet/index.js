@@ -37,9 +37,9 @@ const DailyCollectionSheetPage = () => {
     return (
         <Layout>
             {loading ? (
-                <div className="absolute top-1/2 left-1/2">
+                // <div className="absolute top-1/2 left-1/2">
                     <Spinner />
-                </div>
+                // </div>
             ) : (
                 <div className="flex flex-col">
                     <h1 className='mx-auto'>PAGE UNDERCONSTRUCTION</h1>

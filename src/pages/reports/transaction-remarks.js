@@ -509,9 +509,9 @@ const TransactionRemarksPage = () => {
     return (
         <Layout>
             {loading ? (
-                <div className="absolute top-1/2 left-1/2">
+                // <div className="absolute top-1/2 left-1/2">
                     <Spinner />
-                </div>
+                // </div>
             ) : (
                 <div className='flex flex-col mt-2 p-4'>
                     <div className='bg-white rounded-lg p-4 flex flex-col'>

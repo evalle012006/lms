@@ -32,6 +32,16 @@ const ActionDropDown = ({ data, options=[], dataOptions = {}, origin }) => {
                 if (option.label == 'Offset' && (!dataOptions?.filter && data.status == 'active' && !data.draft)) {
                     tempOption.hidden = false;
                 }
+
+                if ((option.label == 'Mark as Late' || option.label == 'Unmark as Late') && (!dataOptions?.filter && data.status == 'active' && !data.draft)) {
+                    tempOption.hidden = false;
+                    tempOption.label = data.latePayment ? 'Unmark as Late' : 'Mark as Late';
+                }
+
+                if ((option.label == 'Mark as Delinquent' || option.label == 'Unmark as Delinquent') && (!dataOptions?.filter && data.status == 'active' && !data.draft)) {
+                    tempOption.hidden = false;
+                    tempOption.label = data.delinquent ? 'Unmark as Delinquent' : 'Mark as Delinquent';
+                }
             } else if (origin == 'transfer' && data) {
                 if ((option.label == 'Reject Transfer' || option.label == 'Edit Transfer' || option.label == 'Delete Transfer') && data.status == 'pending') {
                     tempOption.hidden = false;

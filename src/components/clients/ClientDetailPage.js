@@ -293,9 +293,9 @@ const ClientDetailPage = () => {
     return (
         <div className="overflow-x-auto h-[45rem]">
             {loading ? (
-                <div className="absolute top-1/2 left-1/2">
+                // <div className="absolute top-1/2 left-1/2">
                     <Spinner />
-                </div>
+                // </div>
             ): (
                 <React.Fragment>
                     <div className="flex flex-col items-center font-proxima">

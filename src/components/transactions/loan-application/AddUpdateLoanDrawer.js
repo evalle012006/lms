@@ -56,6 +56,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
     const [oldLOList, setOldLOList] = useState();
     const [oldGroupList, setOldGroupList] = useState();
     const [selectedLoanId, setSelectedLoanId] = useState();
+    const [groupLeader, setGroupLeader] = useState(false);
 
     // const [loanFor, setLoanFor] = useState('today');
     const [loStatus, setLoStatus] = useState();
@@ -193,9 +194,10 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         setLoading(true);
         const form = formikRef.current;
         setClientId(value);
-        
+        const currentClient = clientList.find(c => c._id === value);
+        setGroupLeader(currentClient.groupLeader);
+
         if (clientType === 'active' || clientType == 'advance') {
-            const currentClient = clientList.find(c => c._id === value);
             const currentSlotNo = currentClient && currentClient.loans[0].slotNo;
             const currentLoanCycle = currentClient && currentClient.loans[0].loanCycle;
             setSlotNo(currentSlotNo);
@@ -815,9 +817,9 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         <React.Fragment>
             <SideBar title={title} showSidebar={showSidebar} setShowSidebar={setShowSidebar} hasCloseButton={false}>
                 {loading ? (
-                    <div className="flex items-center justify-center h-screen">
+                    // <div className="flex items-center justify-center h-screen">
                         <Spinner />
-                    </div>
+                    // </div>
                 ) : (
                     <div className="px-2 pb-4">
                         <Formik enableReinitialize={true}
@@ -845,6 +847,14 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                             <RadioButton id={"radio_tomorrow"} name="radio-loan-type" label={"Tomorrow"} checked={loanFor === 'tomorrow'} value="tomorrow" onChange={() => setLoanFor('tomorrow')} />
                                         </div>
                                     </div> */}
+                                    {mode == 'add' && (
+                                        <div className="mt-4 flex flex-row">
+                                            <RadioButton id={"radio_pending"} name="radio-client-type" label={"Prospect Clients"} checked={clientType === 'pending'} value="pending" onChange={handleClientTypeChange} />
+                                            <RadioButton id={"radio_advance"} name="radio-client-type" label={"Reloan Clients"} checked={clientType === 'advance'} value="advance" onChange={handleClientTypeChange} />
+                                            <RadioButton id={"radio_active"} name="radio-client-type" label={"Pending Clients"} checked={clientType === 'active'} value="active" onChange={handleClientTypeChange} />
+                                            <RadioButton id={"radio_offset"} name="radio-client-type" label={"Balik Clients"} checked={clientType === 'offset'} value="offset" onChange={handleClientTypeChange} />
+                                        </div>
+                                    )}
                                     {(initialDateRelease && minDate && maxDate) && (
                                         <div className="relative w-full mt-4" onClick={openCalendar}>
                                             <span className="text-sm">Date of Release</span>
@@ -859,12 +869,6 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                     )}
                                     {mode === 'add' ? (
                                         <React.Fragment>
-                                            <div className="mt-4 flex flex-row">
-                                                <RadioButton id={"radio_pending"} name="radio-client-type" label={"Prospect Clients"} checked={clientType === 'pending'} value="pending" onChange={handleClientTypeChange} />
-                                                <RadioButton id={"radio_advance"} name="radio-client-type" label={"Reloan Clients"} checked={clientType === 'advance'} value="advance" onChange={handleClientTypeChange} />
-                                                <RadioButton id={"radio_active"} name="radio-client-type" label={"Pending Clients"} checked={clientType === 'active'} value="active" onChange={handleClientTypeChange} />
-                                                <RadioButton id={"radio_offset"} name="radio-client-type" label={"Balik Clients"} checked={clientType === 'offset'} value="offset" onChange={handleClientTypeChange} />
-                                            </div>
                                             {clientType == 'offset' && (
                                                 <div className="mt-4">
                                                     <span className="text-sm font-bold">Search Client</span>
@@ -1049,7 +1053,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                             disabled={(clientType === 'pending' || clientType === 'offset') && mode !== 'reloan'}
                                             errors={touched.loanCycle && errors.loanCycle ? errors.loanCycle : undefined} />
                                     </div>
-                                    {(mode === 'reloan' || groupOccurence === 'weekly' || (groupOccurence === 'daily' && (mode !== 'add' && mode !== 'edit'))) && (
+                                    {(mode === 'reloan' || groupOccurence === 'weekly' || (groupOccurence === 'daily' && (mode !== 'add' && mode !== 'edit')) || groupLeader == true) && (
                                         <div className="mt-4">
                                             <InputNumber
                                                 name="mcbu"

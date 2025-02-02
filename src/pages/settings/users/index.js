@@ -391,9 +391,9 @@ const TeamPage = () => {
             <div className="pb-4">
                 {loading ?
                     (
-                        <div className="absolute top-1/2 left-1/2">
+                        // <div className="absolute top-1/2 left-1/2">
                             <Spinner />
-                        </div>
+                        // </div>
                     ) : (
                         <div className="flex flex-col">
                             <div className="mb-4 bg-white">

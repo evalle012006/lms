@@ -23,18 +23,32 @@ async function list(req, res) {
     let statusCode = 200;
     let response = {};
 
-    const { searchText, mode, cursor, limit = 20 } = req.query;
-    const fullNameCondition = `%${searchText}%`;
+    const { searchText, firstName, lastName, mode, cursor, limit = 20 } = req.query;
 
-    const query = {
-        where: {
-            status: mode === 'offset' ? { _eq: 'offset' } : { _neq: 'null' },
-            fullName: { _ilike: fullNameCondition },
-            ...(cursor ? { dateModified: { _lt: cursor } } : {})
-        },
-        order_by: { dateModified: 'desc' },
-        limit: parseInt(limit)
-    };
+    let query;
+
+    if (mode == 'duplicate') {
+        query = {
+            where: {
+                firstName: { _ilike: `%${firstName}%` },
+                lastName: { _ilike: `%${lastName}%` },
+                ...(cursor ? { dateModified: { _lt: cursor } } : {})
+            },
+            order_by: { dateModified: 'desc' },
+            limit: parseInt(limit)
+        };
+    } else {
+        const fullNameCondition = `%${searchText}%`;
+        query = {
+            where: {
+                status: mode === 'offset' ? { _eq: 'offset' } : { _neq: 'null' },
+                fullName: { _ilike: fullNameCondition },
+                ...(cursor ? { dateModified: { _lt: cursor } } : {})
+            },
+            order_by: { dateModified: 'desc' },
+            limit: parseInt(limit)
+        };
+    }
 
     const clients = await graph.query(
         queryQl(CLIENT_TYPE, query)

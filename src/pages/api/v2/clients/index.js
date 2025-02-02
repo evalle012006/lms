@@ -87,7 +87,10 @@ async function updateClient(req, res) {
                 status: fields.status,
                 delinquent: fields.delinquent,
                 loId: fields.loId,
+                groupName: fields.groupName,
                 groupId: fields.groupId,
+                duplicate: fields.duplicate,
+                groupLeader: fields.groupLeader,
                 profile: profile
             };
 
@@ -108,9 +111,12 @@ async function updateClient(req, res) {
                         status: fields.status,
                         delinquent: fields.delinquent,
                         loId: fields.loId,
+                        groupName: fields.groupName,
                         groupId: fields.groupId,
                         profile: profile,
                         ciName: files.ciName,
+                        duplicate: fields.duplicate,
+                        groupLeader: fields.groupLeader,
                         dateModified: moment(getCurrentDate()).format('YYYY-MM-DD')
                     },
                     where: {

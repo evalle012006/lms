@@ -165,7 +165,8 @@ create table public.client (
   "addressZipCode" character varying,
   "oldGroupid" character varying,
   duplicate boolean,
-  "ciName" character varying
+  "ciName" character varying,
+  groupLeader boolean,
 );
 create index ix_client__status on client using btree (status);
 create index "ix_client__branchId" on client using btree ("branchId");

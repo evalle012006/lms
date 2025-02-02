@@ -169,9 +169,9 @@ const ViewByRegionPage = ({dateFilter, type, selectedBranchGroup, viewMode}) => 
         <React.Fragment>
             {loading ?
                 (
-                    <div className="absolute top-1/2 left-1/2">
+                    // <div className="absolute top-1/2 left-1/2">
                         <Spinner />
-                    </div>
+                    // </div>
                 ) : <TableComponent columns={columns} data={regionCollectionData} hasActionButtons={false} rowActionButtons={false} showFilters={false} showPagination={false} pageSize={100} />}
         </React.Fragment>
     )

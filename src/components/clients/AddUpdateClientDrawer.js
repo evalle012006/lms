@@ -43,7 +43,8 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
 
     const { status } = router.query;
 
-    // const loUsers = useMemo(() => userList.filter(u => u.role.rep === 4), [userList]);
+    const loUsers = useMemo(() => userList.filter(u => u.role.rep === 4), [userList]);
+    const [filteredGroupList, setFilteredGroupList] = useState(currentUser.role.rep == 4 ? groupList : []);
 
     const openCalendar = () => {
         setShowCalendar(true);
@@ -60,12 +61,15 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
         addressProvince: client.addressProvince || '',
         addressZipCode: client.addressZipCode || '',
         contactNumber: client.contactNumber || '',
+        groupName: client.groupName || '',
         groupId: client.groupId || '',
         branchId: client.branchId || '',
         loId: client.loId || (currentUser.role.rep === 4 ? currentUser._id : ''),
         status: client.status || 'pending',
         delinquent: client.delinquent === "Yes",
-        ciName: client?.ciName || ''
+        ciName: client?.ciName || '',
+        groupLeader: client.groupLeader || false,
+        duplicate: client.duplicate || false,
     }), [client, currentUser]);
 
     const validationSchema = yup.object().shape({
@@ -82,12 +86,12 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
         const firstName = form.values.firstName;
         const lastName = form.values.lastName;
         if (firstName && lastName) {
-            const searchText = `${firstName} ${lastName}`;
             try {
-                const response = await fetchWrapper.get(getApiBaseUrl() + 'clients/search?' + new URLSearchParams({ searchText: searchText?.toUpperCase() }));
+                const response = await fetchWrapper.get(getApiBaseUrl() + 'clients/search?' + new URLSearchParams({ firstName: firstName?.toUpperCase(), lastName: lastName?.toUpperCase(), mode: 'duplicate' }));
                 if (response.success && response.clients.length > 0) {
                     setDuplicate(true);
-                    toast.warning('Client has similar name. Please verify the client first in the search client tool!');
+                    toast.warning('Client has similar name. Please verify the client first in the search client tool and contact the admin if you want to proceed.');
+                    setTimeout(() => {}, 3000);
                 }
             } catch (error) {
                 console.error('Error checking for duplicates:', error);
@@ -129,9 +133,11 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                 fullName: `${values.firstName} ${values.middleName} ${values.lastName}`.toUpperCase(),
                 address: `${values.addressStreetNo} ${values.addressBarangayDistrict} ${values.addressMunicipalityCity} ${values.addressProvince} ${values.addressZipCode}`,
                 groupName: selectedGroup ? selectedGroup.name : '',
-                loId: selectedGroup ? selectedGroup.loId : '',
+                groupId: selectedGroup ? selectedGroup._id : '',
+                loId: selectedGroup ? selectedGroup.loanOfficerId : '',
                 duplicate,
-                ciName: values?.ciName?.toUpperCase()
+                ciName: values?.ciName?.toUpperCase(),
+                groupLeader: values.groupLeader,
             };
 
             if (currentUser.root !== true && (currentUser.role.rep === 4 || currentUser.role.rep === 3) && branchList.length > 0) {
@@ -226,6 +232,17 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
         }
     }, []);
 
+    const handleChangeLO = (field, value) => {
+        setLoading(true);
+        const form = formikRef.current;
+        form.setFieldValue(field, value);
+        const selectedLO = loUsers.find(u => u._id === value);
+        const loGroups = groupList.filter(g => g.loanOfficerId === value && g.occurence == selectedLO?.transactionType );
+        setFilteredGroupList(loGroups);
+
+        setLoading(false);
+    }
+
     useEffect(() => {
         if (mode === "edit" && client.group && client.group.length > 0) {
             setSelectedGroup(client.group[0]);
@@ -235,9 +252,9 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
     return (
         <SideBar title={mode === 'add' ? 'Add Client' : 'Edit Client'} showSidebar={showSidebar} setShowSidebar={setShowSidebar} hasCloseButton={false}>
             {loading ? (
-                <div className="flex items-center justify-center h-screen">
+                // <div className="flex items-center justify-center h-screen">
                     <Spinner />
-                </div>
+                // </div>
             ) : (
                 <div className="px-2">
                     {mode === "add" && (
@@ -291,19 +308,36 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="mt-4">
-                                        <SelectDropdown
-                                            name="groupId"
-                                            field="groupId"
-                                            value={values.groupId}
-                                            label="Group (Required)"
-                                            options={groupList}
-                                            onChange={setFieldValue}
-                                            onBlur={setFieldTouched}
-                                            placeholder="Select Group"
-                                            errors={touched.groupId && errors.groupId ? errors.groupId : undefined}
-                                        />
-                                    </div>
+                                    <>
+                                        {currentUser.role.rep < 4 && (
+                                            <div className="mt-4">
+                                                <SelectDropdown
+                                                    name="loId"
+                                                    field="loId"
+                                                    value={values.loId}
+                                                    label="Loan Officer (Required)"
+                                                    options={loUsers}
+                                                    onChange={(field, value) => handleChangeLO(field, value)}
+                                                    onBlur={setFieldTouched}
+                                                    placeholder="Select Loan Officer"
+                                                    errors={touched.loId && errors.loId ? errors.loId : undefined}
+                                                />
+                                            </div>
+                                        )}
+                                        <div className="mt-4">
+                                            <SelectDropdown
+                                                name="groupId"
+                                                field="groupId"
+                                                value={values.groupId}
+                                                label="Group (Required)"
+                                                options={filteredGroupList}
+                                                onChange={setFieldValue}
+                                                onBlur={setFieldTouched}
+                                                placeholder="Select Group"
+                                                errors={touched.groupId && errors.groupId ? errors.groupId : undefined}
+                                            />
+                                        </div>
+                                    </>
                                 ) }
                                 <div className="mt-4">
                                     <InputText
@@ -430,6 +464,15 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                         </div>
                                     </React.Fragment>
                                 )}
+                                <div className="mt-4">
+                                    <CheckBox 
+                                        name="groupLeader"
+                                        value={values.groupLeader} 
+                                        onChange={setFieldValue}  
+                                        label={"Group Leader"} 
+                                        size={"lg"} 
+                                    />
+                                </div>
                                 {mode === 'edit' && (
                                     <div className="mt-4">
                                         <CheckBox 
@@ -441,21 +484,6 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                         />
                                     </div>
                                 )}
-                                {/* {currentUser.role.rep < 4 && (
-                                    <div className="mt-4">
-                                        <SelectDropdown
-                                            name="loId"
-                                            field="loId"
-                                            value={values.loId}
-                                            label="Loan Officer (Required)"
-                                            options={loUsers}
-                                            onChange={setFieldValue}
-                                            onBlur={setFieldTouched}
-                                            placeholder="Select Loan Officer"
-                                            errors={touched.loId && errors.loId ? errors.loId : undefined}
-                                        />
-                                    </div>
-                                )} */}
                                 <div className="mt-4">
                                     <InputText
                                         name="ciName"

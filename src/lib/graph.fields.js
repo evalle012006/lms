@@ -65,7 +65,9 @@ export const CLIENT_FIELDS = `
   addressStreetNo
   addressZipCode
   oldGroupid,
-  ciName
+  ciName,
+  groupLeader,
+  duplicate,
   `;
 
 export const LOAN_FIELDS = `

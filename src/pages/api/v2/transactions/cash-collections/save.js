@@ -35,12 +35,28 @@ async function save(req, res) {
         logger.debug({user_id, page: `Saving Cash Collection - Group ID: ${data.collection[0]?.groupId}`});
         const promiseData = data.collection.map(async cc => {
             if (cc.status !== "totals") {
+
                 const collection = JSON.parse(JSON.stringify(cc))// clone entry to avoid reference update
                 delete collection.reverted;
 
+                // get loan snapshot 
+                let [loan] = await graph.query(queryQl(LOAN_TYPE('loans'), { where: { _id: { _eq: collection.loanId } } })).then(res => res.data.loans);
+                const loan_history = {
+                    loan_id: loan._id,
+                    client_id: loan.clientId,
+                    user_id: user_id,
+                    data: loan
+                };
+
+                mutationQl.push(
+                    insertQl(createGraphType('loans_history', `_id`)('loans_history_' + (mutationQl.length + 1)), {
+                        objects: [loan_history]
+                    })
+                );
+
                 const timeArgs = currentTime.split(" ");
                 // put this in the config settings should be by hour and minute?
-                collection.latePayment = (timeArgs[1] == 'PM' && timeArgs[0].startsWith('6')) ? true : false;
+                // collection.latePayment = (timeArgs[1] == 'PM' && timeArgs[0].startsWith('6')) ? true : false;
                 collection.timeAdded = currentTime;
 
                 if (cc.occurence === "weekly") {
@@ -106,7 +122,7 @@ async function save(req, res) {
                 
                 if (collection.status !== "tomorrow" && collection.status !== "pending" && !collection.draft) {
                     await updateLoan(user_id, mutationQl, collection, currentDate)
-                    await updateClient(user_id, mutationQl, collection, currentDate);
+                    await updateClient(user_id, mutationQl, collection);
                 }
 
                 if (collection.status == 'tomorrow' && collection.mcbuWithdrawal > 0) {
@@ -373,7 +389,7 @@ async function updateLoanMcbuWithdrawal(user_id, mutationQL, collection) {
     }
 }
 
-async function updateClient(user_id, mutationQl, loan, currentDate) {
+async function updateClient(user_id, mutationQl, loan) {
 
     let client = await graph.query(queryQl(CLIENT_TYPE('client'), { where: { _id: { _eq: loan.clientId } } })).then(res => res.data.client);
     if (client.length > 0) {
@@ -415,7 +431,7 @@ async function updateClient(user_id, mutationQl, loan, currentDate) {
 
         // client.mcbuHistory = mcbuHistory;
 
-        if (loan.remarks && loan.remarks.value?.startsWith('delinquent')) {
+        if ((loan.remarks && loan.remarks.value?.startsWith('delinquent') && loan.delinquent)) {
             client.delinquent = true;
         }
 

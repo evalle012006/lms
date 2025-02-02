@@ -37,7 +37,7 @@ async function save(req, res) {
         group: c.group,
     })));
 
-    console.log('loansSize: ', loans.length)
+    // console.log('loansSize: ', loans.length)
 
     const cashCollections = loans.map(loan => ({
         _id: generateUUID(),
@@ -74,6 +74,7 @@ async function save(req, res) {
         dateAdded: currentDate,
         groupStatus: "pending",
         insertedDateTime: new Date(),
+        pastDue: loan.pastDue ? loan.pastDue : 0,
         origin: 'pre-save'
     }));
 

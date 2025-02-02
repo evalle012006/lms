@@ -201,7 +201,7 @@ const TransferClientPage = () => {
 
     const handleEditAction = (row) => {
         setMode("edit");
-        setClient(row.original);
+        setClient(row);
         // let clientListData = [...clientList];
         // let client = row.original.client;
         // client.label = `${client.lastName}, ${client.firstName} ${client.middleName ? client.middleName : ''}`;
@@ -212,7 +212,7 @@ const TransferClientPage = () => {
     }
 
     const handleDeleteAction = (row) => {
-        setClient(row.original);
+        setClient(row);
         setShowDeleteDialog(true);
     }
 
@@ -226,7 +226,7 @@ const TransferClientPage = () => {
 
     const handleReject = (row) => {
         // if (row.original.allowApproved) {
-            updateTransferStatus(row.original, 'reject');
+            updateTransferStatus(row, 'reject');
         // } else {
         //     toast.error("Group transaction is already closed for the day.");
         // }
@@ -312,6 +312,7 @@ const TransferClientPage = () => {
     };
 
     const handleMultiApprove = async () => {
+        setLoading(true);
         let selectedList = transferList && transferList.filter(t => t.selected === true);
         
         if (selectedList.length > 0) {
@@ -503,7 +504,7 @@ const TransferClientPage = () => {
         if (currentUser.role.rep < 4) {
             if (currentDate === lastMonthDate && currentUser.role.rep <= 2) {
                 setActionButtons([
-                    <ButtonOutline label="Approved Selected Transfer" type="button" className="p-2 mr-3" onClick={handleMultiApprove} />,
+                    <ButtonOutline label="Approved Selected Transfer" type="button" className="p-2 mr-3" onClick={handleMultiApprove} disabled={loading} />,
                     <ButtonSolid label="Add Transfer" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
                 ]);
             } else {
@@ -545,9 +546,9 @@ const TransferClientPage = () => {
         <Layout actionButtons={currentUser.role.rep <= 3 && actionButtons}>
             <div className="pb-4">
                 { loading ? (
-                    <div className="absolute top-1/2 left-1/2">
+                    // <div className="absolute top-1/2 left-1/2">
                         <Spinner />
-                    </div>
+                    // </div>
                 ) : (
                     <React.Fragment>
                         <nav className="flex pl-10 bg-white border-b border-gray-300">

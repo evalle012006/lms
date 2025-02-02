@@ -1,5 +1,4 @@
 import { apiHandler } from '@/services/api-handler';
-import { connectToDatabase } from '@/lib/mongodb';
 import { generateUUID, getCurrentDate } from '@/lib/utils';
 import moment from 'moment'
 import { GraphProvider } from '@/lib/graph/graph.provider';
@@ -19,8 +18,6 @@ export default apiHandler({
 
 async function save(req, res) {
     const { role, permissions } = req.body;
-
-    const { db } = await connectToDatabase();
 
     const rolePermissions = await graph.query(
         queryQl(ROLE_PERMISSION_TYPE, {

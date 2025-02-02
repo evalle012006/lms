@@ -173,13 +173,12 @@ async function save(req, res) {
                 const reloan = mode === 'reloan';
                 await saveCashCollection(user_id, loanData, reloan, group, loanId, currentDate, groupStatus, addToMutationList);
             }
-            console.log('saving....')
+
             await graph.mutation(
                 ... mutationList
             );
 
             const [loan] = (await graph.query(queryQl(loansType(), { where: { _id: { _eq: loanId } } }))).data.loans;
-            console.log(hasExistingCC, loanId)
             if (hasExistingCC) {
                 await savePendingLoans(user_id, [finalData], loanId);
             }

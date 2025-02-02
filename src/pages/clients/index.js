@@ -297,9 +297,9 @@ const ClientsProspectPage = () => {
     return (
         <Layout actionButtons={currentUser.role.rep > 2 && actionButtons}>
             {loading ? (
-                <div className="absolute top-1/2 left-1/2">
+                // <div className="absolute top-1/2 left-1/2">
                     <Spinner />
-                </div>
+                // </div>
             ) : (
                 <React.Fragment>
                     <ViewClientsByGroupPage status={status} client={client} setClientParent={setClient} setMode={setMode} handleShowAddDrawer={handleShowAddDrawer} handleShowCoMakerDrawer={handleShowCoMakerDrawer} />

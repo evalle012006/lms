@@ -830,7 +830,11 @@ const LoanApplicationPage = () => {
             if (response.success) {
                 setLoading(false);
                 toast.success('Loan successfully updated.');
-                window.location.reload();
+                // window.location.reload();
+                setTimeout(() => {
+                    getListLoan();
+                    // window.location.reload();
+                }, 1000);
             } else if (response.error) {
                 setLoading(false);
                 toast.error(response.message);
@@ -844,7 +848,7 @@ const LoanApplicationPage = () => {
                 toast.success('Loan successfully updated.');
                 setTimeout(() => {
                     getListLoan();
-                    window.location.reload();
+                    // window.location.reload();
                 }, 1000);
             } else if (response.error) {
                 setLoading(false);
@@ -917,7 +921,7 @@ const LoanApplicationPage = () => {
     const handleCloseAddDrawer = () => {
         setTimeout(() => {
             window.location.reload();
-        }, 500);
+        }, 1000);
     }
 
     const handleMultiSelect = (mode, selectAll, rows, currentPageIndex) => {
@@ -1140,12 +1144,11 @@ const LoanApplicationPage = () => {
                                 errors +=  err + '\n';
                             });
 
-                            console.log(errors);
                             toast.error(errors);
                             setTimeout(() => {
                                 getListLoan();
                                 window.location.reload();
-                            }, 4000);
+                            }, 1000);
                         } else {
                             if (origin == 'ldf') {
                                 toast.success('Selected loans successfully updated');
@@ -1608,9 +1611,9 @@ const LoanApplicationPage = () => {
             <div className="pb-4">
                 {loading ?
                     (
-                        <div className="absolute top-1/2 left-1/2">
+                        // <div className="absolute top-1/2 left-1/2">
                             <Spinner />
-                        </div>
+                        // </div>
                     ) : (
                         <React.Fragment>
                             <nav className="flex pl-10 bg-white border-b border-gray-300">

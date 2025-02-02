@@ -74,6 +74,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
             let totalMcbuInterest = 0;
             // let totalMcbuDailyWithdrawal = 0;
             let totalTransfer = 0; // total transfer to new group/lo/branch
+            let totalPendingLoans = 0;
 
             let selectedBranch;
             const responseData = response.data.filter(rd => rd?.origin !== 'automation-trf');
@@ -223,6 +224,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                         noOfClients += cc.activeLoans[0].activeClients ? cc.activeLoans[0].activeClients : 0;
                         noOfBorrowers += cc.activeLoans[0].activeBorrowers ? cc.activeLoans[0].activeBorrowers : 0;
                         noOfPendings += cc.activeLoans[0].pendingClients ? cc.activeLoans[0].pendingClients : 0;
+                        totalPendingLoans += cc.activeLoans[0].pendingLoans ? cc.activeLoans[0].pendingLoans : 0;
                     }
                     
                     if (cc?.draftCollections?.length > 0) {
@@ -655,7 +657,8 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                     mcbuInterest: totalMcbuInterest,
                     mcbuInterestStr: formatPricePhp(totalMcbuInterest),
                     totalData: true,
-                    status: '-'
+                    status: '-',
+                    totalPendingLoans: totalPendingLoans
                 }
                 const consolidateTotalData = consolidateTotals(totals, transferGvr, transferRcv);
                 if (collectionTransferred.length > 0 || collectionReceived.length > 0) {
@@ -1274,9 +1277,9 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
     return (
         <React.Fragment>
             {loading ? (
-                <div className="absolute top-1/2 left-1/2">
+                // <div className="absolute top-1/2 left-1/2">
                     <Spinner />
-                </div>
+                // </div>
             ) : (
                 <TableComponent columns={columns} data={cashCollectionList} showPagination={false} showFilters={false} hasActionButtons={false} rowClick={handleRowClick} />
             )}

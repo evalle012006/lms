@@ -11,6 +11,7 @@ import {
 } from "@/lib/graph.fields";
 import { GraphProvider } from "@/lib/graph/graph.provider";
 import { filterGraphFields } from '@/lib/graph.functions';
+import { savePendingLoans } from "../cash-collections/update-pending-loans";
 
 const fields = `
   ${LOAN_FIELDS}
@@ -21,6 +22,7 @@ const fields = `
 
 const loanType = createGraphType("loans", fields)();
 const cashCollectionsType = createGraphType("cashCollections", "_id")();
+const cashCollectionsTypeFull = createGraphType("cashCollections", CASH_COLLECTIONS_FIELDS)
 const graph = new GraphProvider();
 
 export default apiHandler({
@@ -42,12 +44,28 @@ async function updateLoan(req, res) {
   const { _id: loanId, group, ...loan } = req.body;
 
   logger.debug({ page: `Updating Loan: ${loan.clientId}`, data: loan });
-  // const currentDate = moment(getCurrentDate()).format("YYYY-MM-DD");
-  // let dateOfRelease = loan.dateOfRelease;
+  
+  const user_id = req?.auth?.sub;
+  const currentDate = moment(getCurrentDate()).format('YYYY-MM-DD')
 
-  // if (loan?.loanFor === "tomorrow" && !dateOfRelease) {
-  //   dateOfRelease = moment(currentDate).add(1, "days").format("YYYY-MM-DD");
-  // }
+  const groupCashCollections = (await graph.query(queryQl(cashCollectionsTypeFull(), {
+        where: {
+          groupId: { _eq: loan.groupId },
+          dateAdded: { _eq: currentDate },
+        }
+  }))).data?.cashCollections;
+
+  let groupStatus = 'pending';
+  let hasExistingCC = false;
+  if (groupCashCollections.length > 0) {
+      const groupStatuses = groupCashCollections.filter(cc => cc.groupStatus === 'pending');
+      if (groupStatuses.length === 0) {
+          groupStatus = 'closed';
+      }
+
+      const existingCC = groupCashCollections.find(cc => cc.clientId === loan.clientId);
+      hasExistingCC = (existingCC && existingCC?.status == 'completed') ? true : false;
+  }
 
   // the mixed type from mongo during migration
   loan.coMaker = loan.coMaker?.toString();
@@ -68,6 +86,14 @@ async function updateLoan(req, res) {
       set: filterGraphFields(CASH_COLLECTIONS_FIELDS, { currentReleaseAmount: loan.amountRelease }),
     })
   );
+
+  if (hasExistingCC) {
+    if (groupStatus == 'closed') {
+      res.send({ error: true, message: 'This client has a completed loan but the group transaction was already closed!' })
+    } else {
+      await savePendingLoans(user_id, [loan], loanId);
+    }
+  }
 
   res.send({ success: true, loan: loanResp });
 }

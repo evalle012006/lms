@@ -156,6 +156,7 @@ async function list(req, res) {
                        branchId: branchId ? { _eq: branchId }: { _neq: 'null' },
                        groupId: { _eq: groupId },
                        status: { _eq: status },
+                       duplicate: { _eq: false },
                        loans_aggregate: {
                             count: {
                             predicate: { _eq: 0 },
