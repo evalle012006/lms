@@ -123,7 +123,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
 
         setLoading(true);
         try {
-            const processedValues = {
+            let processedValues = {
                 ...values,
                 insertedBy: currentUser._id,
                 firstName: values.firstName.toUpperCase(),
@@ -132,9 +132,8 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                 birthdate: values.birthdate ? moment(values.birthdate).format("YYYY-MM-DD") : null,
                 fullName: `${values.firstName} ${values.middleName} ${values.lastName}`.toUpperCase(),
                 address: `${values.addressStreetNo} ${values.addressBarangayDistrict} ${values.addressMunicipalityCity} ${values.addressProvince} ${values.addressZipCode}`,
-                groupName: selectedGroup ? selectedGroup.name : '',
-                groupId: selectedGroup ? selectedGroup._id : '',
-                loId: selectedGroup ? selectedGroup.loanOfficerId : '',
+                groupId: values.groupId,
+                loId: values.loId,
                 duplicate,
                 ciName: values?.ciName?.toUpperCase(),
                 groupLeader: values.groupLeader,
@@ -158,6 +157,9 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
             } else if (mode === 'edit') {
                 processedValues._id = client._id;
                 processedValues.file = image;
+                processedValues.groupName = selectedGroup ? selectedGroup.name : '';
+                processedValues.groupId = selectedGroup ? selectedGroup._id : '';
+                processedValues.loId = selectedGroup ? selectedGroup.loanOfficerId : '';
                 const response = await handleUpdateClient(processedValues);
                 if (response.success) {
                     toast.success('Client successfully updated.');
