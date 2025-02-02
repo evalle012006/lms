@@ -547,12 +547,12 @@ const CashCollectionDetailsPage = () => {
                             if (type !== 'filter') {
                                 remarks = "";
                             } else {
-                                remarks = cc.history.remarks;
+                                remarks = cc.history?.remarks;
                             }
                         }
 
                         if (cc?.maturedPD) {
-                            remarks = cc.history.remarks;
+                            remarks = cc.history?.remarks;
                         }
                         
                         collection = {

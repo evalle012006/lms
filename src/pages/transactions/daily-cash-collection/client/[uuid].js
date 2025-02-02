@@ -543,13 +543,13 @@ const CashCollectionDetailsPage = () => {
                             if (type !== 'filter') {
                                 remarks = "";
                             } else {
-                                remarks = cc.history.remarks;
+                                remarks = cc.history?.remarks ?? '-';
                                 mcbuWithdrawal = cc.mcbuWithdrawal;
                             }
                         }
 
                         if (cc?.maturedPD) {
-                            remarks = cc.history.remarks;
+                            remarks = cc.history?.remarks ?? '-';
                         }
 
                         collection = {
@@ -1023,7 +1023,7 @@ const CashCollectionDetailsPage = () => {
                         let origCCIdx = cashCollection.findIndex(oc => oc.slotNo == cc.slotNo);
                         if (origCCIdx > -1) {
                             let origCC = {...cashCollection[origCCIdx]};
-                            origCC.remarks = origCC.history.remarks;
+                            origCC.remarks = origCC.history?.remarks;
                             cashCollection[origCCIdx] = origCC;
                         }
                     });

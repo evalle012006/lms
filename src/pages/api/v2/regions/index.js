@@ -1,4 +1,4 @@
-import { AREA_FIELDS, REGION_FIELDS, USER_FIELDS } from '@/lib/graph.fields';
+import { AREA_FIELDS, BRANCH_FIELDS, REGION_FIELDS, USER_FIELDS } from '@/lib/graph.fields';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, updateQl } from '@/lib/graph/graph.util';
 import { apiHandler } from '@/services/api-handler';

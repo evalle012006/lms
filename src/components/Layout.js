@@ -128,13 +128,15 @@ const Layout = ({
         setIsNavVisible(!isMobile);
     }, [isMobile]);
 
+    const shouldHideChildren = isMobile && isNavVisible;
+
     return (
         <div className={`flex bg-white w-full h-screen ${vScroll ? 'overflow-y-auto' : 'overflow-hidden'}`}>
             <div className={`fixed top-0 h-full ${isNavVisible && !isMobile ? 'w-64' : 'w-0'} transition-all duration-300`}>
                 <NavComponent isVisible={isNavVisible} toggleNav={toggleNav} isMobile={isMobile} />
             </div>
             
-            <div className={`flex flex-col flex-1 bg-neutral-200 ${isNavVisible && !isMobile ? 'ml-64' : 'ml-0'} transition-all duration-300 overflow-y-auto`}>
+            <div className={`flex flex-col flex-1 bg-neutral-200 ${isNavVisible && !isMobile ? 'ml-64' : 'ml-0'} transition-all duration-300 overflow-y-auto ${shouldHideChildren ? 'hidden' : ''}`}>
                 {header && (
                     <div className="bg-white p-6 gap-6 h-20 flex-shrink-0">
                         <div className="flex flex-row justify-between items-center">
