@@ -578,13 +578,11 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                                             onClick={() => setSelectedTab("new-prospects")}>
                                                 New Prospects
                                         </TabSelector>
-                                        {currentUser.role.rep < 3 && (
-                                            <TabSelector
-                                                isActive={selectedTab === "duplicate-prospects"}
-                                                onClick={() => setSelectedTab("duplicate-prospects")}>
-                                                    Marked as Duplicate Prospects
-                                            </TabSelector>
-                                        )}
+                                        <TabSelector
+                                            isActive={selectedTab === "duplicate-prospects"}
+                                            onClick={() => setSelectedTab("duplicate-prospects")}>
+                                                Marked as Duplicate Prospects
+                                        </TabSelector>
                                         <TabSelector
                                             isActive={selectedTab === "excluded-prospects"}
                                             onClick={() => setSelectedTab("excluded-prospects")}>
@@ -594,11 +592,9 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                                     <TabPanel hidden={selectedTab !== "new-prospects"}>
                                         <TableComponent columns={columns} data={activeList} hasActionButtons={groupId ? false : true} rowActionButtons={currentUser.role.rep > 2 && rowActionButtons} showFilters={true} rowClick={handleShowClientInfoModal}/>
                                     </TabPanel>
-                                    {currentUser.role.rep < 3 && (
-                                        <TabPanel hidden={selectedTab !== "duplicate-prospects"}>
-                                            <TableComponent columns={columns} data={duplicateList} hasActionButtons={currentUser.role.rep < 3} rowActionButtons={currentUser.role.rep < 3 ? rowActionButtonsAdmin : []} showFilters={true} rowClick={handleShowClientInfoModal}/>
-                                        </TabPanel>
-                                    )}
+                                    <TabPanel hidden={selectedTab !== "duplicate-prospects"}>
+                                        <TableComponent columns={columns} data={duplicateList} hasActionButtons={currentUser.role.rep < 3} rowActionButtons={currentUser.role.rep < 3 ? rowActionButtonsAdmin : []} showFilters={true} rowClick={handleShowClientInfoModal}/>
+                                    </TabPanel>
                                     <TabPanel hidden={selectedTab !== "excluded-prospects"}>
                                         <TableComponent columns={columns} data={excludedList} hasActionButtons={groupId ? false : true} rowActionButtons={currentUser.role.rep > 2 && rowActionButtons} showFilters={true} rowClick={handleShowClientInfoModal}/>
                                     </TabPanel>
