@@ -44,7 +44,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
     const { status } = router.query;
 
     const loUsers = useMemo(() => userList.filter(u => u.role.rep === 4), [userList]);
-    const [filteredGroupList, setFilteredGroupList] = useState(currentUser.role.rep == 4 ? groupList : []);
+    const [filteredGroupList, setFilteredGroupList] = useState([]);
 
     const openCalendar = () => {
         setShowCalendar(true);
@@ -126,11 +126,11 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
             let processedValues = {
                 ...values,
                 insertedBy: currentUser._id,
-                firstName: values.firstName.toUpperCase(),
-                lastName: values.lastName.toUpperCase(),
-                middleName: values.middleName ? values.middleName.toUpperCase() : '',
+                firstName: values.firstName.trim().toUpperCase(),
+                lastName: values.lastName.trim().toUpperCase(),
+                middleName: values.middleName ? values.middleName.trim().toUpperCase() : '',
                 birthdate: values.birthdate ? moment(values.birthdate).format("YYYY-MM-DD") : null,
-                fullName: `${values.firstName} ${values.middleName} ${values.lastName}`.toUpperCase(),
+                fullName: `${values.firstName.trim()} ${values.middleName} ${values.lastName.trim()}`.toUpperCase(),
                 address: `${values.addressStreetNo} ${values.addressBarangayDistrict} ${values.addressMunicipalityCity} ${values.addressProvince} ${values.addressZipCode}`,
                 groupId: values.groupId,
                 loId: values.loId,
@@ -148,6 +148,8 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
             if (mode === 'add') {
                 processedValues.status = 'pending';
                 processedValues.delinquent = false;
+                const selectedGroupAdd = groupList.find(g => g._id === values.groupId);
+                processedValues.groupName = selectedGroupAdd ? selectedGroupAdd.name : '';
                 const response = await fetchWrapper.post(getApiBaseUrl() + 'clients/save/', processedValues);
                 if (response.success) {
                     toast.success('Client successfully added.');
@@ -157,6 +159,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
             } else if (mode === 'edit') {
                 processedValues._id = client._id;
                 processedValues.file = image;
+                console.log(selectedGroup)
                 processedValues.groupName = selectedGroup ? selectedGroup.name : '';
                 processedValues.groupId = selectedGroup ? selectedGroup._id : '';
                 processedValues.loId = selectedGroup ? selectedGroup.loanOfficerId : '';
@@ -247,6 +250,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
 
     useEffect(() => {
         if (mode === "edit" && client.group && client.group.length > 0) {
+            console.log(client)
             setSelectedGroup(client.group[0]);
         }
     }, [mode, client]);
@@ -326,13 +330,14 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                                 />
                                             </div>
                                         )}
+
                                         <div className="mt-4">
                                             <SelectDropdown
                                                 name="groupId"
                                                 field="groupId"
                                                 value={values.groupId}
                                                 label="Group (Required)"
-                                                options={filteredGroupList}
+                                                options={currentUser.role.rep == 4 ? groupList : filteredGroupList}
                                                 onChange={setFieldValue}
                                                 onBlur={setFieldTouched}
                                                 placeholder="Select Group"

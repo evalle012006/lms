@@ -340,12 +340,20 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
         // { label: 'Delete', action: handleDeleteAction }
     ]);
 
-    const [rowActionButtonsAdmin, setRowActionButtonsAdmin] = useState([
-        { label: 'Edit', action: handleEditAction },
-        { label: 'Transfer', action: handleTransferAction },
-        { label: 'Update', action: handleCoMakerAction, title: 'Update CoMaker' },
-        { label: 'Unmark as Duplicate', action: handleUnmarkDuplicateAction, title: 'Unmark as Duplicate' },
-    ]);
+    const [rowActionButtonsAdmin, setRowActionButtonsAdmin] = useState(
+        currentUser.role.rep == 1 ? [
+            { label: 'Edit', action: handleEditAction },
+            { label: 'Transfer', action: handleTransferAction },
+            { label: 'Update', action: handleCoMakerAction, title: 'Update CoMaker' },
+            { label: 'Unmark as Duplicate', action: handleUnmarkDuplicateAction, title: 'Unmark as Duplicate' },
+        ]
+        :
+        [
+            { label: 'Edit', action: handleEditAction },
+            { label: 'Transfer', action: handleTransferAction },
+            { label: 'Update', action: handleCoMakerAction, title: 'Update CoMaker' },
+        ]
+    );
 
     const handleDelete = () => {
         if (client) {
@@ -623,7 +631,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                                         <TableComponent columns={columns} data={activeList} hasActionButtons={groupId ? false : true} rowActionButtons={currentUser.role.rep > 2 && rowActionButtons} showFilters={true} rowClick={handleShowClientInfoModal}/>
                                     </TabPanel>
                                     <TabPanel hidden={selectedTab !== "duplicate-prospects"}>
-                                        <TableComponent columns={columns} data={duplicateList} hasActionButtons={currentUser.role.rep < 3} rowActionButtons={currentUser.role.rep < 3 ? rowActionButtonsAdmin : []} showFilters={true} rowClick={handleShowClientInfoModal}/>
+                                        <TableComponent columns={columns} data={duplicateList} hasActionButtons={true} rowActionButtons={rowActionButtonsAdmin} showFilters={true} rowClick={handleShowClientInfoModal}/>
                                     </TabPanel>
                                     <TabPanel hidden={selectedTab !== "excluded-prospects"}>
                                         <TableComponent columns={columns} data={excludedList} hasActionButtons={groupId ? false : true} rowActionButtons={currentUser.role.rep > 2 && rowActionButtons} showFilters={true} rowClick={handleShowClientInfoModal}/>

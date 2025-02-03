@@ -1042,7 +1042,7 @@ const CashCollectionDetailsPage = () => {
             // RESET
             setTimeout(() => {
                 if (currentTime) {
-                    const staging = process.env.NEXT_PUBLIC_STAGING ? true : false;
+                    const staging = process.env.NEXT_PUBLIC_STAGING ? process.env.NEXT_PUBLIC_STAGING : false;
                     const time24h = moment(currentTime, 'h:mm:ss A').format('HH:mm');
                     const timeArr = time24h.split(':');
                     const hour = parseInt(timeArr[0]);
@@ -1570,7 +1570,6 @@ const CashCollectionDetailsPage = () => {
                                     // temp.mcbuColStr = formatPricePhp(temp.mcbuCol);
                                     // temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + temp.mcbuCol : 0 + temp.mcbuCol;
                                     // temp.mcbuStr = formatPricePhp(temp.mcbu);
-                                    console.log(temp.mcbu, temp.mcbuCol)
                                 }
 
                                 // check if previous mcbu is less than 600 then it means the previous loan did not cont-mcbu
