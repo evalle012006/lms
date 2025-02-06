@@ -68,6 +68,7 @@ export const CLIENT_FIELDS = `
   ciName,
   groupLeader,
   duplicate,
+  similarityScore,
   `;
 
 export const LOAN_FIELDS = `
