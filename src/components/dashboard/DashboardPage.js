@@ -1,34 +1,34 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { 
-  UserPlusIcon, 
-  WalletIcon, 
-  BanknotesIcon, 
-  ScaleIcon, 
-  ExclamationCircleIcon, 
-  XCircleIcon, 
-  UserMinusIcon, 
-  ShareIcon, 
-  LockClosedIcon, 
-  TruckIcon, 
-  ExclamationTriangleIcon, 
-  HeartIcon, 
-  XMarkIcon, 
-  CurrencyDollarIcon,
-  QuestionMarkCircleIcon,
-  MinusCircleIcon,
-  ArrowsRightLeftIcon,
-  ArrowPathRoundedSquareIcon,
-  UserGroupIcon,
-  ClockIcon,
-  PencilSquareIcon
-} from '@heroicons/react/24/outline';
+    UserPlus,
+    Wallet,
+    Banknote,
+    Scale,
+    AlertCircle,
+    XCircle,
+    UserMinus,
+    Share2,
+    Lock,
+    Truck,
+    AlertTriangle,
+    Heart,
+    X,
+    DollarSign,
+    HelpCircle,
+    MinusCircle,
+    ArrowLeftRight,
+    RotateCcw,
+    Users,
+    Clock,
+    PencilLine
+} from 'lucide-react';
 import ClientSearchTool from './ClientSearchTool';
 import { Line } from 'react-chartjs-2';
 import { Chart as ChartJS, registerables } from 'chart.js';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 import Avatar from '@/lib/avatar';
-import { useRouter } from 'node_modules/next/router';
+import { useRouter } from 'next/router';
 import { getApiBaseUrl } from '@/lib/constants';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { useMemo } from 'react';
@@ -99,7 +99,104 @@ const DashboardPage = () => {
         setIsNavVisible(!isNavVisible);
     };
 
-    // Add this to your state declarations at the top
+    // Function to generate sample dates for last 12 months
+    const generateDates = () => {
+        const dates = [];
+        for (let i = 11; i >= 0; i--) {
+            const date = new Date();
+            date.setMonth(date.getMonth() - i);
+            dates.push(date.toLocaleString('default', { month: 'short', year: '2-digit' }));
+        }
+        return dates;
+    };
+
+    // Function to generate random data
+    const generateRandomData = (min, max, count) => {
+        return Array.from({ length: count }, () => 
+            Math.floor(Math.random() * (max - min + 1)) + min
+        );
+    };
+
+    useEffect(() => {
+        const dates = generateDates();
+        
+        // MCBU Data
+        setMcbuData({
+            labels: dates,
+            datasets: [
+                {
+                    label: 'Collections',
+                    data: generateRandomData(50000, 150000, 12),
+                    borderColor: 'rgb(75, 192, 192)',
+                    tension: 0.1
+                },
+                {
+                    label: 'Withdrawals',
+                    data: generateRandomData(30000, 100000, 12),
+                    borderColor: 'rgb(255, 99, 132)',
+                    tension: 0.1
+                }
+            ]
+        });
+
+        // Person Performance Data
+        setPersonData({
+            labels: dates,
+            datasets: [
+                {
+                    label: 'Active Clients',
+                    data: generateRandomData(1000, 2000, 12),
+                    borderColor: 'rgb(53, 162, 235)',
+                    tension: 0.1
+                },
+                {
+                    label: 'New Members',
+                    data: generateRandomData(50, 200, 12),
+                    borderColor: 'rgb(75, 192, 192)',
+                    tension: 0.1
+                }
+            ]
+        });
+
+        // Loan Collection Data
+        setLoanCollectionData({
+            labels: dates,
+            datasets: [
+                {
+                    label: 'Collections',
+                    data: generateRandomData(200000, 500000, 12),
+                    borderColor: 'rgb(75, 192, 192)',
+                    tension: 0.1
+                },
+                {
+                    label: 'Releases',
+                    data: generateRandomData(150000, 450000, 12),
+                    borderColor: 'rgb(255, 99, 132)',
+                    tension: 0.1
+                }
+            ]
+        });
+
+        // MIS Past Due Data
+        setMisPastDueData({
+            labels: dates,
+            datasets: [
+                {
+                    label: 'MIS Payment',
+                    data: generateRandomData(5000, 15000, 12),
+                    borderColor: 'rgb(53, 162, 235)',
+                    tension: 0.1
+                },
+                {
+                    label: 'Past Due',
+                    data: generateRandomData(2000, 8000, 12),
+                    borderColor: 'rgb(255, 99, 132)',
+                    tension: 0.1
+                }
+            ]
+        });
+    }, []);
+
     const [chartOptions, setChartOptions] = useState({
         responsive: true,
         maintainAspectRatio: false,
@@ -300,8 +397,52 @@ const DashboardPage = () => {
         fetchSummaries();
     }, []);
 
+    // Update chart options to show currency format for MCBU and Loan Collection
+    useEffect(() => {
+        const currencyFormatter = (value) => 
+            new Intl.NumberFormat('en-PH', { 
+                style: 'currency', 
+                currency: 'PHP',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(value);
+
+        setChartOptions(prev => ({
+            ...prev,
+            plugins: {
+                ...prev.plugins,
+                tooltip: {
+                    ...prev.plugins.tooltip,
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.parsed.y !== null) {
+                                label += currencyFormatter(context.parsed.y);
+                            }
+                            return label;
+                        }
+                    }
+                }
+            },
+            scales: {
+                ...prev.scales,
+                y: {
+                    ...prev.scales.y,
+                    ticks: {
+                        callback: function(value) {
+                            return currencyFormatter(value);
+                        }
+                    }
+                }
+            }
+        }));
+    }, []);
+
     const CardItem = ({ title, value, Icon }) => {
-        const IconComponent = Icon || QuestionMarkCircleIcon;
+        const IconComponent = Icon || HelpCircle;
         return (
             <div className="bg-white p-3 rounded-lg shadow relative overflow-hidden mb-2">
                 <IconComponent className="absolute right-2 bottom-2 h-12 w-12 text-gray-200 transform translate-x-2 translate-y-2" />
@@ -313,13 +454,13 @@ const DashboardPage = () => {
 
     return (
         <div className="min-h-screen bg-gray-100 flex flex-col">
-            <div className="flex-grow p-4 flex flex-col">
-                <div className="flex items-center justify-between pb-6 border-b">
+            <div className="flex-grow p-4 flex flex-col overflow-x-auto">
+                <div className="flex items-center justify-between pb-6 border-b min-w-[1400px]">
                     <div className='flex flex-col'>
                         <div className="flex items-center">
                             <div className='group relative'>
                                 <span className="hidden group-hover:block absolute right-2 pt-1 cursor-pointer" onClick={() => router.push(`/settings/users/${currentUser._id}`)}>
-                                    <PencilSquareIcon className="w-4 h-4" />
+                                    <PencilLine className="w-4 h-4" />
                                 </span>
                                 <Avatar name={currentUser.firstName + " " + currentUser.lastName} src={currentUser.profile ? currentUser.profile : ""} className={`${currentUser.profile ? '' : 'p-6'} `} />
                             </div>
@@ -329,7 +470,7 @@ const DashboardPage = () => {
                         </div>
                     </div>
                     <div className="flex flex-col items-end">
-                        <p className="text-sm font-semibold">Cash On Hand: {formatNumber(coh)}</p>
+                        {/* <p className="text-sm font-semibold">Cash On Hand: {formatNumber(coh)}</p> */}
                         <p className="text-sm font-semibold">Bank Balance: {formatNumber(bankBalance)}</p>
                     </div>
                 </div>
@@ -395,80 +536,177 @@ const DashboardPage = () => {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 mt-4">
-                    {/* Summary Column */}
-                    <div className={`${isMobile ? 'order-2' : 'order-1'} lg:col-span-3`}>
-                        <div className="sticky top-4">
-                            <h2 className="text-lg font-semibold mb-2">Summary</h2>
-                            <div className="space-y-2">
-                                <CardItem title="Active Clients" value={summaryData.activeClients} Icon={UserPlusIcon} />
-                                <CardItem title="MCBU" value={summaryData.mcbu} Icon={WalletIcon} />
-                                <CardItem title="Total Loan Release" value={summaryData.totalLoanRelease} Icon={BanknotesIcon} />
-                                <CardItem title="Active Borrowers" value={summaryData.activeBorrowers} Icon={ScaleIcon} />
-                                <CardItem title="Total Loan Balance" value={summaryData.totalLoanBalance} Icon={CurrencyDollarIcon} />
-                                <CardItem title="Past Due Person" value={summaryData.pastDuePerson} Icon={ExclamationCircleIcon} />
-                                <CardItem title="Past Due Amount" value={summaryData.pastDueAmount} Icon={ExclamationCircleIcon} />
-                                <CardItem title="PD Active Loan" value={summaryData.pdActiveLoan} Icon={ExclamationCircleIcon} />
-                                <CardItem title="PD Loan Balance" value={summaryData.pdLoanBalance} Icon={ExclamationCircleIcon} />
-                                <CardItem title="PD Net Risk" value={summaryData.pdNetRisk} Icon={ExclamationCircleIcon} />
-                                <CardItem title="Excused Person" value={summaryData.excusedPerson} Icon={XCircleIcon} />
-                                <CardItem title="Excused Active Loan" value={summaryData.excusedActiveLoan} Icon={XCircleIcon} />
-                                <CardItem title="Excused Loan Balance" value={summaryData.excusedLoanBalance} Icon={XCircleIcon} />
-                                <CardItem title="Excused Net Risk Balance" value={summaryData.excusedNetRiskBalance} Icon={XCircleIcon} />
-                                <CardItem title="Runaway Clients" value={summaryData.runawayClients} Icon={UserMinusIcon} />
-                                <CardItem title="Missing Clients" value={summaryData.missingClients} Icon={UserMinusIcon} />
-                                <CardItem title="Dummy Accounts" value={summaryData.dummyAccounts} Icon={UserMinusIcon} />
-                                <CardItem title="Loan Share" value={summaryData.loanShare} Icon={ShareIcon} />
-                                <CardItem title="Imprisonment" value={summaryData.imprisonment} Icon={LockClosedIcon} />
-                                <CardItem title="Moving Excuses" value={summaryData.movingExcuses} Icon={TruckIcon} />
-                                <CardItem title="Delinquent" value={summaryData.delinquent} Icon={ExclamationTriangleIcon} />
-                                <CardItem title="Hospitalization" value={summaryData.hospitalization} Icon={HeartIcon} />
-                                <CardItem title="Death" value={summaryData.death} Icon={XMarkIcon} />
-                                <CardItem title="Bankruptcy" value={summaryData.bankruptcy} Icon={CurrencyDollarIcon} />
+                <div className="flex flex-col gap-4 mt-4 min-w-[1400px]">
+                    <div className="grid grid-cols-5 gap-4">
+                        {/* Summary Column */}
+                        <div className="col-span-1">
+                            <div className="sticky top-4">
+                                <div className="mb-4">
+                                    <h2 className="text-lg font-semibold">SUMMARY</h2>
+                                    <p className="text-sm text-gray-600">Daily/Weekly/Monthly</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <CardItem title="Active Clients" value={summaryData.activeClients} Icon={UserPlus} />
+                                    <CardItem title="MCBU" value={summaryData.mcbu} Icon={Wallet} />
+                                    <CardItem title="Total Loan Release" value={summaryData.totalLoanRelease} Icon={Banknote} />
+                                    <CardItem title="Active Borrowers" value={summaryData.activeBorrowers} Icon={Scale} />
+                                    <CardItem title="Total Loan Balance" value={summaryData.totalLoanBalance} Icon={DollarSign} />
+                                    <CardItem title="Past Due Person" value={summaryData.pastDuePerson} Icon={AlertCircle} />
+                                    <CardItem title="Past Due Amount" value={summaryData.pastDueAmount} Icon={AlertCircle} />
+                                    <CardItem title="PD Active Loan" value={summaryData.pdActiveLoan} Icon={AlertCircle} />
+                                    <CardItem title="PD Loan Balance" value={summaryData.pdLoanBalance} Icon={AlertCircle} />
+                                    <CardItem title="PD Net Risk" value={summaryData.pdNetRisk} Icon={AlertCircle} />
+                                    <CardItem title="Excused Person" value={summaryData.excusedPerson} Icon={XCircle} />
+                                    <CardItem title="Excused Active Loan" value={summaryData.excusedActiveLoan} Icon={XCircle} />
+                                    <CardItem title="Excused Loan Balance" value={summaryData.excusedLoanBalance} Icon={XCircle} />
+                                    <CardItem title="Excused Net Risk Balance" value={summaryData.excusedNetRiskBalance} Icon={XCircle} />
+                                    <CardItem title="Runaway Clients" value={summaryData.runawayClients} Icon={UserMinus} />
+                                    <CardItem title="Missing Clients" value={summaryData.missingClients} Icon={UserMinus} />
+                                    <CardItem title="Dummy Accounts" value={summaryData.dummyAccounts} Icon={UserMinus} />
+                                    <CardItem title="Loan Share" value={summaryData.loanShare} Icon={Share2} />
+                                    <CardItem title="Imprisonment" value={summaryData.imprisonment} Icon={Lock} />
+                                    <CardItem title="Moving Excuses" value={summaryData.movingExcuses} Icon={Truck} />
+                                    <CardItem title="Delinquent" value={summaryData.delinquent} Icon={AlertTriangle} />
+                                    <CardItem title="Hospitalization" value={summaryData.hospitalization} Icon={Heart} />
+                                    <CardItem title="Death" value={summaryData.death} Icon={X} />
+                                    <CardItem title="Bankruptcy" value={summaryData.bankruptcy} Icon={DollarSign} />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Progress Column */}
+                        <div className="col-span-1">
+                            <div className="sticky top-4">
+                                <div className="mb-4">
+                                    <h2 className="text-lg font-semibold">PROGRESS</h2>
+                                    <p className="text-sm text-gray-600">Daily/Weekly/Monthly</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <CardItem title="Total Release:" value={summaryData.totalRelease || '0.00'} Icon={Banknote} />
+                                    <CardItem title="Amount:" value={summaryData.amount || '0.00'} Icon={DollarSign} />
+                                    <CardItem title="New Member:" value={summaryData.newMember || '0.00'} Icon={UserPlus} />
+                                    <CardItem title="Transfer Clients:" value={summaryData.transferClients || '0.00'} Icon={ArrowLeftRight} />
+                                    <CardItem title="Renewals:" value={summaryData.renewals || '0.00'} Icon={RotateCcw} />
+                                    <CardItem title="Offset:" value={summaryData.offset || '0.00'} Icon={MinusCircle} />
+                                    <CardItem title="Full Payment" value={summaryData.fullPayment || '0.00'} Icon={Users} />
+                                    <CardItem title="Full Payment Amount:" value={summaryData.fullPaymentAmount || '0.00'} Icon={DollarSign} />
+                                    <CardItem title="Past Due Collection:" value={summaryData.pastDueCollection || '0.00'} Icon={AlertCircle} />
+                                    <CardItem title="Pending:" value={summaryData.pending || '0.00'} Icon={Clock} />
+                                </div>
+                            </div>
+                        </div>  
+
+                        {/* Daily Cash Collection - Receipts */}
+                        <div className="col-span-1">
+                            <div className="sticky top-4">
+                                <div className="mb-4">
+                                    <h2 className="text-lg font-semibold">DAILY CASH COLLECTION</h2>
+                                    <p className="text-sm text-gray-600">RECEIPTS</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <CardItem title="Beginning Balance:" value={summaryData.beginningBalance || '0.00'} Icon={DollarSign} />
+                                    <CardItem title="MCBU Collection:" value={summaryData.mcbuCollection || '0.00'} Icon={Wallet} />
+                                    <CardItem title="Loan Collection Daily:" value={summaryData.loanCollectionDaily || '0.00'} Icon={Banknote} />
+                                    <CardItem title="Loan Collection Weekly:" value={summaryData.loanCollectionWeekly || '0.00'} Icon={Banknote} />
+                                    <CardItem title="Staff CBU Collection:" value={summaryData.staffCbuCollection || '0.00'} Icon={Users} />
+                                    <CardItem title="Staff Loan Collection:" value={summaryData.staffLoanCollection || '0.00'} Icon={Banknote} />
+                                    <CardItem title="Admin Fees:" value={summaryData.adminFees || '0.00'} Icon={DollarSign} />
+                                    <CardItem title="L R F Collection:" value={summaryData.lrfCollection || '0.00'} Icon={Banknote} />
+                                    <CardItem title="C H B Collection:" value={summaryData.chbCollection || '0.00'} Icon={Banknote} />
+                                    <CardItem title="Add. Hospitalization:" value={summaryData.addHospitalization || '0.00'} Icon={Heart} />
+                                    <CardItem title="W/Tax, EE&ER:" value={summaryData.wtaxEeEr || '0.00'} Icon={DollarSign} />
+                                    <CardItem title="MCBU Unclaimed (N):" value={summaryData.mcbuUnclaimedN || '0.00'} Icon={AlertCircle} />
+                                    <CardItem title="Other Income (Passbook):" value={summaryData.otherIncomePassbook || '0.00'} Icon={DollarSign} />
+                                    <CardItem title="Other Income:" value={summaryData.otherIncome || '0.00'} Icon={DollarSign} />
+                                    <CardItem title="Other Receipts (Picture):" value={summaryData.otherReceiptsPicture || '0.00'} Icon={DollarSign} />
+                                    <CardItem title="Other Receipts:" value={summaryData.otherReceipts || '0.00'} Icon={DollarSign} />
+                                    <CardItem title="Fund Transfer:" value={summaryData.fundTransferReceipts || '0.00'} Icon={ArrowLeftRight} />
+                                    <CardItem title="Bank Withdrawal:" value={summaryData.bankWithdrawal || '0.00'} Icon={Banknote} />
+                                    <CardItem title="Total Receipts:" value={summaryData.totalReceipts || '0.00'} Icon={DollarSign} />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Daily Cash Collection - Payments */}
+                        <div className="col-span-1">
+                            <div className="sticky top-4">
+                                <div className="mb-4">
+                                    <h2 className="text-lg font-semibold">DAILY CASH COLLECTION</h2>
+                                    <p className="text-sm text-gray-600">PAYMENTS</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <CardItem title="Client Loan Release:" value={summaryData.clientLoanRelease || '0.00'} Icon={Banknote} />
+                                    <CardItem title="Client MCBU Withdrawals:" value={summaryData.clientMcbuWithdrawals || '0.00'} Icon={Wallet} />
+                                    <CardItem title="Client MCBU Return:" value={summaryData.clientMcbuReturn || '0.00'} Icon={RotateCcw} />
+                                    <CardItem title="Staff Loan Release:" value={summaryData.staffLoanRelease || '0.00'} Icon={Users} />
+                                    <CardItem title="Staff CBU Withdrawals:" value={summaryData.staffCbuWithdrawals || '0.00'} Icon={Wallet} />
+                                    <CardItem title="Management Expenses:" value={summaryData.managementExpenses || '0.00'} Icon={DollarSign} />
+                                    <CardItem title="CBHB Disbursed:" value={summaryData.cbhbDisbursed || '0.00'} Icon={Banknote} />
+                                    <CardItem title="MCBU Unclaimed (Out):" value={summaryData.mcbuUnclaimedOut || '0.00'} Icon={AlertCircle} />
+                                    <CardItem title="Rebates:" value={summaryData.rebates || '0.00'} Icon={DollarSign} />
+                                    <CardItem title="Other Payment:" value={summaryData.otherPayment || '0.00'} Icon={DollarSign} />
+                                    <CardItem title="Fund Transfer:" value={summaryData.fundTransferPayments || '0.00'} Icon={ArrowLeftRight} />
+                                    <CardItem title="Bank Deposit:" value={summaryData.bankDeposit || '0.00'} Icon={Banknote} />
+                                    <CardItem title="Total Payment:" value={summaryData.totalPayment || '0.00'} Icon={DollarSign} />
+                                    <CardItem title="Closing Balance:" value={summaryData.closingBalance || '0.00'} Icon={DollarSign} />
+                                    <CardItem title="Cash On Hand:" value={summaryData.cashOnHand || '0.00'} Icon={DollarSign} />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Cash Flow for Tomorrow */}
+                        <div className="col-span-1">
+                            <div className="sticky top-4">
+                                <div className="mb-4">
+                                    <h2 className="text-lg font-semibold">CASH FLOW FOR TOMORROW</h2>
+                                    <p className="text-sm text-gray-600">Target/Collection</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <CardItem title="Prospect:" value={summaryData.prospect || '0.00'} Icon={Users} />
+                                    <CardItem title="Amount:" value={summaryData.prospectAmount || '0.00'} Icon={DollarSign} />
+                                    <CardItem title="Renewals:" value={summaryData.tomorrowRenewals || '0.00'} Icon={RotateCcw} />
+                                    <CardItem title="Amount:" value={summaryData.renewalsAmount || '0.00'} Icon={DollarSign} />
+                                    <CardItem title="Total Amount of Releases:" value={summaryData.totalAmountReleases || '0.00'} Icon={Banknote} />
+                                    <CardItem title="Target Collection for Tomorrow:" value={summaryData.targetCollectionTomorrow || '0.00'} Icon={AlertCircle} />
+                                    <CardItem title="Target Expenses for Tomorrow:" value={summaryData.targetExpensesTomorrow || '0.00'} Icon={DollarSign} />
+                                </div>
                             </div>
                         </div>
                     </div>
+                    {/* Performance Section - Full width, 2 columns */}
+                    <div className="w-full mt-8 border-t pt-8">
+                    <h2 className="text-lg font-semibold mb-4">Performance</h2>
+                        <div className="grid grid-cols-2 gap-8">
+                            {/* Left Column */}
+                            <div className="space-y-8">
+                                {/* MCBU Chart */}
+                                <div className="bg-white p-6 rounded-lg shadow">
+                                    <div className="h-[400px]">
+                                        <Line data={mcbuData} options={mcbuOptions} />
+                                    </div>
+                                </div>
+                                {/* Person Chart */}
+                                <div className="bg-white p-6 rounded-lg shadow">
+                                    <div className="h-[400px]">
+                                        <Line data={personData} options={personOptions} />
+                                    </div>
+                                </div>
+                            </div>
 
-                    {/* Daily Progress Column */}
-                    <div className={`${isMobile ? 'order-2' : 'order-1'} lg:col-span-3`}>
-                        <div className="sticky top-4">
-                            <h2 className="text-lg font-semibold mb-2">Daily Progress</h2>
-                            <div className="space-y-2">
-                                <CardItem title="Total Release" value={summaryData.totalRelease} Icon={BanknotesIcon} />
-                                <CardItem title="Amount" value={summaryData.amount} Icon={CurrencyDollarIcon} />
-                                <CardItem title="New Member" value={summaryData.newMember} Icon={UserPlusIcon} />
-                                <CardItem title="Transfer Clients" value={summaryData.transferClients} Icon={ArrowsRightLeftIcon} />
-                                <CardItem title="Renewals" value={summaryData.renewals} Icon={ArrowPathRoundedSquareIcon} />
-                                <CardItem title="Offset" value={summaryData.offset} Icon={MinusCircleIcon} />
-                                <CardItem title="Full Payment Person" value={summaryData.fullPaymentPerson} Icon={UserGroupIcon} />
-                                <CardItem title="Full Payment Amount" value={summaryData.fullPaymentAmount} Icon={CurrencyDollarIcon} />
-                                <div className="h-12"></div> {/* This creates the 3/4 height gap */}
-                                <CardItem title="Past Due Collection" value={summaryData.pastDueCollection} Icon={ExclamationCircleIcon} />
-                                <CardItem title="Pending" value={summaryData.pending} Icon={ClockIcon} />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className={`${isMobile ? 'order-1' : 'order-2'} lg:col-span-6 space-y-4`}>
-                        <h2 className="text-lg font-semibold mb-2">Performance</h2>
-                        <div className="bg-white p-4 rounded-lg shadow mb-4 w-full">
-                            <div className="h-[400px]">
-                                <Line data={mcbuData} options={mcbuOptions} />
-                            </div>
-                        </div>
-                        <div className="bg-white p-4 rounded-lg shadow mb-4 w-full">
-                            <div className="h-[400px]">
-                                <Line data={personData} options={personOptions} />
-                            </div>
-                        </div>
-                        <div className="bg-white p-4 rounded-lg shadow mb-4 w-full">
-                            <div className="h-[400px]">
-                                <Line data={loanCollectionData} options={loanCollectionOptions} />
-                            </div>
-                        </div>
-                        <div className="bg-white p-4 rounded-lg shadow w-full">
-                            <div className="h-[400px]">
-                                <Line data={misPastDueData} options={misPastDueOptions} />
+                            {/* Right Column */}
+                            <div className="space-y-8">
+                                {/* Loan Collection Chart */}
+                                <div className="bg-white p-6 rounded-lg shadow">
+                                    <div className="h-[400px]">
+                                        <Line data={loanCollectionData} options={loanCollectionOptions} />
+                                    </div>
+                                </div>
+                                {/* MIS Past Due Chart */}
+                                <div className="bg-white p-6 rounded-lg shadow">
+                                    <div className="h-[400px]">
+                                        <Line data={misPastDueData} options={misPastDueOptions} />
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
