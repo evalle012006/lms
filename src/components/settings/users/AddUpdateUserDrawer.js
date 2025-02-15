@@ -102,6 +102,12 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
         setRole(value);
     }, []);
 
+    const handleTransactionTypeChange = useCallback((field, value) => {
+        const form = formikRef.current;
+        form.setFieldValue(field, value);
+        setOccurence(value);
+    }, []);
+
     const handleSaveUpdate = useCallback(async (values, actions) => {
         setLoading(true);
         try {
@@ -109,16 +115,17 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
             const roleShortCode = roleArr[1];
             const selectedRole = roles.find(role => role.shortCode === roleShortCode);
             values.role = JSON.stringify(selectedRole);
-            
+
             if (selectedRole.rep === 2) {
                 values.designatedBranch = values.designatedBranch || '[]';
-            } else if (selectedRole.rep > 2) {
+            } else if (selectedRole.rep > 3) {
                 const selectedBranch = branchList.find(b => b.code === values.designatedBranch);
                 if (selectedBranch) {
                     values.designatedBranchId = selectedBranch._id;
                 }
 
-                values.transactionType = occurence;
+                // values.transactionType = occurence;
+                values.transactionType = values?.weekly ? 'weekly' : 'daily';
             }
 
             values.currentDate = currentDate;
@@ -411,8 +418,8 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
                                         <div className="flex flex-col mt-4 text-gray-500">
                                             <div>Transaction Type</div>
                                             <div className="flex flex-row ml-4">
-                                                <RadioButton id={"radio_daily"} name="radio-occurence" label={"Daily"} checked={occurence === 'daily'} value="daily" onChange={() => setOccurence('daily')} />
-                                                <RadioButton id={"radio_weekly"} name="radio-occurence" label={"Weekly"} checked={occurence === 'weekly'} value="weekly" onChange={() => setOccurence('weekly')} />
+                                                <RadioButton id={"radio_daily"} name="radio-occurence" label={"Daily"} checked={occurence === 'daily'} value="daily" onChange={(field, value) => handleTransactionTypeChange(field, 'daily')} />
+                                                <RadioButton id={"radio_weekly"} name="radio-occurence" label={"Weekly"} checked={occurence === 'weekly'} value="weekly" onChange={(field, value) => handleTransactionTypeChange(field, 'weekly')} />
                                             </div>
                                         </div>
                                     </React.Fragment>

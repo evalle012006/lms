@@ -474,6 +474,7 @@ async function processData(data, date, currentDate) {
             collection.coh = branchTotalCOH;
             collection.cohStr = branchTotalCOH > 0 ? formatPricePhp(branchTotalCOH) : '-';
             collection.status = groupStatus;
+            collection.noMcbuReturn = branchTotalMcbuReturnNo;
         }
 
         collectionData.push(collection);
@@ -501,7 +502,7 @@ async function processData(data, date, currentDate) {
             totalMcbuCol += collection.mcbuCol;
             totalMcbuWithdrawal += collection.mcbuWithdrawal;
             totalMcbuDailyWithdrawal += collection.mcbuDailyWithdrawal;
-            totalMcbuReturnNo += collection.mcbuReturnAmt;
+            totalMcbuReturnNo += collection.noMcbuReturn;
             totalMcbuReturnAmt += collection.mcbuReturnAmt;
             totalTransfer += collection.transfer;
             totalCOH += collection.coh;

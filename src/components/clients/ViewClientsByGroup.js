@@ -13,7 +13,8 @@ import ClientDetailPage from "./ClientDetailPage";
 import { formatPricePhp } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/constants";
 import { TabSelector } from "@/lib/ui/tabSelector";
-import { TabPanel, useTabs } from "node_modules/react-headless-tabs/dist/react-headless-tabs";
+import { TabPanel, useTabs } from "react-headless-tabs";
+import { Search } from 'lucide-react';
 
 const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMode, handleShowAddDrawer, handleShowCoMakerDrawer}) => {
     const dispatch = useDispatch();
@@ -24,15 +25,222 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
     const [excludedList, setExcludedList] = useState();
     const [duplicateList, setDuplicateList] = useState();
     const [loading, setLoading] = useState(true);
-
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [showClientInfoModal, setShowClientInfoModal] = useState(false);
+
+    // New state for filtered lists
+    const [filteredActiveList, setFilteredActiveList] = useState([]);
+    const [filteredDuplicateList, setFilteredDuplicateList] = useState([]);
+    const [filteredExcludedList, setFilteredExcludedList] = useState([]);
+
+    // Filter states
+    const [filters, setFilters] = useState({
+        branch: '',
+        lo: '',
+        group: '',
+        name: ''
+    });
 
     const [selectedTab, setSelectedTab] = useTabs([
         'new-prospects',
         'duplicate-prospects',
         'excluded-prospects'
     ]);
+
+    // Get unique values for dropdowns
+    const getUniqueValues = (list, key) => {
+        return [...new Set(list?.map(item => item[key]))]
+            .filter(Boolean)
+            .sort((a, b) => a.localeCompare(b));
+    };
+
+    // Get current list based on selected tab
+    const getCurrentList = () => {
+        switch (selectedTab) {
+            case 'new-prospects':
+                return activeList || [];
+            case 'duplicate-prospects':
+                return duplicateList || [];
+            case 'excluded-prospects':
+                return excludedList || [];
+            default:
+                return [];
+        }
+    };
+
+    // Get filtered lists based on current selections
+    const getFilteredOptions = (list) => {
+        if (!list) return { branches: [], los: [], groups: [], clients: [] };
+
+        // Get all unique branches
+        const branches = [...new Set(list.map(item => item.branchName))]
+            .filter(Boolean)
+            .sort((a, b) => a.localeCompare(b));
+
+        // Filter list by selected branch
+        let branchFiltered = list;
+        if (filters.branch) {
+            branchFiltered = list.filter(item => item.branchName === filters.branch);
+        }
+
+        // Get loan officers for selected branch
+        const los = [...new Set(branchFiltered.map(item => item.loName))]
+            .filter(Boolean)
+            .sort((a, b) => a.localeCompare(b));
+
+        // Filter by selected loan officer
+        let loFiltered = branchFiltered;
+        if (filters.lo) {
+            loFiltered = branchFiltered.filter(item => item.loName === filters.lo);
+        }
+
+        // Get groups for selected loan officer
+        const groups = [...new Set(loFiltered.map(item => item.groupName))]
+            .filter(Boolean)
+            .sort((a, b) => a.localeCompare(b));
+
+        // Filter by selected group
+        let groupFiltered = loFiltered;
+        if (filters.group) {
+            groupFiltered = loFiltered.filter(item => item.groupName === filters.group);
+        }
+
+        // Get clients that match all filters
+        const clients = groupFiltered;
+
+        return { branches, los, groups, clients };
+    };
+
+    const handleFilterChange = (field, value) => {
+        // Reset subsequent filters when a parent filter changes
+        const newFilters = { ...filters, [field]: value };
+        if (field === 'branch') {
+            newFilters.lo = '';
+            newFilters.group = '';
+            newFilters.name = '';
+        } else if (field === 'lo') {
+            newFilters.group = '';
+            newFilters.name = '';
+        } else if (field === 'group') {
+            newFilters.name = '';
+        }
+        
+        setFilters(newFilters);
+        
+        // Apply filters to current list
+        const currentList = getCurrentList();
+        const { clients } = getFilteredOptions(currentList);
+        const filteredData = clients.filter(item => {
+            if (!newFilters.name) return true;
+            
+            const searchTerm = newFilters.name.toLowerCase();
+            const fullName = item.name?.toLowerCase() || '';
+            const firstName = item.firstName?.toLowerCase() || '';
+            const lastName = item.lastName?.toLowerCase() || '';
+            
+            return fullName.includes(searchTerm) || 
+                   firstName.includes(searchTerm) || 
+                   lastName.includes(searchTerm);
+        });
+        
+        // Update the appropriate filtered list based on current tab
+        switch (selectedTab) {
+            case 'new-prospects':
+                setFilteredActiveList(filteredData);
+                break;
+            case 'duplicate-prospects':
+                setFilteredDuplicateList(filteredData);
+                break;
+            case 'excluded-prospects':
+                setFilteredExcludedList(filteredData);
+                break;
+        }
+    };
+
+    useEffect(() => {
+        setFilters({
+            branch: '',
+            lo: '',
+            group: '',
+            name: ''
+        });
+        const currentList = getCurrentList();
+        switch (selectedTab) {
+            case 'new-prospects':
+                setFilteredActiveList(currentList);
+                break;
+            case 'duplicate-prospects':
+                setFilteredDuplicateList(currentList);
+                break;
+            case 'excluded-prospects':
+                setFilteredExcludedList(currentList);
+                break;
+        }
+    }, [selectedTab]);
+
+    const renderFilters = () => {
+        const currentList = getCurrentList();
+        const { branches, los, groups } = getFilteredOptions(currentList);
+
+        return (
+            <div className="p-4 bg-white shadow mb-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* Branch Filter */}
+                    <select
+                        className="p-2 w-full border rounded-md"
+                        value={filters.branch}
+                        onChange={(e) => handleFilterChange('branch', e.target.value)}
+                    >
+                        <option value="">All Branches</option>
+                        {branches.map((branch) => (
+                            <option key={branch} value={branch}>{branch}</option>
+                        ))}
+                    </select>
+
+                    {/* Loan Officer Filter */}
+                    <select
+                        className="p-2 w-full border rounded-md"
+                        value={filters.lo}
+                        onChange={(e) => handleFilterChange('lo', e.target.value)}
+                        disabled={false}
+                    >
+                        <option value="">All Loan Officers</option>
+                        {los.map((lo) => (
+                            <option key={lo} value={lo}>{lo}</option>
+                        ))}
+                    </select>
+
+                    {/* Group Filter */}
+                    <select
+                        className="p-2 w-full border rounded-md"
+                        value={filters.group}
+                        onChange={(e) => handleFilterChange('group', e.target.value)}
+                        disabled={false}
+                    >
+                        <option value="">All Groups</option>
+                        {groups.map((group) => (
+                            <option key={group} value={group}>{group}</option>
+                        ))}
+                    </select>
+
+                    {/* Client Name Filter */}
+                    <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <Search className="h-4 w-4 text-gray-400" />
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="Search by full name, first name, or last name..."
+                            className="pl-10 p-2 w-full border rounded-md"
+                            value={filters.name}
+                            onChange={(e) => handleFilterChange('name', e.target.value)}
+                            disabled={false}
+                        />
+                    </div>
+                </div>
+            </div>
+        );
+    };
 
     // admin: should be viewed first per branch -> group -> clients
     // am: branch -> group -> clients
@@ -591,57 +799,86 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
         if (list) {
             const active = list.filter(client => !client.archived && !client?.duplicate);
             setActiveList(active);
+            setFilteredActiveList(active);
             const excluded = list.filter(client => client.archived);
             setExcludedList(excluded);
+            setFilteredExcludedList(excluded);
             const duplicates = list.filter(client => client.duplicate);
             setDuplicateList(duplicates);
+            setFilteredDuplicateList(duplicates);
         }
     }, [list]);
 
     return (
         <React.Fragment>
             <div className="pb-4">
-                {loading ?
-                    (
-                        // <div className="absolute top-1/2 left-1/2">
-                            <Spinner />
-                        // </div>
-                    ) : (
-                        <React.Fragment>
-                            {status == 'pending' ? (
-                                <React.Fragment>
-                                    <nav className="flex pl-10 bg-white border-b border-gray-300">
-                                        <TabSelector
-                                            isActive={selectedTab === "new-prospects"}
-                                            onClick={() => setSelectedTab("new-prospects")}>
-                                                New Prospects
-                                        </TabSelector>
-                                        <TabSelector
-                                            isActive={selectedTab === "duplicate-prospects"}
-                                            onClick={() => setSelectedTab("duplicate-prospects")}>
-                                                Marked as Duplicate Prospects
-                                        </TabSelector>
-                                        <TabSelector
-                                            isActive={selectedTab === "excluded-prospects"}
-                                            onClick={() => setSelectedTab("excluded-prospects")}>
-                                                Excluded Prospects
-                                        </TabSelector>
-                                    </nav>
-                                    <TabPanel hidden={selectedTab !== "new-prospects"}>
-                                        <TableComponent columns={columns} data={activeList} hasActionButtons={groupId ? false : true} rowActionButtons={currentUser.role.rep > 2 && rowActionButtons} showFilters={true} rowClick={handleShowClientInfoModal}/>
-                                    </TabPanel>
-                                    <TabPanel hidden={selectedTab !== "duplicate-prospects"}>
-                                        <TableComponent columns={columns} data={duplicateList} hasActionButtons={true} rowActionButtons={rowActionButtonsAdmin} showFilters={true} rowClick={handleShowClientInfoModal}/>
-                                    </TabPanel>
-                                    <TabPanel hidden={selectedTab !== "excluded-prospects"}>
-                                        <TableComponent columns={columns} data={excludedList} hasActionButtons={groupId ? false : true} rowActionButtons={currentUser.role.rep > 2 && rowActionButtons} showFilters={true} rowClick={handleShowClientInfoModal}/>
-                                    </TabPanel>
-                                </React.Fragment>
-                            ) : (
-                                <TableComponent columns={columns} data={list} hasActionButtons={groupId ? false : true} rowActionButtons={currentUser.role.rep > 2 && rowActionButtons} showFilters={true} rowClick={handleShowClientInfoModal}/>
-                            )}
-                        </React.Fragment>
-                    )}
+                {loading ? (
+                    <Spinner />
+                ) : (
+                    <React.Fragment>
+                        {status == 'pending' ? (
+                            <React.Fragment>
+                                <nav className="flex pl-10 bg-white border-b border-gray-300">
+                                    <TabSelector
+                                        isActive={selectedTab === "new-prospects"}
+                                        onClick={() => setSelectedTab("new-prospects")}>
+                                            New Prospects
+                                    </TabSelector>
+                                    <TabSelector
+                                        isActive={selectedTab === "duplicate-prospects"}
+                                        onClick={() => setSelectedTab("duplicate-prospects")}>
+                                            Marked as Duplicate Prospects
+                                    </TabSelector>
+                                    <TabSelector
+                                        isActive={selectedTab === "excluded-prospects"}
+                                        onClick={() => setSelectedTab("excluded-prospects")}>
+                                            Excluded Prospects
+                                    </TabSelector>
+                                </nav>
+                                {renderFilters()}
+                                <TabPanel hidden={selectedTab !== "new-prospects"}>
+                                    <TableComponent
+                                        columns={columns}
+                                        data={filteredActiveList}
+                                        hasActionButtons={groupId ? false : true}
+                                        rowActionButtons={currentUser.role.rep > 2 && rowActionButtons}
+                                        showFilters={true}
+                                        rowClick={handleShowClientInfoModal}
+                                    />
+                                </TabPanel>
+                                <TabPanel hidden={selectedTab !== "duplicate-prospects"}>
+                                    <TableComponent
+                                        columns={columns}
+                                        data={filteredDuplicateList}
+                                        hasActionButtons={true}
+                                        rowActionButtons={rowActionButtonsAdmin}
+                                        showFilters={true}
+                                        rowClick={handleShowClientInfoModal}
+                                    />
+                                </TabPanel>
+                                <TabPanel hidden={selectedTab !== "excluded-prospects"}>
+                                    <TableComponent
+                                        columns={columns}
+                                        data={filteredExcludedList}
+                                        hasActionButtons={groupId ? false : true}
+                                        rowActionButtons={currentUser.role.rep > 2 && rowActionButtons}
+                                        showFilters={true}
+                                        rowClick={handleShowClientInfoModal}
+                                    />
+                                </TabPanel>
+                            </React.Fragment>
+                        ) : (
+                            <TableComponent
+                                columns={columns}
+                                data={list}
+                                hasActionButtons={groupId ? false : true}
+                                rowActionButtons={currentUser.role.rep > 2 && rowActionButtons}
+                                showFilters={true}
+                                rowClick={handleShowClientInfoModal}
+                            />
+                        )}
+                    </React.Fragment>
+                )}
             </div>
             <Modal title="Client Detail Info" show={showClientInfoModal} onClose={handleCloseClientInfoModal} width="70rem">
                 <ClientDetailPage />
