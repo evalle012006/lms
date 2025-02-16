@@ -15,6 +15,7 @@ import { setUserList } from "@/redux/actions/userActions";
 import Spinner from "@/components/Spinner";
 import AddUpdateClientCoMaker from "@/components/transactions/AddUpdateClientCoMakerDrawer";
 import { getApiBaseUrl } from "@/lib/constants";
+import ClientSearchV2 from "@/components/clients/ClientSearchV2";
 
 const ClientsProspectPage = () => {
     const router = useRouter();
@@ -26,6 +27,7 @@ const ClientsProspectPage = () => {
     const [loading, setLoading] = useState(true);
 
     const [showAddDrawer, setShowAddDrawer] = useState(false);
+    const [showSearchModal, setShowSearchModal] = useState(false);
     const [mode, setMode] = useState('add');
     const [client, setClient] = useState();
 
@@ -153,31 +155,6 @@ const ClientsProspectPage = () => {
         }
     }
 
-    // const getListClient = async () => {
-    //     const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'clients/list');
-    //     if (response.success) {
-    //         let clients = [];
-    //         await response.clients && response.clients.map(client => {
-    //             clients.push({
-    //                 ...client,
-    //                 groupName: client.loans.length > 0 ? client.loans[0].groupName : '-',
-    //                 slotNo: client.loans.length > 0 ? client.loans[0].slotNo : '-',
-    //                 loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
-    //                 activeLoan: client.loans.length > 0 ?  client.loans[0].activeLoan : 0.00,
-    //                 loanBalance: client.loans.length > 0 ?  client.loans[0].loanBalance : 0.00,
-    //                 missPayments: client.loans.length > 0 ?  client.loans[0].missPayments : 0,
-    //                 noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
-    //                 delinquent: client.delinquent === true ? 'Yes' : 'No'
-    //             });
-    //         });
-    //         dispatch(setClientList(clients));
-    //         setLoading(false);
-    //     } else if (response.error) {
-    //         setLoading(false);
-    //         toast.error(response.message);
-    //     }
-    // }
-
     const getListUser = async () => {
         if (currentUser.root !== true && (currentUser.role.rep === 3 || currentUser.role.rep === 4) && branchList.length > 0) {
             let url = getApiBaseUrl() + 'users/list';
@@ -257,6 +234,14 @@ const ClientsProspectPage = () => {
         window.location.reload();
     }
 
+    const handleShowSearchModal = () => {
+        setShowSearchModal(true);
+    }
+
+    const handleCloseSearchModal = () => {
+        setShowSearchModal(false);
+    }
+
     const handleShowCoMakerDrawer = () => {
         setShowCoMakerModal(true);
     }
@@ -267,14 +252,8 @@ const ClientsProspectPage = () => {
 
 
     const actionButtons = [
-        <ButtonSolid label="Add Client" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
+        <ButtonSolid label="Add Client" type="button" className="p-2 mr-3" onClick={handleShowSearchModal} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
     ];
-
-    // useEffect(() => {
-    //     if ((currentUser.role && currentUser.role.rep !== 1)) {
-    //         router.push('/');
-    //     }
-    // }, []);
 
 
     useEffect(() => {
@@ -302,8 +281,9 @@ const ClientsProspectPage = () => {
                 // </div>
             ) : (
                 <React.Fragment>
-                    <ViewClientsByGroupPage status={status} client={client} setClientParent={setClient} setMode={setMode} handleShowAddDrawer={handleShowAddDrawer} handleShowCoMakerDrawer={handleShowCoMakerDrawer} />
-                    <AddUpdateClient mode={mode} client={client} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
+                    <ViewClientsByGroupPage status={status} client={client} setClientParent={setClient} setMode={setMode} handleShowAddDrawer={handleShowSearchModal} handleShowCoMakerDrawer={handleShowCoMakerDrawer} />
+                    <ClientSearchV2 origin="client_list" show={showSearchModal} onClose={handleCloseSearchModal} handleShowAddDrawer={handleShowAddDrawer} mode={mode} showAddDrawer={showAddDrawer} setShowAddDrawer={setShowAddDrawer} handleCloseAddDrawer={handleCloseAddDrawer} client={client} />
+                    {/* <AddUpdateClient mode={mode} client={client} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} /> */}
                     <AddUpdateClientCoMaker client={client} showSidebar={showCoMakerModal} setShowSidebar={setShowCoMakerModal} setMode={setMode} onClose={handleCloseCoMakerDrawer} />
                 </React.Fragment>
             )}

@@ -1,3 +1,4 @@
+import { UserPlus } from "lucide-react";
 import React, { useState } from "react";
 import { useEffect } from "react";
 
@@ -50,6 +51,13 @@ const ActionDropDown = ({ data, options=[], dataOptions = {}, origin }) => {
                 if (option.label == 'Repair Transfer' && data.status == 'approved' && data.withError) {
                     tempOption.hidden = false;
                 }
+            } else if (origin == 'client-list' && data) {
+                if (option.label == 'Exclude Client' && data) {
+                    if (data.archived == true) {
+                        tempOption.label = 'Include Client';
+                        tempOption.icon = <UserPlus className="h-4 w-4 mr-2" />
+                    }
+                }
             }
             
             return tempOption;
@@ -59,9 +67,21 @@ const ActionDropDown = ({ data, options=[], dataOptions = {}, origin }) => {
     }, [options]);
 
     return (
-        <div className="relative inline-block text-left">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="cursor-pointer w-6 h-6" onClick={() => setIsOpen(!isOpen)}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 12.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 18.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5Z" />
+        <div className="relative inline-flex items-center justify-center">
+            <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                strokeWidth={1.5} 
+                stroke="currentColor" 
+                className="cursor-pointer w-6 h-6" 
+                onClick={() => setIsOpen(!isOpen)}
+            >
+                <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    d="M12 6.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 12.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 18.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5Z" 
+                />
             </svg>
 
             {isOpen && (
@@ -87,7 +107,7 @@ const ActionDropDown = ({ data, options=[], dataOptions = {}, origin }) => {
                                                             e.preventDefault();
                                                             e.stopPropagation();
                                                             setIsOpen(false);
-                                                            option.action(data, index);
+                                                            option.action(data, index, option?.flag);
                                                         }}
                                                     >
                                                         <div className="flex flex-row justify-start px-2">

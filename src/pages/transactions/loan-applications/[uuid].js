@@ -11,9 +11,13 @@ import { formatPricePhp } from '@/lib/utils';
 import { useRouter } from 'node_modules/next/router';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { getApiBaseUrl } from '@/lib/constants';
+import Layout from '@/components/Layout';
+import { setBranch } from '@/redux/actions/branchActions';
 
 const ClientNDSPage = () => {
     const dispatch = useDispatch();
+    const currentUser = useSelector(state => state.user.data);
+    const currentDate = useSelector(state => state.systemSettings.currentDate);
     const [loading, setLoading] = useState(true);
     const ndsFormRef = useRef();
 
@@ -34,12 +38,27 @@ const ClientNDSPage = () => {
             setLoading(false);
         }
 
+        const getCurrentBranch = async () => {
+            const apiUrl = `${getApiBaseUrl()}branches?`;
+            const params = { _id: currentUser.designatedBranchId, date: currentDate };
+            const response = await fetchWrapper.get(apiUrl + new URLSearchParams(params));
+            if (response.success) {
+                dispatch(setBranch(response.branch));
+            } else {
+                toast.error('Error while loading data');
+            }
+        }
+
+        if (currentUser.role.rep >= 3) {
+            getCurrentBranch();
+        }
+
         mounted && uuid && getLoan();
 
         return (() => {
             mounted = false;
         });
-    }, [uuid]);
+    }, [uuid, currentUser, currentDate]);
 
     return (
         <React.Fragment>
@@ -49,6 +68,9 @@ const ClientNDSPage = () => {
                 // </div>
             ): (
                 <div className='flex flex-col w-full p-12'>
+                    <div className='hidden'>
+                        <Layout />
+                    </div>
                     <div className='flex justify-end mr-8'>
                         <ReactToPrint
                             trigger={() => <ButtonSolid label="Print" icon={[<PrinterIcon className="w-5 h-5" />, 'left']} width='!w-20'/> }
@@ -64,6 +86,7 @@ const ClientNDSPage = () => {
 }
 
 const NDSForm = React.forwardRef((props, ref) => {
+    const currentBranch = useSelector(state => state.branch.data);
     const currentUser = useSelector(state => state.user.data);
     const currentDate = useSelector(state => state.systemSettings.currentDate);
     const [loan, setLoan] = useState();
@@ -71,6 +94,7 @@ const NDSForm = React.forwardRef((props, ref) => {
     const [client, setClient] = useState();
     const [clientAddress, setClientAddress] = useState();
     const [amortization, setAmortization] = useState([]);
+    const [branchManager, setBranchManager] = useState();
 
     const marginTop = "30px";
     const marginRight = "5px";
@@ -147,6 +171,13 @@ const NDSForm = React.forwardRef((props, ref) => {
             setAmortization(sched);
         }
     }, [props]);
+
+    useEffect(() => {
+        if (currentBranch) {
+            setBranchManager(`${currentBranch?.branchManager?.firstName} ${currentBranch?.branchManager?.lastName}`);
+        }
+    }, [currentBranch]);
+
     return (
         <div ref={ref} className='min-h-screen w-full mt-4 p-8' style={{ fontSize: '9px' }}>
             <style>{getPageMargins()}</style>
@@ -211,7 +242,7 @@ const NDSForm = React.forwardRef((props, ref) => {
                         </div>
                         <div className='flex flex-row justify-between mt-4 text-center items-center font-bold border-b-4 border-gray-900'>
                             <div className='flex flex-col'>
-                                <span className='border-b border-gray-900 uppercase'></span>
+                                <span className='border-b border-gray-900 uppercase'>{ branchManager }</span>
                                 <span style={{ fontStyle: 'italic' }}>Branch Manager</span>
                             </div>
                             <div className='flex flex-col'>
@@ -316,7 +347,7 @@ const NDSForm = React.forwardRef((props, ref) => {
                         </div>
                         <div className='flex flex-row justify-between mt-4 text-center items-center font-bold border-b-4 border-gray-900'>
                             <div className='flex flex-col'>
-                                <span className='border-b border-gray-900 uppercase'>{ `${currentUser.firstName} ${currentUser.lastName}` }</span>
+                                <span className='border-b border-gray-900 uppercase'>{ branchManager }</span>
                                 <span style={{ fontStyle: 'italic' }}>Branch Manager</span>
                             </div>
                             <div className='flex flex-col'>

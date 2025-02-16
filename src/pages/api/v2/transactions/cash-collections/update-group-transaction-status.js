@@ -64,6 +64,7 @@ async function processLOSummary(req, res) {
                         updateQl(CASH_COLLECTION_TYPE, {
                             set: {
                                 groupStatus: mode === 'close' ? 'closed' : 'pending',
+                                closingTime: mode === 'close' ? currentTime : null,
                             },
                             where: {
                                 loId: {  _eq: loId },
