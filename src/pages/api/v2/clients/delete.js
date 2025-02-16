@@ -21,7 +21,7 @@ async function deleteUser(req, res) {
       where: { clientId: { _eq: _id } },
       limit: 1,
     })
-  );
+  ).then(res => res.data.loans);
 
   if (!!loan) {
     response = {
@@ -30,7 +30,7 @@ async function deleteUser(req, res) {
       message: `Error. Client has a loan already.`,
     };
   } else {
-    const client = await graph
+    const [client] = await graph
       .query(queryQl(CLIENT_TYPE, { where: { _id: { _eq: _id } } }))
       .then((res) => res.data.clients);
 
