@@ -68,12 +68,15 @@ async function updateLoan(req, res) {
   }
 
   // the mixed type from mongo during migration
-  loan.coMaker = loan.coMaker?.toString();
+  let updatedLoan = { ...loan };
+  updatedLoan.coMaker = loan.coMaker?.toString();
+  updatedLoan.modifiedBy = user_id;
+  updatedLoan.modifiedDateTime = new Date().toISOString();
 
   const loanResp = await graph.mutation(
     updateQl(loanType, {
       where: { _id: { _eq: loanId } },
-      set: filterGraphFields(LOAN_FIELDS, { ...loan }),
+      set: filterGraphFields(LOAN_FIELDS, { ...updatedLoan }),
     })
   );
 
@@ -91,7 +94,7 @@ async function updateLoan(req, res) {
     if (groupStatus == 'closed') {
       res.send({ error: true, message: 'This client has a completed loan but the group transaction was already closed!' })
     } else {
-      await savePendingLoans(user_id, [loan], loanId);
+      await savePendingLoans(user_id, [updatedLoan], loanId);
     }
   }
 

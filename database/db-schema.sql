@@ -167,6 +167,7 @@ create table public.client (
   duplicate boolean,
   "ciName" character varying,
   groupLeader boolean,
+  similarityScore numeric(10,2),
 );
 create index ix_client__status on client using btree (status);
 create index "ix_client__branchId" on client using btree ("branchId");

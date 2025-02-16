@@ -20,7 +20,7 @@ import { UppercaseFirstLetter, checkIfWeekend, formatPricePhp, getNextValidDate 
 import { getApiBaseUrl } from "@/lib/constants";
 import DatePicker2 from "@/lib/ui/DatePicker2";
 
-const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, onClose, type }) => {
+const AddUpdateLoan = ({ origin, client, mode = 'add', loan = {}, showSidebar, setShowSidebar, onClose, type }) => {
     const formikRef = useRef();
     const dispatch = useDispatch();
     const holidayList = useSelector(state => state.holidays.list);
@@ -785,6 +785,18 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
         }
     }, [mode, loan.dateOfRelease, currentDate, isWeekend, isHoliday, holidayList]);
 
+    useEffect(() => {
+        if (origin == 'client-list') {
+            setTitle('Balik Client Add Loan')
+            setClientType('offset');
+            setSelectedOldGroup(client.oldGroupId);
+            setSelectedOldBranch(client.branchId);
+            setSelectedOldLO(client.oldLoId);
+            setClientId(client._id);
+            console.log(client)
+        }
+    }, [origin, client]);
+
     const [minDate, setMinDate] = useState();
     const [maxDate, setMaxDate] = useState();
     useEffect(() => {
@@ -847,7 +859,7 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                             <RadioButton id={"radio_tomorrow"} name="radio-loan-type" label={"Tomorrow"} checked={loanFor === 'tomorrow'} value="tomorrow" onChange={() => setLoanFor('tomorrow')} />
                                         </div>
                                     </div> */}
-                                    {mode == 'add' && (
+                                    {(mode == 'add' && !origin) && (
                                         <div className="mt-4 flex flex-row">
                                             <RadioButton id={"radio_pending"} name="radio-client-type" label={"Prospect Clients"} checked={clientType === 'pending'} value="pending" onChange={handleClientTypeChange} />
                                             <RadioButton id={"radio_advance"} name="radio-client-type" label={"Reloan Clients"} checked={clientType === 'advance'} value="advance" onChange={handleClientTypeChange} />
@@ -869,7 +881,19 @@ const AddUpdateLoan = ({ mode = 'add', loan = {}, showSidebar, setShowSidebar, o
                                     )}
                                     {mode === 'add' ? (
                                         <React.Fragment>
-                                            {clientType == 'offset' && (
+                                            {( origin == 'client-list' && clientType == 'offset' && client ) && (
+                                                <div className="mt-4">
+                                                    <div className={`flex flex-col border rounded-md px-4 py-2 bg-white border-main`}>
+                                                        <div className="flex justify-between">
+                                                            <label htmlFor={'clientId'} className={`font-proxima-bold text-xs font-bold text-main`}>
+                                                                Client
+                                                            </label>
+                                                        </div>
+                                                        <span className="text-gray-400">{ client.fullName }</span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {(!origin && clientType == 'offset') && (
                                                 <div className="mt-4">
                                                     <span className="text-sm font-bold">Search Client</span>
                                                     <div className="mt-4">
