@@ -3,8 +3,8 @@ import { createGraphType, deleteQl, queryQl } from "@/lib/graph/graph.util";
 import { GraphProvider } from "@/lib/graph/graph.provider";
 
 const graph = new GraphProvider();
-const LOAN_TYPE = createGraphType("loans", "_id");
-const CLIENT_TYPE = createGraphType("clients", "_id");
+const LOAN_TYPE = createGraphType("loans", "_id")();
+const CLIENT_TYPE = createGraphType("clients", "_id")();
 
 export default apiHandler({
   post: deleteUser,
