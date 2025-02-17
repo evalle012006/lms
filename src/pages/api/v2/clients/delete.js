@@ -32,7 +32,7 @@ async function deleteUser(req, res) {
   } else {
     const [client] = await graph
       .query(queryQl(CLIENT_TYPE, { where: { _id: { _eq: _id } } }))
-      .then((res) => res.data.clients);
+      .then((res) => res.data.client);
 
     if (!!client) {
       await graph.mutation(
