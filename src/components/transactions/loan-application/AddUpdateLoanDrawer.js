@@ -252,6 +252,7 @@ const AddUpdateLoan = ({ origin, client, mode = 'add', loan = {}, showSidebar, s
         values.clientId = clientId;
         values.dateOfRelease = values.dateOfRelease ? values.dateOfRelease : initialDateRelease;
         values.loanFor = values.dateOfRelease == currentDate ? 'today' : 'tomorrow';
+        values.groupLeader = groupLeader;
 
         if (values.dateOfRelease == currentDate)  {
             values.loanFor = 'today';
@@ -339,7 +340,7 @@ const AddUpdateLoan = ({ origin, client, mode = 'add', loan = {}, showSidebar, s
                     values.mcbuWithdrawal = 0;
                     values.mcbuInterest = 0;
                     values.mcbuReturnAmt = 0;
-                    console.log(values.admissionDate, currentDate)
+
                     fetchWrapper.post(apiUrl, values)
                         .then(response => {
                             setLoading(false);
