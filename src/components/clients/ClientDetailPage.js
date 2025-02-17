@@ -17,6 +17,7 @@ import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 import InputNumber from "@/lib/ui/InputNumber";
 import { getApiBaseUrl } from "@/lib/constants";
+import AddUpdateLoan from "../transactions/loan-application/AddUpdateLoanDrawer";
 
 const ClientDetailPage = () => {
     const dispatch = useDispatch();
@@ -34,7 +35,17 @@ const ClientDetailPage = () => {
     const [showPnNumberDialog, setShowPnNumberDialog] = useState(false);
     const [showPrincipalLoanDialog, setShowPrincipalLoanDialog] = useState(false);
 
+    const [lastLoan, setLastLoan] = useState();
+    const [showAddLoanDrawer, setShowAddLoanDrawer] = useState(false);
+
     const [uploading, setUploading] = useState(false);
+
+    const handleCloseAddLoanDrawer = () => {
+        setShowAddLoanDrawer(false);
+        setTimeout(() => {
+            getClientDetails();
+        }, 300);
+    }
 
     const handleShowPnNumberDialog = (row) => {
         if (row.status == 'closed') {
@@ -290,98 +301,158 @@ const ClientDetailPage = () => {
         };
     }, [client]);
 
+    useEffect(() => {
+        if (loanList.length > 0) {
+            const filteredList = loanList.filter(loan => loan.status != 'reject');
+            const lastLoan = filteredList.length > 0 ? filteredList[0] : null;
+            setLastLoan(lastLoan);
+        }
+    }, [loanList])
+
     return (
-        <div className="overflow-x-auto h-[45rem]">
+        <div className="overflow-auto max-h-[80vh]">
             {loading ? (
-                // <div className="absolute top-1/2 left-1/2">
-                    <Spinner />
-                // </div>
-            ): (
+                <Spinner />
+            ) : (
                 <React.Fragment>
-                    <div className="flex flex-col items-center font-proxima">
-                        <div className="rounded-full flex items-center justify-center mx-auto group cursor-pointer">
-                            <div className={`${client.profile ? 'ml-72' : 'ml-28'} top-3 text-xs cursor-pointer absolute z-20 bg-black/20 text-white rounded-3xl p-2 invisible group-hover:visible`} onClick={() => imageRef.current.click()}>
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-                                </svg>
+                    <div className="flex flex-col space-y-4">
+                        {/* Add Loan Button */}
+                        {((client.status?.toLowerCase() === 'pending' || client.status?.toLowerCase() === 'offset') && !client.duplicate ) && (
+                            <div className="flex justify-between">
+                                <div></div>
+                                <div className="w-24">
+                                    <ButtonSolid
+                                        label="Add Loan"
+                                        type="button"
+                                        className="p-2"
+                                        onClick={() => setShowAddLoanDrawer(true)}
+                                    />
+                                </div>
                             </div>
-                            <Avatar name={`${client.lastName}, ${client.firstName}`} src={client.profile ? client.profile : placeholder.src} className={`${client.profile ? 'p-32 px-36' : 'p-12'} `} shape={`${client.profile ? 'square' : 'circle'}`} />
-                            <input ref={imageRef} type="file" className="hidden" onChange={updatePhoto} />
-                        </div>
-                        <h5 className="mb-1 text-xl font-medium text-gray-900">{`${client.lastName}, ${client.firstName}`}</h5>
-                        <span className="bg-green-100 text-green-800 text-sm font-medium mr-2 px-2.5 py-0.5 rounded">{ client.status?.toUpperCase() }</span>
-                        <div className="flex flex-col mt-4 md:mt-6">
-                            <h5 className="font-proxima-bold">General Information</h5>
-                            <div className="border rounded border-gray-400 text-gray-600 p-4 grid grid-cols-2 gap-2">
-                                <div><span className="font-proxima-bold">Birthdate:</span> { moment(client.birthdate).format('YYYY-MM-DD') }</div>
-                                <div><span className="font-proxima-bold">Registered Date:</span> { moment(client.dateAdded).format('YYYY-MM-DD') }</div>
-                                <div><span className="font-proxima-bold">Contact Number:</span> { client.contactNumber }</div>
-                                <div><span className="font-proxima-bold">Registered in Branch:</span> { client.branchName }</div>
-                                <div><span className="font-proxima-bold">Address: </span>{clientAddress}</div>
-                                <div><span className="font-proxima-bold">CI Name:</span> { client?.ciName }</div>
+                        )}
+                        {/* Profile Section - Made more compact */}
+                        <div className="flex-none">
+                            <div className="rounded-full flex items-center justify-center mx-auto group cursor-pointer relative">
+                                <div 
+                                    className={`${client.profile ? 'ml-48' : 'ml-24'} top-2 text-xs cursor-pointer absolute z-20 bg-black/20 text-white rounded-3xl p-2 invisible group-hover:visible`} 
+                                    onClick={() => imageRef.current.click()}
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                                    </svg>
+                                </div>
+                                <Avatar 
+                                    name={`${client.lastName}, ${client.firstName}`} 
+                                    src={client.profile ? client.profile : placeholder.src} 
+                                    className={`${client.profile ? 'p-24 px-28' : 'p-10'}`} 
+                                    shape={`${client.profile ? 'square' : 'circle'}`} 
+                                />
+                                <input ref={imageRef} type="file" className="hidden" onChange={updatePhoto} />
+                            </div>
+                            <h5 className="mt-2 mb-1 text-lg font-medium text-gray-900 text-center">{`${client.lastName}, ${client.firstName}`}</h5>
+                            <div className="flex justify-center mb-2">
+                                <span className={`text-sm font-medium px-2.5 py-0.5 rounded ${
+                                    client.status?.toLowerCase() === 'active' ? 'bg-green-100 text-green-800' :
+                                    client.status?.toLowerCase() === 'offset' ? 'bg-red-100 text-red-800' :
+                                    client.status?.toLowerCase() === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                    'bg-gray-100 text-gray-800'
+                                }`}>
+                                    {client.status?.toUpperCase()}
+                                </span>
                             </div>
                         </div>
-                        <div className="flex flex-col mt-4 md:mt-6">
-                            <h5 className="font-proxima-bold">Loan History</h5>
-                            <TableComponent columns={columns} data={loanList} hasActionButtons={false} showFilters={false} noPadding={true} border={true} dropDownActions={dropDownActions} />
+
+                        {/* General Information - More compact */}
+                        <div className="flex-none">
+                            <h5 className="font-proxima-bold mb-2">General Information</h5>
+                            <div className="border rounded border-gray-400 text-gray-600 p-3 grid grid-cols-2 gap-3 text-sm">
+                                <div><span className="font-proxima-bold">Birthdate:</span> {moment(client.birthdate).format('YYYY-MM-DD')}</div>
+                                <div><span className="font-proxima-bold">Registered Date:</span> {moment(client.dateAdded).format('YYYY-MM-DD')}</div>
+                                <div><span className="font-proxima-bold">Contact Number:</span> {client.contactNumber}</div>
+                                <div><span className="font-proxima-bold">Registered in Branch:</span> {client.branchName}</div>
+                                <div className="col-span-2"><span className="font-proxima-bold">Address: </span>{clientAddress}</div>
+                                <div><span className="font-proxima-bold">CI Name:</span> {client?.ciName}</div>
+                            </div>
                         </div>
+
+                        {/* Loan History Table - Fixed height */}
+                        <div className="flex-1">
+                            <h5 className="font-proxima-bold mb-2">Loan History</h5>
+                            <div className="h-[300px] overflow-auto border rounded border-gray-400">
+                                <TableComponent 
+                                    columns={columns} 
+                                    data={loanList} 
+                                    hasActionButtons={true}
+                                    showFilters={false} 
+                                    noPadding={true} 
+                                    border={true} 
+                                    dropDownActions={dropDownActions}
+                                    showPagination={true}
+                                    pageSize={5}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Dialogs */}
+                        {selectedLoan && (
+                            <>
+                                <Dialog show={showPnNumberDialog}>
+                                    <h2>Update Loan PN Number</h2>
+                                    <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                                        <div className="sm:flex sm:items-start justify-center">
+                                            <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-center">
+                                                <div className="mt-2">
+                                                    <InputText
+                                                        name="pnNumber"
+                                                        value={pnNumber}
+                                                        onChange={(e) => setPnNumber(e.target.value)}
+                                                        label="New PN Number"
+                                                        placeholder="Enter PN Number"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-row justify-end text-center px-4 py-3 sm:px-6 sm:flex">
+                                        <div className='flex flex-row'>
+                                            <ButtonOutline label="Cancel" type="button" className="p-2 mr-3" onClick={() => setShowPnNumberDialog(false)} />
+                                            <ButtonSolid label="Update" type="button" className="p-2 mr-3" onClick={handleUpdatePNNumber} />
+                                        </div>
+                                    </div>
+                                </Dialog>
+
+                                <Dialog show={showPrincipalLoanDialog}>
+                                    <h2>Update Principal Loan Amount</h2>
+                                    <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                                        <div className="sm:flex sm:items-start justify-center">
+                                            <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-center">
+                                                <div className="mt-2">
+                                                    <InputNumber
+                                                        name="principalLoan"
+                                                        value={principalLoan}
+                                                        onChange={(e) => setPrincipalLoan(e.target.value)}
+                                                        label="New Principal Loan"
+                                                        placeholder="Enter Principal Loan"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-row justify-end text-center px-4 py-3 sm:px-6 sm:flex">
+                                        <div className='flex flex-row'>
+                                            <ButtonOutline label="Cancel" type="button" className="p-2 mr-3" onClick={() => setShowPrincipalLoanDialog(false)} />
+                                            <ButtonSolid label="Update" type="button" className="p-2 mr-3" onClick={handleUpdatePrincipalLoan} />
+                                        </div>
+                                    </div>
+                                </Dialog>
+                            </>
+                        )}
                     </div>
-                    {selectedLoan && (
-                        <Dialog show={showPnNumberDialog}>
-                            <h2>Update Loan PN Number</h2>
-                            <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                                <div className="sm:flex sm:items-start justify-center">
-                                    <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-center">
-                                        <div className="mt-2">
-                                            <InputText
-                                                name="pnNumber"
-                                                value={pnNumber}
-                                                onChange={(e) => setPnNumber(e.target.value)}
-                                                label="New PN Number"
-                                                placeholder="Enter PN Number"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="flex flex-row justify-end text-center px-4 py-3 sm:px-6 sm:flex">
-                                <div className='flex flex-row'>
-                                    <ButtonOutline label="Cancel" type="button" className="p-2 mr-3" onClick={() => setShowPnNumberDialog(false)} />
-                                    <ButtonSolid label="Update" type="button" className="p-2 mr-3" onClick={handleUpdatePNNumber} />
-                                </div>
-                            </div>
-                        </Dialog>
-                    )}
-                    {selectedLoan && (
-                        <Dialog show={showPrincipalLoanDialog}>
-                            <h2>Update Principal Loan Amount</h2>
-                            <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                                <div className="sm:flex sm:items-start justify-center">
-                                    <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-center">
-                                        <div className="mt-2">
-                                            <InputNumber
-                                                name="principalLoan"
-                                                value={principalLoan}
-                                                onChange={(e) => setPrincipalLoan(e.target.value)}
-                                                label="New Principal Loan"
-                                                placeholder="Enter Principal Loan"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="flex flex-row justify-end text-center px-4 py-3 sm:px-6 sm:flex">
-                                <div className='flex flex-row'>
-                                    <ButtonOutline label="Cancel" type="button" className="p-2 mr-3" onClick={() => setShowPrincipalLoanDialog(false)} />
-                                    <ButtonSolid label="Update" type="button" className="p-2 mr-3" onClick={handleUpdatePrincipalLoan} />
-                                </div>
-                            </div>
-                        </Dialog>
-                    )}
+                    {lastLoan && <AddUpdateLoan origin={'client-list'} client={client} mode={'add'} loan={lastLoan} showSidebar={showAddLoanDrawer} setShowSidebar={setShowAddLoanDrawer} onClose={handleCloseAddLoanDrawer} />}
                 </React.Fragment>
             )}
         </div>
-    )
+    );
 }
 
 export default ClientDetailPage;

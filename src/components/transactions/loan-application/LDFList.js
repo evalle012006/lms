@@ -28,6 +28,7 @@ const LDFListPage = React.forwardRef((props, ref) => {
     }
 
     useEffect(() => {
+        console.log(props.data)
         if (props.data) {
             let dataList = props.data;
             const arr = [];
@@ -55,7 +56,7 @@ const LDFListPage = React.forwardRef((props, ref) => {
                 // const monthStr = month < 10 ? '0' + month : month;
                 // loanDetails.loanApplicationNo = loanDetails.designatedOfficer + '-' + monthStr + 
                 loanDetails.loNo = loanOfficer?.loNo;
-                loanDetails.ciName = clientData?.ciName;
+                loanDetails.ciName = loan.ciName ? loan.ciName : clientData?.ciName;
                 
                 arr.push(loanDetails);
             });

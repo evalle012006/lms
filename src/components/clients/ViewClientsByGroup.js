@@ -14,7 +14,17 @@ import { formatPricePhp } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/constants";
 import { TabSelector } from "@/lib/ui/tabSelector";
 import { TabPanel, useTabs } from "react-headless-tabs";
-import { Search } from 'lucide-react';
+import moment from "moment";
+import { 
+    Pencil, 
+    UserMinus, 
+    Trash2, 
+    Users, 
+    Users2,
+    CheckCircle, 
+    Search 
+} from 'lucide-react';
+import ClientSearchV2 from "./ClientSearchV2";
 
 const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMode, handleShowAddDrawer, handleShowCoMakerDrawer}) => {
     const dispatch = useDispatch();
@@ -33,6 +43,11 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
     const [filteredDuplicateList, setFilteredDuplicateList] = useState([]);
     const [filteredExcludedList, setFilteredExcludedList] = useState([]);
 
+    const [deleteMessage, setDeleteMessage] = useState({ msg: '', btnLabel: '' });
+
+    const [showSearchModal, setShowSearchModal] = useState(false);
+    const [searchClientData, setSearchClientData] = useState(null);
+
     // Filter states
     const [filters, setFilters] = useState({
         branch: '',
@@ -46,13 +61,6 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
         'duplicate-prospects',
         'excluded-prospects'
     ]);
-
-    // Get unique values for dropdowns
-    const getUniqueValues = (list, key) => {
-        return [...new Set(list?.map(item => item[key]))]
-            .filter(Boolean)
-            .sort((a, b) => a.localeCompare(b));
-    };
 
     // Get current list based on selected tab
     const getCurrentList = () => {
@@ -242,6 +250,42 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
         );
     };
 
+    const createClientObject = (client) => {
+        const name = `${client.lastName}, ${client.firstName} ${client.middleName}`;
+        const ciName = client?.ciName || '';
+        
+        // Create new arrays instead of spreading potentially mutable arrays
+        const cashCollections = Array.isArray(client?.cashCollections) ? 
+            client.cashCollections.map(collection => ({...collection})) : [];
+        const groups = Array.isArray(client?.groups) ? 
+            client.groups.map(group => ({...group})) : [];
+        const lo = Array.isArray(client?.lo) ? 
+            client.lo.map(officer => ({...officer})) : [];
+        const loans = Array.isArray(client?.loans) ? 
+            client.loans.map(loan => ({...loan})) : [];
+    
+        return {
+            ...client,
+            cashCollections,
+            groups,
+            lo,
+            loans,
+            name,
+            middleName: client.middleName || '',
+            profile: client.profile || '',
+            slotNo: loans.length > 0 ? loans[0].slotNo : '-',
+            loanStatus: loans.length > 0 ? loans[0].status : '-',
+            activeLoanStr: loans.length > 0 ? formatPricePhp(loans[0].activeLoan) : '0.00',
+            loanBalanceStr: loans.length > 0 ? formatPricePhp(loans[0].loanBalance) : '0.00',
+            missPayments: loans.length > 0 ? loans[0].missPayments : 0,
+            noOfPayment: loans.length > 0 ? loans[0].noOfPayment : 0,
+            delinquent: client.delinquent === true ? 'Yes' : 'No',
+            loName: lo.length > 0 ? `${lo[0].lastName}, ${lo[0].firstName}` : '',
+            coMaker: (loans[0]?.coMaker && typeof loans[0]?.coMaker === 'number') ? loans[0].coMaker : '',
+            ciName: loans.length > 0 ? loans[0]?.ciName : ciName
+        };
+    };
+
     // admin: should be viewed first per branch -> group -> clients
     // am: branch -> group -> clients
     // bm: all groups -> clients
@@ -258,26 +302,10 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                         const dateB = new Date(b.dateAdded);
                         return dateB - dateA;
                     })
-                    .map(loan => {
-                        const name = `${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName}`;
-                        const ciName = loan.client?.ciName ? loan.client.ciName : '';
-                        return {
-                            ...loan.client,
-                            ...loan,
-                            name: name,
-                            middleName: loan.client.middleName ? loan.client.middleName : '',
-                            profile: loan.client.profile ? loan.client.profile : '',
-                            loanStatus: loan.status ? loan.status : '-',
-                            activeLoanStr: loan.activeLoan ? formatPricePhp(loan.activeLoan) : '0.00',
-                            loanBalanceStr: loan.loanBalance ? formatPricePhp(loan.loanBalance) : '0.00',
-                            missPayments: loan.missPayments ?  loan.missPayments : 0,
-                            noOfPayment: loan.noOfPayment ? loan.noOfPayment : 0,
-                            delinquent: loan.client.delinquent === true ? 'Yes' : 'No',
-                            loName: loan.lo.length > 0 ? `${loan.lo[0].lastName}, ${loan.lo[0].firstName}` : '',
-                            coMaker: (loan?.coMaker && typeof loan?.coMaker === 'number') ? loan.coMaker : '',
-                            ciName: loan?.ciName ? loan.ciName : ciName,
-                        };
-                    });
+                    .map(loan => createClientObject({
+                        ...loan.client,
+                        ...loan
+                    }));
                 dispatch(setClientList(clients));
             } else if (response.error) {
                 toast.error(response.message);
@@ -295,26 +323,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                                 const dateB = new Date(b.dateAdded);
                                 return dateB - dateA;
                             })
-                            .map(client => {
-                                const name = `${client.lastName}, ${client.firstName} ${client.middleName}`;
-                                const ciName = client?.ciName ? client.ciName : '';
-                                return {
-                                    ...client,
-                                    name: name,
-                                    middleName: client.middleName ? client.middleName : '',
-                                    profile: client.profile ? client.profile : '',
-                                    slotNo: client.loans.length > 0 ? client.loans[0].slotNo : '-',
-                                    loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
-                                    activeLoanStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].activeLoan) : '0.00',
-                                    loanBalanceStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].loanBalance) : '0.00',
-                                    missPayments: client.loans.length > 0 ?  client.loans[0].missPayments : 0,
-                                    noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
-                                    delinquent: client.delinquent === true ? 'Yes' : 'No',
-                                    loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : '',
-                                    coMaker: (client.loans[0]?.coMaker && typeof client.loans[0]?.coMaker === 'number') ? client.loans[0]?.coMaker : '',
-                                    ciName: client.loans.length > 0 ? client.loans[0]?.ciName : ciName
-                                };
-                            });
+                            .map(client => createClientObject(client));
                         dispatch(setClientList(clients));
                     } else if (response.error) {
                         toast.error(response.message);
@@ -330,26 +339,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                                     const dateB = new Date(b.dateAdded);
                                     return dateB - dateA;
                                 })
-                                .map(client => {
-                                    const name = `${client.lastName}, ${client.firstName} ${client.middleName}`;
-                                    const ciName = client?.ciName ? client.ciName : '';
-                                    return {
-                                        ...client,
-                                        name: name,
-                                        middleName: client.middleName ? client.middleName : '',
-                                        profile: client.profile ? client.profile : '',
-                                        slotNo: client.loans.length > 0 ? client.loans[0].slotNo : '-',
-                                        loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
-                                        activeLoanStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].activeLoan) : '0.00',
-                                        loanBalanceStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].loanBalance) : '0.00',
-                                        missPayments: client.loans.length > 0 ?  client.loans[0].missPayments : 0,
-                                        noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
-                                        delinquent: client.delinquent === true ? 'Yes' : 'No',
-                                        loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : '',
-                                        coMaker: (client.loans[0]?.coMaker && typeof client.loans[0]?.coMaker === 'number') ? client.loans[0]?.coMaker : '',
-                                        ciName: client.loans.length > 0 ? client.loans[0]?.ciName : ciName
-                                    };
-                                });
+                                .map(client => createClientObject(client));
                             dispatch(setClientList(clients));
                         } else if (response.error) {
                             toast.error(response.message);
@@ -364,26 +354,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                                     const dateB = new Date(b.dateAdded);
                                     return dateB - dateA;
                                 })
-                                .map(client => {
-                                    const name = `${client.lastName}, ${client.firstName} ${client.middleName}`;
-                                    const ciName = client?.ciName ? client.ciName : '';
-                                    return {
-                                        ...client,
-                                        name: name,
-                                        middleName: client.middleName ? client.middleName : '',
-                                        profile: client.profile ? client.profile : '',
-                                        slotNo: client.loans.length > 0 ? client.loans[0].slotNo : '-',
-                                        loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
-                                        activeLoanStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].activeLoan) : '0.00',
-                                        loanBalanceStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].loanBalance) : '0.00',
-                                        missPayments: client.loans.length > 0 ?  client.loans[0].missPayments : 0,
-                                        noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
-                                        delinquent: client.delinquent === true ? 'Yes' : 'No',
-                                        loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : '',
-                                        coMaker: (client.loans[0]?.coMaker && typeof client.loans[0]?.coMaker === 'number') ? client.loans[0]?.coMaker : '',
-                                        ciName: client.loans.length > 0 ? client.loans[0]?.ciName : ciName
-                                    }
-                                });
+                                .map(client => createClientObject(client));
                             dispatch(setClientList(clients));
                         } else if (response.error) {
                             toast.error(response.message);
@@ -400,29 +371,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                             const dateB = new Date(b.dateAdded);
                             return dateB - dateA;
                         })
-                        .map(branch => {
-                            branch.clients.map(client => {
-                                const name = `${client.lastName}, ${client.firstName} ${client.middleName}`;
-                                const ciName = client?.ciName ? client.ciName : '';
-                                return {
-                                    ...client,
-                                    name: name,
-                                    middleName: client.middleName ? client.middleName : '',
-                                    profile: client.profile ? client.profile : '',
-                                    slotNo: client.loans.length > 0 ? client.loans[0].slotNo : '-',
-                                    loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
-                                    activeLoanStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].activeLoan) : '0.00',
-                                    loanBalanceStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].loanBalance) : '0.00',
-                                    missPayments: client.loans.length > 0 ?  client.loans[0].missPayments : 0,
-                                    noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
-                                    delinquent: client.delinquent === true ? 'Yes' : 'No',
-                                    loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : '',
-                                    branchName: branch.name,
-                                    coMaker: (client.loans[0]?.coMaker && typeof client.loans[0]?.coMaker === 'number') ? client.loans[0]?.coMaker : '',
-                                    ciName: client.loans.length > 0 ? client.loans[0]?.ciName : ciName
-                                };
-                            });
-                        });
+                        .map(client => createClientObject(client));
                     dispatch(setClientList(clients));
                 } else if (response.error) {
                     toast.error(response.message);
@@ -431,27 +380,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
         }  else {
             const response = await fetchWrapper.get(url + '?' + new URLSearchParams({ status: status }));
             if (response.success) {
-                const clients = await response.clients && response.clients.map(client => {
-                    const name = `${client.lastName}, ${client.firstName} ${client.middleName}`;
-                    const ciName = client?.ciName ? client.ciName : '';
-                    return {
-                        ...client,
-                        name: name,
-                        middleName: client.middleName ? client.middleName : '',
-                        profile: client.profile ? client.profile : '',
-                        groupName: client.groupName ? client.groupName : '-',
-                        slotNo: client.loans.length > 0 ? client.loans[0].slotNo : '-',
-                        loanStatus: client.loans.length > 0 ? client.loans[0].status : '-',
-                        activeLoanStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].activeLoan) : '0.00',
-                        loanBalanceStr: client.loans.length > 0 ? formatPricePhp(client.loans[0].loanBalance) : '0.00',
-                        missPayments: client.loans.length > 0 ?  client.loans[0].missPayments : 0,
-                        noOfPayment: client.loans.length > 0 ? client.loans[0].noOfPayment : 0,
-                        delinquent: client.delinquent === true ? 'Yes' : 'No',
-                        loName: client.lo.length > 0 ? `${client.lo[0].lastName}, ${client.lo[0].firstName}` : '',
-                        coMaker: (client.loans?.coMaker && typeof client?.loans.coMaker === 'number') ? client.loans.coMaker : '',
-                        ciName: client.loans.length > 0 ? client.loans[0]?.ciName : ciName
-                    };
-                });
+                const clients = await response.clients && response.clients.map(client => createClientObject(client));
                 dispatch(setClientList(clients));
             } else if (response.error) {
                 toast.error(response.message);
@@ -460,24 +389,31 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
     }
 
     const [columns, setColumns] = useState([]);
+    const [duplicateColumns, setDuplicateColumns] = useState([]);
 
     const handleEditAction = (row) => {
         setMode("edit");
-        let clientData = row.original.hasOwnProperty("client") ? row.original.client : row.original;
+        let clientData = row;
         setClientParent(clientData);
         handleShowAddDrawer();
     }
 
     const handleCoMakerAction = (row) => {
-        let clientData = row.original.hasOwnProperty("client") ? row.original.client : row.original;
+        let clientData = row;
         setClientParent(clientData);
         handleShowCoMakerDrawer();
     }
 
-    const handleDeleteAction = (row) => {
-        let clientData = row.original.hasOwnProperty("client") ? row.original.client : row.original;
+    const handleDeleteAction = (row, index, flag) => {
+        let clientData = row;
         setClientParent(clientData);
         setShowDeleteDialog(true);
+
+        if (flag === 'delete') {
+            setDeleteMessage({ msg: 'Are you sure you want to delete this client?', btnLabel: 'Yes, delete!' });
+        } else if (flag === 'reject') {
+            setDeleteMessage({ msg: 'Are you sure you want to reject this client? Note, this will delete the client from the system.', btnLabel: 'Yes, reject!' });
+        }
     }
 
     const handleCancelDelete = () => {
@@ -487,7 +423,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
 
     const handleTransferAction = (row) => {
         setLoading(true)
-        let clientData = row.original.hasOwnProperty("client") ? row.original.client : row.original;
+        let clientData = row;
         if (clientData.status == 'pending')  {
             if (clientData.hasOwnProperty("archived") && clientData.archived == true) {
                 clientData.archived = false;
@@ -496,6 +432,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                 clientData.archived = true;
                 clientData.archivedBy = currentUser._id;
             }
+            clientData.archivedDate = moment().format('YYYY-MM-DD');
             delete clientData.group;
             delete clientData.loans;
             delete clientData.lo;
@@ -513,8 +450,8 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
         }
     }
 
-    const handleShowClientInfoModal = (selectedRow) => {
-        let clientData = selectedRow.hasOwnProperty("client") ? selectedRow.client : selectedRow;
+    const handleShowClientInfoModal = (row) => {
+        let clientData = row;
         dispatch(setClient(clientData));
         setShowClientInfoModal(true);
     }
@@ -524,7 +461,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
     }
 
     const handleUnmarkDuplicateAction = async (row) => {
-        let clientData = row.original.hasOwnProperty("client") ? row.original.client : row.original;
+        let clientData = row;
         clientData.duplicate = false;
         
         const response = await fetchWrapper.sendData(getApiBaseUrl() + 'clients/', clientData);
@@ -538,30 +475,133 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
         }
     }
 
-    const [rowActionButtons, setRowActionButtons] = useState(status !== 'active' ? [
-        { label: 'Edit', action: handleEditAction },
-        { label: 'Transfer', action: handleTransferAction },
-        // { label: 'Delete', action: handleDeleteAction }
-    ] : [
-        { label: 'Edit', action: handleEditAction },
-        { label: 'Update', action: handleCoMakerAction, title: 'Update CoMaker' },
-        // { label: 'Delete', action: handleDeleteAction }
-    ]);
+    const handleShowDuplicateClients = (row) => {
+        let clientData = row;
+        setClientParent(clientData);
+        setSearchClientData(clientData);
+        setShowSearchModal(true);
+    };
 
-    const [rowActionButtonsAdmin, setRowActionButtonsAdmin] = useState(
-        currentUser.role.rep == 1 ? [
-            { label: 'Edit', action: handleEditAction },
-            { label: 'Transfer', action: handleTransferAction },
-            { label: 'Update', action: handleCoMakerAction, title: 'Update CoMaker' },
-            { label: 'Unmark as Duplicate', action: handleUnmarkDuplicateAction, title: 'Unmark as Duplicate' },
-        ]
-        :
-        [
-            { label: 'Edit', action: handleEditAction },
-            { label: 'Transfer', action: handleTransferAction },
-            { label: 'Update', action: handleCoMakerAction, title: 'Update CoMaker' },
-        ]
-    );
+    const [dropDownActions, setDropDownActions] = useState([]);
+    const [adminDropDownActions, setAdminDropDownActions] = useState([]);
+
+    useEffect(() => {
+        if (status != 'active') {
+            setDropDownActions([
+                {
+                    label: 'Edit Client',
+                    action: handleEditAction,
+                    icon: <Pencil className="h-4 w-4 mr-2" />,
+                    hidden: false
+                },
+                {
+                    label: 'Exclude Client',
+                    action: handleTransferAction,
+                    icon: <UserMinus className="h-4 w-4 mr-2" />,
+                    hidden: false
+                },
+                // {
+                //     label: 'Delete Client',
+                //     action: handleDeleteAction,
+                //     icon: <Trash2 className="h-4 w-4 mr-2 text-red-400" />,
+                //     hidden: false,
+                //     flag: 'delete'
+                // },
+            ]);
+        } else {
+            setDropDownActions([
+                {
+                    label: 'Edit Client',
+                    action: handleEditAction,
+                    icon: <Pencil className="h-4 w-4 mr-2" />,
+                    hidden: false
+                },
+                {
+                    label: 'Update CoMaker',
+                    action: handleCoMakerAction,
+                    icon: <Users className="h-4 w-4 mr-2" />,
+                    hidden: false
+                },
+            ]);
+        }
+    }, [status, currentUser]);
+
+    useEffect(() => {
+        if (currentUser.role.rep <= 2) {
+            setAdminDropDownActions([
+                {
+                    label: 'Edit Client',
+                    action: handleEditAction,
+                    icon: <Pencil className="h-4 w-4 mr-2" />,
+                    hidden: false
+                },
+                {
+                    label: 'Exclude Client',
+                    action: handleTransferAction,
+                    icon: <UserMinus className="h-4 w-4 mr-2" />,
+                    hidden: false
+                },
+                {
+                    label: 'Update CoMaker',
+                    action: handleCoMakerAction,
+                    icon: <Users className="h-4 w-4 mr-2" />,
+                    hidden: false
+                },
+                {
+                    label: 'Show Duplicate Clients',
+                    action: handleShowDuplicateClients,
+                    icon: <Users2 className="h-4 w-4 mr-2" />,
+                    hidden: false
+                },
+                {
+                    label: 'Approve Duplicate',
+                    action: handleUnmarkDuplicateAction,
+                    icon: <CheckCircle className="h-4 w-4 mr-2" />,
+                    hidden: false
+                },
+                // {
+                //     label: 'Reject Duplicate',
+                //     action: handleDeleteAction,
+                //     icon: <Trash2 className="h-4 w-4 mr-2 text-red-400" />,
+                //     hidden: false,
+                //     flag: 'reject'
+                // },
+            ]);
+        } else {
+            setAdminDropDownActions([
+                {
+                    label: 'Edit Client',
+                    action: handleEditAction,
+                    icon: <Pencil className="h-4 w-4 mr-2" />,
+                    hidden: false
+                },
+                {
+                    label: 'Exclude Client',
+                    action: handleTransferAction,
+                    icon: <UserMinus className="h-4 w-4 mr-2" />,
+                    hidden: false
+                },
+                {
+                    label: 'Update CoMaker',
+                    action: handleCoMakerAction,
+                    icon: <Users className="h-4 w-4 mr-2" />,
+                    hidden: false
+                },
+                {
+                    label: 'Show Duplicate Clients',
+                    action: handleShowDuplicateClients,
+                    icon: <Users2 className="h-4 w-4 mr-2" />,
+                    hidden: false
+                },
+                // {
+                //     label: 'Delete Client',
+                //     action: handleDeleteAction,
+                //     icon: <Trash2 className="h-4 w-4 mr-2 text-red-400" />,
+                //     hidden: false
+                // },
+            ]);
+        }
+    }, [currentUser]);
 
     const handleDelete = () => {
         if (client) {
@@ -614,6 +654,10 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                     accessor: 'name',
                     Cell: AvatarCell,
                     imgAccessor: "profile"
+                },
+                {
+                    Header: "Address",
+                    accessor: 'address'
                 },
                 {
                     Header: "Group",
@@ -669,6 +713,10 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                     accessor: 'name',
                     Cell: AvatarCell,
                     imgAccessor: "profile"
+                },
+                {
+                    Header: "Address",
+                    accessor: 'address'
                 },
                 {
                     Header: "Group",
@@ -730,6 +778,10 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                     accessor: 'name',
                     Cell: AvatarCell,
                     imgAccessor: "profile"
+                },
+                {
+                    Header: "Address",
+                    accessor: 'address'
                 },
                 {
                     Header: "Branch",
@@ -793,17 +845,133 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
         }
 
         setColumns(activeColumns);
+
+        let duplicateColumns = [];
+        if (currentUser.role.rep === 4) {
+            duplicateColumns = [
+                {
+                    Header: "Name",
+                    accessor: 'name',
+                    Cell: AvatarCell,
+                    imgAccessor: "profile"
+                },
+                {
+                    Header: "Address",
+                    accessor: 'address'
+                },
+                {
+                    Header: "Group",
+                    accessor: 'groupName',
+                    Filter: SelectColumnFilter,
+                    filter: 'includes'
+                },
+                {
+                    Header: "Status",
+                    accessor: 'status',
+                    Cell: StatusPill
+                },
+                {
+                    Header: "CI Name",
+                    accessor: 'ciName'
+                },
+            ];
+        } else if (currentUser.role.rep === 3) {
+            duplicateColumns = [
+                {
+                    Header: "Name",
+                    accessor: 'name',
+                    Cell: AvatarCell,
+                    imgAccessor: "profile"
+                },
+                {
+                    Header: "Address",
+                    accessor: 'address'
+                },
+                {
+                    Header: "Group",
+                    accessor: 'groupName',
+                    Filter: SelectColumnFilter,
+                    filter: 'includes'
+                },
+                {
+                    Header: "Loan Officer",
+                    accessor: 'loName',
+                    Filter: SelectColumnFilter,
+                    filter: 'includes'
+                },
+                {
+                    Header: "Status",
+                    accessor: 'status',
+                    Cell: StatusPill
+                },
+                {
+                    Header: "CI Name",
+                    accessor: 'ciName'
+                },
+            ];
+        } else {
+            duplicateColumns = [
+                {
+                    Header: "Name",
+                    accessor: 'name',
+                    Cell: AvatarCell,
+                    imgAccessor: "profile"
+                },
+                {
+                    Header: "Address",
+                    accessor: 'address'
+                },
+                {
+                    Header: "Branch",
+                    accessor: 'branchName',
+                    Filter: SelectColumnFilter,
+                    filter: 'includes'
+                },
+                {
+                    Header: "Group",
+                    accessor: 'groupName',
+                    Filter: SelectColumnFilter,
+                    filter: 'includes'
+                },
+                {
+                    Header: "Loan Officer",
+                    accessor: 'loName',
+                    Filter: SelectColumnFilter,
+                    filter: 'includes'
+                },
+                {
+                    Header: "Status",
+                    accessor: 'status',
+                    Cell: StatusPill
+                },
+                {
+                    Header: "CI Name",
+                    accessor: 'ciName'
+                },
+            ];
+        }
+
+        setDuplicateColumns(duplicateColumns);
     }, [currentUser]);
 
     useEffect(() => {
         if (list) {
-            const active = list.filter(client => !client.archived && !client?.duplicate);
+            const active = list
+                .filter(client => !client.archived && !client?.duplicate)
+                .map(client => ({...client}));
+                
+            const excluded = list
+                .filter(client => client.archived)
+                .map(client => ({...client}));
+                
+            const duplicates = list
+                .filter(client => client.duplicate)
+                .map(client => ({...client}));
+    
             setActiveList(active);
             setFilteredActiveList(active);
-            const excluded = list.filter(client => client.archived);
             setExcludedList(excluded);
             setFilteredExcludedList(excluded);
-            const duplicates = list.filter(client => client.duplicate);
             setDuplicateList(duplicates);
             setFilteredDuplicateList(duplicates);
         }
@@ -827,7 +995,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                                     <TabSelector
                                         isActive={selectedTab === "duplicate-prospects"}
                                         onClick={() => setSelectedTab("duplicate-prospects")}>
-                                            Marked as Duplicate Prospects
+                                            Duplicate Prospects
                                     </TabSelector>
                                     <TabSelector
                                         isActive={selectedTab === "excluded-prospects"}
@@ -840,18 +1008,22 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                                     <TableComponent
                                         columns={columns}
                                         data={filteredActiveList}
-                                        hasActionButtons={groupId ? false : true}
-                                        rowActionButtons={currentUser.role.rep > 2 && rowActionButtons}
+                                        hasActionButtons={false} 
+                                        dropDownActions={dropDownActions} 
+                                        dropDownActionOrigin="client-list"
                                         showFilters={true}
                                         rowClick={handleShowClientInfoModal}
                                     />
                                 </TabPanel>
                                 <TabPanel hidden={selectedTab !== "duplicate-prospects"}>
                                     <TableComponent
-                                        columns={columns}
+                                        columns={duplicateColumns}
                                         data={filteredDuplicateList}
-                                        hasActionButtons={true}
-                                        rowActionButtons={rowActionButtonsAdmin}
+                                        // hasActionButtons={true}
+                                        // rowActionButtons={rowActionButtonsAdmin}
+                                        hasActionButtons={false} 
+                                        dropDownActions={adminDropDownActions} 
+                                        dropDownActionOrigin="client-list"
                                         showFilters={true}
                                         rowClick={handleShowClientInfoModal}
                                     />
@@ -860,8 +1032,9 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                                     <TableComponent
                                         columns={columns}
                                         data={filteredExcludedList}
-                                        hasActionButtons={groupId ? false : true}
-                                        rowActionButtons={currentUser.role.rep > 2 && rowActionButtons}
+                                        hasActionButtons={false} 
+                                        dropDownActions={dropDownActions} 
+                                        dropDownActionOrigin="client-list"
                                         showFilters={true}
                                         rowClick={handleShowClientInfoModal}
                                     />
@@ -888,16 +1061,23 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                     <div className="sm:flex sm:items-start justify-center">
                         <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-center">
                             <div className="mt-2">
-                                <p className="text-2xl font-normal text-dark-color">Are you sure you want to delete?</p>
+                                <p className="text-2xl font-normal text-dark-color">{ deleteMessage.msg }</p>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div className="flex flex-row justify-center text-center px-4 py-3 sm:px-6 sm:flex">
                     <ButtonOutline label="Cancel" type="button" className="p-2 mr-3" onClick={handleCancelDelete} />
-                    <ButtonSolid label="Yes, delete" type="button" className="p-2" onClick={handleDelete} />
+                    <ButtonSolid label={`${deleteMessage.btnLabel}`} type="button" className="p-2" onClick={handleDelete} />
                 </div>
             </Dialog>
+            <ClientSearchV2 
+                show={showSearchModal}
+                onClose={() => setShowSearchModal(false)}
+                origin="duplicate_check"
+                initialSearchText={searchClientData ? `${searchClientData.firstName} ${searchClientData.lastName}` : ''}
+                mode="view"
+            />
         </React.Fragment>
     );
 }

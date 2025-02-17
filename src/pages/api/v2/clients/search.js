@@ -1,4 +1,4 @@
-import { CLIENT_FIELDS } from '@/lib/graph.fields';
+import { CLIENT_FIELDS, LOAN_FIELDS } from '@/lib/graph.fields';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl } from '@/lib/graph/graph.util';
 import { apiHandler } from '@/services/api-handler';
@@ -15,6 +15,9 @@ const CLIENT_TYPE = createGraphType('client', `
     }
     branch {
         name
+    }
+    loans (order_by: [{ dateGranted: desc }]) {
+        ${LOAN_FIELDS}
     }
     dateModified
 `)('clients');
@@ -35,36 +38,90 @@ async function list(req, res) {
     let query;
 
     if (mode === 'duplicate') {
-        // Normalize search parameters
-        const normalizedFirstName = firstName?.trim().toUpperCase() || '';
-        const normalizedLastName = lastName?.trim().toUpperCase() || '';
+        // Handle case when only searchText is provided
+        let searchConditions = [];
+        
+        if (searchText) {
+            // Split searchText into words
+            const searchTerms = searchText.trim().toUpperCase().split(/\s+/);
+            
+            if (searchTerms.length === 1) {
+                // Case 1 & 2: Single word - could be first name or last name
+                searchConditions = [
+                    { firstName: { _ilike: `%${searchTerms[0]}%` } },
+                    { lastName: { _ilike: `%${searchTerms[0]}%` } }
+                ];
+            } else {
+                // Case 3, 4 & 5: Multiple words
+                // Create combinations of the search terms
+                for (let i = 0; i < searchTerms.length; i++) {
+                    const remainingTerms = [...searchTerms];
+                    const currentTerm = remainingTerms.splice(i, 1)[0];
+                    
+                    // Add exact match conditions
+                    searchConditions.push({
+                        _and: [
+                            { firstName: { _ilike: `%${currentTerm}%` } },
+                            { lastName: { _ilike: `%${remainingTerms.join(' ')}%` } }
+                        ]
+                    });
+                    
+                    // Add reverse match conditions
+                    searchConditions.push({
+                        _and: [
+                            { firstName: { _ilike: `%${remainingTerms.join(' ')}%` } },
+                            { lastName: { _ilike: `%${currentTerm}%` } }
+                        ]
+                    });
+                }
 
-        // Build the duplicate detection query
-        query = {
-            where: {
-                _or: [
-                    // Exact match on first name and last name
+                // Add full name partial match
+                searchConditions.push({
+                    fullName: { _ilike: `%${searchTerms.join('%')}%` }
+                });
+            }
+        } else if (firstName || lastName) {
+            // Handle when firstName or lastName is provided separately
+            const normalizedFirstName = firstName?.trim().toUpperCase() || '';
+            const normalizedLastName = lastName?.trim().toUpperCase() || '';
+
+            if (normalizedFirstName && normalizedLastName) {
+                searchConditions = [
+                    // Exact match
                     {
                         _and: [
                             { firstName: { _ilike: `%${normalizedFirstName}%` } },
                             { lastName: { _ilike: `%${normalizedLastName}%` } }
                         ]
                     },
-                    // Partial match on full name (to catch differently split names)
-                    {
-                        fullName: { 
-                            _ilike: `%${normalizedFirstName}%${normalizedLastName}%` 
-                        }
-                    },
-                    // Handle possible name swaps
+                    // Reversed match
                     {
                         _and: [
                             { firstName: { _ilike: `%${normalizedLastName}%` } },
                             { lastName: { _ilike: `%${normalizedFirstName}%` } }
                         ]
+                    },
+                    // Full name match
+                    {
+                        fullName: { 
+                            _ilike: `%${normalizedFirstName}%${normalizedLastName}%` 
+                        }
                     }
-                ],
-                // Add cursor-based pagination
+                ];
+            } else {
+                // Single name search
+                const searchTerm = normalizedFirstName || normalizedLastName;
+                searchConditions = [
+                    { firstName: { _ilike: `%${searchTerm}%` } },
+                    { lastName: { _ilike: `%${searchTerm}%` } },
+                    { fullName: { _ilike: `%${searchTerm}%` } }
+                ];
+            }
+        }
+
+        query = {
+            where: {
+                _or: searchConditions,
                 ...(cursor ? { dateModified: { _lt: cursor } } : {})
             },
             order_by: { dateModified: 'desc' },
@@ -92,9 +149,14 @@ async function list(req, res) {
         // Post-process results for duplicate mode
         let processedClients = clients;
         if (mode === 'duplicate' && clients.length > 0) {
+            const searchTerms = {
+                firstName: firstName || searchText?.split(/\s+/)[0] || '',
+                lastName: lastName || searchText?.split(/\s+/).slice(1).join(' ') || ''
+            };
+
             processedClients = clients.map(client => {
                 const similarityScore = calculateClientSimilarity(
-                    { firstName, lastName },
+                    searchTerms,
                     client
                 );
                 
@@ -103,11 +165,9 @@ async function list(req, res) {
                     group: client.group ?? {},
                     branch: client.branch ?? {},
                     similarityScore,
-                    // Flag as potential duplicate if similarity score is high enough
                     duplicate: similarityScore > 0.8
                 };
             })
-            // Sort by similarity score in descending order
             .sort((a, b) => b.similarityScore - a.similarityScore);
         } else {
             processedClients = clients.map(c => ({

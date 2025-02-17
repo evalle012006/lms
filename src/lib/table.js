@@ -562,7 +562,7 @@ const handleSelectRow = useCallback((row, index) => {
       {title && <h2 className="text-xl font-semibold p-4">{title}</h2>}
       
       <div className={`${noPadding ? 'p-1' : 'p-4'} w-full`}>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto min-h-[200px]">
           <table {...getTableProps()} className="w-full text-sm text-left text-gray-500">
             <thead className="text-xs text-gray-700 uppercase bg-gray-50">
               {renderHeaderGroups()}
@@ -625,7 +625,7 @@ const handleSelectRow = useCallback((row, index) => {
                       ))}
                       {(hasActionButtons || dropDownActions.length > 0) && (
                         <td className="px-4 py-3 w-24">
-                          <div className="flex items-center space-x-2">
+                          <div className="flex items-center justify-center space-x-2">
                             {hasActionButtons && !root && !row.original.system && (
                               <ActionButton row={row} rowActionButtons={rowActionButtons} />
                             )}
