@@ -491,6 +491,10 @@ const DashboardPage = () => {
                             <option value="quarterly">Quarterly</option>
                             <option value="yearly">Yearly</option>
                         </select>
+                        {
+                            timeFilter === 'daily' ? <input type='date'/> : null
+                        }
+                        
                         <select 
                             onChange={(e) => setDivisionFilter(e.target.value)}
                             className="block pl-3 pr-10 py-1 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"

@@ -12,8 +12,8 @@ async function getSummary(req, res) {
     const { areaId, divisionId, regionId, branchId, loId } = req.query;
     const [result] = await graph.apollo.query({
         query: gql`
-        query get_dashboard_data ($args: get_dashboard_data_arguments!){
-            get_dashboard_data(args: $args) {
+        query get_dashboard_summary ($args: get_dashboard_summary_arguments!){
+            get_dashboard_summary(args: $args) {
                 data
             }
         }
@@ -27,7 +27,7 @@ async function getSummary(req, res) {
                 loId: loId ?? null
             }
         }
-    }).then(res => res.data.get_dashboard_data.map(c => c.data));
+    }).then(res => res.data.get_dashboard_summary.map(c => c.data));
 
     res.status(200)
         .setHeader('Content-Type', 'application/json')
