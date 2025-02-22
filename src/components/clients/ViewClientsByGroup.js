@@ -410,7 +410,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
         setClientParent(clientData);
         setShowDeleteDialog(true);
 
-        if (flag === 'delete') {
+        if (flag === 'delete' || !flag) {
             setDeleteMessage({ msg: 'Are you sure you want to delete this client?', btnLabel: 'Yes, delete!' });
         } else if (flag === 'reject') {
             setDeleteMessage({ msg: 'Are you sure you want to reject this client? Note, this will delete the client from the system.', btnLabel: 'Yes, reject!' });

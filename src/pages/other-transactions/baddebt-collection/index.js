@@ -8,7 +8,7 @@ import TableComponent from "@/lib/table";
 import Dialog from "@/lib/ui/Dialog";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
-import { setBadDebt, setBadDebtList, setBadDebtCollectionList } from "@/redux/actions/badDebtCollectionActions";
+import { setBadDebt, setBadDebtList, setBadDebtCollectionList, setOriginalBadDebtList, setOriginalBadDebtCollectionList } from "@/redux/actions/badDebtCollectionActions";
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { PlusIcon } from '@heroicons/react/24/solid';
 import { setBranch, setBranchList } from "@/redux/actions/branchActions";
@@ -17,6 +17,8 @@ import { formatPricePhp } from "@/lib/utils";
 import { TabPanel, useTabs } from "react-headless-tabs";
 import { TabSelector } from "@/lib/ui/tabSelector";
 import { getApiBaseUrl } from "@/lib/constants";
+import { toast } from "react-toastify";
+import BadDebtFilters from "@/components/other-transactions/badDebtCollection/BadDebtFilters";
 
 export default function BadDebtCollectionPage() {
     const dispatch = useDispatch();
@@ -26,130 +28,156 @@ export default function BadDebtCollectionPage() {
     const collectionList = useSelector(state => state.badDebtCollection.collectionList);
     const data = useSelector(state => state.badDebtCollection.data);
     const branchList = useSelector(state => state.branch.list);
+    const state = useSelector(state => state); // Access entire Redux state
 
     const [showAddDrawer, setShowAddDrawer] = useState(false);
     const [mode, setMode] = useState('add');
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [activeFilters, setActiveFilters] = useState({
+        list: {
+            branchId: '',
+            loId: '',
+            groupId: '',
+            clientId: ''
+        },
+        collection: {
+            branchId: '',
+            loId: '',
+            groupId: '',
+            clientId: ''
+        }
+    });
 
     const [selectedTab, setSelectedTab] = useTabs([
         'list',
         'collection'
     ]);
 
-    const getList = async () => {
+    const handleFilterChange = (filters, tabName) => {
+        setActiveFilters({
+            ...activeFilters,
+            [tabName]: filters
+        });
+
+        // Apply filters directly to the data
+        if (tabName === 'list') {
+            applyListFilters(filters);
+        } else {
+            applyCollectionFilters(filters);
+        }
+    };
+    
+    // Filter data locally instead of making API calls
+    const applyListFilters = (filters) => {
+        setLoading(true);
+        const { branchId, loId, groupId, clientId } = filters;
+        
+        // Use state from outside the function instead of calling useSelector here
+        const allData = state.badDebtCollection.originalList || [];
+        if (!allData || allData.length === 0) {
+            setLoading(false);
+            return;
+        }
+        
+        let filteredData = [...allData];
+        
+        // Apply filters
+        if (branchId) {
+            filteredData = filteredData.filter(item => item.branchId === branchId);
+        }
+        
+        if (loId) {
+            filteredData = filteredData.filter(item => item.loId === loId);
+        }
+        
+        if (groupId) {
+            filteredData = filteredData.filter(item => item.groupId === groupId);
+        }
+        
+        if (clientId) {
+            filteredData = filteredData.filter(item => item.clientId === clientId);
+        }
+        
+        // Add totals row if there's data
+        if (filteredData.length > 0) {
+            filteredData.push(processListTotals(filteredData));
+        }
+        
+        dispatch(setBadDebtList(filteredData));
+        setLoading(false);
+    };
+    
+    const applyCollectionFilters = (filters) => {
+        setLoading(true);
+        const { branchId, loId, groupId, clientId } = filters;
+        
+        // Use state from outside the function instead of calling useSelector here
+        const allData = state.badDebtCollection.originalCollectionList || [];
+        if (!allData || allData.length === 0) {
+            setLoading(false);
+            return;
+        }
+        
+        let filteredData = [...allData];
+        
+        // Apply filters
+        if (branchId) {
+            filteredData = filteredData.filter(item => item.branchId === branchId);
+        }
+        
+        if (loId) {
+            filteredData = filteredData.filter(item => item.loId === loId);
+        }
+        
+        if (groupId) {
+            filteredData = filteredData.filter(item => item.groupId === groupId);
+        }
+        
+        if (clientId) {
+            filteredData = filteredData.filter(item => item.clientId === clientId);
+        }
+        
+        // Add totals row if there's data
+        if (filteredData.length > 0) {
+            filteredData.push(processCollectionListTotals(filteredData));
+        }
+        
+        dispatch(setBadDebtCollectionList(filteredData));
+        setLoading(false);
+    };
+
+    const getList = async (filters = activeFilters.list) => {
+        setLoading(true);
         let url = getApiBaseUrl() + 'other-transactions/badDebtCollection/list-bad-debts';
-        if (currentUser.role.rep == 1) {
-            const response = await fetchWrapper.get(url);
-            if (response.success) {
-                const responseData = [];
-                response.data.map(bd => {
-                    let netBalance = bd.maturedPastDue;
-                    let mcbu = bd.mcbuReturnAmt;
-                    if (netBalance <= 0) {
-                        mcbu = 0;
-                    }
+        let params = {};
 
-                    responseData.push({
-                        ...bd,
-                        groupName: bd.group.length > 0 ? bd.group[0].name : '-',
-                        fullName: bd.client.length > 0 ? bd.client[0].name : '-',
-                        loName: bd.lo.length > 0 ? bd.lo[0].firstName + ' ' + bd.lo[0].lastName : '-',
-                        branchName: bd.branch.length > 0 ? bd.branch[0].name : '-',
-                        amountRelease: bd.history.amountRelease,
-                        amountReleaseStr: bd.history.amountRelease > 0 ? formatPricePhp(bd.history.amountRelease) : '-',
-                        mcbuReturnAmt: mcbu,
-                        mcbuReturnAmtStr: mcbu > 0 ? formatPricePhp(mcbu) : '-',
-                        loanBalance: bd.history.loanBalance,
-                        loanBalanceStr: bd.history.loanBalance > 0 ? formatPricePhp(bd.history.loanBalance) : '-',
-                        netBalance: netBalance,
-                        netBalanceStr: netBalance > 0 ? formatPricePhp(netBalance) : '-',
-                        remarks: netBalance <= 0 ? 'Fully Paid' : '-'
-                    });
-                });
-                responseData.push(processListTotals(responseData));
-                dispatch(setBadDebtList(responseData));
-                setLoading(false);
-            } else if (response.error) {
-                setLoading(false);
-                toast.error(response.message);
-            }
+        if (currentUser.role.rep === 1) {
+            if (filters.branchId) params.branchId = filters.branchId;
+            if (filters.loId) params.loId = filters.loId;
+            if (filters.groupId) params.groupId = filters.groupId;
+            if (filters.clientId) params.clientId = filters.clientId;
         } else if (currentUser.role.rep === 2) {
-            // const branchCodes = typeof currentUser.designatedBranch === 'string' ? JSON.parse(currentUser.designatedBranch) : currentUser.designatedBranch;
-            // const branchIds = branchList.filter(branch => branchCodes.includes(branch.code)).map(branch => branch._id);
-            // url = url + '?' + new URLSearchParams({ branchIds: JSON.stringify(branchIds) });
-            url = url + '?' + new URLSearchParams({ currentUserId: currentUser._id });
-            const response = await fetchWrapper.get(url);
-            if (response.success) {
-                const responseData = [];
-                response.data.map(bd => {
-                    let netBalance = bd.maturedPastDue;
-                    let mcbu = bd.mcbuReturnAmt;
-                    if (netBalance <= 0) {
-                        mcbu = 0;
-                    }
-
-                    responseData.push({
-                        ...bd,
-                        groupName: bd.group.length > 0 ? bd.group[0].name : '-',
-                        fullName: bd.client.length > 0 ? bd.client[0].name : '-',
-                        loName: bd.lo.length > 0 ? bd.lo[0].firstName + ' ' + bd.lo[0].lastName : '-',
-                        branchName: bd.branch.length > 0 ? bd.branch[0].name : '-',
-                        amountRelease: bd.history.amountRelease,
-                        amountReleaseStr: bd.history.amountRelease > 0 ? formatPricePhp(bd.history.amountRelease) : '-',
-                        mcbuReturnAmt: mcbu,
-                        mcbuReturnAmtStr: mcbu > 0 ? formatPricePhp(mcbu) : '-',
-                        loanBalance: bd.history.loanBalance,
-                        loanBalanceStr: bd.history.loanBalance > 0 ? formatPricePhp(bd.history.loanBalance) : '-',
-                        netBalance: netBalance,
-                        netBalanceStr: netBalance > 0 ? formatPricePhp(netBalance) : '-',
-                        remarks: netBalance <= 0 ? 'Fully Paid' : '-'
-                    });
-                });
-                responseData.push(processListTotals(responseData));
-                dispatch(setBadDebtList(responseData));
-                setLoading(false);
-            } else if (response.error) {
-                setLoading(false);
-                toast.error(response.message);
-            }
+            params.currentUserId = currentUser._id;
+            if (filters.branchId) params.branchId = filters.branchId;
+            if (filters.loId) params.loId = filters.loId;
+            if (filters.groupId) params.groupId = filters.groupId;
+            if (filters.clientId) params.clientId = filters.clientId;
         } else if (currentUser.role.rep === 3) {
-            url = url + '?' + new URLSearchParams({ branchId: currentUser.designatedBranchId });
-            const response = await fetchWrapper.get(url);
-            if (response.success) {
-                const responseData = [];
-                response.data.map(bd => {
-                    let netBalance = bd.maturedPastDue;
-                    let mcbu = bd.mcbuReturnAmt;
-                    if (netBalance <= 0) {
-                        mcbu = 0;
-                    }
-
-                    responseData.push({
-                        ...bd,
-                        groupName: bd.group.length > 0 ? bd.group[0].name : '-',
-                        fullName: bd.client.length > 0 ? bd.client[0].name : '-',
-                        loName: bd.lo.length > 0 ? bd.lo[0].firstName + ' ' + bd.lo[0].lastName : '-',
-                        branchName: bd.branch.length > 0 ? bd.branch[0].name : '-',
-                        amountRelease: bd.history.amountRelease,
-                        amountReleaseStr: bd.history.amountRelease > 0 ? formatPricePhp(bd.history.amountRelease) : '-',
-                        mcbuReturnAmt: mcbu,
-                        mcbuReturnAmtStr: mcbu > 0 ? formatPricePhp(mcbu) : '-',
-                        loanBalance: bd.history.loanBalance,
-                        loanBalanceStr: bd.history.loanBalance > 0 ? formatPricePhp(bd.history.loanBalance) : '-',
-                        netBalance: netBalance,
-                        netBalanceStr: netBalance > 0 ? formatPricePhp(netBalance) : '-',
-                        remarks: netBalance <= 0 ? 'Fully Paid' : '-'
-                    });
-                });
-                responseData.push(processListTotals(responseData));
-                dispatch(setBadDebtList(responseData));
-                setLoading(false);
-            } else if (response.error) {
-                setLoading(false);
-                toast.error(response.message);
-            }
+            params.branchId = currentUser.designatedBranchId;
+            if (filters.loId) params.loId = filters.loId;
+            if (filters.groupId) params.groupId = filters.groupId;
+            if (filters.clientId) params.clientId = filters.clientId;
         } else if (currentUser.role.rep === 4) {
-            url = url + '?' + new URLSearchParams({ loId: currentUser._id });
+            params.loId = currentUser._id;
+            if (filters.groupId) params.groupId = filters.groupId;
+            if (filters.clientId) params.clientId = filters.clientId;
+        }
+
+        if (Object.keys(params).length > 0) {
+            url = url + '?' + new URLSearchParams(params);
+        }
+
+        try {
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 const responseData = [];
@@ -177,13 +205,21 @@ export default function BadDebtCollectionPage() {
                         remarks: netBalance <= 0 ? 'Fully Paid' : '-'
                     });
                 });
-                responseData.push(processListTotals(responseData));
+                if (responseData.length > 0) {
+                    responseData.push(processListTotals(responseData));
+                }
+                // Store original list for filtering
+                dispatch(setOriginalBadDebtList(responseData.filter(item => !item.totalData)));
                 dispatch(setBadDebtList(responseData));
                 setLoading(false);
             } else if (response.error) {
                 setLoading(false);
                 toast.error(response.message);
             }
+        } catch (error) {
+            setLoading(false);
+            toast.error('An error occurred while fetching bad debt list');
+            console.error(error);
         }
     }
 
@@ -217,102 +253,38 @@ export default function BadDebtCollectionPage() {
         }
     }
 
-    const getCollectionList = async () => {
+    const getCollectionList = async (filters = activeFilters.collection) => {
+        setLoading(true);
         let url = getApiBaseUrl() + 'other-transactions/badDebtCollection/list';
-        if (currentUser.role.rep == 1) {
-            const response = await fetchWrapper.get(url);
-            if (response.success) {
-                const responseData = [];
-                response.data.map(bd => {
-                    let netBalance = bd.maturedPastDue;
-                    if (netBalance <= 0) {
-                        netBalance = 0;
-                    }
-                    responseData.push({
-                        ...bd,
-                        groupName: bd.group.length > 0 ? bd.group[0].name : '-',
-                        fullName: bd.client.length > 0 ? bd.client[0].name : '-',
-                        loName: bd.lo.length > 0 ? bd.lo[0].firstName + ' ' + bd.lo[0].lastName : '-',
-                        branchName: bd.branch.length > 0 ? bd.branch[0].name : '-',
-                        paymentCollection: bd.paymentCollection,
-                        paymentCollectionStr: formatPricePhp(bd.paymentCollection),
-                        netBalance: netBalance,
-                        netBalanceStr: netBalance > 0 ? formatPricePhp(netBalance) : '-',
-                        amountRelease: bd.loanRelease ? bd.loanRelease : 0,
-                        amountReleaseStr: bd.loanRelease > 0 ? formatPricePhp(bd.loanRelease) : '-'
-                    });
-                });
-                responseData.push(processCollectionListTotals(responseData));
-                dispatch(setBadDebtCollectionList(responseData));
-                setLoading(false);
-            } else if (response.error) {
-                setLoading(false);
-                toast.error(response.message);
-            }
+        let params = {};
+
+        if (currentUser.role.rep === 1) {
+            if (filters.branchId) params.branchId = filters.branchId;
+            if (filters.loId) params.loId = filters.loId;
+            if (filters.groupId) params.groupId = filters.groupId;
+            if (filters.clientId) params.clientId = filters.clientId;
         } else if (currentUser.role.rep === 2) {
-            url = url + '?' + new URLSearchParams({ currentUserId: currentUser._id });
-            const response = await fetchWrapper.get(url);
-            if (response.success) {
-                const responseData = [];
-                response.data.map(bd => {
-                    let netBalance = bd.maturedPastDue;
-                    if (netBalance <= 0) {
-                        netBalance = 0;
-                    }
-                    responseData.push({
-                        ...bd,
-                        groupName: bd.group.length > 0 ? bd.group[0].name : '-',
-                        fullName: bd.client.length > 0 ? bd.client[0].name : '-',
-                        loName: bd.lo.length > 0 ? bd.lo[0].firstName + ' ' + bd.lo[0].lastName : '-',
-                        branchName: bd.branch.length > 0 ? bd.branch[0].name : '-',
-                        paymentCollection: bd.paymentCollection,
-                        paymentCollectionStr: formatPricePhp(bd.paymentCollection),
-                        netBalance: netBalance,
-                        netBalanceStr: netBalance > 0 ? formatPricePhp(netBalance) : '-',
-                        amountRelease: bd.loanRelease ? bd.loanRelease : 0,
-                        amountReleaseStr: bd.loanRelease > 0 ? formatPricePhp(bd.loanRelease) : '-'
-                    });
-                });
-                responseData.push(processCollectionListTotals(responseData));
-                dispatch(setBadDebtCollectionList(responseData));
-                setLoading(false);
-            } else if (response.error) {
-                setLoading(false);
-                toast.error(response.message);
-            }
+            params.currentUserId = currentUser._id;
+            if (filters.branchId) params.branchId = filters.branchId;
+            if (filters.loId) params.loId = filters.loId;
+            if (filters.groupId) params.groupId = filters.groupId;
+            if (filters.clientId) params.clientId = filters.clientId;
         } else if (currentUser.role.rep === 3) {
-            url = url + '?' + new URLSearchParams({ branchId: currentUser.designatedBranchId });
-            const response = await fetchWrapper.get(url);
-            if (response.success) {
-                const responseData = [];
-                response.data.map(bd => {
-                    let netBalance = bd.maturedPastDue;
-                    if (netBalance <= 0) {
-                        netBalance = 0;
-                    }
-                    responseData.push({
-                        ...bd,
-                        groupName: bd.group.length > 0 ? bd.group[0].name : '-',
-                        fullName: bd.client.length > 0 ? bd.client[0].name : '-',
-                        loName: bd.lo.length > 0 ? bd.lo[0].firstName + ' ' + bd.lo[0].lastName : '-',
-                        branchName: bd.branch.length > 0 ? bd.branch[0].name : '-',
-                        paymentCollection: bd.paymentCollection,
-                        paymentCollectionStr: formatPricePhp(bd.paymentCollection),
-                        netBalance: netBalance,
-                        netBalanceStr: netBalance > 0 ? formatPricePhp(netBalance) : '-',
-                        amountRelease: bd.loanRelease ? bd.loanRelease : 0,
-                        amountReleaseStr: bd.loanRelease > 0 ? formatPricePhp(bd.loanRelease) : '-'
-                    });
-                });
-                responseData.push(processCollectionListTotals(responseData));
-                dispatch(setBadDebtCollectionList(responseData));
-                setLoading(false);
-            } else if (response.error) {
-                setLoading(false);
-                toast.error(response.message);
-            }
+            params.branchId = currentUser.designatedBranchId;
+            if (filters.loId) params.loId = filters.loId;
+            if (filters.groupId) params.groupId = filters.groupId;
+            if (filters.clientId) params.clientId = filters.clientId;
         } else if (currentUser.role.rep === 4) {
-            url = url + '?' + new URLSearchParams({ loId: currentUser._id });
+            params.loId = currentUser._id;
+            if (filters.groupId) params.groupId = filters.groupId;
+            if (filters.clientId) params.clientId = filters.clientId;
+        }
+
+        if (Object.keys(params).length > 0) {
+            url = url + '?' + new URLSearchParams(params);
+        }
+
+        try {
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 const responseData = [];
@@ -335,13 +307,21 @@ export default function BadDebtCollectionPage() {
                         amountReleaseStr: bd.loanRelease > 0 ? formatPricePhp(bd.loanRelease) : '-'
                     });
                 });
-                responseData.push(processCollectionListTotals(responseData));
+                if (responseData.length > 0) {
+                    responseData.push(processCollectionListTotals(responseData));
+                }
+                // Store original collection list for filtering
+                dispatch(setOriginalBadDebtCollectionList(responseData.filter(item => !item.totalData)));
                 dispatch(setBadDebtCollectionList(responseData));
                 setLoading(false);
             } else if (response.error) {
                 setLoading(false);
                 toast.error(response.message);
             }
+        } catch (error) {
+            setLoading(false);
+            toast.error('An error occurred while fetching collection list');
+            console.error(error);
         }
     }
 
@@ -382,36 +362,43 @@ export default function BadDebtCollectionPage() {
     }
 
     const getListBranch = async () => {
+        setLoading(true);
         let url = getApiBaseUrl() + 'branches/list';
-        if (currentUser.role.rep === 1) {
-            const response = await fetchWrapper.get(url);
-            if (response.success) {
-                dispatch(setBranchList(response.branches));
-                setLoading(false);
-            } else if (response.error) {
-                setLoading(false);
-                toast.error(response.message);
+        try {
+            if (currentUser.role.rep === 1) {
+                const response = await fetchWrapper.get(url);
+                if (response.success) {
+                    dispatch(setBranchList(response.branches));
+                    setLoading(false);
+                } else if (response.error) {
+                    setLoading(false);
+                    toast.error(response.message);
+                }
+            } else if (currentUser.role.rep === 2) {
+                url = url + '?' + new URLSearchParams({ currentUserId: currentUser._id });
+                const response = await fetchWrapper.get(url);
+                if (response.success) {
+                    dispatch(setBranchList(response.branches));
+                    setLoading(false);
+                } else if (response.error) {
+                    setLoading(false);
+                    toast.error(response.message);
+                }
+            } else if (currentUser.role.rep === 3 || currentUser.role.rep === 4) {
+                url = url + '?' + new URLSearchParams({ branchCode: currentUser.designatedBranch });
+                const response = await fetchWrapper.get(url);
+                if (response.success) {
+                    dispatch(setBranchList(response.branches));
+                    setLoading(false);
+                } else if (response.error) {
+                    setLoading(false);
+                    toast.error(response.message);
+                }
             }
-        } else if (currentUser.role.rep === 2) {
-            url = url + '?' + new URLSearchParams({ currentUserId: currentUser._id });
-            const response = await fetchWrapper.get(url);
-            if (response.success) {
-                dispatch(setBranchList(response.branches));
-                setLoading(false);
-            } else if (response.error) {
-                setLoading(false);
-                toast.error(response.message);
-            }
-        } else if (currentUser.role.rep === 3 || currentUser.role.rep === 4) {
-            url = url + '?' + new URLSearchParams({ branchCode: currentUser.designatedBranch });
-            const response = await fetchWrapper.get(url);
-            if (response.success) {
-                dispatch(setBranchList(response.branches));
-                setLoading(false);
-            } else if (response.error) {
-                setLoading(false);
-                toast.error(response.message);
-            }
+        } catch (error) {
+            setLoading(false);
+            toast.error('An error occurred while fetching branches');
+            console.error(error);
         }
     }
 
@@ -504,7 +491,7 @@ export default function BadDebtCollectionPage() {
     }
 
     const actionButtons = [
-        <ButtonSolid label="Add Bad Debt" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
+        <ButtonSolid key="add-button" label="Add Bad Debt" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
     ];
 
     const handleEditAction = (row) => {
@@ -526,7 +513,7 @@ export default function BadDebtCollectionPage() {
     const handleDelete = () => {
         if (data) {
             setLoading(true);
-            fetchWrapper.postCors(getApiBaseUrl() + 'branches/delete', branch)
+            fetchWrapper.postCors(getApiBaseUrl() + 'branches/delete', data)
                 .then(response => {
                     if (response.success) {
                         setShowDeleteDialog(false);
@@ -545,9 +532,7 @@ export default function BadDebtCollectionPage() {
 
     useEffect(() => {
         let mounted = true;
-
         mounted && getListBranch();
-
         return (() => {
             mounted = false;
         });
@@ -560,6 +545,33 @@ export default function BadDebtCollectionPage() {
 
             if (currentUser.role.rep == 3 || currentUser.role.rep == 4) {
                 dispatch(setBranch(branchList[0]));
+                
+                // Set initial filters for branch manager and loan officer
+                if (currentUser.role.rep == 3) {
+                    setActiveFilters({
+                        list: {
+                            ...activeFilters.list,
+                            branchId: currentUser.designatedBranchId
+                        },
+                        collection: {
+                            ...activeFilters.collection,
+                            branchId: currentUser.designatedBranchId
+                        }
+                    });
+                } else if (currentUser.role.rep == 4) {
+                    setActiveFilters({
+                        list: {
+                            ...activeFilters.list,
+                            branchId: branchList[0]._id,
+                            loId: currentUser._id
+                        },
+                        collection: {
+                            ...activeFilters.collection,
+                            branchId: branchList[0]._id,
+                            loId: currentUser._id
+                        }
+                    });
+                }
             }
         }
     }, [branchList]);
@@ -567,35 +579,50 @@ export default function BadDebtCollectionPage() {
     return (
         <Layout actionButtons={(selectedTab == 'collection' && (currentUser?.role?.rep == 3 || currentUser.role.rep == 4)) ? actionButtons : null}>
             <div className="pb-4">
-                {loading ?
-                    (
-                        // <div className="absolute top-1/2 left-1/2">
-                            <Spinner />
-                        // </div>
-                    ) : (
-                        <React.Fragment>
-                            <nav className="flex pl-10 bg-white border-b border-gray-300">
-                                <TabSelector
-                                    isActive={selectedTab === "list"}
-                                    onClick={() => setSelectedTab("list")}>
-                                    List of Bad Debts
-                                </TabSelector>
-                                <TabSelector
-                                    isActive={selectedTab === "collection"}
-                                    onClick={() => setSelectedTab("collection")}>
-                                    Collection of Bad Debts
-                                </TabSelector>
-                            </nav>
-                            <div>
-                                <TabPanel hidden={selectedTab !== 'list'}>
-                                    <TableComponent columns={listColumns} data={list} hasActionButtons={false} showFilters={false} />
-                                </TabPanel>
-                                <TabPanel hidden={selectedTab !== 'collection'}>
-                                    <TableComponent columns={columns} data={collectionList} hasActionButtons={false} showFilters={false} />
-                                </TabPanel>
-                            </div>
-                        </React.Fragment>
-                    )}
+                {loading ? (
+                    <Spinner />
+                ) : (
+                    <React.Fragment>
+                        <nav className="flex pl-10 bg-white border-b border-gray-300">
+                            <TabSelector
+                                isActive={selectedTab === "list"}
+                                onClick={() => setSelectedTab("list")}>
+                                List of Bad Debts
+                            </TabSelector>
+                            <TabSelector
+                                isActive={selectedTab === "collection"}
+                                onClick={() => setSelectedTab("collection")}>
+                                Collection of Bad Debts
+                            </TabSelector>
+                        </nav>
+                        <div>
+                            <TabPanel hidden={selectedTab !== 'list'}>
+                                <BadDebtFilters 
+                                    onFilterChange={handleFilterChange} 
+                                    tabName="list" 
+                                />
+                                <TableComponent 
+                                    columns={listColumns} 
+                                    data={list} 
+                                    hasActionButtons={false} 
+                                    showFilters={false} 
+                                />
+                            </TabPanel>
+                            <TabPanel hidden={selectedTab !== 'collection'}>
+                                <BadDebtFilters 
+                                    onFilterChange={handleFilterChange} 
+                                    tabName="collection" 
+                                />
+                                <TableComponent 
+                                    columns={columns} 
+                                    data={collectionList} 
+                                    hasActionButtons={false} 
+                                    showFilters={false} 
+                                />
+                            </TabPanel>
+                        </div>
+                    </React.Fragment>
+                )}
             </div>
             <AddUpdateDebtCollection mode={mode} data={data} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
             <Dialog show={showDeleteDialog}>
