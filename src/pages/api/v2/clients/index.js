@@ -122,7 +122,7 @@ async function updateClient(req, res) {
                         groupLeader: fields.groupLeader,
                         archived: fields.archived,
                         archivedBy: fields.archivedBy,
-                        archivedDate: fields.archivedDate,
+                        // archivedDate: fields.archivedDate,
                         dateModified: moment(getCurrentDate()).format('YYYY-MM-DD')
                     },
                     where: {
