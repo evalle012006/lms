@@ -41,6 +41,8 @@ async function deleteUser(req, res) {
         })
       );
 
+      // TODO: need to cleanup the profile picture
+
       response = {
         success: true,
       };

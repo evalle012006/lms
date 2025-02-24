@@ -283,7 +283,10 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
             loName: lo.length > 0 ? `${lo[0].lastName}, ${lo[0].firstName}` : '',
             coMaker: (loans[0]?.coMaker && typeof loans[0]?.coMaker === 'number') ? loans[0].coMaker : '',
             ciName: loans.length > 0 ? loans[0]?.ciName : ciName,
-            groupLeaderStr: client.groupLeader ? 'Yes' : 'No'
+            groupLeaderStr: client.groupLeader ? 'Yes' : 'No',
+            archived: client.archived || false,
+            archivedBy: client.archivedBy || '',
+            archivedDate: client.archivedDate || '',
         };
     };
 
@@ -305,7 +308,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                     })
                     .map(loan => createClientObject({
                         ...loan.client,
-                        ...loan
+                        ...loan 
                     }));
                 dispatch(setClientList(clients));
             } else if (response.error) {
