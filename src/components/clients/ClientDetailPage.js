@@ -185,7 +185,7 @@ const ClientDetailPage = () => {
                 }
 
                 const responseData = await response.json();
-                const updatedData = {...client, profile: responseData.fileUrl};
+                const updatedData = {...client, archived: client.archived || false, profile: responseData.fileUrl};
                 fetchWrapper.sendData(process.env.NEXT_PUBLIC_API_URL + 'clients/', updatedData)
                         .then(response => {
                             setLoading(false);

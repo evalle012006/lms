@@ -70,6 +70,9 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
         ciName: client?.ciName || '',
         groupLeader: client.groupLeader || false,
         duplicate: client.duplicate || false,
+        archived: client.archived || false,
+        archivedBy: client.archivedBy || '',
+        archivedDate: client.archivedDate || '',
     }), [client, currentUser]);
 
     const validationSchema = yup.object().shape({
@@ -137,6 +140,9 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                 duplicate,
                 ciName: values?.ciName?.toUpperCase(),
                 groupLeader: values.groupLeader,
+                archived: values.archived || false,
+                archivedBy: values.archivedBy,
+                archivedDate: values.archivedDate,
             };
 
             if (currentUser.root !== true && (currentUser.role.rep === 4 || currentUser.role.rep === 3) && branchList.length > 0) {
