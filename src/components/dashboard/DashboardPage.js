@@ -32,6 +32,8 @@ import { useRouter } from 'next/router';
 import { getApiBaseUrl } from '@/lib/constants';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { useMemo } from 'react';
+import DatePicker from "@/lib/ui/DatePicker";
+import moment from 'moment';
 
 ChartJS.register(...registerables, ChartDataLabels);
 
@@ -69,10 +71,11 @@ const DashboardPage = () => {
     const [isMobile, setIsMobile] = useState(false);
     const [isNavVisible, setIsNavVisible] = useState(true);
     const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 0);
+    const [dateFilter, setDateFilter] = useState(new Date());
 
     useEffect(() => {
         fetchSummaries();
-    }, [divisionFilter, regionFilter, areaFilter, branchFilter, loanOfficerFilter]);
+    }, [divisionFilter, regionFilter, areaFilter, branchFilter, loanOfficerFilter, timeFilter, dateFilter]);
 
     useEffect(() => {
         const handleResize = () => {
@@ -322,6 +325,8 @@ const DashboardPage = () => {
 
     const fetchSummaries = () => {
         const queries = [
+            { value: timeFilter, field: 'filter' },
+            { value: dateFilter, field: 'selectedDate' },
             { value: divisionFilter, field: 'divisionId'},
             { value: regionFilter, field: 'regionId' }, 
             { value: areaFilter, field: 'areaId' }, 
@@ -387,6 +392,11 @@ const DashboardPage = () => {
                 console.log(error)
             });
     };
+
+    const handleDateFilter = (selected) => {
+        const filteredDate = selected.target.value;
+        setDateFilter(filteredDate);
+    }
 
     useEffect(() => {
         fetchBranches();
@@ -492,7 +502,7 @@ const DashboardPage = () => {
                             <option value="yearly">Yearly</option>
                         </select>
                         {
-                            timeFilter === 'daily' ? <input type='date'/> : null
+                            timeFilter === 'daily' ? <DatePicker name="dateFilter" value={moment(dateFilter).format('YYYY-MM-DD')} maxDate={moment(new Date()).format('YYYY-MM-DD')} onChange={handleDateFilter} /> : null
                         }
                         
                         <select 
