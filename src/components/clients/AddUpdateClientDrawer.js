@@ -72,7 +72,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
         duplicate: client.duplicate || false,
         archived: client.archived || false,
         archivedBy: client.archivedBy || '',
-        archivedDate: client.archivedDate || '',
+        // archivedDate: client.archivedDate || '',
     }), [client, currentUser]);
 
     const validationSchema = yup.object().shape({
