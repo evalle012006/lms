@@ -91,7 +91,7 @@ async function updateClient(req, res) {
                 profile: profile,
                 archived: fields.archived,
                 archivedBy: fields.archivedBy,
-                archivedDate: fields.archivedDate,
+                // archivedDate: fields.archivedDate || null,
             };
 
             await graph.mutation(
@@ -119,7 +119,7 @@ async function updateClient(req, res) {
                         groupLeader: fields.groupLeader,
                         archived: fields.archived,
                         archivedBy: fields.archivedBy,
-                        // archivedDate: fields.archivedDate,
+                        // archivedDate: fields.archivedDate || null,
                         dateModified: moment(getCurrentDate()).format('YYYY-MM-DD')
                     },
                     where: {

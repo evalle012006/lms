@@ -142,7 +142,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                 groupLeader: values.groupLeader,
                 archived: values.archived || false,
                 archivedBy: values.archivedBy,
-                archivedDate: values.archivedDate,
+                // archivedDate: values.archivedDate || null,
             };
 
             if (currentUser.root !== true && (currentUser.role.rep === 4 || currentUser.role.rep === 3) && branchList.length > 0) {
