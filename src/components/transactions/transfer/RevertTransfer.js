@@ -43,7 +43,7 @@ const RevertTransferPage = () => {
                     temp.firstName = client?.firstName;
                     temp.status = client?.status;
 
-                    if (transfer.loans.length > 0) {
+                    if (loan) {
                         temp.amountRelease = loan.amountRelease;
                         temp.amountReleaseStr = temp.amountRelease > 0 ? formatPricePhp(temp.amountRelease) : '-';
                         temp.loanBalance = loan.loanBalance;
@@ -79,11 +79,11 @@ const RevertTransferPage = () => {
                     const client = transfer.client;
                     const loan = transfer.loans.length > 0 ? transfer.loans[0] : [];
 
-                    temp.lastName = client.lastName;
-                    temp.firstName = client.firstName;
-                    temp.status = client.status;
+                    temp.lastName = client?.lastName;
+                    temp.firstName = client?.firstName;
+                    temp.status = client?.status;
 
-                    if (transfer.loans.length > 0) {
+                    if (loan) {
                         temp.amountRelease = loan.amountRelease;
                         temp.amountReleaseStr = temp.amountRelease > 0 ? formatPricePhp(temp.amountRelease) : '-';
                         temp.loanBalance = loan.loanBalance;
