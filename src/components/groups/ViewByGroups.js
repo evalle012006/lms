@@ -234,9 +234,11 @@ const ViewByGroupsPage = () => {
         setShowDeleteDialog(true);
     }
 
-    const rowActionButtons = [
+    const rowActionButtons = currentUser.role.rep == 1 ? [
         { label: 'Edit', action: handleEditAction },
         { label: 'Delete', action: handleDeleteAction }
+    ] : [
+        { label: 'Edit', action: handleEditAction }
     ];
 
     const handleDelete = () => {
