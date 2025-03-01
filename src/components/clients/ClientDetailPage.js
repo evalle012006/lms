@@ -18,6 +18,7 @@ import ButtonSolid from "@/lib/ui/ButtonSolid";
 import InputNumber from "@/lib/ui/InputNumber";
 import { getApiBaseUrl } from "@/lib/constants";
 import AddUpdateLoan from "../transactions/loan-application/AddUpdateLoanDrawer";
+import AddUpdateClient from "./AddUpdateClientDrawer";
 
 const ClientDetailPage = () => {
     const dispatch = useDispatch();
@@ -39,6 +40,10 @@ const ClientDetailPage = () => {
     const [showAddLoanDrawer, setShowAddLoanDrawer] = useState(false);
 
     const [uploading, setUploading] = useState(false);
+
+    const [guarantorName, setGuarantorName] = useState('');
+
+    const [showUpdateClientDrawer, setShowUpdateClientDrawer] = useState(false);
 
     const handleCloseAddLoanDrawer = () => {
         setShowAddLoanDrawer(false);
@@ -283,17 +288,31 @@ const ClientDetailPage = () => {
                 });
             });
             setLoanList(loanData);
+
+            setClientAddress(formatAddress({
+                streetNo: client.addressStreetNo ? `${client.addressStreetNo}` : '',
+                barangay: client.addressBarangayDistrict,
+                city: client.addressMunicipalityCity,
+                province: client.addressProvince,
+                zipCode: client.addressZipCode
+            }));
         } else if (response.error) {
             toast.error(response.message);
         }
         setLoading(false);
     }
 
+    const formatAddress = (addressParts) => {
+        return Object.entries(addressParts)
+          .filter(([_, value]) => value !== null && value !== undefined && value !== '')
+          .map(([key, value]) => value)
+          .join(', ');
+    };
+
 
     useEffect(() => {
         let mounted = true;
 
-        mounted && setClientAddress(`${client.addressStreetNo ? client.addressStreetNo + ',': ''} ${client.addressBarangayDistrict}, ${client.addressMunicipalityCity}, ${client.addressProvince}, ${client.addressZipCode}`);
         mounted && getClientDetails() && setLoading(false);
 
         return () => {
@@ -304,7 +323,13 @@ const ClientDetailPage = () => {
     useEffect(() => {
         if (loanList.length > 0) {
             const filteredList = loanList.filter(loan => loan.status != 'reject');
-            const lastLoan = filteredList.length > 0 ? filteredList[0] : null;
+            const lastLoan = filteredList.length > 0 ? filteredList[filteredList.length - 1] : null;
+            if (lastLoan) {
+                const firstName = lastLoan.guarantorFirstName ? lastLoan.guarantorFirstName : '';
+                const middleName = (lastLoan.guarantorMiddleName && lastLoan.guarantorMiddleName?.trim().length > 0) ? lastLoan.guarantorMiddleName : '';
+                const lastName = lastLoan.guarantorLastName ? lastLoan.guarantorLastName : '';
+                setGuarantorName(`${firstName} ${middleName} ${lastName}`);
+            }
             setLastLoan(lastLoan);
         }
     }, [loanList])
@@ -316,16 +341,21 @@ const ClientDetailPage = () => {
             ) : (
                 <React.Fragment>
                     <div className="flex flex-col space-y-4">
-                        {/* Add Loan Button */}
-                        {((client.status?.toLowerCase() === 'pending' || client.status?.toLowerCase() === 'offset') && !client.duplicate ) && (
+                        {((client.loans.length == 0 && client.status?.toLowerCase() === 'pending' || client.status?.toLowerCase() === 'offset') && !client.duplicate ) && (
                             <div className="flex justify-between">
                                 <div></div>
-                                <div className="w-24">
+                                <div className="flex items-center space-x-3">
                                     <ButtonSolid
                                         label="Add Loan"
                                         type="button"
-                                        className="p-2"
+                                        className="p-2 w-36"
                                         onClick={() => setShowAddLoanDrawer(true)}
+                                    />
+                                    <ButtonSolid
+                                        label="Update Client"
+                                        type="button"
+                                        className="p-2 w-36"
+                                        onClick={() => setShowUpdateClientDrawer(true)}
                                     />
                                 </div>
                             </div>
@@ -366,12 +396,13 @@ const ClientDetailPage = () => {
                         <div className="flex-none">
                             <h5 className="font-proxima-bold mb-2">General Information</h5>
                             <div className="border rounded border-gray-400 text-gray-600 p-3 grid grid-cols-2 gap-3 text-sm">
-                                <div><span className="font-proxima-bold">Birthdate:</span> {moment(client.birthdate).format('YYYY-MM-DD')}</div>
+                                <div><span className="font-proxima-bold">Birthdate:</span> {moment(client.birthdate).isValid() ? moment(client.birthdate).format('YYYY-MM-DD') : ''}</div>
                                 <div><span className="font-proxima-bold">Registered Date:</span> {moment(client.dateAdded).format('YYYY-MM-DD')}</div>
                                 <div><span className="font-proxima-bold">Contact Number:</span> {client.contactNumber}</div>
                                 <div><span className="font-proxima-bold">Registered in Branch:</span> {client.branchName}</div>
                                 <div className="col-span-2"><span className="font-proxima-bold">Address: </span>{clientAddress}</div>
                                 <div><span className="font-proxima-bold">CI Name:</span> {client?.ciName}</div>
+                                <div><span className="font-proxima-bold">Guarantor Name:</span> {guarantorName}</div>
                             </div>
                         </div>
 
@@ -449,6 +480,16 @@ const ClientDetailPage = () => {
                         )}
                     </div>
                     {lastLoan && <AddUpdateLoan origin={'client-list'} client={client} mode={'add'} loan={lastLoan} showSidebar={showAddLoanDrawer} setShowSidebar={setShowAddLoanDrawer} onClose={handleCloseAddLoanDrawer} />}
+                    {showUpdateClientDrawer && (
+                        <AddUpdateClient 
+                            mode={'edit'} 
+                            client={client} 
+                            showSidebar={showUpdateClientDrawer} 
+                            setShowSidebar={setShowUpdateClientDrawer} 
+                            onClose={() => setShowUpdateClientDrawer(false)} 
+                            flag={client.status == 'pending' ? 'update-pending' : 'update-offset'}
+                        />
+                    )}
                 </React.Fragment>
             )}
         </div>

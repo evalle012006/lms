@@ -21,7 +21,7 @@ import { useRouter } from "next/router";
 import ClientSearchTool from "../dashboard/ClientSearchTool";
 import { getApiBaseUrl } from "@/lib/constants";
 
-const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSidebar, onClose }) => {
+const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSidebar, onClose, flag }) => {
     const hiddenInput = useRef(null);
     const formikRef = useRef();
     const router = useRouter();
@@ -78,6 +78,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
     const validationSchema = yup.object().shape({
         firstName: yup.string().required('Please enter first name'),
         lastName: yup.string().required('Please enter last name'),
+        middleName: yup.string().required('Please enter last name'),
         // loId: yup.string().required('Please select a Loan Officer'),
         ciName: yup.string().required('Please enter C.I. name'),
     });
@@ -256,7 +257,6 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
 
     useEffect(() => {
         if (mode === "edit" && client.group && client.group.length > 0) {
-            console.log(client)
             setSelectedGroup(client.group[0]);
         }
     }, [mode, client]);
@@ -321,7 +321,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                     </div>
                                 ) : (
                                     <>
-                                        {currentUser.role.rep < 4 && (
+                                        {(currentUser.role.rep < 4 && flag != 'update-offset') && (
                                             <div className="mt-4">
                                                 <SelectDropdown
                                                     name="loId"
@@ -337,19 +337,21 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                             </div>
                                         )}
 
-                                        <div className="mt-4">
-                                            <SelectDropdown
-                                                name="groupId"
-                                                field="groupId"
-                                                value={values.groupId}
-                                                label="Group (Required)"
-                                                options={currentUser.role.rep == 4 ? groupList : filteredGroupList}
-                                                onChange={setFieldValue}
-                                                onBlur={setFieldTouched}
-                                                placeholder="Select Group"
-                                                errors={touched.groupId && errors.groupId ? errors.groupId : undefined}
-                                            />
-                                        </div>
+                                        {flag != 'update-offset' && (
+                                            <div className="mt-4">
+                                                <SelectDropdown
+                                                    name="groupId"
+                                                    field="groupId"
+                                                    value={values.groupId}
+                                                    label="Group (Required)"
+                                                    options={currentUser.role.rep == 4 ? groupList : filteredGroupList}
+                                                    onChange={setFieldValue}
+                                                    onBlur={setFieldTouched}
+                                                    placeholder="Select Group"
+                                                    errors={touched.groupId && errors.groupId ? errors.groupId : undefined}
+                                                />
+                                            </div>
+                                        )}
                                     </>
                                 ) }
                                 <div className="mt-4">
@@ -380,7 +382,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                         value={values.middleName}
                                         onChange={handleChange}
                                         label="Middle Name"
-                                        placeholder="Enter Middle Name"
+                                        placeholder="Enter Middle Name | If name, please enter 'N/A'"
                                         setFieldValue={setFieldValue}
                                         errors={touched.middleName && errors.middleName ? errors.middleName : undefined} />
                                 </div>
@@ -456,7 +458,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                         setFieldValue={setFieldValue}
                                         errors={touched.contactNumber && errors.contactNumber ? errors.contactNumber : undefined} />
                                 </div>
-                                {mode === 'edit' && currentUser.role.rep < 4 && (
+                                {mode === 'edit' && currentUser.role.rep < 3 && (
                                     <React.Fragment>
                                         <div className="mt-4">
                                             <SelectDropdown

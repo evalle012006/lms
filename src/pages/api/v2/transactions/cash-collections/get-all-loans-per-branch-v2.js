@@ -29,8 +29,8 @@ async function getData (req, res) {
     const user = await graph.query(
         queryQl(USER_TYPE, { where: { _id: { _eq: currentUserId } } })
     ).then(res => res.data.users);
-
-    const getBranchIds = (where) => graph.query(queryQl(BRANCH_TYPE, {where})).then(res => res.data.branches.map(b => b._id));
+    // filtered out B000 branch id
+    const getBranchIds = (where) => graph.query(queryQl(BRANCH_TYPE, {where})).then(res => res.data.branches.filter(b => b._id != '668de44b2b02009ec7b806f1').map(b => b._id));
 
     if (user.length > 0) {
         let branchIds = [];
