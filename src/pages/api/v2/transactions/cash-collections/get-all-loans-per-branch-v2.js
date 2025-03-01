@@ -52,8 +52,9 @@ async function getData (req, res) {
                 let batch_ids = [];
                 for(const id of branchIds) {
                     batch_ids.push(id);
-                    if(batch_ids.length == 1000) {
+                    if(batch_ids.length == 10) {
                         await Promise.all(batch_ids.map(async (branchId) => {
+                            console.log('calling branch transaction for id ', branchId);
                             data.push.apply(data, await getAllLoanTransactionsByBranch(branchId, date, dayName, currentDate));
                         }));
 
@@ -242,10 +243,10 @@ async function getAllLoanTransactionsByBranch(branchId, date, dayName, currentDa
 
 
 async function processData(data, date, currentDate) {
-    const collectionDailyTransferred = [];
-    const collectionDailyReceived = [];
-    const collectionWeeklyTransferred = [];
-    const collectionWeeklyReceived = [];
+    let collectionDailyTransferred = [];
+    let collectionDailyReceived = [];
+    let collectionWeeklyTransferred = [];
+    let collectionWeeklyReceived = [];
     let collectionData = [];
 
     let noOfClients = 0;
@@ -275,6 +276,7 @@ async function processData(data, date, currentDate) {
 
     const filter = date !== currentDate;
     
+    console.log(data.length);
     data.map(branch => {
         let collection = {
             _id: branch._id,
@@ -535,7 +537,11 @@ async function processData(data, date, currentDate) {
             let totalTransferActualCollection = 0;
 
             if (branch.transferDailyGiverDetails.length > 0) {
-                collectionDailyReceived.push.apply(collectionDailyReceived, branch.transferDailyGiverDetails);
+                collectionDailyReceived = [
+                    ... collectionDailyReceived,
+                    ... branch.transferDailyGiverDetails
+                ]
+                // collectionDailyReceived.push.apply(collectionDailyReceived, branch.transferDailyGiverDetails);
                 transfer = transfer - branch.transferDailyGiverDetails.length;
 
                 branch.transferDailyGiverDetails.map(giver => {    
@@ -565,7 +571,12 @@ async function processData(data, date, currentDate) {
             }
 
             if (branch.transferDailyReceivedDetails.length > 0) {
-                collectionDailyTransferred.push.apply(collectionDailyTransferred, branch.transferDailyReceivedDetails);
+                collectionDailyTransferred = [
+                    ... collectionDailyTransferred,
+                    ... branch.transferDailyReceivedDetails
+                ];
+
+                // collectionDailyTransferred.push.apply(collectionDailyTransferred, branch.transferDailyReceivedDetails);
                 transfer = transfer + branch.transferDailyReceivedDetails.length;
                 
                 branch.transferDailyReceivedDetails.map(rcv => {
@@ -611,7 +622,11 @@ async function processData(data, date, currentDate) {
             }
 
             if (branch.transferWeeklyGiverDetails.length > 0) {
-                collectionWeeklyReceived.push.apply(collectionWeeklyReceived, branch.transferWeeklyGiverDetails);
+                collectionWeeklyReceived = [
+                    ... collectionWeeklyReceived,
+                    ... branch.transferWeeklyGiverDetails,
+                ]
+                // collectionWeeklyReceived.push.apply(collectionWeeklyReceived, branch.transferWeeklyGiverDetails);
                 transfer = transfer - branch.transferWeeklyGiverDetails.length;
 
                 branch.transferWeeklyGiverDetails.map(giver => {
@@ -640,7 +655,11 @@ async function processData(data, date, currentDate) {
             }
             
             if (branch.transferWeeklyReceivedDetails.length > 0) {
-                collectionWeeklyTransferred.push.apply(collectionWeeklyTransferred, branch.transferWeeklyReceivedDetails);
+                collectionWeeklyTransferred = [
+                    ... collectionWeeklyTransferred,
+                    ... branch.transferWeeklyReceivedDetails,
+                ]
+                // collectionWeeklyTransferred.push.apply(collectionWeeklyTransferred, branch.transferWeeklyReceivedDetails);
                 transfer = transfer + branch.transferWeeklyReceivedDetails.length;
 
                 branch.transferWeeklyReceivedDetails.map(rcv => {
