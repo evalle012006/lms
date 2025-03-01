@@ -22,16 +22,13 @@ async function getSummary(req, res) {
     const week = filter === 'daily' ? selected.week() : current.week();
     const day = filter === 'daily' ? selected.date() : null;
 
-    console.log(week, month, quarter);
-
     const [result] = await graph.apollo.query({
         query: gql`
         query get_dashboard_summary_view ($args: get_dashboard_summary_view_arguments!){
             get_dashboard_summary_view(args: $args) {
                 data
             }
-        }
-        `,
+        }`,
         variables: {
             args: {
                 year: year ?? null,

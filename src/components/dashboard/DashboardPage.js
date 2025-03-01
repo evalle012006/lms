@@ -34,6 +34,7 @@ import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { useMemo } from 'react';
 import DatePicker from "@/lib/ui/DatePicker";
 import moment from 'moment';
+import { getMonths, getQuarters, getWeeks, getYears } from '@/lib/utils';
 
 ChartJS.register(...registerables, ChartDataLabels);
 
@@ -41,7 +42,8 @@ const DashboardPage = () => {
     const router = useRouter();
     const currentUser = useSelector(state => state.user.data);
     const branch = useSelector(state => state.branch.data);
-    const [timeFilter, setTimeFilter] = useState('all');
+
+    const [timeFilter, setTimeFilter] = useState('daily');
     const [branchFilter, setBranchFilter] = useState('all');
     const [areaFilter, setAreaFilter] = useState('all');
     const [regionFilter, setRegionFilter] = useState('all');
@@ -59,6 +61,10 @@ const DashboardPage = () => {
     const [areaList, setAreas] = useState([]);
     const [divisions, setDivisions] = useState([]);
     const [loanOfficerList, setLoanOfficers] = useState([]);
+    const [timeFilterList, setTimeFilterList] = useState(getYears());
+    const [selectedFilter, setSelectedFilter] = useState();
+    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+    const [yearList] = useState(getYears);
 
     const regions = useMemo(() => regionList.filter(r => divisionFilter === 'all' || r._id === 'all' || r.divisionId === divisionFilter), [regionList, divisionFilter]);
     const areas = useMemo(() => areaList.filter(a => regionFilter === 'all' || a._id === 'all' || a.regionId === regionFilter ), [regionFilter, areaList]);
@@ -73,9 +79,20 @@ const DashboardPage = () => {
     const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 0);
     const [dateFilter, setDateFilter] = useState(new Date());
 
+
     useEffect(() => {
         fetchSummaries();
-    }, [divisionFilter, regionFilter, areaFilter, branchFilter, loanOfficerFilter, timeFilter, dateFilter]);
+    }, [divisionFilter, regionFilter, areaFilter, branchFilter, loanOfficerFilter, timeFilter, timeFilterList, dateFilter]);
+
+    useEffect(() => {
+        switch(timeFilter) {
+            case 'weekly': setTimeFilterList(getWeeks(selectedYear)); break;
+            case 'monthly': setTimeFilterList(getMonths()); break;
+            case 'quarterly': setTimeFilterList(getQuarters()); break;
+            case 'yearly': setTimeFilterList(getYears()); break;
+            default:  break;
+        }
+    }, [timeFilter, selectedYear]);
 
     useEffect(() => {
         const handleResize = () => {
@@ -494,7 +511,6 @@ const DashboardPage = () => {
                             onChange={(e) => setTimeFilter(e.target.value)}
                             className="block pl-3 pr-10 py-1 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
                         >
-                            <option value="overall">Overall</option>
                             <option value="daily">Daily</option>
                             <option value="weekly">Weekly</option>
                             <option value="monthly">Monthly</option>
@@ -504,6 +520,30 @@ const DashboardPage = () => {
                         {
                             timeFilter === 'daily' ? <DatePicker name="dateFilter" value={moment(dateFilter).format('YYYY-MM-DD')} maxDate={moment(new Date()).format('YYYY-MM-DD')} onChange={handleDateFilter} /> : null
                         }
+
+                        {
+                            timeFilter !== 'daily' ? <select 
+                            onChange={(e) => setSelectedYear(e.target.value)}
+                            className="block pl-3 pr-10 py-1 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
+                        >
+                            {yearList.map((w, index) => (
+                                <option key={index} value={w.value}>{w.label}</option>
+                            ))}
+                        </select> : null
+                        }
+
+                        {
+                                timeFilter !== 'yearly' && timeFilter !== 'daily' ?
+                                    <select 
+                                    onChange={(e) => setSelectedFilter(e.target.value)}
+                                    className="block pl-3 pr-10 py-1 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
+                                >
+                                    {timeFilterList.map((w, index) => (
+                                        <option key={index} value={w.value}>{w.label}</option>
+                                    ))}
+                                </select> : null
+                        }
+
                         
                         <select 
                             onChange={(e) => setDivisionFilter(e.target.value)}
@@ -557,7 +597,7 @@ const DashboardPage = () => {
                             <div className="sticky top-4">
                                 <div className="mb-4">
                                     <h2 className="text-lg font-semibold">SUMMARY</h2>
-                                    <p className="text-sm text-gray-600">Daily/Weekly/Monthly</p>
+                                    <p className="text-sm text-gray-600 capitalize">{timeFilter}</p>
                                 </div>
                                 <div className="space-y-2">
                                     <CardItem title="Active Clients" value={summaryData.activeClients} Icon={UserPlus} />
@@ -593,7 +633,7 @@ const DashboardPage = () => {
                             <div className="sticky top-4">
                                 <div className="mb-4">
                                     <h2 className="text-lg font-semibold">PROGRESS</h2>
-                                    <p className="text-sm text-gray-600">Daily/Weekly/Monthly</p>
+                                    <p className="text-sm text-gray-600 capitalize">{timeFilter}</p>
                                 </div>
                                 <div className="space-y-2">
                                     <CardItem title="Total Release:" value={summaryData.totalRelease || '0.00'} Icon={Banknote} />

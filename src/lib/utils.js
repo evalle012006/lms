@@ -203,6 +203,58 @@ export const isEndMonthDate = (currentDate, holidayList = []) => {
     return dateArr[dateArr.length - 1] == currentDate;
 }
 
+export const getQuarters = () => {
+    return [
+        { value: 1, label: '1st Qtr' },
+        { value: 2, label: '2nd Qtr' },
+        { value: 3, label: '3rd Qtr' },
+        { value: 4, label: '4th Qtr' }
+    ];
+}
+
+export const getWeeks = (year) => {
+    const weeks = [];
+  const startDate = new Date(year, 0, 1); // January 1st of the given year
+  const endDate = new Date(); // December 31st of the given year
+
+  let currentDate = startDate;
+  let currentWeek = 1;
+
+
+  while (currentDate <= endDate) {
+
+    console.log(currentDate, endDate);
+
+    const firstDayOfWeek = currentDate.getDate() - currentDate.getDay() + (currentDate.getDay() == 0 ? -6 : 1); // Adjust to first day of the week (Monday)
+    const startOfWeek = new Date(currentDate.setDate(firstDayOfWeek));
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6); // Friday of the same week
+
+    // Push the week with start and end dates
+    weeks.push({
+      weekNumber: currentWeek,
+      startDate: startOfWeek.toISOString().split('T')[0],
+      endDate: endOfWeek.toISOString().split('T')[0],
+    });
+
+    // Move to next week
+    currentDate = new Date(endOfWeek.setDate(endOfWeek.getDate() + 1));
+    currentWeek++;
+  }
+
+  console.log('weeks', weeks);
+
+  return weeks.map(w => ({
+    label: (() => {
+        const [startMonth, startDay] = moment(w.startDate).format('MMM DD').split(' ');
+        const [endMonth, endDay] = moment(w.endDate).format('MMM DD').split(' ');
+
+        return `${startMonth} ${startDay} - ${ startMonth === endMonth ? '' : endMonth + ' '  } ${endDay}`
+    })(),
+    value: w.weekNumber,
+  }))
+}
+
 export const getMonths = () => {
     return [
         { label: 'January', value: '01' },
@@ -221,6 +273,21 @@ export const getMonths = () => {
 }
 
 export const getYears = () => {
+
+    const current_year = new Date().getFullYear();
+    let base_year = 2023;
+    const years = [];
+
+    for(let i = base_year; i <= current_year; i++) {
+        years.push({
+            label: i,
+            value: i
+        });
+    }
+
+    return years;
+
+    /*
     return[
         { label: 2023, value: 2023 },
         { label: 2024, value: 2024 },
@@ -236,6 +303,7 @@ export const getYears = () => {
         { label: 2034, value: 2034 },
         { label: 2035, value: 2035 }
     ];
+    */
 }
 
 export const extractName = (name) => {
