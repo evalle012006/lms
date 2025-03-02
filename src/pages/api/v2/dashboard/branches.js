@@ -53,15 +53,6 @@ async function getBranches(req, res) {
         })
     }
 
-    where.push({
-        status: { _eq: 'active' },
-        role: {
-            _contains: {
-                rep: 3
-            }
-        }
-    });
-
     const result =  await graph.query(
         queryQl(BRANCHES_TYPE, { where: where?.[0] ?? undefined,  order_by: [{ code: 'asc' }] })
     ).then(res => res.data.branches ?? []);
