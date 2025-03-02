@@ -82,16 +82,26 @@ const DashboardPage = () => {
 
     useEffect(() => {
         fetchSummaries();
-    }, [divisionFilter, regionFilter, areaFilter, branchFilter, loanOfficerFilter, timeFilter, timeFilterList, dateFilter]);
+    }, [divisionFilter, regionFilter, areaFilter, branchFilter, loanOfficerFilter, timeFilter, timeFilterList, dateFilter, selectedFilter]);
 
     useEffect(() => {
         switch(timeFilter) {
-            case 'weekly': setTimeFilterList(getWeeks(selectedYear)); break;
-            case 'monthly': setTimeFilterList(getMonths()); break;
-            case 'quarterly': setTimeFilterList(getQuarters()); break;
-            case 'yearly': setTimeFilterList(getYears()); break;
+            case 'weekly': setTimeFilterList(getWeeks(selectedYear).map(o => ({
+                ... o,
+                field: 'week'
+            }))); break;
+            case 'monthly': setTimeFilterList(getMonths(selectedYear).map(o => ({
+                ... o,
+                field: 'month'
+            }))); break;
+            case 'quarterly': setTimeFilterList(getQuarters().map(o => ({
+                ... o,
+                field: 'quarter'
+            }))); break;
             default:  break;
         }
+
+        console.log(timeFilterList);
     }, [timeFilter, selectedYear]);
 
     useEffect(() => {
@@ -343,12 +353,15 @@ const DashboardPage = () => {
     const fetchSummaries = () => {
         const queries = [
             { value: timeFilter, field: 'filter' },
-            { value: dateFilter, field: 'selectedDate' },
+            { value: moment(dateFilter).format('YYYY-MM-DD'), field: 'date' },
             { value: divisionFilter, field: 'divisionId'},
             { value: regionFilter, field: 'regionId' }, 
             { value: areaFilter, field: 'areaId' }, 
             { value: branchFilter, field: 'branchId' }, 
-            { value: loanOfficerFilter, field: 'loId' }].filter(a => a.value !== 'all' && !!a.value)
+            { value: selectedYear, field: 'year' },
+            { value: loanOfficerFilter, field: 'loId' },
+            { value: +(selectedFilter?.value), field: selectedFilter?.field },
+        ].filter(a => a.value !== 'all' && !!a.value)
                             .map(a => `${a.field}=${a.value}`).join('&');
         const apiUrl = getApiBaseUrl() + '/dashboard?' + queries;
         
@@ -364,7 +377,7 @@ const DashboardPage = () => {
         const apiUrl = getApiBaseUrl() + '/dashboard/branches';
         fetchWrapper.get(apiUrl)
             .then(resp => {
-                setBranches([ { _id: 'all', name: '-', code: '' }, ... resp.data]);
+                setBranches([ { _id: 'all', name: 'All', code: '' }, ... resp.data]);
             }).catch(error => {
                 console.log(error)
             });
@@ -374,7 +387,7 @@ const DashboardPage = () => {
         const apiUrl = getApiBaseUrl() + '/dashboard/regions';
         fetchWrapper.get(apiUrl)
             .then(resp => {
-                setRegions([ { _id: 'all', name: '-' }, ... resp.data]);
+                setRegions([ { _id: 'all', name: 'All' }, ... resp.data]);
             }).catch(error => {
                 console.log(error)
             });
@@ -384,7 +397,7 @@ const DashboardPage = () => {
         const apiUrl = getApiBaseUrl() + '/dashboard/areas';
         fetchWrapper.get(apiUrl)
             .then(resp => {
-                setAreas([ { _id: 'all', name: '-' }, ... resp.data])
+                setAreas([ { _id: 'all', name: 'All' }, ... resp.data])
             }).catch(error => {
                 console.log(error)
             });
@@ -394,7 +407,7 @@ const DashboardPage = () => {
         const apiUrl = getApiBaseUrl() + '/dashboard/divisions';
         fetchWrapper.get(apiUrl)
             .then(resp => {
-                setDivisions([ { _id: 'all', name: '-' }, ... resp.data])
+                setDivisions([ { _id: 'all', name: 'All' }, ... resp.data])
             }).catch(error => {
                 console.log(error)
             });
@@ -404,7 +417,7 @@ const DashboardPage = () => {
         const apiUrl = getApiBaseUrl() + '/dashboard/loan-officers';
         fetchWrapper.get(apiUrl)
             .then(resp => {
-                setLoanOfficers([ { _id: 'all', firstName: '-', lastName: '' }, ... resp.data])
+                setLoanOfficers([ { _id: 'all', firstName: 'All', lastName: '' }, ... resp.data])
             }).catch(error => {
                 console.log(error)
             });
@@ -535,41 +548,48 @@ const DashboardPage = () => {
                         {
                                 timeFilter !== 'yearly' && timeFilter !== 'daily' ?
                                     <select 
-                                    onChange={(e) => setSelectedFilter(e.target.value)}
+                                    onChange={(e) => setSelectedFilter(timeFilterList[e.target.value])}
                                     className="block pl-3 pr-10 py-1 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
                                 >
                                     {timeFilterList.map((w, index) => (
-                                        <option key={index} value={w.value}>{w.label}</option>
+                                        <option key={index} value={index}>{w.label}</option>
                                     ))}
                                 </select> : null
                         }
 
                         
-                        <select 
+                        {
+                            divisions.length > 2 ?  <select 
                             onChange={(e) => setDivisionFilter(e.target.value)}
                             className="block pl-3 pr-10 py-1 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
                         >
                             {divisions.map((division, index) => (
                                 <option key={index} value={division._id}>{division.name}</option>
                             ))}
-                        </select>
-                        <select 
+                        </select> : null
+                        }
+                        {
+                            regions.length > 2 ? <select 
                             onChange={(e) => setRegionFilter(e.target.value)}
                             className="block pl-3 pr-10 py-1 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
                         >
                             {regions.map((region, index) => (
                                 <option key={index} value={region._id}>{region.name}</option>
                             ))}
-                        </select>
-                        <select 
+                        </select> : null
+                        }
+                        {
+                            areas.length > 2 ? <select 
                             onChange={(e) => setAreaFilter(e.target.value)}
                             className="block pl-3 pr-10 py-1 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
                         >
                             {areas.map((area, index) => (
                                 <option key={index} value={area._id}>{area.name}</option>
                             ))}
-                        </select>
-                        <select 
+                        </select> : null
+                        }
+                        {
+                            branchList.length > 2 ?  <select 
                             value={branchFilter} 
                             onChange={(e) => setBranchFilter(e.target.value)}
                             className="block pl-3 pr-10 py-1 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
@@ -577,8 +597,12 @@ const DashboardPage = () => {
                             {branches.map((branch, index) => (
                                 <option key={index} value={branch._id}>{branch.code} {branch.name}</option>
                             ))}
-                        </select>
-                        <select 
+                        </select> : null
+                        }
+                       
+
+                        {
+                            loanOfficerFilter.length > 2 ? <select 
                             value={loanOfficerFilter} 
                             onChange={(e) => setLoanOfficerFilter(e.target.value)}
                             className="block pl-3 pr-10 py-1 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
@@ -586,7 +610,10 @@ const DashboardPage = () => {
                             {loanOfficers.map((lo, index) => (
                                 <option key={index} value={lo._id}>{lo.firstName} {lo.lastName}</option>
                             ))}
-                        </select>
+                        </select> :  null
+                        }
+
+                        
                     </div>
                 </div>
 

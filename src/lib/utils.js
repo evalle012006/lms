@@ -209,7 +209,7 @@ export const getQuarters = () => {
         { value: 2, label: '2nd Qtr' },
         { value: 3, label: '3rd Qtr' },
         { value: 4, label: '4th Qtr' }
-    ];
+    ].sort((a, b) => +a.value - +b.value)
 }
 
 export const getWeeks = (year) => {
@@ -222,8 +222,6 @@ export const getWeeks = (year) => {
 
 
   while (currentDate <= endDate) {
-
-    console.log(currentDate, endDate);
 
     const firstDayOfWeek = currentDate.getDate() - currentDate.getDay() + (currentDate.getDay() == 0 ? -6 : 1); // Adjust to first day of the week (Monday)
     const startOfWeek = new Date(currentDate.setDate(firstDayOfWeek));
@@ -242,8 +240,6 @@ export const getWeeks = (year) => {
     currentWeek++;
   }
 
-  console.log('weeks', weeks);
-
   return weeks.map(w => ({
     label: (() => {
         const [startMonth, startDay] = moment(w.startDate).format('MMM DD').split(' ');
@@ -252,10 +248,16 @@ export const getWeeks = (year) => {
         return `${startMonth} ${startDay} - ${ startMonth === endMonth ? '' : endMonth + ' '  } ${endDay}`
     })(),
     value: w.weekNumber,
-  }))
+  })).sort((a, b) => +a.value - +b.value)
 }
 
-export const getMonths = () => {
+export const getMonths = (year) => {
+    const current_date = moment(new Date());
+    const current_year = +current_date.year();
+    const current_month = current_date.month() + 1;
+
+    console.log(current_month, year, current_year);
+
     return [
         { label: 'January', value: '01' },
         { label: 'February', value: '02' },
@@ -269,7 +271,8 @@ export const getMonths = () => {
         { label: 'October', value: '10' },
         { label: 'November', value: '11' },
         { label: 'December', value: '12' }
-    ];
+    ].sort((a, b) => +a.value - +b.value)
+     .filter(o => +year === current_year ? (+o.value) <= current_month : true);
 }
 
 export const getYears = () => {
@@ -285,7 +288,7 @@ export const getYears = () => {
         });
     }
 
-    return years;
+    return years.sort((a, b) => +a.value - +b.value)
 
     /*
     return[

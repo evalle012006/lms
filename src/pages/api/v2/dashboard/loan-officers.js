@@ -65,7 +65,6 @@ async function getLoanOfficers(req, res) {
     }
 
     if (user.designatedBranchId) {
-        console.log(user);
         where.push( user.role.rep === 4 ? { _id: { _eq: user._id } } : {
             group: {
                 branch: {
@@ -74,6 +73,10 @@ async function getLoanOfficers(req, res) {
             }
         })
     }
+    
+    where.push({
+        status: { _eq: 'active' }
+    });
 
     const result =  await graph.query(
         queryQl(USER_TYPE, { where: where?.[0] ?? undefined,  order_by: [{ firstName: 'asc' }] })

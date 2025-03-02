@@ -1,3 +1,4 @@
+import { findUserById } from '@/lib/graph.functions';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { apiHandler } from '@/services/api-handler';
 import { gql } from 'node_modules/apollo-boost/lib/index';
@@ -10,17 +11,22 @@ export default apiHandler({
 });
 
 async function getSummary(req, res) {
-    const { areaId, divisionId, regionId, branchId, loId, filter, selectedDate } = req.query;
+    const user = await findUserById(req.auth.sub);
 
-    const current = moment(new Date());
-    const selected = moment(selectedDate);
+    let { areaId, divisionId, regionId, branchId, loId, filter, date, year, quarter, month, week } = req.query;
 
-    const year = filter === 'daily' ? selected.year() : current.year();
-    const quarter = filter === 'daily' ? selected.quarter() : current.quarter();
-    const month =  filter === 'daily' ?  selected.month() : current.month();
+    let selectedDate = moment(date);
+    let day = null;
+    
+    if (filter === 'daily') {
+        day = selectedDate.date()
+        year = selectedDate.year();
+        month = selectedDate.month() + 1;
+        quarter = selectedDate.quarter();
+        week = selectedDate.week();
+    }
 
-    const week = filter === 'daily' ? selected.week() : current.week();
-    const day = filter === 'daily' ? selected.date() : null;
+    console.log(user, 'day=', day, 'week=', week, 'month=', month, 'quarter=', quarter, 'year=', year);
 
     const [result] = await graph.apollo.query({
         query: gql`
@@ -31,16 +37,16 @@ async function getSummary(req, res) {
         }`,
         variables: {
             args: {
-                year: year ?? null,
-                quarter: quarter ?? null,
-                month: month + 1,
-                week: week,
-                day: day ?? null,
-                area_id: areaId ?? null,
-                division_id: divisionId ?? null,
-                region_id: regionId ?? null,
-                branch_id: branchId ?? null,
-                user_id: loId ?? null
+                year: year ? +year : null,
+                quarter: quarter ? +(quarter) : null,
+                month: month ? +(month) : null,
+                week: week ? +(week) : null,
+                day: day ? +(day) : null,
+                area_id: user.areaId ?? areaId ?? null,
+                division_id: user.divisionId ?? divisionId ?? null,
+                region_id: user.regionId ?? regionId ?? null,
+                branch_id: user.branchId ?? branchId ?? null,
+                user_id: user.role.rep === 4 ? user._id : loId ?? null
             }
         }
     })
