@@ -50,6 +50,7 @@ const DashboardPage = () => {
     const [divisionFilter, setDivisionFilter] = useState('all');
     const [loanOfficerFilter, setLoanOfficerFilter] = useState('all');
     const [summaryData, setSummaryData] = useState({});
+    const [graphData, setGraphData] = useState([]);
 
     const [mcbuData, setMcbuData] = useState({ labels: [], datasets: [] });
     const [personData, setPersonData] = useState({ labels: [], datasets: [] });
@@ -81,7 +82,11 @@ const DashboardPage = () => {
 
 
     useEffect(() => {
-        fetchSummaries();
+        const tt = setTimeout(() => {
+            fetchSummaries();
+        }, 2000);
+        
+        return () => clearTimeout(tt);
     }, [divisionFilter, regionFilter, areaFilter, branchFilter, loanOfficerFilter, timeFilter, timeFilterList, dateFilter, selectedFilter]);
 
     useEffect(() => {
@@ -101,7 +106,6 @@ const DashboardPage = () => {
             default:  break;
         }
 
-        console.log(timeFilterList);
     }, [timeFilter, selectedYear]);
 
     useEffect(() => {
@@ -148,8 +152,57 @@ const DashboardPage = () => {
     };
 
     useEffect(() => {
+        if(graphData.length) {
+
+            const dates = graphData.map(o => o.group).reverse()
+            const activeClients = graphData.map(o => o.activeClients).reverse()
+            const newMembers = graphData.map(o => o.newMember).reverse();
+
+            const mcbus = graphData.map(o => o.mcbu).reverse();
+            const mcbuWithdrawals = graphData.map(o => o.clientMcbuWithdrawals).reverse();
+
+            setPersonData({
+                labels: dates,
+                datasets: [
+                    {
+                        label: 'Active Clients',
+                        data: activeClients,
+                        borderColor: 'rgb(53, 162, 235)',
+                        tension: 0.1
+                    },
+                    {
+                        label: 'New Members',
+                        data: newMembers,
+                        borderColor: 'rgb(75, 192, 192)',
+                        tension: 0.1
+                    }
+                ]
+            });
+
+            setMcbuData({
+                labels: dates,
+                datasets: [
+                    {
+                        label: 'Collections',
+                        data: mcbus,
+                        borderColor: 'rgb(75, 192, 192)',
+                        tension: 0.1
+                    },
+                    {
+                        label: 'Withdrawals',
+                        data: mcbuWithdrawals,
+                        borderColor: 'rgb(255, 99, 132)',
+                        tension: 0.1
+                    }
+                ]
+            });
+        }
+    }, [graphData]);
+
+    useEffect(() => {
         const dates = generateDates();
         
+
         // MCBU Data
         setMcbuData({
             labels: dates,
@@ -351,26 +404,47 @@ const DashboardPage = () => {
     };
 
     const fetchSummaries = () => {
+
+        let selectedDate = null;
+
+        switch(timeFilter) {
+            case 'weekly': selectedDate = { value: moment(selectedFilter?.value ?? new Date()).format('YYYY-MM-DD'), field: 'date_added' }; break;
+            case 'monthly': selectedDate = { value: moment(selectedYear + '-' + selectedFilter.value + '-01').endOf('month').format('YYYY-MM-DD'), field: 'date_added' }; break;
+            case 'quarterly': selectedDate = { value: moment(selectedYear + '-01-01').quarter(selectedFilter.value).format('YYYY-MM-DD'), field: 'date_added' }; break;
+            case 'yearly': selectedDate = { value: moment(selectedYear + '-12-01').endOf('month').format('YYYY-MM-DD'), field: 'date_added' }; break;
+            default: selectedDate = { value: moment(dateFilter).format('YYYY-MM-DD'), field: 'date_added' }; break;
+        }
+
         const queries = [
+            selectedDate,
             { value: timeFilter, field: 'filter' },
-            { value: moment(dateFilter).format('YYYY-MM-DD'), field: 'date' },
             { value: divisionFilter, field: 'divisionId'},
             { value: regionFilter, field: 'regionId' }, 
             { value: areaFilter, field: 'areaId' }, 
             { value: branchFilter, field: 'branchId' }, 
             { value: selectedYear, field: 'year' },
             { value: loanOfficerFilter, field: 'loId' },
-            { value: +(selectedFilter?.value), field: selectedFilter?.field },
         ].filter(a => a.value !== 'all' && !!a.value)
                             .map(a => `${a.field}=${a.value}`).join('&');
-        const apiUrl = getApiBaseUrl() + '/dashboard?' + queries;
+
+
+        const summaryUrl = getApiBaseUrl() + '/dashboard?' + queries + '&type=summary';
+        const graphUrl = getApiBaseUrl() + '/dashboard?' + queries + '&type=graph';
         
-        fetchWrapper.get(apiUrl)
+        fetchWrapper.get(summaryUrl)
             .then(resp => {
-                setSummaryData(resp.data);
+                setSummaryData(resp.data?.[0]);
             }).catch(error => {
                 console.log(error)
             });
+
+        fetchWrapper.get(graphUrl)
+            .then(resp => {
+                setGraphData(resp.data);
+            }).catch(error => {
+                console.log(error)
+            });
+        
     };
 
     const fetchBranches = () => {
