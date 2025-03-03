@@ -341,7 +341,7 @@ const ClientDetailPage = () => {
             ) : (
                 <React.Fragment>
                     <div className="flex flex-col space-y-4">
-                        {((client.loans.length == 0 && client.status?.toLowerCase() === 'pending' || client.status?.toLowerCase() === 'offset') && !client.duplicate ) && (
+                        {(client.status?.toLowerCase() === 'offset' && !client.duplicate ) && (
                             <div className="flex justify-between">
                                 <div></div>
                                 <div className="flex items-center space-x-3">
