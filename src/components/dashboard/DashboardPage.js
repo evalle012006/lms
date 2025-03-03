@@ -90,18 +90,36 @@ const DashboardPage = () => {
 
     useEffect(() => {
         switch(timeFilter) {
-            case 'weekly': setTimeFilterList(getWeeks(selectedYear).map(o => ({
-                ... o,
-                field: 'week'
-            }))); break;
-            case 'monthly': setTimeFilterList(getMonths(selectedYear).map(o => ({
-                ... o,
-                field: 'month'
-            }))); break;
-            case 'quarterly': setTimeFilterList(getQuarters().map(o => ({
-                ... o,
-                field: 'quarter'
-            }))); break;
+            case 'weekly': {
+                const weeks = getWeeks(selectedYear).map(o => ({
+                    ... o,
+                    field: 'week'
+                }));
+
+                setTimeFilterList(weeks); 
+                setSelectedFilter(weeks[0].value);
+                break;
+            }
+            case 'monthly': {
+                const months = getMonths(selectedYear).map(o => ({
+                    ... o,
+                    field: 'month'
+                }));
+
+                setTimeFilterList(months); 
+                setSelectedFilter(months[0]);
+                break;
+            }
+            case 'quarterly': {
+                const quarters = getQuarters().map(o => ({
+                    ... o,
+                    field: 'quarter'
+                }));
+
+                setSelectedFilter(quarters[0]);
+                setTimeFilterList(quarters);
+                break;
+            }
             default:  break;
         }
 
@@ -421,8 +439,8 @@ const DashboardPage = () => {
             let selectedDate = null;
             switch(timeFilter) {
                 case 'weekly': selectedDate = { value: moment(selectedFilter?.value ?? new Date()).format('YYYY-MM-DD'), field: 'date_added' }; break;
-                case 'monthly': selectedDate = { value: moment(selectedYear + '-' + selectedFilter.value + '-01').endOf('month').format('YYYY-MM-DD'), field: 'date_added' }; break;
-                case 'quarterly': selectedDate = { value: moment(selectedYear + '-01-01').quarter(selectedFilter.value).format('YYYY-MM-DD'), field: 'date_added' }; break;
+                case 'monthly': selectedDate = { value: moment(selectedYear + '-' + (selectedFilter?.value ?? '01')  + '-01').endOf('month').format('YYYY-MM-DD'), field: 'date_added' }; break;
+                case 'quarterly': selectedDate = { value: moment(selectedYear + '-01-01').quarter(selectedFilter?.value ?? 1).format('YYYY-MM-DD'), field: 'date_added' }; break;
                 case 'yearly': selectedDate = { value: moment(selectedYear + '-12-01').endOf('month').format('YYYY-MM-DD'), field: 'date_added' }; break;
                 default: selectedDate = { value: moment(dateFilter).format('YYYY-MM-DD'), field: 'date_added' }; break;
             }
