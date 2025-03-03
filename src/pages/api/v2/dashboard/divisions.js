@@ -27,28 +27,28 @@ async function getDivisions(req, res) {
     const user_id = req.auth.sub;
     const user = await findUserByID(user_id);
     
-    const where = [];
+    const _and = [];
 
     if(user.regionId) {
-        where.push({
+        _and.push({
             regionId: { _eq: user.regionId }
         })
     }
 
     if(user.areaId) {
-        where.push({
+        _and.push({
             _id: { _eq: user.areaId }
         })
     }
 
     if(user.divisionId) {
-        where.push({
+        _and.push({
             divisionId: { _eq: user.divisionId }
         })
     }
 
     if(user.designatedBranchId) {
-        where.push({
+        _and.push({
             regions: {
                 branches: { 
                     _id: { _eq: user.designatedBranchId }
@@ -58,7 +58,7 @@ async function getDivisions(req, res) {
     }
 
     const result =  await graph.query(
-        queryQl(DIVISION_TYPE, { where: where?.[0] ?? undefined,  order_by: [{ name: 'asc' }] })
+        queryQl(DIVISION_TYPE, { where: { _and },  order_by: [{ name: 'asc' }] })
     ).then(res => res.data.divisions ?? []);
 
     res.status(200)

@@ -27,16 +27,16 @@ async function getRegions(req, res) {
     const user_id = req.auth.sub;
     const user = await findUserByID(user_id);
     
-    const where = [];
+    const _and = [];
 
     if(user.regionId) {
-        where.push({
+        _and.push({
             _id: { _eq: user.regionId }
         })
     }
 
     if(user.areaId) {
-        where.push({
+        _and.push({
             branches: {
                 areaId: { _eq: user.areaId }
             }
@@ -44,7 +44,7 @@ async function getRegions(req, res) {
     }
 
     if(user.divisionId) {
-        where.push({
+        _and.push({
             branches: {
                 divisionId: { _eq: user.divisionId }
             }
@@ -52,7 +52,7 @@ async function getRegions(req, res) {
     }
 
     if(user.designatedBranchId) {
-        where.push({
+        _and.push({
             branches: {
                 _id: { _eq: user.designatedBranchId }
             }
@@ -60,7 +60,7 @@ async function getRegions(req, res) {
     }
 
     const result =  await graph.query(
-        queryQl(REGION_TYPE, { where: where?.[0] ?? undefined,  order_by: [{ name: 'asc' }] })
+        queryQl(REGION_TYPE, { where: { _and } ?? undefined,  order_by: [{ name: 'asc' }] })
     ).then(res => res.data.regions ?? []);
 
     res.status(200)
