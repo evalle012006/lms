@@ -281,7 +281,7 @@ const ClientsProspectPage = () => {
                 // </div>
             ) : (
                 <React.Fragment>
-                    <ViewClientsByGroupPage status={status} client={client} setClientParent={setClient} setMode={setMode} handleShowAddDrawer={handleShowSearchModal} handleShowCoMakerDrawer={handleShowCoMakerDrawer} />
+                    <ViewClientsByGroupPage status={status} client={client} setClientParent={setClient} setMode={setMode} handleShowAddDrawer={handleShowAddDrawer} handleShowCoMakerDrawer={handleShowCoMakerDrawer} />
                     <ClientSearchV2 origin="client_list" show={showSearchModal} onClose={handleCloseSearchModal} handleShowAddDrawer={handleShowAddDrawer} mode={mode} showAddDrawer={showAddDrawer} setShowAddDrawer={setShowAddDrawer} handleCloseAddDrawer={handleCloseAddDrawer} client={client} />
                     {/* <AddUpdateClient mode={mode} client={client} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} /> */}
                     <AddUpdateClientCoMaker client={client} showSidebar={showCoMakerModal} setShowSidebar={setShowCoMakerModal} setMode={setMode} onClose={handleCloseCoMakerDrawer} />

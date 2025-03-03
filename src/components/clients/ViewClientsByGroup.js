@@ -282,7 +282,11 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
             delinquent: client.delinquent === true ? 'Yes' : 'No',
             loName: lo.length > 0 ? `${lo[0].lastName}, ${lo[0].firstName}` : '',
             coMaker: (loans[0]?.coMaker && typeof loans[0]?.coMaker === 'number') ? loans[0].coMaker : '',
-            ciName: loans.length > 0 ? loans[0]?.ciName : ciName
+            ciName: loans.length > 0 ? loans[0]?.ciName : ciName,
+            groupLeaderStr: client.groupLeader ? 'Yes' : 'No',
+            archived: client.archived || false,
+            archivedBy: client.archivedBy || '',
+            archivedDate: client.archivedDate || '',
         };
     };
 
@@ -304,7 +308,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                     })
                     .map(loan => createClientObject({
                         ...loan.client,
-                        ...loan
+                        ...loan 
                     }));
                 dispatch(setClientList(clients));
             } else if (response.error) {
@@ -409,7 +413,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
         setClientParent(clientData);
         setShowDeleteDialog(true);
 
-        if (flag === 'delete') {
+        if (flag === 'delete' || !flag) {
             setDeleteMessage({ msg: 'Are you sure you want to delete this client?', btnLabel: 'Yes, delete!' });
         } else if (flag === 'reject') {
             setDeleteMessage({ msg: 'Are you sure you want to reject this client? Note, this will delete the client from the system.', btnLabel: 'Yes, reject!' });
@@ -500,13 +504,13 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                     icon: <UserMinus className="h-4 w-4 mr-2" />,
                     hidden: false
                 },
-                // {
-                //     label: 'Delete Client',
-                //     action: handleDeleteAction,
-                //     icon: <Trash2 className="h-4 w-4 mr-2 text-red-400" />,
-                //     hidden: false,
-                //     flag: 'delete'
-                // },
+                {
+                    label: 'Delete Client',
+                    action: handleDeleteAction,
+                    icon: <Trash2 className="h-4 w-4 mr-2 text-red-400" />,
+                    hidden: false,
+                    flag: 'delete'
+                },
             ]);
         } else {
             setDropDownActions([
@@ -559,13 +563,13 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                     icon: <CheckCircle className="h-4 w-4 mr-2" />,
                     hidden: false
                 },
-                // {
-                //     label: 'Reject Duplicate',
-                //     action: handleDeleteAction,
-                //     icon: <Trash2 className="h-4 w-4 mr-2 text-red-400" />,
-                //     hidden: false,
-                //     flag: 'reject'
-                // },
+                {
+                    label: 'Reject Duplicate',
+                    action: handleDeleteAction,
+                    icon: <Trash2 className="h-4 w-4 mr-2 text-red-400" />,
+                    hidden: false,
+                    flag: 'reject'
+                },
             ]);
         } else {
             setAdminDropDownActions([
@@ -593,12 +597,12 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                     icon: <Users2 className="h-4 w-4 mr-2" />,
                     hidden: false
                 },
-                // {
-                //     label: 'Delete Client',
-                //     action: handleDeleteAction,
-                //     icon: <Trash2 className="h-4 w-4 mr-2 text-red-400" />,
-                //     hidden: false
-                // },
+                {
+                    label: 'Delete Client',
+                    action: handleDeleteAction,
+                    icon: <Trash2 className="h-4 w-4 mr-2 text-red-400" />,
+                    hidden: false
+                },
             ]);
         }
     }, [currentUser]);
@@ -705,6 +709,10 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                     Header: "CI Name",
                     accessor: 'ciName'
                 },
+                {
+                    Header: "Group Leader",
+                    accessor: 'groupLeaderStr'
+                },
             ];
         } else if (currentUser.role.rep === 3) {
             activeColumns = [
@@ -769,6 +777,10 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                 {
                     Header: "CI Name",
                     accessor: 'ciName'
+                },
+                {
+                    Header: "Group Leader",
+                    accessor: 'groupLeaderStr'
                 },
             ];
         } else {
@@ -840,6 +852,10 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                 {
                     Header: "CI Name",
                     accessor: 'ciName'
+                },
+                {
+                    Header: "Group Leader",
+                    accessor: 'groupLeaderStr'
                 },
             ];
         }
@@ -874,6 +890,10 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                     Header: "CI Name",
                     accessor: 'ciName'
                 },
+                {
+                    Header: "Group Leader",
+                    accessor: 'groupLeaderStr'
+                },
             ];
         } else if (currentUser.role.rep === 3) {
             duplicateColumns = [
@@ -907,6 +927,10 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                 {
                     Header: "CI Name",
                     accessor: 'ciName'
+                },
+                {
+                    Header: "Group Leader",
+                    accessor: 'groupLeaderStr'
                 },
             ];
         } else {
@@ -947,6 +971,10 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                 {
                     Header: "CI Name",
                     accessor: 'ciName'
+                },
+                {
+                    Header: "Group Leader",
+                    accessor: 'groupLeaderStr'
                 },
             ];
         }

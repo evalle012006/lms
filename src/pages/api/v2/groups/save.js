@@ -1,3 +1,4 @@
+import { GROUP_FIELDS } from '@/lib/graph.fields';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, insertQl, queryQl } from '@/lib/graph/graph.util';
 import { generateUUID, getCurrentDate } from '@/lib/utils';

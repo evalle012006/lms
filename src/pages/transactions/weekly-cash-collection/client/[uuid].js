@@ -2851,6 +2851,7 @@ const CashCollectionDetailsPage = () => {
                                         {currentUser.role.rep == 3 && <th className="p-2 text-center"><CheckBox size={"md"} value={selectAll} onChange={handleSelectAll} /></th>}
                                         <th className="p-2 text-center">Slot #</th>
                                         <th className="p-2 text-center">Client Name</th>
+                                        <th className="p-2 text-center">Advance Credit</th>
                                         <th className="p-2 text-center">Co-Maker</th>
                                         <th className="p-2 text-center">Cycle #</th>
                                         <th className="p-2 text-center">MCBU</th>
@@ -2907,6 +2908,7 @@ const CashCollectionDetailsPage = () => {
                                                 {currentUser.role.rep == 3 && <th className="p-2 text-center">{(cc.status !== 'totals' && cc.clientId && (cc?.transferStr == null || cc?.transferStr == '-')) && <CheckBox size={"md"} value={cc.selected} onChange={() => handleSelectRow(index)} />}</th>}
                                                 <td className="bg- px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.status !== 'totals' ? cc.slotNo : '' }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer" onClick={() => handleShowClientInfoModal(cc)}>{ cc.fullName }</td>
+                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.advanceDays }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.coMaker }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.loanCycle }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.mcbuStr }</td>
