@@ -77,7 +77,7 @@ async function getLoanOfficers(req, res) {
     });
 
     const result =  await graph.query(
-        queryQl(USER_TYPE, { where: { _and },  order_by: [{ firstName: 'asc' }] })
+        queryQl(USER_TYPE, { where: { _and },  order_by: [{ loNo: 'asc' }] })
     ).then(res => res.data.users ?? []);
 
     res.status(200)

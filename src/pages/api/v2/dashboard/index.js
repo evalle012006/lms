@@ -29,7 +29,7 @@ async function getData(req, res) {
                 area_id: user.areaId ?? areaId ?? null,
                 division_id: user.divisionId ?? divisionId ?? null,
                 region_id: user.regionId ?? regionId ?? null,
-                branch_id: user.branchId ?? branchId ?? null,
+                branch_id: user.designatedBranchId ??  branchId ?? null,
                 user_id: user.role.rep === 4 ? user._id : loId ?? null
             }
         }
