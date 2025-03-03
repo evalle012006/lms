@@ -115,10 +115,13 @@ async function save(req, res) {
             let finalData = {...loanData};
             if (finalData.occurence === 'weekly') {
                 if (finalData.loanCycle === 1) {
-                    finalData.mcbu = 50;
-                    finalData.mcbuCollection = 50;
+                    finalData.mcbu = finalData.mcbu > 0 ? finalData.mcbu : 50;
+                    finalData.mcbuCollection = finalData.mcbu > 0 ? finalData.mcbu : 50;
                 }
                 finalData.mcbuTarget = 50;
+            } else if (finalData?.groupLeader) {
+                finalData.mcbu = finalData.mcbu > 0 ? finalData.mcbu : 0;
+                finalData.mcbuCollection = finalData.mcbu > 0 ? finalData.mcbu : 0;
             }
 
             if (mode === 'reloan') {
@@ -267,14 +270,18 @@ async function saveCashCollection(user_id, loan, reloan, group, loanId, currentD
 
     logger.debug({user_id, page: `Saving Cash Collection: ${loanId}`, cashCollection: cashCollection});
     if (cashCollection.length === 0) {
-        let mcbu = loan.mcbu ? loan.mcbu : 0;
+        let mcbu = 0;
         let mcbuCol = 0;
+        if (loan?.groupLeader) {
+            mcbu = loan.mcbu > 0 ? loan.mcbu : 0;
+            mcbuCol = loan.mcbu > 0 ? loan.mcbu : 0;
+        }
 
         if (loan.loanCycle == 1) {
             groupStatus = 'closed';
             if (loan.occurence == 'weekly') {
-                mcbu = 50;
-                mcbuCol = 50;
+                mcbu = loan.mcbu > 0 ? loan.mcbu : 50;
+                mcbuCol = loan.mcbu > 0 ? loan.mcbu : 50;
             }
         }
 

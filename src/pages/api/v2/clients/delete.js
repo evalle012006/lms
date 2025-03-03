@@ -4,7 +4,7 @@ import { GraphProvider } from "@/lib/graph/graph.provider";
 
 const graph = new GraphProvider();
 const LOAN_TYPE = createGraphType("loans", "_id")();
-const CLIENT_TYPE = createGraphType("clients", "_id")();
+const CLIENT_TYPE = createGraphType("client", "_id")();
 
 export default apiHandler({
   post: deleteUser,
@@ -35,7 +35,7 @@ async function deleteUser(req, res) {
   } else {
     const [client] = await graph
       .query(queryQl(CLIENT_TYPE, { where: { _id: { _eq: _id } } }))
-      .then((res) => res.data.clients);
+      .then((res) => res.data.client);
 
     if (!!client) {
       await graph.mutation(
@@ -43,6 +43,8 @@ async function deleteUser(req, res) {
           _id: { _eq: _id },
         })
       );
+
+      // TODO: need to cleanup the profile picture
 
       response = {
         success: true,

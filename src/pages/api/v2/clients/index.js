@@ -61,9 +61,6 @@ async function updateClient(req, res) {
             ).then(res => res.data.clients);
         
             let file = fields.profile;
-            // if (files.file) {
-            //     file = await saveFile(files.file, clientData._id);
-            // }
 
             if (err) {
                 resolve({ formError: true })
@@ -94,7 +91,7 @@ async function updateClient(req, res) {
                 profile: profile,
                 archived: fields.archived,
                 archivedBy: fields.archivedBy,
-                archivedDate: fields.archivedDate,
+                // archivedDate: fields.archivedDate || null,
             };
 
             await graph.mutation(
@@ -122,7 +119,7 @@ async function updateClient(req, res) {
                         groupLeader: fields.groupLeader,
                         archived: fields.archived,
                         archivedBy: fields.archivedBy,
-                        archivedDate: fields.archivedDate,
+                        // archivedDate: fields.archivedDate || null,
                         dateModified: moment(getCurrentDate()).format('YYYY-MM-DD')
                     },
                     where: {
@@ -140,30 +137,6 @@ async function updateClient(req, res) {
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')
         .end(JSON.stringify(response));
-}
-
-const saveFile = async (file, uid) => {
-    if (file) {
-        const data = fs.readFileSync(file.filepath);
-        const fileName = 'profile-00.' + file.originalFilename.split('.').pop();
-        if (!fs.existsSync(`./public/images/clients/`)) {
-            fs.mkdirSync(`./public/images/clients/`, { recursive: true });
-        }
-
-        if (fs.existsSync(`./public/images/clients/${uid}/`)) {
-            // check if file exists 
-            fs.existsSync(`./public/images/clients/${uid}/${fileName}`) && fs.unlinkSync(`./public/images/clients/${uid}/${fileName}`);
-        } else {
-            fs.mkdirSync(`./public/images/clients/${uid}/`);
-        }
-
-        fs.writeFileSync(`./public/images/clients/${uid}/${fileName}`, data);
-        await fs.unlinkSync(file.filepath);
-
-        return uid + '/' + fileName;
-    } else {
-        return false;
-    }
 }
 
 export const config = {

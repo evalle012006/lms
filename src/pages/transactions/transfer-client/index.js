@@ -120,6 +120,10 @@ const TransferClientPage = () => {
             accessor: 'transferStatus',
             Cell: StatusPill
         },
+        {
+            Header: "Error Message",
+            accessor: 'errorMsg'
+        },
     ]);
 
     const checkGroupsStatus = async (groupIds) => {

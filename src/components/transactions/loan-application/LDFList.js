@@ -28,7 +28,6 @@ const LDFListPage = React.forwardRef((props, ref) => {
     }
 
     useEffect(() => {
-        console.log(props.data)
         if (props.data) {
             let dataList = props.data;
             const arr = [];
