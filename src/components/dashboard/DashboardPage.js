@@ -178,6 +178,48 @@ const DashboardPage = () => {
             const mcbus = graphData.map(o => o.mcbu).reverse();
             const mcbuWithdrawals = graphData.map(o => o.clientMcbuWithdrawals).reverse();
 
+            const loanCollections = graphData.map(o => o.loanCollection ?? 0).reverse();
+            const loanReleases = graphData.map(o => o.loanRelease ?? 0).reverse();
+
+            const mispayments = graphData.map(o => o.mispaymentPerson ?? 0).reverse();
+            const pastDues = graphData.map(o => o.pastDuePerson ?? 0).reverse();
+
+            setMisPastDueData({
+                labels: dates,
+                datasets: [
+                    {
+                        label: 'MIS Payment',
+                        data: mispayments,
+                        borderColor: 'rgb(53, 162, 235)',
+                        tension: 0.1
+                    },
+                    {
+                        label: 'Past Due',
+                        data: pastDues,
+                        borderColor: 'rgb(255, 99, 132)',
+                        tension: 0.1
+                    }
+                ]
+            });
+
+            setLoanCollectionData({
+                labels: dates,
+                datasets: [
+                    {
+                        label: 'Collections',
+                        data: loanCollections,
+                        borderColor: 'rgb(75, 192, 192)',
+                        tension: 0.1
+                    },
+                    {
+                        label: 'Releases',
+                        data: loanReleases,
+                        borderColor: 'rgb(255, 99, 132)',
+                        tension: 0.1
+                    }
+                ]
+            });
+
             setPersonData({
                 labels: dates,
                 datasets: [
