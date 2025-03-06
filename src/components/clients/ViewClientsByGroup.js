@@ -1072,8 +1072,9 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                             <TableComponent
                                 columns={columns}
                                 data={list}
-                                hasActionButtons={groupId ? false : true}
-                                rowActionButtons={currentUser.role.rep > 2 && rowActionButtons}
+                                hasActionButtons={false} 
+                                dropDownActions={dropDownActions} 
+                                dropDownActionOrigin="client-list"
                                 showFilters={true}
                                 rowClick={handleShowClientInfoModal}
                             />
