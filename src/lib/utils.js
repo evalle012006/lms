@@ -247,16 +247,16 @@ export const getWeeks = (year) => {
 
         return `${startMonth} ${startDay} - ${ startMonth === endMonth ? '' : endMonth + ' '  } ${endDay}`
     })(),
-    value: w.weekNumber,
-  })).sort((a, b) => +a.value - +b.value)
+    startDate: w.startDate,
+    endDate: w.endDate,
+    value: w.endDate,
+  })).sort((a, b) => (+a.value - +b.value) * -1)
 }
 
 export const getMonths = (year) => {
     const current_date = moment(new Date());
     const current_year = +current_date.year();
     const current_month = current_date.month() + 1;
-
-    console.log(current_month, year, current_year);
 
     return [
         { label: 'January', value: '01' },
@@ -271,7 +271,7 @@ export const getMonths = (year) => {
         { label: 'October', value: '10' },
         { label: 'November', value: '11' },
         { label: 'December', value: '12' }
-    ].sort((a, b) => +a.value - +b.value)
+    ].sort((a, b) => (+a.value - +b.value) * -1)
      .filter(o => +year === current_year ? (+o.value) <= current_month : true);
 }
 
@@ -288,7 +288,7 @@ export const getYears = () => {
         });
     }
 
-    return years.sort((a, b) => +a.value - +b.value)
+    return years.sort((a, b) => (+a.value - +b.value) * -1)
 
     /*
     return[

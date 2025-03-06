@@ -27,34 +27,34 @@ async function getBranches(req, res) {
     const user_id = req.auth.sub;
     const user = await findUserByID(user_id);
     
-    const where = [];
+    const _and = [];
 
     if(user.regionId) {
-        where.push({
+        _and.push({
             regionId: { _eq: user.regionId }
         })
     }
 
     if(user.areaId) {
-        where.push({
+        _and.push({
             areaId: { _eq: user.areaId }
         })
     }
 
     if(user.divisionId) {
-        where.push({
+        _and.push({
             divisionId: { _eq: user.divisionId }
         })
     }
 
     if(user.designatedBranchId) {
-        where.push({
+        _and.push({
             _id: { _eq: user.designatedBranchId }
         })
     }
 
     const result =  await graph.query(
-        queryQl(BRANCHES_TYPE, { where: where?.[0] ?? undefined,  order_by: [{ code: 'asc' }] })
+        queryQl(BRANCHES_TYPE, { where: { _and },  order_by: [{ code: 'asc' }] })
     ).then(res => res.data.branches ?? []);
 
     res.status(200)

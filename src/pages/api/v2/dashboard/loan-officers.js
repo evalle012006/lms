@@ -26,7 +26,7 @@ async function getLoanOfficers(req, res) {
     const user_id = req.auth.sub;
     const user = await findUserByID(user_id);
     
-    const where = [{
+    const _and = [{
         role: {
             _contains: {
                 rep: 4
@@ -35,7 +35,7 @@ async function getLoanOfficers(req, res) {
     }];
 
     if (user.regionId) {
-        where.push({
+        _and.push({
             groups: {
                 branch: {
                     regionId: { _eq: user.regionId }
@@ -45,7 +45,7 @@ async function getLoanOfficers(req, res) {
     }
 
     if (user.areaId) {
-        where.push({
+        _and.push({
             groups: {
                 branch: {
                     areaId: { _eq: user.areaId }
@@ -55,7 +55,7 @@ async function getLoanOfficers(req, res) {
     }
 
     if (user.divisionId) {
-        where.push({
+        _and.push({
             groups: {
                 branch: {
                     divisionId: { _eq: user.divisionId }
@@ -65,21 +65,19 @@ async function getLoanOfficers(req, res) {
     }
 
     if (user.designatedBranchId) {
-        where.push( user.role.rep === 4 ? { _id: { _eq: user._id } } : {
-            group: {
-                branch: {
-                    _id: user.designatedBranchId
-                }
+        _and.push( user.role.rep === 4 ? { _id: { _eq: user._id } } : {
+            designatedBranchId: {
+                _eq: user.designatedBranchId
             }
         })
     }
     
-    where.push({
+    _and.push({
         status: { _eq: 'active' }
     });
 
     const result =  await graph.query(
-        queryQl(USER_TYPE, { where: where?.[0] ?? undefined,  order_by: [{ firstName: 'asc' }] })
+        queryQl(USER_TYPE, { where: { _and },  order_by: [{ loNo: 'asc' }] })
     ).then(res => res.data.users ?? []);
 
     res.status(200)
