@@ -127,6 +127,7 @@ async function list(req, res) {
       return res.data?.loans ?? [];
     })
     .then((loans) =>
+      
       loans.map(({ data }) => {
         const loan = { ...data };
         rowMapper?.(loan);
