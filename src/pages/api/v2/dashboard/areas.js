@@ -28,30 +28,28 @@ async function getAreas(req, res) {
     const user = await findUserByID(user_id);
     
 
-    console.log(user);
-
-    const where = [];
+    const _and = [];
 
     if(user.regionId) {
-        where.push({
+        _and.push({
             regionId: { _eq: user.regionId }
         })
     }
 
     if(user.areaId) {
-        where.push({
+        _and.push({
             _id: { _eq: user.areaId }
         })
     }
 
     if(user.divisionId) {
-        where.push({
+        _and.push({
             divisionId: { _eq: user.divisionId }
         })
     }
 
     if(user.designatedBranchId) {
-        where.push({
+        _and.push({
             branches: { 
                 _id: { _eq: user.designatedBranchId }
             }
@@ -59,7 +57,7 @@ async function getAreas(req, res) {
     }
 
     const result =  await graph.query(
-        queryQl(AREA_TYPE, { where: where?.[0] ?? undefined,  order_by: [{ name: 'asc' }] })
+        queryQl(AREA_TYPE, { where: { _and },  order_by: [{ name: 'asc' }] })
     ).then(res => res.data.areas ?? []);
 
     res.status(200)

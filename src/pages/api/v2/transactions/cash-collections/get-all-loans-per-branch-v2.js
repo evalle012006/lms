@@ -109,7 +109,9 @@ async function getData (req, res) {
 }
 
 async function getAllLoanTransactionsByBranch(branchId, date, dayName, currentDate) {
+    try {
 
+    
     const version = 2; // change here to use old query
     let cashCollection;
     if (currentDate === date) {
@@ -207,7 +209,7 @@ async function getAllLoanTransactionsByBranch(branchId, date, dayName, currentDa
         cashCollection = await graph.apollo.query({
             query: gql`
             query loan_group ($day_name: String!, $date_added: date!, $branchId: String!) {
-                collections: get_all_loans_per_branch_by_date_added_and_day_name(limit: 1, args: {
+                collections: get_all_loans_per_branch_by_date_added_and_day_name_v2(limit: 1, args: {
                   day_name: $day_name,
                   date_added: $date_added
                 }, where: {
@@ -238,6 +240,11 @@ async function getAllLoanTransactionsByBranch(branchId, date, dayName, currentDa
         transferGiverDetails: c.transferGiverDetails ?? [],
         transferReceivedDetails: c.transferReceivedDetails ?? []
       }))
+
+    } catch (err) {
+        console.log('error ', branchId, date, dayName, currentDate)
+        return [];
+      }
 }
 
 

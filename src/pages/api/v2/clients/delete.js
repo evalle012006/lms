@@ -18,7 +18,10 @@ async function deleteUser(req, res) {
 
   const [loan] = await graph.query(
     queryQl(LOAN_TYPE, {
-      where: { clientId: { _eq: _id } },
+      where: { 
+        clientId: { _eq: _id },
+        status: { _neq: 'reject' },
+      },
       limit: 1,
     })
   ).then(res => res.data.loans);
