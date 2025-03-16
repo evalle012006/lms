@@ -50,20 +50,14 @@ const TeamPage = () => {
         const response = await fetchWrapper.get(url);
         let users = [];
         response.users && response.users.filter(u => !u.root).map((user) => {
-            let designatedBranch = user.designatedBranch;
-            // if (user.role.rep === 2) {
-            //     if (typeof designatedBranch === 'string') {
-            //         designatedBranch = JSON.parse(user.designatedBranch);
-            //     }
-            // }
-
             users.push({
                 _id: user._id,
                 name: user.firstName + ' ' + user.lastName,
                 email: user.email,
                 number: user.number,
                 position: user.position,
-                designatedBranch: designatedBranch,
+                designatedBranch: user.designatedBranch,
+                designatedBranchId: user.designatedBranchId,
                 roleId: user.role.rep + "-" + user.role.shortCode,
                 role: UppercaseFirstLetter(user.role.name),
                 loNo: user.loNo,
@@ -75,7 +69,11 @@ const TeamPage = () => {
                 lastName: user.lastName,
                 label: user.firstName + ' ' + user.lastName,
                 value: user._id,
-                transactionType: user.transactionType
+                transactionType: user.transactionType,
+                branchManagerName: user.branchManagerName,
+                areaId: user.areaId,
+                regionId: user.regionId,
+                divisionId: user.divisionId
             });
         });
 
