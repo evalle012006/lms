@@ -961,7 +961,7 @@ const AddUpdateLoan = ({ origin, client, mode = 'add', loan = {}, showSidebar, s
                                                         options={userList}
                                                         onChange={(field, value) => handleLoIdChange(field, value)}
                                                         onBlur={setFieldTouched}
-                                                        placeholder="Select Group"
+                                                        placeholder="Select Loan Officer"
                                                         errors={touched.loId && errors.loId ? errors.loId : undefined}
                                                     />
                                                 </div>
