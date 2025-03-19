@@ -59,11 +59,12 @@ async function list(req, res) {
 
     // Add date filter if provided
     if (dateFilter) {
+        const [from_dt, to_dt] = dateFilter.split(',');
         filter = {
             ...filter,
-            date: {
-                _gte: dateFilter[0],
-                _lte: dateFilter[1],
+            inserted_date: {
+                _gte: from_dt,
+                _lte: to_dt,
             },
         };
     }
