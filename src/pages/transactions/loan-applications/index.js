@@ -106,6 +106,9 @@ const LoanApplicationPage = () => {
     const [selectedYear, setSelectedYear] = useState(moment().year());
     const [selectedBranch, setSelectedBranch] = useState();
 
+    const [isLoanFetching, setLoanFetching] = useState(false);
+    const [isBranchFetching, setBranchFetching] = useState(false);
+
     const [selectedFilterLoanCycle, setSelectedFilterLoanCycle] = useState('all');
     const loanCycleFilterList = [
         { label: 'All', value: 'all' },
@@ -303,67 +306,74 @@ const LoanApplicationPage = () => {
     }
 
     const getListBranch = async () => {
-        let url = getApiBaseUrl() + 'branches/list';
-        if (currentUser?.role?.rep === 1) {
-            const response = await fetchWrapper.get(url);
-            if (response.success) {
-                let branches = [];
-                response.branches && response.branches.map(branch => {
-                    branches.push(
-                        {
-                            ...branch,
-                            value: branch._id,
-                            label: UppercaseFirstLetter(branch.name)
-                        }
-                    );
-                });
-                dispatch(setBranchList(branches));
-                setLoading(false);
-            } else if (response.error) {
-                setLoading(false);
-                toast.error(response.message);
-            }
-        } else if (currentUser?.role?.rep === 2) {
-            url = url + '?' + new URLSearchParams({ currentUserId: currentUser._id });
-            const response = await fetchWrapper.get(url);
-            if (response.success) {
-                let branches = [];
-                response.branches && response.branches.map(branch => {
-                    branches.push(
-                        {
-                            ...branch,
-                            value: branch._id,
-                            label: UppercaseFirstLetter(branch.name)
-                        }
-                    );
-                });
-                dispatch(setBranchList(branches));
-                setLoading(false);
-            } else if (response.error) {
-                setLoading(false);
-                toast.error(response.message);
-            }
-        } else if (currentUser?.role?.rep == 3 || currentUser?.role?.rep == 4) {
-            url = url + '?' + new URLSearchParams({ branchCode: currentUser.designatedBranch });
-            const response = await fetchWrapper.get(url);
-            if (response.success) {
-                let branches = [];
-                response.branches && response.branches.map(branch => {
-                    branches.push(
-                        {
-                            ...branch,
-                            value: branch._id,
-                            label: UppercaseFirstLetter(branch.name)
-                        }
-                    );
-                });
-                dispatch(setBranchList(branches));
-                dispatch(setBranch(branches.length > 0 ? branches[0] : null));
-                setLoading(false);
-            } else if (response.error) {
-                setLoading(false);
-                toast.error(response.message);
-            }
+        if(!isBranchFetching) {
+            setBranchFetching(true);
+            (async () => {
+                let url = getApiBaseUrl() + 'branches/list';
+                if (currentUser?.role?.rep === 1) {
+                    const response = await fetchWrapper.get(url);
+                    if (response.success) {
+                        let branches = [];
+                        response.branches && response.branches.map(branch => {
+                            branches.push(
+                                {
+                                    ...branch,
+                                    value: branch._id,
+                                    label: UppercaseFirstLetter(branch.name)
+                                }
+                            );
+                        });
+                        dispatch(setBranchList(branches));
+                        setLoading(false);
+                    } else if (response.error) {
+                        setLoading(false);
+                        toast.error(response.message);
+                    }
+                } else if (currentUser?.role?.rep === 2) {
+                    url = url + '?' + new URLSearchParams({ currentUserId: currentUser._id });
+                    const response = await fetchWrapper.get(url);
+                    if (response.success) {
+                        let branches = [];
+                        response.branches && response.branches.map(branch => {
+                            branches.push(
+                                {
+                                    ...branch,
+                                    value: branch._id,
+                                    label: UppercaseFirstLetter(branch.name)
+                                }
+                            );
+                        });
+                        dispatch(setBranchList(branches));
+                        setLoading(false);
+                    } else if (response.error) {
+                        setLoading(false);
+                        toast.error(response.message);
+                    }
+                } else if (currentUser?.role?.rep == 3 || currentUser?.role?.rep == 4) {
+                    url = url + '?' + new URLSearchParams({ branchCode: currentUser.designatedBranch });
+                    const response = await fetchWrapper.get(url);
+                    if (response.success) {
+                        let branches = [];
+                        response.branches && response.branches.map(branch => {
+                            branches.push(
+                                {
+                                    ...branch,
+                                    value: branch._id,
+                                    label: UppercaseFirstLetter(branch.name)
+                                }
+                            );
+                        });
+                        dispatch(setBranchList(branches));
+                        dispatch(setBranch(branches.length > 0 ? branches[0] : null));
+                        setLoading(false);
+                    } else if (response.error) {
+                        setLoading(false);
+                        toast.error(response.message);
+                    }
+                }
+            })().finally(() => {
+                setBranchFetching(false);
+            })
         }
     }
 
@@ -431,269 +441,281 @@ const LoanApplicationPage = () => {
     }
 
     const getListLoan = async () => {
-        let url = getApiBaseUrl() + 'transactions/loans/list';
-        if (currentUser.root !== true && currentUser?.role?.rep === 4) { 
-            url = url + '?' + new URLSearchParams({ status: 'pending', branchId: currentUser.designatedBranchId, loId: currentUser._id, mode: currentUser.transactionType, currentDate: currentDate });
-            const response = await fetchWrapper.get(url);
-            if (response.success) {
-                let loanList = [];
-                await response.loans && response.loans.map(loan => {
-                    let allowApproved = false;
-                    let hasActiveLoan = false;
+        if(!isLoanFetching) {
+            setLoanFetching(true);
+            (async () => {
+                if(!currentDate) {
+                    return;
+                }
 
-                    if (loan.groupStatus.length > 0) {
-                        const transactionStatus = loan.groupStatus[0].groupStatusArr.filter(s => s === "pending");
-                        if (transactionStatus.length > 0) {
-                            allowApproved = true;
-                        }
-                    } else if (loan.pendings.length > 0) {
-                        allowApproved = false;
-                        hasActiveLoan = true;
-                    } else {
-                        allowApproved = true;
+                let url = getApiBaseUrl() + 'transactions/loans/list';
+                if (currentUser.root !== true && currentUser?.role?.rep === 4) { 
+                    url = url + '?' + new URLSearchParams({ status: 'pending', branchId: currentUser.designatedBranchId, loId: currentUser._id, mode: currentUser.transactionType, currentDate: currentDate });
+                    const response = await fetchWrapper.get(url);
+                    if (response.success) {
+                        let loanList = [];
+                        await response.loans && response.loans.map(loan => {
+                            let allowApproved = false;
+                            let hasActiveLoan = false;
+
+                            if (loan.groupStatus.length > 0) {
+                                const transactionStatus = loan.groupStatus[0].groupStatusArr.filter(s => s === "pending");
+                                if (transactionStatus.length > 0) {
+                                    allowApproved = true;
+                                }
+                            } else if (loan.pendings.length > 0) {
+                                allowApproved = false;
+                                hasActiveLoan = true;
+                            } else {
+                                allowApproved = true;
+                            }
+
+                            loanList.push({
+                                ...loan,
+                                loanOfficerName: `${loan.loanOfficer?.lastName}, ${loan.loanOfficer?.firstName}`,
+                                groupName: loan.group.name,
+                                principalLoanStr: formatPricePhp(loan.principalLoan),
+                                mcbuStr: formatPricePhp(loan.mcbu),
+                                activeLoanStr: formatPricePhp(loan.activeLoan),
+                                loanBalanceStr: formatPricePhp(loan.loanBalance),
+                                loanRelease: loan.amountRelease,
+                                loanReleaseStr: formatPricePhp(loan.amountRelease),
+                                fullName: UppercaseFirstLetter(`${loan?.client?.lastName}, ${loan?.client?.firstName} ${loan?.client?.middleName ? loan?.client?.middleName : ''}`),
+                                allowApproved: allowApproved,
+                                selected: false,
+                                hasActiveLoan: hasActiveLoan,
+                                ciName: UppercaseFirstLetter(loan?.ciName ? loan?.ciName : loan.client?.ciName)
+                            });
+                        });
+                        loanList.sort((a, b) => {
+                            if (a.pnNumber < b.pnNumber) {
+                                return -1;
+                            }
+
+                            if (b.pnNumber < b.pnNumber) {
+                                return 1;
+                            }
+
+                            return 0;
+                        } );
+
+                        dispatch(setLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSameOrBefore(moment(currentDate)))));
+                        dispatch(setPendingLoanList(loanList.filter(l => l.ldfApproved)));
+                        dispatch(setTomorrowLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSame(moment(currentDate).add(1, 'days')))));
+                        dispatch(setDuplicateLoanList(loanList.filter(l => l?.client?.duplicate)));
+                        dispatch(setForecastedLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSameOrAfter(moment(currentDate).add(2, 'days')))));
+
+                        setLoading(false);
+                    } else if (response.error) {
+                        setLoading(false);
+                        toast.error(response.message);
                     }
+                } else if (currentUser.root !== true && currentUser?.role?.rep === 3) {
+                    url = url + '?' + new URLSearchParams({ status: 'pending', branchId: currentUser.designatedBranchId, currentDate: currentDate });
+                    const response = await fetchWrapper.get(url);
+                    if (response.success) {
+                        let loanList = [];
+                        await response.loans && response.loans.map(loan => {
+                            let allowApproved = false;
+                            let hasActiveLoan = false;
+                            let hasTdaLoan = false;
+                            let transactionClosed = false;
+                            if (loan.groupStatus.length > 0 && loan.groupStatus[0].hasOwnProperty('groupStatusArr')) {
+                                const transactionStatus = loan.groupStatus[0].groupStatusArr.filter(s => s === "pending");
+                                if (transactionStatus.length > 0) {
+                                    allowApproved = true;
+                                } else if (loan.loanCycle == 1) {
+                                    allowApproved = true;
+                                } else {
+                                    transactionClosed = true;
+                                }
+                            } else if (loan.pendings.length > 0) {
+                                allowApproved = false;
+                                
+                                const loanPendingStatus = loan.pendings[0].status;
+                                if (loanPendingStatus == 'active') {
+                                    hasActiveLoan = true;
+                                } else if (loanPendingStatus == 'completed') {
+                                    hasTdaLoan = true;
+                                }
+                            } else {
+                                allowApproved = true;
+                            }
 
-                    loanList.push({
-                        ...loan,
-                        loanOfficerName: `${loan.loanOfficer?.lastName}, ${loan.loanOfficer?.firstName}`,
-                        groupName: loan.group.name,
-                        principalLoanStr: formatPricePhp(loan.principalLoan),
-                        mcbuStr: formatPricePhp(loan.mcbu),
-                        activeLoanStr: formatPricePhp(loan.activeLoan),
-                        loanBalanceStr: formatPricePhp(loan.loanBalance),
-                        loanRelease: loan.amountRelease,
-                        loanReleaseStr: formatPricePhp(loan.amountRelease),
-                        fullName: UppercaseFirstLetter(`${loan?.client?.lastName}, ${loan?.client?.firstName} ${loan?.client?.middleName ? loan?.client?.middleName : ''}`),
-                        allowApproved: allowApproved,
-                        selected: false,
-                        hasActiveLoan: hasActiveLoan,
-                        ciName: UppercaseFirstLetter(loan?.ciName ? loan?.ciName : loan.client?.ciName)
-                    });
-                });
-                loanList.sort((a, b) => {
-                    if (a.pnNumber < b.pnNumber) {
-                        return -1;
-                    }
+                            loanList.push({
+                                ...loan,
+                                loanOfficerName: `${loan.loanOfficer?.lastName}, ${loan.loanOfficer?.firstName}`,
+                                groupName: loan.group.name,
+                                principalLoanStr: formatPricePhp(loan.principalLoan),
+                                mcbuStr: formatPricePhp(loan.mcbu),
+                                activeLoanStr: formatPricePhp(loan.activeLoan),
+                                loanBalanceStr: formatPricePhp(loan.loanBalance),
+                                loanRelease: loan.amountRelease,
+                                loanReleaseStr: formatPricePhp(loan.amountRelease),
+                                fullName: UppercaseFirstLetter(`${loan?.client?.lastName}, ${loan?.client?.firstName} ${loan?.client?.middleName ? loan?.client?.middleName : ''}`),
+                                allowApproved: allowApproved,
+                                selected: false,
+                                hasActiveLoan: hasActiveLoan,
+                                hasTdaLoan: hasTdaLoan,
+                                ciName: UppercaseFirstLetter(loan?.ciName ? loan?.ciName : loan.client?.ciName),
+                                transactionClosed: transactionClosed
+                            });
+                        });
+                        loanList.sort((a, b) => {
+                            if (a.pnNumber < b.pnNumber) {
+                                return -1;
+                            }
 
-                    if (b.pnNumber < b.pnNumber) {
-                        return 1;
-                    }
+                            if (b.pnNumber < b.pnNumber) {
+                                return 1;
+                            }
 
-                    return 0;
-                } );
-
-                dispatch(setLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSameOrBefore(moment(currentDate)))));
-                dispatch(setPendingLoanList(loanList.filter(l => l.ldfApproved)));
-                dispatch(setTomorrowLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSame(moment(currentDate).add(1, 'days')))));
-                dispatch(setDuplicateLoanList(loanList.filter(l => l?.client?.duplicate)));
-                dispatch(setForecastedLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSameOrAfter(moment(currentDate).add(2, 'days')))));
-
-                setLoading(false);
-            } else if (response.error) {
-                setLoading(false);
-                toast.error(response.message);
-            }
-        } else if (currentUser.root !== true && currentUser?.role?.rep === 3) {
-            url = url + '?' + new URLSearchParams({ status: 'pending', branchId: currentUser.designatedBranchId, currentDate: currentDate });
-            const response = await fetchWrapper.get(url);
-            if (response.success) {
-                let loanList = [];
-                await response.loans && response.loans.map(loan => {
-                    let allowApproved = false;
-                    let hasActiveLoan = false;
-                    let hasTdaLoan = false;
-                    let transactionClosed = false;
-                    if (loan.groupStatus.length > 0 && loan.groupStatus[0].hasOwnProperty('groupStatusArr')) {
-                        const transactionStatus = loan.groupStatus[0].groupStatusArr.filter(s => s === "pending");
-                        if (transactionStatus.length > 0) {
-                            allowApproved = true;
-                        } else if (loan.loanCycle == 1) {
-                            allowApproved = true;
-                        } else {
-                            transactionClosed = true;
-                        }
-                    } else if (loan.pendings.length > 0) {
-                        allowApproved = false;
+                            return 0;
+                        } );
                         
-                        const loanPendingStatus = loan.pendings[0].status;
-                        if (loanPendingStatus == 'active') {
-                            hasActiveLoan = true;
-                        } else if (loanPendingStatus == 'completed') {
-                            hasTdaLoan = true;
-                        }
-                    } else {
-                        allowApproved = true;
+                        dispatch(setLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSameOrBefore(moment(currentDate)))));
+                        dispatch(setPendingLoanList(loanList.filter(l => l.ldfApproved)));
+                        dispatch(setTomorrowLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSame(moment(currentDate).add(1, 'days')))));
+                        dispatch(setDuplicateLoanList(loanList.filter(l => l?.client?.duplicate)));
+                        dispatch(setForecastedLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSameOrAfter(moment(currentDate).add(2, 'days')))));
+                        setLoading(false);
+                    } else if (response.error) {
+                        setLoading(false);
+                        toast.error(response.message);
                     }
+                } else if (currentUser?.role?.rep === 2) {
+                    url = url + '?' + new URLSearchParams({ status: 'pending', currentUserId: currentUser._id, currentDate: currentDate });
+                    const response = await fetchWrapper.get(url);
+                    if (response.success) {
+                        let loanList = [];
+                        await response.loans && response.loans.map(loan => {
+                            let allowApproved = false;
+                            let hasActiveLoan = false;
+                            let transactionClosed = false;
+                            
+                            if (loan.groupStatus.length > 0 && loan.groupStatus[0].hasOwnProperty('groupStatusArr')) {
+                                const transactionStatus = loan.groupStatus[0].groupStatusArr.filter(s => s === "pending");
+                                if (transactionStatus.length > 0) {
+                                    allowApproved = true;
+                                } else if (loan.loanCycle == 1) {
+                                    allowApproved = true;
+                                } else {
+                                    transactionClosed = true;
+                                }
+                            } else {
+                                allowApproved = true;
+                            }
 
-                    loanList.push({
-                        ...loan,
-                        loanOfficerName: `${loan.loanOfficer?.lastName}, ${loan.loanOfficer?.firstName}`,
-                        groupName: loan.group.name,
-                        principalLoanStr: formatPricePhp(loan.principalLoan),
-                        mcbuStr: formatPricePhp(loan.mcbu),
-                        activeLoanStr: formatPricePhp(loan.activeLoan),
-                        loanBalanceStr: formatPricePhp(loan.loanBalance),
-                        loanRelease: loan.amountRelease,
-                        loanReleaseStr: formatPricePhp(loan.amountRelease),
-                        fullName: UppercaseFirstLetter(`${loan?.client?.lastName}, ${loan?.client?.firstName} ${loan?.client?.middleName ? loan?.client?.middleName : ''}`),
-                        allowApproved: allowApproved,
-                        selected: false,
-                        hasActiveLoan: hasActiveLoan,
-                        hasTdaLoan: hasTdaLoan,
-                        ciName: UppercaseFirstLetter(loan?.ciName ? loan?.ciName : loan.client?.ciName),
-                        transactionClosed: transactionClosed
-                    });
-                });
-                loanList.sort((a, b) => {
-                    if (a.pnNumber < b.pnNumber) {
-                        return -1;
-                    }
+                            loanList.push({
+                                ...loan,
+                                branchName: `${loan.branch[0].code} - ${loan.branch[0].name}`,
+                                loanOfficerName: `${loan.loanOfficer?.lastName}, ${loan.loanOfficer?.firstName}`,
+                                groupName: loan.group.name,
+                                principalLoanStr: formatPricePhp(loan.principalLoan),
+                                mcbuStr: formatPricePhp(loan.mcbu),
+                                activeLoanStr: formatPricePhp(loan.activeLoan),
+                                loanBalanceStr: formatPricePhp(loan.loanBalance),
+                                loanRelease: loan.amountRelease,
+                                loanReleaseStr: formatPricePhp(loan.amountRelease),
+                                fullName: UppercaseFirstLetter(`${loan?.client?.lastName}, ${loan?.client?.firstName} ${loan?.client?.middleName ? loan?.client?.middleName : ''}`),
+                                allowApproved: allowApproved,
+                                selected: false,
+                                hasActiveLoan: hasActiveLoan,
+                                ciName: UppercaseFirstLetter(loan?.ciName ? loan?.ciName : loan.client?.ciName),
+                                transactionClosed: transactionClosed
+                            });
+                        });
+                        loanList.sort((a, b) => {
+                            if (a.pnNumber < b.pnNumber) {
+                                return -1;
+                            }
 
-                    if (b.pnNumber < b.pnNumber) {
-                        return 1;
-                    }
+                            if (b.pnNumber < b.pnNumber) {
+                                return 1;
+                            }
 
-                    return 0;
-                } );
-                
-                dispatch(setLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSameOrBefore(moment(currentDate)))));
-                dispatch(setPendingLoanList(loanList.filter(l => l.ldfApproved)));
-                dispatch(setTomorrowLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSame(moment(currentDate).add(1, 'days')))));
-                dispatch(setDuplicateLoanList(loanList.filter(l => l?.client?.duplicate)));
-                dispatch(setForecastedLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSameOrAfter(moment(currentDate).add(2, 'days')))));
-                setLoading(false);
-            } else if (response.error) {
-                setLoading(false);
-                toast.error(response.message);
-            }
-        } else if (currentUser?.role?.rep === 2) {
-            url = url + '?' + new URLSearchParams({ status: 'pending', currentUserId: currentUser._id, currentDate: currentDate });
-            const response = await fetchWrapper.get(url);
-            if (response.success) {
-                let loanList = [];
-                await response.loans && response.loans.map(loan => {
-                    let allowApproved = false;
-                    let hasActiveLoan = false;
-                    let transactionClosed = false;
-                    
-                    if (loan.groupStatus.length > 0 && loan.groupStatus[0].hasOwnProperty('groupStatusArr')) {
-                        const transactionStatus = loan.groupStatus[0].groupStatusArr.filter(s => s === "pending");
-                        if (transactionStatus.length > 0) {
-                            allowApproved = true;
-                        } else if (loan.loanCycle == 1) {
-                            allowApproved = true;
-                        } else {
-                            transactionClosed = true;
-                        }
-                    } else {
-                        allowApproved = true;
+                            return 0;
+                        } );
+                        
+                        dispatch(setLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSameOrBefore(moment(currentDate)))));
+                        dispatch(setPendingLoanList(loanList.filter(l => l.ldfApproved)));
+                        dispatch(setTomorrowLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSame(moment(currentDate).add(1, 'days')))));
+                        dispatch(setDuplicateLoanList(loanList.filter(l => l?.client?.duplicate)));
+                        dispatch(setForecastedLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSameOrAfter(moment(currentDate).add(2, 'days')))));
+                        setLoading(false);
+                    } else if (response.error) {
+                        setLoading(false);
+                        toast.error(response.message);
                     }
+                } else {
+                    url = url + '?' + new URLSearchParams({ status: 'pending', currentDate: currentDate });
+                    const response = await fetchWrapper.get(url);
+                    if (response.success) {
+                        let loanList = [];
+                        await response.loans && response.loans.map(loan => {
+                            let allowApproved = false;
+                            let hasActiveLoan = false;
+                            let transactionClosed = false;
+                            
+                            if (loan.groupStatus.length > 0 && loan.groupStatus[0].hasOwnProperty('groupStatusArr')) {
+                                const transactionStatus = loan.groupStatus[0].groupStatusArr.filter(s => s === "pending");
+                                if (transactionStatus.length > 0) {
+                                    allowApproved = true;
+                                } else if (loan.loanCycle == 1) {
+                                    allowApproved = true;
+                                } else {
+                                    transactionClosed = true;
+                                }
+                            } else {
+                                allowApproved = true;
+                            }
+                            
+                            loanList.push({
+                                ...loan,
+                                branchName: `${loan.branch[0].code} - ${loan.branch[0].name}`,
+                                loanOfficerName: `${loan.loanOfficer?.lastName}, ${loan.loanOfficer?.firstName}`,
+                                groupName: loan.group.name,
+                                principalLoanStr: formatPricePhp(loan.principalLoan),
+                                mcbuStr: formatPricePhp(loan.mcbu),
+                                activeLoanStr: formatPricePhp(loan.activeLoan),
+                                loanBalanceStr: formatPricePhp(loan.loanBalance),
+                                loanRelease: loan.amountRelease,
+                                loanReleaseStr: formatPricePhp(loan.amountRelease),
+                                fullName: UppercaseFirstLetter(`${loan?.client?.lastName}, ${loan?.client?.firstName} ${loan?.client?.middleName ? loan?.client?.middleName : ''}`),
+                                allowApproved: allowApproved,
+                                selected: false,
+                                hasActiveLoan: hasActiveLoan,
+                                ciName: UppercaseFirstLetter(loan?.ciName ? loan?.ciName : loan.client?.ciName),
+                                transactionClosed: transactionClosed
+                            });
+                        });
+                        loanList.sort((a, b) => {
+                            if (a.pnNumber < b.pnNumber) {
+                                return -1;
+                            }
 
-                    loanList.push({
-                        ...loan,
-                        branchName: `${loan.branch[0].code} - ${loan.branch[0].name}`,
-                        loanOfficerName: `${loan.loanOfficer?.lastName}, ${loan.loanOfficer?.firstName}`,
-                        groupName: loan.group.name,
-                        principalLoanStr: formatPricePhp(loan.principalLoan),
-                        mcbuStr: formatPricePhp(loan.mcbu),
-                        activeLoanStr: formatPricePhp(loan.activeLoan),
-                        loanBalanceStr: formatPricePhp(loan.loanBalance),
-                        loanRelease: loan.amountRelease,
-                        loanReleaseStr: formatPricePhp(loan.amountRelease),
-                        fullName: UppercaseFirstLetter(`${loan?.client?.lastName}, ${loan?.client?.firstName} ${loan?.client?.middleName ? loan?.client?.middleName : ''}`),
-                        allowApproved: allowApproved,
-                        selected: false,
-                        hasActiveLoan: hasActiveLoan,
-                        ciName: UppercaseFirstLetter(loan?.ciName ? loan?.ciName : loan.client?.ciName),
-                        transactionClosed: transactionClosed
-                    });
-                });
-                loanList.sort((a, b) => {
-                    if (a.pnNumber < b.pnNumber) {
-                        return -1;
-                    }
+                            if (b.pnNumber < b.pnNumber) {
+                                return 1;
+                            }
 
-                    if (b.pnNumber < b.pnNumber) {
-                        return 1;
+                            return 0;
+                        } );
+                        dispatch(setLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSameOrBefore(moment(currentDate)))));
+                        dispatch(setPendingLoanList(loanList.filter(l => l.ldfApproved)));
+                        dispatch(setTomorrowLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSame(moment(currentDate).add(1, 'days')))));
+                        dispatch(setDuplicateLoanList(loanList.filter(l => l?.client?.duplicate)));
+                        dispatch(setForecastedLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSameOrAfter(moment(currentDate).add(2, 'days')))));
+                        setLoading(false);
+                    } else if (response.error) {
+                        setLoading(false);
+                        toast.error(response.message);
                     }
-
-                    return 0;
-                } );
-                
-                dispatch(setLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSameOrBefore(moment(currentDate)))));
-                dispatch(setPendingLoanList(loanList.filter(l => l.ldfApproved)));
-                dispatch(setTomorrowLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSame(moment(currentDate).add(1, 'days')))));
-                dispatch(setDuplicateLoanList(loanList.filter(l => l?.client?.duplicate)));
-                dispatch(setForecastedLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSameOrAfter(moment(currentDate).add(2, 'days')))));
-                setLoading(false);
-            } else if (response.error) {
-                setLoading(false);
-                toast.error(response.message);
-            }
-        } else {
-            url = url + '?' + new URLSearchParams({ status: 'pending', currentDate: currentDate });
-            const response = await fetchWrapper.get(url);
-            if (response.success) {
-                let loanList = [];
-                await response.loans && response.loans.map(loan => {
-                    let allowApproved = false;
-                    let hasActiveLoan = false;
-                    let transactionClosed = false;
-                    
-                    if (loan.groupStatus.length > 0 && loan.groupStatus[0].hasOwnProperty('groupStatusArr')) {
-                        const transactionStatus = loan.groupStatus[0].groupStatusArr.filter(s => s === "pending");
-                        if (transactionStatus.length > 0) {
-                            allowApproved = true;
-                        } else if (loan.loanCycle == 1) {
-                            allowApproved = true;
-                        } else {
-                            transactionClosed = true;
-                        }
-                    } else {
-                        allowApproved = true;
-                    }
-                    
-                    loanList.push({
-                        ...loan,
-                        branchName: `${loan.branch[0].code} - ${loan.branch[0].name}`,
-                        loanOfficerName: `${loan.loanOfficer?.lastName}, ${loan.loanOfficer?.firstName}`,
-                        groupName: loan.group.name,
-                        principalLoanStr: formatPricePhp(loan.principalLoan),
-                        mcbuStr: formatPricePhp(loan.mcbu),
-                        activeLoanStr: formatPricePhp(loan.activeLoan),
-                        loanBalanceStr: formatPricePhp(loan.loanBalance),
-                        loanRelease: loan.amountRelease,
-                        loanReleaseStr: formatPricePhp(loan.amountRelease),
-                        fullName: UppercaseFirstLetter(`${loan?.client?.lastName}, ${loan?.client?.firstName} ${loan?.client?.middleName ? loan?.client?.middleName : ''}`),
-                        allowApproved: allowApproved,
-                        selected: false,
-                        hasActiveLoan: hasActiveLoan,
-                        ciName: UppercaseFirstLetter(loan?.ciName ? loan?.ciName : loan.client?.ciName),
-                        transactionClosed: transactionClosed
-                    });
-                });
-                loanList.sort((a, b) => {
-                    if (a.pnNumber < b.pnNumber) {
-                        return -1;
-                    }
-
-                    if (b.pnNumber < b.pnNumber) {
-                        return 1;
-                    }
-
-                    return 0;
-                } );
-                dispatch(setLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSameOrBefore(moment(currentDate)))));
-                dispatch(setPendingLoanList(loanList.filter(l => l.ldfApproved)));
-                dispatch(setTomorrowLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSame(moment(currentDate).add(1, 'days')))));
-                dispatch(setDuplicateLoanList(loanList.filter(l => l?.client?.duplicate)));
-                dispatch(setForecastedLoanList(loanList.filter(loan => moment(loan.dateOfRelease).isSameOrAfter(moment(currentDate).add(2, 'days')))));
-                setLoading(false);
-            } else if (response.error) {
-                setLoading(false);
-                toast.error(response.message);
-            }
+                }
+            })().finally(() => {
+                setLoanFetching(false);
+            });
         }
+        
     }
 
     const getHistoyListLoan = async () => {
@@ -1609,7 +1631,7 @@ const LoanApplicationPage = () => {
     return (
         <Layout actionButtons={(selectedTab !== 'history') && actionButtons}>
             <div className="pb-4">
-                {loading ?
+                { (loading || isLoanFetching || isBranchFetching) ?
                     (
                         // <div className="absolute top-1/2 left-1/2">
                             <Spinner />
