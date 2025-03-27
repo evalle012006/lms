@@ -34,38 +34,43 @@ async function list(req, res) {
     let filter = {};
     let fieldsToUse = adminFields; // Default to admin fields
 
-    // Determine filter and fields based on query parameters
-    if (admin) {
-        // No additional filters for admin level
-    } else if (division_id) {
-        filter = { division_id: { _eq: division_id } };
+    // Build filter by combining all provided parameters
+    if (division_id) {
+        filter.division_id = { _eq: division_id };
         fieldsToUse = divisionFields;
-    } else if (region_id) {
-        filter = { region_id: { _eq: region_id } };
+    }
+    
+    if (region_id) {
+        filter.region_id = { _eq: region_id };
         fieldsToUse = regionFields;
-    } else if (area_id) {
-        filter = { area_id: { _eq: area_id } };
+    }
+    
+    if (area_id) {
+        filter.area_id = { _eq: area_id };
         fieldsToUse = areaFields;
-    } else if (branch_id) {
-        filter = { branch_id: { _eq: branch_id } };
+    }
+    
+    if (branch_id) {
+        filter.branch_id = { _eq: branch_id };
         fieldsToUse = branchFields;
-    } else if (lo_id) {
-        filter = { lo_id: { _eq: lo_id } };
+    }
+    
+    if (lo_id) {
+        filter.lo_id = { _eq: lo_id };
         fieldsToUse = loanOfficerFields;
-    } else if (group_id) {
-        filter = { group_id: { _eq: group_id } };
+    }
+    
+    if (group_id) {
+        filter.group_id = { _eq: group_id };
         fieldsToUse = groupFields;
     }
 
     // Add date filter if provided
     if (dateFilter) {
         const [from_dt, to_dt] = dateFilter.split(',');
-        filter = {
-            ...filter,
-            inserted_date: {
-                _gte: from_dt,
-                _lte: to_dt,
-            },
+        filter.inserted_date = {
+            _gte: from_dt,
+            _lte: to_dt,
         };
     }
 

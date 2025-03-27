@@ -4,51 +4,69 @@ import * as yup from 'yup';
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { toast } from "react-toastify";
 import { useDispatch, useSelector } from "react-redux";
-import InputText from "@/lib/ui/InputText";
 import InputNumber from "@/lib/ui/InputNumber";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 import Spinner from "../../Spinner";
 import 'react-calendar/dist/Calendar.css';
-import moment, { min } from 'moment'
 import SelectDropdown from "@/lib/ui/select";
 import SideBar from "@/lib/ui/SideBar";
-import RadioButton from "@/lib/ui/radio-button";
 import { setGroupList } from "@/redux/actions/groupActions";
-import { setClientList, setComakerList } from "@/redux/actions/clientActions";
-import { UppercaseFirstLetter, checkIfWeekend, formatPricePhp, getNextValidDate } from "@/lib/utils";
+import { setClientList } from "@/redux/actions/clientActions";
+import { UppercaseFirstLetter, formatPricePhp } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/constants";
-import DatePicker2 from "@/lib/ui/DatePicker2";
 import { setUserList } from "@/redux/actions/userActions";
 
-const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', loan = {}, showSidebar, setShowSidebar, onClose }) => {
+const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, loan = {}, showSidebar, setShowSidebar, onClose }) => {
     const formikRef = useRef();
     const dispatch = useDispatch();
-    const currentDate = useSelector(state => state.systemSettings.currentDate);
     const currentUser = useSelector(state => state.user.data);
     const [loading, setLoading] = useState(false);
     const [title, setTitle] = useState('Add Mcbu Withdrawal');
     const userList = useSelector(state => state.user.list);
     const groupList = useSelector(state => state.group.list);
     const clientList = useSelector(state => state.client.list);
-    const mcbuData = useSelector(state => state.mcbuWithdrawal.data);
 
-    const [selectedLo, setSelectedLo] = useState(null);
-    const [selectedGroup, setSelectedGroup] = useState(null);
-    const [clientId, setClientId] = useState(null);
     const [slotNo, setSlotNo] = useState(null);
     const [loanBalance, setLoanBalance] = useState(0);
     const [mcbu, setMcbu] = useState(0);
 
+    // Define a clear initial state based on mcbuData or defaults
+    const initialFormState = {
+        loan_id: mcbuData?.loan_id || "",
+        branch_id: mcbuData?.branch_id || (currentUser?.designatedBranchId || ""),
+        lo_id: mcbuData?.lo_id || (currentUser?.role?.rep === 4 ? currentUser._id : ""),
+        group_id: mcbuData?.group_id || "",
+        client_id: mcbuData?.client_id || "",
+        mcbu_withdrawal_amount: mcbuData?.mcbu_withdrawal_amount || 0,
+        status: mcbuData?.status || "pending",
+        division_id: mcbuData?.division_id || (currentUser?.divisionId || ""),
+        region_id: mcbuData?.region_id || (currentUser?.regionId || ""),
+        area_id: mcbuData?.area_id || (currentUser?.areaId || ""),
+        group_leader: mcbuData?.group_leader || false
+    };
+    
+    const [formState, setFormState] = useState(initialFormState);
+    
+    // Debug effect to track form state changes
+    useEffect(() => {
+        console.log("Form state changed:", JSON.stringify(formState));
+    }, [formState]);
+
+    // Initial values for Formik - keep in sync with formState
     const initialValues = {
-        loan_id: mcbuData.loan_id,
-        branch_id: mcbuData.branch_id,
-        lo_id: mcbuData.lo_id,
-        group_id: mcbuData.group_id,
-        client_id: mcbuData.client_id,
-        mcbu_withdrawal_amount: mcbuData.mcbu_withdrawal_amount,
-        status: loan.status,
-    }
+        loan_id: formState.loan_id,
+        branch_id: formState.branch_id,
+        lo_id: formState.lo_id,
+        group_id: formState.group_id,
+        client_id: formState.client_id,
+        mcbu_withdrawal_amount: formState.mcbu_withdrawal_amount,
+        status: formState.status,
+        division_id: formState.division_id,
+        region_id: formState.region_id,
+        area_id: formState.area_id,
+        group_leader: formState.group_leader
+    };
 
     const validationSchema = yup.object().shape({
         group_id: yup
@@ -76,17 +94,48 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', loan = {}, showSi
 
     const handleSaveUpdate = (values, action) => {
         setLoading(true);
+        
+        // Create final submission values using formState as the primary source of truth
+        let submitValues = {
+            loan_id: formState.loan_id,
+            branch_id: formState.branch_id,
+            lo_id: formState.lo_id,
+            group_id: formState.group_id,
+            client_id: formState.client_id,
+            mcbu_withdrawal_amount: values.mcbu_withdrawal_amount, // Get this from form values
+            inserted_date: new Date().toISOString(),
+            inserted_by: currentUser._id,
+            status: 'pending',
+            division_id: formState.division_id,
+            region_id: formState.region_id,
+            area_id: formState.area_id,
+            group_leader: formState.group_leader
+        };
+        
+        // Additional validation
+        if (!submitValues.lo_id) {
+            setLoading(false);
+            toast.error("Please select a loan officer");
+            return;
+        }
+        
+        if (!submitValues.group_id) {
+            setLoading(false);
+            toast.error("Please select a group");
+            return;
+        }
+        
+        if (!submitValues.client_id) {
+            setLoading(false);
+            toast.error("Please select a client");
+            return;
+        }
+    
+        // API call for saving the form
         if (mode === 'add') {
             const apiUrl = getApiBaseUrl() + 'transactions/mcbu-withdrawal/save/';
             
-            // Prepare the data
-            const savingData = {
-                ...values,
-                inserted_by: currentUser._id,
-                status: 'pending' // Or whatever initial status you want
-            };
-    
-            fetchWrapper.post(apiUrl, savingData)
+            fetchWrapper.post(apiUrl, submitValues)
                 .then(response => {
                     setLoading(false);
                     if (response.error) {
@@ -105,11 +154,11 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', loan = {}, showSi
                 });
         } else if (mode === 'edit') {
             const apiUrl = getApiBaseUrl() + 'transactions/mcbu-withdrawal/update';
-            values._id = mcbuData._id;
-            values.modifiedBy = currentUser._id;
-            values.modifiedDate = new Date();
+            submitValues._id = mcbuData?._id;
+            submitValues.modifiedBy = currentUser._id;
+            submitValues.modifiedDate = new Date();
             
-            fetchWrapper.post(apiUrl, values)
+            fetchWrapper.post(apiUrl, submitValues)
                 .then(response => {
                     if (response.success) {
                         setLoading(false);
@@ -128,89 +177,139 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', loan = {}, showSi
                     toast.error('An error occurred while updating');
                 });
         }
-    }
+    };
 
+    // Improved handler for lo_id changes
     const handleLoIdChange = (field, value) => {
+        if (!formikRef.current) return;
+        
         const form = formikRef.current;
-        const u = userList.find(u => u._id == value);
-        if (u) {
-            setSelectedLo(u);
+        const user = userList.find(u => u._id === value);
+        
+        if (user) {
+            // Update both Formik AND internal state
             form.setFieldValue(field, value);
-
-            getListGroup(u.transactionType, value, 'filter');
+            
+            setFormState(prev => ({
+                ...prev,
+                lo_id: value
+            }));
+            
+            console.log(`Set ${field} to ${value}`);
+            
+            // Fetch groups for this LO
+            getListGroup(user.transactionType, value, 'filter');
         }
-    }
-
+    };
+    
+    // Improved handler for group_id changes
     const handleGroupIdChange = (field, value) => {
+        setLoading(true);
+        if (!formikRef.current) return;
+        
         const form = formikRef.current;
-        setSelectedGroup(value);
-        form.setFieldValue(field, value);
-        getListClient('active', value);
-    }
-
-    // Handle client selection
-    const handleClientIdChange = (field, value) => {
-        const form = formikRef.current;
-        setClientId(value);
+        
+        // Update both Formik AND internal state
         form.setFieldValue(field, value);
         
-        if (value && value.loans && value.loans.length > 0) {
-            setSlotNo(value.slotNo);
-            form.setFieldValue('loan_id', value.loans[0]._id);
+        setFormState(prev => ({
+            ...prev,
+            group_id: value
+        }));
+        
+        console.log(`Set ${field} to ${value}`);
+        
+        // Get clients for this group
+        getListClient('active', value);
+        
+        setLoading(false);
+    };
+    
+    // Improved handler for client_id changes
+    const handleClientIdChange = (field, value) => {
+        setLoading(true);
+        if (!formikRef.current) return;
+        
+        const form = formikRef.current;
+        const client = clientList.find(c => c.value === value);
+        
+        // Update Formik field
+        form.setFieldValue(field, value);
+        
+        const updates = { client_id: value };
+        
+        // Add loan information if available
+        if (client && client.loans && client.loans.length > 0) {
+            setSlotNo(client.slotNo);
+            setLoanBalance(client.loans[0].loanBalance || 0);
+            setMcbu(client.loans[0].mcbu || 0);
             
-            // Set loan balance and MCBU balance
-            setLoanBalance(value.loans[0].loanBalance || 0);
-            setMcbu(value.loans[0].mcbu || 0);
+            form.setFieldValue('loan_id', client.loans[0]._id);
+            form.setFieldValue('group_leader', client.groupLeader);
+            
+            updates.loan_id = client.loans[0]._id;
+            updates.group_leader = client.groupLeader;
         }
-    }
+        
+        // Update form state with all necessary changes
+        setFormState(prev => ({
+            ...prev,
+            ...updates
+        }));
+        
+        console.log("Form state after client selection:", JSON.stringify({ ...formState, ...updates }));
+        
+        setLoading(false);
+    };
 
     const getListUser = async () => {
         let url = getApiBaseUrl() + 'users/list?' + new URLSearchParams({ branchId: currentUser.designatedBranchId });
         const response = await fetchWrapper.get(url);
         if (response.success) {
-            let userList = [];
+            const users = [];
             response.users && response.users.filter(u => u.role.rep === 4).map(u => {
                 const name = `${u.firstName} ${u.lastName}`;
-                userList.push(
-                    {
-                        ...u,
-                        name: name,
-                        label: name,
-                        value: u._id
-                    }
-                );
+                users.push({
+                    ...u,
+                    name: name,
+                    label: name,
+                    value: u._id
+                });
             });
-            userList.sort((a, b) => { return a.loNo - b.loNo; });
+            users.sort((a, b) => { return a.loNo - b.loNo; });
 
-            dispatch(setUserList(userList));
+            dispatch(setUserList(users));
         } else {
             toast.error('Error retrieving user list.');
         }
-    }
+    };
 
     const getListGroup = async (occurence, loId, mode) => {
         setLoading(true);
+        
         let url = getApiBaseUrl() + 'groups/list-by-group-occurence';
+        const effectiveLoId = loId || formState.lo_id;
+        
         if (currentUser.role.rep === 4) { 
             let branchId = currentUser.designatedBranchId;
-            if (mode == 'filter') {
+            if (mode === 'filter') {
                 url = url + '?' + new URLSearchParams({ branchId: branchId, loId: currentUser._id, occurence: occurence, mode: 'filter' });
             } else {
                 url = url + '?' + new URLSearchParams({ branchId: branchId, loId: currentUser._id, occurence: occurence });
             }
-            processGroupList(url);
+            await processGroupList(url);
         } else if (currentUser.role.rep === 3) {
             let branchId = currentUser.designatedBranchId;
-            if (mode == 'filter') {
-                url = url + '?' + new URLSearchParams({ branchId: branchId, loId: loId, occurence: occurence, mode: 'filter' });
+            if (mode === 'filter') {
+                url = url + '?' + new URLSearchParams({ branchId: branchId, loId: effectiveLoId, occurence: occurence, mode: 'filter' });
             } else {
-                url = url + '?' + new URLSearchParams({ branchId: branchId, loId: loId, occurence: occurence });
+                url = url + '?' + new URLSearchParams({ branchId: branchId, loId: effectiveLoId, occurence: occurence });
             }
-            processGroupList(url);
+            await processGroupList(url);
         }
-    }
+    };
 
-    const processGroupList = async (url, origin) => {
+    const processGroupList = async (url) => {
         const response = await fetchWrapper.get(url);
         if (response.success) {
             let groups = [];
@@ -228,12 +327,18 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', loan = {}, showSi
             setLoading(false);
             toast.error(response.message);
         }
-    }
+    };
 
     const getListClient = async (status, groupId) => {
         setLoading(true);
-        const url = getApiBaseUrl() + 'clients/list?' + new URLSearchParams({ mode: "view_existing_loan", branchId: currentUser.designatedBranchId, groupId: groupId, status: status });
-
+        
+        const url = getApiBaseUrl() + 'clients/list?' + new URLSearchParams({ 
+            mode: "view_existing_loan", 
+            branchId: currentUser.designatedBranchId, 
+            groupId: groupId, 
+            status: status 
+        });
+        
         const response = await fetchWrapper.get(url);
         if (response.success) {
             let clients = [];
@@ -248,95 +353,66 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', loan = {}, showSi
                 delete temp.loans[0].client;
                 clients.push(temp);
             });
-
+            
             clients.sort((a,b) => { return a.slotNo - b.slotNo });
-
+            
             dispatch(setClientList(clients));
             setLoading(false);
         } else if (response.error) {
             setLoading(false);
             toast.error(response.message);
         }
-    }
+    };
 
     const handleCancel = () => {
         setShowSidebar(false);
-        formikRef.current.resetForm();
+        if (formikRef.current) {
+            formikRef.current.resetForm();
+        }
         onClose();
-    }
+    };
 
+    // Initial setup effect
     useEffect(() => {
-        if (currentUser.role.rep === 3) {
+        if (currentUser && currentUser.role && currentUser.role.rep === 3) {
             getListUser();
+        }
+        
+        if (currentUser && currentUser.role && currentUser.role.rep === 4) {
+            // Update form state with current user values
+            setFormState(prev => ({
+                ...prev,
+                branch_id: currentUser.designatedBranchId,
+                lo_id: currentUser._id,
+                division_id: currentUser.divisionId,
+                region_id: currentUser.regionId,
+                area_id: currentUser.areaId
+            }));
+            
+            // Make sure Formik has the same values
+            if (formikRef.current) {
+                formikRef.current.setFieldValue('branch_id', currentUser.designatedBranchId);
+                formikRef.current.setFieldValue('lo_id', currentUser._id);
+                formikRef.current.setFieldValue('division_id', currentUser.divisionId);
+                formikRef.current.setFieldValue('region_id', currentUser.regionId);
+                formikRef.current.setFieldValue('area_id', currentUser.areaId);
+            }
+            
+            // Fetch groups if we have transaction type
+            if (currentUser.transactionType) {
+                getListGroup(currentUser.transactionType, currentUser._id, 'filter');
+            }
         }
     }, [currentUser]);
 
+    // Mode change effect
     useEffect(() => {
         let mounted = true;
-        const form = formikRef.current;
+        
         if (mode === 'add') {
             setTitle('Add Mcbu Withdrawal');
-            
-            // For loan officers, pre-select their own data
-            if (currentUser.role.rep === 4) {
-                // Pre-populate with LO's branch and LO ID
-                form.setFieldValue('branch_id', currentUser.designatedBranchId);
-                form.setFieldValue('lo_id', currentUser._id);
-                // Get groups for this LO
-                getListGroup(currentUser.transactionType, currentUser._id, 'filter');
-            } 
-            // For branch managers
-            else if (currentUser.role.rep === 3) {
-                form.setFieldValue('branch_id', currentUser.designatedBranchId);
-            }
         } else if (mode === 'edit') {
             setTitle('Edit Mcbu Withdrawal');
-            
-            // Fetch additional data needed for edit mode
-            // if (loan && loan.loId) {
-            //     getListGroup(loan.occurence, loan.loId, 'filter');
-                
-                // Pre-select the loan officer
-                // const lo = userList.find(u => u.value === loan.loId);
-                // if (lo) setSelectedLo(lo);
-                
-                // // If we have group info, pre-select it and fetch clients
-                // if (loan.groupId) {
-                //     const group = groupList.find(g => g.value === loan.groupId);
-                //     if (group) {
-                //         setSelectedGroup(group);
-                //         getListClient('active', loan.groupId);
-                        
-                //         // If we have client info, pre-select it
-                //         if (loan.clientId && clientList.length > 0) {
-                //             const client = clientList.find(c => c.value === loan.clientId);
-                //             if (client) {
-                //                 setClientId(client);
-                //                 setSlotNo(client.slotNo);
-                //                 setLoanBalance(client.loans[0].loanBalance || 0);
-                //                 setMcbu(client.loans[0].mcbu || 0);
-                //             }
-                //         }
-                //     }
-                // }
-            // } else if (mcbuData && mcbuData?._id) {
-                // const lo = userList.find(u => u.value === mcbuData.lo_id);
-                // if (lo) setSelectedLo(lo);
-
-                // const group = groupList.find(g => g.value === mcbuData.group_id);
-                // if (group) {
-                //     setSelectedGroup(group);
-                //     getListClient('active', mcbuData.group_id);
-
-                //     const client = clientList.find(c => c.value === mcbuData.client_id);
-                //     if (client) {
-                //         setClientId(client);
-                //         setSlotNo(client.slotNo);
-                //         setLoanBalance(client.loans[0].loanBalance || 0);
-                //         setMcbu(client.loans[0].mcbu || 0);
-                //     }
-                // }
-            // }
         }
     
         mounted && setLoading(false);
@@ -344,7 +420,61 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', loan = {}, showSi
         return () => {
             mounted = false;
         };
-    }, [mode, currentUser]);
+    }, [mode]);
+
+    // Fetch groups when editing existing data
+    useEffect(() => {
+        const user = userList.find(u => u._id === mcbuData?.lo_id);
+        if (user) {
+            getListGroup(user.transactionType, user._id, 'filter');
+        }
+    }, [mcbuData, userList]);
+
+    // Fetch clients when editing existing data
+    useEffect(() => {
+        const group = groupList.find(u => u._id === mcbuData?.group_id);
+        if (group) {
+            getListClient('active', group._id);
+        }
+    }, [mcbuData, groupList]);
+
+    // Update client-related info when editing
+    useEffect(() => {
+        const client = clientList.find(u => u._id === mcbuData?.client_id);
+        if (client) {
+            setSlotNo(client.slotNo);
+            setLoanBalance(client.loans[0].loanBalance || 0);
+            setMcbu(client.loans[0].mcbu || 0);
+        }
+    }, [clientList]);
+
+    // Update form state when editing an existing record
+    useEffect(() => {
+        if (mode === 'edit' && mcbuData?._id) {
+            setFormState(prev => ({
+                ...prev,
+                lo_id: mcbuData?.lo_id || prev.lo_id,
+                branch_id: mcbuData?.branch_id || prev.branch_id,
+                loan_id: mcbuData?.loan_id || prev.loan_id,
+                group_id: mcbuData?.group_id || prev.group_id,
+                client_id: mcbuData?.client_id || prev.client_id,
+                mcbu_withdrawal_amount: mcbuData?.mcbu_withdrawal_amount || prev.mcbu_withdrawal_amount,
+                group_leader: mcbuData?.group_leader || prev.group_leader
+            }));
+        }
+    }, [mode, mcbuData?._id]);
+
+    // Ensure formState changes are reflected in Formik
+    useEffect(() => {
+        if (formikRef.current) {
+            // Update all Formik values to match formState
+            Object.keys(formState).forEach(key => {
+                if (formState[key] !== undefined) {
+                    formikRef.current.setFieldValue(key, formState[key]);
+                }
+            });
+        }
+    }, [formState]);
 
     return (
         <React.Fragment>
@@ -353,30 +483,31 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', loan = {}, showSi
                     <Spinner />
                 ) : (
                     <div className="px-2 pb-4">
-                        <Formik enableReinitialize={true}
+                        <Formik 
+                            enableReinitialize={true}
                             onSubmit={handleSaveUpdate}
                             initialValues={initialValues}
                             validationSchema={validationSchema}
-                            innerRef={formikRef}>{({
+                            innerRef={formikRef}
+                        >
+                            {({
                                 values,
-                                actions,
                                 touched,
                                 errors,
                                 handleChange,
                                 handleSubmit,
                                 setFieldValue,
-                                resetForm,
+                                setFieldTouched,
                                 isSubmitting,
-                                isValidating,
-                                setFieldTouched
+                                isValidating
                             }) => (
                                 <form onSubmit={handleSubmit} autoComplete="off">
-                                    { currentUser.role.rep === 3 && (
+                                    {currentUser.role && currentUser.role.rep === 3 && (
                                         <div className="mt-4">
                                             <SelectDropdown
                                                 name="lo_id"
                                                 field="lo_id"
-                                                value={selectedLo && selectedLo._id}
+                                                value={formState.lo_id}
                                                 label="Loan Officer (Required)"
                                                 options={userList}
                                                 onChange={(field, value) => handleLoIdChange(field, value)}
@@ -385,12 +516,12 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', loan = {}, showSi
                                                 errors={touched.lo_id && errors.lo_id ? errors.lo_id : undefined}
                                             />
                                         </div>
-                                    ) }
+                                    )}
                                     <div className="mt-4">
                                         <SelectDropdown
                                             name="group_id"
                                             field="group_id"
-                                            value={selectedGroup}
+                                            value={formState.group_id}
                                             label="Group (Required)"
                                             options={groupList}
                                             onChange={(field, value) => handleGroupIdChange(field, value)}
@@ -403,7 +534,7 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', loan = {}, showSi
                                         <SelectDropdown
                                             name="client_id"
                                             field="client_id"
-                                            value={clientId}
+                                            value={formState.client_id}
                                             label="Client (Required)"
                                             options={clientList}
                                             onChange={(field, value) => handleClientIdChange(field, value)}
@@ -419,43 +550,49 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', loan = {}, showSi
                                                     Slot Number
                                                 </label>
                                             </div>
-                                            <span className="text-gray-400">{ slotNo ? slotNo : '-' }</span>
+                                            <span className="text-gray-400">{slotNo ? slotNo : '-'}</span>
                                         </div>
                                     </div>
                                     <div className="mt-4">
                                         <div className={`flex flex-col border rounded-md px-4 py-2 bg-white border-main`}>
                                             <div className="flex justify-between">
-                                                <label htmlFor={'slotNo'} className={`font-proxima-bold text-xs font-bold text-main`}>
+                                                <label htmlFor={'loanBalance'} className={`font-proxima-bold text-xs font-bold text-main`}>
                                                     Loan Balance
                                                 </label>
                                             </div>
-                                            <span className="text-gray-400">{ formatPricePhp(loanBalance) }</span>
+                                            <span className="text-gray-400">{formatPricePhp(loanBalance)}</span>
                                         </div>
                                     </div>
                                     <div className="mt-4">
                                         <div className={`flex flex-col border rounded-md px-4 py-2 bg-white border-main`}>
                                             <div className="flex justify-between">
-                                                <label htmlFor={'slotNo'} className={`font-proxima-bold text-xs font-bold text-main`}>
+                                                <label htmlFor={'mcbu'} className={`font-proxima-bold text-xs font-bold text-main`}>
                                                     MCBU Balance
                                                 </label>
                                             </div>
-                                            <span className="text-gray-400">{ formatPricePhp(mcbu) }</span>
+                                            <span className="text-gray-400">{formatPricePhp(mcbu)}</span>
                                         </div>
                                     </div>
                                     <div className="mt-4">
                                         <InputNumber
                                             name="mcbu_withdrawal_amount"
+                                            field="mcbu_withdrawal_amount"
                                             value={values.mcbu_withdrawal_amount}
                                             onChange={handleChange}
                                             label="MCBU Withdrawal Amount (Required)"
                                             disabled={values.status === 'active'}
                                             placeholder="Enter MCBU Withdrawal Amount"
                                             setFieldValue={setFieldValue}
-                                            errors={touched.mcbu_withdrawal_amount && errors.mcbu_withdrawal_amount ? errors.mcbu_withdrawal_amount : undefined} />
+                                            errors={touched.mcbu_withdrawal_amount && errors.mcbu_withdrawal_amount ? errors.mcbu_withdrawal_amount : undefined}
+                                        />
                                     </div>
                                     <div className="flex flex-row mt-5">
                                         <ButtonOutline label="Cancel" onClick={handleCancel} className="mr-3" />
-                                        <ButtonSolid label="Submit" type="submit" isSubmitting={isValidating && isSubmitting} />
+                                        <ButtonSolid 
+                                            label="Submit" 
+                                            type="submit" 
+                                            isSubmitting={isValidating && isSubmitting} 
+                                        />
                                     </div>
                                 </form>
                             )}
@@ -464,7 +601,7 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', loan = {}, showSi
                 )}
             </SideBar>
         </React.Fragment>
-    )
-}
+    );
+};
 
 export default AddUpdateMcbuWithdrawalDrawer;
