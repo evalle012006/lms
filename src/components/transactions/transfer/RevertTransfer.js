@@ -12,7 +12,7 @@ import { formatPricePhp, getLastWeekdayOfTheMonth, isEndMonthDate } from "@/lib/
 import moment from 'moment'
 
 const RevertTransferPage = () => {
-    const holidayList = useSelector(state => state.systemSettings.holidayList);
+    const holidayList = useSelector(state => state.holidays.list);
     const currentDate = useSelector(state => state.systemSettings.currentDate);
     const isHoliday = useSelector(state => state.systemSettings.holiday);
     const isWeekend = useSelector(state => state.systemSettings.weekend);
@@ -24,8 +24,9 @@ const RevertTransferPage = () => {
     const [showWarningDialog, setShowWarningDialog] = useState(false);
 
     const getList = async () => {
-        const previousMonthEndDate = getLastWeekdayOfTheMonth(moment().subtract(1, 'months').format('YYYY'), moment().subtract(1, 'months').format('MM'), holidayList);
-        const endMonthDate = isEndMonthDate(currentDate, holidayList);
+        const holidays = holidayList.map(holiday => holiday.date);
+        const previousMonthEndDate = getLastWeekdayOfTheMonth(moment().subtract(1, 'months').format('YYYY'), moment().subtract(1, 'months').format('MM'), holidays);
+        const endMonthDate = isEndMonthDate(currentDate, holidays);
 
         setLoading(true);
         let url = getApiBaseUrl() + 'transactions/transfer-client/list-history';

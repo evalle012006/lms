@@ -22,7 +22,7 @@ import { setTransferList } from "@/redux/actions/transferActions";
 import moment from 'moment'
 
 const TransferClientPage = () => {
-    const holidayList = useSelector(state => state.systemSettings.holidayList);
+    const holidayList = useSelector(state => state.holidays.list);
     const lastMonthDate = useSelector(state => state.systemSettings.lastDay);
     const isHoliday = useSelector(state => state.systemSettings.holiday);
     const isWeekend = useSelector(state => state.systemSettings.weekend);
@@ -440,8 +440,9 @@ const TransferClientPage = () => {
     }
 
     const getTransferList = async () => {
-        const previousMonthEndDate = getLastWeekdayOfTheMonth(moment().subtract(1, 'months').format('YYYY'), moment().subtract(1, 'months').format('MM'), holidayList);
-        const endMonthDate = isEndMonthDate(currentDate, holidayList);
+        const holidays = holidayList.map(holiday => holiday.date);
+        const previousMonthEndDate = getLastWeekdayOfTheMonth(moment().subtract(1, 'months').format('YYYY'), moment().subtract(1, 'months').format('MM'), holidays);
+        const endMonthDate = isEndMonthDate(currentDate, holidays);
         const previousLastMonthDate = endMonthDate ? currentDate : previousMonthEndDate;
         if (previousLastMonthDate) {
             let url = getApiBaseUrl() + 'transactions/transfer-client';
