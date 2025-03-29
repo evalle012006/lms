@@ -1012,6 +1012,7 @@ const CashCollectionDetailsPage = () => {
             if (hasDraft.length > 0) {
                 setEditMode(true);
                 setHasDraft(true);
+                console.log('Drafts Collection found: ', hasDraft)
             }
 
             const hasPrevDraft = cashCollection.filter(cc => cc.previousDraft);
@@ -1035,6 +1036,7 @@ const CashCollectionDetailsPage = () => {
             const haveReverted = cashCollection.filter(cc => cc.reverted);
             if (haveReverted.length > 0) {
                 setEditMode(true);
+                console.log('Reverted Collection found: ', haveReverted)
                 setRevertMode(true);
             }
             cashCollection.sort((a, b) => a.slotNo - b.slotNo);
@@ -2910,6 +2912,7 @@ const CashCollectionDetailsPage = () => {
                                                     { (!isWeekend && !isHoliday && currentUser.role.rep > 2 && cc.status === 'active' && editMode ) ? (
                                                             // && ((cc.dcmc || (cc.draft && cc.dcmc)) || (cc.mpdc || (cc.draft && cc.mpdc)) ) ) ? (
                                                         <React.Fragment>
+                                                            {/* {console.log(cc.slotNo, isWeekend, isHoliday, currentUser.role.rep > 2, cc.status === 'active', editMode)} */}
                                                             <input type="number" name={`${cc.clientId}-mcbuCol`} min={0} step={5} onChange={(e) => handlePaymentCollectionChange(e, index, 'mcbuCol')}
                                                                 onClick={(e) => e.stopPropagation()} onBlur={(e) => handlePaymentValidation(e, cc, index, 'mcbuCol')} defaultValue={cc.mcbuCol ? cc.mcbuCol : 0} tabIndex={index + 1} onWheel={(e) => e.target.blur()}
                                                                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg 
