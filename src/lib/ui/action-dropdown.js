@@ -58,6 +58,10 @@ const ActionDropDown = ({ data, options=[], dataOptions = {}, origin }) => {
                         tempOption.icon = <UserPlus className="h-4 w-4 mr-2" />
                     }
                 }
+            } else if (origin == 'mcbu-withdrawal' && data) {
+                if (data.status !== 'pending') {
+                    tempOption.hidden = true;
+                }
             }
             
             return tempOption;

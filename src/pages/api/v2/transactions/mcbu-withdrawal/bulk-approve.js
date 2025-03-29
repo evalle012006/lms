@@ -1,8 +1,11 @@
-// transactions/mcbu-withdrawal/bulk-approve.js
 import { apiHandler } from "@/services/api-handler";
 import { GraphProvider } from "@/lib/graph/graph.provider";
-import { updateQl, createGraphType } from "@/lib/graph/graph.util";
-import { MCBU_WITHDRAWAL_FIELDS } from "@/lib/graph.fields";
+import { updateQl, createGraphType, insertQl, queryQl } from "@/lib/graph/graph.util";
+import { CASH_COLLECTIONS_FIELDS, MCBU_WITHDRAWAL_FIELDS, LOAN_FIELDS, GROUP_FIELDS } from "@/lib/graph.fields";
+import { filterGraphFields } from '@/lib/graph.functions';
+import { generateUUID, getCurrentDate } from '@/lib/utils';
+import logger from '@/logger';
+import moment from 'moment';
 
 const graph = new GraphProvider();
 const mcbuWithdrawalsType = createGraphType(
@@ -10,12 +13,23 @@ const mcbuWithdrawalsType = createGraphType(
   MCBU_WITHDRAWAL_FIELDS
 );
 
+const cashCollectionsType = createGraphType("cashCollections", CASH_COLLECTIONS_FIELDS);
+const loansType = createGraphType('loans', LOAN_FIELDS);
+const groupType = createGraphType('groups', GROUP_FIELDS);
+
 export default apiHandler({
   post: bulkApprove,
 });
 
 async function bulkApprove(req, res) {
   try {
+    const user_id = req?.auth?.sub;
+    const currentDate = moment(getCurrentDate()).format('YYYY-MM-DD');
+    const mutationList = [];
+    const addToMutationList = addToList => mutationList.push(addToList(`bulk_update_${mutationList.length}`));
+
+    logger.debug({user_id, page: `Approving MCBU Withdrawal`});
+
     const { withdrawals } = req.body;
     
     if (!withdrawals || !Array.isArray(withdrawals) || withdrawals.length === 0) {
@@ -30,7 +44,7 @@ async function bulkApprove(req, res) {
     
     // Process each withdrawal update
     for (const withdrawal of withdrawals) {
-      const { id, modified_by, modified_date } = withdrawal;
+      const { id, loan_id, mcbu_withdrawal_amount, modified_by, modified_date } = withdrawal;
       
       if (!id) {
         errors.push({ error: true, message: "Withdrawal ID is required", withdrawal });
@@ -38,7 +52,43 @@ async function bulkApprove(req, res) {
       }
       
       try {
-        // Set up the update data
+        // Get the loan information for this withdrawal
+        const loanResponse = await graph.query(
+          queryQl(loansType(), {
+            where: { _id: { _eq: loan_id } }
+          })
+        );
+        
+        const loan = loanResponse.data?.loans?.[0];
+        
+        if (!loan) {
+          errors.push({ 
+            error: true, 
+            message: `Loan with ID ${loan_id} not found`, 
+            withdrawal 
+          });
+          continue;
+        }
+        
+        // Get the group information for this loan
+        const groupResponse = await graph.query(
+          queryQl(groupType(), {
+            where: { _id: { _eq: loan.groupId } }
+          })
+        );
+        
+        const group = groupResponse.data?.groups?.[0];
+        
+        if (!group) {
+          errors.push({ 
+            error: true, 
+            message: `Group with ID ${loan.groupId} not found`, 
+            withdrawal 
+          });
+          continue;
+        }
+        
+        // Set up the update data for withdrawal
         const updateData = {
           status: 'approved',
           approved_date: new Date().toISOString(),
@@ -46,27 +96,86 @@ async function bulkApprove(req, res) {
           modified_date: modified_date || new Date().toISOString()
         };
         
-        // Execute update query
-        const result = await graph.mutation(
+        // Execute update query for the MCBU withdrawal
+        const withdrawalResult = await graph.mutation(
           updateQl(mcbuWithdrawalsType(), {
             where: { _id: { _eq: id } },
             set: updateData
           })
         );
         
-        if (result.errors) {
+        if (withdrawalResult.errors) {
           errors.push({ 
             error: true, 
-            message: result.errors[0].message, 
+            message: withdrawalResult.errors[0].message, 
             withdrawal 
           });
         } else {
           // Check if any records were updated
-          if (result.data.mcbu_withdrawals.returning.length > 0) {
+          if (withdrawalResult.data.mcbu_withdrawals.returning.length > 0) {
+            // Update the loan with withdrawal information
+            const withdrawalAmount = mcbu_withdrawal_amount || 0;
+            const updatedLoan = {
+              ...loan,
+              mcbu: Math.max(0, (loan.mcbu || 0) - withdrawalAmount),
+              mcbuWithdrawal: (loan.mcbuWithdrawal || 0) + withdrawalAmount,
+              modifiedBy: user_id,
+              modifiedDateTime: new Date().toISOString()
+            };
+            
+            // Add loan update to mutation list
+            addToMutationList(alias => updateQl(loansType(alias), {
+              where: { _id: { _eq: loan_id } },
+              set: filterGraphFields(LOAN_FIELDS, updatedLoan)
+            }));
+            
+            const groupCashCollections = (await graph.query(queryQl(cashCollectionsType(), {
+              where: {
+                groupId: { _eq: loan.groupId },
+                dateAdded: { _eq: currentDate },
+              }
+            }))).data?.cashCollections;
+            
+            let groupStatus = 'pending';
+            if (groupCashCollections.length > 0) {
+              const groupStatuses = groupCashCollections.filter(cc => cc.groupStatus === 'pending');
+              if (groupStatuses.length === 0) {
+                groupStatus = 'closed';
+              }
+            } else {
+              groupStatus = 'closed';
+            }
+            
+            // Now save the cash collection
+            await saveCashCollection(
+              user_id, 
+              updatedLoan, // Use the updated loan data
+              group, 
+              loan_id, 
+              currentDate, 
+              groupStatus, 
+              addToMutationList
+            );
+            
+            // Execute all mutations
+            if (mutationList.length > 0) {
+              try {
+                await graph.mutation(...mutationList);
+              } catch (mutationError) {
+                console.error("Error executing mutations:", mutationError);
+                errors.push({ 
+                  error: true, 
+                  message: `Error executing mutations: ${mutationError.message}`, 
+                  withdrawal 
+                });
+                continue;
+              }
+            }
+            
             results.push({
               success: true,
-              id,
-              data: result.data.mcbu_withdrawals.returning[0]
+              id: id,
+              data: withdrawalResult.data.mcbu_withdrawals.returning[0]
             });
           } else {
             errors.push({ 
@@ -98,5 +207,99 @@ async function bulkApprove(req, res) {
       error: true,
       message: "Failed to process bulk approval: " + error.message
     });
+  }
+}
+
+async function saveCashCollection(user_id, loan, group, loanId, currentDate, groupStatus, addToMutationList) {
+  const currentReleaseAmount = loan.amountRelease;
+
+  // Check if a cash collection already exists for this client on the current date
+  const cashCollection = (await graph.query(queryQl(cashCollectionsType(), {
+    where: {
+      clientId: { _eq: loan.clientId },
+      dateAdded: { _eq: currentDate },
+    }
+  }))).data?.cashCollections;
+
+  logger.debug({user_id, page: `Saving Cash Collection: ${loanId}`, cashCollection: cashCollection});
+  
+  if (cashCollection.length === 0) {
+    let data = {
+      loanId: loanId,
+      branchId: loan.branchId,
+      groupId: loan.groupId,
+      groupName: loan.groupName,
+      loId: loan.loId,
+      clientId: loan.clientId,
+      slotNo: loan.slotNo,
+      loanCycle: loan.loanCycle,
+      loanBalance: loan.loanBalance,
+      loanRelease: loan.loanRelease,
+      loanTerms: loan.loanTerms,
+      draft: false,
+      mispayment: 'false',
+      mispaymentStr: 'No',
+      collection: 0,
+      excess: loan.excess,
+      total: 0,
+      noOfPayments: loan.noOfPayments,
+      startDate: loan.startDate,
+      endDate: loan.endDate,
+      activeLoan: 0,
+      targetCollection: 0,
+      amountRelease: 0,
+      loanBalance: 0,
+      paymentCollection: 0,
+      occurence: group.occurence,
+      currentReleaseAmount: currentReleaseAmount,
+      fullPayment: loan.fullPayment,
+      mcbu: loan.mcbu,
+      mcbuCol: loan.mcbuCollection,
+      mcbuWithdrawal: loan.mcbuWithdrawal,
+      mcbuReturnAmt: 0,
+      remarks: '',
+      status: loan.status,
+      dateAdded: currentDate,
+      insertedDateTime: new Date(),
+      groupStatus: groupStatus,
+      origin: 'automation-mcbu-withdrawal'
+    };
+
+    if (data.occurence === 'weekly') {
+      data.mcbuTarget = 50;
+      data.groupDay = group.day;
+
+      if (data.loanCycle !== 1) {
+        data.mcbuCol = loan.mcbu ? loan.mcbu : 0;
+      }
+    }
+
+    if (loan.status === 'reject') {
+      data.rejectReason = loan.rejectReason;
+    }
+    
+    logger.debug({user_id, page: `Saving Cash Collection: ${loan.clientId}`, data: data});
+    
+    addToMutationList(alias => insertQl(cashCollectionsType(alias), { 
+      objects: [filterGraphFields(CASH_COLLECTIONS_FIELDS, {
+        ...data,
+        _id: generateUUID(),
+      })]
+    }));
+  } else {
+    // Update existing cash collection
+    logger.debug({user_id, page: `Updating Cash Collection: ${loan.clientId}`});
+
+    addToMutationList(alias => updateQl(cashCollectionsType(alias), {
+      set: {
+        currentReleaseAmount: currentReleaseAmount,
+        status: loan.status,
+        modifiedBy: "automation-mcbu-withdrawal",
+        modifiedDateTime: new Date(),
+      },
+      where: {
+        _id: { _eq: cashCollection[0]._id }
+      }
+    }));
   }
 }

@@ -506,11 +506,6 @@ const McbuWithdrawalPage = () => {
             newParams.dateFilter = filterParams.dateFilter;
         }
         
-        // Log state changes for debugging
-        console.log('Clicked on breadcrumb:', breadcrumb.name, 'at level:', breadcrumb.level);
-        console.log('Target level (same as clicked):', targetLevel);
-        console.log('Filter params for API:', newParams);
-        
         // Set new breadcrumbs up to (but not including) the clicked one
         const newBreadcrumbs = breadcrumbs.slice(0, index);
         setBreadcrumbs(newBreadcrumbs);
@@ -580,9 +575,6 @@ const McbuWithdrawalPage = () => {
             }];
             setBreadcrumbs(initialBreadcrumbs);
         }
-        
-        console.log('Resetting to home level:', initialLevel);
-        console.log('With initial params:', initialParams);
         
         // Clear date filter
         setDateRange([null, null]);
@@ -658,6 +650,8 @@ const McbuWithdrawalPage = () => {
             const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/mcbu-withdrawal/bulk-approve', {
                 withdrawals: selectedClients.map(client => ({
                     id: client._id,
+                    loan_id: client.loan_id,
+                    mcbu_withdrawal_amount: client.mcbu_withdrawal_amount,
                     status: 'approved',
                     approved_date: currentDate,
                     modified_date: currentDate,
@@ -738,7 +732,6 @@ const McbuWithdrawalPage = () => {
     
     // Handle edit row
     const handleEditRow = (rowData) => {
-        console.log('Edit row:', rowData);
         setMode('edit');
         setEditItem(rowData);
         setShowSidebar(true);
