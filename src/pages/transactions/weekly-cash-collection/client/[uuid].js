@@ -1046,6 +1046,7 @@ const CashCollectionDetailsPage = () => {
             if (hasDraft.length > 0) {
                 setEditMode(true);
                 setHasDraft(true);
+                console.log('Drafts Collection found: ', hasDraft)
             }
 
             const hasPrevDraft = cashCollection.filter(cc => cc.previousDraft);
@@ -1070,6 +1071,7 @@ const CashCollectionDetailsPage = () => {
             if (haveReverted.length > 0) {
                 setEditMode(true);
                 setRevertMode(true);
+                console.log('Reverted Collection found: ', haveReverted)
             }
             cashCollection.sort((a, b) => a.slotNo - b.slotNo);
             dispatch(setCashCollectionGroup(cashCollection));

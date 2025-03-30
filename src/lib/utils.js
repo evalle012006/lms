@@ -190,11 +190,14 @@ export const isEndMonthDate = (currentDate, holidayList = []) => {
     
     const days = getDaysOfMonth(year, month);
 
+    console.log(holidayList)
+
     const dateArr = days.filter(day => {
         const dayName = moment(day).format('dddd');
 
         const dateArr = day.split('-');
         const dateStr = dateArr[1] + "-" + dateArr[2];
+        console.log(dateStr, holidayList.includes(dateStr))
         if (dayName !== 'Saturday' && dayName !== 'Sunday' && (holidayList && !holidayList.includes(dateStr))) {
             return day;
         }

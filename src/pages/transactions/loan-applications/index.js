@@ -32,7 +32,6 @@ import { getApiBaseUrl } from "@/lib/constants";
 import ForeCastApplication from "@/components/transactions/loan-application/ForecastApplications";
 
 const LoanApplicationPage = () => {
-    const holidayList = useSelector(state => state.systemSettings.holidayList);
     const isHoliday = useSelector(state => state.systemSettings.holiday);
     const isWeekend = useSelector(state => state.systemSettings.weekend);
     const dispatch = useDispatch();

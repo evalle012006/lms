@@ -161,8 +161,21 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
             const response = await fetchWrapper.get(url);
             if (response.success) {
                 let clients = [];
+                const currentDateArr = currentDate.split("-");
+                const currentYearMonth = `${currentDateArr[0]}-${currentDateArr[1]}`; // "2025-03"
+                
                 await response.clients && response.clients.map(client => {
-                    const hasTransfer = transferList.find(t => t.selectedClientId === client._id);
+                    const hasTransfer = transferList.find(t => {
+                        if (t.selectedClientId === client._id && t.status === "pending") {
+                            const transferDateArr = t.dateAdded.split("-");
+                            const transferYearMonth = `${transferDateArr[0]}-${transferDateArr[1]}`;
+                            
+                            return transferYearMonth === currentYearMonth;
+                        }
+                        return false;
+                    });
+                    
+                    // If no relevant transfer found, add client to the list
                     if (!hasTransfer) {
                         clients.push({
                             ...client,
@@ -172,6 +185,7 @@ const AddUpdateTransferClient = ({ mode = 'add', client = {}, showSidebar, setSh
                         }); 
                     } 
                 });
+                
                 clients.sort((a, b) => { return a.slotNo - b.slotNo });
                 setClientList(clients);
                 setLoading(false);
