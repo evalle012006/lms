@@ -363,13 +363,14 @@ const TransactionRemarksPage = () => {
 
     useEffect(() => {
         if (selectedFilterMonth && selectedFilterYear) {
+            const holidays = holidayList.map(holiday => holiday.date);
             const days = getDaysOfMonth(selectedFilterYear, selectedFilterMonth);
             const dateArr = days.filter(day => {
                 const dayName = moment(day).format('dddd');
         
                 const dateArr = day.split('-');
                 const dateStr = dateArr[1] + "-" + dateArr[2];
-                if (dayName !== 'Saturday' && dayName !== 'Sunday' && (holidayList && !holidayList.includes(dateStr))) {
+                if (dayName !== 'Saturday' && dayName !== 'Sunday' && (holidays && !holidays.includes(dateStr))) {
                     return day;
                 }
             });

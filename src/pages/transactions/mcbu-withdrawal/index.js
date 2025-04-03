@@ -44,77 +44,164 @@ const McbuWithdrawalPage = () => {
                 Header: "DIVISION",
                 accessor: row => row.division && row.division.length > 0 ? row.division[0].name : '',
                 id: 'division',
-                width: 'w-1/3'
+                width: 'w-1/6'
             },
             {
-                Header: "TOTAL MCBU WITHDRAWAL AMOUNT",
+                Header: "TOTAL AMOUNT",
                 accessor: 'totalMcbuWithdrawalAmount',
                 Cell: ({ value }) => formatCurrency(value),
-                width: 'w-1/3'
+                width: 'w-1/6'
             },
             {
-                Header: "TOTAL NO. OF MCBU WITHDRAWALS",
+                Header: "PENDING AMOUNT",
+                accessor: 'pendingMcbuWithdrawalAmount',
+                Cell: ({ value }) => formatCurrency(value),
+                width: 'w-1/6'
+            },
+            {
+                Header: "APPROVED AMOUNT",
+                accessor: 'approvedMcbuWithdrawalAmount',
+                Cell: ({ value }) => formatCurrency(value),
+                width: 'w-1/6'
+            },
+            {
+                Header: "PENDING",
+                accessor: 'pendingMcbuWithdrawals',
+                width: 'w-1/6'
+            },
+            {
+                Header: "APPROVED",
+                accessor: 'approvedMcbuWithdrawals',
+                width: 'w-1/6'
+            },
+            {
+                Header: "TOTAL COUNT",
                 accessor: 'totalNoOfMcbuWithdrawals',
-                width: 'w-1/3'
-            }
+                width: 'w-1/6'
+            },
         ],
-        // Other column configs remain the same
         division: [
             {
                 Header: "REGION",
                 accessor: row => row.region && row.region.length > 0 ? row.region[0].name : '',
                 id: 'region',
-                width: 'w-1/3'
+                width: 'w-1/6'
             },
             {
-                Header: "TOTAL MCBU WITHDRAWAL AMOUNT",
+                Header: "TOTAL AMOUNT",
                 accessor: 'totalMcbuWithdrawalAmount',
                 Cell: ({ value }) => formatCurrency(value),
-                width: 'w-1/3'
+                width: 'w-1/6'
             },
             {
-                Header: "TOTAL NO. OF MCBU WITHDRAWALS",
+                Header: "PENDING AMOUNT",
+                accessor: 'pendingMcbuWithdrawalAmount',
+                Cell: ({ value }) => formatCurrency(value),
+                width: 'w-1/6'
+            },
+            {
+                Header: "APPROVED AMOUNT",
+                accessor: 'approvedMcbuWithdrawalAmount',
+                Cell: ({ value }) => formatCurrency(value),
+                width: 'w-1/6'
+            },
+            {
+                Header: "PENDING",
+                accessor: 'pendingMcbuWithdrawals',
+                width: 'w-1/6'
+            },
+            {
+                Header: "APPROVED",
+                accessor: 'approvedMcbuWithdrawals',
+                width: 'w-1/6'
+            },
+            {
+                Header: "TOTAL COUNT",
                 accessor: 'totalNoOfMcbuWithdrawals',
-                width: 'w-1/3'
-            }
+                width: 'w-1/6'
+            },
         ],
         region: [
             {
                 Header: "AREA",
                 accessor: row => row.area && row.area.length > 0 ? row.area[0].name : '',
                 id: 'area',
-                width: 'w-1/3'
+                width: 'w-1/6'
             },
             {
-                Header: "TOTAL MCBU WITHDRAWAL AMOUNT",
+                Header: "TOTAL AMOUNT",
                 accessor: 'totalMcbuWithdrawalAmount',
                 Cell: ({ value }) => formatCurrency(value),
-                width: 'w-1/3'
+                width: 'w-1/6'
             },
             {
-                Header: "TOTAL NO. OF MCBU WITHDRAWALS",
+                Header: "PENDING AMOUNT",
+                accessor: 'pendingMcbuWithdrawalAmount',
+                Cell: ({ value }) => formatCurrency(value),
+                width: 'w-1/6'
+            },
+            {
+                Header: "APPROVED AMOUNT",
+                accessor: 'approvedMcbuWithdrawalAmount',
+                Cell: ({ value }) => formatCurrency(value),
+                width: 'w-1/6'
+            },
+            {
+                Header: "PENDING",
+                accessor: 'pendingMcbuWithdrawals',
+                width: 'w-1/6'
+            },
+            {
+                Header: "APPROVED",
+                accessor: 'approvedMcbuWithdrawals',
+                width: 'w-1/6'
+            },
+            {
+                Header: "TOTAL COUNT",
                 accessor: 'totalNoOfMcbuWithdrawals',
-                width: 'w-1/3'
-            }
+                width: 'w-1/6'
+            },
         ],
         area: [
             {
                 Header: "BRANCH",
                 accessor: row => row.branch && row.branch.length > 0 ? row.branch[0].name : '',
                 id: 'branch',
-                width: 'w-1/3'
+                width: 'w-1/6'
             },
             {
-                Header: "TOTAL MCBU WITHDRAWAL AMOUNT",
+                Header: "TOTAL AMOUNT",
                 accessor: 'totalMcbuWithdrawalAmount',
                 Cell: ({ value }) => formatCurrency(value),
-                width: 'w-1/3'
+                width: 'w-1/6'
             },
             {
-                Header: "TOTAL NO. OF MCBU WITHDRAWALS",
+                Header: "PENDING AMOUNT",
+                accessor: 'pendingMcbuWithdrawalAmount',
+                Cell: ({ value }) => formatCurrency(value),
+                width: 'w-1/6'
+            },
+            {
+                Header: "APPROVED AMOUNT",
+                accessor: 'approvedMcbuWithdrawalAmount',
+                Cell: ({ value }) => formatCurrency(value),
+                width: 'w-1/6'
+            },
+            {
+                Header: "PENDING",
+                accessor: 'pendingMcbuWithdrawals',
+                width: 'w-1/6'
+            },
+            {
+                Header: "APPROVED",
+                accessor: 'approvedMcbuWithdrawals',
+                width: 'w-1/6'
+            },
+            {
+                Header: "TOTAL COUNT",
                 accessor: 'totalNoOfMcbuWithdrawals',
-                width: 'w-1/3'
-            }
+                width: 'w-1/6'
+            },
         ],
         branch: [
             {
@@ -122,39 +209,84 @@ const McbuWithdrawalPage = () => {
                 accessor: row => row.loanOfficer && row.loanOfficer.length > 0 ? 
                     `${row.loanOfficer[0].firstName} ${row.loanOfficer[0].lastName}` : '',
                 id: 'loanOfficer',
-                width: 'w-1/3'
+                width: 'w-1/6'
             },
             {
-                Header: "TOTAL MCBU WITHDRAWAL AMOUNT",
+                Header: "TOTAL AMOUNT",
                 accessor: 'totalMcbuWithdrawalAmount',
                 Cell: ({ value }) => formatCurrency(value),
-                width: 'w-1/3'
+                width: 'w-1/6'
             },
             {
-                Header: "TOTAL NO. OF MCBU WITHDRAWALS",
+                Header: "PENDING AMOUNT",
+                accessor: 'pendingMcbuWithdrawalAmount',
+                Cell: ({ value }) => formatCurrency(value),
+                width: 'w-1/6'
+            },
+            {
+                Header: "APPROVED AMOUNT",
+                accessor: 'approvedMcbuWithdrawalAmount',
+                Cell: ({ value }) => formatCurrency(value),
+                width: 'w-1/6'
+            },
+            {
+                Header: "PENDING",
+                accessor: 'pendingMcbuWithdrawals',
+                width: 'w-1/6'
+            },
+            {
+                Header: "APPROVED",
+                accessor: 'approvedMcbuWithdrawals',
+                width: 'w-1/6'
+            },
+            {
+                Header: "TOTAL COUNT",
                 accessor: 'totalNoOfMcbuWithdrawals',
-                width: 'w-1/3'
-            }
+                width: 'w-1/6'
+            },
         ],
         loan_officer: [
             {
                 Header: "GROUP",
                 accessor: row => row.group && row.group.length > 0 ? row.group[0].name : '',
                 id: 'group',
-                width: 'w-1/4'
+                width: 'w-1/6'
             },
             {
-                Header: "TOTAL MCBU WITHDRAWAL AMOUNT",
+                Header: "TOTAL AMOUNT",
                 accessor: 'totalMcbuWithdrawalAmount',
                 Cell: ({ value }) => formatCurrency(value),
-                width: 'w-1/3'
+                width: 'w-1/6'
             },
             {
-                Header: "TOTAL NO. OF MCBU WITHDRAWALS",
+                Header: "PENDING AMOUNT",
+                accessor: 'pendingMcbuWithdrawalAmount',
+                Cell: ({ value }) => formatCurrency(value),
+                width: 'w-1/6'
+            },
+            {
+                Header: "APPROVED AMOUNT",
+                accessor: 'approvedMcbuWithdrawalAmount',
+                Cell: ({ value }) => formatCurrency(value),
+                width: 'w-1/6'
+            },
+            {
+                Header: "PENDING",
+                accessor: 'pendingMcbuWithdrawals',
+                width: 'w-1/6'
+            },
+            {
+                Header: "APPROVED",
+                accessor: 'approvedMcbuWithdrawals',
+                width: 'w-1/6'
+            },
+            {
+                Header: "TOTAL COUNT",
                 accessor: 'totalNoOfMcbuWithdrawals',
-                width: 'w-1/3'
-            }
+                width: 'w-1/6'
+            },
         ],
+        // Keep the group level columns unchanged
         group: [
             {
                 Header: "CLIENT",
@@ -365,7 +497,7 @@ const McbuWithdrawalPage = () => {
         console.log(`Sample data item for level ${level}:`, data[0]);
         console.log(`Looking for ${groupByField} property in data`);
         
-        // Group and aggregate
+        // Group and aggregate with separate totals for PENDING and APPROVED
         const groupedData = {};
         let validItemCount = 0;
         let invalidItemCount = 0;
@@ -385,7 +517,11 @@ const McbuWithdrawalPage = () => {
                 groupedData[id] = {
                     [groupByField]: [entityInfo],
                     totalMcbuWithdrawalAmount: 0,
+                    pendingMcbuWithdrawalAmount: 0,
+                    approvedMcbuWithdrawalAmount: 0,
                     totalNoOfMcbuWithdrawals: 0,
+                    pendingMcbuWithdrawals: 0,
+                    approvedMcbuWithdrawals: 0,
                     _id: id
                 };
             }
@@ -393,10 +529,20 @@ const McbuWithdrawalPage = () => {
             // Add withdrawal amount (with error handling)
             const amount = parseFloat(item.mcbu_withdrawal_amount || 0);
             if (!isNaN(amount)) {
+                // Add to total amount
                 groupedData[id].totalMcbuWithdrawalAmount += amount;
+                
+                // Separate amounts by status
+                if (item.status === 'pending') {
+                    groupedData[id].pendingMcbuWithdrawalAmount += amount;
+                    groupedData[id].pendingMcbuWithdrawals += 1;
+                } else if (item.status === 'approved') {
+                    groupedData[id].approvedMcbuWithdrawalAmount += amount;
+                    groupedData[id].approvedMcbuWithdrawals += 1;
+                }
             }
             
-            // Increment count
+            // Increment total count
             groupedData[id].totalNoOfMcbuWithdrawals += 1;
         });
         
@@ -843,7 +989,7 @@ const McbuWithdrawalPage = () => {
     }, [currentLevel]);
 
     return (
-        <Layout actionButtons={currentUser.role.rep >= 3 && actionButtons}>
+        <Layout>
             <div className="px-4 py-6">
                 {/* Compact Filter and Breadcrumb Bar */}
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
@@ -930,20 +1076,22 @@ const McbuWithdrawalPage = () => {
                                     </div>
                                 </div>
                                 
-                                <div className="flex space-x-2">
-                                    <ButtonSolid 
-                                        label="Apply" 
-                                        type="button" 
-                                        className="text-xs py-1.5 w-full justify-center bg-blue-600 hover:bg-blue-700" 
-                                        onClick={handleDateFilter} 
-                                    />
-                                    <ButtonOutline 
-                                        label="Clear" 
-                                        type="button" 
-                                        className="text-xs py-1.5 w-full justify-center border-gray-300 text-gray-700" 
-                                        onClick={clearDateFilter} 
-                                    />
-                                </div>
+                                {currentUser.role.rep < 4 && (
+                                    <div className="flex space-x-2">
+                                        <ButtonSolid 
+                                            label="Apply" 
+                                            type="button" 
+                                            className="text-xs py-1.5 w-full justify-center bg-blue-600 hover:bg-blue-700" 
+                                            onClick={handleDateFilter} 
+                                        />
+                                        <ButtonOutline 
+                                            label="Clear" 
+                                            type="button" 
+                                            className="text-xs py-1.5 w-full justify-center border-gray-300 text-gray-700" 
+                                            onClick={clearDateFilter} 
+                                        />
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -1076,9 +1224,10 @@ const McbuWithdrawalPage = () => {
                             border={true}
                             dropDownActions={currentLevel === 'group' ? rowActions : []} 
                             dropDownActionOrigin="mcbu-withdrawal"
+                            actionDropDownDataOptions={ {currentUser: currentUser} }
                         />
                     )}
-                    {showSidebar && <AddUpdateMcbuWithdrawalDrawer origin='list' mode={mode} mcbuData={editItem} showSidebar={showSidebar} setShowSidebar={setShowSidebar} onClose={handleCloseSidebar} /> }
+                    {/* {showSidebar && <AddUpdateMcbuWithdrawalDrawer origin='list' mode={mode} mcbuData={editItem} showSidebar={showSidebar} setShowSidebar={setShowSidebar} onClose={handleCloseSidebar} /> } */}
                 </div>
             </div>
         </Layout>

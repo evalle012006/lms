@@ -358,7 +358,7 @@ const TableComponent = React.memo(({
   multiSelectActionFn = null,
   pageSize: initialPageSize = 30,
   dropDownActions = [],
-  actionDropDownDataOptions = [],
+  actionDropDownDataOptions = {},
   dropDownActionOrigin
 }) => {
   // Add state for current page

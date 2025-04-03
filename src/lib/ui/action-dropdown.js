@@ -7,9 +7,11 @@ const ActionDropDown = ({ data, options=[], dataOptions = {}, origin }) => {
     const [updatedOptions, setUpdatedOptions] = useState([]);
     
     useEffect(() => {
+        const last5DaysOfTheMonth = dataOptions?.last5DaysOfTheMonth || [];
         const temp = options.map(option => {
             let tempOption = { ...option };
             if (origin == 'cash-collection' && data) {
+                const client = data.client;
                 if (option.label == 'Reloan' && (!data.advance && data.status == 'completed' && !dataOptions?.prevDraft && data.hasOwnProperty("_id") && (data.remarks && data.remarks.value?.startsWith('reloaner')))) {
                     tempOption.hidden = false;
                 }
@@ -17,8 +19,7 @@ const ActionDropDown = ({ data, options=[], dataOptions = {}, origin }) => {
                 // if (option.label == 'MCBU Refund' && (!dataOptions?.filter && data.status == 'completed' && !data?.draft)) {
                 //     tempOption.hidden = false;
                 // }
-
-                if (option.label == 'MCBU Withdrawal' && (!dataOptions?.filter && (data.status == 'completed' || data.status == 'tomorrow' || (data.occurence == 'weekly' && data.status == 'active') ) && !data?.draft)) {
+                if (option.label == 'MCBU Withdrawal' && !data?.hasMcbuWithdrawal && (!dataOptions?.filter && (data.status == 'completed' || data.status == 'tomorrow' || (data.occurence == 'weekly' && data.status == 'active') || (client?.groupLeader && data.mcbu > 3000 && last5DaysOfTheMonth.includes(dataOptions?.currentDate))) && !data?.draft)) {
                     tempOption.hidden = false;
                 }
 

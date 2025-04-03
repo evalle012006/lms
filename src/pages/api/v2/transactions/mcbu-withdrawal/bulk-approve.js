@@ -114,11 +114,11 @@ async function bulkApprove(req, res) {
           // Check if any records were updated
           if (withdrawalResult.data.mcbu_withdrawals.returning.length > 0) {
             // Update the loan with withdrawal information
-            const withdrawalAmount = mcbu_withdrawal_amount || 0;
+            const withdrawalAmount = parseFloat(mcbu_withdrawal_amount) || 0;
             const updatedLoan = {
               ...loan,
-              mcbu: Math.max(0, (loan.mcbu || 0) - withdrawalAmount),
-              mcbuWithdrawal: (loan.mcbuWithdrawal || 0) + withdrawalAmount,
+              mcbu: Math.max(0, (parseFloat(loan.mcbu) || 0) - withdrawalAmount),
+              mcbuWithdrawal: (parseFloat(loan.mcbuWithdrawal) || 0) + withdrawalAmount,
               modifiedBy: user_id,
               modifiedDateTime: new Date().toISOString()
             };
@@ -126,7 +126,11 @@ async function bulkApprove(req, res) {
             // Add loan update to mutation list
             addToMutationList(alias => updateQl(loansType(alias), {
               where: { _id: { _eq: loan_id } },
-              set: filterGraphFields(LOAN_FIELDS, updatedLoan)
+              set: filterGraphFields(LOAN_FIELDS, {
+                ...updatedLoan,
+                mcbu: updatedLoan.mcbu,
+                mcbuWithdrawal: updatedLoan.mcbuWithdrawal
+              })
             }));
             
             const groupCashCollections = (await graph.query(queryQl(cashCollectionsType(), {
@@ -142,8 +146,6 @@ async function bulkApprove(req, res) {
               if (groupStatuses.length === 0) {
                 groupStatus = 'closed';
               }
-            } else {
-              groupStatus = 'closed';
             }
             
             // Now save the cash collection
@@ -211,7 +213,7 @@ async function bulkApprove(req, res) {
 }
 
 async function saveCashCollection(user_id, loan, group, loanId, currentDate, groupStatus, addToMutationList) {
-  const currentReleaseAmount = loan.amountRelease;
+  const currentReleaseAmount = parseFloat(loan.amountRelease || 0);
 
   // Check if a cash collection already exists for this client on the current date
   const cashCollection = (await graph.query(queryQl(cashCollectionsType(), {
@@ -233,18 +235,12 @@ async function saveCashCollection(user_id, loan, group, loanId, currentDate, gro
       clientId: loan.clientId,
       slotNo: loan.slotNo,
       loanCycle: loan.loanCycle,
-      loanBalance: loan.loanBalance,
-      loanRelease: loan.loanRelease,
-      loanTerms: loan.loanTerms,
-      draft: false,
       mispayment: 'false',
       mispaymentStr: 'No',
       collection: 0,
       excess: loan.excess,
       total: 0,
       noOfPayments: loan.noOfPayments,
-      startDate: loan.startDate,
-      endDate: loan.endDate,
       activeLoan: 0,
       targetCollection: 0,
       amountRelease: 0,
@@ -253,10 +249,10 @@ async function saveCashCollection(user_id, loan, group, loanId, currentDate, gro
       occurence: group.occurence,
       currentReleaseAmount: currentReleaseAmount,
       fullPayment: loan.fullPayment,
-      mcbu: loan.mcbu,
-      mcbuCol: loan.mcbuCollection,
-      mcbuWithdrawal: loan.mcbuWithdrawal,
-      mcbuReturnAmt: 0,
+      mcbu: loan.mcbu || 0,
+      mcbuCol: 0,
+      mcbuWithdrawal: loan.mcbuWithdrawal || 0,
+      mcbuReturnAmt: 0 || 0,
       remarks: '',
       status: loan.status,
       dateAdded: currentDate,
@@ -270,7 +266,7 @@ async function saveCashCollection(user_id, loan, group, loanId, currentDate, gro
       data.groupDay = group.day;
 
       if (data.loanCycle !== 1) {
-        data.mcbuCol = loan.mcbu ? loan.mcbu : 0;
+        data.mcbuCol = parseFloat(loan.mcbu || 0);
       }
     }
 
@@ -292,8 +288,8 @@ async function saveCashCollection(user_id, loan, group, loanId, currentDate, gro
 
     addToMutationList(alias => updateQl(cashCollectionsType(alias), {
       set: {
-        currentReleaseAmount: currentReleaseAmount,
-        status: loan.status,
+        mcbu: loan.mcbu || 0,
+        mcbuWithdrawal: loan.mcbuWithdrawal || 0,
         modifiedBy: "automation-mcbu-withdrawal",
         modifiedDateTime: new Date(),
       },

@@ -771,14 +771,15 @@ const AddUpdateLoan = ({ origin, client, mode = 'add', loan = {}, showSidebar, s
     }, [mode, currentUser, selectedLo]);
     // const ddddate = "2024-12-10";
     useEffect(() => {
+        const holidays = holidayList.map(holiday => holiday.date);
         if (mode == 'add' && currentDate) {
             const dayName = moment(currentDate).format('dddd');
             if (dayName == 'Friday') {
-                setInitialDateRelease(getNextValidDate(moment(currentDate).add(4, 'days').format('YYYY-MM-DD'), holidayList).format('YYYY-MM-DD'));
+                setInitialDateRelease(getNextValidDate(moment(currentDate).add(4, 'days').format('YYYY-MM-DD'), holidays).format('YYYY-MM-DD'));
             } else if (isWeekend) {
-                setInitialDateRelease(getNextValidDate(moment(currentDate).add(dayName == 'Saturday' ? 3 : 2, 'days').format('YYYY-MM-DD'), holidayList).format('YYYY-MM-DD'));
+                setInitialDateRelease(getNextValidDate(moment(currentDate).add(dayName == 'Saturday' ? 3 : 2, 'days').format('YYYY-MM-DD'), holidays).format('YYYY-MM-DD'));
             } else {
-                const nextValidDate = getNextValidDate(moment(currentDate).add(2, 'days').format('YYYY-MM-DD'), holidayList);
+                const nextValidDate = getNextValidDate(moment(currentDate).add(2, 'days').format('YYYY-MM-DD'), holidays);
                 setInitialDateRelease(nextValidDate.format('YYYY-MM-DD'));
             }
         } else if (mode == 'edit' && loan.dateOfRelease) {

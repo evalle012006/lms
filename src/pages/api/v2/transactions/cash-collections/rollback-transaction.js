@@ -84,13 +84,24 @@ async function revert(req, res) {
                 )
             );
           }
+
+          let prevLoanData = {
+            ...loan_history.data,
+            reverted: true,
+            revertedDateTime: new Date(),
+          };
+
+          if (cashCollection?.mcbuWithdrawalId) {
+            prevLoanData.mcbu = prevLoanData.mcbu + prevLoanData.mcbuWithdrawal;
+            prevLoanData.mcbuWithdrawal = 0;
+          }
   
           // Update loan with history data
           mutationQL.push(
             updateQl(
               LOAN_TYPE(`loan_${mutationQL.length}`),
               {
-                set: { ...loan_history.data, reverted: true, revertedDateTime: new Date() },
+                set: { ...prevLoanData },
                 where: {
                   _id: { _eq: loanId }
                 }
@@ -107,6 +118,18 @@ async function revert(req, res) {
               }
             )
           );
+
+          // Delete mcbu withdrawal transaction
+          if (cashCollection?.mcbuWithdrawalId) {
+            mutationQL.push(
+              deleteQl(
+                createGraphType('mcbu_withdrawals', `_id`)(`mcbu_withdrawals_${mutationQL.length}`),
+                {
+                  _id: { _eq: cashCollection.mcbuWithdrawalId }
+                }
+              )
+            );
+          }
         }
       }
   

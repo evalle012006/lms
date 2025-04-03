@@ -30,29 +30,27 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
     const [slotNo, setSlotNo] = useState(null);
     const [loanBalance, setLoanBalance] = useState(0);
     const [mcbu, setMcbu] = useState(0);
+    const [isGroupLeader, setIsGroupLeader] = useState(false);
+    const [maxWithdrawalAmount, setMaxWithdrawalAmount] = useState(0);
+    const [occurence, setOccurence] = useState('daily');
 
-    // Define a clear initial state based on mcbuData or defaults
+    // Define a clear initial state based on mcbuData, loan, or defaults
     const initialFormState = {
-        loan_id: mcbuData?.loan_id || "",
-        branch_id: mcbuData?.branch_id || (currentUser?.designatedBranchId || ""),
-        lo_id: mcbuData?.lo_id || (currentUser?.role?.rep === 4 ? currentUser._id : ""),
-        group_id: mcbuData?.group_id || "",
-        client_id: mcbuData?.client_id || "",
+        loan_id: mcbuData?.loan_id || loan?.loanId || "",
+        branch_id: mcbuData?.branch_id || loan?.branchId || (currentUser?.designatedBranchId || ""),
+        lo_id: mcbuData?.lo_id || loan?.loId || (currentUser?.role?.rep === 4 ? currentUser._id : ""),
+        group_id: mcbuData?.group_id || loan?.groupId || "",
+        client_id: mcbuData?.client_id || loan?.clientId || "",
         mcbu_withdrawal_amount: mcbuData?.mcbu_withdrawal_amount || 0,
         status: mcbuData?.status || "pending",
         division_id: mcbuData?.division_id || (currentUser?.divisionId || ""),
         region_id: mcbuData?.region_id || (currentUser?.regionId || ""),
         area_id: mcbuData?.area_id || (currentUser?.areaId || ""),
-        group_leader: mcbuData?.group_leader || false
+        group_leader: mcbuData?.group_leader || loan?.client?.groupLeader || false
     };
     
     const [formState, setFormState] = useState(initialFormState);
     
-    // Debug effect to track form state changes
-    useEffect(() => {
-        console.log("Form state changed:", JSON.stringify(formState));
-    }, [formState]);
-
     // Initial values for Formik - keep in sync with formState
     const initialValues = {
         loan_id: formState.loan_id,
@@ -68,29 +66,47 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
         group_leader: formState.group_leader
     };
 
-    const validationSchema = yup.object().shape({
-        group_id: yup
-            .string()
-            .required('Please select a group'),
-        client_id: yup
-            .string()
-            .required('Please select a client'),
-        mcbu_withdrawal_amount: yup
-            .number()
-            .integer()
-            .positive()
-            .moreThan(0, 'Amount should be greater than 0')
-            .required('Please enter mcbu withdrawal amount'),
-        branch_id: yup
-            .string()
-            .required('Please select a branch'),
-        lo_id: yup
-            .string()
-            .required('Please select a loan officer'),
-        loan_id: yup
-            .string()
-            .required('Please select a loan'),
-    });
+    // Create a custom validation schema based on if we're in collection mode
+    const getValidationSchema = () => {
+        // Base schema for mcbu_withdrawal_amount - applies in all modes
+        const baseSchema = {
+            mcbu_withdrawal_amount: yup
+                .number()
+                .integer()
+                .positive()
+                .moreThan(0, 'Amount should be greater than 0')
+                .max(maxWithdrawalAmount, `Amount cannot exceed ${formatPricePhp(maxWithdrawalAmount)}`)
+                .required('Please enter mcbu withdrawal amount')
+        };
+
+        // If we're in collection mode, we only need to validate the withdrawal amount
+        // as other fields are pre-filled and read-only
+        if (origin === "collection" && loan) {
+            return yup.object().shape(baseSchema);
+        }
+
+        // Otherwise, validate all required fields
+        return yup.object().shape({
+            ...baseSchema,
+            group_id: yup
+                .string()
+                .required('Please select a group'),
+            client_id: yup
+                .string()
+                .required('Please select a client'),
+            branch_id: yup
+                .string()
+                .required('Please select a branch'),
+            lo_id: yup
+                .string()
+                .required('Please select a loan officer'),
+            loan_id: yup
+                .string()
+                .required('Please select a loan')
+        });
+    };
+
+    const validationSchema = getValidationSchema();
 
     const handleSaveUpdate = (values, action) => {
         setLoading(true);
@@ -130,6 +146,21 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
             toast.error("Please select a client");
             return;
         }
+
+        const client = loan?.client;
+
+        // Validate MCBU withdrawal amount against available balance and client type limits
+        if (submitValues.mcbu_withdrawal_amount > maxWithdrawalAmount) {
+            setLoading(false);
+            if (isGroupLeader) {
+                toast.error("Group leaders cannot withdraw more than the excess over ₱3,000 MCBU balance");
+            } else if (occurence == 'daily') {
+                toast.error("Clients cannot withdraw more than the excess over ₱1,000 MCBU balance");
+            }
+
+            return;
+        }
+          
     
         // API call for saving the form
         if (mode === 'add') {
@@ -195,8 +226,6 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
                 lo_id: value
             }));
             
-            console.log(`Set ${field} to ${value}`);
-            
             // Fetch groups for this LO
             getListGroup(user.transactionType, value, 'filter');
         }
@@ -216,8 +245,6 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
             ...prev,
             group_id: value
         }));
-        
-        console.log(`Set ${field} to ${value}`);
         
         // Get clients for this group
         getListClient('active', value);
@@ -256,8 +283,6 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
             ...prev,
             ...updates
         }));
-        
-        console.log("Form state after client selection:", JSON.stringify({ ...formState, ...updates }));
         
         setLoading(false);
     };
@@ -372,8 +397,49 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
         onClose();
     };
 
+    // If loan is passed directly, use its values based on origin
+    useEffect(() => {
+        // Only use loan data if origin is "collection" and loan is not null
+        if (origin === "collection" && loan && Object.keys(loan).length > 0) {
+            setSlotNo(loan.slotNo || null);
+            setLoanBalance(loan.loanBalance || 0);
+            setMcbu(loan.mcbu || 0);
+            setOccurence(loan.occurence || 'daily');
+            
+            // Update form state with loan values - use all available loan data
+            setFormState(prev => ({
+                ...prev,
+                loan_id: loan.loanId || prev.loan_id,
+                branch_id: loan.branchId || prev.branch_id,
+                lo_id: loan.loId || prev.lo_id,
+                group_id: loan.groupId || prev.group_id,
+                client_id: loan.clientId || prev.client_id,
+                group_leader: loan.client?.groupLeader || loan.groupLeader || false,
+                division_id: currentUser.divisionId || prev.division_id,
+                region_id: currentUser.regionId || prev.region_id,
+                area_id: currentUser.areaId || prev.area_id
+            }));
+            
+            // Also update Formik if available
+            if (formikRef.current) {
+                formikRef.current.setFieldValue('loan_id', loan.loanId || '');
+                formikRef.current.setFieldValue('branch_id', loan.branchId || '');
+                formikRef.current.setFieldValue('lo_id', loan.loId || '');
+                formikRef.current.setFieldValue('group_id', loan.groupId || '');
+                formikRef.current.setFieldValue('client_id', loan.clientId || '');
+                formikRef.current.setFieldValue('group_leader', loan.client?.groupLeader || loan.groupLeader || false);
+                formikRef.current.setFieldValue('division_id', currentUser.divisionId);
+                formikRef.current.setFieldValue('region_id', currentUser.regionId);
+                formikRef.current.setFieldValue('area_id', currentUser.areaId);
+            }
+        }
+    }, [origin, loan, currentUser]);
+
     // Initial setup effect
     useEffect(() => {
+        // Skip API calls if in collection mode with loan data
+        if (origin === "collection" && loan) return;
+        
         if (currentUser && currentUser.role && currentUser.role.rep === 3) {
             getListUser();
         }
@@ -403,16 +469,16 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
                 getListGroup(currentUser.transactionType, currentUser._id, 'filter');
             }
         }
-    }, [currentUser]);
+    }, [currentUser, origin, loan]);
 
     // Mode change effect
     useEffect(() => {
         let mounted = true;
         
         if (mode === 'add') {
-            setTitle('Add Mcbu Withdrawal');
+            setTitle('Add MCBU Withdrawal');
         } else if (mode === 'edit') {
-            setTitle('Edit Mcbu Withdrawal');
+            setTitle('Edit MCBU Withdrawal');
         }
     
         mounted && setLoading(false);
@@ -422,31 +488,36 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
         };
     }, [mode]);
 
-    // Fetch groups when editing existing data
+    // Fetch groups when editing existing data or when it's not from collection
     useEffect(() => {
-        const user = userList.find(u => u._id === mcbuData?.lo_id);
-        if (user) {
-            getListGroup(user.transactionType, user._id, 'filter');
+        // Skip API calls if origin is collection
+        if (origin === "collection") return;
+        
+        // Get loan officer ID from mcbuData
+        let selectedLoId = mcbuData?.lo_id;
+        
+        // If we have a loan officer ID, find the user and get their groups
+        if (selectedLoId) {
+            const user = userList.find(u => u._id === selectedLoId);
+            if (user) {
+                getListGroup(user.transactionType, user._id, 'filter');
+            }
         }
-    }, [mcbuData, userList]);
+    }, [mcbuData, origin, userList]);
 
-    // Fetch clients when editing existing data
+    // Fetch clients when editing existing data or when it's not from collection
     useEffect(() => {
-        const group = groupList.find(u => u._id === mcbuData?.group_id);
-        if (group) {
-            getListClient('active', group._id);
+        // Skip API calls if origin is collection
+        if (origin === "collection") return;
+        
+        // Get group ID from mcbuData
+        let selectedGroupId = mcbuData?.group_id;
+        
+        // If we have a group ID, get its clients
+        if (selectedGroupId) {
+            getListClient('active', selectedGroupId);
         }
-    }, [mcbuData, groupList]);
-
-    // Update client-related info when editing
-    useEffect(() => {
-        const client = clientList.find(u => u._id === mcbuData?.client_id);
-        if (client) {
-            setSlotNo(client.slotNo);
-            setLoanBalance(client.loans[0].loanBalance || 0);
-            setMcbu(client.loans[0].mcbu || 0);
-        }
-    }, [clientList]);
+    }, [mcbuData, origin, groupList]);
 
     // Update form state when editing an existing record
     useEffect(() => {
@@ -476,6 +547,30 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
         }
     }, [formState]);
 
+     // Calculate maximum withdrawal amount based on MCBU balance and client type
+     useEffect(() => {
+        const groupLeader = formState.group_leader || 
+                           (loan?.client?.groupLeader) || 
+                           (loan?.groupLeader) || 
+                           false;
+        
+        setIsGroupLeader(groupLeader);
+        
+        let maxAmount = 0;
+        
+        if (groupLeader) {
+            // Group leaders can only withdraw excess over 3000
+            maxAmount = Math.max(0, mcbu - 3000);
+        } else if (occurence === 'daily') {
+            // Regular clients can only withdraw excess over 1000
+            maxAmount = Math.max(0, mcbu - 1000);
+        } else {
+            maxAmount = mcbu;
+        }
+        
+        setMaxWithdrawalAmount(maxAmount);
+    }, [mcbu, formState.group_leader, loan, occurence]);
+
     return (
         <React.Fragment>
             <SideBar title={title} showSidebar={showSidebar} setShowSidebar={setShowSidebar} hasCloseButton={false}>
@@ -502,47 +597,96 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
                                 isValidating
                             }) => (
                                 <form onSubmit={handleSubmit} autoComplete="off">
-                                    {currentUser.role && currentUser.role.rep === 3 && (
-                                        <div className="mt-4">
-                                            <SelectDropdown
-                                                name="lo_id"
-                                                field="lo_id"
-                                                value={formState.lo_id}
-                                                label="Loan Officer (Required)"
-                                                options={userList}
-                                                onChange={(field, value) => handleLoIdChange(field, value)}
-                                                onBlur={setFieldTouched}
-                                                placeholder="Select Loan Officer"
-                                                errors={touched.lo_id && errors.lo_id ? errors.lo_id : undefined}
-                                            />
-                                        </div>
+                                    {/* Show read-only fields when origin is collection */}
+                                    {origin === "collection" && loan ? (
+                                        <>
+                                            {/* Client Name */}
+                                            <div className="mt-4">
+                                                <div className={`flex flex-col border rounded-md px-4 py-2 bg-white border-main`}>
+                                                    <div className="flex justify-between">
+                                                        <label className={`font-proxima-bold text-xs font-bold text-main`}>
+                                                            Client Name
+                                                        </label>
+                                                    </div>
+                                                    <span className="text-gray-600 font-medium">{loan.fullName}</span>
+                                                </div>
+                                            </div>
+                                            
+                                            {/* Group Name */}
+                                            <div className="mt-4">
+                                                <div className={`flex flex-col border rounded-md px-4 py-2 bg-white border-main`}>
+                                                    <div className="flex justify-between">
+                                                        <label className={`font-proxima-bold text-xs font-bold text-main`}>
+                                                            Group
+                                                        </label>
+                                                    </div>
+                                                    <span className="text-gray-600">{loan.groupName || '-'}</span>
+                                                </div>
+                                            </div>
+                                            
+                                            {/* Branch Name - if available */}
+                                            {loan.branchName && (
+                                                <div className="mt-4">
+                                                    <div className={`flex flex-col border rounded-md px-4 py-2 bg-white border-main`}>
+                                                        <div className="flex justify-between">
+                                                            <label className={`font-proxima-bold text-xs font-bold text-main`}>
+                                                                Branch
+                                                            </label>
+                                                        </div>
+                                                        <span className="text-gray-600">{loan.branchName}</span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <>
+                                            {/* Show Selection Dropdowns when not in collection mode */}
+                                            {currentUser.role && currentUser.role.rep === 3 && (
+                                                <div className="mt-4">
+                                                    <SelectDropdown
+                                                        name="lo_id"
+                                                        field="lo_id"
+                                                        value={formState.lo_id}
+                                                        label="Loan Officer (Required)"
+                                                        options={userList}
+                                                        onChange={(field, value) => handleLoIdChange(field, value)}
+                                                        onBlur={setFieldTouched}
+                                                        placeholder="Select Loan Officer"
+                                                        errors={touched.lo_id && errors.lo_id ? errors.lo_id : undefined}
+                                                    />
+                                                </div>
+                                            )}
+                                            
+                                            <div className="mt-4">
+                                                <SelectDropdown
+                                                    name="group_id"
+                                                    field="group_id"
+                                                    value={formState.group_id}
+                                                    label="Group (Required)"
+                                                    options={groupList}
+                                                    onChange={(field, value) => handleGroupIdChange(field, value)}
+                                                    onBlur={setFieldTouched}
+                                                    placeholder="Select Group"
+                                                    errors={touched.group_id && errors.group_id ? errors.group_id : undefined}
+                                                />
+                                            </div>
+                                            
+                                            <div className="mt-4">
+                                                <SelectDropdown
+                                                    name="client_id"
+                                                    field="client_id"
+                                                    value={formState.client_id}
+                                                    label="Client (Required)"
+                                                    options={clientList}
+                                                    onChange={(field, value) => handleClientIdChange(field, value)}
+                                                    onBlur={setFieldTouched}
+                                                    placeholder="Select Client"
+                                                    errors={touched.client_id && errors.client_id ? errors.client_id : undefined}
+                                                />
+                                            </div>
+                                        </>
                                     )}
-                                    <div className="mt-4">
-                                        <SelectDropdown
-                                            name="group_id"
-                                            field="group_id"
-                                            value={formState.group_id}
-                                            label="Group (Required)"
-                                            options={groupList}
-                                            onChange={(field, value) => handleGroupIdChange(field, value)}
-                                            onBlur={setFieldTouched}
-                                            placeholder="Select Group"
-                                            errors={touched.group_id && errors.group_id ? errors.group_id : undefined}
-                                        />
-                                    </div>
-                                    <div className="mt-4">
-                                        <SelectDropdown
-                                            name="client_id"
-                                            field="client_id"
-                                            value={formState.client_id}
-                                            label="Client (Required)"
-                                            options={clientList}
-                                            onChange={(field, value) => handleClientIdChange(field, value)}
-                                            onBlur={setFieldTouched}
-                                            placeholder="Select Client"
-                                            errors={touched.client_id && errors.client_id ? errors.client_id : undefined}
-                                        />
-                                    </div>
+                                    
                                     <div className="mt-4">
                                         <div className={`flex flex-col border rounded-md px-4 py-2 bg-white border-main`}>
                                             <div className="flex justify-between">
@@ -550,9 +694,10 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
                                                     Slot Number
                                                 </label>
                                             </div>
-                                            <span className="text-gray-400">{slotNo ? slotNo : '-'}</span>
+                                            <span className="text-gray-600">{slotNo ? slotNo : '-'}</span>
                                         </div>
                                     </div>
+                                    
                                     <div className="mt-4">
                                         <div className={`flex flex-col border rounded-md px-4 py-2 bg-white border-main`}>
                                             <div className="flex justify-between">
@@ -560,9 +705,10 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
                                                     Loan Balance
                                                 </label>
                                             </div>
-                                            <span className="text-gray-400">{formatPricePhp(loanBalance)}</span>
+                                            <span className="text-gray-600">{formatPricePhp(loanBalance)}</span>
                                         </div>
                                     </div>
+                                    
                                     <div className="mt-4">
                                         <div className={`flex flex-col border rounded-md px-4 py-2 bg-white border-main`}>
                                             <div className="flex justify-between">
@@ -570,9 +716,10 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
                                                     MCBU Balance
                                                 </label>
                                             </div>
-                                            <span className="text-gray-400">{formatPricePhp(mcbu)}</span>
+                                            <span className="text-gray-600 font-medium">{formatPricePhp(mcbu)}</span>
                                         </div>
                                     </div>
+                                    
                                     <div className="mt-4">
                                         <InputNumber
                                             name="mcbu_withdrawal_amount"
@@ -585,13 +732,20 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
                                             setFieldValue={setFieldValue}
                                             errors={touched.mcbu_withdrawal_amount && errors.mcbu_withdrawal_amount ? errors.mcbu_withdrawal_amount : undefined}
                                         />
+                                        {mcbu > 0 && (
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                Maximum withdrawal amount: {formatPricePhp(maxWithdrawalAmount)}
+                                            </p>
+                                        )}
                                     </div>
+                                    
                                     <div className="flex flex-row mt-5">
                                         <ButtonOutline label="Cancel" onClick={handleCancel} className="mr-3" />
                                         <ButtonSolid 
                                             label="Submit" 
                                             type="submit" 
                                             isSubmitting={isValidating && isSubmitting} 
+                                            disabled={mcbu <= 0}
                                         />
                                     </div>
                                 </form>
