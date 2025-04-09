@@ -26,14 +26,12 @@ async function getData(req, res) {
                 limit: isNaN(+_limit) ? null : +_limit,
             }
         })
-        .catch(err => ({ 
-            status: 500, 
-            result: err
-        }))
-        .then(res => ({
-            status: 200,
-            result: res.data.results.map(c => c.data)
-        }))
+        .then(res => {
+            return ({
+                status: res.errors?.length ? 500 : 200,
+                result: res.errors?.length ? res.errors : res.data.results.map(c => c.data)
+            })
+        })
     
         res.status(status)
             .setHeader('Content-Type', 'application/json')
