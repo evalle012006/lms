@@ -1,5 +1,5 @@
 import { LO_10_DAILY_GROUPS, LO_11_DAILY_GROUPS, LO_12_DAILY_GROUPS, LO_13_DAILY_GROUPS, LO_14_DAILY_GROUPS, LO_15_DAILY_GROUPS, LO_16_DAILY_GROUPS, LO_17_DAILY_GROUPS, LO_18_DAILY_GROUPS, LO_19_DAILY_GROUPS, LO_1_DAILY_GROUPS, LO_20_DAILY_GROUPS, LO_2_DAILY_GROUPS, LO_3_DAILY_GROUPS, LO_4_DAILY_GROUPS, LO_5_DAILY_GROUPS, LO_6_DAILY_GROUPS, LO_7_DAILY_GROUPS, LO_8_DAILY_GROUPS, LO_9_DAILY_GROUPS, WEEKLY_GROUPS } from '@/lib/constants';
-import { USER_FIELDS } from '@/lib/graph.fields';
+import { USER_FIELDS, AREA_FIELDS, REGION_FIELDS, DIVISION_FIELDS } from '@/lib/graph.fields';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, insertQl, queryQl } from '@/lib/graph/graph.util';
 import { generateUUID } from '@/lib/utils';
@@ -16,6 +16,18 @@ const graph = new GraphProvider();
 const USER_TYPE = createGraphType('users', `
 ${USER_FIELDS}
 `)
+
+const AREA_TYPE = createGraphType('areas', `
+${AREA_FIELDS}
+`);
+
+const REGION_TYPE = createGraphType('regions', `
+${REGION_FIELDS}
+`);
+
+const DIVISION_TYPE = createGraphType('divisions', `
+${DIVISION_FIELDS}
+`);
 
 const GROUP_TYPE = createGraphType('groups', `_id`);
 
@@ -46,13 +58,7 @@ async function save(req, res) {
             message: `User with the email "${data.email}" already exists`
         };
     } else {
-        let assignedBranch = data.designatedBranch;
-        let assignedBranchId = data.designatedBranchId;
-        if (typeof assignedBranch !== "string") {
-            assignedBranch = JSON.parse(data.designatedBranch);
-            assignedBranchId = JSON.parse(data.designatedBranchId);
-        }
-
+        const userRole = JSON.parse(data.role);
         let userData = {
             _id: generateUUID(),
             firstName: data.firstName,
@@ -63,12 +69,63 @@ async function save(req, res) {
             logged: false,
             lastLogin: null,
             dateAdded: data.currentDate,
-            role: JSON.parse(data.role),
+            role: userRole,
             loNo: typeof data.loNo == 'string' ? parseInt(data.loNo) : data.loNo,
-            designatedBranch: assignedBranch,
-            designatedBranchId: assignedBranchId,
             transactionType: data.transactionType,
             root: false,
+        };
+
+        if (userRole.rep === 3 || userRole.rep === 4) {
+            userData.designatedBranch = (data.designatedBranch && typeof data.designatedBranch !== "string") ? JSON.parse(data.designatedBranch) : data.designatedBranch;
+            userData.designatedBranchId = (data.designatedBranchId && typeof data.designatedBranchId !== "string") ? JSON.parse(data.designatedBranch)._id : data.designatedBranchId;
+
+            userData.areaId = data.areaId;
+            userData.regionId = data.regionId;
+            userData.divisionId = data.divisionId;
+        } else if (userRole.rep === 2) {
+            if (userRole.shortCode === 'deputy_director') {
+                // Get division ID where user is in managerIds array
+                const divisionsResult = await graph.query(
+                    queryQl(DIVISION_TYPE('divisions'), {
+                        where: {
+                            managerIds: { _contains: userData._id }
+                        }
+                    })
+                );
+                
+                if (divisionsResult.length > 0) {
+                    userData.divisionId = divisionsResult[0]._id;
+                }
+            } else if (userRole.shortCode === 'regional_manager') {
+                // Get region ID where user is in managerIds array
+                const regionsResult = await graph.query(
+                    queryQl(REGION_TYPE('regions'), {
+                        where: {
+                            managerIds: { _contains: userData._id }
+                        }
+                    })
+                );
+                
+                if (regionsResult.length > 0) {
+                    userData.regionId = regionsResult[0]._id;
+                    userData.divisionId = regionsResult[0].divisionId;
+                }
+            } else if (userRole.shortCode === 'area_admin') {
+                // Get area ID where user is in managerIds array
+                const areasResult = await graph.query(
+                    queryQl(AREA_TYPE('areas'), {
+                        where: {
+                            managerIds: { _contains: userData._id }
+                        }
+                    })
+                );
+                
+                if (areasResult.length > 0) {
+                    userData.areaId = areasResult[0]._id;
+                    userData.regionId = areasResult[0].regionId;
+                    userData.divisionId = areasResult[0].divisionId;
+                }
+            }
         }
 
         if (userData.role.rep === 3) {

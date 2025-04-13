@@ -75,6 +75,11 @@ async function save(req, res) {
                     collection.mispayment = false;
                 }
 
+                if (!collection.transferId) {
+                    collection.transfer = false;
+                    collection.transferred = false;
+                }
+
                 if (collection.loanBalance <= 0) {
                     if (collection.occurence == 'daily') {
                         collection.noOfPayments = 60;
@@ -125,7 +130,7 @@ async function save(req, res) {
                     await updateClient(user_id, mutationQl, collection);
                 }
 
-                if (collection.status == 'tomorrow' && collection.mcbuWithdrawal > 0) {
+                if (collection.status == 'tomorrow' && collection.mcbuWithdrawal > 0 && !collection.hasMcbuWithdrawal) {
                     await updateLoanMcbuWithdrawal(user_id, mutationQl, collection)
                 }
             }
@@ -251,27 +256,29 @@ async function updateLoan(user_id, mutationQL, collection, currentDate) {
         }
         loan.mcbuCollection = loan.mcbuCollection ? loan.mcbuCollection + parseFloat(collection.mcbuCol) : parseFloat(collection.mcbuCol);
 
-        if (loan.occurence == 'daily' && collection.remarks) {
-            if (collection.remarks.value == 'reloaner-wd') {
-                loan.mcbuWithdrawal = collection.mcbuWithdrawal;
-            } else if (collection.remarks.value == 'reloaner-cont') {
-                loan.mcbuWithdrawal = 0;
-            }
-        } else {
-            loan.mcbuWithdrawal = loan.mcbuWithdrawal ? loan.mcbuWithdrawal + parseFloat(collection.mcbuWithdrawal) : collection.mcbuWithdrawal ? parseFloat(collection.mcbuWithdrawal) : 0;
-        }
-
-        if (collection.mcbuWithdrawalFlag) {
-            loan.mcbuWithdrawal = collection.mcbuWithdrawal;
-        }
-
-        if (collection?.mcbuDailyWithdrawal > 0) {
-            if (loan.hasOwnProperty('mcbuDailyWithdrawal')) {
-                loan.mcbuDailyWithdrawal += collection.mcbuDailyWithdrawal;
+        if (!collection?.hasMcbuWithdrawal) {
+            if (loan.occurence == 'daily' && collection.remarks) {
+                if (collection.remarks.value == 'reloaner-wd') {
+                    loan.mcbuWithdrawal = collection.mcbuWithdrawal;
+                } else if (collection.remarks.value == 'reloaner-cont') {
+                    loan.mcbuWithdrawal = 0;
+                }
             } else {
-                loan.mcbuDailyWithdrawal = collection.mcbuDailyWithdrawal;
+                loan.mcbuWithdrawal = loan.mcbuWithdrawal ? loan.mcbuWithdrawal + parseFloat(collection.mcbuWithdrawal) : collection.mcbuWithdrawal ? parseFloat(collection.mcbuWithdrawal) : 0;
+            }
+
+            if (collection.mcbuWithdrawalFlag) {
+                loan.mcbuWithdrawal = collection.mcbuWithdrawal;
             }
         }
+
+        // if (collection?.mcbuDailyWithdrawal > 0) {
+        //     if (loan.hasOwnProperty('mcbuDailyWithdrawal')) {
+        //         loan.mcbuDailyWithdrawal += collection.mcbuDailyWithdrawal;
+        //     } else {
+        //         loan.mcbuDailyWithdrawal = collection.mcbuDailyWithdrawal;
+        //     }
+        // }
 
         if (collection.hasOwnProperty('mcbuInterest')) {
             loan.mcbuInterest = loan.mcbuInterest ? loan.mcbuInterest + collection.mcbuInterest : collection.mcbuInterest !== '-' ? collection.mcbuInterest : 0;
