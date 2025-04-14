@@ -20,6 +20,7 @@ import { setUserList } from "@/redux/actions/userActions";
 const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, loan = {}, showSidebar, setShowSidebar, onClose }) => {
     const formikRef = useRef();
     const dispatch = useDispatch();
+    const currentDate = useSelector(state => state.systemSettings.currentDate);
     const currentUser = useSelector(state => state.user.data);
     const [loading, setLoading] = useState(false);
     const [title, setTitle] = useState('Add Mcbu Withdrawal');
@@ -120,7 +121,7 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
             group_id: formState.group_id,
             client_id: formState.client_id,
             mcbu_withdrawal_amount: values.mcbu_withdrawal_amount, // Get this from form values
-            inserted_date: new Date().toISOString(),
+            inserted_date: currentDate,
             inserted_by: currentUser._id,
             status: 'pending',
             division_id: formState.division_id,
@@ -188,7 +189,7 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
             const apiUrl = getApiBaseUrl() + 'transactions/mcbu-withdrawal/update';
             submitValues._id = mcbuData?._id;
             submitValues.modifiedBy = currentUser._id;
-            submitValues.modifiedDate = new Date();
+            submitValues.modifiedDate = currentDate;
             
             fetchWrapper.post(apiUrl, submitValues)
                 .then(response => {

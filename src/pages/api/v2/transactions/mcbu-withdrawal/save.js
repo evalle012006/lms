@@ -24,7 +24,6 @@ async function save(req, res) {
     const insertData = {
         _id: generateUUID(),
         ...data,
-        inserted_date: new Date().toISOString(),
         status: data.status || "pending"
     };
     

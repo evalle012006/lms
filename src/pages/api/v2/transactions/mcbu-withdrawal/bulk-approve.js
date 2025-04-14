@@ -91,7 +91,7 @@ async function bulkApprove(req, res) {
         // Set up the update data for withdrawal
         const updateData = {
           status: 'approved',
-          approved_date: new Date().toISOString(),
+          approved_date: currentDate,
           modified_by: modified_by,
           modified_date: modified_date || new Date().toISOString()
         };
@@ -151,7 +151,8 @@ async function bulkApprove(req, res) {
             // Now save the cash collection
             await saveCashCollection(
               user_id, 
-              updatedLoan, // Use the updated loan data
+              updatedLoan,
+              withdrawalAmount,
               group, 
               loan_id, 
               currentDate, 
@@ -212,7 +213,7 @@ async function bulkApprove(req, res) {
   }
 }
 
-async function saveCashCollection(user_id, loan, group, loanId, currentDate, groupStatus, addToMutationList) {
+async function saveCashCollection(user_id, loan, withdrawalAmount, group, loanId, currentDate, groupStatus, addToMutationList) {
   const currentReleaseAmount = parseFloat(loan.amountRelease || 0);
 
   // Check if a cash collection already exists for this client on the current date
@@ -251,7 +252,7 @@ async function saveCashCollection(user_id, loan, group, loanId, currentDate, gro
       fullPayment: loan.fullPayment,
       mcbu: loan.mcbu || 0,
       mcbuCol: 0,
-      mcbuWithdrawal: loan.mcbuWithdrawal || 0,
+      mcbuWithdrawal: withdrawalAmount,
       mcbuReturnAmt: 0 || 0,
       remarks: '',
       status: loan.status,
@@ -289,7 +290,7 @@ async function saveCashCollection(user_id, loan, group, loanId, currentDate, gro
     addToMutationList(alias => updateQl(cashCollectionsType(alias), {
       set: {
         mcbu: loan.mcbu || 0,
-        mcbuWithdrawal: loan.mcbuWithdrawal || 0,
+        mcbuWithdrawal: withdrawalAmount,
         modifiedBy: "automation-mcbu-withdrawal",
         modifiedDateTime: new Date(),
       },
