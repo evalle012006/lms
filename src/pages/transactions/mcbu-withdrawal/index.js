@@ -9,7 +9,6 @@ import { toast } from "react-toastify";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 import { getApiBaseUrl } from "@/lib/constants";
-import AddUpdateMcbuWithdrawalDrawer from "@/components/transactions/mcbu-withdrawal/AddUpdateMcbuWithdrawalDrawer";
 import Modal from "@/lib/ui/Modal";
 
 const McbuWithdrawalPage = () => {
@@ -25,7 +24,6 @@ const McbuWithdrawalPage = () => {
 
     const [mode, setMode] = useState('add');
     const [showSidebar, setShowSidebar] = useState(false);
-    const [actionButtons, setActionButtons] = useState([]);
 
     const [editItem, setEditItem] = useState(null);
 
@@ -36,6 +34,26 @@ const McbuWithdrawalPage = () => {
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [rejectReason, setRejectReason] = useState('');
     const [deleteItem, setDeleteItem] = useState(null);
+
+    const [pendingList, setPendingList] = useState([]);
+    const [approvedList, setApprovedList] = useState([]);
+    const [activeTab, setActiveTab] = useState('pending');
+
+    // Handle tab change
+    const handleTabChange = (tab) => {
+        setActiveTab(tab);
+        // Reset selections when changing tabs
+        setSelectedClients([]);
+        setSelectAll(false);
+    };
+
+    // Get the appropriate data based on active tab and level
+    const getActiveData = () => {
+        if (currentLevel !== 'group') {
+            return list;
+        }
+        return activeTab === 'pending' ? pendingList : approvedList;
+    };
 
     // Column configs remain the same
     const columnConfigs = {
@@ -418,15 +436,9 @@ const McbuWithdrawalPage = () => {
             const queryParams = new URLSearchParams(filterParams);
             const url = getApiBaseUrl() + 'transactions/mcbu-withdrawal/list?' + queryParams;
             
-            console.log('Fetching data for level:', currentLevel);
-            console.log('Request URL:', url);
-            console.log('Filter params:', filterParams);
-            
             const response = await fetchWrapper.get(url);
             
             if (response.success) {
-                console.log('Raw API response:', response);
-                
                 if (!response.data || !Array.isArray(response.data)) {
                     console.error('API returned invalid data format:', response.data);
                     setList([]);
@@ -442,13 +454,36 @@ const McbuWithdrawalPage = () => {
                 
                 // Process data for the current level
                 const processedData = processDataByLevel(response.data, currentLevel);
-                console.log('Processed data for level', currentLevel, ':', processedData);
                 
                 if (processedData.length === 0) {
                     console.log('No data available after processing for level:', currentLevel);
                 }
                 
                 setList(processedData);
+
+                // Separate pending and approved items when at client level
+                if (currentLevel === 'group') {
+                    // Get today's date at the start of the day for comparison
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    
+                    // Filter pending and approved items for today
+                    const pending = processedData.filter(item => item.status === 'pending');
+                    const approved = processedData.filter(item => {
+                        if (item.status !== 'approved') return false;
+                        
+                        // Check if approved today
+                        if (item.approved_date) {
+                            const approvedDate = new Date(item.approved_date);
+                            approvedDate.setHours(0, 0, 0, 0);
+                            return approvedDate.getTime() === today.getTime();
+                        }
+                        return false;
+                    });
+                    
+                    setPendingList(pending);
+                    setApprovedList(approved);
+                }
             } else {
                 console.error('API error:', response.message);
                 toast.error(response.message || 'Failed to fetch data');
@@ -747,17 +782,6 @@ const McbuWithdrawalPage = () => {
         setShowFilters(!showFilters);
     }
 
-    useEffect(() => {
-        const actnBtn = [];
-        if (currentUser.role.rep >= 3) {
-            actnBtn.push([
-                <ButtonSolid key="add-loan" label="Add Loan" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
-            ]);
-        }
-
-        setActionButtons(actnBtn);
-    }, []);
-
     // State for selected clients
     const [selectedClients, setSelectedClients] = useState([]);
     const [selectAll, setSelectAll] = useState(false);
@@ -770,13 +794,21 @@ const McbuWithdrawalPage = () => {
             setSelectedClients([...selectedClients, client]);
         }
     };
-    
-    // Handle select all clients
+
     const handleSelectAllClients = () => {
+        // Only work with pending items in the pending tab
+        if (activeTab !== 'pending') return;
+        
         if (selectAll) {
+            // Deselect all
             setSelectedClients([]);
         } else {
-            setSelectedClients([...list]);
+            // Only select pending items that are actionable
+            const selectableItems = pendingList.filter(item => 
+                item.status === 'pending' && item._id && item.mcbu_withdrawal_amount
+            );
+            
+            setSelectedClients(selectableItems);
         }
         setSelectAll(!selectAll);
     };
@@ -809,6 +841,7 @@ const McbuWithdrawalPage = () => {
                 toast.success(`Successfully approved ${selectedClients.length} withdrawal requests`);
                 setSelectedClients([]);
                 setSelectAll(false);
+                setActiveTab('approved');
                 fetchMcbuWithdrawals(); // Refresh data
             } else {
                 toast.error(response.message || 'Failed to approve withdrawals');
@@ -918,56 +951,65 @@ const McbuWithdrawalPage = () => {
         setShowDeleteModal(false);
         setDeleteItem(null);
     };
-    
-    // Define dropdown actions for ActionDropDown component
+
     const rowActions = [
         {
             label: 'Edit',
             action: handleEditRow,
-            hidden: false
+            // Only show edit option for pending items
+            hidden: (rowData) => rowData.status !== 'pending'
         },
         {
             label: 'Delete',
             action: (rowData) => {
                 handleDeleteRow(rowData);
             },
-            hidden: false
+            // Only show delete option for pending items
+            hidden: (rowData) => rowData.status !== 'pending'
         }
     ];
     
     // Get custom columns for client level that include checkboxes
+    // Get custom columns for client level that include checkboxes only for pending items
     const getClientLevelColumns = () => {
         if (currentLevel === 'group') {
-            return [
-                {
-                    Header: () => (
-                        <div className="flex items-center">
-                            <input
-                                type="checkbox"
-                                checked={selectAll}
-                                onChange={handleSelectAllClients}
-                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                            />
-                        </div>
-                    ),
-                    accessor: '_selection',
-                    Cell: ({ row }) => (
-                        <div className="flex items-center">
-                            <input
-                                type="checkbox"
-                                checked={selectedClients.some(c => c._id === row.original._id)}
-                                onChange={() => handleClientSelect(row.original)}
-                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                            />
-                        </div>
-                    ),
-                    width: 'w-12',
-                    disableSortBy: true
-                },
-                ...columnConfigs.group
-                // Removed the actions column definition from here
-                // The ActionDropDown will be handled by the TableComponent's built-in actions mechanism
-            ];
+            // Base columns from config
+            const baseColumns = [...columnConfigs.group];
+            
+            // For pending tab, add checkbox column at the beginning
+            if (activeTab === 'pending') {
+                return [
+                    {
+                        Header: () => (
+                            <div className="flex items-center">
+                                <input
+                                    type="checkbox"
+                                    checked={selectAll}
+                                    onChange={handleSelectAllClients}
+                                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                                />
+                            </div>
+                        ),
+                        accessor: '_selection',
+                        Cell: ({ row }) => (
+                            <div className="flex items-center">
+                                <input
+                                    type="checkbox"
+                                    checked={selectedClients.some(c => c._id === row.original._id)}
+                                    onChange={() => handleClientSelect(row.original)}
+                                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                                />
+                            </div>
+                        ),
+                        width: 'w-12',
+                        disableSortBy: true
+                    },
+                    ...baseColumns
+                ];
+            }
+            
+            // For approved tab, just return the base columns without checkboxes
+            return baseColumns;
         }
         
         return columns;
@@ -987,6 +1029,12 @@ const McbuWithdrawalPage = () => {
         setSelectedClients([]);
         setSelectAll(false);
     }, [currentLevel]);
+
+    // Reset selection state when tab changes
+    useEffect(() => {
+        setSelectedClients([]);
+        setSelectAll(false);
+    }, [activeTab]);
 
     return (
         <Layout>
@@ -1096,6 +1144,32 @@ const McbuWithdrawalPage = () => {
                         )}
                     </div>
                 </div>
+
+                {/* Tabs for Group Level */}
+                {currentLevel === 'group' && (
+                    <div className="flex mb-4 border-b border-gray-200">
+                        <button
+                            onClick={() => handleTabChange('pending')}
+                            className={`py-2 px-4 text-sm font-medium ${
+                                activeTab === 'pending'
+                                    ? 'text-blue-600 border-b-2 border-blue-600'
+                                    : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                            }`}
+                        >
+                            Pending ({pendingList.length})
+                        </button>
+                        <button
+                            onClick={() => handleTabChange('approved')}
+                            className={`py-2 px-4 text-sm font-medium ${
+                                activeTab === 'approved'
+                                    ? 'text-blue-600 border-b-2 border-blue-600'
+                                    : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                            }`}
+                        >
+                            Approved Today ({approvedList.length})
+                        </button>
+                    </div>
+                )}
                 
                 {/* Bulk Actions for Group Level */}
                 {currentLevel === 'group' && (
@@ -1212,8 +1286,8 @@ const McbuWithdrawalPage = () => {
                         </div>
                     ) : (
                         <TableComponent 
-                            columns={columns} 
-                            data={list} 
+                            columns={currentLevel === 'group' ? getClientLevelColumns() : columns} 
+                            data={getActiveData()} 
                             hasActionButtons={currentLevel === 'group'} 
                             rowClick={currentLevel !== 'group' ? handleRowClick : null}
                             showFilters={true}
@@ -1225,9 +1299,16 @@ const McbuWithdrawalPage = () => {
                             dropDownActions={currentLevel === 'group' ? rowActions : []} 
                             dropDownActionOrigin="mcbu-withdrawal"
                             actionDropDownDataOptions={ {currentUser: currentUser} }
+                            emptyStateMessage={
+                                currentLevel === 'group' && activeTab === 'approved' && approvedList.length === 0 
+                                    ? "No approvals made today" 
+                                    : currentLevel === 'group' && activeTab === 'pending' && pendingList.length === 0
+                                    ? "No pending withdrawals"
+                                    : "No data available"
+                            }
                         />
                     )}
-                    {/* {showSidebar && <AddUpdateMcbuWithdrawalDrawer origin='list' mode={mode} mcbuData={editItem} showSidebar={showSidebar} setShowSidebar={setShowSidebar} onClose={handleCloseSidebar} /> } */}
+                    {showSidebar && <AddUpdateMcbuWithdrawalDrawer origin='list' mode={mode} mcbuData={editItem} showSidebar={showSidebar} setShowSidebar={setShowSidebar} onClose={handleCloseSidebar} /> }
                 </div>
             </div>
         </Layout>
