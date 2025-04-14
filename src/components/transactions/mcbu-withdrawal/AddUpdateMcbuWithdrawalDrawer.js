@@ -33,6 +33,7 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
     const [isGroupLeader, setIsGroupLeader] = useState(false);
     const [maxWithdrawalAmount, setMaxWithdrawalAmount] = useState(0);
     const [occurence, setOccurence] = useState('daily');
+    console.log(loan)
 
     // Define a clear initial state based on mcbuData, loan, or defaults
     const initialFormState = {
@@ -620,7 +621,7 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
                                                             Group
                                                         </label>
                                                     </div>
-                                                    <span className="text-gray-600">{loan.groupName || '-'}</span>
+                                                    <span className="text-gray-600">{loan?.group?.name|| '-'}</span>
                                                 </div>
                                             </div>
                                             

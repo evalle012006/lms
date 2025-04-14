@@ -771,20 +771,6 @@ const CashCollectionDetailsPage = () => {
                             collection.transfer = true;
                             transferStr = 'TCR';
                         }
-                        
-                        collection.hasMcbuWithdrawal = false;
-                        if (cc.mcbuWithdrawalList.length > 0) {
-                            const mcbuWithdrawal = cc.mcbuWithdrawalList[cc.mcbuWithdrawalList.length - 1];
-                            collection.hasMcbuWithdrawal = true;
-                            collection.mcbuWithdrawalIsPending = mcbuWithdrawal.status == 'pending' ? true : false;
-                            collection.mcbuWithdrawalId = mcbuWithdrawal._id;
-                            if (mcbuWithdrawal?.status == 'pending') {
-                                collection.mcbuWithdrawal = mcbuWithdrawal.mcbu_withdrawal_amount || 0;
-                                collection.mcbuWithdrawalStr = collection.mcbuWithdrawal > 0 ? formatPricePhp(collection.mcbuWithdrawal) : '-';
-                                // collection.mcbu = collection.mcbu - collection.mcbuWithdrawal;
-                                // collection.mcbuStr = formatPricePhp(collection.mcbu);
-                            }
-                        }
                     } else {
                         return;
                     }
@@ -801,6 +787,20 @@ const CashCollectionDetailsPage = () => {
 
                 collection.mcbuWithdrawFlag = false;
                 collection.mcbuInterestFlag = false;
+
+                collection.hasMcbuWithdrawal = false;
+                if (cc.mcbuWithdrawalList.length > 0) {
+                    const mcbuWithdrawal = cc.mcbuWithdrawalList[cc.mcbuWithdrawalList.length - 1];
+                    collection.hasMcbuWithdrawal = true;
+                    collection.mcbuWithdrawalIsPending = mcbuWithdrawal.status == 'pending' ? true : false;
+                    collection.mcbuWithdrawalId = mcbuWithdrawal._id;
+                    if (mcbuWithdrawal?.status == 'pending') {
+                        collection.mcbuWithdrawal = mcbuWithdrawal.mcbu_withdrawal_amount || 0;
+                        collection.mcbuWithdrawalStr = collection.mcbuWithdrawal > 0 ? formatPricePhp(collection.mcbuWithdrawal) : '-';
+                        // collection.mcbu = collection.mcbu - collection.mcbuWithdrawal;
+                        // collection.mcbuStr = formatPricePhp(collection.mcbu);
+                    }
+                }
 
                 if (collection.status === 'completed') {
                     collection.noOfPayments = 60;
@@ -828,6 +828,7 @@ const CashCollectionDetailsPage = () => {
                     if ((currentLoan.fullPaymentDate === currentDate && (loan?.loanFor == 'today' || (loan?.loanFor == 'tomorrow' && diff >= 0)))) { // fullpayment with pending/tomorrow
                         const mcbuWithdrawal = loan.mcbuWithdrawal > 0 ? loan.mcbuWithdrawal : currentLoan.mcbuWithdrawal;
                         cashCollection[index] = {
+                            ...cashCollection[index],
                             client: currentLoan.client,
                             coMaker: (loan.coMaker && typeof loan.coMaker == 'number') ? loan.coMaker : '-',
                             slotNo: loan.slotNo,
@@ -901,6 +902,7 @@ const CashCollectionDetailsPage = () => {
                         }
                     } else if (currentLoan.status !== 'active' && (currentLoan.status == 'completed' && !currentLoan?.advance  && (loan?.loanFor == 'today' || (loan?.loanFor == 'tomorrow' && diff >= 0)))) {
                         cashCollection[index] = {
+                            ...cashCollection[index],
                             client: currentLoan.client,
                             coMaker: (loan.coMaker && typeof loan.coMaker == 'number') ? loan.coMaker : '-',
                             slotNo: loan.slotNo,
