@@ -1204,7 +1204,7 @@ const CashCollectionDetailsPage = () => {
                         && !cc.remarks.value?.startsWith('collection-') && cc.remarks.value !== 'matured-past due') ) {
                         errorMsg.add(`Actual collection should be divisible by ${cc.activeLoan}.`);
                     }
-                } else if (cc.loanBalance > 0 && parseFloat(cc.paymentCollection) === (cc.activeLoan * 2) && (!cc.remarks || cc.remarks && cc.remarks.value !== "advance payment" && cc.remarks.value !== "past due collection")) {
+                } else if (cc.loanBalance > 0 && parseFloat(cc.paymentCollection) === (cc.activeLoan * 2) && (!cc.remarks || cc.remarks && cc.remarks.value !== "double payment" && cc.remarks.value !== "past due collection")) {
                     errorMsg.add('Error occured. Actual collection is a double payment please set remarks as Double Payment.');
                 } else if (cc.loanBalance > 0 && parseFloat(cc.paymentCollection) > parseFloat(cc.activeLoan) && parseFloat(cc.paymentCollection) > parseFloat(cc.activeLoan * 2) && cc.loanBalance !== 0) {
                     if (parseFloat(cc.paymentCollection) % parseFloat(cc.activeLoan) === 0 && (!cc.remarks || cc.remarks && cc.remarks.value !== "advance payment" && cc.remarks.value !== "past due collection")) {
