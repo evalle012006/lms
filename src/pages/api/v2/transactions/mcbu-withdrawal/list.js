@@ -28,7 +28,9 @@ async function list(req, res) {
         branch_id = null, 
         lo_id = null, 
         group_id = null, 
-        dateFilter 
+        dateFilter,
+        currentDate = null,
+        applyDateFilter = null // Changed to null as default
     } = req.query;
     
     let filter = {};
@@ -72,6 +74,14 @@ async function list(req, res) {
             _gte: from_dt,
             _lte: to_dt,
         };
+    } 
+    // Handle current date filter if provided and applyDateFilter is true
+    else if (currentDate && applyDateFilter === 'true') {
+        // Use the exact date for filtering
+        filter.inserted_date = { _eq: currentDate };
+        console.log('Applying date filter for', currentDate);
+    } else if (currentDate && applyDateFilter !== 'true') {
+        console.log('Not applying date filter, showing all records');
     }
 
     let graphRes;

@@ -12,6 +12,7 @@ import { getApiBaseUrl } from "@/lib/constants";
 import Modal from "@/lib/ui/Modal";
 
 const McbuWithdrawalPage = () => {
+    const currentDate = useSelector(state => state.systemSettings.currentDate);
     const currentUser = useSelector(state => state.user.data);
     const [loading, setLoading] = useState(true);
     const [list, setList] = useState([]);
@@ -38,6 +39,8 @@ const McbuWithdrawalPage = () => {
     const [pendingList, setPendingList] = useState([]);
     const [approvedList, setApprovedList] = useState([]);
     const [activeTab, setActiveTab] = useState('pending');
+
+    const [showTodayOnly, setShowTodayOnly] = useState(true);
 
     // Handle tab change
     const handleTabChange = (tab) => {
@@ -424,16 +427,32 @@ const McbuWithdrawalPage = () => {
 
     // Fetch data whenever filter params change - unchanged
     useEffect(() => {
-        if (currentLevel) {
+        if (currentDate && currentLevel) {
             fetchMcbuWithdrawals();
         }
-    }, [filterParams, currentLevel]);
+    }, [filterParams, currentLevel, currentDate]);
 
-    // Enhanced fetch function with better error handling and data validation
     const fetchMcbuWithdrawals = async () => {
         setLoading(true);
         try {
             const queryParams = new URLSearchParams(filterParams);
+            
+            // Apply current date filtering for all levels if no custom date filter is applied
+            if (!filterParams.dateFilter) {
+                // Add currentDate parameter
+                queryParams.append('currentDate', currentDate);
+                
+                // Add applyDateFilter parameter based on the toggle status
+                // For group level, always apply date filter
+                // For other levels, only apply if showTodayOnly is true
+                if (currentLevel === 'group' || showTodayOnly) {
+                    queryParams.set('applyDateFilter', 'true');
+                } else {
+                    queryParams.set('applyDateFilter', 'false');
+                }
+            }
+            
+            console.log("Fetching with params:", queryParams.toString());
             const url = getApiBaseUrl() + 'transactions/mcbu-withdrawal/list?' + queryParams;
             
             const response = await fetchWrapper.get(url);
@@ -460,23 +479,24 @@ const McbuWithdrawalPage = () => {
                 }
                 
                 setList(processedData);
-
+        
                 // Separate pending and approved items when at client level
                 if (currentLevel === 'group') {
-                    // Get today's date at the start of the day for comparison
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    
-                    // Filter pending and approved items for today
+                    // Filter pending and approved items
                     const pending = processedData.filter(item => item.status === 'pending');
+                    
+                    // Only show items that were approved today in the "Approved Today" tab
                     const approved = processedData.filter(item => {
                         if (item.status !== 'approved') return false;
                         
-                        // Check if approved today
+                        // Check if approved today by comparing date strings
                         if (item.approved_date) {
-                            const approvedDate = new Date(item.approved_date);
-                            approvedDate.setHours(0, 0, 0, 0);
-                            return approvedDate.getTime() === today.getTime();
+                            // Handle different possible date formats
+                            const approvedDateString = item.approved_date.includes('T') 
+                                ? item.approved_date.split('T')[0]  // Handle ISO string format
+                                : item.approved_date;               // Handle YYYY-MM-DD format
+                            
+                            return approvedDateString === currentDate;
                         }
                         return false;
                     });
@@ -1036,6 +1056,19 @@ const McbuWithdrawalPage = () => {
         setSelectAll(false);
     }, [activeTab]);
 
+    useEffect(() => {
+        if (currentLevel && currentDate) {
+            // Use a debounce mechanism to avoid multiple calls
+            const handler = setTimeout(() => {
+                fetchMcbuWithdrawals();
+            }, 100);
+            
+            return () => {
+                clearTimeout(handler);
+            };
+        }
+    }, [showTodayOnly, currentLevel, currentDate]);
+
     return (
         <Layout>
             <div className="px-4 py-6">
@@ -1068,8 +1101,32 @@ const McbuWithdrawalPage = () => {
                                 ))}
                             </div>
                             
-                            {/* Filter Toggle Button */}
-                            <div className="flex items-center ml-4">
+                            {/* Filter Toggle Button and Today's Data Toggle */}
+                            <div className="flex items-center ml-4 space-x-2">
+                                {/* Today Only Toggle - Only show for non-group levels */}
+                                {currentLevel !== 'group' && (
+                                    <div className="flex items-center mr-3">
+                                        <span className="text-sm text-gray-700 mr-2">
+                                            Today's Data Only
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setShowTodayOnly(prevState => !prevState);
+                                            }}
+                                            className={`relative inline-flex h-6 w-11 items-center rounded-full ${
+                                                showTodayOnly ? 'bg-blue-600' : 'bg-gray-200'
+                                            } transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2`}
+                                        >
+                                            <span
+                                                className={`${
+                                                    showTodayOnly ? 'translate-x-6' : 'translate-x-1'
+                                                } inline-block h-4 w-4 transform rounded-full bg-white transition-transform`}
+                                            />
+                                        </button>
+                                    </div>
+                                )}
+                                
                                 <button
                                     type="button"
                                     onClick={toggleFilters}
