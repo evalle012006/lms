@@ -2,7 +2,7 @@ import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
 import moment from 'moment';
 import logger from '@/logger';
-import { getCurrentDate } from '@/lib/utils';
+import { getCurrentDate } from '@/lib/date-utils';
 
 export default apiHandler({
     post: save

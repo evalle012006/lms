@@ -3,7 +3,8 @@ import { GraphProvider } from "@/lib/graph/graph.provider";
 import { updateQl, createGraphType, insertQl, queryQl } from "@/lib/graph/graph.util";
 import { CASH_COLLECTIONS_FIELDS, MCBU_WITHDRAWAL_FIELDS, LOAN_FIELDS, GROUP_FIELDS } from "@/lib/graph.fields";
 import { filterGraphFields } from '@/lib/graph.functions';
-import { generateUUID, getCurrentDate } from '@/lib/utils';
+import { generateUUID } from '@/lib/utils';
+import { getCurrentDate } from '@/lib/date-utils';
 import logger from '@/logger';
 import moment from 'moment';
 

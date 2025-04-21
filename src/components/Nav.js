@@ -34,11 +34,6 @@ import {
     setCurrentPageTitle,
     setCurrentSubMenu
 } from "@/redux/actions/globalActions";
-import Avatar from "@/lib/avatar";
-import { userService } from "@/services/user-service";
-import { fetchWrapper } from "@/lib/fetch-wrapper";
-import { getApiBaseUrl } from '@/lib/constants';
-import { resetState } from '@/redux/actions/resetActions';
 import { McbuWithdrawalIcon } from '@/lib/ui/icons/mcbu-withdrawal-icon';
 
 const MenuItems = [

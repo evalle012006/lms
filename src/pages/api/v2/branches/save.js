@@ -1,7 +1,8 @@
 import { BRANCH_FIELDS } from '@/lib/graph.fields';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, insertQl, queryQl } from '@/lib/graph/graph.util';
-import { generateUUID, getCurrentDate } from '@/lib/utils';
+import { generateUUID } from '@/lib/utils';
+import { getCurrentDate } from '@/lib/date-utils';
 import { apiHandler } from '@/services/api-handler';
 import moment from 'moment'
 

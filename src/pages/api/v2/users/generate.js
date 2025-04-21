@@ -1,6 +1,6 @@
-import { connectToDatabase } from "@/lib/mongodb";
 import { faker } from '@faker-js/faker';
-import { generateUUID, getCurrentDate } from '@/lib/utils';
+import { generateUUID } from '@/lib/utils';
+import { getCurrentDate } from '@/lib/date-utils';
 import { GraphProvider } from "@/lib/graph/graph.provider";
 import { createGraphType, insertQl } from "@/lib/graph/graph.util";
 

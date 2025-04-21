@@ -3,7 +3,8 @@ import { USER_FIELDS } from '@/lib/graph.fields';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, insertQl, queryQl } from '@/lib/graph/graph.util';
 import { sendMail } from '@/lib/send-mail';
-import { generateUUID, getCurrentDate } from '@/lib/utils';
+import { generateUUID } from '@/lib/utils';
+import { getCurrentDate } from '@/lib/date-utils';
 import logger from '@/logger';
 import { apiHandler } from '@/services/api-handler';
 

@@ -1,6 +1,6 @@
 import { connectToDatabase } from "@/lib/mongodb";
 import { faker } from '@faker-js/faker';
-import { getCurrentDate } from '@/lib/utils';
+import { getCurrentDate } from '@/lib/date-utils';
 
 export default async function handler(req, res) {
     const { db } = await connectToDatabase();

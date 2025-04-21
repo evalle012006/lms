@@ -1,6 +1,6 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
-import { getWeekDaysCount, getCurrentDate } from '@/lib/utils';
+import { getWeekDaysCount, getCurrentDate } from '@/lib/date-utils';
 import moment from 'moment';
 
 export default apiHandler({

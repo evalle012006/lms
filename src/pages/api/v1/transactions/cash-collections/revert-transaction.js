@@ -1,6 +1,6 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
-import { getCurrentDate, getEndDate, getPrevousWorkday } from '@/lib/utils';
+import { getCurrentDate } from '@/lib/date-utils';
 import logger from '@/logger';
 import moment from 'moment'
 

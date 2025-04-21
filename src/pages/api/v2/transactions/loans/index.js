@@ -1,7 +1,7 @@
 import { apiHandler } from "@/services/api-handler";
 import logger from "@/logger";
 import moment from "moment";
-import { getCurrentDate } from "@/lib/utils";
+import { getCurrentDate } from "@/lib/date-utils";
 import { createGraphType, queryQl, updateQl } from "@/lib/graph/graph.util";
 import {
   BRANCH_FIELDS, CASH_COLLECTIONS_FIELDS,
