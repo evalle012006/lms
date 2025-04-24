@@ -1742,9 +1742,9 @@ const CashCollectionDetailsPage = () => {
 
                     const diff = temp.mcbu - mcbuWithdrawal;
 
-                    if (temp.loanCycle == 1) {
+                    if (temp.loanCycle == 1 && !temp.client.groupLeader) {
                         toast.error('Error occured. MCBU Withdrawal is not allowed on first loan cycle.');
-                    } else if (diff < 1000) {
+                    } else if (diff < 1000 && !temp.client.groupLeader) {
                         toast.error('Error occured. MCBU Withdrawal should have at least ₱1,000 remaining balance.');
                     } else if (mcbuWithdrawal > temp.mcbu) {
                         temp.mcbuError = true;
@@ -2528,11 +2528,11 @@ const CashCollectionDetailsPage = () => {
     }
 
     const handleMcbuWithdrawal = (selected, index) => {
-        if (selected.loanCycle == 1) {
+        if (selected.loanCycle == 1 && !selected.client.groupLeader) {
             toast.error('Error occured. MCBU Withdrawal is not allowed on first loan cycle.');
         } else if (selected.mcbuWithdrawal > 0) {
             toast.error('Error occured. MCBU Withdrawal has already been processed.');
-        } else if (selected.mcbu <= 1000) {
+        } else if (selected.mcbu <= 1000 && !selected.client.groupLeader) {
             toast.error('Error occured. MCBU Withdrawal should have more than ₱1,000 remaining MCBU balance.');
         } else if (parseFloat(selected.mcbu) > 0) {
             const list = data.map((cc, idx) => {
