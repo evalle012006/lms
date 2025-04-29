@@ -13,7 +13,7 @@ import { useRouter } from "node_modules/next/router";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import AddUpdateTransferClient from "@/components/transactions/transfer/AddUpdateTransferClientDrawer";
 import Dialog from "@/lib/ui/Dialog";
-import { getLastWeekdayOfTheMonth, isEndMonthDate } from "@/lib/date-utils";
+import { getLastWeekdayOfTheMonth, isEndMonthDate, getLastWorkingDayOfWeek } from "@/lib/date-utils";
 import { TabPanel, useTabs } from "react-headless-tabs";
 import { TabSelector } from "@/lib/ui/tabSelector";
 import RevertTransferPage from "@/components/transactions/transfer/RevertTransfer";
@@ -507,9 +507,9 @@ const TransferClientPage = () => {
 
     useEffect(() => {
         if (currentUser.role.rep < 4) {
-            const currentDayName = moment(currentDate).format('dddd').toLowerCase();
-            // for the currentDay it should be the last day of the week and should not be holiday
-            if (currentUser.role.rep <= 3) {
+            const holidays = holidayList.map(holiday => holiday.date);
+            const lastWorkingDayOfWeek = getLastWorkingDayOfWeek(holidays);
+            if (currentUser.role.rep < 3 && lastWorkingDayOfWeek == currentDate && !isHoliday && !isWeekend) {
                 setActionButtons([
                     <ButtonOutline label="Approved Selected Transfer" type="button" className="p-2 mr-3" onClick={handleMultiApprove} disabled={loading} />,
                     <ButtonSolid label="Add Transfer" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />

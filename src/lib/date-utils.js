@@ -277,23 +277,37 @@ export const getLastFiveWeekdaysOfMonth = (year, month, holidays = []) => {
 }
 
 /**
- * Returns the last weekday (Monday-Friday) of the current week, excluding holidays
+ * Returns the last weekday (Monday-Friday) of the current week or future weeks if needed, excluding holidays
+ * If the entire week is a holiday, checks the next week and so on until a non-holiday weekday is found
+ * 
  * @param {string[]} holidays - Array of holidays in "MM-DD" format
- * @returns {moment.Moment} Moment object representing the last weekday of current week that is not a holiday
+ * @returns {moment.Moment} Moment object representing the last non-holiday weekday
  */
-const getLastWeekdayOfCurrentWeek = (holidays = []) => {
-  // Check days from Friday to Monday (5 down to 1)
-  for (let dayOfWeek = 5; dayOfWeek >= 1; dayOfWeek--) {
-    const candidateDay = moment().day(dayOfWeek);
-    const candidateDayFormatted = candidateDay.format('MM-DD');
+export const getLastWorkingDayOfWeek = (holidays = []) => {
+    let weekOffset = 0;
+    let foundWorkingDay = false;
+    let candidateDay;
     
-    // If this day is not a holiday, return it
-    if (!holidays.includes(candidateDayFormatted)) {
-      return candidateDay;
+    // Keep checking weeks until we find a working day
+    while (!foundWorkingDay) {
+      // Check days from Friday to Monday (5 down to 1) of the current+offset week
+      for (let dayOfWeek = 5; dayOfWeek >= 1; dayOfWeek--) {
+        // Create a moment for the day in the current+offset week
+        candidateDay = moment().add(weekOffset, 'weeks').day(dayOfWeek);
+        const candidateDayFormatted = candidateDay.format('MM-DD');
+        
+        // If this day is not a holiday, we found our day
+        if (!holidays.includes(candidateDayFormatted)) {
+          foundWorkingDay = true;
+          break;
+        }
+      }
+      
+      // If we didn't find a working day this week, check the next week
+      if (!foundWorkingDay) {
+        weekOffset++;
+      }
     }
-  }
-  
-  // If all weekdays are holidays, return Friday anyway
-  // You could alternatively return null or handle this case differently
-  return moment().day(5);
-};
+    
+    return candidateDay;
+  };
