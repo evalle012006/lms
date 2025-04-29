@@ -407,3 +407,25 @@ export const TRANSFER_CLIENT_FIELDS = `
   modifiedBy
   modifiedDateTime
   `;
+
+  export const MCBU_WITHDRAWAL_FIELDS = `
+  _id
+  division_id
+  region_id
+  area_id
+  branch_id
+  lo_id
+  group_id
+  client_id
+  loan_id
+  mcbu_withdrawal_amount
+  group_id
+  status
+  approved_date
+  rejected_date
+  reason
+  inserted_date
+  inserted_by
+  modified_date
+  modified_by
+  `;

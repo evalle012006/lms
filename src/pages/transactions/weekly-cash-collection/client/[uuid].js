@@ -26,10 +26,13 @@ import { setClient } from '@/redux/actions/clientActions';
 import { LOR_ONLY_OFFSET_REMARKS, LOR_WEEKLY_REMARKS, getApiBaseUrl } from '@/lib/constants';
 import CheckBox from '@/lib/ui/checkbox';
 import ActionDropDown from '@/lib/ui/action-dropdown';
+import WarningIconWithTooltip from '@/lib/ui/icons/warning-icon';
+import AddUpdateMcbuWithdrawalDrawer from '@/components/transactions/mcbu-withdrawal/AddUpdateMcbuWithdrawalDrawer';
 
 const CashCollectionDetailsPage = () => {
     const isHoliday = useSelector(state => state.systemSettings.holiday);
     const isWeekend = useSelector(state => state.systemSettings.weekend);
+    const last5DaysOfTheMonth = useSelector(state => state.systemSettings.last5DaysOfTheMonth);
     const transactionSettings = useSelector(state => state.transactionsSettings.data);
     const selectedBranchSubject = new BehaviorSubject(process.browser && localStorage.getItem('selectedBranch'));
     const selectedLOSubject = new BehaviorSubject(process.browser && localStorage.getItem('selectedLO'));
@@ -76,6 +79,15 @@ const CashCollectionDetailsPage = () => {
     const [allowMcbuInterest, setAllowMcbuInterest] = useState(false);
 
     const [selectAll, setSelectAll] = useState(false);
+
+    const [showMcbuWithdrawalDrawer, setShowMcbuWithdrawalDrawer] = useState(false);
+    
+    const handleCloseMcbuWithdrawalDrawer = () => {
+        setShowMcbuWithdrawalDrawer(false);
+        setTimeout(() => {
+            getCashCollections();
+        }, 500);
+    }
 
     const handleShowWarningDialog = (e) => {
         e.stopPropagation();
@@ -801,6 +813,20 @@ const CashCollectionDetailsPage = () => {
                     collection.otherDay = false;
                 }
 
+                collection.hasMcbuWithdrawal = false;
+                if (cc.mcbuWithdrawalList.length > 0) {
+                    const mcbuWithdrawal = cc.mcbuWithdrawalList[cc.mcbuWithdrawalList.length - 1];
+                    collection.hasMcbuWithdrawal = true;
+                    collection.mcbuWithdrawalIsPending = mcbuWithdrawal.status == 'pending' ? true : false;
+                    collection.mcbuWithdrawalId = mcbuWithdrawal._id;
+                    if (mcbuWithdrawal?.status == 'pending') {
+                        collection.mcbuWithdrawal = mcbuWithdrawal.mcbu_withdrawal_amount || 0;
+                        collection.mcbuWithdrawalStr = collection.mcbuWithdrawal > 0 ? formatPricePhp(collection.mcbuWithdrawal) : '-';
+                        // collection.mcbu = collection.mcbu - collection.mcbuWithdrawal;
+                        // collection.mcbuStr = formatPricePhp(collection.mcbu);
+                    }
+                }
+
                 if (collection.status === 'completed') {
                     collection.noOfPayments = 60;
                     collection.noOfPaymentStr = '60 / 60';
@@ -826,6 +852,7 @@ const CashCollectionDetailsPage = () => {
                     const index = cashCollection.indexOf(currentLoan);
                     if ((currentLoan.fullPaymentDate === currentDate)) { // fullpayment with pending/tomorrow
                         cashCollection[index] = {
+                            ...cashCollection[index],
                             client: currentLoan.client,
                             coMaker: (loan.coMaker && typeof loan.coMaker == 'number') ? loan.coMaker : '-',
                             slotNo: loan.slotNo,
@@ -903,6 +930,7 @@ const CashCollectionDetailsPage = () => {
                         }
                     } else if (currentLoan.status !== 'active' && (currentLoan.status == 'completed' && !currentLoan?.advance  && (loan?.loanFor == 'today' || (loan?.loanFor == 'tomorrow' && diff >= 0)))) {
                         cashCollection[index] = {
+                            ...cashCollection[index],
                             client: currentLoan.client,
                             coMaker: (loan.coMaker && typeof loan.coMaker == 'number') ? loan.coMaker : '-',
                             slotNo: loan.slotNo,
@@ -1212,8 +1240,8 @@ const CashCollectionDetailsPage = () => {
                             && !cc.remarks.value?.startsWith('collection-') && cc.remarks.value !== 'matured-past due') ) {
                             errorMsg.add(`Actual collection should be divisible by ${cc.activeLoan}.`);
                         }
-                    } else if (cc.loanBalance > 0 && parseFloat(cc.paymentCollection) === (cc.activeLoan * 2) && (!cc.remarks || cc.remarks && cc.remarks.value !== "advance payment" && cc.remarks.value !== "past due collection")) {
-                        errorMsg.add('Error occured. Actual collection is a double payment please set remarks as Advance Payment.');
+                    } else if (cc.loanBalance > 0 && parseFloat(cc.paymentCollection) === (cc.activeLoan * 2) && (!cc.remarks || cc.remarks && cc.remarks.value !== "double payment" && cc.remarks.value !== "past due collection")) {
+                        errorMsg.add('Error occured. Actual collection is a double payment please set remarks as Double Payment.');
                     } else if (cc.loanBalance > 0 && parseFloat(cc.paymentCollection) > parseFloat(cc.activeLoan) && parseFloat(cc.paymentCollection) > parseFloat(cc.activeLoan * 2) && cc.loanBalance !== 0) {
                         if (parseFloat(cc.paymentCollection) % parseFloat(cc.activeLoan) === 0 && (!cc.remarks || cc.remarks && cc.remarks.value !== "advance payment" && cc.remarks.value !== "past due collection")) {
                             errorMsg.add('Error occured. Actual collection is a advance payment please set remarks as Advance Payment.');
@@ -1318,6 +1346,7 @@ const CashCollectionDetailsPage = () => {
                         temp.groupDay = temp.group.day;
                     }
 
+                    temp.mcbuCol = temp.mcbuCol ? temp.mcbuCol : 0;
                     if (temp.reverted) {
                         delete temp.reverted;
                         temp.revertedDate = currentDate;
@@ -1547,8 +1576,11 @@ const CashCollectionDetailsPage = () => {
                             temp.mcbuStr = temp.mcbu > 0 ? formatPricePhp(temp.mcbu) : '-';
                             // temp.mcbuCol = 0;
                             // temp.mcbuColStr = '-';
-                            temp.mcbuWithdrawal = 0;
-                            temp.mcbuWithdrawalStr = '-';
+                            if (!temp.hasMcbuWithdrawal) {
+                                temp.mcbuWithdrawal = 0;
+                                temp.mcbuWithdrawalStr = '-';
+                            }
+                            
                             temp.mcbuReturnAmt = 0;
                             temp.mcbuReturnAmtStr = '-';
                             delete temp.excused;
@@ -1679,9 +1711,11 @@ const CashCollectionDetailsPage = () => {
                     let temp = {...cc};
 
                     if (idx === index) {
-                        temp.mcbuWithdrawFlag = false;
-                        temp.mcbuWithdrawal = 0;
-                        temp.mcbuWithdrawalStr = '-';
+                        if (!temp.hasMcbuWithdrawal) {
+                            temp.mcbuWithdrawFlag = false;
+                            temp.mcbuWithdrawal = 0;
+                            temp.mcbuWithdrawalStr = '-';
+                        }
                         if (temp.prevData != null) {
                             temp.mcbu = temp.prevData.mcbu;
                             temp.mcbuStr = formatPricePhp(temp.mcbu);
@@ -1882,13 +1916,19 @@ const CashCollectionDetailsPage = () => {
                             setChangeRemarks(true);
                         }
     
-                        if (temp.status === "completed" && !(remarks.value && (remarks.value?.startsWith('offset') || remarks.value?.startsWith('reloaner')))) {
+                        if (temp.status === "completed" && (remarks.value && !(remarks.value?.startsWith('offset') || remarks.value?.startsWith('reloaner')))) {
                             toast.error("Error occured. Invalid remarks. Should only choose a reloaner/offset remarks.");
                         } else if (temp.status == 'completed' && temp?.advance && remarks.value?.startsWith('offset')) {
                             toast.error(`Error occured. Slot No ${temp.slotNo} has a pending loan release.`);
-                        }  else if (!temp.maturedPD && remarks.value == 'offset-matured-pd' ) {
+                        } else if (temp.status === "completed" && temp.hasMcbuWithdrawal && (remarks?.value && !remarks.value.startsWith('reloaner'))) {
+                            toast.error(`Error occured. Invalid remarks. Slot No ${temp.slotNo} has MCBU withdrawal transaction. Should only choose a reloaner remarks.`);
+                        } else if (!temp.maturedPD && remarks.value == 'offset-matured-pd' ) {
                             temp.error = true;
                             toast.error("Invalid remarks. Client was not mark as matured past due.");
+                        } else if (temp.loanBalance > 0 && (remarks.value && (remarks.value?.startsWith('offset') || remarks.value?.startsWith('reloaner')))) {
+                            toast.error("Error occured. Invalid remarks. Should only choose a reloaner/offset remarks.");
+                        } else if (temp.hasMcbuWithdrawal &&(remarks.value && remarks.value?.startsWith('offset'))) {
+                            toast.error("Error occured. Invalid remarks. Slot No " + temp.slotNo + " has MCBU withdrawal transaction. Should only choose a reloaner remarks.");
                         } else {
                             // always reset these fields
                             temp.error = false;
@@ -1917,8 +1957,12 @@ const CashCollectionDetailsPage = () => {
     
                             temp.mcbuReturnAmt = 0;
                             temp.mcbuReturnAmtStr = '-';
-                            temp.mcbuWithdrawal = 0;
-                            temp.mcbuWithdrawalStr = '-';
+                            
+                            if (!temp?.hasMcbuWithdrawal) {
+                                temp.mcbuWithdrawal = 0;
+                                temp.mcbuWithdrawalStr = '-';
+                            }
+
                             temp.targetCollection = temp.activeLoan;
                             temp.targetCollectionStr = formatPricePhp(temp.targetCollection);
                             temp.excused = false;
@@ -2444,7 +2488,9 @@ const CashCollectionDetailsPage = () => {
                     temp.mcbuWithdrawFlag = !temp.mcbuWithdrawFlag;
             
                     if (temp.mcbuWithdrawFlag) {
-                        setAllowMcbuWithdrawal(true);
+                        setLoan(selected);
+                        setShowMcbuWithdrawalDrawer(true);
+                        // setAllowMcbuWithdrawal(true);
                     } else {
                         setAllowMcbuWithdrawal(false);
                     }
@@ -2954,7 +3000,10 @@ const CashCollectionDetailsPage = () => {
                                                     }
                                                 </td>
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
-                                                    { (cc.mcbuWithdrawFlag && (cc?.transferStr == null || cc?.transferStr == '-')) ? (
+                                                    { (cc.hasMcbuWithdrawal && cc.mcbuWithdrawalIsPending) ? (
+                                                        <WarningIconWithTooltip amount={cc.mcbuWithdrawalStr} message="MCBU Withdrawal is pending." />
+                                                    ) : cc.mcbuWithdrawalStr}
+                                                    {/* { (cc.mcbuWithdrawFlag && (cc?.transferStr == null || cc?.transferStr == '-')) ? (
                                                         <React.Fragment>
                                                             <input type="number" name={`${cc.clientId}-mcbuWithdrawal`} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'mcbuWithdrawal')}
                                                                 onClick={(e) => e.stopPropagation()} onBlur={(e) => handlePaymentValidation(e, cc, index, 'mcbuWithdrawal')} defaultValue={cc.mcbuWithdrawal ? cc.mcbuWithdrawal : 0} tabIndex={index + 3}
@@ -2965,7 +3014,7 @@ const CashCollectionDetailsPage = () => {
                                                             <React.Fragment>
                                                                 {(!editMode || filter || !cc.reverted || cc.status === 'completed' || cc.status === 'pending' || cc.status === 'totals' || cc.status === 'closed') ? cc.mcbuWithdrawalStr : '-'}
                                                             </React.Fragment>
-                                                    }
+                                                    } */}
                                                 </td>
                                                 {currentMonth === 11 && (
                                                     <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">
@@ -3029,7 +3078,7 @@ const CashCollectionDetailsPage = () => {
                                                     <React.Fragment>
                                                         {(!isWeekend && !isHoliday && currentUser.role.rep > 2 && !groupSummaryIsClose) && (
                                                             <div className='flex flex-row p-2'>
-                                                                {(data && data.length > 0) && <ActionDropDown origin="cash-collection" data={cc} index={index} options={dropDownActions} dataOptions={{ filter: filter, prevDraft: prevDraft, editMode: editMode, currentMonth: currentMonth }} />}
+                                                                {(data && data.length > 0) && <ActionDropDown origin="cash-collection" data={cc} index={index} options={dropDownActions} dataOptions={{ filter: filter, prevDraft: prevDraft, editMode: editMode, currentDate: currentDate, currentMonth: currentMonth, last5DaysOfTheMonth: last5DaysOfTheMonth }} />}
                                                             </div>
                                                         )}
                                                     </React.Fragment>
@@ -3041,7 +3090,8 @@ const CashCollectionDetailsPage = () => {
                             </table>
                         </div>
                     </div>
-                    {loan && <AddUpdateLoan mode={'reloan'} loan={loan} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />}
+                    {(loan && showAddDrawer) && <AddUpdateLoan mode={'reloan'} loan={loan} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />}
+                    {(loan && showMcbuWithdrawalDrawer) && <AddUpdateMcbuWithdrawalDrawer origin={'collection'} mode={'add'} loan={loan} showSidebar={showMcbuWithdrawalDrawer} setShowSidebar={setShowMcbuWithdrawalDrawer} onClose={handleCloseMcbuWithdrawalDrawer} />}
                     <Modal title="Client Detail Info" show={showClientInfoModal} onClose={handleCloseClientInfoModal} width="70rem">
                         <ClientDetailPage />
                     </Modal>

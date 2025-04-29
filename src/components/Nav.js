@@ -39,6 +39,7 @@ import { userService } from "@/services/user-service";
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { getApiBaseUrl } from '@/lib/constants';
 import { resetState } from '@/redux/actions/resetActions';
+import { McbuWithdrawalIcon } from '@/lib/ui/icons/mcbu-withdrawal-icon';
 
 const MenuItems = [
     {
@@ -190,6 +191,17 @@ const MenuItems = [
                 hidden: false
             },
             {
+              label: "Mcbu Withdrawals",
+              url: "/transactions/mcbu-withdrawal",
+              icon: {
+                  active: (props) => <McbuWithdrawalIcon {...props} />,
+                  notActive: (props) => <McbuWithdrawalIcon {...props} />,
+              },
+              active: false,
+              hasSub: false,
+              hidden: false
+            },
+            {
                 label: "Loan Officer Summary",
                 url: "/transactions/loan-officer-summary", 
                 icon: {
@@ -262,6 +274,17 @@ const MenuItems = [
                 active: false,
                 hasSub: false,
                 hidden: false
+            },
+            {
+              label: "Mcbu Withdrawals",
+              url: "/transactions/mcbu-withdrawal",
+              icon: {
+                  active: (props) => <McbuWithdrawalIcon {...props} />,
+                  notActive: (props) => <McbuWithdrawalIcon {...props} />,
+              },
+              active: false,
+              hasSub: false,
+              hidden: false
             },
             {
                 label: "Loan Officer Summary",
@@ -347,6 +370,17 @@ const MenuItems = [
                 active: false,
                 hasSub: false,
                 hidden: false
+            },
+            {
+              label: "Mcbu Withdrawals",
+              url: "/transactions/mcbu-withdrawal",
+              icon: {
+                  active: (props) => <McbuWithdrawalIcon {...props} />,
+                  notActive: (props) => <McbuWithdrawalIcon {...props} />,
+              },
+              active: false,
+              hasSub: false,
+              hidden: false
             },
             // {
             //     label: "Daily Collection Sheet",

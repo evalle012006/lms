@@ -417,3 +417,44 @@ export const getNextValidDate = (date, holidays = []) => {
     }
     return nextDate;
 }
+
+/**
+ * Returns the last 5 weekdays (Monday-Friday) of a specified month, excluding holidays
+ * @param {number} year - The year
+ * @param {number} month - The month (1-12)
+ * @param {string[]} holidays - Array of holidays in "MM-DD" format
+ * @returns {moment[]} Array of moment objects representing the last 5 weekdays
+ */
+export const getLastFiveWeekdaysOfMonth = (year, month, holidays = []) => {
+    // Import moment.js from CDN if using in browser environment
+    // For Node.js, you would use: const moment = require('moment');
+    
+    // Create a moment for the last day of the month
+    const lastDayOfMonth = moment([year, month - 1]).endOf('month');
+    
+    const weekdays = [];
+    let currentDay = moment(lastDayOfMonth);
+    
+    // Loop until we find 5 weekdays that are not holidays
+    while (weekdays.length < 5) {
+        // Check if the current day is not a weekend (0 = Sunday, 6 = Saturday)
+        const dayOfWeek = currentDay.day();
+        
+        // Create MM-DD format string for holiday checking
+        const monthDay = currentDay.format('MM-DD');
+        
+        // Check if the day is a weekday and not a holiday
+        if (dayOfWeek !== 0 && dayOfWeek !== 6 && !holidays.includes(monthDay)) {
+            weekdays.push(moment(currentDay));
+        }
+        
+        // Move to the previous day
+        currentDay.subtract(1, 'days');
+    }
+
+    // Sort the dates in ascending order
+    weekdays.sort((a, b) => a - b);
+    const formattedDates = weekdays.map(date => date.format('YYYY-MM-DD'));
+    
+    return formattedDates;
+}

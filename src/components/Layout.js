@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
-import { setCurrentDate, setCurrentTime, setHoliday, setLastDayOfTheMonth, setWeekend } from '@/redux/actions/systemActions';
+import { setCurrentDate, setCurrentTime, setHoliday, setLast5DaysOfTheMonth, setLastDayOfTheMonth, setWeekend } from '@/redux/actions/systemActions';
 import NavComponent from "./Nav";
 import { setTransactionSettings } from "@/redux/actions/transactionsActions";
 import { setHolidayList } from "@/redux/actions/holidayActions";
 import moment from 'moment';
-import { getLastWeekdayOfTheMonth } from "@/lib/utils";
+import { getLastFiveWeekdaysOfMonth, getLastWeekdayOfTheMonth } from "@/lib/utils";
 import { getApiBaseUrl } from '@/lib/constants';
 import useIsMobile from "@/lib/useIsMobile";
 
@@ -118,6 +118,9 @@ const Layout = ({
 
         const lastDay = getLastWeekdayOfTheMonth(moment(currentDate).year(), moment(currentDate).month() + 1, holidays);
         dispatch(setLastDayOfTheMonth(lastDay));
+
+        const last5Days = getLastFiveWeekdaysOfMonth(moment(currentDate).year(), moment(currentDate).month() + 1, holidays);
+        dispatch(setLast5DaysOfTheMonth(last5Days));
     }, [holidayList]);
 
     const toggleNav = () => {

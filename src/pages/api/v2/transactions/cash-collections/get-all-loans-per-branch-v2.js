@@ -54,7 +54,7 @@ async function getData (req, res) {
                     batch_ids.push(id);
                     if(batch_ids.length == 10) {
                         await Promise.all(batch_ids.map(async (branchId) => {
-                            console.log('calling branch transaction for id ', branchId);
+                            // console.log('calling branch transaction for id ', branchId);
                             data.push.apply(data, await getAllLoanTransactionsByBranch(branchId, date, dayName, currentDate));
                         }));
 

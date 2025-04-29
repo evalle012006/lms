@@ -53,10 +53,14 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
         number: user.number || '',
         position: user.position || '',
         designatedBranch: user.designatedBranch || '',
+        designatedBranchId: user.designatedBranchId || '',
         role: user.role ? user.roleId : '',
         loNo: user.loNo ? parseInt(user.loNo) : null,
         transactionType: user.transactionType || 'daily',
-        branchManagerName: user?.branchManagerName || ''
+        branchManagerName: user?.branchManagerName || '',
+        areaId: user?.areaId || '',
+        regionId: user?.regionId || '',
+        divisionId: user?.divisionId || '',
     }), [user]);
 
     const selectedRole = useMemo(() => {
@@ -120,8 +124,12 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
                 values.designatedBranch = values.designatedBranch || '[]';
             } else if (selectedRole.rep > 3) {
                 const selectedBranch = branchList.find(b => b.code === values.designatedBranch);
+                console.log(selectedBranch)
                 if (selectedBranch) {
                     values.designatedBranchId = selectedBranch._id;
+                    values.areaId = selectedBranch.areaId;
+                    values.regionId = selectedBranch.regionId;
+                    values.divisionId = selectedBranch.divisionId;
                 }
 
                 // values.transactionType = occurence;

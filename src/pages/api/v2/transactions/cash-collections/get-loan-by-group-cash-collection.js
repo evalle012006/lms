@@ -67,6 +67,7 @@ async function getLoanWithCashCollection(req, res) {
             current: c.current ?? [],
             currentRelease: c.currentRelease ?? [],
             fullPayment: c.fullPayment ?? [],
+            mcbuWithdrawalList: c.mcbuWithdrawals ?? [],
         })).sort((a, b) => a.slotNo - b.slotNo),
         tomorrowPending: tomorrowPending.map(c => ({
             ... c,

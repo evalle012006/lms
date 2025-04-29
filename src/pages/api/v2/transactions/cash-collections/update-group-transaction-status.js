@@ -39,11 +39,16 @@ async function processLOSummary(req, res) {
                     return cc;
                 }
             });
-            console.log('noCollections', noCollections);
+
+            const hasPendingMcbuWithdrawals = cashCollectionCounts.filter(cc => cc.mcbuw_count > 0);
+
+            // console.log('noCollections', noCollections);
             if (mode === 'close' && noCollections?.length > 0) {
                 response = { error: true, message: "Some groups have no current transactions for the selected Loan Officer." };
             } else if (mode === 'close' && hasDrafts?.length > 0) {
                 response = { error: true, message: "Some groups have draft transactions for the selected Loan Officer." };
+            } else if (mode === 'close' && hasPendingMcbuWithdrawals?.length > 0) {
+                response = { error: true, message: "Some groups have pending MCBU withdrawals for the selected Loan Officer. Please reject or delete them." };
             } else {
                 let result;
                 if (mode == 'close' && hasClosingTime.length == 0) {

@@ -16,6 +16,7 @@ import badDebtCollection from './badDebtCollectionReducer';
 import area from './areaReducer';
 import region from './regionReducer';
 import division from './divisionReducer';
+import mcbuWithdrawal from './mcbuWithdrawalReducer';
 import { RESET_STATE } from '../actions/resetActions';
 
 const appReducer = combineReducers({
@@ -35,6 +36,7 @@ const appReducer = combineReducers({
     holidays: holidays,
     transactionsSettings: transactionsSettings,
     systemSettings: systemSettings,
+    mcbuWithdrawal: mcbuWithdrawal,
     global: global
 });
 
