@@ -558,8 +558,7 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
         setIsGroupLeader(groupLeader);
         
         let maxAmount = 0;
-        
-        if (groupLeader) {
+        if (groupLeader && loan.status == 'active') {
             // Group leaders can only withdraw excess over 3000
             maxAmount = Math.max(0, mcbu - 3000);
         } else if (occurence === 'daily') {
