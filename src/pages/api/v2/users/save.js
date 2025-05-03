@@ -88,7 +88,7 @@ async function save(req, res) {
                 const divisionsResult = await graph.query(
                     queryQl(DIVISION_TYPE('divisions'), {
                         where: {
-                            managerIds: { _like: `%${userData._id}%` }
+                            managerIds: { _contains: `%${userData._id}%` }
                         }
                     })
                 );
