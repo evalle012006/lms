@@ -1,7 +1,5 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
-import { getWeekDaysCount } from '@/lib/utils';
-import moment from 'moment';
 
 export default apiHandler({
     post: updateLoanData

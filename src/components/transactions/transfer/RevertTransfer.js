@@ -8,7 +8,8 @@ import Dialog from "@/lib/ui/Dialog";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 import { getApiBaseUrl } from '@/lib/constants';
-import { formatPricePhp, getLastWeekdayOfTheMonth, isEndMonthDate } from "@/lib/utils";
+import { formatPricePhp } from "@/lib/utils";
+import { getLastWeekdayOfTheMonth, isEndMonthDate } from "@/lib/date-utils";
 import moment from 'moment'
 
 const RevertTransferPage = () => {

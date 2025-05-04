@@ -16,7 +16,8 @@ import SideBar from "@/lib/ui/SideBar";
 import RadioButton from "@/lib/ui/radio-button";
 import { setGroupList } from "@/redux/actions/groupActions";
 import { setClientList, setComakerList } from "@/redux/actions/clientActions";
-import { UppercaseFirstLetter, checkIfWeekend, formatPricePhp, getNextValidDate } from "@/lib/utils";
+import { UppercaseFirstLetter, formatPricePhp } from "@/lib/utils";
+import { getNextValidDate } from "@/lib/date-utils";
 import { getApiBaseUrl } from "@/lib/constants";
 import DatePicker2 from "@/lib/ui/DatePicker2";
 

@@ -6,7 +6,7 @@ import { excelReader } from "@/lib/excel-reader";
 import logger from "@/logger";
 import moment from "moment";
 import { v4 as uuidv4 } from 'uuid';
-import { getEndDate } from '@/lib/utils';
+import { getEndDate } from '@/lib/date-utils';
 
 export default apiHandler({
     post: startMigration

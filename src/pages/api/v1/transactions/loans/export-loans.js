@@ -1,6 +1,6 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
-import { getMonths } from '@/lib/utils';
+import { getMonths } from '@/lib/date-utils';
 import { createExcelBuffer } from '@/lib/excel-writer';
 
 export default apiHandler({

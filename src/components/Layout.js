@@ -6,7 +6,7 @@ import NavComponent from "./Nav";
 import { setTransactionSettings } from "@/redux/actions/transactionsActions";
 import { setHolidayList } from "@/redux/actions/holidayActions";
 import moment from 'moment';
-import { getLastFiveWeekdaysOfMonth, getLastWeekdayOfTheMonth } from "@/lib/utils";
+import { getLastFiveWeekdaysOfMonth, getLastWeekdayOfTheMonth } from "@/lib/date-utils";
 import { getApiBaseUrl } from '@/lib/constants';
 import useIsMobile from "@/lib/useIsMobile";
 

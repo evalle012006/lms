@@ -9,7 +9,8 @@ import moment from 'moment';
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { toast } from "react-toastify";
 import LOSHeader from "@/components/transactions/los/Header";
-import { formatPricePhp, getDaysOfMonth } from "@/lib/utils";
+import { formatPricePhp } from "@/lib/utils";
+import { getDaysOfMonth } from "@/lib/date-utils";
 import { useRouter } from "node_modules/next/router";
 import { setBranch } from "@/redux/actions/branchActions";
 import { setUserList } from "@/redux/actions/userActions";
@@ -280,7 +281,7 @@ const LoanOfficerSummary = () => {
                     };
                 }
             });
-            console.log(losList)
+            
             losList = calculatePersons(losList);
             losList = calculateWeeklyTotals(losList);
             losList.push(calculateMonthlyTotals(losList[0], losList.filter(los => los.weekTotal)));
@@ -505,7 +506,6 @@ const LoanOfficerSummary = () => {
         let prevLos;
         return losList.map((los, index) => {
             let temp = {...los};
-            console.log(los)
             if (index !== 0 && !los.weekTotal) {
                 // const prevMcbuBalance = los.prevMcbuBalance;
                 const mcbuActual = los.mcbuActual !== '-' ? los.mcbuActual : 0;
@@ -558,17 +558,6 @@ const LoanOfficerSummary = () => {
                     temp.mcbuBalance = prevLos.mcbuBalance + mcbuActual - mcbuWithdrawal + mcbuInterest - mcbuReturnAmt + mcbuTransfer;
                     temp.mcbuBalanceStr = formatPricePhp(temp.mcbuBalance);
                 }
-
-                let noTransfer = 0;
-                if (los.transferGvr) {
-                    noTransfer += los.transferGvr.transfer;
-                }
-
-                if (los.transferRcv) {
-                    noTransfer += los.transferRcv.transfer;
-                }
-
-                temp.transfer = noTransfer < 0 ? `(${Math.abs(noTransfer)})` : noTransfer;
 
                 prevLos = temp;
             }

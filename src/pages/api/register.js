@@ -2,7 +2,7 @@ import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
 import { sendMail } from '@/lib/send-mail';
 import { sendVerificationEmail } from '@/lib/email-templates';
-import { getCurrentDate } from '@/lib/utils';
+import { getCurrentDate } from '@/lib/date-utils';
 import logger from '@/logger';
 
 export default apiHandler({

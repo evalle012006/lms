@@ -1,6 +1,5 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
-import { getEndDate } from '@/lib/utils';
 
 export default apiHandler({
     post: revertTransfer,

@@ -5,7 +5,7 @@ import moment from 'moment'
 
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, updateQl } from '@/lib/graph/graph.util';
-import { getCurrentDate } from '@/lib/utils';
+import { getCurrentDate } from '@/lib/date-utils';
 
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');

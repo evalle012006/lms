@@ -2,7 +2,7 @@ import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
 import logger from '@/logger';
 import moment from 'moment';
-import { getCurrentDate } from '@/lib/utils';
+import { getCurrentDate } from '@/lib/date-utils';
 
 export default apiHandler({
     get: getLoan,

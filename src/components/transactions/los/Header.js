@@ -1,12 +1,10 @@
-import DatePicker from "@/lib/ui/DatePicker";
-import { UppercaseFirstLetter, getMonths, getYears } from "@/lib/utils";
-import { styles, DropdownIndicator, borderStyles } from "@/styles/select";
+import { UppercaseFirstLetter } from "@/lib/utils";
+import { getMonths, getYears } from "@/lib/date-utils";
+import { DropdownIndicator, borderStyles } from "@/styles/select";
 import React from "react";
-import { useRef } from "react";
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import Select from 'react-select';
-import moment from 'moment';
 import { useRouter } from 'next/router';
 import { ArrowLeftCircleIcon } from '@heroicons/react/24/solid';
 import RadioButton from "@/lib/ui/radio-button";
