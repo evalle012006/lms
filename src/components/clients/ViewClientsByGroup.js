@@ -48,6 +48,8 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
     const [showSearchModal, setShowSearchModal] = useState(false);
     const [searchClientData, setSearchClientData] = useState(null);
 
+    const [filteredList, setFilteredList] = useState([]);
+
     // Filter states
     const [filters, setFilters] = useState({
         branch: '',
@@ -120,8 +122,10 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
     };
 
     const handleFilterChange = (field, value) => {
-        // Reset subsequent filters when a parent filter changes
+        // Create new filters object with the updated value
         const newFilters = { ...filters, [field]: value };
+        
+        // Reset subsequent filters when a parent filter changes
         if (field === 'branch') {
             newFilters.lo = '';
             newFilters.group = '';
@@ -133,35 +137,70 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
             newFilters.name = '';
         }
         
+        // Update filters state
         setFilters(newFilters);
         
-        // Apply filters to current list
-        const currentList = getCurrentList();
-        const { clients } = getFilteredOptions(currentList);
-        const filteredData = clients.filter(item => {
-            if (!newFilters.name) return true;
-            
-            const searchTerm = newFilters.name.toLowerCase();
-            const fullName = item.name?.toLowerCase() || '';
-            const firstName = item.firstName?.toLowerCase() || '';
-            const lastName = item.lastName?.toLowerCase() || '';
-            
-            return fullName.includes(searchTerm) || 
-                   firstName.includes(searchTerm) || 
-                   lastName.includes(searchTerm);
-        });
+        // Determine which list to filter
+        let listToFilter;
+        if (status === 'pending') {
+            // For pending status with tabs
+            listToFilter = selectedTab === 'new-prospects' ? activeList :
+                           selectedTab === 'duplicate-prospects' ? duplicateList :
+                           selectedTab === 'excluded-prospects' ? excludedList : [];
+        } else {
+            // For non-pending status
+            listToFilter = list;
+        }
         
-        // Update the appropriate filtered list based on current tab
-        switch (selectedTab) {
-            case 'new-prospects':
-                setFilteredActiveList(filteredData);
-                break;
-            case 'duplicate-prospects':
-                setFilteredDuplicateList(filteredData);
-                break;
-            case 'excluded-prospects':
-                setFilteredExcludedList(filteredData);
-                break;
+        // If the list is empty, return early
+        if (!listToFilter || listToFilter.length === 0) return;
+        
+        // Apply branch filter
+        let filteredData = listToFilter;
+        if (newFilters.branch) {
+            filteredData = filteredData.filter(item => item.branchName === newFilters.branch);
+        }
+        
+        // Apply loan officer filter
+        if (newFilters.lo) {
+            filteredData = filteredData.filter(item => item.loName === newFilters.lo);
+        }
+        
+        // Apply group filter
+        if (newFilters.group) {
+            filteredData = filteredData.filter(item => item.groupName === newFilters.group);
+        }
+        
+        // Apply name filter
+        if (newFilters.name) {
+            const searchTerm = newFilters.name.toLowerCase();
+            filteredData = filteredData.filter(item => {
+                const fullName = item.name?.toLowerCase() || '';
+                const firstName = item.firstName?.toLowerCase() || '';
+                const lastName = item.lastName?.toLowerCase() || '';
+                
+                return fullName.includes(searchTerm) || 
+                       firstName.includes(searchTerm) || 
+                       lastName.includes(searchTerm);
+            });
+        }
+        
+        // Update the appropriate filtered list based on current status
+        if (status === 'pending') {
+            switch (selectedTab) {
+                case 'new-prospects':
+                    setFilteredActiveList(filteredData);
+                    break;
+                case 'duplicate-prospects':
+                    setFilteredDuplicateList(filteredData);
+                    break;
+                case 'excluded-prospects':
+                    setFilteredExcludedList(filteredData);
+                    break;
+            }
+        } else {
+            // For non-pending status
+            setFilteredList(filteredData);
         }
     };
 
@@ -187,9 +226,19 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
     }, [selectedTab]);
 
     const renderFilters = () => {
-        const currentList = getCurrentList();
-        const { branches, los, groups } = getFilteredOptions(currentList);
-
+        // Choose the appropriate list based on status
+        let listToUse;
+        if (status === 'pending') {
+            // For pending status with tabs
+            listToUse = getCurrentList();
+        } else {
+            // For non-pending status
+            listToUse = list;
+        }
+    
+        // Get filter options from the appropriate list
+        const { branches, los, groups } = getFilteredOptions(listToUse);
+    
         return (
             <div className="p-4 bg-white shadow mb-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -204,33 +253,31 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                             <option key={branch} value={branch}>{branch}</option>
                         ))}
                     </select>
-
+    
                     {/* Loan Officer Filter */}
                     <select
                         className="p-2 w-full border rounded-md"
                         value={filters.lo}
                         onChange={(e) => handleFilterChange('lo', e.target.value)}
-                        disabled={false}
                     >
                         <option value="">All Loan Officers</option>
                         {los.map((lo) => (
                             <option key={lo} value={lo}>{lo}</option>
                         ))}
                     </select>
-
+    
                     {/* Group Filter */}
                     <select
                         className="p-2 w-full border rounded-md"
                         value={filters.group}
                         onChange={(e) => handleFilterChange('group', e.target.value)}
-                        disabled={false}
                     >
                         <option value="">All Groups</option>
                         {groups.map((group) => (
                             <option key={group} value={group}>{group}</option>
                         ))}
                     </select>
-
+    
                     {/* Client Name Filter */}
                     <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -242,7 +289,6 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                             className="pl-10 p-2 w-full border rounded-md"
                             value={filters.name}
                             onChange={(e) => handleFilterChange('name', e.target.value)}
-                            disabled={false}
                         />
                     </div>
                 </div>
@@ -1002,6 +1048,8 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
             setFilteredExcludedList(excluded);
             setDuplicateList(duplicates);
             setFilteredDuplicateList(duplicates);
+            // for non pending
+            setFilteredList(list);
         }
     }, [list]);
 
@@ -1069,15 +1117,18 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                                 </TabPanel>
                             </React.Fragment>
                         ) : (
-                            <TableComponent
-                                columns={columns}
-                                data={list}
-                                hasActionButtons={false} 
-                                dropDownActions={dropDownActions} 
-                                dropDownActionOrigin="client-list"
-                                showFilters={true}
-                                rowClick={handleShowClientInfoModal}
-                            />
+                            <React.Fragment>
+                                {renderFilters()}
+                                <TableComponent
+                                    columns={columns}
+                                    data={filteredList}
+                                    hasActionButtons={false} 
+                                    dropDownActions={dropDownActions} 
+                                    dropDownActionOrigin="client-list"
+                                    showFilters={true}
+                                    rowClick={handleShowClientInfoModal}
+                                />
+                            </React.Fragment>
                         )}
                     </React.Fragment>
                 )}
