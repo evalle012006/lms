@@ -88,7 +88,7 @@ async function save(req, res) {
                 const divisionsResult = await graph.query(
                     queryQl(DIVISION_TYPE('divisions'), {
                         where: {
-                            managerIds: { _contains: userData._id }
+                            managerIds: { _contains: `%${userData._id}%` }
                         }
                     })
                 );
@@ -101,7 +101,7 @@ async function save(req, res) {
                 const regionsResult = await graph.query(
                     queryQl(REGION_TYPE('regions'), {
                         where: {
-                            managerIds: { _contains: userData._id }
+                            managerIds: { _like: `%${userData._id}%` }
                         }
                     })
                 );
@@ -115,7 +115,7 @@ async function save(req, res) {
                 const areasResult = await graph.query(
                     queryQl(AREA_TYPE('areas'), {
                         where: {
-                            managerIds: { _contains: userData._id }
+                            managerIds: { _like: `%${userData._id}%` }
                         }
                     })
                 );
