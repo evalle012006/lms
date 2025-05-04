@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
 import { PlusIcon } from '@heroicons/react/24/solid';
-import TableComponent, { AvatarCell, SelectCell, SelectColumnFilter } from '@/lib/table';
+import TableComponent, { AvatarCell, SelectColumnFilter } from '@/lib/table';
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { useDispatch, useSelector } from "react-redux";
 import { setFilteredData, setIsFiltering, setUser, setUserList } from "@/redux/actions/userActions";
@@ -14,10 +14,9 @@ import AddUpdateUser from "@/components/settings/users/AddUpdateUserDrawer";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 import Dialog from "@/lib/ui/Dialog";
-import { styles, DropdownIndicator, borderStyles } from "@/styles/select";
-import Select from 'react-select';
 import { setBranchList } from "@/redux/actions/branchActions";
 import { getApiBaseUrl } from "@/lib/constants";
+import UserFilters from "@/components/settings/users/UserFilters";
 
 const TeamPage = () => {
     const dispatch = useDispatch();
@@ -35,8 +34,6 @@ const TeamPage = () => {
     const [platformRoles, setPlatformRoles] = useState([]);
     const [rootUser, setRootUser] = useState(currentUser.root ? currentUser.root : false);
     const router = useRouter();
-
-    const [searchFilter, setSearchFilter] = useState();
 
     const getListUsers = async () => {
         let url = getApiBaseUrl() + 'users/list';
@@ -194,10 +191,6 @@ const TeamPage = () => {
         {
             Header: "Platform Role",
             accessor: 'role',
-            // Cell: SelectCell,
-            // Options: platformRoles,
-            // valueIdAccessor: 'roleId',
-            // selectOnChange: updateUser,
             Filter: SelectColumnFilter,
             filter: 'includes',
         },
@@ -233,7 +226,7 @@ const TeamPage = () => {
     }
 
     const actionButtons = [
-        <ButtonSolid label="Add User" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
+        <ButtonSolid key="add-user" label="Add User" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" key="plus-icon" />, 'left']} />
     ];
 
     const handleEditAction = (row) => {
@@ -288,30 +281,6 @@ const TeamPage = () => {
             });
     }
 
-    const handleSearchFilter = (selected) => {
-        if (selected && selected.hasOwnProperty('_id')) {
-            // filter
-            let filter = list.filter(u => u._id === selected._id);
-            dispatch(setFilteredData(filter));
-            dispatch(setIsFiltering(true));
-            setUserListData(filter);
-        } else {
-            // returned all
-            setUserListData(list);
-            dispatch(setIsFiltering(false));
-        }
-
-        setSearchFilter(selected);
-    }
-
-    const handleKeyDown = (e) => {
-        if (e.key === 'Escape') {
-            setSearchFilter('');
-            setUserListData(list);
-            dispatch(setIsFiltering(false));
-        }
-    }
-
     useEffect(() => {
         if ((currentUser.role && currentUser.role.rep > 2)) {
             router.push('/');
@@ -345,7 +314,7 @@ const TeamPage = () => {
 
     useEffect(() => {
         let rowActionBtn = [];
-        if (currentUser.role.rep === 1) {
+        if (currentUser.role && currentUser.role.rep === 1) {
             rowActionBtn = [
                 { label: 'Edit', action: handleEditAction },
                 { label: 'Delete', action: handleDeleteAction },
@@ -361,62 +330,28 @@ const TeamPage = () => {
         setRowActionButtons(rowActionBtn);
     }, [currentUser]);
 
-    // useEffect(() => {
-    //     // to set user permissions
-    //     let updatedColumns = [];
-    //     columns.map(col => {
-    //         let temp = {...col}; 
-    //         if ((currentUser.role && currentUser.role.rep !== 1)) {        
-    //             if (col.accessor === 'role') {
-    //                 delete temp.Cell;
-    //             }
-    //         } else {
-    //             // need to set the Options again since it was blank after checking for permissions
-    //             if (col.accessor === 'role') {
-    //                 temp.Options = platformRoles;
-    //                 temp.selectOnChange = updateUser;
-    //             }
-    //         }
-
-    //         updatedColumns.push(temp);
-    //     });
-
-    //     setColumns(updatedColumns);
-    // }, [platformRoles]);
-
     return (
         <Layout actionButtons={rootUser || (currentUser.role && currentUser.role.rep < 4) ? actionButtons : []}>
             <div className="pb-4">
-                {loading ?
-                    (
-                        // <div className="absolute top-1/2 left-1/2">
-                            <Spinner />
-                        // </div>
-                    ) : (
-                        <div className="flex flex-col">
-                            <div className="mb-4 bg-white">
-                                <div className="ml-6 mb-4 flex justify-between w-10/12">
-                                    <div className="flex flex-row w-11/12 text-gray-400 text-sm justify-start">
-                                        <span className="text-gray-400 text-sm mt-1">Filters:</span >
-                                        <div className="ml-4 flex flex-col w-96">
-                                            <Select 
-                                                options={list}
-                                                value={searchFilter}
-                                                styles={borderStyles}
-                                                components={{ DropdownIndicator }}
-                                                onChange={handleSearchFilter}
-                                                isSearchable={true}
-                                                closeMenuOnSelect={true}
-                                                onKeyDown={handleKeyDown}
-                                                placeholder={'All User'}/>
-                                            <span className="text-xs ml-4">Press escape to remove filter.</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <TableComponent columns={columns} data={userListData} showFilters={false} hasActionButtons={true} rowActionButtons={rowActionButtons} />
-                        </div>
-                    )}
+                {loading ? (
+                    <div className="flex justify-center items-center h-64">
+                        <Spinner />
+                    </div>
+                ) : (
+                    <div className="flex flex-col">
+                        <UserFilters 
+                            userList={list}
+                            setUserListData={setUserListData}
+                        />
+                        <TableComponent 
+                            columns={columns} 
+                            data={userListData} 
+                            showFilters={false} 
+                            hasActionButtons={true} 
+                            rowActionButtons={rowActionButtons} 
+                        />
+                    </div>
+                )}
             </div>
             <AddUpdateUser mode={mode} user={userData} roles={platformRoles} showSidebar={showAddDrawer} setShowSidebar={setShowAddDrawer} onClose={handleCloseAddDrawer} />
             <Dialog show={showDeleteDialog}>
