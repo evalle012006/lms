@@ -1,7 +1,5 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
-import { getWeekDaysCount, getCurrentDate } from '@/lib/utils';
-import moment from 'moment';
 
 export default apiHandler({
     get: checkPNNumber

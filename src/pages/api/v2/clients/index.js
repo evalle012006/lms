@@ -1,7 +1,7 @@
 import { CLIENT_FIELDS, LOAN_FIELDS } from '@/lib/graph.fields';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, updateQl } from '@/lib/graph/graph.util';
-import { getCurrentDate } from '@/lib/utils';
+import { getCurrentDate } from '@/lib/date-utils';
 import { apiHandler } from '@/services/api-handler';
 import formidable from "formidable";
 import fs from "fs";

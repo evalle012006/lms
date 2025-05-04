@@ -35,7 +35,7 @@ import { useMemo } from 'react';
 import DatePicker from "@/lib/ui/DatePicker";
 import moment from 'moment';
 import Spinner from "../Spinner";
-import { getMonths, getQuarters, getWeeks, getYears } from '@/lib/utils';
+import { getMonths, getQuarters, getWeeks, getYears } from '@/lib/date-utils';
 
 ChartJS.register(...registerables, ChartDataLabels);
 

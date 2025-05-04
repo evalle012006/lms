@@ -1,7 +1,7 @@
 import { CASH_COLLECTIONS_FIELDS, CLIENT_FIELDS, GROUP_FIELDS, LOAN_FIELDS } from '@/lib/graph.fields';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, deleteQl, queryQl, updateQl } from '@/lib/graph/graph.util';
-import { getCurrentDate } from '@/lib/utils';
+import { getCurrentDate } from '@/lib/date-utils';
 import logger from '@/logger';
 import { apiHandler } from '@/services/api-handler';
 import moment from 'moment';

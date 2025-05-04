@@ -1,7 +1,5 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
-import { getCurrentDate } from '@/lib/utils';
-import moment from 'moment';
 
 let response = {};
 let statusCode = 200;

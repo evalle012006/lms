@@ -1,5 +1,6 @@
 import { apiHandler } from '@/services/api-handler';
-import { generateUUID, getCurrentDate } from '@/lib/utils';
+import { generateUUID } from '@/lib/utils';
+import { getCurrentDate } from '@/lib/date-utils';
 import moment from 'moment'
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, insertQl, queryQl } from '@/lib/graph/graph.util';

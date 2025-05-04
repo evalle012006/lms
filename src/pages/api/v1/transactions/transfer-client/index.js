@@ -1,7 +1,6 @@
 import { apiHandler } from '@/services/api-handler';
 import { connectToDatabase } from '@/lib/mongodb';
-import { formatPricePhp, getLastWeekdayOfTheMonth } from '@/lib/utils';
-import { stat } from 'fs';
+import { formatPricePhp } from '@/lib/utils';
 
 export default apiHandler({
     post: saveUpdate,

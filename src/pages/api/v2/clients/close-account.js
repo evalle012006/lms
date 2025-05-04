@@ -3,7 +3,7 @@ import { apiHandler } from '@/services/api-handler';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, updateQl } from '@/lib/graph/graph.util';
 import { GROUP_FIELDS } from '@/lib/graph.fields';
-import { getCurrentDate } from '@/lib/utils';
+import { getCurrentDate } from '@/lib/date-utils';
 import moment from 'moment'
 
 const graph = new GraphProvider();

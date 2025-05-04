@@ -1,7 +1,7 @@
 import { apiHandler } from "@/services/api-handler";
 import moment from "moment";
 import logger from "@/logger";
-import { getCurrentDate } from "@/lib/utils";
+import { getCurrentDate } from "@/lib/date-utils";
 import { GraphProvider } from "@/lib/graph/graph.provider";
 import { createGraphType, updateQl } from "@/lib/graph/graph.util";
 import { findCashCollections, findLoans } from "@/lib/graph.functions";
