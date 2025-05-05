@@ -68,6 +68,9 @@ const ModernBranchCashCollections = () => {
     return params;
   };
 
+
+  console.log('currentUser', currentUser);
+
   const formatWithComparison = (current, previous) => {
     if (current === undefined || previous === undefined || current === '-' || previous === '-') {
       return current;
@@ -93,7 +96,7 @@ const ModernBranchCashCollections = () => {
     if (diff === 0) return current;
     
     const isPositive = diff > 0;
-    const sign = isPositive ? '+' : '';
+    const sign = isPositive ? '+' : '-';
     
     let diffFormatted;
     if (typeof current === 'string' && current.includes('₱')) {
@@ -194,21 +197,20 @@ const ModernBranchCashCollections = () => {
           }
       }
       
-      baseParams.filter = filter;
-      
+      baseParams.filter = currentUser.role.rep < 3 ? filter : ( currentUser.role.rep === 3 ? 'lo' : 'group' );
+      filter = baseParams.filter;
+
       setCurrentFilter(filter);
       setCurrentLevel(filter);
       
-      console.log('API call parameters:', {
-          ...baseParams,
-          url: getApiBaseUrl() + 'data/get_cash_collections_page_data',
-          viewMode,
-          id: router.query.id,
-          parentId: router.query.parentId,
-          currentFilter: filter
+      const params = buildApiParams({
+        ... baseParams,
+        loId: currentUser.role.rep === 4 ? currentUser._id : null,
+        branchId: currentUser.role.rep != 1 ? currentUser.designatedBranchId : null,
+        areaId: currentUser.role.rep != 1 ?currentUser.areaId : null,
+        divisionId: currentUser.role.rep != 1 ? currentUser.divisionId : null, 
+        regionId: currentUser.role.rep != 1 ? currentUser.regionId : null,
       });
-      
-      const params = buildApiParams(baseParams);
       
       const response = await fetchWrapper.get(getApiBaseUrl() + 'data/get_cash_collections_page_data?' + params.toString());
       console.log('API Response:', response);
@@ -220,6 +222,7 @@ const ModernBranchCashCollections = () => {
       }
   
       if (response && response.data) {
+        console.log('columns ', visibleColumnDefs, );
           const processedData = response.data.map(item => {
           const transformedItem = {
               _id: item._id,
@@ -265,12 +268,18 @@ const ModernBranchCashCollections = () => {
               noPastDuePrevious: item.prev_pastDueNo || 0,
               
               activeClients: item.activeClients || 0,
+              activeClientsPrevious: item.prev_activeClients || 0,
               activeBorrowers: item.activeBorrowers || 0,
+              activeBorrowersPrevious: item.prev_activeBorrowers || 0,
               pendingClients: (item.activeClients || 0) - (item.activeBorrowers || 0),
               totalReleasesStr: item.totalLoanRelease ? 
               `₱${Number(item.totalLoanRelease).toLocaleString()}` : '-',
+              totalReleasesPreviousStr: item.prev_totalLoanRelease ? 
+              `₱${Number(item.prev_totalLoanRelease).toLocaleString()}` : '-',
               totalLoanBalanceStr: item.totalLoanBalance ? 
               `₱${Number(item.totalLoanBalance).toLocaleString()}` : '-',
+              totalLoanBalancePreviousStr: item.prev_totalLoanBalance ? 
+              `₱${Number(item.prev_totalLoanBalance).toLocaleString()}` : '-',
               
               noCurrentReleaseStr: item.currentReleasePerson_New && item.currentReleasePerson_Rel ? 
               `${item.currentReleasePerson_New} / ${item.currentReleasePerson_Rel}` : '-',
@@ -280,6 +289,16 @@ const ModernBranchCashCollections = () => {
               status: item.status || 'open',
               totalData: item.row_num === null
           };
+
+          transformedItem.excess = transformedItem.excessCurrent;
+          transformedItem.mcbuWithdrawal = transformedItem.mcbuWithdrawalCurrent;
+          transformedItem.actualLoanCollection = transformedItem.actualLoanCollectionCurrent;
+          transformedItem.mcbuReturn = transformedItem.mcbuReturnCurrent;
+          transformedItem.noMcbuReturn = transformedItem.noMcbuReturnCurrent;
+          transformedItem.fullPaymentPerson = transformedItem.fullPaymentPersonCurrent;
+          transformedItem.fullPaymentAmount = transformedItem.fullPaymentAmountCurrent;
+
+          console.log(transformedItem);
           
           return transformedItem;
           });
@@ -489,8 +508,11 @@ const ModernBranchCashCollections = () => {
       case 'division':
         return 'Division Name';
       case 'branch':
+        return 'Branch Name'
+      case 'lo':
+        return 'Loan Officer'
       default:
-        return 'Branch Name';
+        return 'Group';
     }
   };
 
@@ -559,21 +581,25 @@ const ModernBranchCashCollections = () => {
   const columnDefs = useMemo(() => [
     { key: 'name', label: getEntityColumnLabel(), width: 'w-64' },
     { key: 'loanTargetStr', label: 'Target Loan Collection', width: 'w-40' },
-    { key: 'excess', label: 'Excess', width: 'w-40', hasComparison: true },
-    { key: 'actualLoanCollection', label: 'Actual Loan Collection', width: 'w-40', hasComparison: true },
-    { key: 'mcbuWithdrawal', label: 'MCBU Withdrawal', width: 'w-40', hasComparison: true },
-    { key: 'noMcbuReturn', label: '# MCBU Return', width: 'w-32', hasComparison: true },
-    { key: 'mcbuReturn', label: 'MCBU Return', width: 'w-32', hasComparison: true },
-    { key: 'fullPaymentPerson', label: 'Full Payment Person', width: 'w-40', hasComparison: true },
-    { key: 'fullPaymentAmount', label: 'Full Payment Amount', width: 'w-40', hasComparison: true },
+    { key: 'excess', label: 'Excess', width: 'w-40', },
+    { key: 'actualLoanCollection', label: 'Actual Loan Collection', width: 'w-40', },
+    { key: 'mcbuWithdrawal', label: 'MCBU Withdrawal', width: 'w-40', },
+    { key: 'noMcbuReturn', label: '# MCBU Return', width: 'w-32', },
+    { key: 'mcbuReturn', label: 'MCBU Return', width: 'w-32', },
+    { key: 'fullPaymentPerson', label: 'Full Payment Person', width: 'w-40', },
+    { key: 'fullPaymentAmount', label: 'Full Payment Amount', width: 'w-40', },
     { key: 'mispay', label: 'Mispay', width: 'w-28', hasComparison: true },
     { key: 'noPastDue', label: 'PD #', width: 'w-20', hasComparison: true },
-    { key: 'activeClients', label: 'Active Clients', width: 'w-28' },
-    { key: 'activeBorrowers', label: 'Active Borrowers', width: 'w-36' },
+    { key: 'activeClients', label: 'Active Clients', width: 'w-28', hasComparison: true },
+    { key: 'activeBorrowers', label: 'Active Borrowers', width: 'w-36', hasComparison: true },
     { key: 'pendingClients', label: 'PND', width: 'w-20' },
-    { key: 'totalReleasesStr', label: 'Total Loan Releases', width: 'w-40' },
-    { key: 'totalLoanBalanceStr', label: 'Total Loan Balance', width: 'w-40' },
-  ], [getEntityColumnLabel]);
+    { key: 'totalReleasesStr', label: 'Total Loan Releases', width: 'w-40', hasComparison: true },
+    { key: 'totalLoanBalanceStr', label: 'Total Loan Balance', width: 'w-40', hasComparison: true },
+  ], [currentFilter]);
+
+  useEffect(() => {
+    console.log(currentFilter, columnDefs)
+  }, [currentFilter])
 
   const visibleColumnDefs = useMemo(() => {
     return columnDefs.filter(col => visibleColumns[col.key]);
@@ -774,6 +800,14 @@ const ModernBranchCashCollections = () => {
                                             formatWithComparison(row.excessCurrent, row.excessPrevious)
                                             ) : column.key === 'actualLoanCollection' && column.hasComparison ? (
                                             formatWithComparison(row.actualLoanCollectionCurrent, row.actualLoanCollectionPrevious)
+                                            ) : column.key === 'activeClients' && column.hasComparison ? (
+                                            formatWithComparison(row.activeClients, row.activeClientsPrevious)
+                                            ) : column.key === 'activeBorrowers' && column.hasComparison ? (
+                                            formatWithComparison(row.activeBorrowers, row.activeBorrowersPrevious)
+                                            ) : column.key === 'totalReleasesStr' && column.hasComparison ? (        
+                                            formatWithComparison(row.totalReleasesStr, row.totalReleasesPreviousStr)
+                                            ) : column.key === 'totalLoanBalanceStr' && column.hasComparison ? (        
+                                              formatWithComparison(row.totalLoanBalanceStr, row.totalLoanBalancePreviousStr)
                                             ) : column.key === 'mcbuWithdrawal' && column.hasComparison ? (
                                             formatWithComparison(row.mcbuWithdrawalCurrent, row.mcbuWithdrawalPrevious)
                                             ) : column.key === 'noMcbuReturn' && column.hasComparison ? (
@@ -809,8 +843,39 @@ const ModernBranchCashCollections = () => {
                                 <tr className="bg-gray-100 font-medium sticky bottom-0 z-10">
                                     {visibleColumnDefs.map(column => (
                                     <td key={`grand-total-${column.key}`} className="whitespace-nowrap px-3 py-4 text-sm text-gray-900 font-semibold border-t-2 border-gray-300">
-                                        {grandTotalRow[column.key] === undefined ? '' : 
-                                        column.key === 'name' ? 'GRAND TOTALS' : grandTotalRow[column.key]}
+                                            {column.key === 'name' ? (
+                                            <div className="font-medium text-gray-900">GRAND TOTALS</div>
+                                            ) : column.key === 'excess' && column.hasComparison ? (
+                                            formatWithComparison(grandTotalRow.excessCurrent, grandTotalRow.excessPrevious)
+                                            ) : column.key === 'actualLoanCollection' && column.hasComparison ? (
+                                            formatWithComparison(grandTotalRow.actualLoanCollectionCurrent, grandTotalRow.actualLoanCollectionPrevious)
+                                            ) : column.key === 'activeClients' && column.hasComparison ? (
+                                            formatWithComparison(grandTotalRow.activeClients, grandTotalRow.activeClientsPrevious)
+                                            ) : column.key === 'activeBorrowers' && column.hasComparison ? (
+                                            formatWithComparison(grandTotalRow.activeBorrowers, grandTotalRow.activeBorrowersPrevious)
+                                            ) : column.key === 'totalReleasesStr' && column.hasComparison ? (        
+                                            formatWithComparison(grandTotalRow.totalReleasesStr, grandTotalRow.totalReleasesPreviousStr)
+                                            ) : column.key === 'totalLoanBalanceStr' && column.hasComparison ? (        
+                                              formatWithComparison(grandTotalRow.totalLoanBalanceStr, grandTotalRow.totalLoanBalancePreviousStr)
+                                            ) : column.key === 'mcbuWithdrawal' && column.hasComparison ? (
+                                            formatWithComparison(grandTotalRow.mcbuWithdrawalCurrent, grandTotalRow.mcbuWithdrawalPrevious)
+                                            ) : column.key === 'noMcbuReturn' && column.hasComparison ? (
+                                            formatWithComparison(grandTotalRow.noMcbuReturnCurrent, grandTotalRow.noMcbuReturnPrevious)
+                                            ) : column.key === 'mcbuReturn' && column.hasComparison ? (
+                                            formatWithComparison(grandTotalRow.mcbuReturnCurrent, grandTotalRow.mcbuReturnPrevious)
+                                            ) : column.key === 'fullPaymentPerson' && column.hasComparison ? (
+                                            formatWithComparison(grandTotalRow.fullPaymentPersonCurrent, grandTotalRow.fullPaymentPersonPrevious)
+                                            ) : column.key === 'fullPaymentAmount' && column.hasComparison ? (
+                                            formatWithComparison(grandTotalRow.fullPaymentAmountCurrent, grandTotalRow.fullPaymentAmountPrevious)
+                                            ) : column.key === 'mispay' && column.hasComparison ? (
+                                            formatWithComparison(grandTotalRow.mispayCurrent, grandTotalRow.mispayPrevious)
+                                            ) : column.key === 'noPastDue' && column.hasComparison ? (
+                                            formatWithComparison(grandTotalRow.noPastDueCurrent, grandTotalRow.noPastDuePrevious)
+                                            ) : grandTotalRow[column.key] === '-' ? (
+                                            <span className="text-gray-400">-</span>
+                                            ) : (
+                                              grandTotalRow[column.key]
+                                            )}
                                     </td>
                                     ))}
                                 </tr>
