@@ -42,6 +42,10 @@ const ModernBranchCashCollections = () => {
     loanTargetStr: true,
     excess: true, 
     actualLoanCollection: true,
+    mcbuCollection: true,
+    mcbu: true,
+    noPersonRelease: true,
+    currentReleaseAmountStr: true,
     mcbuWithdrawal: true,
     noMcbuReturn: true,
     mcbuReturn: true,
@@ -49,6 +53,7 @@ const ModernBranchCashCollections = () => {
     fullPaymentAmount: true,
     mispay: true,
     noPastDue: true,
+    pastDueAmount: true,
     activeClients: true,
     activeBorrowers: true,
     pendingClients: true,
@@ -67,9 +72,6 @@ const ModernBranchCashCollections = () => {
     
     return params;
   };
-
-
-  console.log('currentUser', currentUser);
 
   const formatWithComparison = (current, previous) => {
     if (current === undefined || previous === undefined || current === '-' || previous === '-') {
@@ -235,6 +237,7 @@ const ModernBranchCashCollections = () => {
               excessCurrent: item.excess ? `₱${Number(item.excess).toLocaleString()}` : '-',
               excessPrevious: item.prev_excess ? `₱${Number(item.prev_excess).toLocaleString()}` : '-',
               
+              mcbu: item.mcbu ? `₱${Number(item.mcbu).toLocaleString()}` : '-',
               actualLoanCollectionCurrent: item.actualLoanCollection ? 
               `₱${Number(item.actualLoanCollection).toLocaleString()}` : '-',
               actualLoanCollectionPrevious: item.prev_actualLoanCollection ? 
@@ -290,6 +293,9 @@ const ModernBranchCashCollections = () => {
               totalData: item.row_num === null
           };
 
+          transformedItem.pastDueAmount = item.pastDueAmount ? `₱${Number(item.pastDueAmount).toLocaleString()}` : '-',
+          transformedItem.noPersonRelease = item.currentReleasePerson_New ? item.currentReleasePerson_New + '/' + item.currentReleasePerson_Rel : '-';
+          transformedItem.mcbuCollection = item.mcbuCollection ? `₱${Number(item.mcbuCollection).toLocaleString()}` : '-',
           transformedItem.excess = transformedItem.excessCurrent;
           transformedItem.mcbuWithdrawal = transformedItem.mcbuWithdrawalCurrent;
           transformedItem.actualLoanCollection = transformedItem.actualLoanCollectionCurrent;
@@ -297,8 +303,6 @@ const ModernBranchCashCollections = () => {
           transformedItem.noMcbuReturn = transformedItem.noMcbuReturnCurrent;
           transformedItem.fullPaymentPerson = transformedItem.fullPaymentPersonCurrent;
           transformedItem.fullPaymentAmount = transformedItem.fullPaymentAmountCurrent;
-
-          console.log(transformedItem);
           
           return transformedItem;
           });
@@ -580,16 +584,20 @@ const ModernBranchCashCollections = () => {
 
   const columnDefs = useMemo(() => [
     { key: 'name', label: getEntityColumnLabel(), width: 'w-64' },
+    { key: 'mcbuCollection', label: 'MCBU Collections', width: 'w-40', },
+    { key: 'mcbuWithdrawal', label: 'MCBU Withdrawals', width: 'w-40', },
+    { key: 'noMcbuReturn', label: '# MCBU Return', width: 'w-32', },
+    { key: 'mcbuReturn', label: 'MCBU Return Amount', width: 'w-32', },
+    { key: 'noPersonRelease', label: '# Person Release', width: 'w-32', },
+    { key: 'currentReleaseAmountStr', label: 'Current Release Amount', width: 'w-32', },
     { key: 'loanTargetStr', label: 'Target Loan Collection', width: 'w-40' },
     { key: 'excess', label: 'Excess', width: 'w-40', },
     { key: 'actualLoanCollection', label: 'Actual Loan Collection', width: 'w-40', },
-    { key: 'mcbuWithdrawal', label: 'MCBU Withdrawal', width: 'w-40', },
-    { key: 'noMcbuReturn', label: '# MCBU Return', width: 'w-32', },
-    { key: 'mcbuReturn', label: 'MCBU Return', width: 'w-32', },
+    { key: 'noPastDue', label: 'PD #', width: 'w-20', hasComparison: true },
+    { key: 'pastDueAmount', label: 'PD Amount', width: 'w-20', hasComparison: true },
     { key: 'fullPaymentPerson', label: 'Full Payment Person', width: 'w-40', },
     { key: 'fullPaymentAmount', label: 'Full Payment Amount', width: 'w-40', },
     { key: 'mispay', label: 'Mispay', width: 'w-28', hasComparison: true },
-    { key: 'noPastDue', label: 'PD #', width: 'w-20', hasComparison: true },
     { key: 'activeClients', label: 'Active Clients', width: 'w-28', hasComparison: true },
     { key: 'activeBorrowers', label: 'Active Borrowers', width: 'w-36', hasComparison: true },
     { key: 'pendingClients', label: 'PND', width: 'w-20' },
