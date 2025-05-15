@@ -131,6 +131,18 @@ async function save(req, res) {
         if (userData.role.rep === 3) {
             userData.branchManagerName = data.branchManagerName;
         }
+
+        if(!userData.divisionId) {
+            delete userData.divisionId;
+        }
+
+        if(!userData.regionId) {
+            delete userData.regionId;
+        }
+
+        if(!userData.areaId) {
+            delete userData.areaId;
+        }
         
         addToMutationList((alias) => insertQl(USER_TYPE(alias), {
             objects: [userData]
