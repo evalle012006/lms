@@ -44,6 +44,7 @@ const DashboardPage = () => {
 
     const [loading, setLoading] = useState(false);
     const currentUser = useSelector(state => state.user.data);
+    const currentDate = useSelector(state => state.systemSettings.currentDate);
     const branch = useSelector(state => state.branch.data);
 
     const [timeFilter, setTimeFilter] = useState('daily');
@@ -489,6 +490,7 @@ const DashboardPage = () => {
 
             const queries = [
                 selectedDate,
+                { value: moment(currentDate ?? selectedDate).format('YYYY-MM-DD'), field: 'currentDate' },
                 { value: timeFilter, field: 'filter' },
                 { value: divisionFilter, field: 'divisionId'},
                 { value: regionFilter, field: 'regionId' }, 
