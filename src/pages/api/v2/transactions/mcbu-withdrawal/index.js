@@ -1,10 +1,12 @@
 // transactions/mcbu-withdrawal.js
 import { apiHandler } from "@/services/api-handler";
 import { GraphProvider } from "@/lib/graph/graph.provider";
-import { queryQl, mutationQl } from "@/lib/graph/graph.util";
+import { createGraphType, insertQl, queryQl, updateQl } from "@/lib/graph/graph.util";
 import { createMcbuWithdrawalsTypes, mcbuWithdrawalList, toMcbuWithdrawalDto } from "./common";
 
 const graph = new GraphProvider();
+
+const MCUBU_WITHDRAWAL_TYPE = createGraphType('mcbu_withdrawals', '_id')('result');
 
 export default apiHandler({
   post: save,
@@ -25,10 +27,10 @@ async function save(req, res) {
       }, {});
       
       const result = await graph.mutation(
-        mutationQl("update_mcbu_withdrawals_by_pk", {
-          pk_columns: { _id },
-          _set: updateData
-        })
+        updateQl(MCUBU_WITHDRAWAL_TYPE, {
+          set: updateData,
+          where: { _id: { _eq: _id ?? null } }
+        }),
       );
       
       if (result.errors) {
@@ -54,9 +56,9 @@ async function save(req, res) {
       };
       
       const result = await graph.mutation(
-        mutationQl("insert_mcbu_withdrawals_one", {
-          object: insertData
-        })
+        insertQl(MCUBU_WITHDRAWAL_TYPE, {
+          objects: [ insertData ]
+        }),
       );
       
       if (result.errors) {
