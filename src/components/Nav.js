@@ -528,17 +528,17 @@ const MenuItems = [
             }
         ]
     },
-    {
-        label: "Logout",
-        url: "/logout",
-        icon: {
-            active: (props) => <ArrowRightOnRectangleIcon {...props} />,
-            notActive: (props) => <ArrowRightOnRectangleIcon {...props} />,
-        },
-        active: false,
-        borderBottom: true,
-        hasSub: false
-    }
+    // {
+    //     label: "Logout",
+    //     url: "/logout",
+    //     icon: {
+    //         active: (props) => <ArrowRightOnRectangleIcon {...props} />,
+    //         notActive: (props) => <ArrowRightOnRectangleIcon {...props} />,
+    //     },
+    //     active: false,
+    //     borderBottom: true,
+    //     hasSub: false
+    // }
 ];
 
 const initialState = {
@@ -752,7 +752,7 @@ const NavComponent = ({ isVisible, toggleNav, isMobile }) => {
         }
       });
     }
-
+    console.log(page);
     if (page) {
       dispatch(setCurrentPage(page.url));
       dispatch(setCurrentPageTitle(page.label));

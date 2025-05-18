@@ -95,9 +95,9 @@ async function updateUser(req, res) {
                     
                     if (branches.length > 0) {
                         const branch = branches[0];
-                        forUpdate.areaId = branch.areaId;
-                        forUpdate.regionId = branch.regionId;
-                        forUpdate.divisionId = branch.divisionId;
+                        forUpdate.areaId = branch.areaId ? branch.areaId : null;
+                        forUpdate.regionId = branch.regionId ? branch.regionId : null;
+                        forUpdate.divisionId = branch.divisionId ? branch.divisionId : null;
                     }
                 } else if (userRole.rep === 2) {
                     if (userRole.shortCode === 'deputy_director') {

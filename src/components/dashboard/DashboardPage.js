@@ -644,28 +644,15 @@ const DashboardPage = () => {
     };
 
     return (
-       
         <div className="min-h-screen bg-gray-100 flex flex-col">
             <div className="flex-grow p-4 flex flex-col overflow-x-auto">
-                <div className="flex items-center justify-between pb-6 border-b min-w-[1400px]">
-                    <div className='flex flex-col'>
-                        <div className="flex items-center">
-                            <div className='group relative'>
-                                <span className="hidden group-hover:block absolute right-2 pt-1 cursor-pointer" onClick={() => router.push(`/settings/users/${currentUser._id}`)}>
-                                    <PencilLine className="w-4 h-4" />
-                                </span>
-                                <Avatar name={currentUser.firstName + " " + currentUser.lastName} src={currentUser.profile ? currentUser.profile : ""} className={`${currentUser.profile ? '' : 'p-6'} `} />
-                            </div>
-                            <h1 className="text-2xl font-semibold whitespace-nowrap">
-                                Welcome, {`${currentUser.firstName} ${currentUser.lastName}`}!
-                            </h1>
-                        </div>
-                    </div>
+                {/* Removed the welcome header section with Avatar and added just the bank balance info */}
+                <div className="flex items-center justify-end pb-6 border-b min-w-[1200px]">
                     <div className="flex flex-col items-end">
-                        {/* <p className="text-sm font-semibold">Cash On Hand: {formatNumber(coh)}</p> */}
                         <p className="text-sm font-semibold">Bank Balance: {formatNumber(bankBalance)}</p>
                     </div>
                 </div>
+                
                 <div className="flex flex-col justify-between pb-2 border-b">
                     <div className={`${isMobile ? 'order-2' : 'order-1'} hidden lg:flex lg:justify-between lg:place-items-start`}>
                         <ClientSearchTool />

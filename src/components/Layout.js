@@ -9,6 +9,7 @@ import moment from 'moment';
 import { getLastFiveWeekdaysOfMonth, getLastWeekdayOfTheMonth } from "@/lib/date-utils";
 import { getApiBaseUrl } from '@/lib/constants';
 import useIsMobile from "@/lib/useIsMobile";
+import HeaderComponent from "@/lib/header-component";
 
 const Layout = ({ 
     children, 
@@ -135,18 +136,19 @@ const Layout = ({
 
     return (
         <div className={`flex bg-white w-full h-screen ${vScroll ? 'overflow-y-auto' : 'overflow-hidden'}`}>
-            <div className={`fixed top-0 h-full ${isNavVisible && !isMobile ? 'w-64' : 'w-0'} transition-all duration-300`}>
+            <div className={`fixed top-0 h-full ${isNavVisible && !isMobile ? 'w-64' : 'w-0'} transition-all duration-300 z-40`}>
                 <NavComponent isVisible={isNavVisible} toggleNav={toggleNav} isMobile={isMobile} />
             </div>
             
             <div className={`flex flex-col flex-1 bg-neutral-200 ${isNavVisible && !isMobile ? 'ml-64' : 'ml-0'} transition-all duration-300 overflow-y-auto ${shouldHideChildren ? 'hidden' : ''}`}>
+                <HeaderComponent />
                 {header && (
-                    <div className="bg-white p-6 gap-6 h-20 flex-shrink-0">
+                    <div className="bg-white p-6 gap-6 h-20 flex-shrink-0 shadow-sm">
                         <div className="flex flex-row justify-between items-center">
                             <div className="flex items-center">
-                                <div className="page-title">
+                                {/* <div className="page-title text-xl font-medium">
                                     {pageTitle}
-                                </div>
+                                </div> */}
                             </div>
                             <div className="flex flex-row">
                                 {actionButtons && actionButtons.map((btn, idx) => (
@@ -164,6 +166,7 @@ const Layout = ({
                     flex-1
                     ${vScroll ? 'overflow-y-auto' : 'overflow-y-hidden'}
                     ${hScroll ? 'overflow-x-auto' : 'overflow-x-hidden'}
+                    ${noPad ? '' : 'p-6'}
                     pb-8
                 `}>
                     {children}
