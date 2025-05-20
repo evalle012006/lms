@@ -179,8 +179,8 @@ const DashboardPage = () => {
             const mcbus = graphData.map(o => o.mcbu).reverse();
             const mcbuWithdrawals = graphData.map(o => o.clientMcbuWithdrawals).reverse();
 
-            const loanCollections = graphData.map(o => o.loanCollection ?? 0).reverse();
-            const loanReleases = graphData.map(o => o.loanRelease ?? 0).reverse();
+            const loanCollections = graphData.map(o => ((o.loanCollectionDaily ?? 0) + (o.loanCollectionWeekly ?? 0)) ?? 0).reverse();
+            const loanReleases = graphData.map(o => o.totalLoanRelease ?? 0).reverse();
 
             const mispayments = graphData.map(o => o.mispaymentPerson ?? 0).reverse();
             const pastDues = graphData.map(o => o.pastDuePerson ?? 0).reverse();
@@ -505,6 +505,8 @@ const DashboardPage = () => {
             const summaryUrl = getApiBaseUrl() + '/dashboard?' + queries + '&type=summary';
             const graphUrl = getApiBaseUrl() + '/dashboard?' + queries + '&type=graph';
             
+            setSummaryData({});
+            setGraphData([]);
             const summaryPromise = fetchWrapper.get(summaryUrl)
                 .then(resp => {
                     setSummaryData(resp.data?.[0] ?? {});
@@ -512,14 +514,15 @@ const DashboardPage = () => {
                     console.log(error)
                 });
 
-            const graphPromise = fetchWrapper.get(graphUrl)
+            fetchWrapper.get(graphUrl)
                 .then(resp => {
+                    console.log(resp.data);
                     setGraphData(resp.data);
                 }).catch(error => {
                     console.log(error)
                 });
             
-            Promise.all([summaryPromise, graphPromise]).finally(() => {
+            Promise.all([summaryPromise]).finally(() => {
                 setLoading(false);
             });
         }, 400);
@@ -806,7 +809,7 @@ const DashboardPage = () => {
                                         <p className="text-sm text-gray-600 capitalize">{timeFilter}</p>
                                     </div>
                                     <div className="space-y-2">
-                                        <CardItem title="Total Release:" value={summaryData.totalRelease || '0.00'} Icon={Banknote} />
+                                        <CardItem title="Total Release:" value={summaryData.totalLoanRelease || '0.00'} Icon={Banknote} />
                                         <CardItem title="Amount:" value={summaryData.amount || '0.00'} Icon={DollarSign} />
                                         <CardItem title="New Member:" value={summaryData.newMember || '0.00'} Icon={UserPlus} />
                                         <CardItem title="Transfer Clients:" value={summaryData.transferClients || '0.00'} Icon={ArrowLeftRight} />

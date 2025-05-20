@@ -2,6 +2,7 @@ import { findUserById } from '@/lib/graph.functions';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { apiHandler } from '@/services/api-handler';
 import { gql } from 'node_modules/apollo-boost/lib/index';
+import moment from 'node_modules/moment/moment';
 
 const graph = new GraphProvider();
 
@@ -14,8 +15,8 @@ async function getData(req, res) {
 
     let { areaId, divisionId, regionId, branchId, loId, filter, date_added, currentDate, type } = req.query;
 
-    if(type == 'summary') {
-        const result = await graph.apollo.query({
+    const get_data = async (selectedDate, group) => {
+        const [result] = await graph.apollo.query({
             query: gql`
             query get_dashboard_totals ($args: get_dashboard_totals_arguments!) {
                 get_dashboard_totals(args: $args) {
@@ -26,7 +27,7 @@ async function getData(req, res) {
             variables: {
                 args: {
                     range: filter,
-                    dateAdded: date_added,
+                    dateAdded: selectedDate,
                     currentDate: currentDate,
                     branchId: user.branchId ?? branchId ?? null,
                     areaId: user.areaId ?? areaId ?? null,
@@ -39,6 +40,7 @@ async function getData(req, res) {
         })
         .then(res => res.data.get_dashboard_totals.map(c => c.data))
           .then(totals => totals.map(total => ({
+            group,
             ... total,
             clientMcbuWithdrawals: total.mcbuWithdrawal,
             prev_clientMcbuWithdrawals: total.prev_mcbuWithdrawal,
@@ -58,21 +60,41 @@ async function getData(req, res) {
             prev_amount: total.prev_currentReleaseAmount,
             renewals: total.currentReleasePerson_Rel,
             prev_renewals: total.prev_currentReleasePerson_Rel
-          })));
+          })))
 
+        return result;
+    }
 
+    if(type == 'summary') {
+        const result = await get_data(date_added);
         res.status(200)
           .setHeader('Content-Type', 'application/json')
           .end(JSON.stringify({
-              data: result
+              data: [result]
           }));
 
           return;
     }
 
+    const dates = await graph.apollo.query({
+        query: gql`
+        query get_dashboard_dates_by_range {
+            get_dashboard_dates_by_range(args: {
+                date_added: "${date_added}",
+                range: "${filter}"
+            }) {
+                data
+            }
+        }
+        `
+    }).then(res => res.data.get_dashboard_dates_by_range.map(o => o.data));
+
+   const results = await Promise.all(dates.map(o => get_data(o.selected_date, o.group)));
+
+
     res.status(200)
         .setHeader('Content-Type', 'application/json')
         .end(JSON.stringify({
-            data: []
+            data: results
         }));
 }
