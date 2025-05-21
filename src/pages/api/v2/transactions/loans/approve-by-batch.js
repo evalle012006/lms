@@ -123,7 +123,7 @@ async function processData(req, res) {
             groupData = groupData[0];
 
             if (loan.status === "active") {
-              await updateClient(loan, addToMutationList);
+              await updateClient(loanId, addToMutationList);
               if (loan.coMaker) {
                 if (typeof loan.coMaker === "string") {
                   loan.coMakerId = loan.coMaker;
@@ -226,11 +226,15 @@ async function updateGroup(group, addToMutationList) {
   return { success: true, groupResp };
 }
 
-async function updateClient(loan, addToMutationList) {
+async function updateClient(loanId, addToMutationList) {
   const clientId = loan.clientId;
   let client = await findClients({ _id: { _eq: clientId } });
+  let [loan] = await findLoans({ _id: { _eq: loanId } });
+
   if (client.length > 0) {
     client = client[0];
+
+    client.dateModified = moment(getCurrentDate()).format('YYYY-MM-DD');
 
     if (client.status === "offset") {
       client.status = "active";
@@ -240,6 +244,7 @@ async function updateClient(loan, addToMutationList) {
       client.loId = loan.loId;
       client.oldGroupId = null;
       client.oldLoId = null;
+      
     }
 
     client.status = "active";

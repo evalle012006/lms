@@ -4,7 +4,7 @@ import { GraphProvider } from '@/lib/graph/graph.provider'
 import { createGraphType, insertQl, queryQl, updateQl } from '@/lib/graph/graph.util'
 import { CASH_COLLECTIONS_FIELDS, GROUP_FIELDS, LOAN_FIELDS } from '@/lib/graph.fields'
 import { generateUUID } from '@/lib/utils'
-import { filterGraphFields } from '@/lib/graph.functions';
+import { filterGraphFields, findLoans } from '@/lib/graph.functions';
 import { savePendingLoans } from '../cash-collections/update-pending-loans';
 
 const graph = new GraphProvider();
@@ -26,8 +26,6 @@ async function save(req, res) {
     const group = loanData.group;
 
     let mode;
-    let oldLoanId;
-
     const currentDate = loanData.currentDate;
 
     delete loanData.currentDate;
@@ -42,7 +40,6 @@ async function save(req, res) {
 
     if (loanData.hasOwnProperty('mode')) {
         mode = loanData.mode;
-        oldLoanId = loanData.oldLoanId;
         delete loanData.mode;
         delete loanData.oldLoanId;
         delete loanData.groupCashCollections;
@@ -50,6 +47,8 @@ async function save(req, res) {
     }
 
     logger.debug({user_id, page: `Saving Loan: ${loanData.clientId}`, mode: mode, data: loanData});
+    const [oldLoan] = await findLoans({ clientId: { _eq: loanData.clientId }, status: 'completed' });
+
     const spotExist = (await graph.query(queryQl(loansType(), {
       where: {
         slotNo: { _eq: loanData.slotNo },
@@ -146,7 +145,7 @@ async function save(req, res) {
             //     finalData.dateOfRelease = finalData.admissionDate;
             // }
 
-            finalData.prevLoanId = oldLoanId;
+            finalData.prevLoanId = oldLoan._id;
 
             if (mode == 'advance' || mode == 'active') {
                 finalData.advanceTransaction = true;
@@ -165,9 +164,9 @@ async function save(req, res) {
               }));
 
             if (mode === 'reloan') {
-                await updateLoan(user_id, oldLoanId, finalData, currentDate, mode, addToMutationList);
+                await updateLoan(user_id, oldLoan._id, finalData, currentDate, mode, addToMutationList);
             } else if (mode === 'advance' || mode === 'active') {
-                await updateLoan(user_id, oldLoanId, finalData, currentDate, mode, addToMutationList);
+                await updateLoan(user_id, oldLoan._id, finalData, currentDate, mode, addToMutationList);
             } else if (!hasExistingCC) {
                 await updateGroup(user_id, loanData, addToMutationList, loanId);
             }
