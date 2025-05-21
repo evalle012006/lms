@@ -47,7 +47,7 @@ async function save(req, res) {
     }
 
     logger.debug({user_id, page: `Saving Loan: ${loanData.clientId}`, mode: mode, data: loanData});
-    const [oldLoan] = await findLoans({ clientId: { _eq: loanData.clientId }, status: 'completed' });
+    const [oldLoan] = await findLoans({ clientId: { _eq: loanData.clientId }, status: { _eq: 'completed' } });
 
     const spotExist = (await graph.query(queryQl(loansType(), {
       where: {
