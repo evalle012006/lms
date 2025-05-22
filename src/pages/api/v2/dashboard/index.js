@@ -76,6 +76,7 @@ async function getData(req, res) {
           return;
     }
 
+    /*
     const dates = await graph.apollo.query({
         query: gql`
         query get_dashboard_dates_by_range {
@@ -90,11 +91,11 @@ async function getData(req, res) {
     }).then(res => res.data.get_dashboard_dates_by_range.map(o => o.data));
 
    const results = await Promise.all(dates.map(o => get_data(o.selected_date, o.group)));
-
+    */
 
     res.status(200)
         .setHeader('Content-Type', 'application/json')
         .end(JSON.stringify({
-            data: results
+            data: []
         }));
 }
