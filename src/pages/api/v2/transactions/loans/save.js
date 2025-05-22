@@ -145,7 +145,7 @@ async function save(req, res) {
             //     finalData.dateOfRelease = finalData.admissionDate;
             // }
 
-            finalData.prevLoanId = oldLoan._id;
+            finalData.prevLoanId = oldLoan?._id;
 
             if (mode == 'advance' || mode == 'active') {
                 finalData.advanceTransaction = true;
@@ -163,9 +163,9 @@ async function save(req, res) {
                 })]
               }));
 
-            if (mode === 'reloan') {
+            if (mode === 'reloan' && !!oldLoan) {
                 await updateLoan(user_id, oldLoan._id, finalData, currentDate, mode, addToMutationList);
-            } else if (mode === 'advance' || mode === 'active') {
+            } else if ((mode === 'advance' || mode === 'active') && !!oldLoan) {
                 await updateLoan(user_id, oldLoan._id, finalData, currentDate, mode, addToMutationList);
             } else if (!hasExistingCC) {
                 await updateGroup(user_id, loanData, addToMutationList, loanId);
