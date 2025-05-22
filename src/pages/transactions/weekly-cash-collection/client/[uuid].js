@@ -927,7 +927,7 @@ const CashCollectionDetailsPage = () => {
                             cashCollection[index].paymentCollectionStr = loan.current[0].history?.collection ? formatPricePhp(loan.current[0].history?.collection) : '-';
                             cashCollection[index].remarks = loan.current[0].history?.remarks;
                         }
-                    } else if (currentLoan.status !== 'active' && (currentLoan.status == 'completed' && !currentLoan?.advance  && (loan?.loanFor == 'today' || (loan?.loanFor == 'tomorrow' && diff >= 0)))) {
+                    } else if (currentLoan.status == 'completed' && !currentLoan?.advance  && (loan?.loanFor == 'today' || (loan?.loanFor == 'tomorrow' && diff >= 0))) {
                         cashCollection[index] = {
                             ...cashCollection[index],
                             client: currentLoan.client,
@@ -992,10 +992,67 @@ const CashCollectionDetailsPage = () => {
                             cashCollection[index].paymentCollectionStr = loan.current[0].history?.collection ? formatPricePhp(loan.current[0].history?.collection) : '-';
                             cashCollection[index].remarks = loan.current[0].history?.remarks;
                         }
+                    } else if (currentLoan.status === 'closed' && (currentLoan?.advance && loan.advanceTransaction && (loan?.loanFor == 'today' || (loan?.loanFor == 'tomorrow' && currentDate == loan.dateOfRelease)))) {
+                        cashCollection[index] = {
+                            ...cashCollection[index],
+                            client: currentLoan.client,
+                            coMaker: (loan.coMaker && typeof loan.coMaker == 'number') ? loan.coMaker : '-',
+                            slotNo: loan.slotNo,
+                            loanId: loan._id,
+                            prevLoanId: loan.prevLoanId,
+                            groupId: loan.groupId,
+                            loId: loan.loId,
+                            branchId: loan.branchId,
+                            clientId: loan.clientId,
+                            fullName: UppercaseFirstLetter(`${loan.client.lastName}, ${loan.client.firstName} ${loan.client.middleName ? loan.client.middleName : ''}`),
+                            loanCycle: loan.loanCycle,
+                            amountReleaseStr: '-',
+                            loanBalanceStr: '-',
+                            targetCollectionStr: '-',
+                            mispayment: false,
+                            mispaymentStr: '-',
+                            noMispaymentStr: '-',
+                            currentReleaseAmount: loan.amountRelease,
+                            currentReleaseAmountStr: loan.amountRelease ? formatPricePhp(loan.amountRelease) : '-',
+                            noOfPayments: currentLoan.noOfPayments,
+                            noOfPayments: currentLoan.noOfPaymentStr,
+                            mcbu: loan.mcbu,
+                            mcbuStr: loan.mcbu > 0 ? formatPricePhp(loan.mcbu) : '-',
+                            mcbuCol: loan.mcbuCol,
+                            mcbuColStr: loan.mcbuCol > 0 ? formatPricePhp(loan.mcbuCol) : '-',
+                            mcbuWithdrawal: loan.mcbuWithdrawal,
+                            mcbuWithdrawalStr: loan.mcbuWithdrawal > 0 ? formatPricePhp(loan.mcbuWithdrawal) : '-',
+                            mcbuReturnAmt: loan.mcbuReturnAmt,
+                            mcbuReturnAmtStr: loan.mcbuReturnAmt > 0 ? formatPricePhp(loan.mcbuReturnAmt) : '-',
+                            mcbuInterest: loan.mcbuInterest,
+                            mcbuInterestStr: loan.mcbuInterest > 0 ? formatPricePhp(loan.mcbuInterest) : '-',
+                            targetCollectionStr: '-',
+                            excessStr: '-',
+                            paymentCollectionStr: '-',
+                            remarks: currentLoan.remarks,
+                            fullPaymentStr: '-',
+                            status: loan.status === 'active' ? 'tomorrow' : 'pending',
+                            loanTerms: loan.loanTerms,
+                            pending: loan.status === 'pending' ? true : false,
+                            tomorrow: loan.status === 'active' ? true : false,
+                            reverted: currentLoan.reverted,
+                            history: currentLoan.history,
+                            selected: false,
+                            advanceTransaction: currentLoan?.advanceTransaction ? currentLoan.advanceTransaction : false,
+                            dateOfRelease: dateOfRelease,
+                        };
+
+                        if (currentLoan.current.length > 0) {
+                            cashCollection[index]._id = currentLoan.current[0]._id;
+                            cashCollection[index].prevData = currentLoan.current[0].prevData;
+                        } else if (loan.current.length > 0) {
+                            cashCollection[index]._id = loan.current[0]._id;
+                            cashCollection[index].prevData = loan.current[0].prevData;
+                        }
                     }
 
                     cashCollection[index] = {...cashCollection[index], loanFor: loan?.loanFor, dateOfRelease: loan?.dateOfRelease};
-                } else {
+                } else if (loan) {
                     const prevLoan = loan.prevLoans.length > 0 ? loan.prevLoans[loan.prevLoans.length - 1] : null;
                     let pendingTomorrow = {
                         _id: loan._id,

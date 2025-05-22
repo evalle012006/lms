@@ -423,31 +423,28 @@ const AddUpdateLoan = ({ origin, client, mode = 'add', loan = {}, showSidebar, s
         }
     }
 
-    const getLastPNNumber = async () => {
+    const getLastPNNumber = async (setFieldValue) => {
         const response = await fetchWrapper.get(process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/get-last-pn-number-by-branch?' + new URLSearchParams({ branchId: currentBranch._id, currentDate: currentDate }));
         if (response.success) {
-            const form = formikRef.current;
             if (response.data.length > 0) {
                 const lastPNNumber = response.data[0];
                 const numberPart = lastPNNumber.maxNumber + 1;
                 const pnNumber = `${currentUser.designatedBranch}-${moment(currentDate).format('MM-DD')}-${numberPart.toString().padStart(3, '0')}`;
-                form.setFieldValue('pnNumber', pnNumber);
+                setFieldValue('pnNumber', pnNumber);
             } else {
                 const pnNumber = `${currentUser.designatedBranch}-${moment(currentDate).format('MM-DD')}-001`;
-                form.setFieldValue('pnNumber', pnNumber);
+                setFieldValue('pnNumber', pnNumber);
             }
         }
     }
 
-    const handlePNNumber = async (e) => {
+    const handlePNNumber = async (e, setFieldValue) => {
         const pnNumber = e.target.value;
         if (pnNumber && currentBranch) {
             const response = await fetchWrapper.get(getApiBaseUrl() + 'transactions/loans/check-existing-pn-number-by-branch?' + new URLSearchParams({ branchId: currentBranch._id, pnNumber: pnNumber, currentDate: currentDate }));
             if (response.success) {
                 if (response.loans.length > 0) {
-                    // const form = formikRef.current;
-                    await getLastPNNumber()
-                    // form.setFieldValue('pnNumber', '');
+                    await getLastPNNumber(setFieldValue);
                     toast.error(response.message);
                 }
             }
@@ -769,7 +766,7 @@ const AddUpdateLoan = ({ origin, client, mode = 'add', loan = {}, showSidebar, s
                 getLOStatus(selectedLo);
             }
         }
-    }, [mode, currentUser, selectedLo]);
+    }, [mode, currentUser, selectedLo, currentDate]);
     // const ddddate = "2024-12-10";
     useEffect(() => {
         const holidays = holidayList.map(holiday => holiday.date);
@@ -1170,12 +1167,13 @@ const AddUpdateLoan = ({ origin, client, mode = 'add', loan = {}, showSidebar, s
                                             name="pnNumber"
                                             value={values.pnNumber}
                                             onChange={handleChange}
-                                            onBlur={handlePNNumber}
-                                            onFocus={getLastPNNumber}
+                                            onBlur={(e) => handlePNNumber(e, setFieldValue)}
+                                            onFocus={() => getLastPNNumber(setFieldValue)}
                                             label="Promisory Note Number"
                                             placeholder="Enter PN Number"
                                             setFieldValue={setFieldValue}
-                                            errors={touched.pnNumber && errors.pnNumber ? errors.pnNumber : undefined} />
+                                            errors={touched.pnNumber && errors.pnNumber ? errors.pnNumber : undefined} 
+                                        />
                                     </div>
                                     <div className="flex flex-row mt-5">
                                         <ButtonOutline label="Cancel" onClick={handleCancel} className="mr-3" />

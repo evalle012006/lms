@@ -4,7 +4,7 @@ import { GraphProvider } from '@/lib/graph/graph.provider'
 import { createGraphType, insertQl, queryQl, updateQl } from '@/lib/graph/graph.util'
 import { CASH_COLLECTIONS_FIELDS, GROUP_FIELDS, LOAN_FIELDS } from '@/lib/graph.fields'
 import { generateUUID } from '@/lib/utils'
-import { filterGraphFields, findLoans } from '@/lib/graph.functions';
+import { filterGraphFields } from '@/lib/graph.functions';
 import { savePendingLoans } from '../cash-collections/update-pending-loans';
 
 const graph = new GraphProvider();
@@ -26,6 +26,7 @@ async function save(req, res) {
     const group = loanData.group;
 
     let mode;
+    let oldLoanId;
     const currentDate = loanData.currentDate;
 
     delete loanData.currentDate;
@@ -40,6 +41,7 @@ async function save(req, res) {
 
     if (loanData.hasOwnProperty('mode')) {
         mode = loanData.mode;
+        oldLoanId = loanData.oldLoanId;
         delete loanData.mode;
         delete loanData.oldLoanId;
         delete loanData.groupCashCollections;
@@ -47,7 +49,6 @@ async function save(req, res) {
     }
 
     logger.debug({user_id, page: `Saving Loan: ${loanData.clientId}`, mode: mode, data: loanData});
-    const [oldLoan] = await findLoans({ clientId: { _eq: loanData.clientId }, status: { _eq: 'completed' } });
 
     const spotExist = (await graph.query(queryQl(loansType(), {
       where: {
@@ -72,17 +73,8 @@ async function save(req, res) {
       }
     }))).data?.cashCollections;
 
-    let groupStatus = 'pending';
-    let hasExistingCC = false;
-    if (groupCashCollections.length > 0) {
-        const groupStatuses = groupCashCollections.filter(cc => cc.groupStatus === 'pending');
-        if (groupStatuses.length === 0) {
-            groupStatus = 'closed';
-        }
-
-        const existingCC = groupCashCollections.find(cc => cc.clientId === loanData.clientId && cc.status === 'completed');
-        hasExistingCC = existingCC ? true : false;
-    }
+    const groupStatus = groupCashCollections.length === 0 || groupCashCollections.some(cc => cc.groupStatus === 'pending') ? 'pending' : 'closed';
+    const hasExistingCC = groupCashCollections.some(cc => cc.clientId === loanData.clientId && cc.status === 'completed');
 
     if ((mode !== 'reloan' && mode !== 'advance' && mode !== 'active') && spotExist.length > 0) {
         response = {
@@ -145,7 +137,7 @@ async function save(req, res) {
             //     finalData.dateOfRelease = finalData.admissionDate;
             // }
 
-            finalData.prevLoanId = oldLoan?._id;
+            finalData.prevLoanId = oldLoanId;
 
             if (mode == 'advance' || mode == 'active') {
                 finalData.advanceTransaction = true;
@@ -164,9 +156,9 @@ async function save(req, res) {
               }));
 
             if (mode === 'reloan' && !!oldLoan) {
-                await updateLoan(user_id, oldLoan._id, finalData, currentDate, mode, addToMutationList);
-            } else if ((mode === 'advance' || mode === 'active') && !!oldLoan) {
-                await updateLoan(user_id, oldLoan._id, finalData, currentDate, mode, addToMutationList);
+                await updateLoan(user_id, oldLoanId, finalData, currentDate, mode, addToMutationList);
+            } else if ((mode === 'advance' || mode === 'active')) {
+                await updateLoan(user_id, oldLoanId, finalData, currentDate, mode, addToMutationList);
             } else if (!hasExistingCC) {
                 await updateGroup(user_id, loanData, addToMutationList, loanId);
             }
@@ -181,6 +173,7 @@ async function save(req, res) {
             );
 
             const [loan] = (await graph.query(queryQl(loansType(), { where: { _id: { _eq: loanId } } }))).data.loans;
+            console.log(hasExistingCC)
             if (hasExistingCC) {
                 await savePendingLoans(user_id, [finalData], loanId);
             }

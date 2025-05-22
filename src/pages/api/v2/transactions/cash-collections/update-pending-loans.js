@@ -26,33 +26,46 @@ export async function savePendingLoans(user_id, collections, loanId) {
   const currentDate = moment(getCurrentDate()).format('YYYY-MM-DD');
   await Promise.all(collections.map(async cc => {
     logger.debug({user_id, page: `Update Cash Collection For Pending Loan savePendingLoans`, clientId: cc.clientId, loanId: cc.loanId, cc, currentDate });
+    // console.log("logs", user_id, cc.clientId, cc.loanId, cc.loanFor, cc, currentDate );
     if ((cc?.loanFor === 'today' || (cc?.loanFor === 'tomorrow' && cc?.dateOfRelease === currentDate))) {
-        let updatedCc = { ... cc };;
+        let updatedCc = { ... cc };
+        // console.log('loanId', loanId)
         if (loanId) {
           updatedCc.loanId = loanId;
         }
         await updatePendingLoan(user_id, updatedCc, currentDate);
     } else {
-      let ccLoanId = cc.loanId ? cc.loanId : cc._id;
-      let ccStatus = 'completed';
-
+      // console.log('loanId', loanId)
       if (loanId) {
-        ccLoanId = loanId;
-        ccStatus = 'closed'
-      }
         await graph.mutation(
           updateQl(loansType(), {
-            set: { status: ccStatus },
-            where: { _id: { _eq: ccLoanId } }
+            set: { status: 'closed', closedDate: currentDate },
+            where: { _id: { _eq: loanId } }
           }),
           updateQl(ccType, {
-            set: { status: ccStatus },
+            set: { status: 'closed' },
             where: {
               clientId: { _eq: cc.clientId },
               dateAdded: { _eq: currentDate },
             }
           })
         );
+      } else {
+        let ccLoanId = cc.loanId ? cc.loanId : cc._id;
+        await graph.mutation(
+          updateQl(loansType(), {
+            set: { status: 'completed' },
+            where: { _id: { _eq: ccLoanId } }
+          }),
+          updateQl(ccType, {
+            set: { status: 'completed' },
+            where: {
+              clientId: { _eq: cc.clientId },
+              dateAdded: { _eq: currentDate },
+            }
+          })
+        );
+      }
     }
   }))
 }

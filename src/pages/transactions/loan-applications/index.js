@@ -950,25 +950,26 @@ const LoanApplicationPage = () => {
         const pageSize = 30; // Make sure this matches your table's pageSize
         const startIndex = currentPageIndex * pageSize;
         const endIndex = startIndex + pageSize;
-    
+        
         const updateList = (sourceList, setAction) => {
             if (mode === 'all') {
                 const tempList = sourceList.map((loan, index) => {
                     let temp = { ...loan };
-    
+
                     // Only update items on the current page
                     if (index >= startIndex && index < Math.min(endIndex, sourceList.length)) {
                         // Set selected property to the selectAll value (true or false)
                         temp.selected = selectAll;
                     }
-    
+
                     return temp;
                 });
                 setAction(tempList);
+                return tempList;
             } else if (mode === 'row') {
                 // For single row selection
                 const absoluteIndex = startIndex + rows.index;
-                
+                console.log(sourceList, startIndex, rows.index)
                 const tempList = sourceList.map((loan, index) => {
                     let temp = { ...loan };
                     
@@ -980,17 +981,67 @@ const LoanApplicationPage = () => {
                     return temp;
                 });
                 setAction(tempList);
+                return tempList;
             }
         };
-    
-        // Handle different tabs
-        if (selectedTab === 'ldf' && list) {
-            updateList(list, (tempList) => dispatch(setLoanList(tempList)));
+
+        // Function to sync selections from filtered list to main list
+        const syncSelectionsToMainList = (updatedFilteredList, mainList, setMainListAction) => {
+            const updatedMainList = mainList.map(mainItem => {
+                // Find corresponding item in filtered list by ID
+                const filteredItem = updatedFilteredList.find(filteredItem => filteredItem._id === mainItem._id);
+                if (filteredItem) {
+                    return { ...mainItem, selected: filteredItem.selected };
+                }
+                return mainItem;
+            });
+            setMainListAction(updatedMainList);
+        };
+
+        // Handle different tabs with filtering consideration
+        if (selectedTab === 'ldf') {
+            if (isFiltering) {
+                // Update filtered list and sync selections to main list
+                const updatedFilteredList = updateList(filteredList, (tempList) => dispatch(setFilteredLoanList(tempList)));
+                syncSelectionsToMainList(updatedFilteredList, list, (tempList) => dispatch(setLoanList(tempList)));
+            } else {
+                // Update main list only
+                updateList(list, (tempList) => dispatch(setLoanList(tempList)));
+            }
         } 
-        else if (selectedTab === 'application' && pendingList) {
-            updateList(pendingList, (tempList) => dispatch(setPendingLoanList(tempList)));
+        else if (selectedTab === 'application') {
+            if (isPendingFiltering) {
+                // Update filtered pending list and sync selections to main pending list
+                const updatedFilteredList = updateList(filteredPendingList, (tempList) => dispatch(setFilteredPendingLoanList(tempList)));
+                syncSelectionsToMainList(updatedFilteredList, pendingList, (tempList) => dispatch(setPendingLoanList(tempList)));
+            } else {
+                // Update main pending list only
+                updateList(pendingList, (tempList) => dispatch(setPendingLoanList(tempList)));
+            }
         } 
-        else if (selectedTab === 'duplicate' && duplicateList) {
+        else if (selectedTab === 'tomorrow') {
+            if (isTomorrowFiltering) {
+                // Update filtered tomorrow list and sync selections to main tomorrow list
+                const updatedFilteredList = updateList(filteredTomorrowList, (tempList) => dispatch(setFilteredTomorrowLoanList(tempList)));
+                syncSelectionsToMainList(updatedFilteredList, tomorrowList, (tempList) => dispatch(setTomorrowLoanList(tempList)));
+            } else {
+                // Update main tomorrow list only
+                updateList(tomorrowList, (tempList) => dispatch(setTomorrowLoanList(tempList)));
+            }
+        }
+        else if (selectedTab === 'forecast') {
+            if (isForecastedFiltering) {
+                // Update filtered forecasted list and sync selections to main forecasted list
+                const updatedFilteredList = updateList(filteredForcastedList, (tempList) => dispatch(setFilteredForecastedLoanList(tempList)));
+                syncSelectionsToMainList(updatedFilteredList, forecastedList, (tempList) => dispatch(setForecastedLoanList(tempList)));
+            } else {
+                // Update main forecasted list only
+                updateList(forecastedList, (tempList) => dispatch(setForecastedLoanList(tempList)));
+            }
+        }
+        else if (selectedTab === 'duplicate') {
+            // Duplicate list doesn't seem to have filtering in your current implementation
+            // But if it does, you can add the same pattern here
             updateList(duplicateList, (tempList) => dispatch(setDuplicateLoanList(tempList)));
         }
     };

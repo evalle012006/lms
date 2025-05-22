@@ -1,31 +1,31 @@
 import React, { useReducer, useMemo, useCallback, useEffect, useState } from 'react';
 import logo from "/public/images/logo.png";
 import { 
-    Squares2X2Icon, 
-    BuildingStorefrontIcon,
-    BuildingOfficeIcon,
-    BuildingOffice2Icon,
-    ChartBarSquareIcon,
-    ChartBarIcon,
-    ClipboardDocumentListIcon,
-    ClipboardDocumentCheckIcon,
-    UserIcon,
-    UserMinusIcon,
-    UsersIcon,
-    UserGroupIcon,
-    TicketIcon,
-    Cog6ToothIcon,
-    DocumentChartBarIcon,
-    BuildingLibraryIcon,
-    ChevronDownIcon,
-    CpuChipIcon,
-    ArrowRightOnRectangleIcon,
-    ArrowsRightLeftIcon,
-    CloudArrowUpIcon,
-    Bars3Icon,
-    XMarkIcon
-} from '@heroicons/react/24/solid';
-import { ExclamationTriangleIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
+    LayoutDashboard, 
+    Store,
+    Building,
+    Building2,
+    BarChart3,
+    BarChart,
+    ClipboardList,
+    ClipboardCheck,
+    User,
+    UserMinus,
+    Users,
+    Users2,
+    Ticket,
+    Settings,
+    FileBarChart,
+    Library,
+    ChevronDown,
+    Cpu,
+    LogOut,
+    ArrowRightLeft,
+    CloudUpload,
+    Menu,
+    X
+} from 'lucide-react';
+import { AlertTriangle, Edit } from 'lucide-react';
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useDispatch, useSelector } from "react-redux";
@@ -41,8 +41,8 @@ const MenuItems = [
         label: "Dashboard",
         url: "/",
         icon: {
-          active: (props) => <Squares2X2Icon {...props} />,
-          notActive: (props) => <Squares2X2Icon {...props} />,
+          active: (props) => <LayoutDashboard {...props} />,
+          notActive: (props) => <LayoutDashboard {...props} />,
         },
         active: true,
         hasSub: false,
@@ -52,8 +52,8 @@ const MenuItems = [
         label: "Branches",
         url: "/branches",
         icon: {
-          active: (props) => <BuildingStorefrontIcon {...props} />,
-          notActive: (props) => <BuildingStorefrontIcon {...props} />,
+          active: (props) => <Store {...props} />,
+          notActive: (props) => <Store {...props} />,
         },
         active: false,
         hasSub: false,
@@ -63,8 +63,8 @@ const MenuItems = [
         label: "Areas",
         url: "/areas",
         icon: {
-            active: (props) => <BuildingOfficeIcon {...props} />,
-            notActive: (props) => <BuildingOfficeIcon {...props} />,
+            active: (props) => <Building {...props} />,
+            notActive: (props) => <Building {...props} />,
         },
         active: false,
         hasSub: false,
@@ -74,8 +74,8 @@ const MenuItems = [
         label: "Regions",
         url: "/regions",
         icon: {
-            active: (props) => <BuildingOffice2Icon {...props} />,
-            notActive: (props) => <BuildingOffice2Icon {...props} />,
+            active: (props) => <Building2 {...props} />,
+            notActive: (props) => <Building2 {...props} />,
         },
         active: false,
         hasSub: false,
@@ -85,8 +85,8 @@ const MenuItems = [
         label: "Divisions",
         url: "/divisions",
         icon: {
-            active: (props) => <BuildingLibraryIcon {...props} />,
-            notActive: (props) => <BuildingLibraryIcon {...props} />,
+            active: (props) => <Library {...props} />,
+            notActive: (props) => <Library {...props} />,
         },
         active: false,
         hasSub: false,
@@ -96,8 +96,8 @@ const MenuItems = [
         label: "Groups",
         url: "/groups",
         icon: {
-            active: (props) => <UserGroupIcon {...props} />,
-            notActive: (props) => <UserGroupIcon {...props} />,
+            active: (props) => <Users2 {...props} />,
+            notActive: (props) => <Users2 {...props} />,
         },
         active: false,
         hasSub: false,
@@ -107,8 +107,8 @@ const MenuItems = [
         label: "Clients",
         url: "#clients",
         icon: {
-            active: (props) => <UserIcon {...props} />,
-            notActive: (props) => <UserIcon {...props} />,
+            active: (props) => <User {...props} />,
+            notActive: (props) => <User {...props} />,
         },
         active: false,
         borderBottom: true,
@@ -119,8 +119,8 @@ const MenuItems = [
                 label: "Prospect Clients",
                 url: "/clients?status=pending",
                 icon: {
-                    active: (props) => <UserIcon {...props} />,
-                    notActive: (props) => <UserIcon {...props} />,
+                    active: (props) => <User {...props} />,
+                    notActive: (props) => <User {...props} />,
                 },
                 active: false,
                 hasSub: false,
@@ -130,8 +130,8 @@ const MenuItems = [
                 label: "Active Clients",
                 url: "/clients?status=active",
                 icon: {
-                    active: (props) => <UserIcon {...props} />,
-                    notActive: (props) => <UserIcon {...props} />,
+                    active: (props) => <User {...props} />,
+                    notActive: (props) => <User {...props} />,
                 },
                 active: false,
                 hasSub: false,
@@ -141,8 +141,8 @@ const MenuItems = [
                 label: "Offset Accounts",
                 url: "/clients?status=offset",
                 icon: {
-                    active: (props) => <UserIcon {...props} />,
-                    notActive: (props) => <UserIcon {...props} />,
+                    active: (props) => <User {...props} />,
+                    notActive: (props) => <User {...props} />,
                 },
                 active: false,
                 hasSub: false,
@@ -155,8 +155,8 @@ const MenuItems = [
         url: "#transactions",
         subMenuIndex: 0,
         icon: {
-            active: (props) => <ClipboardDocumentListIcon {...props} />,
-            notActive: (props) => <ClipboardDocumentListIcon {...props} />,
+            active: (props) => <ClipboardList {...props} />,
+            notActive: (props) => <ClipboardList {...props} />,
         },
         active: false,
         borderBottom: true,
@@ -167,8 +167,8 @@ const MenuItems = [
                 label: "Loan Approval",
                 url: "/transactions/loan-applications",
                 icon: {
-                    active: (props) => <ClipboardDocumentCheckIcon {...props} />,
-                    notActive: (props) => <ClipboardDocumentCheckIcon {...props} />,
+                    active: (props) => <ClipboardCheck {...props} />,
+                    notActive: (props) => <ClipboardCheck {...props} />,
                 },
                 active: false,
                 hasSub: false,
@@ -178,8 +178,8 @@ const MenuItems = [
                 label: "Loan Officer Register (Daily)",
                 url: "/transactions/daily-cash-collection", 
                 icon: {
-                    active: (props) => <TicketIcon {...props} />,
-                    notActive: (props) => <TicketIcon {...props} />,
+                    active: (props) => <Ticket {...props} />,
+                    notActive: (props) => <Ticket {...props} />,
                 },
                 active: false,
                 hasSub: false,
@@ -200,8 +200,8 @@ const MenuItems = [
                 label: "Loan Officer Summary",
                 url: "/transactions/loan-officer-summary", 
                 icon: {
-                    active: (props) => <ChartBarSquareIcon {...props} />,
-                    notActive: (props) => <ChartBarSquareIcon {...props} />,
+                    active: (props) => <BarChart3 {...props} />,
+                    notActive: (props) => <BarChart3 {...props} />,
                 },
                 active: false,
                 hasSub: false,
@@ -211,28 +211,13 @@ const MenuItems = [
                 label: "Bad Debts",
                 url: "/other-transactions/baddebt-collection",
                 icon: {
-                    active: (props) => <UserMinusIcon {...props} />,
-                    notActive: (props) => <UserMinusIcon {...props} />,
+                    active: (props) => <UserMinus {...props} />,
+                    notActive: (props) => <UserMinus {...props} />,
                 },
                 active: false,
                 hasSub: false,
                 hidden: false
-            },
-            // {
-            //     label: "Daily Collection Sheet",
-            //     url: "/transactions/daily-collection-sheet", 
-            //     icon: {
-            //         active: (
-            //             <ClipboardDocumentIcon className="text-gray-800 w-5 h-5" />
-            //         ),
-            //         notActive: (
-            //             <ClipboardDocumentIcon className="text-white w-5 h-5" />
-            //         ),
-            //     },
-            //     active: false,
-            //     hasSub: false,
-            //     hidden: false
-            // }
+            }
         ]
     },
     {
@@ -240,8 +225,8 @@ const MenuItems = [
         url: "#weekly-transactions",
         subMenuIndex: 0,
         icon: {
-            active: (props) => <ClipboardDocumentListIcon {...props} />,
-            notActive: (props) => <ClipboardDocumentListIcon {...props} />,
+            active: (props) => <ClipboardList {...props} />,
+            notActive: (props) => <ClipboardList {...props} />,
         },
         active: false,
         borderBottom: true,
@@ -252,8 +237,8 @@ const MenuItems = [
                 label: "Loan Approval",
                 url: "/transactions/loan-applications",
                 icon: {
-                    active: (props) => <ClipboardDocumentCheckIcon {...props} />,
-                    notActive: (props) => <ClipboardDocumentCheckIcon {...props} />,
+                    active: (props) => <ClipboardCheck {...props} />,
+                    notActive: (props) => <ClipboardCheck {...props} />,
                 },
                 active: false,
                 hasSub: false,
@@ -263,8 +248,8 @@ const MenuItems = [
                 label: "Loan Officer Register (Weekly)",
                 url: "/transactions/weekly-cash-collection", 
                 icon: {
-                    active: (props) => <TicketIcon {...props} />,
-                    notActive: (props) => <TicketIcon {...props} />,
+                    active: (props) => <Ticket {...props} />,
+                    notActive: (props) => <Ticket {...props} />,
                 },
                 active: false,
                 hasSub: false,
@@ -285,8 +270,8 @@ const MenuItems = [
                 label: "Loan Officer Summary",
                 url: "/transactions/loan-officer-summary", 
                 icon: {
-                    active: (props) => <ChartBarSquareIcon {...props} />,
-                    notActive: (props) => <ChartBarSquareIcon {...props} />,
+                    active: (props) => <BarChart3 {...props} />,
+                    notActive: (props) => <BarChart3 {...props} />,
                 },
                 active: false,
                 hasSub: false,
@@ -296,28 +281,13 @@ const MenuItems = [
                 label: "Bad Debts",
                 url: "/other-transactions/baddebt-collection",
                 icon: {
-                    active: (props) => <UserMinusIcon {...props} />,
-                    notActive: (props) => <UserMinusIcon {...props} />,
+                    active: (props) => <UserMinus {...props} />,
+                    notActive: (props) => <UserMinus {...props} />,
                 },
                 active: false,
                 hasSub: false,
                 hidden: false
-            },
-            // {
-            //     label: "Daily Collection Sheet",
-            //     url: "/transactions/daily-collection-sheet", 
-            //     icon: {
-            //         active: (
-            //             <ClipboardDocumentIcon className="text-gray-800 w-5 h-5" />
-            //         ),
-            //         notActive: (
-            //             <ClipboardDocumentIcon className="text-white w-5 h-5" />
-            //         ),
-            //     },
-            //     active: false,
-            //     hasSub: false,
-            //     hidden: false
-            // }
+            }
         ]
     },
     {
@@ -325,8 +295,8 @@ const MenuItems = [
         url: "#branch-manager-transactions",
         subMenuIndex: 0,
         icon: {
-            active: (props) => <ClipboardDocumentListIcon {...props} />,
-            notActive: (props) => <ClipboardDocumentListIcon {...props} />,
+            active: (props) => <ClipboardList {...props} />,
+            notActive: (props) => <ClipboardList {...props} />,
         },
         active: false,
         borderBottom: true,
@@ -337,8 +307,8 @@ const MenuItems = [
                 label: "Loan Approval",
                 url: "/transactions/loan-applications",
                 icon: {
-                    active: (props) => <ClipboardDocumentCheckIcon {...props} />,
-                    notActive: (props) => <ClipboardDocumentCheckIcon {...props} />,
+                    active: (props) => <ClipboardCheck {...props} />,
+                    notActive: (props) => <ClipboardCheck {...props} />,
                 },
                 active: false,
                 hasSub: false,
@@ -348,8 +318,8 @@ const MenuItems = [
                 label: "Loan Officer Register",
                 url: "/transactions/branch-manager/cash-collection", 
                 icon: {
-                    active: (props) => <TicketIcon {...props} />,
-                    notActive: (props) => <TicketIcon {...props} />,
+                    active: (props) => <Ticket {...props} />,
+                    notActive: (props) => <Ticket {...props} />,
                 },
                 active: false,
                 hasSub: false,
@@ -359,8 +329,8 @@ const MenuItems = [
                 label: "Branch Manager Summary",
                 url: "/transactions/branch-manager/summary", 
                 icon: {
-                    active: (props) => <ChartBarSquareIcon {...props} />,
-                    notActive: (props) => <ChartBarSquareIcon {...props} />,
+                    active: (props) => <BarChart3 {...props} />,
+                    notActive: (props) => <BarChart3 {...props} />,
                 },
                 active: false,
                 hasSub: false,
@@ -377,27 +347,12 @@ const MenuItems = [
               hasSub: false,
               hidden: false
             },
-            // {
-            //     label: "Daily Collection Sheet",
-            //     url: "/transactions/daily-collection-sheet", 
-            //     icon: {
-            //         active: (
-            //             <ClipboardDocumentIcon className="text-gray-800 w-5 h-5" />
-            //         ),
-            //         notActive: (
-            //             <ClipboardDocumentIcon className="text-white w-5 h-5" />
-            //         ),
-            //     },
-            //     active: false,
-            //     hasSub: false,
-            //     hidden: false
-            // },
             {
                 label: "Transfer Client",
                 url: "/transactions/transfer-client", 
                 icon: {
-                    active: (props) => <ArrowsRightLeftIcon {...props} />,
-                    notActive: (props) => <ArrowsRightLeftIcon {...props} />,
+                    active: (props) => <ArrowRightLeft {...props} />,
+                    notActive: (props) => <ArrowRightLeft {...props} />,
                 },
                 active: false,
                 hasSub: false,
@@ -407,8 +362,8 @@ const MenuItems = [
                 label: "Bad Debts",
                 url: "/other-transactions/baddebt-collection",
                 icon: {
-                    active: (props) => <UserMinusIcon {...props} />,
-                    notActive: (props) => <UserMinusIcon {...props} />,
+                    active: (props) => <UserMinus {...props} />,
+                    notActive: (props) => <UserMinus {...props} />,
                 },
                 active: false,
                 hasSub: false,
@@ -421,8 +376,8 @@ const MenuItems = [
         url: "#reports",
         subMenuIndex: 1,
         icon: {
-            active: (props) => <ChartBarIcon {...props} />,
-            notActive: (props) => <ChartBarIcon {...props} />,
+            active: (props) => <BarChart {...props} />,
+            notActive: (props) => <BarChart {...props} />,
         },
         active: true,
         hasSub: true,
@@ -432,8 +387,8 @@ const MenuItems = [
                 label: "Transaction by Remarks",
                 url: "/reports/transaction-remarks",
                 icon: {
-                    active: (props) => <DocumentChartBarIcon {...props} />,
-                    notActive: (props) => <DocumentChartBarIcon {...props} />,
+                    active: (props) => <FileBarChart {...props} />,
+                    notActive: (props) => <FileBarChart {...props} />,
                 },
                 active: false,
                 hasSub: false
@@ -442,8 +397,8 @@ const MenuItems = [
                 label: "Query Low Loan Balance",
                 url: "/reports/low-loan-balance",
                 icon: {
-                    active: (props) => <DocumentChartBarIcon {...props} />,
-                    notActive: (props) => <DocumentChartBarIcon {...props} />,
+                    active: (props) => <FileBarChart {...props} />,
+                    notActive: (props) => <FileBarChart {...props} />,
                 },
                 active: false,
                 hasSub: false
@@ -452,8 +407,8 @@ const MenuItems = [
                 label: "Query Mispayments",
                 url: "/reports/mispay-list",
                 icon: {
-                    active: (props) => <DocumentChartBarIcon {...props} />,
-                    notActive: (props) => <DocumentChartBarIcon {...props} />,
+                    active: (props) => <FileBarChart {...props} />,
+                    notActive: (props) => <FileBarChart {...props} />,
                 },
                 active: false,
                 hasSub: false
@@ -465,8 +420,8 @@ const MenuItems = [
         url: "#settings",
         subMenuIndex: 1,
         icon: {
-            active: (props) => <Cog6ToothIcon {...props} />,
-            notActive: (props) => <Cog6ToothIcon {...props} />,
+            active: (props) => <Settings {...props} />,
+            notActive: (props) => <Settings {...props} />,
         },
         active: true,
         hasSub: true,
@@ -476,32 +431,18 @@ const MenuItems = [
                 label: "Users",
                 url: "/settings/users",
                 icon: {
-                    active: (props) => <UsersIcon {...props} />,
-                    notActive: (props) => <UsersIcon {...props} />,
+                    active: (props) => <Users {...props} />,
+                    notActive: (props) => <Users {...props} />,
                 },
                 active: false,
                 hasSub: false
             },
-            // {
-            //     label: "Roles",
-            //     url: "/settings/roles",
-            //     icon: {
-            //         active: (
-            //             <UserCircleIcon className="text-gray-800 w-5 h-5" />
-            //         ),
-            //         notActive: (
-            //             <UserCircleIcon className="text-white w-5 h-5" />
-            //         ),
-            //     },
-            //     active: false,
-            //     hasSub: false
-            // },
             {
                 label: "System",
                 url: "/settings/system",
                 icon: {
-                    active: (props) => <CpuChipIcon {...props} />,
-                    notActive: (props) => <CpuChipIcon {...props} />,
+                    active: (props) => <Cpu {...props} />,
+                    notActive: (props) => <Cpu {...props} />,
                 },
                 active: false,
                 hasSub: false
@@ -510,8 +451,8 @@ const MenuItems = [
                 label: "Migration",
                 url: "/settings/migration",
                 icon: {
-                    active: (props) => <CloudArrowUpIcon {...props} />,
-                    notActive: (props) => <CloudArrowUpIcon {...props} />,
+                    active: (props) => <CloudUpload {...props} />,
+                    notActive: (props) => <CloudUpload {...props} />,
                 },
                 active: false,
                 hasSub: false
@@ -520,25 +461,14 @@ const MenuItems = [
                 label: "Reset",
                 url: "/settings/reset",
                 icon: {
-                    active: (props) => <ExclamationTriangleIcon {...props} />,
-                    notActive: (props) => <ExclamationTriangleIcon {...props} />,
+                    active: (props) => <AlertTriangle {...props} />,
+                    notActive: (props) => <AlertTriangle {...props} />,
                 },
                 active: false,
                 hasSub: false
             }
         ]
-    },
-    // {
-    //     label: "Logout",
-    //     url: "/logout",
-    //     icon: {
-    //         active: (props) => <ArrowRightOnRectangleIcon {...props} />,
-    //         notActive: (props) => <ArrowRightOnRectangleIcon {...props} />,
-    //     },
-    //     active: false,
-    //     borderBottom: true,
-    //     hasSub: false
-    // }
+    }
 ];
 
 const initialState = {
@@ -607,7 +537,7 @@ const SubNav = React.memo(({ item, index, activePath, inner = false, className =
               {item.label}
             </span>
             {item.hasSub && (
-              <ChevronDownIcon className={`ml-auto ${activePath === item.url ? 'text-gray-800 w-5 h-5' : 'text-white w-5 h-5'} ${isSubMenuOpen && 'rotate-180'}`} />
+              <ChevronDown className={`ml-auto ${activePath === item.url ? 'text-gray-800 w-5 h-5' : 'text-white w-5 h-5'} ${isSubMenuOpen && 'rotate-180'}`} />
             )}
           </div>
         </Link>
@@ -752,7 +682,7 @@ const NavComponent = ({ isVisible, toggleNav, isMobile }) => {
         }
       });
     }
-    console.log(page);
+    
     if (page) {
       dispatch(setCurrentPage(page.url));
       dispatch(setCurrentPageTitle(page.label));
@@ -769,9 +699,9 @@ const NavComponent = ({ isVisible, toggleNav, isMobile }) => {
                 aria-label="Toggle menu"
             >
                 {isVisible ? (
-                    <XMarkIcon className="w-6 h-6 text-white" />
+                    <X className="w-6 h-6 text-white" />
                 ) : (
-                    <Bars3Icon className="w-6 h-6 text-white" />
+                    <Menu className="w-6 h-6 text-white" />
                 )}
             </span>
         )}
@@ -784,20 +714,6 @@ const NavComponent = ({ isVisible, toggleNav, isMobile }) => {
                   </Link>
               </div>
             </header>
-            {/* <div className="group relative">
-                <span className="hidden group-hover:block absolute right-2 pt-1 cursor-pointer" onClick={() => router.push(`/settings/users/${userState._id}`)}>
-                    <PencilSquareIcon className="text-white w-6 h-6" />
-                </span>
-                <div id="profile" className="flex items-center border-b border-orange-darkest px-2 py-4">
-                    <div id="img" className="w-1/4">
-                        <Avatar name={userState.firstName + " " + userState.lastName} src={userState.profile ? userState.profile : ""} className={`${userState.profile ? '' : 'p-6'} `} />
-                    </div>
-                    <div id="welcome" className="text-white w-2/4 sm:ml-1 md:ml-6">
-                        <p className="text-xs">Welcome,</p>
-                        <span className="text-lg">{userState.firstName + " " + userState.lastName}</span>
-                    </div>
-                </div>
-            </div> */}
             <nav className="flex-grow">
                 <ul className="flex flex-col list-reset">
                     {filteredMenuItems.map((item, index) => (

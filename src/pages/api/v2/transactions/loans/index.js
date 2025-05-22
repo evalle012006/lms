@@ -55,17 +55,8 @@ async function updateLoan(req, res) {
         }
   }))).data?.cashCollections;
 
-  let groupStatus = 'pending';
-  let hasExistingCC = false;
-  if (groupCashCollections.length > 0) {
-      const groupStatuses = groupCashCollections.filter(cc => cc.groupStatus === 'pending');
-      if (groupStatuses.length === 0) {
-          groupStatus = 'closed';
-      }
-
-      const existingCC = groupCashCollections.find(cc => cc.clientId === loan.clientId);
-      hasExistingCC = (existingCC && existingCC?.status == 'completed') ? true : false;
-  }
+  const groupStatus = groupCashCollections.length === 0 || groupCashCollections.some(cc => cc.groupStatus === 'pending') ? 'pending' : 'closed';
+  const hasExistingCC = groupCashCollections.some(cc => cc.clientId === loan.clientId && cc.status === 'completed');
 
   // the mixed type from mongo during migration
   let updatedLoan = { ...loan };
