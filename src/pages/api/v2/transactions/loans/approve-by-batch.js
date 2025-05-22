@@ -227,12 +227,10 @@ async function updateGroup(group, addToMutationList) {
 }
 
 async function updateClient(loanId, addToMutationList) {
-  const clientId = loan.clientId;
-  let client = await findClients({ _id: { _eq: clientId } });
   let [loan] = await findLoans({ _id: { _eq: loanId } });
+  let [client] = await findClients({ _id: { _eq: loan?.clientId ?? null } });
 
-  if (client.length > 0) {
-    client = client[0];
+  if (!!client) {
 
     client.dateModified = moment(getCurrentDate()).format('YYYY-MM-DD');
 
