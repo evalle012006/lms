@@ -154,7 +154,9 @@ async function save(req, res) {
         const reverted = data.collection.filter(c => c.fromReverted && !c.advance);
         if (reverted.length == 0) {
             const pendingLoans = data.collection.filter(c => (c.status === 'pending' || c.status === 'closed') && c.advance == true);
-            await savePendingLoans(user_id, pendingLoans);
+            if (pendingLoans.length > 0) {
+                await savePendingLoans(user_id, pendingLoans);
+            }
         }
     }
 
