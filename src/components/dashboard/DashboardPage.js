@@ -21,7 +21,10 @@ import {
     RotateCcw,
     Users,
     Clock,
-    PencilLine
+    PencilLine,
+    TrendingUp,
+    TrendingDown,
+    Minus
 } from 'lucide-react';
 import ClientSearchTool from './ClientSearchTool';
 import { Line } from 'react-chartjs-2';
@@ -84,6 +87,81 @@ const DashboardPage = () => {
     const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 0);
     const [dateFilter, setDateFilter] = useState(new Date());
 
+    // Helper function to calculate percentage change and trend
+    const calculateTrend = (current, previous) => {
+        const currentValue = current || 0;
+        const previousValue = previous || 0;
+        
+        if (previousValue === 0) {
+            if (currentValue === 0) {
+                return { change: 0, trend: 'neutral', percentage: 0 };
+            }
+            return { 
+                change: currentValue, 
+                trend: currentValue > 0 ? 'up' : 'down', 
+                percentage: 100 
+            };
+        }
+        
+        const change = currentValue - previousValue;
+        const percentage = ((change / Math.abs(previousValue)) * 100);
+        const trend = change > 0 ? 'up' : change < 0 ? 'down' : 'neutral';
+        
+        return { change, trend, percentage: Math.abs(percentage) };
+    };
+
+    // Enhanced CardItem component with trend indicators
+    const CardItem = ({ title, value, prevValue, Icon }) => {
+        const IconComponent = Icon || HelpCircle;
+        const trend = calculateTrend(value, prevValue);
+        
+        const getTrendIcon = () => {
+            switch (trend.trend) {
+                case 'up':
+                    return <TrendingUp className="h-4 w-4" />;
+                case 'down':
+                    return <TrendingDown className="h-4 w-4" />;
+                default:
+                    return <Minus className="h-4 w-4" />;
+            }
+        };
+        
+        const getTrendColor = () => {
+            switch (trend.trend) {
+                case 'up':
+                    return 'text-green-600';
+                case 'down':
+                    return 'text-red-600';
+                default:
+                    return 'text-gray-500';
+            }
+        };
+        
+        return (
+            <div className="bg-white p-3 rounded-lg shadow relative overflow-hidden mb-2">
+                <IconComponent className="absolute right-1 bottom-1 h-10 w-10 text-gray-200" />
+                <div className="relative z-10">
+                    <div className="flex items-center justify-between mb-1">
+                        <h3 className="text-xs font-semibold text-gray-700 truncate">{title}</h3>
+                        {prevValue !== undefined && (
+                            <div className={`flex items-center space-x-1 ${getTrendColor()} shrink-0`}>
+                                {getTrendIcon()}
+                                <span className="text-xs font-medium">
+                                    {trend.percentage.toFixed(1)}%
+                                </span>
+                            </div>
+                        )}
+                    </div>
+                    <p className="text-base font-bold text-blue-600 truncate">{formatNumber(value || 0)}</p>
+                    {prevValue !== undefined && trend.trend !== 'neutral' && (
+                        <div className={`text-xs mt-1 ${getTrendColor()}`}>
+                            {trend.trend === 'up' ? '+' : ''}{formatNumber(trend.change)}
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    };
 
     useEffect(() => {
         fetchSummaries();
@@ -169,91 +247,69 @@ const DashboardPage = () => {
         );
     };
 
+    // Enhanced chart data processing with trend colors
     useEffect(() => {
         if(graphData.length) {
+            const dates = graphData.map(o => o.group).reverse();
+            const activeClients = graphData.map(o => o.activeClients || 0).reverse();
+            const newMembers = graphData.map(o => o.newMember || 0).reverse();
+            const mcbus = graphData.map(o => o.mcbu || 0).reverse();
+            const mcbuWithdrawals = graphData.map(o => o.clientMcbuWithdrawals || 0).reverse();
+            const loanCollections = graphData.map(o => ((o.loanCollectionDaily || 0) + (o.loanCollectionWeekly || 0))).reverse();
+            const loanReleases = graphData.map(o => o.totalLoanRelease || 0).reverse();
+            const mispayments = graphData.map(o => o.mispaymentPerson || 0).reverse();
+            const pastDues = graphData.map(o => o.pastDuePerson || 0).reverse();
 
-            const dates = graphData.map(o => o.group).reverse()
-            const activeClients = graphData.map(o => o.activeClients).reverse()
-            const newMembers = graphData.map(o => o.newMember).reverse();
+            // Create trend-aware datasets with dynamic colors
+            const createTrendDataset = (data, baseColor, label) => {
+                const colors = data.map((value, index) => {
+                    if (index === 0) return baseColor;
+                    const prev = data[index - 1];
+                    if (value > prev) return '#10B981'; // green
+                    if (value < prev) return '#EF4444'; // red
+                    return '#6B7280'; // gray for no change
+                });
 
-            const mcbus = graphData.map(o => o.mcbu).reverse();
-            const mcbuWithdrawals = graphData.map(o => o.clientMcbuWithdrawals).reverse();
-
-            const loanCollections = graphData.map(o => ((o.loanCollectionDaily ?? 0) + (o.loanCollectionWeekly ?? 0)) ?? 0).reverse();
-            const loanReleases = graphData.map(o => o.totalLoanRelease ?? 0).reverse();
-
-            const mispayments = graphData.map(o => o.mispaymentPerson ?? 0).reverse();
-            const pastDues = graphData.map(o => o.pastDuePerson ?? 0).reverse();
+                return {
+                    label,
+                    data,
+                    borderColor: baseColor,
+                    backgroundColor: colors.map(color => color + '20'), // 20% opacity
+                    pointBackgroundColor: colors,
+                    pointBorderColor: colors,
+                    tension: 0.1
+                };
+            };
 
             setMisPastDueData({
                 labels: dates,
                 datasets: [
-                    {
-                        label: 'MIS Payment',
-                        data: mispayments,
-                        borderColor: 'rgb(53, 162, 235)',
-                        tension: 0.1
-                    },
-                    {
-                        label: 'Past Due',
-                        data: pastDues,
-                        borderColor: 'rgb(255, 99, 132)',
-                        tension: 0.1
-                    }
+                    createTrendDataset(mispayments, 'rgb(53, 162, 235)', 'MIS Payment'),
+                    createTrendDataset(pastDues, 'rgb(255, 99, 132)', 'Past Due')
                 ]
             });
 
             setLoanCollectionData({
                 labels: dates,
                 datasets: [
-                    {
-                        label: 'Collections',
-                        data: loanCollections,
-                        borderColor: 'rgb(75, 192, 192)',
-                        tension: 0.1
-                    },
-                    {
-                        label: 'Releases',
-                        data: loanReleases,
-                        borderColor: 'rgb(255, 99, 132)',
-                        tension: 0.1
-                    }
+                    createTrendDataset(loanCollections, 'rgb(75, 192, 192)', 'Collections'),
+                    createTrendDataset(loanReleases, 'rgb(255, 99, 132)', 'Releases')
                 ]
             });
 
             setPersonData({
                 labels: dates,
                 datasets: [
-                    {
-                        label: 'Active Clients',
-                        data: activeClients,
-                        borderColor: 'rgb(53, 162, 235)',
-                        tension: 0.1
-                    },
-                    {
-                        label: 'New Members',
-                        data: newMembers,
-                        borderColor: 'rgb(75, 192, 192)',
-                        tension: 0.1
-                    }
+                    createTrendDataset(activeClients, 'rgb(53, 162, 235)', 'Active Clients'),
+                    createTrendDataset(newMembers, 'rgb(75, 192, 192)', 'New Members')
                 ]
             });
 
             setMcbuData({
                 labels: dates,
                 datasets: [
-                    {
-                        label: 'Collections',
-                        data: mcbus,
-                        borderColor: 'rgb(75, 192, 192)',
-                        tension: 0.1
-                    },
-                    {
-                        label: 'Withdrawals',
-                        data: mcbuWithdrawals,
-                        borderColor: 'rgb(255, 99, 132)',
-                        tension: 0.1
-                    }
+                    createTrendDataset(mcbus, 'rgb(75, 192, 192)', 'Collections'),
+                    createTrendDataset(mcbuWithdrawals, 'rgb(255, 99, 132)', 'Withdrawals')
                 ]
             });
         }
@@ -262,7 +318,6 @@ const DashboardPage = () => {
     useEffect(() => {
         const dates = generateDates();
         
-
         // MCBU Data
         setMcbuData({
             labels: dates,
@@ -282,7 +337,6 @@ const DashboardPage = () => {
             ]
         });
 
-        // Person Performance Data
         setPersonData({
             labels: dates,
             datasets: [
@@ -301,7 +355,6 @@ const DashboardPage = () => {
             ]
         });
 
-        // Loan Collection Data
         setLoanCollectionData({
             labels: dates,
             datasets: [
@@ -320,7 +373,6 @@ const DashboardPage = () => {
             ]
         });
 
-        // MIS Past Due Data
         setMisPastDueData({
             labels: dates,
             datasets: [
@@ -408,7 +460,6 @@ const DashboardPage = () => {
         },
     });
 
-    // Create specific chart options using the state
     const mcbuOptions = useMemo(() => ({
         ...chartOptions,
         plugins: {
@@ -460,7 +511,7 @@ const DashboardPage = () => {
         if (typeof num === 'number') {
             return num.toLocaleString('en-US');
         }
-        return num; // If it's already a string, return as is
+        return num;
     };
 
     let fetchTimeout;
@@ -472,7 +523,6 @@ const DashboardPage = () => {
     }, [loading])
 
     const fetchSummaries = async () => {
-
         if (loading) {
             return;
         }
@@ -501,7 +551,6 @@ const DashboardPage = () => {
             ].filter(a => a.value !== 'all' && !!a.value)
                                 .map(a => `${a.field}=${a.value}`).join('&');
 
-
             const summaryUrl = getApiBaseUrl() + '/dashboard?' + queries + '&type=summary';
             const graphUrl = getApiBaseUrl() + '/dashboard?' + queries + '&type=graph';
             
@@ -526,7 +575,6 @@ const DashboardPage = () => {
                 setLoading(false);
             });
         }, 400);
-        
     };
 
     const fetchBranches = () => {
@@ -593,7 +641,6 @@ const DashboardPage = () => {
         fetchSummaries();
     }, []);
 
-    // Update chart options to show currency format for MCBU and Loan Collection
     useEffect(() => {
         const currencyFormatter = (value) => 
             new Intl.NumberFormat('en-PH', { 
@@ -637,21 +684,9 @@ const DashboardPage = () => {
         }));
     }, []);
 
-    const CardItem = ({ title, value, Icon }) => {
-        const IconComponent = Icon || HelpCircle;
-        return (
-            <div className="bg-white p-3 rounded-lg shadow relative overflow-hidden mb-2">
-                <IconComponent className="absolute right-2 bottom-2 h-12 w-12 text-gray-200 transform translate-x-2 translate-y-2" />
-                <h3 className="text-xs font-semibold text-gray-700 truncate">{title}</h3>
-                <p className="text-sm font-bold text-blue-600 truncate">{formatNumber(value)}</p>
-            </div>
-        );
-    };
-
     return (
         <div className="min-h-screen bg-gray-100 flex flex-col">
             <div className="flex-grow p-4 flex flex-col overflow-x-auto">
-                {/* Removed the welcome header section with Avatar and added just the bank balance info */}
                 <div className="flex items-center justify-end pb-6 border-b min-w-[1200px]">
                     <div className="flex flex-col items-end">
                         <p className="text-sm font-semibold">Bank Balance: {formatNumber(bankBalance)}</p>
@@ -701,39 +736,34 @@ const DashboardPage = () => {
                                 </select> : null
                         }
 
-                        
-                        {
-                            divisions.length > 2 ?  <select 
+                        {divisions.length > 2 ?  <select 
                             onChange={(e) => setDivisionFilter(e.target.value)}
                             className="block pl-3 pr-10 py-1 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
                         >
                             {divisions.map((division, index) => (
                                 <option key={index} value={division._id}>{division.name}</option>
                             ))}
-                        </select> : null
-                        }
-                        {
-                            regions.length > 2 ? <select 
+                        </select> : null}
+
+                        {regions.length > 2 ? <select 
                             onChange={(e) => setRegionFilter(e.target.value)}
                             className="block pl-3 pr-10 py-1 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
                         >
                             {regions.map((region, index) => (
                                 <option key={index} value={region._id}>{region.name}</option>
                             ))}
-                        </select> : null
-                        }
-                        {
-                            areas.length > 2 ? <select 
+                        </select> : null}
+
+                        {areas.length > 2 ? <select 
                             onChange={(e) => setAreaFilter(e.target.value)}
                             className="block pl-3 pr-10 py-1 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
                         >
                             {areas.map((area, index) => (
                                 <option key={index} value={area._id}>{area.name}</option>
                             ))}
-                        </select> : null
-                        }
-                        {
-                            branchList.length > 2 ?  <select 
+                        </select> : null}
+
+                        {branchList.length > 2 ?  <select 
                             value={branchFilter} 
                             onChange={(e) => setBranchFilter(e.target.value)}
                             className="block pl-3 pr-10 py-1 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
@@ -741,12 +771,9 @@ const DashboardPage = () => {
                             {branches.map((branch, index) => (
                                 <option key={index} value={branch._id}>{branch.code} {branch.name}</option>
                             ))}
-                        </select> : null
-                        }
-                       
+                        </select> : null}
 
-                        {
-                            loanOfficerFilter.length > 2 ? <select 
+                        {loanOfficerFilter.length > 2 ? <select 
                             value={loanOfficerFilter} 
                             onChange={(e) => setLoanOfficerFilter(e.target.value)}
                             className="block pl-3 pr-10 py-1 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
@@ -754,16 +781,12 @@ const DashboardPage = () => {
                             {loanOfficers.map((lo, index) => (
                                 <option key={index} value={lo._id}>{lo.firstName} {lo.lastName}</option>
                             ))}
-                        </select> :  null
-                        }
-
-                        
+                        </select> :  null}
                     </div>
                 </div>
             
-
-                 { loading ? <Spinner></Spinner> : ( 
-                        <div className="flex flex-col gap-4 mt-4 min-w-[1400px]">
+                {loading ? <Spinner></Spinner> : ( 
+                    <div className="flex flex-col gap-4 mt-4 min-w-[1400px]">
                         <div className="grid grid-cols-5 gap-4">
                             {/* Summary Column */}
                             <div className="col-span-1">
@@ -773,30 +796,30 @@ const DashboardPage = () => {
                                         <p className="text-sm text-gray-600 capitalize">{timeFilter}</p>
                                     </div>
                                     <div className="space-y-2">
-                                        <CardItem title="Active Clients" value={summaryData.activeClients} Icon={UserPlus} />
-                                        <CardItem title="MCBU" value={summaryData.mcbu} Icon={Wallet} />
-                                        <CardItem title="Total Loan Release" value={summaryData.totalLoanRelease} Icon={Banknote} />
-                                        <CardItem title="Active Borrowers" value={summaryData.activeBorrowers} Icon={Scale} />
-                                        <CardItem title="Total Loan Balance" value={summaryData.totalLoanBalance} Icon={DollarSign} />
-                                        <CardItem title="Past Due Person" value={summaryData.pastDuePerson} Icon={AlertCircle} />
-                                        <CardItem title="Past Due Amount" value={summaryData.pastDueAmount} Icon={AlertCircle} />
-                                        <CardItem title="PD Active Loan" value={summaryData.pdActiveLoan} Icon={AlertCircle} />
-                                        <CardItem title="PD Loan Balance" value={summaryData.pdLoanBalance} Icon={AlertCircle} />
-                                        <CardItem title="PD Net Risk" value={summaryData.pdNetRisk} Icon={AlertCircle} />
-                                        <CardItem title="Excused Person" value={summaryData.excusedPerson} Icon={XCircle} />
-                                        <CardItem title="Excused Active Loan" value={summaryData.excusedActiveLoan} Icon={XCircle} />
-                                        <CardItem title="Excused Loan Balance" value={summaryData.excusedLoanBalance} Icon={XCircle} />
-                                        <CardItem title="Excused Net Risk Balance" value={summaryData.excusedNetRiskBalance} Icon={XCircle} />
-                                        <CardItem title="Runaway Clients" value={summaryData.runawayClients} Icon={UserMinus} />
-                                        <CardItem title="Missing Clients" value={summaryData.missingClients} Icon={UserMinus} />
-                                        <CardItem title="Dummy Accounts" value={summaryData.dummyAccounts} Icon={UserMinus} />
-                                        <CardItem title="Loan Share" value={summaryData.loanShare} Icon={Share2} />
-                                        <CardItem title="Imprisonment" value={summaryData.imprisonment} Icon={Lock} />
-                                        <CardItem title="Moving Excuses" value={summaryData.movingExcuses} Icon={Truck} />
-                                        <CardItem title="Delinquent" value={summaryData.delinquent} Icon={AlertTriangle} />
-                                        <CardItem title="Hospitalization" value={summaryData.hospitalization} Icon={Heart} />
-                                        <CardItem title="Death" value={summaryData.death} Icon={X} />
-                                        <CardItem title="Bankruptcy" value={summaryData.bankruptcy} Icon={DollarSign} />
+                                        <CardItem title="Active Clients" value={summaryData.activeClients} prevValue={summaryData.prev_activeClients} Icon={UserPlus} />
+                                        <CardItem title="MCBU" value={summaryData.mcbu} prevValue={summaryData.prev_mcbu} Icon={Wallet} />
+                                        <CardItem title="Total Loan Release" value={summaryData.totalLoanRelease} prevValue={summaryData.prev_totalLoanRelease} Icon={Banknote} />
+                                        <CardItem title="Active Borrowers" value={summaryData.activeBorrowers} prevValue={summaryData.prev_activeBorrowers} Icon={Scale} />
+                                        <CardItem title="Total Loan Balance" value={summaryData.totalLoanBalance} prevValue={summaryData.prev_totalLoanBalance} Icon={DollarSign} />
+                                        <CardItem title="Past Due Person" value={summaryData.pastDuePerson} prevValue={summaryData.prev_pastDuePerson} Icon={AlertCircle} />
+                                        <CardItem title="Past Due Amount" value={summaryData.pastDueAmount} prevValue={summaryData.prev_pastDueAmount} Icon={AlertCircle} />
+                                        <CardItem title="PD Active Loan" value={summaryData.pdActiveLoan} prevValue={summaryData.prev_pdActiveLoan} Icon={AlertCircle} />
+                                        <CardItem title="PD Loan Balance" value={summaryData.pdLoanBalance} prevValue={summaryData.prev_pdLoanBalance} Icon={AlertCircle} />
+                                        <CardItem title="PD Net Risk" value={summaryData.pdNetRisk} prevValue={summaryData.prev_pdNetRisk} Icon={AlertCircle} />
+                                        <CardItem title="Excused Person" value={summaryData.excusedPerson} prevValue={summaryData.prev_excusedPerson} Icon={XCircle} />
+                                        <CardItem title="Excused Active Loan" value={summaryData.excusedActiveLoan} prevValue={summaryData.prev_excusedActiveLoan} Icon={XCircle} />
+                                        <CardItem title="Excused Loan Balance" value={summaryData.excusedLoanBalance} prevValue={summaryData.prev_excusedLoanBalance} Icon={XCircle} />
+                                        <CardItem title="Excused Net Risk Balance" value={summaryData.excusedNetRiskBalance} prevValue={summaryData.prev_excusedNetRiskBalance} Icon={XCircle} />
+                                        <CardItem title="Runaway Clients" value={summaryData.runawayClients} prevValue={summaryData.prev_runawayClients} Icon={UserMinus} />
+                                        <CardItem title="Missing Clients" value={summaryData.missingClients} prevValue={summaryData.prev_missingClients} Icon={UserMinus} />
+                                        <CardItem title="Dummy Accounts" value={summaryData.dummyAccounts} prevValue={summaryData.prev_dummyAccounts} Icon={UserMinus} />
+                                        <CardItem title="Loan Share" value={summaryData.loanShare} prevValue={summaryData.prev_loanShare} Icon={Share2} />
+                                        <CardItem title="Imprisonment" value={summaryData.imprisonment} prevValue={summaryData.prev_imprisonment} Icon={Lock} />
+                                        <CardItem title="Moving Excuses" value={summaryData.movingExcuses} prevValue={summaryData.prev_movingExcuses} Icon={Truck} />
+                                        <CardItem title="Delinquent" value={summaryData.delinquent} prevValue={summaryData.prev_delinquent} Icon={AlertTriangle} />
+                                        <CardItem title="Hospitalization" value={summaryData.hospitalization} prevValue={summaryData.prev_hospitalization} Icon={Heart} />
+                                        <CardItem title="Death" value={summaryData.death} prevValue={summaryData.prev_death} Icon={X} />
+                                        <CardItem title="Bankruptcy" value={summaryData.bankruptcy} prevValue={summaryData.prev_bankruptcy} Icon={DollarSign} />
                                     </div>
                                 </div>
                             </div>
@@ -809,16 +832,16 @@ const DashboardPage = () => {
                                         <p className="text-sm text-gray-600 capitalize">{timeFilter}</p>
                                     </div>
                                     <div className="space-y-2">
-                                        <CardItem title="Total Release:" value={summaryData.totalLoanRelease || '0.00'} Icon={Banknote} />
-                                        <CardItem title="Amount:" value={summaryData.amount || '0.00'} Icon={DollarSign} />
-                                        <CardItem title="New Member:" value={summaryData.newMember || '0.00'} Icon={UserPlus} />
-                                        <CardItem title="Transfer Clients:" value={summaryData.transferClients || '0.00'} Icon={ArrowLeftRight} />
-                                        <CardItem title="Renewals:" value={summaryData.renewals || '0.00'} Icon={RotateCcw} />
-                                        <CardItem title="Offset:" value={summaryData.offset || '0.00'} Icon={MinusCircle} />
-                                        <CardItem title="Full Payment" value={summaryData.fullPayment || '0.00'} Icon={Users} />
-                                        <CardItem title="Full Payment Amount:" value={summaryData.fullPaymentAmount || '0.00'} Icon={DollarSign} />
-                                        <CardItem title="Past Due Collection:" value={summaryData.pastDueCollection || '0.00'} Icon={AlertCircle} />
-                                        <CardItem title="Pending:" value={summaryData.pending || '0.00'} Icon={Clock} />
+                                        <CardItem title="Total Release:" value={summaryData.totalLoanRelease} prevValue={summaryData.prev_totalLoanRelease} Icon={Banknote} />
+                                        <CardItem title="Amount:" value={summaryData.amount} prevValue={summaryData.prev_amount} Icon={DollarSign} />
+                                        <CardItem title="New Member:" value={summaryData.newMember} prevValue={summaryData.prev_newMember} Icon={UserPlus} />
+                                        <CardItem title="Transfer Clients:" value={summaryData.transferClients} prevValue={summaryData.prev_transferClients} Icon={ArrowLeftRight} />
+                                        <CardItem title="Renewals:" value={summaryData.renewals} prevValue={summaryData.prev_renewals} Icon={RotateCcw} />
+                                        <CardItem title="Offset:" value={summaryData.offset} prevValue={summaryData.prev_offset} Icon={MinusCircle} />
+                                        <CardItem title="Full Payment" value={summaryData.fullPayment} prevValue={summaryData.prev_fullPayment} Icon={Users} />
+                                        <CardItem title="Full Payment Amount:" value={summaryData.fullPaymentAmount} prevValue={summaryData.prev_fullPaymentAmount} Icon={DollarSign} />
+                                        <CardItem title="Past Due Collection:" value={summaryData.pastDueCollection} prevValue={summaryData.prev_pastDueCollection} Icon={AlertCircle} />
+                                        <CardItem title="Pending:" value={summaryData.pending} prevValue={summaryData.prev_pending} Icon={Clock} />
                                     </div>
                                 </div>
                             </div>  
@@ -831,25 +854,25 @@ const DashboardPage = () => {
                                         <p className="text-sm text-gray-600">RECEIPTS</p>
                                     </div>
                                     <div className="space-y-2">
-                                        <CardItem title="Beginning Balance:" value={summaryData.beginningBalance || '0.00'} Icon={DollarSign} />
-                                        <CardItem title="MCBU Collection:" value={summaryData.mcbuCollection || '0.00'} Icon={Wallet} />
-                                        <CardItem title="Loan Collection Daily:" value={summaryData.loanCollectionDaily || '0.00'} Icon={Banknote} />
-                                        <CardItem title="Loan Collection Weekly:" value={summaryData.loanCollectionWeekly || '0.00'} Icon={Banknote} />
-                                        <CardItem title="Staff CBU Collection:" value={summaryData.staffCbuCollection || '0.00'} Icon={Users} />
-                                        <CardItem title="Staff Loan Collection:" value={summaryData.staffLoanCollection || '0.00'} Icon={Banknote} />
-                                        <CardItem title="Admin Fees:" value={summaryData.adminFees || '0.00'} Icon={DollarSign} />
-                                        <CardItem title="L R F Collection:" value={summaryData.lrfCollection || '0.00'} Icon={Banknote} />
-                                        <CardItem title="C H B Collection:" value={summaryData.chbCollection || '0.00'} Icon={Banknote} />
-                                        <CardItem title="Add. Hospitalization:" value={summaryData.addHospitalization || '0.00'} Icon={Heart} />
-                                        <CardItem title="W/Tax, EE&ER:" value={summaryData.wtaxEeEr || '0.00'} Icon={DollarSign} />
-                                        <CardItem title="MCBU Unclaimed (N):" value={summaryData.mcbuUnclaimedN || '0.00'} Icon={AlertCircle} />
-                                        <CardItem title="Other Income (Passbook):" value={summaryData.otherIncomePassbook || '0.00'} Icon={DollarSign} />
-                                        <CardItem title="Other Income:" value={summaryData.otherIncome || '0.00'} Icon={DollarSign} />
-                                        <CardItem title="Other Receipts (Picture):" value={summaryData.otherReceiptsPicture || '0.00'} Icon={DollarSign} />
-                                        <CardItem title="Other Receipts:" value={summaryData.otherReceipts || '0.00'} Icon={DollarSign} />
-                                        <CardItem title="Fund Transfer:" value={summaryData.fundTransferReceipts || '0.00'} Icon={ArrowLeftRight} />
-                                        <CardItem title="Bank Withdrawal:" value={summaryData.bankWithdrawal || '0.00'} Icon={Banknote} />
-                                        <CardItem title="Total Receipts:" value={summaryData.totalReceipts || '0.00'} Icon={DollarSign} />
+                                        <CardItem title="Beginning Balance:" value={summaryData.beginningBalance} prevValue={summaryData.prev_beginningBalance} Icon={DollarSign} />
+                                        <CardItem title="MCBU Collection:" value={summaryData.mcbuCollection} prevValue={summaryData.prev_mcbuCollection} Icon={Wallet} />
+                                        <CardItem title="Loan Collection Daily:" value={summaryData.loanCollectionDaily} prevValue={summaryData.prev_loanCollectionDaily} Icon={Banknote} />
+                                        <CardItem title="Loan Collection Weekly:" value={summaryData.loanCollectionWeekly} prevValue={summaryData.prev_loanCollectionWeekly} Icon={Banknote} />
+                                        <CardItem title="Staff CBU Collection:" value={summaryData.staffCbuCollection} prevValue={summaryData.prev_staffCbuCollection} Icon={Users} />
+                                        <CardItem title="Staff Loan Collection:" value={summaryData.staffLoanCollection} prevValue={summaryData.prev_staffLoanCollection} Icon={Banknote} />
+                                        <CardItem title="Admin Fees:" value={summaryData.adminFees} prevValue={summaryData.prev_adminFees} Icon={DollarSign} />
+                                        <CardItem title="L R F Collection:" value={summaryData.lrfCollection} prevValue={summaryData.prev_lrfCollection} Icon={Banknote} />
+                                        <CardItem title="C H B Collection:" value={summaryData.chbCollection} prevValue={summaryData.prev_chbCollection} Icon={Banknote} />
+                                        <CardItem title="Add. Hospitalization:" value={summaryData.addHospitalization} prevValue={summaryData.prev_addHospitalization} Icon={Heart} />
+                                        <CardItem title="W/Tax, EE&ER:" value={summaryData.wtaxEeEr} prevValue={summaryData.prev_wtaxEeEr} Icon={DollarSign} />
+                                        <CardItem title="MCBU Unclaimed (N):" value={summaryData.mcbuUnclaimedN} prevValue={summaryData.prev_mcbuUnclaimedN} Icon={AlertCircle} />
+                                        <CardItem title="Other Income (Passbook):" value={summaryData.otherIncomePassbook} prevValue={summaryData.prev_otherIncomePassbook} Icon={DollarSign} />
+                                        <CardItem title="Other Income:" value={summaryData.otherIncome} prevValue={summaryData.prev_otherIncome} Icon={DollarSign} />
+                                        <CardItem title="Other Receipts (Picture):" value={summaryData.otherReceiptsPicture} prevValue={summaryData.prev_otherReceiptsPicture} Icon={DollarSign} />
+                                        <CardItem title="Other Receipts:" value={summaryData.otherReceipts} prevValue={summaryData.prev_otherReceipts} Icon={DollarSign} />
+                                        <CardItem title="Fund Transfer:" value={summaryData.fundTransferReceipts} prevValue={summaryData.prev_fundTransferReceipts} Icon={ArrowLeftRight} />
+                                        <CardItem title="Bank Withdrawal:" value={summaryData.bankWithdrawal} prevValue={summaryData.prev_bankWithdrawal} Icon={Banknote} />
+                                        <CardItem title="Total Receipts:" value={summaryData.totalReceipts} prevValue={summaryData.prev_totalReceipts} Icon={DollarSign} />
                                     </div>
                                 </div>
                             </div>
@@ -862,21 +885,21 @@ const DashboardPage = () => {
                                         <p className="text-sm text-gray-600">PAYMENTS</p>
                                     </div>
                                     <div className="space-y-2">
-                                        <CardItem title="Client Loan Release:" value={summaryData.clientLoanRelease || '0.00'} Icon={Banknote} />
-                                        <CardItem title="Client MCBU Withdrawals:" value={summaryData.clientMcbuWithdrawals || '0.00'} Icon={Wallet} />
-                                        <CardItem title="Client MCBU Return:" value={summaryData.clientMcbuReturn || '0.00'} Icon={RotateCcw} />
-                                        <CardItem title="Staff Loan Release:" value={summaryData.staffLoanRelease || '0.00'} Icon={Users} />
-                                        <CardItem title="Staff CBU Withdrawals:" value={summaryData.staffCbuWithdrawals || '0.00'} Icon={Wallet} />
-                                        <CardItem title="Management Expenses:" value={summaryData.managementExpenses || '0.00'} Icon={DollarSign} />
-                                        <CardItem title="CBHB Disbursed:" value={summaryData.cbhbDisbursed || '0.00'} Icon={Banknote} />
-                                        <CardItem title="MCBU Unclaimed (Out):" value={summaryData.mcbuUnclaimedOut || '0.00'} Icon={AlertCircle} />
-                                        <CardItem title="Rebates:" value={summaryData.rebates || '0.00'} Icon={DollarSign} />
-                                        <CardItem title="Other Payment:" value={summaryData.otherPayment || '0.00'} Icon={DollarSign} />
-                                        <CardItem title="Fund Transfer:" value={summaryData.fundTransferPayments || '0.00'} Icon={ArrowLeftRight} />
-                                        <CardItem title="Bank Deposit:" value={summaryData.bankDeposit || '0.00'} Icon={Banknote} />
-                                        <CardItem title="Total Payment:" value={summaryData.totalPayment || '0.00'} Icon={DollarSign} />
-                                        <CardItem title="Closing Balance:" value={summaryData.closingBalance || '0.00'} Icon={DollarSign} />
-                                        <CardItem title="Cash On Hand:" value={summaryData.cashOnHand || '0.00'} Icon={DollarSign} />
+                                        <CardItem title="Client Loan Release:" value={summaryData.clientLoanRelease} prevValue={summaryData.prev_clientLoanRelease} Icon={Banknote} />
+                                        <CardItem title="Client MCBU Withdrawals:" value={summaryData.clientMcbuWithdrawals} prevValue={summaryData.prev_clientMcbuWithdrawals} Icon={Wallet} />
+                                        <CardItem title="Client MCBU Return:" value={summaryData.clientMcbuReturn} prevValue={summaryData.prev_clientMcbuReturn} Icon={RotateCcw} />
+                                        <CardItem title="Staff Loan Release:" value={summaryData.staffLoanRelease} prevValue={summaryData.prev_staffLoanRelease} Icon={Users} />
+                                        <CardItem title="Staff CBU Withdrawals:" value={summaryData.staffCbuWithdrawals} prevValue={summaryData.prev_staffCbuWithdrawals} Icon={Wallet} />
+                                        <CardItem title="Management Expenses:" value={summaryData.managementExpenses} prevValue={summaryData.prev_managementExpenses} Icon={DollarSign} />
+                                        <CardItem title="CBHB Disbursed:" value={summaryData.cbhbDisbursed} prevValue={summaryData.prev_cbhbDisbursed} Icon={Banknote} />
+                                        <CardItem title="MCBU Unclaimed (Out):" value={summaryData.mcbuUnclaimedOut} prevValue={summaryData.prev_mcbuUnclaimedOut} Icon={AlertCircle} />
+                                        <CardItem title="Rebates:" value={summaryData.rebates} prevValue={summaryData.prev_rebates} Icon={DollarSign} />
+                                        <CardItem title="Other Payment:" value={summaryData.otherPayment} prevValue={summaryData.prev_otherPayment} Icon={DollarSign} />
+                                        <CardItem title="Fund Transfer:" value={summaryData.fundTransferPayments} prevValue={summaryData.prev_fundTransferPayments} Icon={ArrowLeftRight} />
+                                        <CardItem title="Bank Deposit:" value={summaryData.bankDeposit} prevValue={summaryData.prev_bankDeposit} Icon={Banknote} />
+                                        <CardItem title="Total Payment:" value={summaryData.totalPayment} prevValue={summaryData.prev_totalPayment} Icon={DollarSign} />
+                                        <CardItem title="Closing Balance:" value={summaryData.closingBalance} prevValue={summaryData.prev_closingBalance} Icon={DollarSign} />
+                                        <CardItem title="Cash On Hand:" value={summaryData.cashOnHand} prevValue={summaryData.prev_cashOnHand} Icon={DollarSign} />
                                     </div>
                                 </div>
                             </div>
@@ -889,20 +912,21 @@ const DashboardPage = () => {
                                         <p className="text-sm text-gray-600">Target/Collection</p>
                                     </div>
                                     <div className="space-y-2">
-                                        <CardItem title="Prospect:" value={summaryData.prospect || '0.00'} Icon={Users} />
-                                        <CardItem title="Amount:" value={summaryData.prospectAmount || '0.00'} Icon={DollarSign} />
-                                        <CardItem title="Renewals:" value={summaryData.tomorrowRenewals || '0.00'} Icon={RotateCcw} />
-                                        <CardItem title="Amount:" value={summaryData.renewalsAmount || '0.00'} Icon={DollarSign} />
-                                        <CardItem title="Total Amount of Releases:" value={summaryData.totalAmountReleases || '0.00'} Icon={Banknote} />
-                                        <CardItem title="Target Collection for Tomorrow:" value={summaryData.targetCollectionTomorrow || '0.00'} Icon={AlertCircle} />
-                                        <CardItem title="Target Expenses for Tomorrow:" value={summaryData.targetExpensesTomorrow || '0.00'} Icon={DollarSign} />
+                                        <CardItem title="Prospect:" value={summaryData.prospect} prevValue={summaryData.prev_prospect} Icon={Users} />
+                                        <CardItem title="Amount:" value={summaryData.prospectAmount} prevValue={summaryData.prev_prospectAmount} Icon={DollarSign} />
+                                        <CardItem title="Renewals:" value={summaryData.tomorrowRenewals} prevValue={summaryData.prev_tomorrowRenewals} Icon={RotateCcw} />
+                                        <CardItem title="Amount:" value={summaryData.renewalsAmount} prevValue={summaryData.prev_renewalsAmount} Icon={DollarSign} />
+                                        <CardItem title="Total Amount of Releases:" value={summaryData.totalAmountReleases} prevValue={summaryData.prev_totalAmountReleases} Icon={Banknote} />
+                                        <CardItem title="Target Collection for Tomorrow:" value={summaryData.targetCollectionTomorrow} prevValue={summaryData.prev_targetCollectionTomorrow} Icon={AlertCircle} />
+                                        <CardItem title="Target Expenses for Tomorrow:" value={summaryData.targetExpensesTomorrow} prevValue={summaryData.prev_targetExpensesTomorrow} Icon={DollarSign} />
                                     </div>
                                 </div>
                             </div>
                         </div>
+
                         {/* Performance Section - Full width, 2 columns */}
                         <div className="w-full mt-8 border-t pt-8">
-                        <h2 className="text-lg font-semibold mb-4">Performance</h2>
+                            <h2 className="text-lg font-semibold mb-4">Performance</h2>
                             <div className="grid grid-cols-2 gap-8">
                                 {/* Left Column */}
                                 <div className="space-y-8">
@@ -938,10 +962,10 @@ const DashboardPage = () => {
                             </div>
                         </div>
                     </div>
-                ) }
+                )}
             </div>
         </div>
-    )
-}
+    );
+};
 
 export default DashboardPage;
