@@ -24,7 +24,11 @@ import {
     PencilLine,
     TrendingUp,
     TrendingDown,
-    Minus
+    Minus,
+    Search,
+    Filter,
+    Calendar,
+    ChevronDown
 } from 'lucide-react';
 import ClientSearchTool from './ClientSearchTool';
 import { Line } from 'react-chartjs-2';
@@ -74,13 +78,17 @@ const DashboardPage = () => {
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     const [yearList] = useState(getYears);
 
+    // New state for search visibility and filters
+    const [isSearchVisible, setIsSearchVisible] = useState(false);
+    const [isFiltersExpanded, setIsFiltersExpanded] = useState(false);
+
     const regions = useMemo(() => regionList.filter(r => divisionFilter === 'all' || r._id === 'all' || r.divisionId === divisionFilter), [regionList, divisionFilter]);
     const areas = useMemo(() => areaList.filter(a => regionFilter === 'all' || a._id === 'all' || a.regionId === regionFilter ), [regionFilter, areaList]);
     const branches = useMemo(() => branchList.filter(b => areaFilter === 'all' || b._id === 'all' || b.areaId === areaFilter ), [areaFilter, branchList]);
     const loanOfficers = useMemo(() =>loanOfficerList.filter(l => branchFilter === 'all' || l._id === 'all' || l.designatedBranchId === branchFilter), [branchFilter, loanOfficerList]);
 
     const [coh, setCoh] = useState(new Intl.NumberFormat('en-US', { style: 'currency', currency: 'PHP' }).format(Math.floor(Math.random() * 1000000)));
-    const [bankBalance, setBankBalance] = useState(new Intl.NumberFormat('en-US', { style: 'currency', currency: 'PHP' }).format(Math.floor(Math.random() * 1000000)));
+    const [bankBalance, setBankBalance] = useState('₱535,892.00');
 
     const [isMobile, setIsMobile] = useState(false);
     const [isNavVisible, setIsNavVisible] = useState(true);
@@ -163,6 +171,50 @@ const DashboardPage = () => {
         );
     };
 
+    // Custom Select Component
+    const CustomSelect = ({ value, onChange, options, placeholder, className = "", icon: Icon }) => {
+        const [isOpen, setIsOpen] = useState(false);
+        const selectedOption = options.find(opt => opt.value === value);
+
+        return (
+            <div className={`relative ${className}`}>
+                <button
+                    type="button"
+                    onClick={() => setIsOpen(!isOpen)}
+                    className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-left shadow-sm hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                >
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                            {Icon && <Icon className="w-4 h-4 text-gray-500" />}
+                            <span className="text-sm font-medium text-gray-700">
+                                {selectedOption ? selectedOption.label : placeholder}
+                            </span>
+                        </div>
+                        <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+                    </div>
+                </button>
+                
+                {isOpen && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                        {options.map((option, index) => (
+                            <button
+                                key={index}
+                                type="button"
+                                onClick={() => {
+                                    onChange(option.value);
+                                    setIsOpen(false);
+                                }}
+                                className="w-full px-4 py-2 text-left text-sm hover:bg-blue-50 hover:text-blue-700 focus:outline-none focus:bg-blue-50"
+                            >
+                                {option.label}
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
+    };
+
     useEffect(() => {
         fetchSummaries();
     }, [divisionFilter, regionFilter, areaFilter, branchFilter, loanOfficerFilter, timeFilter, timeFilterList, dateFilter, selectedFilter]);
@@ -176,7 +228,7 @@ const DashboardPage = () => {
                 }));
 
                 setTimeFilterList(weeks); 
-                setSelectedFilter(weeks[0].value);
+                setSelectedFilter(weeks[0]?.value);
                 break;
             }
             case 'monthly': {
@@ -684,110 +736,208 @@ const DashboardPage = () => {
         }));
     }, []);
 
+    // Prepare filter options
+    const timeFilterOptions = [
+        { value: 'daily', label: 'Daily' },
+        { value: 'weekly', label: 'Weekly' },
+        { value: 'monthly', label: 'Monthly' },
+        { value: 'quarterly', label: 'Quarterly' },
+        { value: 'yearly', label: 'Yearly' }
+    ];
+
+    const branchOptions = branches.map(branch => ({
+        value: branch._id,
+        label: `${branch.code} ${branch.name}`.trim()
+    }));
+
+    const regionOptions = regions.map(region => ({
+        value: region._id,
+        label: region.name
+    }));
+
+    const areaOptions = areas.map(area => ({
+        value: area._id,
+        label: area.name
+    }));
+
+    const divisionOptions = divisions.map(division => ({
+        value: division._id,
+        label: division.name
+    }));
+
+    const loanOfficerOptions = loanOfficers.map(lo => ({
+        value: lo._id,
+        label: `${lo.firstName} ${lo.lastName}`.trim()
+    }));
+
+    const yearOptions = yearList.map(year => ({
+        value: year.value,
+        label: year.label
+    }));
+
+    const timeFilterListOptions = timeFilterList.map((item, index) => ({
+        value: index,
+        label: item.label
+    }));
+
     return (
         <div className="min-h-screen bg-gray-100 flex flex-col">
             <div className="flex-grow p-4 flex flex-col overflow-x-auto">
-                <div className="flex items-center justify-end pb-6 border-b min-w-[1200px]">
+                {/* Header Section - Swapped layout */}
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between pb-6 border-b border-gray-200 gap-4">
+                    {/* Left side - Filters and Search (was right side) */}
+                    <div className="flex flex-col space-y-4">
+                        {/* Filter Controls */}
+                        <div className="flex flex-wrap gap-3">
+                            {/* Time Filter */}
+                            <CustomSelect
+                                value={timeFilter}
+                                onChange={setTimeFilter}
+                                options={timeFilterOptions}
+                                placeholder="Select Time Period"
+                                icon={Calendar}
+                                className="w-40"
+                            />
+
+                            {/* Date Filter for Daily */}
+                            {timeFilter === 'daily' && (
+                                <div className="w-40">
+                                    <DatePicker 
+                                        name="dateFilter" 
+                                        value={moment(dateFilter).format('YYYY-MM-DD')} 
+                                        maxDate={moment(new Date()).format('YYYY-MM-DD')} 
+                                        onChange={handleDateFilter}
+                                        height="h-[42px]"
+                                    />
+                                </div>
+                            )}
+
+                            {/* Year Filter for non-daily */}
+                            {timeFilter !== 'daily' && (
+                                <CustomSelect
+                                    value={selectedYear}
+                                    onChange={setSelectedYear}
+                                    options={yearOptions}
+                                    placeholder="Select Year"
+                                    className="w-32"
+                                />
+                            )}
+
+                            {/* Period Filter for non-yearly and non-daily */}
+                            {timeFilter !== 'yearly' && timeFilter !== 'daily' && (
+                                <CustomSelect
+                                    value={timeFilterList.findIndex(item => item === selectedFilter)}
+                                    onChange={(index) => setSelectedFilter(timeFilterList[index])}
+                                    options={timeFilterListOptions}
+                                    placeholder={`Select ${timeFilter.charAt(0).toUpperCase() + timeFilter.slice(1)}`}
+                                    className="w-40"
+                                />
+                            )}
+
+                            {/* Toggle for more filters */}
+                            <button
+                                onClick={() => setIsFiltersExpanded(!isFiltersExpanded)}
+                                className="flex items-center space-x-2 px-4 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
+                            >
+                                <Filter className="w-4 h-4 text-gray-500" />
+                                <span className="text-sm font-medium text-gray-700">
+                                    {isFiltersExpanded ? 'Less Filters' : 'More Filters'}
+                                </span>
+                                <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${isFiltersExpanded ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {/* Search Toggle Button */}
+                            <button
+                                onClick={() => setIsSearchVisible(!isSearchVisible)}
+                                className="flex items-center space-x-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
+                            >
+                                <Search className="w-4 h-4" />
+                                <span className="text-sm font-medium">
+                                    {isSearchVisible ? 'Hide Search' : 'Search Client'}
+                                </span>
+                            </button>
+                        </div>
+
+                        {/* Expanded Filters */}
+                        {isFiltersExpanded && (
+                            <div className="flex flex-wrap gap-3 p-4 bg-gray-50 rounded-lg border">
+                                {divisions.length > 2 && (
+                                    <CustomSelect
+                                        value={divisionFilter}
+                                        onChange={setDivisionFilter}
+                                        options={divisionOptions}
+                                        placeholder="Select Division"
+                                        className="w-40"
+                                    />
+                                )}
+
+                                {regions.length > 2 && (
+                                    <CustomSelect
+                                        value={regionFilter}
+                                        onChange={setRegionFilter}
+                                        options={regionOptions}
+                                        placeholder="Select Region"
+                                        className="w-40"
+                                    />
+                                )}
+
+                                {areas.length > 2 && (
+                                    <CustomSelect
+                                        value={areaFilter}
+                                        onChange={setAreaFilter}
+                                        options={areaOptions}
+                                        placeholder="Select Area"
+                                        className="w-40"
+                                    />
+                                )}
+
+                                {branchList.length > 2 && (
+                                    <CustomSelect
+                                        value={branchFilter}
+                                        onChange={setBranchFilter}
+                                        options={branchOptions}
+                                        placeholder="Select Branch"
+                                        className="w-48"
+                                    />
+                                )}
+
+                                {loanOfficerList.length > 2 && (
+                                    <CustomSelect
+                                        value={loanOfficerFilter}
+                                        onChange={setLoanOfficerFilter}
+                                        options={loanOfficerOptions}
+                                        placeholder="Select Loan Officer"
+                                        className="w-48"
+                                    />
+                                )}
+                            </div>
+                        )}
+
+                        {/* Client Search Tool */}
+                        {isSearchVisible && (
+                            <div className="p-4 bg-white rounded-lg border shadow-sm">
+                                <ClientSearchTool />
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Right side - Bank Balance (was left side) */}
                     <div className="flex flex-col items-end">
-                        <p className="text-sm font-semibold">Bank Balance: {formatNumber(bankBalance)}</p>
-                    </div>
-                </div>
-                
-                <div className="flex flex-col justify-between pb-2 border-b">
-                    <div className={`${isMobile ? 'order-2' : 'order-1'} hidden lg:flex lg:justify-between lg:place-items-start`}>
-                        <ClientSearchTool />
-                    </div>
-                    <div className="flex mb-2 mt-4 gap-2">
-                        <select 
-                            value={timeFilter} 
-                            onChange={(e) => setTimeFilter(e.target.value)}
-                            className="block pl-3 pr-10 py-1 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
-                        >
-                            <option value="daily">Daily</option>
-                            <option value="weekly">Weekly</option>
-                            <option value="monthly">Monthly</option>
-                            <option value="quarterly">Quarterly</option>
-                            <option value="yearly">Yearly</option>
-                        </select>
-                        {
-                            timeFilter === 'daily' ? <DatePicker name="dateFilter" value={moment(dateFilter).format('YYYY-MM-DD')} maxDate={moment(new Date()).format('YYYY-MM-DD')} onChange={handleDateFilter} /> : null
-                        }
-
-                        {
-                            timeFilter !== 'daily' ? <select 
-                            onChange={(e) => setSelectedYear(e.target.value)}
-                            className="block pl-3 pr-10 py-1 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
-                        >
-                            {yearList.map((w, index) => (
-                                <option key={index} value={w.value}>{w.label}</option>
-                            ))}
-                        </select> : null
-                        }
-
-                        {
-                                timeFilter !== 'yearly' && timeFilter !== 'daily' ?
-                                    <select 
-                                    onChange={(e) => setSelectedFilter(timeFilterList[e.target.value])}
-                                    className="block pl-3 pr-10 py-1 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
-                                >
-                                    {timeFilterList.map((w, index) => (
-                                        <option key={index} value={index}>{w.label}</option>
-                                    ))}
-                                </select> : null
-                        }
-
-                        {divisions.length > 2 ?  <select 
-                            onChange={(e) => setDivisionFilter(e.target.value)}
-                            className="block pl-3 pr-10 py-1 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
-                        >
-                            {divisions.map((division, index) => (
-                                <option key={index} value={division._id}>{division.name}</option>
-                            ))}
-                        </select> : null}
-
-                        {regions.length > 2 ? <select 
-                            onChange={(e) => setRegionFilter(e.target.value)}
-                            className="block pl-3 pr-10 py-1 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
-                        >
-                            {regions.map((region, index) => (
-                                <option key={index} value={region._id}>{region.name}</option>
-                            ))}
-                        </select> : null}
-
-                        {areas.length > 2 ? <select 
-                            onChange={(e) => setAreaFilter(e.target.value)}
-                            className="block pl-3 pr-10 py-1 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
-                        >
-                            {areas.map((area, index) => (
-                                <option key={index} value={area._id}>{area.name}</option>
-                            ))}
-                        </select> : null}
-
-                        {branchList.length > 2 ?  <select 
-                            value={branchFilter} 
-                            onChange={(e) => setBranchFilter(e.target.value)}
-                            className="block pl-3 pr-10 py-1 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
-                        >
-                            {branches.map((branch, index) => (
-                                <option key={index} value={branch._id}>{branch.code} {branch.name}</option>
-                            ))}
-                        </select> : null}
-
-                        {loanOfficerFilter.length > 2 ? <select 
-                            value={loanOfficerFilter} 
-                            onChange={(e) => setLoanOfficerFilter(e.target.value)}
-                            className="block pl-3 pr-10 py-1 text-sm border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
-                        >
-                            {loanOfficers.map((lo, index) => (
-                                <option key={index} value={lo._id}>{lo.firstName} {lo.lastName}</option>
-                            ))}
-                        </select> :  null}
+                        <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-lg shadow-lg">
+                            <p className="text-sm font-medium opacity-90">Bank Balance</p>
+                            <p className="text-2xl font-bold">{bankBalance}</p>
+                        </div>
                     </div>
                 </div>
             
-                {loading ? <Spinner></Spinner> : ( 
+                {loading ? (
+                    <div className="flex justify-center items-center h-64">
+                        <Spinner />
+                    </div>
+                ) : ( 
                     <div className="flex flex-col gap-4 mt-4 min-w-[1400px]">
-                        <div className="grid grid-cols-5 gap-4">
+                        {/* Summary Grid - Responsive */}
+                        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
                             {/* Summary Column */}
                             <div className="col-span-1">
                                 <div className="sticky top-4">
@@ -927,7 +1077,7 @@ const DashboardPage = () => {
                         {/* Performance Section - Full width, 2 columns */}
                         <div className="w-full mt-8 border-t pt-8">
                             <h2 className="text-lg font-semibold mb-4">Performance</h2>
-                            <div className="grid grid-cols-2 gap-8">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                 {/* Left Column */}
                                 <div className="space-y-8">
                                     {/* MCBU Chart */}
