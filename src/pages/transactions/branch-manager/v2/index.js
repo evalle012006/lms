@@ -25,6 +25,8 @@ const ModernBranchCashCollections = () => {
   const [dateFilter, setDateFilter] = useState(moment().format('YYYY-MM-DD'));
   const [viewMode, setViewMode] = useState(router.query.viewMode || 'branch');
   const [selectedBranchGroup, setSelectedBranchGroup] = useState('mine');
+  const [selectedLoGroup, setSelectedLoGroup] = useState('all');
+  const [numberOfLo, setNumberOfLo] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: null, direction: null });
   const [showColumnSelector, setShowColumnSelector] = useState(false);
@@ -149,150 +151,228 @@ const ModernBranchCashCollections = () => {
   };
 
   const fetchCashCollectionsData = async (date) => {
-      setLoading(true);
-      try {
+    setLoading(true);
+    try {
       const formattedDate = date ? moment(date).format('YYYY-MM-DD') : moment().format('YYYY-MM-DD');
       const currentSystemDate = moment().format('YYYY-MM-DD');
       
       const baseParams = {
-          dateAdded: formattedDate,
-          currentDate: currentSystemDate,
-          _name: 'get_cash_collections_page_data',
+        dateAdded: formattedDate,
+        currentDate: currentSystemDate,
+        _name: 'get_cash_collections_page_data',
       };
       
       let filter = viewMode;
       
+      // Handle nested content view based on router query
       if (router.query.id) {
-          if (viewMode === 'division') {
-              if (router.query.grandParentId || router.asPath.includes('grandParentId')) {
-              baseParams.areaId = router.query.id;
-              filter = 'branch';
-              console.log('FOURTH LEVEL (Division view): Showing branches in area', router.query.id);
-              } 
-              else if (router.query.parentId) {
-              baseParams.regionId = router.query.id;
-              filter = 'area';
-              console.log('THIRD LEVEL (Division view): Showing areas in region', router.query.id);
-              } else {
-              baseParams.divisionId = router.query.id;
-              filter = 'region';
-              console.log('SECOND LEVEL (Division view): Showing regions in division', router.query.id);
-              }
-          } else if (viewMode === 'region') {
-              if (router.query.parentId || currentFilter === 'branch') {
-              baseParams.areaId = router.query.id;
-              filter = 'branch';
-              console.log('THIRD LEVEL (Region view): Showing branches in area', router.query.id);
-              } else {
-              baseParams.regionId = router.query.id;
-              filter = 'area';
-              console.log('SECOND LEVEL (Region view): Showing areas in region', router.query.id);
-              }
-          } else if (viewMode === 'area') {
-              baseParams.areaId = router.query.id;
-              filter = 'branch';
-              console.log('SECOND LEVEL (Area view): Showing branches in area', router.query.id);
+        // Check if we're in loan officer (lo) or group view mode based on filter parameter
+        if (router.query.filter === 'lo') {
+          // Show loan officers for the selected branch
+          baseParams.branchId = router.query.id; 
+          filter = 'lo';
+          console.log('LO LEVEL: Showing loan officers in branch', router.query.id);
+        } 
+        else if (router.query.filter === 'group') {
+          // Show groups for the selected loan officer
+          baseParams.loId = router.query.id;
+          baseParams.branchId = router.query.parentId; // Branch ID should be in parentId
+          filter = 'group';
+          console.log('GROUP LEVEL: Showing groups for loan officer', router.query.id);
+        }
+        // Standard hierarchy navigation
+        else if (viewMode === 'division') {
+          if (router.query.grandParentId || router.asPath.includes('grandParentId')) {
+            baseParams.areaId = router.query.id;
+            filter = 'branch';
+            console.log('FOURTH LEVEL (Division view): Showing branches in area', router.query.id);
+          } 
+          else if (router.query.parentId) {
+            baseParams.regionId = router.query.id;
+            filter = 'area';
+            console.log('THIRD LEVEL (Division view): Showing areas in region', router.query.id);
           } else {
-              baseParams.branchId = router.query.id;
-              filter = 'branch';
-              console.log('Branch view: Showing branch details for', router.query.id);
+            baseParams.divisionId = router.query.id;
+            filter = 'region';
+            console.log('SECOND LEVEL (Division view): Showing regions in division', router.query.id);
           }
+        } else if (viewMode === 'region') {
+          if (router.query.parentId || currentFilter === 'branch') {
+            baseParams.areaId = router.query.id;
+            filter = 'branch';
+            console.log('THIRD LEVEL (Region view): Showing branches in area', router.query.id);
+          } else {
+            baseParams.regionId = router.query.id;
+            filter = 'area';
+            console.log('SECOND LEVEL (Region view): Showing areas in region', router.query.id);
+          }
+        } else if (viewMode === 'area') {
+          baseParams.areaId = router.query.id;
+          filter = 'branch';
+          console.log('SECOND LEVEL (Area view): Showing branches in area', router.query.id);
+        } else {
+          baseParams.branchId = router.query.id;
+          filter = 'branch';
+          console.log('Branch view: Showing branch details for', router.query.id);
+        }
       }
       
-      baseParams.filter = currentUser.role.rep < 3 ? filter : ( currentUser.role.rep === 3 ? 'lo' : 'group' );
-      filter = baseParams.filter;
-
+      // Handle selectedBranchGroup filtering
+      if (selectedBranchGroup === 'mine' && !router.query.filter) {
+        // When 'mine' is selected, filter according to the user's role and permissions
+        if (currentUser.role.shortCode === 'deputy_director') {
+          // Deputy Director - filter by division
+          baseParams.divisionId = currentUser.divisionId;
+          if (viewMode === 'branch') filter = 'branch';
+          else if (viewMode === 'area') filter = 'area';
+          else if (viewMode === 'region') filter = 'region';
+          else if (viewMode === 'division') filter = 'division';
+        } 
+        else if (currentUser.role.shortCode === 'regional_manager') {
+          // Regional Manager - filter by region
+          baseParams.regionId = currentUser.regionId;
+          if (viewMode === 'branch') filter = 'branch';
+          else if (viewMode === 'area') filter = 'area';
+          else if (viewMode === 'region') filter = 'region';
+          else if (viewMode === 'division') {
+            filter = 'region';
+            // Override viewMode for division view when user is regional_manager
+            console.log('Overriding to region view for Regional Manager');
+          }
+        }
+      } 
+      // UPDATED: When 'all' is selected, don't add any filtering IDs unless they're already set from router.query.id
+      else if (selectedBranchGroup === 'all' && !router.query.filter) {
+        // Remove user-specific IDs when 'all' is selected, but keep router-based IDs for navigation
+        // Don't add divisionId or regionId based on user data
+      }
+      
+      // If the filter parameter is explicitly set in the query, override our calculated filter
+      if (router.query.filter) {
+        filter = router.query.filter;
+      }
+      
+      // Set the filter based on user role if not already overridden
+      if (!router.query.filter) {
+        baseParams.filter = currentUser.role.rep < 3 ? filter : (currentUser.role.rep === 3 ? 'lo' : 'group');
+        filter = baseParams.filter;
+      } else {
+        baseParams.filter = filter;
+      }
+  
       setCurrentFilter(filter);
       setCurrentLevel(filter);
       
+      // Build the API parameters based on the selected branch group
       const params = buildApiParams({
-        ... baseParams,
-        loId: currentUser.role.rep === 4 ? currentUser._id : null,
-        branchId: currentUser.role.rep != 1 ? currentUser.designatedBranchId : null,
-        areaId: currentUser.role.rep != 1 ?currentUser.areaId : null,
-        divisionId: currentUser.role.rep != 1 ? currentUser.divisionId : null, 
-        regionId: currentUser.role.rep != 1 ? currentUser.regionId : null,
+        ...baseParams,
+        // Only include these parameters if we're viewing a specific entity from router.query.id
+        // OR if we're in 'mine' mode and need to filter by user's assigned entities
+        loId: (router.query.filter === 'group' || router.query.loId) ? router.query.loId || router.query.id : 
+              (currentUser.role.rep === 4 ? currentUser._id : null),
+        
+        // UPDATED: For 'all' mode, only include IDs that were set from router.query.id (nested navigation)
+        // For 'mine' mode with non-admin roles, include user's IDs when appropriate
+        branchId: baseParams.branchId || router.query.branchId || 
+          (selectedBranchGroup === 'mine' && currentUser.role.rep !== 1 ? currentUser.designatedBranchId : null),
+        
+        areaId: baseParams.areaId || 
+          (selectedBranchGroup === 'mine' && currentUser.role.rep !== 1 ? currentUser.areaId : null),
+        
+        // UPDATED: Only send divisionId when selectedBranchGroup is 'mine'
+        divisionId: baseParams.divisionId || 
+          (selectedBranchGroup === 'mine' && currentUser.role.rep !== 1 ? currentUser.divisionId : null),
+        
+        // UPDATED: Only send regionId when selectedBranchGroup is 'mine'
+        regionId: baseParams.regionId || 
+          (selectedBranchGroup === 'mine' && currentUser.role.rep !== 1 ? currentUser.regionId : null),
       });
       
+      console.log('API parameters:', params.toString());
       const response = await fetchWrapper.get(getApiBaseUrl() + 'data/get_cash_collections_page_data?' + params.toString());
       console.log('API Response:', response);
       
       if (router.query.id && response && response.parentName) {
-          setParentEntityName(response.parentName);
+        setParentEntityName(response.parentName);
       } else {
-          setParentEntityName('');
+        setParentEntityName('');
       }
   
       if (response && response.data) {
-        console.log('columns ', visibleColumnDefs, );
-          const processedData = response.data.map(item => {
+        console.log('columns ', visibleColumnDefs);
+        const processedData = response.data.map(item => {
+          const formattedName = filter === 'branch' && item.code ? 
+            `${item.code} - ${item.name}` : 
+            item.name;
+  
           const transformedItem = {
-              _id: item._id,
-              name: item.name || `${item.code} - ${item.name}`,
-              code: item.code,
-              
-              loanTargetStr: item.targetLoanCollection ? 
-              `₱${Number(item.targetLoanCollection).toLocaleString()}` : '-',
-              
-              excessCurrent: item.excess ? `₱${Number(item.excess).toLocaleString()}` : '-',
-              excessPrevious: item.prev_excess ? `₱${Number(item.prev_excess).toLocaleString()}` : '-',
-              
-              mcbu: item.mcbu ? `₱${Number(item.mcbu).toLocaleString()}` : '-',
-              actualLoanCollectionCurrent: item.actualLoanCollection ? 
-              `₱${Number(item.actualLoanCollection).toLocaleString()}` : '-',
-              actualLoanCollectionPrevious: item.prev_actualLoanCollection ? 
-              `₱${Number(item.prev_actualLoanCollection).toLocaleString()}` : '-',
-              
-              mcbuWithdrawalCurrent: item.mcbuWithdrawal ? 
-              `₱${Number(item.mcbuWithdrawal).toLocaleString()}` : '-',
-              mcbuWithdrawalPrevious: item.prev_mcbuWithdrawal ? 
-              `₱${Number(item.prev_mcbuWithdrawal).toLocaleString()}` : '-',
-              
-              noMcbuReturnCurrent: item.mcbuReturnNo || 0,
-              noMcbuReturnPrevious: item.prev_mcbuReturnNo || 0,
-              
-              mcbuReturnCurrent: item.mcbuReturn ? 
-              `₱${Number(item.mcbuReturn).toLocaleString()}` : '-',
-              mcbuReturnPrevious: item.prev_mcbuReturn ? 
-              `₱${Number(item.prev_mcbuReturn).toLocaleString()}` : '-',
-              
-              fullPaymentPersonCurrent: item.fullPaymentPerson || 0,
-              fullPaymentPersonPrevious: item.prev_fullPaymentPerson || 0,
-              
-              fullPaymentAmountCurrent: item.fullPaymentAmount ? 
-              `₱${Number(item.fullPaymentAmount).toLocaleString()}` : '-',
-              fullPaymentAmountPrevious: item.prev_fullPaymentAmount ? 
-              `₱${Number(item.prev_fullPaymentAmount).toLocaleString()}` : '-',
-              
-              mispayCurrent: item.mispay || '-',
-              mispayPrevious: item.prev_mispay || '-',
-              
-              noPastDueCurrent: item.pastDueNo || 0,
-              noPastDuePrevious: item.prev_pastDueNo || 0,
-              
-              activeClients: item.activeClients || 0,
-              activeClientsPrevious: item.prev_activeClients || 0,
-              activeBorrowers: item.activeBorrowers || 0,
-              activeBorrowersPrevious: item.prev_activeBorrowers || 0,
-              pendingClients: (item.activeClients || 0) - (item.activeBorrowers || 0),
-              totalReleasesStr: item.totalLoanRelease ? 
-              `₱${Number(item.totalLoanRelease).toLocaleString()}` : '-',
-              totalReleasesPreviousStr: item.prev_totalLoanRelease ? 
-              `₱${Number(item.prev_totalLoanRelease).toLocaleString()}` : '-',
-              totalLoanBalanceStr: item.totalLoanBalance ? 
-              `₱${Number(item.totalLoanBalance).toLocaleString()}` : '-',
-              totalLoanBalancePreviousStr: item.prev_totalLoanBalance ? 
-              `₱${Number(item.prev_totalLoanBalance).toLocaleString()}` : '-',
-              
-              noCurrentReleaseStr: item.currentReleasePerson_New && item.currentReleasePerson_Rel ? 
-              `${item.currentReleasePerson_New} / ${item.currentReleasePerson_Rel}` : '-',
-              currentReleaseAmountStr: item.currentReleaseAmount ? 
-              `₱${Number(item.currentReleaseAmount).toLocaleString()}` : '-',
-              
-              status: item.status || 'open',
-              totalData: item.row_num === null
+            _id: item._id,
+            name: formattedName,
+            code: item.code,
+            loNo: item.loNo || null, // ADDED: Include loNo for sorting
+            
+            loanTargetStr: item.targetLoanCollection ? 
+            `₱${Number(item.targetLoanCollection).toLocaleString()}` : '-',
+            
+            excessCurrent: item.excess ? `₱${Number(item.excess).toLocaleString()}` : '-',
+            excessPrevious: item.prev_excess ? `₱${Number(item.prev_excess).toLocaleString()}` : '-',
+            
+            mcbu: item.mcbu ? `₱${Number(item.mcbu).toLocaleString()}` : '-',
+            actualLoanCollectionCurrent: item.actualLoanCollection ? 
+            `₱${Number(item.actualLoanCollection).toLocaleString()}` : '-',
+            actualLoanCollectionPrevious: item.prev_actualLoanCollection ? 
+            `₱${Number(item.prev_actualLoanCollection).toLocaleString()}` : '-',
+            
+            mcbuWithdrawalCurrent: item.mcbuWithdrawal ? 
+            `₱${Number(item.mcbuWithdrawal).toLocaleString()}` : '-',
+            mcbuWithdrawalPrevious: item.prev_mcbuWithdrawal ? 
+            `₱${Number(item.prev_mcbuWithdrawal).toLocaleString()}` : '-',
+            
+            noMcbuReturnCurrent: item.mcbuReturnNo || 0,
+            noMcbuReturnPrevious: item.prev_mcbuReturnNo || 0,
+            
+            mcbuReturnCurrent: item.mcbuReturn ? 
+            `₱${Number(item.mcbuReturn).toLocaleString()}` : '-',
+            mcbuReturnPrevious: item.prev_mcbuReturn ? 
+            `₱${Number(item.prev_mcbuReturn).toLocaleString()}` : '-',
+            
+            fullPaymentPersonCurrent: item.fullPaymentPerson || 0,
+            fullPaymentPersonPrevious: item.prev_fullPaymentPerson || 0,
+            
+            fullPaymentAmountCurrent: item.fullPaymentAmount ? 
+            `₱${Number(item.fullPaymentAmount).toLocaleString()}` : '-',
+            fullPaymentAmountPrevious: item.prev_fullPaymentAmount ? 
+            `₱${Number(item.prev_fullPaymentAmount).toLocaleString()}` : '-',
+            
+            mispayCurrent: item.mispay || '-',
+            mispayPrevious: item.prev_mispay || '-',
+            
+            noPastDueCurrent: item.pastDueNo || 0,
+            noPastDuePrevious: item.prev_pastDueNo || 0,
+            
+            activeClients: item.activeClients || 0,
+            activeClientsPrevious: item.prev_activeClients || 0,
+            activeBorrowers: item.activeBorrowers || 0,
+            activeBorrowersPrevious: item.prev_activeBorrowers || 0,
+            pendingClients: (item.activeClients || 0) - (item.activeBorrowers || 0),
+            totalReleasesStr: item.totalLoanRelease ? 
+            `₱${Number(item.totalLoanRelease).toLocaleString()}` : '-',
+            totalReleasesPreviousStr: item.prev_totalLoanRelease ? 
+            `₱${Number(item.prev_totalLoanRelease).toLocaleString()}` : '-',
+            totalLoanBalanceStr: item.totalLoanBalance ? 
+            `₱${Number(item.totalLoanBalance).toLocaleString()}` : '-',
+            totalLoanBalancePreviousStr: item.prev_totalLoanBalance ? 
+            `₱${Number(item.prev_totalLoanBalance).toLocaleString()}` : '-',
+            
+            noCurrentReleaseStr: item.currentReleasePerson_New && item.currentReleasePerson_Rel ? 
+            `${item.currentReleasePerson_New} / ${item.currentReleasePerson_Rel}` : '-',
+            currentReleaseAmountStr: item.currentReleaseAmount ? 
+            `₱${Number(item.currentReleaseAmount).toLocaleString()}` : '-',
+            
+            status: item.status || 'open',
+            totalData: item.row_num === null
           };
-
+  
           transformedItem.pastDueAmount = item.pastDueAmount ? `₱${Number(item.pastDueAmount).toLocaleString()}` : '-',
           transformedItem.noPersonRelease = item.currentReleasePerson_New ? item.currentReleasePerson_New + '/' + item.currentReleasePerson_Rel : '-';
           transformedItem.mcbuCollection = item.mcbuCollection ? `₱${Number(item.mcbuCollection).toLocaleString()}` : '-',
@@ -305,29 +385,36 @@ const ModernBranchCashCollections = () => {
           transformedItem.fullPaymentAmount = transformedItem.fullPaymentAmountCurrent;
           
           return transformedItem;
-          });
-          
-          console.log('Processed data length:', processedData.length);
-          console.log('Current filter:', filter);
-          
-          if (filter === 'branch') {
+        });
+        
+        console.log('Processed data length:', processedData.length);
+        console.log('Current filter:', filter);
+        
+        // UPDATED: Set numberOfLo when currentUser.role.rep === 3 OR filter === 'lo'
+        if (currentUser.role.rep === 3 || filter === 'lo') {
+          // Count non-total rows to set numberOfLo
+          const nonTotalRows = processedData.filter(item => !item.totalData);
+          setNumberOfLo(nonTotalRows.length);
+        }
+        
+        if (filter === 'branch') {
           console.log('Storing data in Redux');
           dispatch(setCashCollectionBranch(processedData));
-          } else {
+        } else {
           console.log('Storing data in local state');
           setData(processedData);
-          }
-          
-          setLoading(false);
+        }
+        
+        setLoading(false);
       } else {
-          setLoading(false);
-          toast.error('Error retrieving data.');
+        setLoading(false);
+        toast.error('Error retrieving data.');
       }
-      } catch (error) {
+    } catch (error) {
       console.error("Error fetching data:", error);
       setLoading(false);
       toast.error('Error retrieving data.');
-      }
+    }
   };
 
   useEffect(() => {
@@ -350,7 +437,13 @@ const ModernBranchCashCollections = () => {
     if (router.query.parentViewMode) {
       setParentViewMode(router.query.parentViewMode);
     }
-  }, [router.query.viewMode, router.query.id, router.query.parentId, router.query.parentViewMode]);
+    
+    // Update filter state based on router query
+    if (router.query.filter) {
+      setCurrentFilter(router.query.filter);
+      setCurrentLevel(router.query.filter);
+    }
+  }, [router.query.viewMode, router.query.id, router.query.parentId, router.query.parentViewMode, router.query.filter]);
 
   useEffect(() => {
     let mounted = true;
@@ -367,7 +460,7 @@ const ModernBranchCashCollections = () => {
     return () => {
       mounted = false;
     };
-  }, [dateFilter, selectedBranchGroup, viewMode, router.query.id]);
+  }, [dateFilter, selectedBranchGroup, selectedLoGroup, viewMode, router.query.id]);
   
   const handleViewModeChange = (mode) => {
     setViewMode(mode);
@@ -376,6 +469,7 @@ const ModernBranchCashCollections = () => {
     setParentEntityName('');
     setParentId(null);
     setParentViewMode(null);
+    setCurrentFilter(null);
     
     router.push({
       pathname: router.pathname,
@@ -385,6 +479,10 @@ const ModernBranchCashCollections = () => {
 
   const handleBranchGroup = (value) => {
     setSelectedBranchGroup(value);
+  };
+
+  const handleLoGroup = (value) => {
+    setSelectedLoGroup(value);
   };
 
   const handleDateChange = (e) => {
@@ -413,80 +511,224 @@ const ModernBranchCashCollections = () => {
   };
   
   const handleRowClick = (selected) => {
-      if (!selected?.totalData) {
-      const baseUrl = '/transactions/branch-manager/cash-collection';
+    if (!selected?.totalData) {
+      setSelectedBranchGroup('mine');
       
-      if (currentFilter === 'branch') {
-          router.push({
-          pathname: `${baseUrl}/users/${selected._id}`,
-          query: { viewMode }
-          });
-          localStorage.setItem('selectedBranch', selected._id);
-          return;
-      }
-      
-      let updatedQuery = {
-          viewMode,
-          id: selected._id
+      // Determine current level based on router query and view mode
+      const getCurrentLevel = () => {
+        if (router.query.filter) {
+          return router.query.filter;
+        }
+        
+        // Determine level based on view mode and navigation depth
+        if (viewMode === 'branch') {
+          return 'branch';
+        } else if (viewMode === 'area') {
+          if (router.query.grandParentId) {
+            return 'branch';
+          } else if (router.query.parentId) {
+            return 'area';
+          } else {
+            return 'area';
+          }
+        } else if (viewMode === 'region') {
+          if (router.query.grandParentId) {
+            return 'branch';
+          } else if (router.query.parentId) {
+            return 'area';
+          } else {
+            return 'region';
+          }
+        } else if (viewMode === 'division') {
+          if (router.query.grandParentId) {
+            return 'area';
+          } else if (router.query.parentId) {
+            return 'region';
+          } else {
+            return 'division';
+          }
+        }
+        
+        return currentFilter || viewMode;
       };
       
-      if (viewMode === 'division') {
-          if (router.query.parentId) {
-          updatedQuery.parentId = router.query.id;
-          updatedQuery.grandParentId = router.query.parentId;
-          console.log('Division view: Going to 3rd level (area in region in division)');
-          } else if (router.query.id) {
-          updatedQuery.parentId = router.query.id;
-          console.log('Division view: Going to 2nd level (region in division)');
-          }
-      } else if (viewMode === 'region') {
-          if (router.query.parentId) {
-          updatedQuery.parentId = router.query.id;
-          updatedQuery.grandParentId = router.query.parentId;
-          console.log('Region view: Going to 3rd level (branch in area in region)');
-          } else if (router.query.id) {
-          updatedQuery.parentId = router.query.id;
-          console.log('Region view: Going to 2nd level (area in region)');
-          }
-      } else if (viewMode === 'area' && router.query.id) {
-          updatedQuery.parentId = router.query.id;
-          console.log('Area view: Going to 2nd level (branch in area)');
+      const currentLevel = getCurrentLevel();
+      
+      // Define navigation logic based on current level
+      const getNextNavigation = (level) => {
+        switch (level) {
+          case 'division':
+            return { filter: 'region', nextLevel: 'region' };
+          case 'region':
+            return { filter: 'area', nextLevel: 'area' };
+          case 'area':
+            return { filter: 'branch', nextLevel: 'branch' };
+          case 'branch':
+            return { filter: 'lo', nextLevel: 'lo' };
+          case 'lo':
+            return { filter: 'group', nextLevel: 'group' };
+          case 'group':
+            // Navigate to transaction page
+            router.push(`/transactions/${currentUser.transactionType}-cash-collection`);
+            return null;
+          default:
+            return { filter: 'branch', nextLevel: 'branch' };
+        }
+      };
+      
+      const navigation = getNextNavigation(currentLevel);
+      
+      // If navigation is null (group level), we've already navigated to transaction page
+      if (!navigation) {
+        return;
       }
       
-      console.log('Navigation query:', updatedQuery);
+      // Build query based on navigation level
+      let updatedQuery = {
+        viewMode,
+        id: selected._id,
+        filter: navigation.filter
+      };
+      
+      // Handle specific parameter setting based on the next level
+      switch (navigation.nextLevel) {
+        case 'region':
+          updatedQuery.divisionId = selected._id;
+          break;
+        case 'area':
+          if (currentLevel === 'region') {
+            updatedQuery.regionId = selected._id;
+          } else if (currentLevel === 'division' && router.query.id) {
+            updatedQuery.regionId = selected._id;
+            updatedQuery.parentId = router.query.id; // division ID
+          }
+          break;
+        case 'branch':
+          if (currentLevel === 'area') {
+            updatedQuery.areaId = selected._id;
+          } else if (currentLevel === 'region' && router.query.id) {
+            updatedQuery.areaId = selected._id;
+            updatedQuery.parentId = router.query.id; // region ID
+          } else if (currentLevel === 'division' && router.query.parentId) {
+            updatedQuery.areaId = selected._id;
+            updatedQuery.parentId = router.query.id; // region ID
+            updatedQuery.grandParentId = router.query.parentId; // division ID
+          }
+          break;
+        case 'lo':
+          updatedQuery.branchId = selected._id;
+          // Preserve parent hierarchy
+          if (router.query.parentId) {
+            updatedQuery.parentId = router.query.id;
+          }
+          if (router.query.grandParentId) {
+            updatedQuery.grandParentId = router.query.parentId;
+          }
+          break;
+        case 'group':
+          updatedQuery.loId = selected._id;
+          updatedQuery.parentId = router.query.id; // branch ID
+          // Preserve deeper hierarchy if exists
+          if (router.query.parentId) {
+            updatedQuery.branchId = router.query.id;
+          }
+          break;
+      }
+      
+      // Handle hierarchy preservation for nested navigation
+      if (viewMode === 'division') {
+        if (router.query.grandParentId) {
+          // Fourth level: area -> branch
+          updatedQuery.parentId = router.query.id;
+          updatedQuery.grandParentId = router.query.parentId;
+        } else if (router.query.parentId) {
+          // Third level: region -> area
+          updatedQuery.parentId = router.query.id;
+          updatedQuery.grandParentId = router.query.parentId;
+        } else if (router.query.id) {
+          // Second level: division -> region
+          updatedQuery.parentId = router.query.id;
+        }
+      } else if (viewMode === 'region') {
+        if (router.query.parentId) {
+          // Third level: area -> branch
+          updatedQuery.parentId = router.query.id;
+          updatedQuery.grandParentId = router.query.parentId;
+        } else if (router.query.id) {
+          // Second level: region -> area
+          updatedQuery.parentId = router.query.id;
+        }
+      } else if (viewMode === 'area') {
+        if (router.query.id) {
+          // Second level: area -> branch
+          updatedQuery.parentId = router.query.id;
+        }
+      }
+      
+      console.log('Navigation from', currentLevel, 'to', navigation.nextLevel);
+      console.log('Updated query:', updatedQuery);
       
       router.push({
-          pathname: router.pathname,
-          query: updatedQuery
+        pathname: router.pathname,
+        query: updatedQuery
       }, undefined, { shallow: true });
       
       setViewingNestedContent(true);
-      }
+      setCurrentFilter(navigation.filter);
+      setCurrentLevel(navigation.nextLevel);
+    }
   };
   
   const handleBackNavigation = () => {
-      if (router.query.grandParentId) {
+    // If we're in the group view, go back to the loan officer view
+    if (router.query.filter === 'group') {
       router.push({
-          pathname: router.pathname,
-          query: {
+        pathname: router.pathname,
+        query: {
+          viewMode: router.query.viewMode || viewMode,
+          id: router.query.parentId, // The parent LO ID becomes our new ID
+          filter: 'lo',
+          branchId: router.query.parentId, // Need to keep the branch ID for context
+        }
+      }, undefined, { shallow: true });
+      return;
+    }
+    
+    // If we're in the loan officer view, go back to the branch list view
+    if (router.query.filter === 'lo') {
+      // Go back to branch view
+      router.push({
+        pathname: router.pathname,
+        query: {
+          viewMode: router.query.viewMode || viewMode
+        }
+      }, undefined, { shallow: true });
+      return;
+    }
+  
+    // Handle standard hierarchy navigation
+    if (router.query.grandParentId) {
+      router.push({
+        pathname: router.pathname,
+        query: {
           viewMode: router.query.grandParentViewMode || viewMode,
           id: router.query.grandParentId
-          }
+        }
       }, undefined, { shallow: true });
-      } else if (router.query.parentId) {
+    } else if (router.query.parentId) {
       router.push({
-          pathname: router.pathname,
-          query: {
+        pathname: router.pathname,
+        query: {
           viewMode: router.query.parentViewMode || viewMode,
           id: router.query.parentId
-          }
+        }
       }, undefined, { shallow: true });
-      } else {
+    } else {
       router.push({
-          pathname: router.pathname,
-          query: { viewMode }
+        pathname: router.pathname,
+        query: { viewMode }
       }, undefined, { shallow: true });
-      }
+    }
   };
 
   const getSearchPlaceholder = () => {
@@ -497,6 +739,10 @@ const ModernBranchCashCollections = () => {
         return 'Search regions...';
       case 'division':
         return 'Search divisions...';
+      case 'lo':
+        return 'Search loan officers...';
+      case 'group':
+        return 'Search groups...';
       case 'branch':
       default:
         return 'Search branches...';
@@ -511,13 +757,35 @@ const ModernBranchCashCollections = () => {
         return 'Region Name';
       case 'division':
         return 'Division Name';
-      case 'branch':
-        return 'Branch Name'
       case 'lo':
-        return 'Loan Officer'
+        return 'Loan Officer';
+      case 'group':
+        return 'Group Name';
+      case 'branch':
       default:
-        return 'Group';
+        return 'Branch Name';
     }
+  };
+
+  const applyLoGroupFilter = (data) => {
+    if (currentFilter !== 'lo' || selectedLoGroup === 'all') {
+      return data;
+    }
+    
+    return data.filter(item => {
+      if (item.totalData) return true; // Always include total row
+      
+      const loNo = parseInt(item.loNo);
+      if (isNaN(loNo)) return false;
+      
+      if (selectedLoGroup === 'main') {
+        return loNo >= 1 && loNo <= 10;
+      } else if (selectedLoGroup === 'ext') {
+        return loNo >= 11;
+      }
+      
+      return true;
+    });
   };
 
   const filteredData = useMemo(() => {
@@ -529,7 +797,10 @@ const ModernBranchCashCollections = () => {
       ? branchCollectionData 
       : data;
     
-    const normalRows = dataSource.filter(item => !item.totalData);
+    // UPDATED: Apply LO group filter first
+    const loGroupFiltered = applyLoGroupFilter(dataSource);
+    
+    const normalRows = loGroupFiltered.filter(item => !item.totalData);
     
     if (!searchTerm) {
       return normalRows;
@@ -538,21 +809,36 @@ const ModernBranchCashCollections = () => {
     return normalRows.filter(item => 
       item.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [branchCollectionData, data, searchTerm, currentFilter]);
+  }, [branchCollectionData, data, searchTerm, currentFilter, selectedLoGroup]);
 
   const grandTotalRow = useMemo(() => {
     const dataSource = currentFilter === 'branch' && branchCollectionData?.length > 0 
       ? branchCollectionData 
       : data;
-    return dataSource.find(item => item.totalData === true);
-  }, [branchCollectionData, data, currentFilter]);
+    
+    // UPDATED: Apply LO group filter to total row as well
+    const loGroupFiltered = applyLoGroupFilter(dataSource);
+    return loGroupFiltered.find(item => item.totalData === true);
+  }, [branchCollectionData, data, currentFilter, selectedLoGroup]);
 
   const sortedData = useMemo(() => {
+    let dataToSort = filteredData;
+    
+    // UPDATED: Always sort by loNo ASC when filter is 'lo'
+    if (currentFilter === 'lo') {
+      dataToSort = [...filteredData].sort((a, b) => {
+        const loNoA = parseInt(a.loNo) || 0;
+        const loNoB = parseInt(b.loNo) || 0;
+        return loNoA - loNoB;
+      });
+    }
+    
+    // Apply additional sorting if configured
     if (!sortConfig.key || !sortConfig.direction) {
-      return filteredData;
+      return dataToSort;
     }
 
-    return [...filteredData].sort((a, b) => {
+    return [...dataToSort].sort((a, b) => {
       if (a[sortConfig.key] === b[sortConfig.key]) {
         return 0;
       }
@@ -580,7 +866,7 @@ const ModernBranchCashCollections = () => {
         return valA < valB ? 1 : -1;
       }
     });
-  }, [filteredData, sortConfig]);
+  }, [filteredData, sortConfig, currentFilter]);
 
   const columnDefs = useMemo(() => [
     { key: 'name', label: getEntityColumnLabel(), width: 'w-64' },
@@ -684,17 +970,35 @@ const ModernBranchCashCollections = () => {
                         </div>
                     )}
                     
-                    {currentUser.role && currentUser.role.rep < 3 && (
-                        <div className="relative">
+                    {(currentUser.role && currentUser.role.rep == 2 && 
+                      (currentUser.role.shortCode === "deputy_director" || currentUser.role.shortCode === "regional_manager") &&
+                      !viewingNestedContent && // Add this condition to hide when viewing nested content
+                      !router.query.id && // Also hide when there's an ID in the query (alternative check)
+                      !router.query.filter // Hide when there's a filter applied (lo, group, etc.)
+                    ) && (
+                      <div className="relative">
                         <select
-                            value={selectedBranchGroup}
-                            onChange={(e) => handleBranchGroup(e.target.value)}
-                            className="pl-3 pr-8 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                          value={selectedBranchGroup}
+                          onChange={(e) => handleBranchGroup(e.target.value)}
+                          className="pl-3 pr-8 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
                         >
-                            <option value="mine">My Branches</option>
-                            <option value="all">All Branches</option>
+                          <option value="mine">Mine</option>
+                          <option value="all">All</option>
                         </select>
-                        </div>
+                      </div>
+                    )}
+                    {((currentUser.role && currentUser.role.rep == 3 || currentLevel == "lo") && numberOfLo > 10 ) && (
+                      <div className="relative">
+                        <select
+                          value={selectedLoGroup}
+                          onChange={(e) => handleLoGroup(e.target.value)}
+                          className="pl-3 pr-8 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                        >
+                          <option value="all">All</option>
+                          <option value="main">Main</option>
+                          <option value="ext">Extension</option>
+                        </select>
+                      </div>
                     )}
                 </div>
                 
