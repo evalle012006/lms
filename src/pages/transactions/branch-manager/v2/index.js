@@ -446,20 +446,16 @@ const ModernBranchCashCollections = () => {
   }, [router.query.viewMode, router.query.id, router.query.parentId, router.query.parentViewMode, router.query.filter]);
 
   useEffect(() => {
-    let mounted = true;
-    
-    if (mounted) {
+    setLoading(true);
+    const mounted = setTimeout(() => {
       try {
         fetchCashCollectionsData(dateFilter);
       } catch (error) {
         console.error("Error in fetch effect:", error);
         setLoading(false);
       }
-    }
-
-    return () => {
-      mounted = false;
-    };
+    }, 1000);
+    return () => clearTimeout(mounted);
   }, [dateFilter, selectedBranchGroup, selectedLoGroup, viewMode, router.query.id]);
   
   const handleViewModeChange = (mode) => {
