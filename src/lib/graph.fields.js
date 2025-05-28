@@ -64,7 +64,6 @@ export const CLIENT_FIELDS = `
   addressProvince
   addressStreetNo
   addressZipCode
-  oldGroupid,
   ciName,
   groupLeader,
   duplicate,
@@ -428,4 +427,32 @@ export const TRANSFER_CLIENT_FIELDS = `
   inserted_by
   modified_date
   modified_by
+  `;
+
+  export const FUND_TRANSFER_FIELDS = `
+  _id
+  giverBranchId
+  receiverBranchId
+  amount
+  account
+  description
+  status
+  giverApproval
+  giverApprovalDate
+  receiverApproval
+  receiverApprovalDate
+  approvedRejectedDate
+  insertedDate
+  insertedById
+  insertedBy { _id firstName lastName role }
+  modifiedById
+  modifiedBy { _id firstName lastName role }
+  modifiedDate
+  deleted
+  deletedDate
+
+  giverBranch { _id code name }
+  receiverBranch { _id code name }
+  giverApproval { _id firstName lastName role }
+  receiverApproval { _id firstName lastName role }
   `;
