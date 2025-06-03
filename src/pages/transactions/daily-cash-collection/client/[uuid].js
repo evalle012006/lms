@@ -1409,7 +1409,7 @@ const CashCollectionDetailsPage = () => {
                         if (temp.remarks && (temp.remarks.value === 'excused advance payment' || temp.remarks.value === 'delinquent-mcbu')) {
                             temp.activeLoan = 0;
                             temp.targetCollection = 0;
-                            temp.mispayment = false;
+                            temp.mispayment = true;
                             // temp.mispaymentStr = 'No';
                         }
     
