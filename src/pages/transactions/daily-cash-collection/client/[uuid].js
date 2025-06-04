@@ -1406,11 +1406,16 @@ const CashCollectionDetailsPage = () => {
                             // temp.mispaymentStr = 'Yes';
                         }
 
-                        if (temp.remarks && (temp.remarks.value === 'excused advance payment' || temp.remarks.value === 'delinquent-mcbu')) {
+                        if (temp.remarks && temp.remarks.value === 'excused advance payment') {
+                            temp.activeLoan = 0;
+                            temp.targetCollection = 0;
+                            temp.mispayment = false;
+                        }
+
+                        if (temp.remarks && temp.remarks.value === 'delinquent-mcbu') {
                             temp.activeLoan = 0;
                             temp.targetCollection = 0;
                             temp.mispayment = true;
-                            // temp.mispaymentStr = 'No';
                         }
     
                         if (temp.loanBalance <= 0 && temp.remarks?.value !== 'offset-matured-pd') {
