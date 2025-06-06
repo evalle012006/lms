@@ -483,6 +483,18 @@ const MenuItems = [
                 roles: [3]
             },
             {
+                label: "Branch Manager Summary (NEW)",
+                url: "/transactions/branch-manager/v2", 
+                icon: {
+                    active: (props) => <BarChart3 {...props} />,
+                    notActive: (props) => <BarChart3 {...props} />,
+                },
+                active: false,
+                hasSub: false,
+                hidden: false,
+                roles: [1,2,3]
+            },
+            {
               label: "Mcbu Withdrawals",
               url: "/transactions/mcbu-withdrawal",
               icon: {
