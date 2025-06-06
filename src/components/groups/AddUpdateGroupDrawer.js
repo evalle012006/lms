@@ -216,8 +216,8 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
                                     <div className="flex flex-col mt-4 text-gray-500">
                                         <div>Group Occurence</div>
                                         <div className="flex flex-row ml-4">
-                                            <RadioButton id={"radio_daily"} name="radio-occurence" label={"Daily"} checked={occurence === 'daily'} value="daily" onChange={() => setOccurence('daily')} />
-                                            <RadioButton id={"radio_weekly"} name="radio-occurence" label={"Weekly"} checked={occurence === 'weekly'} value="weekly" onChange={() => setOccurence('weekly')} />
+                                            <RadioButton id={"radio_daily"} name="radio-occurence" label={"Daily"} checked={occurence === 'daily'} value="daily" disabled={mode === 'edit'} onChange={() => setOccurence('daily')} />
+                                            <RadioButton id={"radio_weekly"} name="radio-occurence" label={"Weekly"} checked={occurence === 'weekly'} value="weekly" disabled={mode === 'edit'} onChange={() => setOccurence('weekly')} />
                                         </div>
                                     </div>
                                     <div className="mt-4">
@@ -294,6 +294,7 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
                                                     onChange={(e, selected) => handleBranchChange(selected)}
                                                     onBlur={setFieldTouched}
                                                     placeholder="Select Branch"
+                                                    disabled={mode === 'edit'}
                                                     errors={touched.branchId && errors.branchId ? errors.branchId : undefined}
                                                 />
                                             </div>
@@ -306,6 +307,7 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
                                                     options={branchOfficers}
                                                     onChange={setFieldValue}
                                                     onBlur={setFieldTouched}
+                                                    disabled={mode === 'edit'}
                                                     placeholder="Select Loan Officer"
                                                     errors={touched.loanOfficerId && errors.loanOfficerId ? errors.loanOfficerId : undefined}
                                                 />

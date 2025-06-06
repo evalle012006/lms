@@ -29,6 +29,19 @@ const Layout = ({
     const holidayList = useSelector(state => state.holidays.list);
     const isMobile = useIsMobile();
     const [isNavVisible, setIsNavVisible] = useState(!isMobile);
+    const [isNavCollapsed, setIsNavCollapsed] = useState(false);
+
+    // Listen for collapse events from NavComponent
+    useEffect(() => {
+        const handleNavCollapse = (event) => {
+            setIsNavCollapsed(event.detail.isCollapsed);
+        };
+
+        window.addEventListener('navCollapseChange', handleNavCollapse);
+        return () => {
+            window.removeEventListener('navCollapseChange', handleNavCollapse);
+        };
+    }, []);
 
     const getCurrentDate = async () => {
         const apiURL = `${getApiBaseUrl()}settings/current-date`;
@@ -134,13 +147,33 @@ const Layout = ({
 
     const shouldHideChildren = isMobile && isNavVisible;
 
+    // Calculate the margin based on nav state
+    const getMainContentMargin = () => {
+        if (isMobile) return 'ml-0';
+        if (!isNavVisible) return 'ml-0';
+        if (isNavCollapsed) return 'lg:ml-16';
+        return 'ml-0 lg:ml-64';
+    };
+
+    // Calculate the nav width for the fixed positioning
+    const getNavWidth = () => {
+        if (!isNavVisible) return 'w-0';
+        if (isNavCollapsed && !isMobile) return 'lg:w-16';
+        return isMobile ? 'w-full' : 'w-full lg:w-64';
+    };
+
     return (
         <div className={`flex bg-white w-full h-screen ${vScroll ? 'overflow-y-auto' : 'overflow-hidden'}`}>
-            <div className={`fixed top-0 h-full ${isNavVisible && !isMobile ? 'w-64' : 'w-0'} transition-all duration-300 z-40`}>
-                <NavComponent isVisible={isNavVisible} toggleNav={toggleNav} isMobile={isMobile} />
+            <div className={`fixed top-0 h-full ${getNavWidth()} transition-all duration-300 z-40`}>
+                <NavComponent 
+                    isVisible={isNavVisible} 
+                    toggleNav={toggleNav} 
+                    isMobile={isMobile}
+                    onCollapseChange={setIsNavCollapsed}
+                />
             </div>
             
-            <div className={`flex flex-col flex-1 bg-neutral-200 ${isNavVisible && !isMobile ? 'ml-64' : 'ml-0'} transition-all duration-300 overflow-y-auto ${shouldHideChildren ? 'hidden' : ''}`}>
+            <div className={`flex flex-col flex-1 bg-neutral-200 ${getMainContentMargin()} transition-all duration-300 overflow-y-auto ${shouldHideChildren ? 'hidden' : ''}`}>
                 <HeaderComponent />
                 {header && (
                     <div className="bg-white p-6 gap-6 h-20 flex-shrink-0 shadow-sm">
