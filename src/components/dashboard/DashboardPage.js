@@ -31,7 +31,7 @@ import {
     ChevronDown
 } from 'lucide-react';
 import ClientSearchTool from './ClientSearchTool';
-import { Line } from 'react-chartjs-2';
+import { Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, registerables } from 'chart.js';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 import Avatar from '@/lib/avatar';
@@ -61,12 +61,6 @@ const DashboardPage = () => {
     const [divisionFilter, setDivisionFilter] = useState('all');
     const [loanOfficerFilter, setLoanOfficerFilter] = useState('all');
     const [summaryData, setSummaryData] = useState({});
-    const [graphData, setGraphData] = useState([]);
-
-    const [mcbuData, setMcbuData] = useState({ labels: [], datasets: [] });
-    const [personData, setPersonData] = useState({ labels: [], datasets: [] });
-    const [loanCollectionData, setLoanCollectionData] = useState({ labels: [], datasets: [] });
-    const [misPastDueData, setMisPastDueData] = useState({ labels: [], datasets: [] });
 
     const [branchList, setBranches] = useState([]);
     const [regionList, setRegions] = useState([]);
@@ -94,6 +88,22 @@ const DashboardPage = () => {
     const [isNavVisible, setIsNavVisible] = useState(true);
     const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 0);
     const [dateFilter, setDateFilter] = useState(new Date());
+
+    // Donut chart data for Clients Collection Rate
+    const [clientsCollectionData, setClientsCollectionData] = useState({
+        labels: ['Good Clients', 'Late Clients', 'Mis Payment Clients', 'Past Due Clients'],
+        datasets: [{
+            data: [0, 0, 0, 0],
+            backgroundColor: [
+                '#4B5563', // Dark gray for Good Clients
+                '#14B8A6', // Teal for Late Clients  
+                '#60A5FA', // Light blue for Mis Payment Clients
+                '#A855F7'  // Purple for Past Due Clients
+            ],
+            borderWidth: 0,
+            cutout: '70%'
+        }]
+    });
 
     // Helper function to calculate percentage change and trend
     const calculateTrend = (current, previous) => {
@@ -281,280 +291,33 @@ const DashboardPage = () => {
         setIsNavVisible(!isNavVisible);
     };
 
-    // Function to generate sample dates for last 12 months
-    const generateDates = () => {
-        const dates = [];
-        for (let i = 11; i >= 0; i--) {
-            const date = new Date();
-            date.setMonth(date.getMonth() - i);
-            dates.push(date.toLocaleString('default', { month: 'short', year: '2-digit' }));
-        }
-        return dates;
-    };
-
-    // Function to generate random data
-    const generateRandomData = (min, max, count) => {
-        return Array.from({ length: count }, () => 
-            Math.floor(Math.random() * (max - min + 1)) + min
-        );
-    };
-
-    // Enhanced chart data processing with trend colors
+    // Update donut chart data when summaryData changes
     useEffect(() => {
-        if(graphData.length) {
-            const dates = graphData.map(o => o.group).reverse();
-            const activeClients = graphData.map(o => o.activeClients || 0).reverse();
-            const newMembers = graphData.map(o => o.newMember || 0).reverse();
-            const mcbus = graphData.map(o => o.mcbu || 0).reverse();
-            const mcbuWithdrawals = graphData.map(o => o.clientMcbuWithdrawals || 0).reverse();
-            const loanCollections = graphData.map(o => ((o.loanCollectionDaily || 0) + (o.loanCollectionWeekly || 0))).reverse();
-            const loanReleases = graphData.map(o => o.totalLoanRelease || 0).reverse();
-            const mispayments = graphData.map(o => o.mispaymentPerson || 0).reverse();
-            const pastDues = graphData.map(o => o.pastDuePerson || 0).reverse();
-
-            // Create trend-aware datasets with dynamic colors
-            const createTrendDataset = (data, baseColor, label) => {
-                const colors = data.map((value, index) => {
-                    if (index === 0) return baseColor;
-                    const prev = data[index - 1];
-                    if (value > prev) return '#10B981'; // green
-                    if (value < prev) return '#EF4444'; // red
-                    return '#6B7280'; // gray for no change
-                });
-
-                return {
-                    label,
-                    data,
-                    borderColor: baseColor,
-                    backgroundColor: colors.map(color => color + '20'), // 20% opacity
-                    pointBackgroundColor: colors,
-                    pointBorderColor: colors,
-                    tension: 0.1
-                };
-            };
-
-            setMisPastDueData({
-                labels: dates,
-                datasets: [
-                    createTrendDataset(mispayments, 'rgb(53, 162, 235)', 'MIS Payment'),
-                    createTrendDataset(pastDues, 'rgb(255, 99, 132)', 'Past Due')
-                ]
-            });
-
-            setLoanCollectionData({
-                labels: dates,
-                datasets: [
-                    createTrendDataset(loanCollections, 'rgb(75, 192, 192)', 'Collections'),
-                    createTrendDataset(loanReleases, 'rgb(255, 99, 132)', 'Releases')
-                ]
-            });
-
-            setPersonData({
-                labels: dates,
-                datasets: [
-                    createTrendDataset(activeClients, 'rgb(53, 162, 235)', 'Active Clients'),
-                    createTrendDataset(newMembers, 'rgb(75, 192, 192)', 'New Members')
-                ]
-            });
-
-            setMcbuData({
-                labels: dates,
-                datasets: [
-                    createTrendDataset(mcbus, 'rgb(75, 192, 192)', 'Collections'),
-                    createTrendDataset(mcbuWithdrawals, 'rgb(255, 99, 132)', 'Withdrawals')
-                ]
+        if (summaryData.activeClients) {
+            const activeClients = summaryData.activeClients || 0;
+            const pendingClients = summaryData.pendingClients || 0;
+            const mispaymentPerson = summaryData.mispaymentPerson || 0;
+            const pastDuePerson = summaryData.pastDuePerson || 0;
+            
+            // Calculate good clients (active clients minus problematic ones)
+            const goodClients = Math.max(0, activeClients - pendingClients - mispaymentPerson - pastDuePerson);
+            
+            setClientsCollectionData({
+                labels: ['Good Clients', 'Late Clients', 'Mis Payment Clients', 'Past Due Clients'],
+                datasets: [{
+                    data: [goodClients, pendingClients, mispaymentPerson, pastDuePerson],
+                    backgroundColor: [
+                        '#4B5563', // Dark gray for Good Clients
+                        '#14B8A6', // Teal for Late Clients  
+                        '#60A5FA', // Light blue for Mis Payment Clients
+                        '#A855F7'  // Purple for Past Due Clients
+                    ],
+                    borderWidth: 0,
+                    cutout: '70%'
+                }]
             });
         }
-    }, [graphData]);
-
-    useEffect(() => {
-        const dates = generateDates();
-        
-        // MCBU Data
-        setMcbuData({
-            labels: dates,
-            datasets: [
-                {
-                    label: 'Collections',
-                    data: generateRandomData(50000, 150000, 12),
-                    borderColor: 'rgb(75, 192, 192)',
-                    tension: 0.1
-                },
-                {
-                    label: 'Withdrawals',
-                    data: generateRandomData(30000, 100000, 12),
-                    borderColor: 'rgb(255, 99, 132)',
-                    tension: 0.1
-                }
-            ]
-        });
-
-        setPersonData({
-            labels: dates,
-            datasets: [
-                {
-                    label: 'Active Clients',
-                    data: generateRandomData(1000, 2000, 12),
-                    borderColor: 'rgb(53, 162, 235)',
-                    tension: 0.1
-                },
-                {
-                    label: 'New Members',
-                    data: generateRandomData(50, 200, 12),
-                    borderColor: 'rgb(75, 192, 192)',
-                    tension: 0.1
-                }
-            ]
-        });
-
-        setLoanCollectionData({
-            labels: dates,
-            datasets: [
-                {
-                    label: 'Collections',
-                    data: generateRandomData(200000, 500000, 12),
-                    borderColor: 'rgb(75, 192, 192)',
-                    tension: 0.1
-                },
-                {
-                    label: 'Releases',
-                    data: generateRandomData(150000, 450000, 12),
-                    borderColor: 'rgb(255, 99, 132)',
-                    tension: 0.1
-                }
-            ]
-        });
-
-        setMisPastDueData({
-            labels: dates,
-            datasets: [
-                {
-                    label: 'MIS Payment',
-                    data: generateRandomData(5000, 15000, 12),
-                    borderColor: 'rgb(53, 162, 235)',
-                    tension: 0.1
-                },
-                {
-                    label: 'Past Due',
-                    data: generateRandomData(2000, 8000, 12),
-                    borderColor: 'rgb(255, 99, 132)',
-                    tension: 0.1
-                }
-            ]
-        });
-    }, []);
-
-    const [chartOptions, setChartOptions] = useState({
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                position: 'bottom',
-            },
-            title: {
-                display: true,
-                text: 'Chart Title',
-                font: {
-                    size: 16,
-                    weight: 'bold'
-                },
-                padding: {
-                    top: 10,
-                    bottom: 30
-                }
-            },
-            tooltip: {
-                callbacks: {
-                    title: function(context) {
-                        return `${context[0].raw.x} - ${context[0].raw.category}`;
-                    },
-                    label: function(context) {
-                        let label = context.dataset.label || '';
-                        if (label) {
-                            label += ': ';
-                        }
-                        if (context.parsed.y !== null) {
-                            label += new Intl.NumberFormat('en-US', { style: 'currency', currency: 'PHP' }).format(context.parsed.y);
-                        }
-                        return label;
-                    }
-                }
-            },
-            datalabels: {
-                display: false
-            }
-        },
-        scales: {
-            x: {
-                grid: {
-                    display: false
-                },
-                ticks: {
-                    font: {
-                        size: 12
-                    }
-                }
-            },
-            y: {
-                grid: {
-                    color: 'rgba(0, 0, 0, 0.1)',
-                },
-                ticks: {
-                    font: {
-                        size: 12
-                    },
-                    callback: function(value) {
-                        return value.toLocaleString();
-                    }
-                },
-                beginAtZero: true
-            }
-        },
-    });
-
-    const mcbuOptions = useMemo(() => ({
-        ...chartOptions,
-        plugins: {
-            ...chartOptions.plugins,
-            title: {
-                ...chartOptions.plugins.title,
-                text: 'MCBU',
-            },
-        },
-    }), [chartOptions]);
-
-    const personOptions = useMemo(() => ({
-        ...chartOptions,
-        plugins: {
-            ...chartOptions.plugins,
-            title: {
-                ...chartOptions.plugins.title,
-                text: 'Person Performance',
-            },
-        },
-    }), [chartOptions]);
-
-    const loanCollectionOptions = useMemo(() => ({
-        ...chartOptions,
-        plugins: {
-            ...chartOptions.plugins,
-            title: {
-                ...chartOptions.plugins.title,
-                text: 'Loan Collection and Releases',
-            },
-        },
-    }), [chartOptions]);
-
-    const misPastDueOptions = useMemo(() => ({
-        ...chartOptions,
-        plugins: {
-            ...chartOptions.plugins,
-            title: {
-                ...chartOptions.plugins.title,
-                text: 'Mis Payment and Past Due',
-            },
-        },
-    }), [chartOptions]);
+    }, [summaryData]);
 
     const formatNumber = (num) => {
         if (num === undefined || num === null) {
@@ -604,21 +367,11 @@ const DashboardPage = () => {
                                 .map(a => `${a.field}=${a.value}`).join('&');
 
             const summaryUrl = getApiBaseUrl() + '/dashboard?' + queries + '&type=summary';
-            const graphUrl = getApiBaseUrl() + '/dashboard?' + queries + '&type=graph';
             
             setSummaryData({});
-            setGraphData([]);
             const summaryPromise = fetchWrapper.get(summaryUrl)
                 .then(resp => {
                     setSummaryData(resp.data?.[0] ?? {});
-                }).catch(error => {
-                    console.log(error)
-                });
-
-            fetchWrapper.get(graphUrl)
-                .then(resp => {
-                    console.log(resp.data);
-                    setGraphData(resp.data);
                 }).catch(error => {
                     console.log(error)
                 });
@@ -693,49 +446,6 @@ const DashboardPage = () => {
         fetchSummaries();
     }, []);
 
-    useEffect(() => {
-        const currencyFormatter = (value) => 
-            new Intl.NumberFormat('en-PH', { 
-                style: 'currency', 
-                currency: 'PHP',
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0
-            }).format(value);
-
-        setChartOptions(prev => ({
-            ...prev,
-            plugins: {
-                ...prev.plugins,
-                tooltip: {
-                    ...prev.plugins.tooltip,
-                    callbacks: {
-                        label: function(context) {
-                            let label = context.dataset.label || '';
-                            if (label) {
-                                label += ': ';
-                            }
-                            if (context.parsed.y !== null) {
-                                label += currencyFormatter(context.parsed.y);
-                            }
-                            return label;
-                        }
-                    }
-                }
-            },
-            scales: {
-                ...prev.scales,
-                y: {
-                    ...prev.scales.y,
-                    ticks: {
-                        callback: function(value) {
-                            return currencyFormatter(value);
-                        }
-                    }
-                }
-            }
-        }));
-    }, []);
-
     // Prepare filter options
     const timeFilterOptions = [
         { value: 'daily', label: 'Daily' },
@@ -779,6 +489,40 @@ const DashboardPage = () => {
         value: index,
         label: item.label
     }));
+
+    // Donut chart options
+    const donutChartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'right',
+                labels: {
+                    usePointStyle: true,
+                    pointStyle: 'rect',
+                    padding: 20,
+                    font: {
+                        size: 14,
+                        weight: '500'
+                    }
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        const label = context.label || '';
+                        const value = context.parsed;
+                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                        const percentage = ((value / total) * 100).toFixed(1);
+                        return `${label}: ${value.toLocaleString()} (${percentage}%)`;
+                    }
+                }
+            },
+            datalabels: {
+                display: false
+            }
+        }
+    };
 
     return (
         <div className="min-h-screen bg-gray-100 flex flex-col">
@@ -929,13 +673,107 @@ const DashboardPage = () => {
                         </div>
                     </div>
                 </div>
-            
+
                 {loading ? (
                     <div className="flex justify-center items-center h-64">
                         <Spinner />
                     </div>
                 ) : ( 
                     <div className="flex flex-col gap-4 mt-4 min-w-[1400px]">
+                        {/* Performance Section - Compact Layout */}
+                        <div className="w-full mb-8">
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                {/* Left: Chart */}
+                                <div className="lg:col-span-1">
+                                    <div className="bg-white p-6 rounded-lg shadow h-full">
+                                        <div className="text-center mb-4">
+                                            <h2 className="text-lg font-bold text-gray-800">PERFORMANCE</h2>
+                                            <p className="text-sm text-gray-600 capitalize">{timeFilter}</p>
+                                        </div>
+                                        <div className="relative">
+                                            <div className="h-[200px] flex items-center justify-center">
+                                                <div className="w-[200px] h-[200px] relative">
+                                                    <Doughnut data={clientsCollectionData} options={{
+                                                        ...donutChartOptions,
+                                                        plugins: {
+                                                            ...donutChartOptions.plugins,
+                                                            legend: {
+                                                                display: false
+                                                            }
+                                                        }
+                                                    }} />
+                                                    {/* Center text - properly positioned */}
+                                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                        <div className="text-center">
+                                                            <div className="text-xs font-medium text-gray-600 leading-tight">Clients Collection</div>
+                                                            <div className="text-xs font-medium text-gray-600 leading-tight">Rate</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Middle: Key Performance Metrics */}
+                                <div className="lg:col-span-1">
+                                    <div className="bg-white p-6 rounded-lg shadow h-full">
+                                        <h3 className="text-lg font-bold text-gray-800 mb-4">Key Metrics</h3>
+                                        <div className="space-y-4">
+                                            <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                                                <span className="text-sm font-medium text-gray-700">Collection Rate</span>
+                                                <span className="text-lg font-bold text-blue-600">
+                                                    {summaryData.activeClients ? 
+                                                        (((summaryData.activeClients - (summaryData.pendingClients || 0) - (summaryData.mispaymentPerson || 0) - (summaryData.pastDuePerson || 0)) / summaryData.activeClients) * 100).toFixed(1) 
+                                                        : '0.0'}%
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                                                <span className="text-sm font-medium text-gray-700">Active Clients</span>
+                                                <span className="text-lg font-bold text-green-600">{formatNumber(summaryData.activeClients || 0)}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center p-3 bg-yellow-50 rounded-lg">
+                                                <span className="text-sm font-medium text-gray-700">Late Clients</span>
+                                                <span className="text-lg font-bold text-yellow-600">{formatNumber(summaryData.pendingClients || 0)}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg">
+                                                <span className="text-sm font-medium text-gray-700">Problem Clients</span>
+                                                <span className="text-lg font-bold text-red-600">
+                                                    {formatNumber((summaryData.mispaymentPerson || 0) + (summaryData.pastDuePerson || 0))}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Right: Legend */}
+                                <div className="lg:col-span-1">
+                                    <div className="bg-white p-6 rounded-lg shadow h-full">
+                                        <h3 className="text-lg font-bold text-gray-800 mb-4">Client Categories</h3>
+                                        <div className="space-y-3">
+                                            {[
+                                                { label: 'Good Clients', color: '#4B5563', value: summaryData.activeClients ? summaryData.activeClients - (summaryData.pendingClients || 0) - (summaryData.mispaymentPerson || 0) - (summaryData.pastDuePerson || 0) : 0 },
+                                                { label: 'Late Clients', color: '#14B8A6', value: summaryData.pendingClients || 0 },
+                                                { label: 'Mis Payment Clients', color: '#60A5FA', value: summaryData.mispaymentPerson || 0 },
+                                                { label: 'Past Due Clients', color: '#A855F7', value: summaryData.pastDuePerson || 0 }
+                                            ].map((item, index) => (
+                                                <div key={index} className="flex items-center justify-between p-2 rounded">
+                                                    <div className="flex items-center space-x-3">
+                                                        <div 
+                                                            className="w-4 h-4 rounded-sm" 
+                                                            style={{ backgroundColor: item.color }}
+                                                        ></div>
+                                                        <span className="text-sm font-medium text-gray-700">{item.label}</span>
+                                                    </div>
+                                                    <span className="text-sm font-bold text-gray-900">{formatNumber(item.value)}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         {/* Summary Grid - Responsive */}
                         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
                             {/* Summary Column */}
@@ -1069,44 +907,6 @@ const DashboardPage = () => {
                                         <CardItem title="Total Amount of Releases:" value={summaryData.totalAmountReleases} prevValue={summaryData.prev_totalAmountReleases} Icon={Banknote} />
                                         <CardItem title="Target Collection for Tomorrow:" value={summaryData.targetCollectionTomorrow} prevValue={summaryData.prev_targetCollectionTomorrow} Icon={AlertCircle} />
                                         <CardItem title="Target Expenses for Tomorrow:" value={summaryData.targetExpensesTomorrow} prevValue={summaryData.prev_targetExpensesTomorrow} Icon={DollarSign} />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Performance Section - Full width, 2 columns */}
-                        <div className="w-full mt-8 border-t pt-8">
-                            <h2 className="text-lg font-semibold mb-4">Performance</h2>
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                {/* Left Column */}
-                                <div className="space-y-8">
-                                    {/* MCBU Chart */}
-                                    <div className="bg-white p-6 rounded-lg shadow">
-                                        <div className="h-[400px]">
-                                            <Line data={mcbuData} options={mcbuOptions} />
-                                        </div>
-                                    </div>
-                                    {/* Person Chart */}
-                                    <div className="bg-white p-6 rounded-lg shadow">
-                                        <div className="h-[400px]">
-                                            <Line data={personData} options={personOptions} />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Right Column */}
-                                <div className="space-y-8">
-                                    {/* Loan Collection Chart */}
-                                    <div className="bg-white p-6 rounded-lg shadow">
-                                        <div className="h-[400px]">
-                                            <Line data={loanCollectionData} options={loanCollectionOptions} />
-                                        </div>
-                                    </div>
-                                    {/* MIS Past Due Chart */}
-                                    <div className="bg-white p-6 rounded-lg shadow">
-                                        <div className="h-[400px]">
-                                            <Line data={misPastDueData} options={misPastDueOptions} />
-                                        </div>
                                     </div>
                                 </div>
                             </div>
