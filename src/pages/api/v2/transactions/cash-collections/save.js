@@ -5,6 +5,7 @@ import { generateUUID } from '@/lib/utils';
 import logger from '@/logger';
 import { apiHandler } from '@/services/api-handler';
 import { savePendingLoans } from './update-pending-loans';
+import { findGroups } from '@/lib/graph.functions';
 
 const graph = new GraphProvider();
 const COLLECTION_TYPE = createGraphType('cashCollections', '_id')
@@ -117,11 +118,15 @@ async function save(req, res) {
                     collection.modifiedDateTime = new Date();
                     const existCollection = {...assignNullValues(collection)};
                     delete existCollection.mcbuHistory;
+
+                    existCollection = await fixCashCollectionReference(existCollection);
                     existCC.push(existCollection);
                 } else {
                     collection.insertedDateTime = new Date();
                     const newCollection = {...assignNullValues(collection)};
                     delete newCollection.mcbuHistory;
+
+                    collection = await fixCashCollectionReference(collection);
                     newCC.push(collection);
                 }
                 
@@ -165,6 +170,24 @@ async function save(req, res) {
     res.status(statusCode)
         .setHeader('Content-Type', 'application/json')
         .end(JSON.stringify(response));
+}
+
+async function fixCashCollectionReference(cashCollection) {
+    // fix cashCollection loId and use the groupId cashCollection
+    if(!cashCollection.groupId) {
+        throw { message: 'No group id for cashCollection loanId = ' + cashCollection.loanId };
+    }
+
+    const [group] = await findGroups({ _id: { _eq: cashCollection.groupId }});
+
+    if(group) {
+        throw { message: 'No group found = ' + cashCollection.loanId };
+    }
+
+    // set the cashCollection loId from group loanOfficerId
+    if(group.loanOfficerId) {
+        cashCollection.loId = group.loanOfficerId;
+    }
 }
 
 function cleanUpCollection(c) {
