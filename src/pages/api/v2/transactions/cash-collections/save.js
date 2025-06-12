@@ -116,14 +116,14 @@ async function save(req, res) {
                 logger.debug({user_id, page: `Saving Cash Collection - Group ID: ${data.collection[0]?.groupId}`, currentDate: currentDate, data: collection});
                 if (collection.hasOwnProperty('_id') && collection._id != collection?.loanId) {
                     collection.modifiedDateTime = new Date();
-                    let existCollection = {...assignNullValues(collection)};
+                    const existCollection = {...assignNullValues(collection)};
                     delete existCollection.mcbuHistory;
 
                     await fixCashCollectionReference(existCollection);
                     existCC.push(existCollection);
                 } else {
                     collection.insertedDateTime = new Date();
-                    let newCollection = {...assignNullValues(collection)};
+                    const newCollection = {...assignNullValues(collection)};
                     delete newCollection.mcbuHistory;
 
                     await fixCashCollectionReference(collection);
