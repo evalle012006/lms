@@ -180,7 +180,7 @@ async function fixCashCollectionReference(cashCollection) {
 
     const [group] = await findGroups({ _id: { _eq: cashCollection.groupId }});
 
-    if(group) {
+    if(!group) {
         throw { message: 'No group found = ' + cashCollection.loanId };
     }
 
