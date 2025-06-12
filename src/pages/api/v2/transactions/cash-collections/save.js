@@ -119,14 +119,14 @@ async function save(req, res) {
                     let existCollection = {...assignNullValues(collection)};
                     delete existCollection.mcbuHistory;
 
-                    existCollection = await fixCashCollectionReference(existCollection);
+                    await fixCashCollectionReference(existCollection);
                     existCC.push(existCollection);
                 } else {
                     collection.insertedDateTime = new Date();
                     let newCollection = {...assignNullValues(collection)};
                     delete newCollection.mcbuHistory;
 
-                    collection = await fixCashCollectionReference(collection);
+                    await fixCashCollectionReference(collection);
                     newCC.push(collection);
                 }
                 
@@ -188,6 +188,7 @@ async function fixCashCollectionReference(cashCollection) {
     if(group.loanOfficerId) {
         cashCollection.loId = group.loanOfficerId;
     }
+    return cashCollection;
 }
 
 function cleanUpCollection(c) {
