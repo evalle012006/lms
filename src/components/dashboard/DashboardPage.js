@@ -69,7 +69,7 @@ const DashboardPage = () => {
     const [loanOfficerList, setLoanOfficers] = useState([]);
     const [timeFilterList, setTimeFilterList] = useState(getYears());
     const [selectedFilter, setSelectedFilter] = useState();
-    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+    const [selectedYear, setSelectedYear] = useState(moment(currentDate).year());
     const [yearList] = useState(getYears);
 
     // New state for search visibility and filters
@@ -87,7 +87,7 @@ const DashboardPage = () => {
     const [isMobile, setIsMobile] = useState(false);
     const [isNavVisible, setIsNavVisible] = useState(true);
     const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 0);
-    const [dateFilter, setDateFilter] = useState(new Date());
+    const [dateFilter, setDateFilter] = useState(currentDate);
 
     // Donut chart data for Clients Collection Rate
     const [clientsCollectionData, setClientsCollectionData] = useState({
@@ -549,7 +549,7 @@ const DashboardPage = () => {
                                     <DatePicker 
                                         name="dateFilter" 
                                         value={moment(dateFilter).format('YYYY-MM-DD')} 
-                                        maxDate={moment(new Date()).format('YYYY-MM-DD')} 
+                                        maxDate={currentDate} 
                                         onChange={handleDateFilter}
                                         height="h-[42px]"
                                     />
