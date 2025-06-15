@@ -3,6 +3,7 @@ import logo from "/public/images/logo.png";
 import { 
     LayoutDashboard, 
     Store,
+    Banknote,
     Building,
     Building2,
     BarChart3,
@@ -519,6 +520,18 @@ const MenuItems = [
                 roles: [2, 3]
             },
             {
+                label: "Fund Transfer",
+                url: "/transactions/fund-transfer", 
+                icon: {
+                    active: (props) => <Banknote {...props} />,
+                    notActive: (props) => <Banknote {...props} />,
+                },
+                active: false,
+                hasSub: false,
+                hidden: false,
+                roles: [1, 2, 3]
+            },
+            {
                 label: "Bad Debts",
                 url: "/other-transactions/baddebt-collection",
                 icon: {
@@ -738,7 +751,7 @@ function reducer(state, action) {
   }
 }
 
-// Individual menu item component
+// Individual menu item component with full-width active background
 const MenuItem = React.memo(({ item, index, activePath, isCollapsed, isMobile, onMenuClick, state, dispatch }) => {
   const router = useRouter();
   const menuItemRef = useRef(null);
@@ -796,11 +809,14 @@ const MenuItem = React.memo(({ item, index, activePath, isCollapsed, isMobile, o
   // Collapsed view
   if (isCollapsed && !isMobile) {
     return (
-      <li className={`mx-2 ${index === 0 ? 'mt-2' : 'mt-3'}`} ref={menuItemRef}>
+      <li className={`${index === 0 ? 'mt-2' : 'mt-3'}`} ref={menuItemRef}>
         <Tooltip content={displayLabel} show={!isCollapsedDropdownOpen}>
           <div 
-            className={`flex justify-center items-center rounded-md p-3 cursor-pointer transition-all duration-200 relative
-              ${isActive ? 'bg-teal-600 text-white' : 'text-white hover:bg-gray-700'}
+            className={`flex justify-center items-center p-3 cursor-pointer transition-all duration-200 relative
+              ${isActive 
+                ? 'bg-teal-600 text-white' 
+                : 'text-white hover:bg-gray-700'
+              }
               ${item.hasSub && isCollapsedDropdownOpen ? 'bg-gray-600' : ''}
             `}
             onClick={handleClick}
@@ -834,25 +850,31 @@ const MenuItem = React.memo(({ item, index, activePath, isCollapsed, isMobile, o
       {item.hasSub ? (
         // Menu items with submenus - no Link wrapper
         <div 
-          className={`flex items-center rounded-md p-3 mx-4 cursor-pointer transition-all duration-200 relative
-            ${isActive ? 'bg-teal-600 text-white' : 'text-white hover:bg-gray-700'}
+          className={`flex items-center p-3 cursor-pointer transition-all duration-200 relative
+            ${isActive 
+              ? 'bg-teal-600 text-white' 
+              : 'text-white hover:bg-gray-700'
+            }
           `}
           onClick={handleClick}
         >
-          <IconComponent className="w-5 h-5 flex-shrink-0" />
+          <IconComponent className="w-5 h-5 flex-shrink-0 ml-1" />
           <span className="ml-3 font-medium flex-1">{displayLabel}</span>
-          <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isSubmenuOpen ? 'rotate-180' : ''}`} />
+          <ChevronDown className={`w-4 h-4 mr-1 transition-transform duration-200 ${isSubmenuOpen ? 'rotate-180' : ''}`} />
         </div>
       ) : (
         // Regular menu items - wrapped in Link
         <Link href={item.url}>
           <div 
-            className={`flex items-center rounded-md p-3 mx-4 cursor-pointer transition-all duration-200 relative
-              ${isActive ? 'bg-teal-600 text-white' : 'text-white hover:bg-gray-700'}
+            className={`flex items-center p-3 cursor-pointer transition-all duration-200 relative
+              ${isActive 
+                ? 'bg-teal-600 text-white' 
+                : 'text-white hover:bg-gray-700'
+              }
             `}
             onClick={handleClick}
           >
-            <IconComponent className="w-5 h-5 flex-shrink-0" />
+            <IconComponent className="w-5 h-5 flex-shrink-0 ml-1" />
             <span className="ml-3 font-medium flex-1">{displayLabel}</span>
           </div>
         </Link>
@@ -862,15 +884,18 @@ const MenuItem = React.memo(({ item, index, activePath, isCollapsed, isMobile, o
       {item.hasSub && isSubmenuOpen && !isCollapsed && (
         <div className="ml-8 mt-2 relative z-[55]">
           {/* Left border indicator */}
-          <div className="absolute left-2 top-0 bottom-0 w-0.5 bg-gray-600"></div>
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-gray-400"></div>
           
           <ul className="space-y-1">
             {item.subMenuItems.filter(subItem => !subItem.hidden).map((subItem, idx) => (
               <li key={idx}>
                 <Link href={subItem.url}>
                   <div 
-                    className={`flex items-center p-2 mx-2 rounded-md cursor-pointer transition-all duration-200 relative z-[55]
-                      ${activePath === subItem.url ? 'bg-teal-500 text-white' : 'text-gray-300 hover:text-white hover:bg-gray-700'}
+                    className={`flex items-center p-2 cursor-pointer transition-all duration-200 relative z-[55]
+                      ${activePath === subItem.url 
+                        ? 'bg-teal-500 text-white' 
+                        : 'text-gray-300 hover:text-white hover:bg-gray-700'
+                      }
                     `}
                     onClick={(e) => {
                       if (isMobile && onMenuClick) {
@@ -884,9 +909,9 @@ const MenuItem = React.memo(({ item, index, activePath, isCollapsed, isMobile, o
                   >
                     {/* Active indicator */}
                     {activePath === subItem.url && (
-                      <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-teal-400"></div>
+                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-teal-400"></div>
                     )}
-                    <subItem.icon.notActive className="w-4 h-4 flex-shrink-0" />
+                    <subItem.icon.notActive className="w-4 h-4 flex-shrink-0 ml-1" />
                     <span className="ml-3 text-sm font-medium">{subItem.label}</span>
                   </div>
                 </Link>

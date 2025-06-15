@@ -1,23 +1,9 @@
-/*
- * Fund Transfer Page Component
- * 
- * API Requirements:
- * - Branches should have areaManagerId field for approval workflow
- * - Create update endpoint: PUT /transactions/fund-transfer/update
- * - User role should have short_code field ('area_manager', 'finance', etc.)
- * 
- * Approval Workflow:
- * 1. Area managers approve transfers for their designated branches
- * 2. Finance can only approve after both giver and receiver area managers approve
- * 3. Any authorized user can reject at any stage
- */
-
 import React from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchWrapper } from "@/lib/fetch-wrapper";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { toast } from "react-toastify";
-import { setBranchList } from "@/redux/actions/branchActions";
+import { setBranch, setBranchList } from "@/redux/actions/branchActions";
 import TableComponent, { StatusPill } from "@/lib/table";
 import Layout from "@/components/Layout";
 import Spinner from "@/components/Spinner";
@@ -35,7 +21,9 @@ import { setFundTransferHistoryList, setFundTransferList } from "@/redux/actions
 
 const FundTransferPage = () => {
     const [loading, setLoading] = useState(true);
-    const router = useRouter();x
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [accessDenied, setAccessDenied] = useState(false);
+    const router = useRouter();
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
     const currentDate = useSelector(state => state.systemSettings.currentDate);
@@ -48,7 +36,10 @@ const FundTransferPage = () => {
     const [mode, setMode] = useState('add');
     const [fundTransfer, setFundTransfer] = useState();
     const [dropDownActions, setDropDownActions] = useState();
-    const [approvalAction, setApprovalAction] = useState(''); // 'approve' or 'reject'
+    const [approvalAction, setApprovalAction] = useState('');
+
+    const isMountedRef = useRef(true);
+    const isLoadingRef = useRef(false);
 
     const [selectedTab, setSelectedTab] = useTabs([
         'fund-transfer-transactions',
@@ -60,7 +51,7 @@ const FundTransferPage = () => {
     }
 
     // Columns for Transactions tab
-    const [transactionColumns, setTransactionColumns] = useState([
+    const transactionColumns = [
         {
             Header: "Transfer Date",
             accessor: 'insertedDate',
@@ -106,10 +97,10 @@ const FundTransferPage = () => {
             accessor: 'receiverApprovalStatus',
             Cell: StatusPill
         }
-    ]);
+    ];
 
     // Columns for History tab
-    const [historyColumns, setHistoryColumns] = useState([
+    const historyColumns = [
         {
             Header: "Transfer Date",
             accessor: 'insertedDate',
@@ -160,7 +151,7 @@ const FundTransferPage = () => {
             accessor: 'receiverApprovalDate',
             Cell: ({ value }) => value ? moment(value).format('MMM DD, YYYY HH:mm') : 'Pending'
         }
-    ]);
+    ];
 
     const handleEditAction = (row) => {
         if (row.original.status === 'pending') {
@@ -194,8 +185,8 @@ const FundTransferPage = () => {
     }
 
     const handleApprovalConfirm = async () => {
-        if (fundTransfer) {
-            setLoading(true);
+        if (fundTransfer && !isRefreshing) {
+            setIsRefreshing(true);
             const url = getApiBaseUrl() + 'transactions/fund-transfer/approve';
             const payload = {
                 _id: fundTransfer._id,
@@ -207,22 +198,20 @@ const FundTransferPage = () => {
                 if (response.success) {
                     setShowApprovalDialog(false);
                     toast.success(`Transfer ${approvalAction}d successfully.`);
-                    setTimeout(() => {
-                        getFundTransferList();
-                    }, 500);
+                    await refreshFundTransferList();
                 } else {
                     toast.error(response.message || `Failed to ${approvalAction} transfer.`);
                 }
             } catch (error) {
                 toast.error(`Error ${approvalAction}ing transfer.`);
             }
-            setLoading(false);
+            setIsRefreshing(false);
         }
     }
 
     const handleDelete = async () => {
-        if (fundTransfer) {
-            setLoading(true);
+        if (fundTransfer && !isRefreshing) {
+            setIsRefreshing(true);
             try {
                 const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/fund-transfer/delete', { 
                     _id: fundTransfer._id 
@@ -230,69 +219,46 @@ const FundTransferPage = () => {
                 if (response.success) {
                     setShowDeleteDialog(false);
                     toast.success('Fund transfer successfully deleted.');
-                    getFundTransferList();
+                    await refreshFundTransferList();
                 } else {
                     toast.error(response.message || 'Failed to delete fund transfer.');
                 }
             } catch (error) {
                 toast.error('Error deleting fund transfer.');
             }
-            setLoading(false);
+            setIsRefreshing(false);
         }
     }
 
-    const handleCloseAddDrawer = () => {
+    const handleCloseAddDrawer = (shouldRefresh = false) => {
         setMode('add');
         setFundTransfer({});
         setShowAddDrawer(false);
-        getFundTransferList();
+        
+        if (shouldRefresh) {
+            refreshFundTransferList();
+        }
     }
 
     const getListBranch = async () => {
         let url = getApiBaseUrl() + 'branches/list';
         
         try {
-            if (currentUser.role.rep === 1) {
-                const response = await fetchWrapper.get(url);
-                if (response.success) {
-                    let branches = [];
-                    response.branches.map(branch => {
-                        branches.push({
-                            ...branch,
-                            value: branch._id,
-                            label: branch.name
-                        });
+            const response = await fetchWrapper.get(url);
+            if (response.success) {
+                let branches = [];
+                response.branches.map(branch => {
+                    branches.push({
+                        ...branch,
+                        value: branch._id,
+                        label: branch.name
                     });
-                    dispatch(setBranchList(branches));
-                }
-            } else if (currentUser.role.rep === 2) {
-                url = url + '?' + new URLSearchParams({ currentUserId: currentUser._id });
-                const response = await fetchWrapper.get(url);
-                if (response.success) {
-                    let branches = [];
-                    response.branches.map(branch => {
-                        branches.push({
-                            ...branch,
-                            value: branch._id,
-                            label: branch.name
-                        });
-                    });
-                    dispatch(setBranchList(branches));
-                }
-            } else if (currentUser.role.rep === 3) {
-                const branchCodes = currentUser.designatedBranch;
-                url = url + '?' + new URLSearchParams({ branchCode: [branchCodes] });
-                const response = await fetchWrapper.get(url);
-                if (response.success) {
-                    let branches = [];
-                    response.branches.map(branch => {
-                        branches.push({
-                            ...branch,
-                            value: branch._id,
-                            label: branch.name
-                        });
-                    });
-                    dispatch(setBranchList(branches));
+                });
+                dispatch(setBranchList(branches));
+
+                const currentBranch = branches.find(branch => branch._id == currentUser.designatedBranchId);
+                if (currentBranch) {
+                    dispatch(setBranch(currentBranch));
                 }
             }
         } catch (error) {
@@ -300,16 +266,20 @@ const FundTransferPage = () => {
         }
     }
 
-    const getFundTransferList = async () => {
+    const getFundTransferList = useCallback(async () => {
+        if (isLoadingRef.current || !isMountedRef.current) {
+            return;
+        }
+
+        isLoadingRef.current = true;
+
         try {
             let url = getApiBaseUrl() + 'transactions/fund-transfer/list';
             
-            // Get pending transfers for Transactions tab
             const transactionsUrl = url + '?' + new URLSearchParams({ 
                 status: 'pending'
             });
             
-            // Get completed transfers for History tab (approved/rejected)
             const historyUrlApproved = url + '?' + new URLSearchParams({ 
                 status: 'approved'
             });
@@ -323,8 +293,16 @@ const FundTransferPage = () => {
                 fetchWrapper.get(historyUrlRejected)
             ]);
 
+            if (!isMountedRef.current) return;
+
+            // Check for access denied response
+            if (!transactionsResponse.success && transactionsResponse.message?.includes('Access denied')) {
+                setAccessDenied(true);
+                toast.error('Access denied. You do not have permission to view this page.');
+                return;
+            }
+
             if (transactionsResponse.success) {
-                // Process transactions data to add formatted amounts and status
                 const processedTransactions = transactionsResponse.data.map(transfer => ({
                     ...transfer,
                     amountStr: new Intl.NumberFormat('en-US', { 
@@ -337,7 +315,6 @@ const FundTransferPage = () => {
                 dispatch(setFundTransferList(processedTransactions));
             }
 
-            // Combine approved and rejected for history
             let historyData = [];
             if (historyApprovedResponse.success) {
                 historyData = [...historyData, ...historyApprovedResponse.data];
@@ -347,7 +324,6 @@ const FundTransferPage = () => {
             }
 
             if (historyData.length > 0) {
-                // Process history data
                 const processedHistory = historyData.map(transfer => ({
                     ...transfer,
                     amountStr: new Intl.NumberFormat('en-US', { 
@@ -355,25 +331,48 @@ const FundTransferPage = () => {
                         currency: 'PHP' 
                     }).format(transfer.amount || 0)
                 }));
-                // Sort by approved/rejected date descending
                 processedHistory.sort((a, b) => new Date(b.approvedRejectedDate) - new Date(a.approvedRejectedDate));
                 dispatch(setFundTransferHistoryList(processedHistory));
             }
 
         } catch (error) {
-            toast.error('Error loading fund transfers.');
+            if (isMountedRef.current) {
+                if (error.status === 403) {
+                    setAccessDenied(true);
+                    toast.error('Access denied. You do not have permission to view this page.');
+                } else {
+                    toast.error('Error loading fund transfers.');
+                }
+            }
+        } finally {
+            isLoadingRef.current = false;
         }
-    }
+    }, [dispatch]);
 
-    const [actionButtons, setActionButtons] = useState();
+    const refreshFundTransferList = useCallback(async () => {
+        if (!isRefreshing) {
+            setIsRefreshing(true);
+            await getFundTransferList();
+            setIsRefreshing(false);
+        }
+    }, [getFundTransferList, isRefreshing]);
 
+    // Check user role access - updated condition
     useEffect(() => {
         if (currentUser?.role?.rep > 3) {
-            router.push('/');
+            setAccessDenied(true);
+            toast.error('Access denied. You do not have permission to view this page.');
         }
-    }, []);
+    }, [currentUser?.role?.rep]);
 
     const fetchData = async () => {
+        // Don't fetch data if access is denied
+        if (currentUser?.role?.rep > 3) {
+            setAccessDenied(true);
+            setLoading(false);
+            return;
+        }
+
         setLoading(true);
         try {
             await Promise.all([getListBranch(), getFundTransferList()]);
@@ -385,26 +384,16 @@ const FundTransferPage = () => {
 
     useEffect(() => {
         let mounted = true;
-        mounted && fetchData();
+        if (mounted && currentUser?.role?.rep <= 3) {
+            fetchData();
+        }
         return () => {
             mounted = false;
         }
-    }, [currentDate]);
+    }, [currentDate, currentUser?.role?.rep]);
 
     useEffect(() => {
-        if (currentUser.role.rep < 4) {
-            setActionButtons([
-                <ButtonSolid 
-                    key="add-transfer"
-                    label="Add Fund Transfer" 
-                    type="button" 
-                    className="p-2 mr-3" 
-                    onClick={handleShowAddDrawer} 
-                    icon={[<PlusIcon className="w-5 h-5" />, 'left']} 
-                />
-            ]);
-
-            // Set dropdown actions based on user permissions and current tab
+        if (currentUser?.role?.rep <= 3) {
             const actions = [
                 {
                     label: 'Edit Transfer',
@@ -423,18 +412,15 @@ const FundTransferPage = () => {
                             return true;
                         }
                         
-                        // Only area managers and finance can approve
                         const canApprove = ['area_manager', 'finance'].includes(currentUser.role?.short_code);
                         if (!canApprove) return true;
                         
-                        // Area managers can only approve for their designated branches
                         if (currentUser.role?.short_code === 'area_manager') {
                             const canApproveGiver = currentUser.designatedBranchId === row.original.giverBranchId && !row.original.giverApprovalDate;
                             const canApproveReceiver = currentUser.designatedBranchId === row.original.receiverBranchId && !row.original.receiverApprovalDate;
                             return !(canApproveGiver || canApproveReceiver);
                         }
                         
-                        // Finance can approve only after both area managers approved
                         if (currentUser.role?.short_code === 'finance') {
                             return !row.original.giverApprovalDate || !row.original.receiverApprovalDate;
                         }
@@ -451,17 +437,14 @@ const FundTransferPage = () => {
                             return true;
                         }
                         
-                        // Only area managers and finance can reject
                         const canReject = ['area_manager', 'finance'].includes(currentUser.role?.short_code);
                         if (!canReject) return true;
                         
-                        // Area managers can reject for their designated branches
                         if (currentUser.role?.short_code === 'area_manager') {
                             return currentUser.designatedBranchId !== row.original.giverBranchId && 
                                    currentUser.designatedBranchId !== row.original.receiverBranchId;
                         }
                         
-                        // Finance can always reject pending transfers
                         return false;
                     }
                 },
@@ -477,10 +460,39 @@ const FundTransferPage = () => {
 
             setDropDownActions(actions);
         }
-    }, [currentDate, fundTransferList, selectedTab]);
+    }, [currentUser, selectedTab]);
+
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
+
+    // Show access denied message if user doesn't have permission
+    if (accessDenied || currentUser?.role?.rep > 3) {
+        return (
+            <Layout>
+                <div className="flex items-center justify-center h-64">
+                    <div className="text-center">
+                        <h2 className="text-2xl font-semibold text-gray-900 mb-4">Access Denied</h2>
+                        <p className="text-gray-600">You do not have permission to view this page.</p>
+                    </div>
+                </div>
+            </Layout>
+        );
+    }
 
     return (
-        <Layout actionButtons={currentUser.role.rep <= 3 && actionButtons}>
+        <Layout actionButtons={currentUser?.role?.rep <= 3 ? 
+            [<ButtonSolid 
+                key="add-transfer"
+                label="Add Fund Transfer" 
+                type="button" 
+                className="p-2 mr-3" 
+                onClick={handleShowAddDrawer} 
+                icon={[<PlusIcon className="w-5 h-5" />, 'left']} 
+            />] : undefined}>
             <div className="pb-4">
                 {loading ? (
                     <Spinner />
@@ -595,6 +607,12 @@ const FundTransferPage = () => {
                                 />
                             </div>
                         </Dialog>
+
+                        {isRefreshing && (
+                            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                                <Spinner />
+                            </div>
+                        )}
                     </React.Fragment>
                 )}
             </div>

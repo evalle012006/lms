@@ -17,11 +17,13 @@ import area from './areaReducer';
 import region from './regionReducer';
 import division from './divisionReducer';
 import mcbuWithdrawal from './mcbuWithdrawalReducer';
+import fundTransfer from './fundTransferReducer';
 import { RESET_STATE } from '../actions/resetActions';
 
 const appReducer = combineReducers({
     badDebtCollection: badDebtCollection,
     transfer: transfer,
+    fundTransfer: fundTransfer,
     los: los,
     cashCollection: cashCollection,
     loan: loan,
