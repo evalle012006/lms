@@ -61,8 +61,9 @@ async function revert(req, res) {
 
         const loan_history = loanHistoryResult.data?.loan_history?.[0];
         const currentLoan = findLoans({ _id: { _eq: loan_history._id } });
-        const [client] = await findClients({ _id: { _eq: loan_history.clientId } });
-        const [group] = await findGroups({ _id: { _eq: loan_history.groupId } });
+
+        const [client] = await findClients({ _id: { _eq: loan_history.data.clientId } });
+        const [group] = await findGroups({ _id: { _eq: loan_history.data['groupId'] } });
 
         if (!groupCache[group._id]) {
           groupCache[group._id] = {
@@ -153,7 +154,7 @@ async function revert(req, res) {
             groupCache[group._id].slots.push(cashCollection.slotNo);
             mutationQL.push(
               updateQl(
-                CLIENT_TYPE,
+                createGraphType('client', `_id`)(`client_${mutationQL.length}`),
                 {
                   set: {
                     groupId: client.oldGroupId,
@@ -188,6 +189,7 @@ async function revert(req, res) {
       }
   
     } catch (error) {
+      console.error(error);
       logger.error({
         user_id,
         page: 'Rollback Transaction Error',
@@ -210,7 +212,7 @@ async function revert(req, res) {
 
 
   async function updateGroup(mutationQl, groupId, slots) {
-      const group = await findGroups({ _id: { _eq: groupId, } });
+      const [group] = await findGroups({ _id: { _eq: groupId, } });
       group.availableSlots = group.availableSlots.filter(s => !slots.includes(s));
       group.noOfClients = group.noOfClients + slots.length;
       if (group.capacity == group.noOfClients) {
@@ -218,18 +220,19 @@ async function revert(req, res) {
       } else {
           group.status = 'available';
       }
-      const groupId = group._id;
+
       delete group._id;
-  
+      
       mutationQl.push(
-          updateQl(GROUP_TYPE('groups'),
-          {
+          updateQl(
+            createGraphType('groups', `_id`)(`groupst_${mutationQl.length}`),
+            {
               set: {
                   ... group
               },
               where: {
                   _id: { _eq: groupId }
               }
-          })
+            })
       );
   }
