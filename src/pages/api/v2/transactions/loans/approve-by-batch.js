@@ -21,10 +21,11 @@ import {
 } from "@/lib/graph.functions";
 import { generateUUID } from "@/lib/utils";
 import moment from "moment";
+import { getCurrentDate } from "@/lib/date-utils";
 
 const loanType = createGraphType("loans", LOAN_FIELDS);
 const groupType = createGraphType("groups", GROUP_FIELDS);
-const clientType = createGraphType("clients", CLIENT_FIELDS);
+const clientType = createGraphType("client", CLIENT_FIELDS);
 const cashCollectionType = createGraphType("cashCollections", CASH_COLLECTIONS_FIELDS);
 const graph = new GraphProvider();
 
@@ -246,6 +247,7 @@ async function updateClient(loanId, addToMutationList) {
       
     }
 
+    const clientId = client._id;
     client.status = "active";
     delete client._id;
 
