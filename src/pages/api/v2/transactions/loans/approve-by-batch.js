@@ -125,7 +125,7 @@ async function processData(req, res) {
             groupData = groupData[0];
 
             if (loan.status === "active") {
-              await updateClient(loanId, addToMutationList);
+              await updateClient(loan, addToMutationList);
               if (loan.coMaker) {
                 if (typeof loan.coMaker === "string") {
                   loan.coMakerId = loan.coMaker;
@@ -228,8 +228,7 @@ async function updateGroup(group, addToMutationList) {
   return { success: true, groupResp };
 }
 
-async function updateClient(loanId, addToMutationList) {
-  let [loan] = await findLoans({ _id: { _eq: loanId } });
+async function updateClient(loan, addToMutationList) {
   let [client] = await findClients({ _id: { _eq: loan?.clientId ?? null } });
 
   if (!!client) {
