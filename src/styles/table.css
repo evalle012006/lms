@@ -227,3 +227,45 @@
 .dropdown-menu-item:hover {
     background: #F2F4F4;
 }
+
+/* Add this CSS class for approved status pills */
+.status-pill-approved {
+  background-color: #d1fae5; /* Light green background */
+  color: #065f46;             /* Dark green text */
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+/* Existing status pill base styles (if not already present) */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.status-pill-pending {
+  background-color: #fef3c7; /* Light yellow background */
+  color: #92400e;             /* Dark yellow text */
+}
+
+.status-pill-rejected {
+  background-color: #fecaca; /* Light red background */
+  color: #991b1b;             /* Dark red text */
+}
+
+.status-pill-active {
+  background-color: #dbeafe; /* Light blue background */
+  color: #1e40af;             /* Dark blue text */
+}
+
+.status-pill-inactive {
+  background-color: #f3f4f6; /* Light gray background */
+  color: #374151;             /* Dark gray text */
+}

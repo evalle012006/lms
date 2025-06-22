@@ -49,8 +49,9 @@ async function list(req, res) {
             noOfLO: {
                 count: branch.noOfLO.aggregate.count,
             }
-        })
-      ));
+        }))
+        .filter(branch => branch.code !== 'B000')
+    );
     
     response = {
         success: true,
