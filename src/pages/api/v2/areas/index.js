@@ -56,34 +56,32 @@ async function getArea(req, res) {
 
 async function updateArea(req, res) {
 
-    const area = req.body;
-
-    console.log(area)
+    const updateArea = req.body;
 
     await graph.mutation(
         updateQl(AREA_TYPE(), {
             set: {
-                name: area.name
+                name: updateArea.name
             },
-            where: { _id: { _eq: area._id } }
+            where: { _id: { _eq: updateArea._id } }
         }),
         updateQl(USER_TYPE('delete_area_users'), {
             set: { areaId: null },
-            where: { areaId: { _eq: area._id } }
+            where: { areaId: { _eq: updateArea._id } }
         }),
         updateQl(USER_TYPE('update_area_users'), {
-            set: { areaId: area._id },
-            where: { _id: { _in: area.managerIds } }
+            set: { areaId: updateArea._id },
+            where: { _id: { _in: updateArea.managerIds } }
         }),
         updateQl(BRANCH_TYPE('delete_area_branches'), {
             set: { areaId: null },
-            where: { areaId: { _eq: area._id } }
+            where: { areaId: { _eq: updateArea._id } }
         }),
         updateQl(BRANCH_TYPE('update_area_branches'), {
-            set: { areaId: area._id },
-            where: { _id: { _in: area.branchIds } }
+            set: { areaId: updateArea._id },
+            where: { _id: { _in: updateArea.branchIds } }
         }),
     );
 
-    await getArea({ query: { _id: area._id } }, res);
+    await getArea({ query: { _id: updateArea._id } }, res);
 }

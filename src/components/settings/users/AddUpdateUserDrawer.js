@@ -29,6 +29,14 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
     const currentDate = useSelector(state => state.systemSettings.currentDate);
     const [occurence, setOccurence] = useState('daily');
     const branchList = useSelector(state => state.branch.list);
+    
+    const divisionList = useSelector(state => state.division.list);
+    const areaList = useSelector(state => state.area.list);
+    const regionList = useSelector(state => state.region.list);
+    const [selectedBranchFilter, setSelectedBranchFilter] = useState();
+
+    const [selectedBranches, setSelectedBranches] = useState([]);
+
     const [role, setRole] = useState();
 
     // Use useEffect to set the initial photo state
@@ -42,9 +50,38 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
             user.transactionType && setOccurence(user.transactionType);
         }
 
-        setRole(role ?? user.roleId);
+        if(user.roleId?.includes('2-')) {
+            const [rep, shortCode] = user.roleId.split('-');
+            switch(shortCode) {
+                case 'area_admin': setSelectedBranchFilter({ id: user.areaId, field: 'areaId' }); break;
+                case 'regional_manager': setSelectedBranchFilter({ id: user.regionId, field: 'regionId' }); break;
+                case 'deputy_director': setSelectedBranchFilter({ id: user.divisionId, field: 'divisionId' }); break;
+                default: break;
+            }
+        }
 
-    }, [mode, user]);
+        setSelectedBranchFilter([]);
+        setSelectedBranches([]);
+        setRole(user.roleId);
+    }, [user, mode]);
+
+
+    const filteredByRoleBranchList = useMemo(() => 
+        {   
+            const list = branchList.filter(b => !!selectedBranchFilter && b[selectedBranchFilter?.field] == selectedBranchFilter?.id );
+            console.log('filteredByRoleBranchList', list, selectedBranchFilter)
+            return list;
+        }, 
+    [role, selectedBranchFilter]);
+
+    useEffect(() => {
+        if (role?.includes('area_admin')) {
+            const branchCodes = JSON.parse(user.designatedBranch ?? '[]');
+            const branches = branchList.filter(branch => branchCodes.includes(branch.code));
+            console.log(branches);
+            setSelectedBranches(branches);
+        }
+    }, [role, filteredByRoleBranchList]);
 
     const initialValues = useMemo(() => ({
         firstName: user.firstName || '',
@@ -66,26 +103,13 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
     const selectedRole = useMemo(() => {
         if (role) {
            
-            const [rep] = role.split('-') ?? [];
+            const [rep, shortCode] = role.split('-') ?? [];
             const selected = roles.find(r => r.rep === +rep);
 
-            return selected;
+            return { ... selected, shortCode};
         }
         return null;
-    }, [role]);
-
-    const selectedBranches = useMemo(() => {
-        if (user?.roleId?.startsWith('2-') && user.designatedBranch) {
-            try {
-                const branchesCode = JSON.parse(user.designatedBranch);
-                return branchList.filter(branch => branchesCode.includes(branch.code));
-            } catch (error) {
-                console.error('Error parsing designatedBranch:', error);
-                return [];
-            }
-        }
-        return [];
-    }, [user, branchList]);
+    }, [user, role]);
 
     const validationSchema = yup.object().shape({
         firstName: yup.string().required('Please enter first name'),
@@ -98,12 +122,53 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
 
     const handleSelectBranch = useCallback((newSelectedBranches) => {
         formikRef.current.setFieldValue('designatedBranch', JSON.stringify(newSelectedBranches.map(branch => branch.code)));
+        setSelectedBranches(newSelectedBranches);
     }, []);
 
     const handleRoleChange = useCallback((field, value) => {
         const form = formikRef.current;
         form.setFieldValue(field, value);
         setRole(value);
+    }, []);
+
+    const handleBranchChange = useCallback((field, value) => {
+        const branch = branchList.find( o => o.value ===value);
+        const form = formikRef.current;
+        form.setFieldValue(field, value);
+        form.setFieldValue('areaId', branch.areaId);
+        form.setFieldValue('regionId', branch.regionId);
+        form.setFieldValue('divisionId', branch.divisionId);
+
+        setSelectedBranchFilter({ id: value, field });
+    }, []);
+
+    const handleAreaChange = useCallback((field, value) => {
+        const area = areaList.find( o => o.value === value);
+        const form = formikRef.current;
+        form.setFieldValue(field, value);
+        form.setFieldValue('regionId', area.regionId);
+        form.setFieldValue('divisionId', area.divisionId);
+
+        setSelectedBranchFilter({ id: value, field });
+    }, []);
+
+    const handleRegionChange = useCallback((field, value) => {
+        const region = regionList.find( o => o.value === value);
+        const form = formikRef.current;
+        form.setFieldValue(field, value);
+        form.setFieldValue('areaId', null);
+        form.setFieldValue('divisionId', region.divisionId);
+
+        setSelectedBranchFilter({ id: value, field });
+    }, []);
+
+    const handleDivisionChange = useCallback((field, value) => {
+        const form = formikRef.current;
+        form.setFieldValue(field, value);
+        form.setFieldValue('areaId', null);
+        form.setFieldValue('regionId', null);
+
+        setSelectedBranchFilter({ id: value, field });
     }, []);
 
     const handleTransactionTypeChange = useCallback((field, value) => {
@@ -124,7 +189,6 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
                 values.designatedBranch = values.designatedBranch || '[]';
             } else if (selectedRole.rep > 3) {
                 const selectedBranch = branchList.find(b => b.code === values.designatedBranch);
-                console.log(selectedBranch)
                 if (selectedBranch) {
                     values.designatedBranchId = selectedBranch._id;
                     values.areaId = selectedBranch.areaId;
@@ -165,7 +229,8 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
     }, [mode, image, currentDate, roles, branchList, onClose, setShowSidebar]);
 
     const handleUpdateUser = async (userData) => {
-        return await fetchWrapper.sendData(getApiBaseUrl() + 'users/', userData);
+        console.log('payload data', userData);
+        return await fetchWrapper.sendData(getApiBaseUrl() + 'users/', JSON.parse(JSON.stringify(userData)));
     };
 
     const handleFileChange = useCallback(async (e) => {
@@ -199,6 +264,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
                 const roleShortCode = roleArr[1];
                 const selectedRole = roles.find(role => role.shortCode === roleShortCode);
                 const updatedData = {...user, profile: responseData.fileUrl, role: JSON.stringify(selectedRole)};
+                console.log('file updated ', updatedData);
                 const result = await handleUpdateUser(updatedData);
                 if (result.success) {
                     toast.success('File uploaded successfully.');
@@ -336,9 +402,54 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
                                         errors={touched.role && errors.role ? errors.role : undefined}
                                     />
                                 </div>
-                                {selectedRole?.shortCode == 'area_admin' && (
+                                {selectedRole?.shortCode?.includes('area_admin') && (
+                                        <div className="mt-4">
+                                            <SelectDropdown
+                                                name="areaId"
+                                                field="areaId"
+                                                value={values.areaId}
+                                                label="Area"
+                                                options={areaList}
+                                                onChange={(field, value) => handleAreaChange(field, value)}
+                                                onBlur={setFieldTouched}
+                                                placeholder="Select Area"
+                                                errors={touched.area && errors.area ? errors.area : undefined}
+                                            />
+                                        </div>
+                                    
+                                )}
+                                {selectedRole?.shortCode?.includes('regional_manager') && (
                                     <div className="mt-4">
-                                        {}
+                                        <SelectDropdown
+                                            name="regionId"
+                                            field="regionId"
+                                            value={values.regionId}
+                                            label="Region"
+                                            options={regionList}
+                                            onChange={(field, value) => handleRegionChange(field, value)}
+                                            onBlur={setFieldTouched}
+                                            placeholder="Select Region"
+                                            errors={touched.region && errors.region ? errors.region : undefined}
+                                        />
+                                    </div>
+                                )}
+                                {selectedRole?.shortCode?.includes('deputy_director') && (
+                                    <div className="mt-4">
+                                        <SelectDropdown
+                                            name="divisionId"
+                                            field="divisionId"
+                                            value={values.divisionId}
+                                            label="Division"
+                                            options={divisionList}
+                                            onChange={(field, value) => handleDivisionChange(field, value)}
+                                            onBlur={setFieldTouched}
+                                            placeholder="Select Division"
+                                            errors={touched.division && errors.division ? errors.division : undefined}
+                                        />
+                                    </div>
+                                )}
+                                {selectedRole?.rep == 2 && (
+                                    <div className="mt-4">
                                         <div className={`flex flex-col border rounded-md px-4 py-2 bg-white ${selectedBranches?.length > 0 ? 'border-main' : 'border-slate-400'}`}>
                                             <div className="flex justify-between">
                                                 <label htmlFor="designatedBranch" className={`font-proxima-bold text-xs font-bold  ${selectedBranches?.length > 0 ? 'text-main' : 'text-gray-500'}`}>
@@ -347,7 +458,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
                                             </div>
                                             <div className="block h-fit">
                                                 <Select 
-                                                    options={branchList}
+                                                    options={filteredByRoleBranchList}
                                                     value={selectedBranches}
                                                     isMulti
                                                     styles={multiStyles}
@@ -379,7 +490,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
                                                 value={values.designatedBranch}
                                                 label="Designated Branch"
                                                 options={branchList}
-                                                onChange={setFieldValue}
+                                                onChange={(field, value) => handleBranchChange(field, value)}
                                                 onBlur={setFieldTouched}
                                                 placeholder="Select Branch"
                                                 errors={touched.designatedBranch && errors.designatedBranch ? errors.designatedBranch : undefined}

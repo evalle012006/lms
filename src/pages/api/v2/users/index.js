@@ -1,28 +1,15 @@
 import { apiHandler } from '@/services/api-handler';
 import formidable from "formidable";
-import fs from "fs";
 
+import { USER_FIELDS } from '@/lib/graph.fields';
+import { findAreas, findDivisions, findRegions } from '@/lib/graph.functions';
 import { GraphProvider } from "@/lib/graph/graph.provider";
 import { createGraphType, queryQl, updateQl } from "@/lib/graph/graph.util";
-import { USER_FIELDS, AREA_FIELDS, REGION_FIELDS, DIVISION_FIELDS } from '@/lib/graph.fields';
-import logger from '@/logger';
 
 const graph = new GraphProvider();
 const USER_TYPE = createGraphType('users', `
 ${USER_FIELDS}
 `)('users');
-
-const AREA_TYPE = createGraphType('areas', `
-${AREA_FIELDS}
-`);
-
-const REGION_TYPE = createGraphType('regions', `
-${REGION_FIELDS}
-`);
-
-const DIVISION_TYPE = createGraphType('divisions', `
-${DIVISION_FIELDS}
-`);
 
 export default apiHandler({
     get: getUser,
@@ -44,13 +31,6 @@ async function getUser(req, res) {
 async function updateUser(req, res) {
     let statusCode = 200;
     let response = { upload: true, success: false };
-
-    if(true) {
-        res.status(500)
-            .setHeader('Content-Type', 'application/json')
-            .end(JSON.stringify({ message: 'User update disabled temporarily' }));
-        return;
-    }
 
     const form = new formidable.IncomingForm({ keepExtensions: true });
     const promise = await new Promise((resolve, reject) => {
@@ -75,6 +55,10 @@ async function updateUser(req, res) {
                     position: payload.position,
                     profile: profile === 'null' ? null : profile,
                     loNo: +payload.loNo,
+                    areaId: payload.areaId,
+                    divisionId: payload.divisionId,
+                    regionId: payload.regionId,
+                    designatedBranch: payload.designatedBranch,
                     transactionType: payload.transactionType
                 };
 
@@ -88,88 +72,76 @@ async function updateUser(req, res) {
                     
                     forUpdate.designatedBranchId = (payload.designatedBranchId && typeof payload.designatedBranchId !== "string") ? 
                         JSON.parse(payload.designatedBranchId) : payload.designatedBranchId;
-                    
-                    // Get branch details to populate hierarchy IDs
-                    const branchesResponse = await graph.query(
-                        queryQl(createGraphType('branches', `_id areaId regionId divisionId`)('branches'), {
-                            where: {
-                                _id: { _eq: forUpdate.designatedBranchId }
-                            }
-                        })
-                    );
-                    
-                    const branches = branchesResponse?.data?.branches || [];
-                    
-                    if (branches.length > 0) {
-                        const branch = branches[0];
-                        forUpdate.areaId = branch.areaId ? branch.areaId : null;
-                        forUpdate.regionId = branch.regionId ? branch.regionId : null;
-                        forUpdate.divisionId = branch.divisionId ? branch.divisionId : null;
-                    }
+
                 } else if (userRole.rep === 2) {
-                    if (userRole.shortCode === 'deputy_director') {
-                        // Get all divisions and filter in JavaScript
-                        const divisionsResponse = await graph.query(
-                            queryQl(createGraphType('divisions', `_id managerIds`)('divisions'), {})
+                    if (userRole.shortCode === 'deputy_director' && forUpdate.divisionId !== userData.divisionId) {
+                        const [prev] = await findDivisions({ _id: { _eq: userData.divisionId } }, '_id managerIds');
+                        const [current] = await findDivisions({ _id: { _eq: forUpdate.divisionId } }, '_id managerIds');
+
+                        const prevManagerIds = JSON.parse(prev.managerIds ?? '[]')?.filter(id => id != userData._id) ?? [];
+                        const currentManagerIds = JSON.parse(current.managerIds ?? '[]') ?? [];
+
+                        currentManagerIds.push(userData._id);
+
+                        const createUpdateQl = (managerIds, _id, alias) => updateQl(createGraphType('divisions', `_id`)(alias), { 
+                                set: {
+                                    managerIds
+                                },
+                                where: {
+                                    _id: { _eq: _id }
+                                }
+                            });
+                        
+                        await graph.mutation(
+                            createUpdateQl(prevManagerIds, userData.divisionId, 'prevDivision'),
+                            createUpdateQl(currentManagerIds, forUpdate.divisionId, 'currentDivision'),
                         );
                         
-                        const divisions = divisionsResponse?.data?.divisions || [];
+                    } else if (userRole.shortCode === 'regional_manager' && userData.regionId != payload.regionId) {
+                        const [prev] = await findRegions({ _id: { _eq: userData.regionId } }, '_id managerIds');
+                        const [current] = await findRegions({ _id: { _eq: forUpdate.regionId } }, '_id managerIds');
+
+                        const prevManagerIds = JSON.parse(prev.managerIds ?? '[]')?.filter(id => id != userData._id) ?? [];
+                        const currentManagerIds = JSON.parse(current.managerIds ?? '[]') ?? [];
+
+                        currentManagerIds.push(userData._id);
+
+                        const createUpdateQl = (managerIds, _id, alias) => updateQl(createGraphType('regions', `_id`)(alias), { 
+                                set: {
+                                    managerIds: JSON.stringify(managerIds),
+                                },
+                                where: {
+                                    _id: { _eq: _id }
+                                }
+                            });
                         
-                        // Find division where user is in managerIds array
-                        for (const division of divisions) {
-                            const managerIds = Array.isArray(division.managerIds) ? 
-                                division.managerIds : 
-                                (typeof division.managerIds === 'string' ? 
-                                    JSON.parse(division.managerIds) : []);
-                                    
-                            if (managerIds.includes(userData._id)) {
-                                forUpdate.divisionId = division._id;
-                                break;
-                            }
-                        }
-                    } else if (userRole.shortCode === 'regional_manager') {
-                        // Get all regions and filter in JavaScript
-                        const regionsResponse = await graph.query(
-                            queryQl(createGraphType('regions', `_id managerIds divisionId`)('regions'), {})
+                        await graph.mutation(
+                            createUpdateQl(prevManagerIds, userData.regionId, 'prevRegion'),
+                            createUpdateQl(currentManagerIds, forUpdate.regionId, 'currentRegion'),
                         );
+
+                    } else if (userRole.shortCode === 'area_admin' && forUpdate.areaId != userData.areaId) {
+                        const [prev] = await findAreas({ _id: { _eq: userData.areaId } }, '_id managerIds');
+                        const [current] = await findAreas({ _id: { _eq: forUpdate.areaId } }, '_id managerIds');
+
+                        const prevManagerIds = JSON.parse(prev.managerIds ?? '[]')?.filter(id => id != userData._id) ?? [];
+                        const currentManagerIds = JSON.parse(current.managerIds ?? '[]') ?? [];
+
+                        currentManagerIds.push(userData._id);
+
+                        const createUpdateQl = (managerIds, _id, alias) => updateQl(createGraphType('areas', `_id`)(alias), { 
+                                set: {
+                                   managerIds: JSON.stringify(managerIds),
+                                },
+                                where: {
+                                    _id: { _eq: _id }
+                                }
+                            });
                         
-                        const regions = regionsResponse?.data?.regions || [];
-                        
-                        // Find region where user is in managerIds array
-                        for (const region of regions) {
-                            const managerIds = Array.isArray(region.managerIds) ? 
-                                region.managerIds : 
-                                (typeof region.managerIds === 'string' ? 
-                                    JSON.parse(region.managerIds) : []);
-                                    
-                            if (managerIds.includes(userData._id)) {
-                                forUpdate.regionId = region._id;
-                                forUpdate.divisionId = region.divisionId;
-                                break;
-                            }
-                        }
-                    } else if (userRole.shortCode === 'area_admin') {
-                        // Get all areas and filter in JavaScript
-                        const areasResponse = await graph.query(
-                            queryQl(createGraphType('areas', `_id managerIds regionId divisionId`)('areas'), {})
+                        await graph.mutation(
+                            createUpdateQl(prevManagerIds, userData.areaId, 'prevarea'),
+                            createUpdateQl(currentManagerIds, forUpdate.areaId, 'currarea'),
                         );
-                        
-                        const areas = areasResponse?.data?.areas || [];
-                        
-                        // Find area where user is in managerIds array
-                        for (const area of areas) {
-                            const managerIds = Array.isArray(area.managerIds) ? 
-                                area.managerIds : 
-                                (typeof area.managerIds === 'string' ? 
-                                    JSON.parse(area.managerIds) : []);
-                                    
-                            if (managerIds.includes(userData._id)) {
-                                forUpdate.areaId = area._id;
-                                forUpdate.regionId = area.regionId;
-                                forUpdate.divisionId = area.divisionId;
-                                break;
-                            }
-                        }
                     }
                 }
 
