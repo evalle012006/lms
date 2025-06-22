@@ -15,6 +15,15 @@ import ActionDropDown from './ui/action-dropdown';
 import Avatar from './avatar';
 import { useEffect } from 'react';
 
+// Helper function to check if a transfer is recent
+const isRecentTransfer = (insertedDate, modifiedDate = null) => {
+  const now = new Date();
+  const createdDate = new Date(insertedDate);
+  const lastModifiedDate = modifiedDate ? new Date(modifiedDate) : createdDate;
+  const hoursDiff = (now - lastModifiedDate) / (1000 * 60 * 60);
+  return hoursDiff <= 24; // Consider recent if within last 24 hours
+};
+
 // This is a custom filter UI for selecting
 // a unique option from a list
 export function SelectColumnFilter({
@@ -240,7 +249,7 @@ export function PageButton({ children, className, ...rest }) {
   );
 }
 
-const ActionButton = ({ row, rowActionButtons, currentUser, dropDownActionOrigin }) => {
+const ActionButton = ({ row, rowActionButtons, currentUser, dropDownActionOrigin, isWeekend, isHoliday }) => {
   const status = row.original.hasOwnProperty('status') ? row.original.status : '';
   const page = row.original.hasOwnProperty('page') ? row.original.page : '';
   const data = row.original;
@@ -282,7 +291,6 @@ const ActionButton = ({ row, rowActionButtons, currentUser, dropDownActionOrigin
     const isCreator = data.insertedById === currentUser._id;
     const isAreaAdmin = currentUser.role?.shortCode === 'area_admin'; // rep=2
     const isBranchManager = currentUser.role?.rep === 3; // Branch managers with rep = 3
-    const isRep4 = currentUser.role?.rep === 4; // Other branch role
     const isFinance = currentUser.role?.shortCode === 'finance';
 
     // Add safety checks for status and approval statuses
@@ -310,11 +318,12 @@ const ActionButton = ({ row, rowActionButtons, currentUser, dropDownActionOrigin
            ((isGiverBranch && giverApprovalStatus === 'pending') || 
             (isReceiverBranch && receiverApprovalStatus === 'pending'))) ||
           // Rep=4 can also approve if they're from involved branch
-          (isRep4 && (isGiverBranch || isReceiverBranch) && 
+          ((isGiverBranch || isReceiverBranch) && 
            ((isGiverBranch && giverApprovalStatus === 'pending') || 
             (isReceiverBranch && receiverApprovalStatus === 'pending'))) ||
           // Finance can approve if both branches have approved (final approval)
           (isFinance && giverApprovalStatus === 'approved' && receiverApprovalStatus === 'approved')
+          && !isWeekend && !isHoliday
         );
         
         return canApprove;
@@ -324,9 +333,10 @@ const ActionButton = ({ row, rowActionButtons, currentUser, dropDownActionOrigin
           // Branch managers (rep=3) can reject if they're from involved branch
           (isBranchManager && (isGiverBranch || isReceiverBranch)) || 
           // Rep=4 can also reject if they're from involved branch
-          (isRep4 && (isGiverBranch || isReceiverBranch)) ||
+          (isGiverBranch || isReceiverBranch) ||
           // Finance can reject any time when status is pending
           (isFinance && transferStatus === 'pending')
+          && !isWeekend && !isHoliday
         );
         
         return canReject;
@@ -335,7 +345,7 @@ const ActionButton = ({ row, rowActionButtons, currentUser, dropDownActionOrigin
         // Only creator (area_admin with rep=2) OR giver branch (rep=3/4) can delete if no approvals yet
         const canDelete = (transferStatus === 'pending') && 
           (giverApprovalStatus === 'pending' && receiverApprovalStatus === 'pending') && // No approvals yet
-          ((isCreator && isAreaAdmin));
+          ((isCreator && isFinance));
         
         return canDelete;
 
@@ -501,7 +511,9 @@ const TableComponent = React.memo(({
   dropDownActions = [],
   actionDropDownDataOptions = {},
   dropDownActionOrigin,
-  currentUser = null
+  currentUser = null,
+  isWeekend = false,
+  isHoliday = false,
 }) => {
   // Add state for current page
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
@@ -698,17 +710,31 @@ const handleSelectRow = useCallback((row, index) => {
                     isDraft,
                     page: pageName,
                     ldfApproved,
-                    withError: error
+                    withError: error,
+                    insertedDate,
+                    modifiedDate
                   } = row.original;
 
                   const checkBoxDisable = disable || error;
+                  
+                  // Check if this is a recent fund transfer
+                  const isFundTransfer = dropDownActionOrigin === 'fund-transfer';
+                  const isRecent = isFundTransfer && 
+                                  status === 'pending' && 
+                                  isRecentTransfer(insertedDate, modifiedDate);
+
+                  // Enhanced row class logic with recent indicator
                   let rowClass = 'bg-white border-b hover:bg-gray-50';
+                  
                   if (delinquent === 'Yes' || error) {
                     rowClass = 'bg-red-100 border-b hover:bg-red-200';
                   } else if (status === 'open') {
                     rowClass = 'bg-blue-100 border-b hover:bg-blue-200';
                   } else if (ldfApproved) {
                     rowClass = 'bg-green-100 border-b hover:bg-green-200';
+                  } else if (isRecent) {
+                    // Recent fund transfer styling
+                    rowClass = 'bg-green-50 border-b border-l-4 border-l-green-500 hover:bg-green-100';
                   }
 
                   const { key, ...rowProps } = row.getRowProps();
@@ -737,7 +763,18 @@ const handleSelectRow = useCallback((row, index) => {
                           className={`px-4 py-3 ${totalData ? 'font-bold text-red-500' : ''} ${rowClick ? 'cursor-pointer' : ''} ${cell.column.width || 'w-auto'}`}
                           onClick={() => rowClick && rowClick(row.original)}
                         >
-                          {cell.render('Cell')}
+                          <div className="flex items-center space-x-2">
+                            {cell.render('Cell')}
+                            {/* Add "New" badge for recent transfers in the first column (usually transaction code) */}
+                            {isRecent && index === 0 && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                                <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                </svg>
+                                New
+                              </span>
+                            )}
+                          </div>
                         </td>
                       ))}
                       {(hasActionButtons || dropDownActions.length > 0) && (
@@ -749,6 +786,8 @@ const handleSelectRow = useCallback((row, index) => {
                                 rowActionButtons={rowActionButtons}
                                 currentUser={currentUser}
                                 dropDownActionOrigin={dropDownActionOrigin}
+                                isWeekend={isWeekend}
+                                isHoliday={isHoliday}
                               />
                             )}
                             {dropDownActions.length > 0 && (

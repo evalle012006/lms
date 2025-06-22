@@ -1,3 +1,4 @@
+import { getCurrentDate } from "@/lib/date-utils";
 import { FUND_TRANSFER_FIELDS } from "@/lib/graph.fields";
 import { findUserById } from "@/lib/graph.functions";
 import { GraphProvider } from "@/lib/graph/graph.provider";
@@ -94,7 +95,7 @@ async function approveFundTransfer(req, res) {
 
         let updateSet = {
             modifiedById: user._id,
-            modifiedDate: 'now()'
+            modifiedDate: getCurrentDate(),
         };
 
         // Branch Manager (role.rep = 3 or 4) - Can approve transfers involving their designated branch

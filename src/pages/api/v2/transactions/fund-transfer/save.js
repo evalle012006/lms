@@ -1,3 +1,4 @@
+import { getCurrentDate } from "@/lib/date-utils";
 import { FUND_TRANSFER_FIELDS } from "@/lib/graph.fields";
 import { findUserById } from "@/lib/graph.functions";
 import { GraphProvider } from "@/lib/graph/graph.provider";
@@ -77,7 +78,7 @@ async function saveFundTransfer(req, res) {
         const fundTransfer = req.body;
 
         // Access control validation - UPDATED: Only area_admin can create fund transfers
-        if (user.role.shortCode !== 'area_admin') {
+        if (user.role.shortCode !== 'finance') {
             return res.status(403).send({
                 success: false,
                 message: "Access denied. Only area administrators can create fund transfers."
@@ -125,15 +126,6 @@ async function saveFundTransfer(req, res) {
             });
         }
 
-        // Account type validation
-        const validAccounts = ['cash', 'bank', 'petty_cash', 'operating_fund', 'emergency_fund', 'insurance_fund'];
-        if (!validAccounts.includes(fundTransfer.account)) {
-            return res.status(400).send({
-                success: false,
-                message: "Invalid account type. Must be one of: " + validAccounts.join(', ')
-            });
-        }
-
         // Get giver branch details to extract branch code for transaction code generation
         const giverBranch = await graph.query(
             queryQl(createGraphType('branches', `
@@ -173,7 +165,7 @@ async function saveFundTransfer(req, res) {
                     giverRejectReason: null,
                     receiverRejectReason: null,
                     insertedById: user._id,
-                    insertedDate: 'now()',
+                    insertedDate: getCurrentDate(),
                     deleted: false
                 }]
             })

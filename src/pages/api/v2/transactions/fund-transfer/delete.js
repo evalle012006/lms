@@ -1,3 +1,4 @@
+import { getCurrentDate } from "@/lib/date-utils";
 import { FUND_TRANSFER_FIELDS } from "@/lib/graph.fields";
 import { findUserById } from "@/lib/graph.functions";
 import { GraphProvider } from "@/lib/graph/graph.provider";
@@ -114,10 +115,10 @@ async function deleteFundTransfer(req, res) {
             updateQl(FUND_TRANSFER_TYPE, {
                 set: {
                     deleted: true,
-                    deletedDate: 'now()',
+                    deletedDate: getCurrentDate(),
                     deletedById: user._id,
                     modifiedById: user._id,
-                    modifiedDate: 'now()'
+                    modifiedDate: getCurrentDate(),
                 },
                 where: {
                     _id: { _eq: _id }

@@ -1,3 +1,4 @@
+import { getCurrentDate } from "@/lib/date-utils";
 import { FUND_TRANSFER_FIELDS } from "@/lib/graph.fields";
 import { findUserById } from "@/lib/graph.functions";
 import { GraphProvider } from "@/lib/graph/graph.provider";
@@ -201,7 +202,7 @@ async function updateFundTransfer(req, res) {
             giverBranchId: fundTransfer.giverBranchId,
             receiverBranchId: fundTransfer.receiverBranchId,
             modifiedById: user._id,
-            modifiedDate: 'now()'
+            modifiedDate: getCurrentDate(),
         };
 
         // Update transaction code if giver branch changed
@@ -209,18 +210,15 @@ async function updateFundTransfer(req, res) {
             updateSet.transactionCode = newTransactionCode;
         }
 
-        // Reset approval statuses if branches changed
-        if (existingTransfer.giverBranchId !== fundTransfer.giverBranchId || 
-            existingTransfer.receiverBranchId !== fundTransfer.receiverBranchId) {
-            updateSet.giverApprovalStatus = 'pending';
-            updateSet.receiverApprovalStatus = 'pending';
-            updateSet.giverApprovalId = null;
-            updateSet.receiverApprovalId = null;
-            updateSet.giverRejectReason = null;
-            updateSet.receiverRejectReason = null;
-            updateSet.giverApproveRejectDate = null;
-            updateSet.receiverApproveRejectDate = null;
-        }
+        // Reset approval statuses if any changes
+        updateSet.giverApprovalStatus = 'pending';
+        updateSet.receiverApprovalStatus = 'pending';
+        updateSet.giverApprovalId = null;
+        updateSet.receiverApprovalId = null;
+        updateSet.giverRejectReason = null;
+        updateSet.receiverRejectReason = null;
+        updateSet.giverApproveRejectDate = null;
+        updateSet.receiverApproveRejectDate = null;
 
         // Update the fund transfer
         const [data] = await graph.mutation(

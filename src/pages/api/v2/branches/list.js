@@ -50,7 +50,7 @@ async function list(req, res) {
                 count: branch.noOfLO.aggregate.count,
             }
         }))
-        .filter(branch => branch.code !== 'B000')
+        // .filter(branch => branch.code !== 'B000')
     );
     
     response = {

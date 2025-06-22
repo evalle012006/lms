@@ -28,12 +28,25 @@ const AddUpdateFundTransfer = ({ mode = 'add', fundTransfer = {}, showSidebar, s
 
     // Account options
     const accountOptions = [
-        { value: 'cash', label: 'Cash' },
-        { value: 'bank', label: 'Bank' },
-        { value: 'petty_cash', label: 'Petty Cash' },
-        { value: 'operating_fund', label: 'Operating Fund' },
-        { value: 'emergency_fund', label: 'Emergency Fund' },
-        { value: 'insurance_fund', label: 'Insurance Fund' }
+        { value: 'BMC', label: 'Bank Manager\'s Check' },
+        { value: 'B2B', label: 'Bank to Bank' },
+        { value: 'REC', label: 'Remittance Center' },
+        { value: 'CFT', label: 'Cash Fund Transfer' },
+        { value: 'FFPAY', label: 'Payment for Furniture & Fixture' },
+        { value: 'FTMO', label: 'FT to Main Office' },
+        { value: 'MCPAY', label: 'Payment for Motorcycle' },
+        { value: 'OSPAY', label: 'Payment for Office Supplies' },
+        { value: 'MEDPAY', label: 'Payment for Medicine due to Medical Mission' },
+        { value: 'RGGPAY', label: 'Payment for Relief Goods & Grants due to Calamity' },
+        { value: 'UCRPAY', label: 'Unclaim Return of Client' },
+        { value: 'ADVPAY', label: 'Advances due to Accident & Others' },
+        { value: 'RENTPAY', label: 'Payment for Rental' },
+        { value: 'DBPAY', label: 'Payment for Death Benefits' },
+        { value: 'CPPAY', label: 'Payment for Communication & Postage' },
+        { value: 'BDPPAY', label: 'Payment for Business Development' },
+        { value: 'CLIPAY', label: 'Payment of Client' },
+        { value: 'SDTR', label: 'Salary Disbursement due to Staff Transfer' },
+        { value: 'EXPOTH', label: 'Any Expenses not Mentioned Above' }
     ];
 
     const initialValues = {
@@ -393,6 +406,26 @@ const AddUpdateFundTransfer = ({ mode = 'add', fundTransfer = {}, showSidebar, s
                                 <form onSubmit={handleSubmit} autoComplete="off">
                                     <div className="mt-4">
                                         <SelectDropdown
+                                            name="account"
+                                            field="account"
+                                            value={selectedAccount}
+                                            label="Account Type"
+                                            options={accountOptions}
+                                            onChange={(field, value) => handleChangeAccount(field, value)}
+                                            onBlur={setFieldTouched}
+                                            placeholder="Select Account Type"
+                                            disabled={mode === 'edit' && (fundTransfer.giverApprovalStatus === 'approved' || fundTransfer.receiverApprovalStatus === 'approved')}
+                                            errors={touched.account && errors.account ? errors.account : undefined}
+                                        />
+                                        {mode === 'edit' && (fundTransfer.giverApprovalStatus === 'approved' || fundTransfer.receiverApprovalStatus === 'approved') && (
+                                            <p className="mt-1 text-xs text-gray-500">
+                                                Cannot change account type after approval
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    <div className="mt-4">
+                                        <SelectDropdown
                                             name="giverBranchId"
                                             field="giverBranchId"
                                             value={selectedGiverBranch}
@@ -445,26 +478,6 @@ const AddUpdateFundTransfer = ({ mode = 'add', fundTransfer = {}, showSidebar, s
                                         {mode === 'edit' && (fundTransfer.giverApprovalStatus === 'approved' || fundTransfer.receiverApprovalStatus === 'approved') && (
                                             <p className="mt-1 text-xs text-gray-500">
                                                 Cannot change amount after approval
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    <div className="mt-4">
-                                        <SelectDropdown
-                                            name="account"
-                                            field="account"
-                                            value={selectedAccount}
-                                            label="Account Type"
-                                            options={accountOptions}
-                                            onChange={(field, value) => handleChangeAccount(field, value)}
-                                            onBlur={setFieldTouched}
-                                            placeholder="Select Account Type"
-                                            disabled={mode === 'edit' && (fundTransfer.giverApprovalStatus === 'approved' || fundTransfer.receiverApprovalStatus === 'approved')}
-                                            errors={touched.account && errors.account ? errors.account : undefined}
-                                        />
-                                        {mode === 'edit' && (fundTransfer.giverApprovalStatus === 'approved' || fundTransfer.receiverApprovalStatus === 'approved') && (
-                                            <p className="mt-1 text-xs text-gray-500">
-                                                Cannot change account type after approval
                                             </p>
                                         )}
                                     </div>

@@ -28,7 +28,7 @@ const SelectDropdown = ({
   }
 
   const handleBlur = () => {
-    if (field) {
+    if (onBlur && field) {
       onBlur(field, true);
     }
   }

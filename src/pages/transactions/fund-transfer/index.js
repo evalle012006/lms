@@ -18,6 +18,7 @@ import { TabSelector } from "@/lib/ui/tabSelector";
 import { getApiBaseUrl } from "@/lib/constants";
 import moment from 'moment';
 import { setFundTransferHistoryList, setFundTransferList } from "@/redux/actions/fundTransferActions";
+import FundTransferFilters from "@/components/transactions/fund-transfer/FundTransferFilters";
 
 const FundTransferPage = () => {
     const [loading, setLoading] = useState(true);
@@ -31,6 +32,10 @@ const FundTransferPage = () => {
     const currentDate = useSelector(state => state.systemSettings.currentDate);
     const fundTransferList = useSelector(state => state.fundTransfer.list);
     const fundTransferHistoryList = useSelector(state => state.fundTransfer.historyList);
+
+    // Filtered data states
+    const [filteredTransactionData, setFilteredTransactionData] = useState([]);
+    const [filteredHistoryData, setFilteredHistoryData] = useState([]);
 
     const [showAddDrawer, setShowAddDrawer] = useState(false);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -59,10 +64,11 @@ const FundTransferPage = () => {
             Header: "Transaction Code",
             accessor: 'transactionCode',
             Cell: ({ value }) => (
-                <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">
+                <span className="font-mono text-xs bg-blue-50 text-blue-800 px-2 py-1 rounded border">
                     {value}
                 </span>
-            )
+            ),
+            width: 160
         },
         {
             Header: "Transfer Date",
@@ -117,10 +123,11 @@ const FundTransferPage = () => {
             Header: "Transaction Code",
             accessor: 'transactionCode',
             Cell: ({ value }) => (
-                <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">
+                <span className="font-mono text-xs bg-blue-50 text-blue-800 px-2 py-1 rounded border">
                     {value}
                 </span>
-            )
+            ),
+            width: 160
         },
         {
             Header: "Transfer Date",
@@ -458,6 +465,15 @@ const FundTransferPage = () => {
         }
     }, [getFundTransferList, isRefreshing]);
 
+    // Initialize filtered data when main data changes
+    useEffect(() => {
+        setFilteredTransactionData(fundTransferList || []);
+    }, [fundTransferList]);
+
+    useEffect(() => {
+        setFilteredHistoryData(fundTransferHistoryList || []);
+    }, [fundTransferHistoryList]);
+
     // Check user role access - updated condition
     useEffect(() => {
         if (currentUser?.role?.rep > 3) {
@@ -523,7 +539,7 @@ const FundTransferPage = () => {
     }
 
     return (
-        <Layout actionButtons={currentUser?.role?.shortCode === 'area_admin' ? 
+        <Layout actionButtons={(currentUser?.role?.shortCode === 'finance' ) ? // && !isWeekend && !isHoliday
             [<ButtonSolid 
                 key="add-transfer"
                 label="Add Fund Transfer" 
@@ -537,6 +553,15 @@ const FundTransferPage = () => {
                     <Spinner />
                 ) : (
                     <React.Fragment>
+                        {/* Filters Component */}
+                        <FundTransferFilters
+                            transactionList={fundTransferList}
+                            historyList={fundTransferHistoryList}
+                            setFilteredTransactionData={setFilteredTransactionData}
+                            setFilteredHistoryData={setFilteredHistoryData}
+                            activeTab={selectedTab}
+                        />
+
                         <nav className="flex pl-10 bg-white border-b border-gray-300">
                             <TabSelector
                                 isActive={selectedTab === "fund-transfer-transactions"}
@@ -554,23 +579,25 @@ const FundTransferPage = () => {
                             <TabPanel hidden={selectedTab !== "fund-transfer-transactions"}>
                                 <TableComponent 
                                     columns={transactionColumns} 
-                                    data={fundTransferList || []} 
+                                    data={filteredTransactionData} 
                                     pageSize={20} 
                                     hasActionButtons={true} 
                                     rowActionButtons={rowActionButtons}
-                                    showFilters={true}
+                                    showFilters={false} // Disable table filters since we have custom filters
                                     currentUser={currentUser}
                                     dropDownActionOrigin="fund-transfer"
+                                    isWeekend={isWeekend}
+                                    isHoliday={isHoliday}
                                 />
                             </TabPanel>
                             
                             <TabPanel hidden={selectedTab !== "fund-transfer-history"}>
                                 <TableComponent 
                                     columns={historyColumns} 
-                                    data={fundTransferHistoryList || []} 
+                                    data={filteredHistoryData} 
                                     pageSize={20} 
                                     hasActionButtons={false} 
-                                    showFilters={true}
+                                    showFilters={false} // Disable table filters since we have custom filters
                                     currentUser={currentUser}
                                     dropDownActionOrigin="fund-transfer-history"
                                 />
