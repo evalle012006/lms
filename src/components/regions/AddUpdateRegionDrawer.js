@@ -1,50 +1,39 @@
-import React, { useState, useEffect, useRef } from "react";
-import { Formik } from 'formik';
-import * as yup from 'yup';
+import { getApiBaseUrl } from "@/lib/constants";
 import { fetchWrapper } from "@/lib/fetch-wrapper";
-import { toast } from "react-toastify";
-import { useDispatch, useSelector } from "react-redux";
-import SelectDropdown from "@/lib/ui/select";
-import { multiStyles, DropdownIndicator } from "@/styles/select";
-import Select from 'react-select';
-import InputText from "@/lib/ui/InputText";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
+import InputText from "@/lib/ui/InputText";
+import SelectDropdown from "@/lib/ui/select";
 import SideBar from "@/lib/ui/SideBar";
+import { Formik } from 'formik';
+import React, { useEffect, useRef, useState } from "react";
+import { useSelector } from "react-redux";
+import { toast } from "react-toastify";
+import * as yup from 'yup';
 import Spinner from "../Spinner";
-import { getApiBaseUrl } from "@/lib/constants";
 
 const AddUpdateRegion = ({ mode = 'add', region = {}, managerList=[], showSidebar, setShowSidebar, onClose }) => {
     const formikRef = useRef();
-    const areaList = useSelector(state => state.area.list);
+    const divisionList = useSelector(state => state.division.list);
     const [loading, setLoading] = useState(false);
-    const [selectedAreas, setSelectedAreas] = useState([]);
-    const [selectedManagers, setSelectedManagers] = useState([]);
 
     const initialValues = {
         name: region.name,
-        managerIds: region.managerIds,
-        areaIds: region.areaIds
+        divisionId: region.divisionId,
     }
 
     const validationSchema = yup.object().shape({
         name: yup
             .string()
-            .required('Please enter name')
+            .required('Please enter name'),
+        divisionId: yup
+            .string()
+            .required('Please enter division')
     });
 
-    const handleSelectManager = (selected) => {
-        setSelectedManagers(selected);
-    }
-
-    const handleSelectArea = (selected) => {
-        setSelectedAreas(selected);
-    }
 
     const handleSaveUpdate = (values, action) => {
         setLoading(true);
-        values.areaIds = selectedAreas.map(area => area._id);
-        values.managerIds = selectedManagers.map(manager => manager._id);
         if (mode === 'add') {
             const apiUrl = getApiBaseUrl() + 'regions/save/';
 
@@ -93,19 +82,14 @@ const AddUpdateRegion = ({ mode = 'add', region = {}, managerList=[], showSideba
     useEffect(() => {
         let mounted = true;
 
-        if (region && mode == 'edit') {
-            const areas = areaList.filter(area => region?.areaIds.includes(area._id));
-            setSelectedAreas(areas);
-            const managers = managerList.filter(manager => region?.managerIds.includes(manager._id));
-            setSelectedManagers(managers);
-        }
-
         mounted && setLoading(false);
+
+        console.log(divisionList)
 
         return () => {
             mounted = false;
         };
-    }, [region, areaList]);
+    }, [region, divisionList]);
 
     return (
         <React.Fragment>
@@ -134,6 +118,20 @@ const AddUpdateRegion = ({ mode = 'add', region = {}, managerList=[], showSideba
                                 setFieldTouched
                             }) => (
                                 <form onSubmit={handleSubmit} autoComplete="off">
+                                   <div className="mt-4">
+                                        <SelectDropdown
+                                            name="divisionId"
+                                            field="divisionId"
+                                            value={values.divisionId}
+                                            label="Division"
+                                            options={divisionList}
+                                            onChange={setFieldValue}
+                                            onBlur={setFieldTouched}
+                                            disabled={mode !== 'add'}
+                                            placeholder="Select Division"
+                                            errors={touched.divisionId && errors.divisionId ? errors.divisionId : undefined}
+                                        />
+                                    </div>
                                     <div className="mt-4">
                                         <InputText
                                             name="name"
@@ -144,48 +142,7 @@ const AddUpdateRegion = ({ mode = 'add', region = {}, managerList=[], showSideba
                                             setFieldValue={setFieldValue}
                                             errors={touched.name && errors.name ? errors.name : undefined} />
                                     </div>
-                                    <div className="mt-4">
-                                        <div className={`flex flex-col border rounded-md px-4 py-2 bg-white ${selectedManagers?.length > 0 ? 'border-main' : 'border-slate-400'}`}>
-                                            <div className="flex justify-between">
-                                                <label htmlFor="designatedBranch" className={`font-proxima-bold text-xs font-bold  ${selectedManagers?.length > 0 ? 'text-main' : 'text-gray-500'}`}>
-                                                    Manager
-                                                </label>
-                                            </div>
-                                            <div className="block h-fit">
-                                                <Select 
-                                                    options={managerList}
-                                                    value={selectedManagers}
-                                                    isMulti
-                                                    styles={multiStyles}
-                                                    components={{ DropdownIndicator }}
-                                                    onChange={handleSelectManager}
-                                                    isSearchable={true}
-                                                    closeMenuOnSelect={true}
-                                                    placeholder={'Select manager'}/>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="mt-4">
-                                        <div className={`flex flex-col border rounded-md px-4 py-2 bg-white ${selectedAreas?.length > 0 ? 'border-main' : 'border-slate-400'}`}>
-                                            <div className="flex justify-between">
-                                                <label htmlFor="designatedBranch" className={`font-proxima-bold text-xs font-bold  ${selectedAreas?.length > 0 ? 'text-main' : 'text-gray-500'}`}>
-                                                    Areas
-                                                </label>
-                                            </div>
-                                            <div className="block h-fit">
-                                                <Select 
-                                                    options={areaList}
-                                                    value={selectedAreas}
-                                                    isMulti
-                                                    styles={multiStyles}
-                                                    components={{ DropdownIndicator }}
-                                                    onChange={handleSelectArea}
-                                                    isSearchable={true}
-                                                    closeMenuOnSelect={true}
-                                                    placeholder={'Select areas'}/>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    
                                     <div className="flex flex-row mt-5">
                                         <ButtonOutline label="Cancel" onClick={handleCancel} className="mr-3" />
                                         <ButtonSolid label="Submit" type="submit" isSubmitting={isValidating && isSubmitting} />

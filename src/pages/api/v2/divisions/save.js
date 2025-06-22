@@ -59,22 +59,6 @@ async function save(req, res) {
                     dateAdded: moment(getCurrentDate()).format('YYYY-MM-DD')
                 }]
             }),
-            updateQl(USER_TYPE('update_division_managers'), {
-                set: { divisionId: _id },
-                where: { _id: { _in: division.managerIds } }
-            }),
-            updateQl(REGION_TYPE('update_division_regions'), {
-                set: { divisionId: _id },
-                where: { _id: { _in: division.regionIds } }
-            }),
-            updateQl(AREA_TYPE('update_division_areas'), {
-                set: { divisionId: _id },
-                where: { regionId: { _in: division.regionIds } }
-            }),
-            updateQl(BRANCH_TYPE('update_division_branches'), {
-                set: { divisionId: _id },
-                where: { regionId: { _in: division.regionIds } }
-            })
         ).then(res => res.data.divisions.returning)
 
         response = {
