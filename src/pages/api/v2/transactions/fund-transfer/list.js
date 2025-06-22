@@ -34,7 +34,7 @@ async function getFundTransfers(req, res) {
     let where = { ...status_condition };
 
     // Apply role-based filtering
-    if (user.role.rep === 1 || user.root === true) {
+    if (user.role.rep === 1 || user.root === true || user.role.shortCode === 'finance') {
         // Show all records for admin/root users
         // No additional filtering needed
     } else if (user.role.rep === 3) {
@@ -49,7 +49,7 @@ async function getFundTransfers(req, res) {
             };
         }
     } else {
-        // For other roles (area, region, division), filter based on their jurisdiction
+        // For other roles (area, region, division), filter based on their jurisdiction OR if they are the creator
         const branch_conditions = [];
 
         if (user.areaId) {
@@ -70,23 +70,33 @@ async function getFundTransfers(req, res) {
             });
         }
 
+        // Build the main filter conditions
+        const jurisdiction_conditions = [];
+        
         if (branch_conditions.length > 0) {
-            where = {
-                ...status_condition,
-                _or: [
-                    {
-                        giverBranch: {
-                            _and: branch_conditions
-                        }
-                    },
-                    {
-                        receiverBranch: {
-                            _and: branch_conditions
-                        }
+            jurisdiction_conditions.push(
+                {
+                    giverBranch: {
+                        _and: branch_conditions
                     }
-                ]
-            };
+                },
+                {
+                    receiverBranch: {
+                        _and: branch_conditions
+                    }
+                }
+            );
         }
+
+        // Add condition for transfers created by this user
+        jurisdiction_conditions.push({
+            insertedById: { _eq: user._id }
+        });
+
+        where = {
+            ...status_condition,
+            _or: jurisdiction_conditions
+        };
     }
 
     // Apply mode-specific filtering if provided
@@ -103,6 +113,7 @@ async function getFundTransfers(req, res) {
                 ...modeFilter
             };
         } else {
+            // For non-admin users, combine with existing jurisdiction/creator filters
             where = {
                 ...where,
                 ...modeFilter
@@ -123,6 +134,7 @@ async function getFundTransfers(req, res) {
                 ...modeFilter
             };
         } else {
+            // For non-admin users, combine with existing jurisdiction/creator filters
             where = {
                 ...where,
                 ...modeFilter
@@ -143,6 +155,7 @@ async function getFundTransfers(req, res) {
                 ...modeFilter
             };
         } else {
+            // For non-admin users, combine with existing jurisdiction/creator filters
             where = {
                 ...where,
                 ...modeFilter

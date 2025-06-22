@@ -13,6 +13,54 @@ const FUND_TRANSFER_TYPE = createGraphType('fund_transfer', `
     ${FUND_TRANSFER_FIELDS}
 `)('results');
 
+
+async function generateTransactionCode(giverBranchCode) {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
+    const yearMonth = `${year}${month}`;
+    const prefix = `FT${yearMonth}-${giverBranchCode}`;
+    
+    try {
+        // Query existing fund transfers for current month and branch to get the highest counter
+        const existingTransfers = await graph.query(
+            queryQl(createGraphType('fund_transfer', `
+                _id
+                transactionCode
+                giverBranch { code }
+            `)('results'), {
+                where: {
+                    transactionCode: { _like: `${prefix}-%` },
+                    deletedDate: { _is_null: true }
+                },
+                order_by: [{ transactionCode: "desc" }],
+                limit: 1
+            })
+        ).then(res => res.data.results ?? []);
+
+        let counter = 1;
+        
+        if (existingTransfers.length > 0) {
+            const lastTransactionCode = existingTransfers[0].transactionCode;
+            // Extract counter from the last transaction code (format: FTYYYYMM-BCODE-###)
+            const lastCounterMatch = lastTransactionCode.match(/-(\d+)$/);
+            if (lastCounterMatch) {
+                counter = parseInt(lastCounterMatch[1]) + 1;
+            }
+        }
+        
+        // Format counter with leading zeros (3 digits)
+        const formattedCounter = String(counter).padStart(3, '0');
+        
+        return `${prefix}-${formattedCounter}`;
+    } catch (error) {
+        console.error('Error generating transaction code:', error);
+        // Fallback: use timestamp-based counter if query fails
+        const timestamp = Date.now().toString().slice(-3);
+        return `${prefix}-${timestamp}`;
+    }
+}
+
 async function updateFundTransfer(req, res) {
     try {
         // Handle user authentication - use currentUserId if req.auth.sub is null
@@ -101,28 +149,48 @@ async function updateFundTransfer(req, res) {
             });
         }
 
-        // Access control validation - UPDATED: Only the creator can edit
-        if (existingTransfer.insertedById !== user._id) {
-            return res.status(403).send({
-                success: false,
-                message: "You can only edit fund transfers that you created."
-            });
-        }
-
-        // Additional check: Only area_admin can edit (since only they can create)
-        if (user.role.shortCode !== 'area_admin') {
-            return res.status(403).send({
-                success: false,
-                message: "Access denied. Only area administrators can edit fund transfers."
-            });
-        }
-
         // Check if transfer is still pending
         if (existingTransfer.status !== 'pending') {
             return res.status(400).send({
                 success: false,
                 message: "Cannot edit approved or rejected fund transfers."
             });
+        }
+
+        // Check if any approval has been given
+        if (existingTransfer.giverApprovalStatus === 'approved' || 
+            existingTransfer.receiverApprovalStatus === 'approved') {
+            return res.status(400).send({
+                success: false,
+                message: "Cannot edit fund transfer. At least one branch has already approved this transfer."
+            });
+        }
+
+        // Check if giver branch is changing to determine if we need a new transaction code
+        const isGiverBranchChanging = existingTransfer.giverBranchId !== fundTransfer.giverBranchId;
+        let newTransactionCode = existingTransfer.transactionCode; // Keep existing code by default
+
+        if (isGiverBranchChanging) {
+            // Get new giver branch details to extract branch code for transaction code generation
+            const newGiverBranch = await graph.query(
+                queryQl(createGraphType('branches', `
+                    _id
+                    code
+                    name
+                `)('results'), {
+                    where: { _id: { _eq: fundTransfer.giverBranchId } }
+                })
+            ).then(res => res.data.results?.[0]);
+
+            if (!newGiverBranch) {
+                return res.status(400).send({
+                    success: false,
+                    message: "Invalid giver branch ID."
+                });
+            }
+
+            // Generate new transaction code with the new branch code
+            newTransactionCode = await generateTransactionCode(newGiverBranch.code);
         }
 
         // Prepare update set
@@ -135,6 +203,11 @@ async function updateFundTransfer(req, res) {
             modifiedById: user._id,
             modifiedDate: 'now()'
         };
+
+        // Update transaction code if giver branch changed
+        if (isGiverBranchChanging) {
+            updateSet.transactionCode = newTransactionCode;
+        }
 
         // Reset approval statuses if branches changed
         if (existingTransfer.giverBranchId !== fundTransfer.giverBranchId || 
@@ -159,10 +232,17 @@ async function updateFundTransfer(req, res) {
             })
         ).then(res => res.data.results.returning);
 
+        // Prepare response message
+        let message = "Fund transfer updated successfully";
+        if (isGiverBranchChanging) {
+            message += `. New transaction code: ${newTransactionCode}`;
+        }
+
         res.send({
             success: true,
-            message: "Fund transfer updated successfully",
+            message: message,
             data,
+            transactionCode: newTransactionCode // Include the transaction code in response
         });
 
     } catch (error) {

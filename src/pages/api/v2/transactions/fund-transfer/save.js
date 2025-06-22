@@ -14,6 +14,54 @@ const FUND_TRANSFER_TYPE = createGraphType('fund_transfer', `
     ${FUND_TRANSFER_FIELDS}
 `)('results');
 
+// Function to generate transaction code with branch code
+async function generateTransactionCode(giverBranchCode) {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
+    const yearMonth = `${year}${month}`;
+    const prefix = `FT${yearMonth}-${giverBranchCode}`;
+    
+    try {
+        // Query existing fund transfers for current month and branch to get the highest counter
+        const existingTransfers = await graph.query(
+            queryQl(createGraphType('fund_transfer', `
+                _id
+                transactionCode
+                giverBranch { code }
+            `)('results'), {
+                where: {
+                    transactionCode: { _like: `${prefix}-%` },
+                    deletedDate: { _is_null: true }
+                },
+                order_by: [{ transactionCode: "desc" }],
+                limit: 1
+            })
+        ).then(res => res.data.results ?? []);
+
+        let counter = 1;
+        
+        if (existingTransfers.length > 0) {
+            const lastTransactionCode = existingTransfers[0].transactionCode;
+            // Extract counter from the last transaction code (format: FTYYYYMM-BCODE-###)
+            const lastCounterMatch = lastTransactionCode.match(/-(\d+)$/);
+            if (lastCounterMatch) {
+                counter = parseInt(lastCounterMatch[1]) + 1;
+            }
+        }
+        
+        // Format counter with leading zeros (3 digits)
+        const formattedCounter = String(counter).padStart(3, '0');
+        
+        return `${prefix}-${formattedCounter}`;
+    } catch (error) {
+        console.error('Error generating transaction code:', error);
+        // Fallback: use timestamp-based counter if query fails
+        const timestamp = Date.now().toString().slice(-3);
+        return `${prefix}-${timestamp}`;
+    }
+}
+
 async function saveFundTransfer(req, res) {
     try {
         // Handle user authentication - use currentUserId if req.auth.sub is null
@@ -86,10 +134,32 @@ async function saveFundTransfer(req, res) {
             });
         }
 
+        // Get giver branch details to extract branch code for transaction code generation
+        const giverBranch = await graph.query(
+            queryQl(createGraphType('branches', `
+                _id
+                code
+                name
+            `)('results'), {
+                where: { _id: { _eq: fundTransfer.giverBranchId } }
+            })
+        ).then(res => res.data.results?.[0]);
+
+        if (!giverBranch) {
+            return res.status(400).send({
+                success: false,
+                message: "Invalid giver branch ID."
+            });
+        }
+
+        // Generate unique transaction code with branch code
+        const transactionCode = await generateTransactionCode(giverBranch.code);
+
         const [data] = await graph.mutation(
             insertQl(FUND_TRANSFER_TYPE, {
                 objects: [{
                     _id: generateUUID(),
+                    transactionCode: transactionCode,
                     account: fundTransfer.account,
                     amount: amount,
                     description: fundTransfer.description.trim(),
@@ -113,6 +183,7 @@ async function saveFundTransfer(req, res) {
             success: true,
             message: "Fund transfer created successfully",
             data,
+            transactionCode: transactionCode
         });
 
     } catch (error) {

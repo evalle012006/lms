@@ -167,6 +167,7 @@ const AddUpdateFundTransfer = ({ mode = 'add', fundTransfer = {}, showSidebar, s
         } else {
             // Update mode
             payload._id = fundTransfer._id;
+            payload.currentUserId = currentUser._id;
             payload.modifiedById = currentUser._id;
             payload.modifiedDate = currentDate;
             
@@ -229,6 +230,19 @@ const AddUpdateFundTransfer = ({ mode = 'add', fundTransfer = {}, showSidebar, s
         return account ? account.label : '';
     }
 
+    // Get status display info
+    const getStatusInfo = (status) => {
+        switch (status) {
+            case 'approved':
+                return { color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200', text: 'Approved' };
+            case 'rejected':
+                return { color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', text: 'Rejected' };
+            case 'pending':
+            default:
+                return { color: 'text-yellow-600', bg: 'bg-yellow-50', border: 'border-yellow-200', text: 'Pending' };
+        }
+    }
+
     useEffect(() => {
         let mounted = true;
 
@@ -265,6 +279,97 @@ const AddUpdateFundTransfer = ({ mode = 'add', fundTransfer = {}, showSidebar, s
                     <Spinner />
                 ) : (
                     <div className="px-2 pb-8">
+                        {/* Transaction Code Display - Only show in edit mode */}
+                        {mode === 'edit' && fundTransfer?.transactionCode && (
+                            <div className="mt-4 mb-6">
+                                <div className="border rounded-md px-4 py-3 bg-blue-50 border-blue-200">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <label className="text-xs font-bold text-blue-600 uppercase tracking-wider">
+                                                Transaction Code
+                                            </label>
+                                            <div className="mt-1">
+                                                <span className="font-mono text-lg font-semibold text-blue-800 bg-white px-3 py-1 rounded border border-blue-300">
+                                                    {fundTransfer.transactionCode}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="text-blue-500">
+                                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Current Status Display - Only show in edit mode */}
+                        {mode === 'edit' && fundTransfer && (
+                            <div className="mt-4 mb-6">
+                                <h3 className="text-sm font-bold text-main mb-3">Current Status</h3>
+                                
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">
+                                            Giver Approval
+                                        </label>
+                                        <div className={`px-3 py-2 rounded-md border ${getStatusInfo(fundTransfer.giverApprovalStatus).bg} ${getStatusInfo(fundTransfer.giverApprovalStatus).border}`}>
+                                            <span className={`text-sm font-medium ${getStatusInfo(fundTransfer.giverApprovalStatus).color}`}>
+                                                {getStatusInfo(fundTransfer.giverApprovalStatus).text}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">
+                                            Receiver Approval
+                                        </label>
+                                        <div className={`px-3 py-2 rounded-md border ${getStatusInfo(fundTransfer.receiverApprovalStatus).bg} ${getStatusInfo(fundTransfer.receiverApprovalStatus).border}`}>
+                                            <span className={`text-sm font-medium ${getStatusInfo(fundTransfer.receiverApprovalStatus).color}`}>
+                                                {getStatusInfo(fundTransfer.receiverApprovalStatus).text}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Overall Status */}
+                                <div className="mt-3">
+                                    <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">
+                                        Overall Status
+                                    </label>
+                                    <div className={`mt-1 px-3 py-2 rounded-md border ${getStatusInfo(fundTransfer.status).bg} ${getStatusInfo(fundTransfer.status).border}`}>
+                                        <span className={`text-sm font-medium ${getStatusInfo(fundTransfer.status).color}`}>
+                                            {getStatusInfo(fundTransfer.status).text}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Show reject reasons if any */}
+                                {(fundTransfer.giverRejectReason || fundTransfer.receiverRejectReason) && (
+                                    <div className="mt-3">
+                                        <label className="text-xs font-bold text-red-600 uppercase tracking-wider">
+                                            Rejection Reason(s)
+                                        </label>
+                                        <div className="mt-1 px-3 py-2 rounded-md border bg-red-50 border-red-200">
+                                            {fundTransfer.giverRejectReason && (
+                                                <div className="text-sm text-red-800">
+                                                    <span className="font-medium">Giver:</span> {fundTransfer.giverRejectReason}
+                                                </div>
+                                            )}
+                                            {fundTransfer.receiverRejectReason && (
+                                                <div className="text-sm text-red-800 mt-1">
+                                                    <span className="font-medium">Receiver:</span> {fundTransfer.receiverRejectReason}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="border-b border-zinc-300 h-4 mt-6"></div>
+                            </div>
+                        )}
+
                         <Formik 
                             enableReinitialize={true}
                             onSubmit={handleSaveUpdate}
@@ -296,9 +401,14 @@ const AddUpdateFundTransfer = ({ mode = 'add', fundTransfer = {}, showSidebar, s
                                             onChange={(field, value) => handleChangeGiverBranch(field, value)}
                                             onBlur={setFieldTouched}
                                             placeholder="Select Giver Branch"
-                                            disabled={currentUser?.role?.rep === 3} // Disable for branch users since it's auto-selected
+                                            disabled={currentUser?.role?.rep === 3}
                                             errors={touched.giverBranchId && errors.giverBranchId ? errors.giverBranchId : undefined}
                                         />
+                                        {mode === 'edit' && (
+                                            <p className="mt-1 text-xs text-gray-500">
+                                                Giver branch cannot be changed after creation
+                                            </p>
+                                        )}
                                     </div>
 
                                     <div className="mt-4">
@@ -310,10 +420,15 @@ const AddUpdateFundTransfer = ({ mode = 'add', fundTransfer = {}, showSidebar, s
                                             options={getReceiverBranchOptions()}
                                             onChange={(field, value) => handleChangeReceiverBranch(field, value)}
                                             onBlur={setFieldTouched}
-                                            disabled={!selectedGiverBranch}
+                                            disabled={!selectedGiverBranch || (mode === 'edit' && (fundTransfer.giverApprovalStatus === 'approved' || fundTransfer.receiverApprovalStatus === 'approved'))}
                                             placeholder="Select Receiver Branch"
                                             errors={touched.receiverBranchId && errors.receiverBranchId ? errors.receiverBranchId : undefined}
                                         />
+                                        {mode === 'edit' && (fundTransfer.giverApprovalStatus === 'approved' || fundTransfer.receiverApprovalStatus === 'approved') && (
+                                            <p className="mt-1 text-xs text-gray-500">
+                                                Cannot change receiver branch after approval
+                                            </p>
+                                        )}
                                     </div>
 
                                     <div className="mt-4">
@@ -324,8 +439,14 @@ const AddUpdateFundTransfer = ({ mode = 'add', fundTransfer = {}, showSidebar, s
                                             placeholder="Enter transfer amount"
                                             onChange={handleChange}
                                             onBlur={() => setFieldTouched('amount', true)}
+                                            disabled={mode === 'edit' && (fundTransfer.giverApprovalStatus === 'approved' || fundTransfer.receiverApprovalStatus === 'approved')}
                                             errors={touched.amount && errors.amount ? errors.amount : undefined}
                                         />
+                                        {mode === 'edit' && (fundTransfer.giverApprovalStatus === 'approved' || fundTransfer.receiverApprovalStatus === 'approved') && (
+                                            <p className="mt-1 text-xs text-gray-500">
+                                                Cannot change amount after approval
+                                            </p>
+                                        )}
                                     </div>
 
                                     <div className="mt-4">
@@ -338,8 +459,14 @@ const AddUpdateFundTransfer = ({ mode = 'add', fundTransfer = {}, showSidebar, s
                                             onChange={(field, value) => handleChangeAccount(field, value)}
                                             onBlur={setFieldTouched}
                                             placeholder="Select Account Type"
+                                            disabled={mode === 'edit' && (fundTransfer.giverApprovalStatus === 'approved' || fundTransfer.receiverApprovalStatus === 'approved')}
                                             errors={touched.account && errors.account ? errors.account : undefined}
                                         />
+                                        {mode === 'edit' && (fundTransfer.giverApprovalStatus === 'approved' || fundTransfer.receiverApprovalStatus === 'approved') && (
+                                            <p className="mt-1 text-xs text-gray-500">
+                                                Cannot change account type after approval
+                                            </p>
+                                        )}
                                     </div>
 
                                     <div className="mt-4">
@@ -363,15 +490,22 @@ const AddUpdateFundTransfer = ({ mode = 'add', fundTransfer = {}, showSidebar, s
                                                     onBlur={() => setFieldTouched('description', true)}
                                                     placeholder="Enter transfer description/purpose"
                                                     rows={4}
+                                                    disabled={mode === 'edit' && (fundTransfer.giverApprovalStatus === 'approved' || fundTransfer.receiverApprovalStatus === 'approved')}
                                                     className={`
                                                         p-1 pl-0 text-gray-500 font-medium border-none focus:ring-0 text-sm resize-none
                                                         ${errors.description && touched.description && 'text-red-400'}
+                                                        ${mode === 'edit' && (fundTransfer.giverApprovalStatus === 'approved' || fundTransfer.receiverApprovalStatus === 'approved') && 'bg-gray-50 cursor-not-allowed'}
                                                     `}
                                                 />
                                             </div>
                                         </div>
                                         {errors.description && touched.description && (
                                             <span className="text-red-400 text-xs font-medium">{errors.description}</span>
+                                        )}
+                                        {mode === 'edit' && (fundTransfer.giverApprovalStatus === 'approved' || fundTransfer.receiverApprovalStatus === 'approved') && (
+                                            <p className="mt-1 text-xs text-gray-500">
+                                                Cannot change description after approval
+                                            </p>
                                         )}
                                     </div>
 
@@ -430,10 +564,15 @@ const AddUpdateFundTransfer = ({ mode = 'add', fundTransfer = {}, showSidebar, s
                                                     <div className={`flex flex-col border rounded-md px-4 py-2 bg-gray-50 border-gray-300`}>
                                                         <div className="flex justify-between">
                                                             <label className={`font-proxima-bold text-xs font-bold text-gray-600`}>
-                                                                Requested By
+                                                                {mode === 'edit' ? 'Created By' : 'Requested By'}
                                                             </label>
                                                         </div>
-                                                        <span className="text-gray-700">{currentUser?.firstName} {currentUser?.lastName}</span>
+                                                        <span className="text-gray-700">
+                                                            {mode === 'edit' && fundTransfer.insertedBy 
+                                                                ? `${fundTransfer.insertedBy.firstName} ${fundTransfer.insertedBy.lastName}`
+                                                                : `${currentUser?.firstName} ${currentUser?.lastName}`
+                                                            }
+                                                        </span>
                                                     </div>
                                                 </div>
 
@@ -441,10 +580,15 @@ const AddUpdateFundTransfer = ({ mode = 'add', fundTransfer = {}, showSidebar, s
                                                     <div className={`flex flex-col border rounded-md px-4 py-2 bg-gray-50 border-gray-300`}>
                                                         <div className="flex justify-between">
                                                             <label className={`font-proxima-bold text-xs font-bold text-gray-600`}>
-                                                                Request Date
+                                                                {mode === 'edit' ? 'Created Date' : 'Request Date'}
                                                             </label>
                                                         </div>
-                                                        <span className="text-gray-700">{currentDate}</span>
+                                                        <span className="text-gray-700">
+                                                            {mode === 'edit' && fundTransfer.insertedDate 
+                                                                ? new Date(fundTransfer.insertedDate).toLocaleDateString()
+                                                                : currentDate
+                                                            }
+                                                        </span>
                                                     </div>
                                                 </div>
 
@@ -452,10 +596,15 @@ const AddUpdateFundTransfer = ({ mode = 'add', fundTransfer = {}, showSidebar, s
                                                     <div className={`flex flex-col border rounded-md px-4 py-2 bg-gray-50 border-gray-300`}>
                                                         <div className="flex justify-between">
                                                             <label className={`font-proxima-bold text-xs font-bold text-gray-600`}>
-                                                                Initial Status
+                                                                Status
                                                             </label>
                                                         </div>
-                                                        <span className="text-yellow-600 font-medium">Pending Approval</span>
+                                                        <span className={`font-medium ${mode === 'edit' ? getStatusInfo(fundTransfer.status).color : 'text-yellow-600'}`}>
+                                                            {mode === 'edit' 
+                                                                ? getStatusInfo(fundTransfer.status).text
+                                                                : 'Pending Approval'
+                                                            }
+                                                        </span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -473,8 +622,15 @@ const AddUpdateFundTransfer = ({ mode = 'add', fundTransfer = {}, showSidebar, s
                                             label={mode === 'edit' ? 'Update Transfer' : 'Submit Transfer'} 
                                             type="submit" 
                                             isSubmitting={isValidating && isSubmitting} 
+                                            disabled={mode === 'edit' && (fundTransfer.giverApprovalStatus === 'approved' || fundTransfer.receiverApprovalStatus === 'approved' || fundTransfer.status === 'approved' || fundTransfer.status === 'rejected')}
                                         />
                                     </div>
+                                    
+                                    {mode === 'edit' && (fundTransfer.giverApprovalStatus === 'approved' || fundTransfer.receiverApprovalStatus === 'approved' || fundTransfer.status === 'approved' || fundTransfer.status === 'rejected') && (
+                                        <p className="mt-2 text-xs text-gray-500 text-center">
+                                            This transfer cannot be modified due to its current approval status
+                                        </p>
+                                    )}
                                 </form>
                             )}
                         </Formik>

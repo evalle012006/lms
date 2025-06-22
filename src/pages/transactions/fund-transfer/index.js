@@ -25,6 +25,8 @@ const FundTransferPage = () => {
     const [accessDenied, setAccessDenied] = useState(false);
     const router = useRouter();
     const dispatch = useDispatch();
+    const isWeekend = useSelector(state => state.systemSettings.weekend);
+    const isHoliday = useSelector(state => state.systemSettings.holiday);
     const currentUser = useSelector(state => state.user.data);
     const currentDate = useSelector(state => state.systemSettings.currentDate);
     const fundTransferList = useSelector(state => state.fundTransfer.list);
@@ -53,6 +55,15 @@ const FundTransferPage = () => {
 
     // Columns for Transactions tab
     const transactionColumns = [
+        {
+            Header: "Transaction Code",
+            accessor: 'transactionCode',
+            Cell: ({ value }) => (
+                <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">
+                    {value}
+                </span>
+            )
+        },
         {
             Header: "Transfer Date",
             accessor: 'insertedDate',
@@ -102,6 +113,15 @@ const FundTransferPage = () => {
 
     // Columns for History tab
     const historyColumns = [
+        {
+            Header: "Transaction Code",
+            accessor: 'transactionCode',
+            Cell: ({ value }) => (
+                <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">
+                    {value}
+                </span>
+            )
+        },
         {
             Header: "Transfer Date",
             accessor: 'insertedDate',
@@ -327,13 +347,11 @@ const FundTransferPage = () => {
             if (response.success) {
                 let branches = [];
                 response.branches.map(branch => {
-                    if (branch.areaId === currentUser.areaId) {
-                        branches.push({
-                            ...branch,
-                            value: branch._id,
-                            label: branch.name
-                        });
-                    }
+                    branches.push({
+                        ...branch,
+                        value: branch._id,
+                        label: branch.name
+                    });
                 });
                 dispatch(setBranchList(branches));
 
