@@ -14,6 +14,8 @@ import ButtonSolid from "@/lib/ui/ButtonSolid";
 import AddUpdateArea from "@/components/areas/AddUpdateAreaDrawer";
 import { setAreaList } from "@/redux/actions/areaActions";
 import { getApiBaseUrl } from "@/lib/constants";
+import { UppercaseFirstLetter } from "@/lib/utils";
+import { setRegionList } from "@/redux/actions/regionActions";
 
 const AreasPage = () => {
     const dispatch = useDispatch();
@@ -61,7 +63,9 @@ const AreasPage = () => {
                     managerIds: area.managerIds,
                     areaManagers: areaManagers,
                     branchIds: area.branchIds,
-                    branches: branchCodes
+                    branches: branchCodes,
+                    divisionId: area.divisionId,
+                    regionId: area.regionId,
                 };
 
                 data.push(temp);
@@ -90,6 +94,21 @@ const AreasPage = () => {
         } else if (response.error) {
             setLoading(false);
             toast.error(response.message);
+        }
+    }
+
+    const getListRegion = async () => {
+        const response = await fetchWrapper.get(getApiBaseUrl() + 'regions/list');
+        if (response.success) {
+            let list = response.regions?.map(region => ({
+                ...region,
+                    value: region._id,
+                label: UppercaseFirstLetter(region.name)
+            })) ?? [];
+            dispatch(setRegionList(list));
+        } else {
+            setLoading(false);
+            toast.error('Error retrieving region list.');
         }
     }
 
@@ -189,7 +208,7 @@ const AreasPage = () => {
 
     const fetchData = async () => {
         const promise = await new Promise(async (resolve) => {
-            const response = await Promise.all([getListBranch(), getListManager(), getListArea()]);
+            const response = await Promise.all([getListBranch(), getListManager(), getListArea(), getListRegion()]);
             resolve(response);
         });
 

@@ -3,11 +3,7 @@ import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl, updateQl } from '@/lib/graph/graph.util';
 import { apiHandler } from '@/services/api-handler';
 
-
 const graph = new GraphProvider();
-
-const USER_TYPE = (alias) => createGraphType('users', '_id')( alias ?? 'users');
-const BRANCH_TYPE = (alias) => createGraphType('branches', '_id')( alias ?? 'branches');
 
 const AREA_TYPE = (alias) => createGraphType('areas', `
 ${AREA_FIELDS}
@@ -64,23 +60,7 @@ async function updateArea(req, res) {
                 name: updateArea.name
             },
             where: { _id: { _eq: updateArea._id } }
-        }),
-        updateQl(USER_TYPE('delete_area_users'), {
-            set: { areaId: null },
-            where: { areaId: { _eq: updateArea._id } }
-        }),
-        updateQl(USER_TYPE('update_area_users'), {
-            set: { areaId: updateArea._id },
-            where: { _id: { _in: updateArea.managerIds } }
-        }),
-        updateQl(BRANCH_TYPE('delete_area_branches'), {
-            set: { areaId: null },
-            where: { areaId: { _eq: updateArea._id } }
-        }),
-        updateQl(BRANCH_TYPE('update_area_branches'), {
-            set: { areaId: updateArea._id },
-            where: { _id: { _in: updateArea.branchIds } }
-        }),
+        })
     );
 
     await getArea({ query: { _id: updateArea._id } }, res);

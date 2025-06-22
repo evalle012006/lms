@@ -6,12 +6,7 @@ import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, insertQl, queryQl, updateQl } from '@/lib/graph/graph.util';
 import { AREA_FIELDS, BRANCH_FIELDS, USER_FIELDS } from '@/lib/graph.fields';
 
-
 const graph = new GraphProvider();
-
-const USER_TYPE = (alias) => createGraphType('users', '_id')( alias ?? 'users');
-const BRANCH_TYPE = (alias) => createGraphType('branches', '_id')( alias ?? 'branches');
-
 const AREA_TYPE = (alias) => createGraphType('areas', `
 ${AREA_FIELDS}
 managers (where: {
@@ -58,17 +53,11 @@ async function save(req, res) {
                 objects: [{
                     _id: areaId,
                     name: area.name,
+                    regionId: area.regionId,
+                    divisionId: area.divisionId,
                     dateAdded: moment(getCurrentDate()).format('YYYY-MM-DD')
                 }]
-            }),
-            updateQl(USER_TYPE(), {
-                set: { areaId, },
-                where: { _id: { _in: area.managerIds } }
-            }),
-            updateQl(BRANCH_TYPE(), {
-                set: { areaId, },
-                where: { _id: { _in: area.branchIds } }
-            }),
+            })
         ).then(res => res.data.areas.returning);
 
         response = {

@@ -59,11 +59,8 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
                 default: break;
             }
         }
-
-        setSelectedBranchFilter([]);
-        setSelectedBranches([]);
         setRole(user.roleId);
-    }, [user, mode]);
+    }, [user, mode, areaList, regionList, divisionList, branchList]);
 
 
     const filteredByRoleBranchList = useMemo(() => 
@@ -75,13 +72,12 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
     [role, selectedBranchFilter]);
 
     useEffect(() => {
-        if (role?.includes('area_admin')) {
+        if (role?.includes('2-')) {
             const branchCodes = JSON.parse(user.designatedBranch ?? '[]');
             const branches = branchList.filter(branch => branchCodes.includes(branch.code));
-            console.log(branches);
             setSelectedBranches(branches);
         }
-    }, [role, filteredByRoleBranchList]);
+    }, [role, selectedBranchFilter]);
 
     const initialValues = useMemo(() => ({
         firstName: user.firstName || '',
@@ -132,7 +128,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
     }, []);
 
     const handleBranchChange = useCallback((field, value) => {
-        const branch = branchList.find( o => o.value ===value);
+        const branch = branchList.find( o => o.code ===value);
         const form = formikRef.current;
         form.setFieldValue(field, value);
         form.setFieldValue('areaId', branch.areaId);
@@ -143,7 +139,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
     }, []);
 
     const handleAreaChange = useCallback((field, value) => {
-        const area = areaList.find( o => o.value === value);
+        const area = areaList.find( o => o._id === value);
         const form = formikRef.current;
         form.setFieldValue(field, value);
         form.setFieldValue('regionId', area.regionId);
@@ -153,7 +149,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
     }, []);
 
     const handleRegionChange = useCallback((field, value) => {
-        const region = regionList.find( o => o.value === value);
+        const region = regionList.find( o => o._id === value);
         const form = formikRef.current;
         form.setFieldValue(field, value);
         form.setFieldValue('areaId', null);
