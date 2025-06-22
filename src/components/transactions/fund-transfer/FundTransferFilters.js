@@ -24,12 +24,25 @@ const FundTransferFilters = ({
     // Account options
     const accountOptions = [
         { value: '', label: 'All Accounts' },
-        { value: 'cash', label: 'Cash' },
-        { value: 'bank', label: 'Bank' },
-        { value: 'petty_cash', label: 'Petty Cash' },
-        { value: 'operating_fund', label: 'Operating Fund' },
-        { value: 'emergency_fund', label: 'Emergency Fund' },
-        { value: 'insurance_fund', label: 'Insurance Fund' }
+        { value: 'BMC', label: 'Bank Manager\'s Check' },
+        { value: 'B2B', label: 'Bank to Bank' },
+        { value: 'REC', label: 'Remittance Center' },
+        { value: 'CFT', label: 'Cash Fund Transfer' },
+        { value: 'FFPAY', label: 'Payment for Furniture & Fixture' },
+        { value: 'FTMO', label: 'FT to Main Office' },
+        { value: 'MCPAY', label: 'Payment for Motorcycle' },
+        { value: 'OSPAY', label: 'Payment for Office Supplies' },
+        { value: 'MEDPAY', label: 'Payment for Medicine due to Medical Mission' },
+        { value: 'RGGPAY', label: 'Payment for Relief Goods & Grants due to Calamity' },
+        { value: 'UCRPAY', label: 'Unclaim Return of Client' },
+        { value: 'ADVPAY', label: 'Advances due to Accident & Others' },
+        { value: 'RENTPAY', label: 'Payment for Rental' },
+        { value: 'DBPAY', label: 'Payment for Death Benefits' },
+        { value: 'CPPAY', label: 'Payment for Communication & Postage' },
+        { value: 'BDPPAY', label: 'Payment for Business Development' },
+        { value: 'CLIPAY', label: 'Payment of Client' },
+        { value: 'SDTR', label: 'Salary Disbursement due to Staff Transfer' },
+        { value: 'EXPOTH', label: 'Any Expenses not Mentioned Above' }
     ];
 
     // Status options for transactions tab
