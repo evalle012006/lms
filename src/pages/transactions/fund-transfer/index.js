@@ -56,6 +56,15 @@ const FundTransferPage = () => {
     // Columns for Transactions tab
     const transactionColumns = [
         {
+            Header: "Transaction Code",
+            accessor: 'transactionCode',
+            Cell: ({ value }) => (
+                <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">
+                    {value}
+                </span>
+            )
+        },
+        {
             Header: "Transfer Date",
             accessor: 'insertedDate',
             Cell: ({ value }) => value ? moment(value).format('MMM DD, YYYY') : ''
@@ -104,6 +113,15 @@ const FundTransferPage = () => {
 
     // Columns for History tab
     const historyColumns = [
+        {
+            Header: "Transaction Code",
+            accessor: 'transactionCode',
+            Cell: ({ value }) => (
+                <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">
+                    {value}
+                </span>
+            )
+        },
         {
             Header: "Transfer Date",
             accessor: 'insertedDate',

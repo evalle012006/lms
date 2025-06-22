@@ -431,6 +431,7 @@ export const TRANSFER_CLIENT_FIELDS = `
 
   export const FUND_TRANSFER_FIELDS = `
   _id
+  transactionCode
   giverBranchId
   receiverBranchId
   amount
