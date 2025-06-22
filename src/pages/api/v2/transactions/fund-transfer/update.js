@@ -13,7 +13,7 @@ const FUND_TRANSFER_TYPE = createGraphType('fund_transfer', `
     ${FUND_TRANSFER_FIELDS}
 `)('results');
 
-// Function to generate transaction code with branch code
+
 async function generateTransactionCode(giverBranchCode) {
     const now = new Date();
     const year = now.getFullYear();
