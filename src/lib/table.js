@@ -66,7 +66,8 @@ export function StatusPill({ value }) {
           status.startsWith("active") || status.startsWith("open") ? "status-pill-active" : null,
           status.startsWith("pending") ? "status-pill-pending" : null,
           status.startsWith("inactive") ? "status-pill-inactive" : null,
-          status.startsWith("reject") || status.startsWith("close") || status.startsWith("closed") || status.startsWith("offset") ? "status-pill-rejected" : null
+          status.startsWith("reject") || status.startsWith("close") || status.startsWith("closed") || status.startsWith("offset") ? "status-pill-rejected" : null,
+          status.startsWith("approved") ? "status-pill-approved" : null
         )}
       >
         {status}
@@ -239,103 +240,236 @@ export function PageButton({ children, className, ...rest }) {
   );
 }
 
-const ActionButton = ({ row, rowActionButtons }) => {
+const ActionButton = ({ row, rowActionButtons, currentUser, dropDownActionOrigin }) => {
   const status = row.original.hasOwnProperty('status') ? row.original.status : '';
   const page = row.original.hasOwnProperty('page') ? row.original.page : '';
+  const data = row.original;
+
+  // Fund Transfer specific logic
+  const isFundTransfer = dropDownActionOrigin === 'fund-transfer';
+
+  // Fund Transfer action visibility logic - UPDATED: Ignore branch for rep=2
+  const getFundTransferActionVisibility = (actionLabel) => {
+    if (!isFundTransfer || !currentUser) return true; // Default to show for non-fund-transfer
+
+    // Add safety checks for data properties
+    if (!data || typeof data !== 'object') {
+      console.log(`Action ${actionLabel}: No data available, showing button`);
+      return true; // Show buttons if data is not available yet
+    }
+
+    // Branch logic only applies to rep=3 and rep=4, NOT rep=2 (area_admin)
+    let userBranchId = null;
+    let isGiverBranch = false;
+    let isReceiverBranch = false;
+    
+    if (currentUser.role?.rep === 3) {
+      // Handle designatedBranchId for branch-specific roles
+      userBranchId = currentUser.designatedBranchId;
+      if (!userBranchId && currentUser.designatedBranch) {
+        try {
+          // Parse the designatedBranch array string
+          const branchArray = JSON.parse(currentUser.designatedBranch);
+          userBranchId = branchArray[0]; // Take the first branch
+        } catch (e) {
+          console.warn('Could not parse designatedBranch:', currentUser.designatedBranch);
+        }
+      }
+      isGiverBranch = userBranchId === data.giverBranchId;
+      isReceiverBranch = userBranchId === data.receiverBranchId;
+    }
+
+    const isCreator = data.insertedById === currentUser._id;
+    const isAreaAdmin = currentUser.role?.shortCode === 'area_admin'; // rep=2
+    const isBranchManager = currentUser.role?.rep === 3; // Branch managers with rep = 3
+    const isRep4 = currentUser.role?.rep === 4; // Other branch role
+    const isFinance = currentUser.role?.shortCode === 'finance';
+
+    // Add safety checks for status and approval statuses
+    const transferStatus = data.status || 'pending';
+    const giverApprovalStatus = data.giverApprovalStatus || 'pending';
+    const receiverApprovalStatus = data.receiverApprovalStatus || 'pending';
+
+    switch (actionLabel) {
+      case 'Edit Transfer':
+        // Only the creator (area_admin with rep=2) can edit
+        const canEdit = (transferStatus === 'pending') && (isCreator && isAreaAdmin);
+        return canEdit;
+
+      case 'Approve Transfer':
+        const canApprove = (transferStatus === 'pending') && (
+          // Branch managers (rep=3) can approve if they're from involved branch
+          (isBranchManager && (isGiverBranch || isReceiverBranch) && 
+           ((isGiverBranch && giverApprovalStatus === 'pending') || 
+            (isReceiverBranch && receiverApprovalStatus === 'pending'))) ||
+          // Rep=4 can also approve if they're from involved branch
+          (isRep4 && (isGiverBranch || isReceiverBranch) && 
+           ((isGiverBranch && giverApprovalStatus === 'pending') || 
+            (isReceiverBranch && receiverApprovalStatus === 'pending'))) ||
+          // Finance can approve if both branches have approved (final approval)
+          (isFinance && giverApprovalStatus === 'approved' && receiverApprovalStatus === 'approved')
+        );
+        
+        return canApprove;
+
+      case 'Reject Transfer':
+        const canReject = (transferStatus === 'pending') && (
+          // Branch managers (rep=3) can reject if they're from involved branch
+          (isBranchManager && (isGiverBranch || isReceiverBranch)) || 
+          // Rep=4 can also reject if they're from involved branch
+          (isRep4 && (isGiverBranch || isReceiverBranch)) ||
+          // Finance can reject any time when status is pending
+          (isFinance && transferStatus === 'pending')
+        );
+        
+        return canReject;
+
+      case 'Delete Transfer':
+        // Only creator (area_admin with rep=2) OR giver branch (rep=3/4) can delete if no approvals yet
+        const canDelete = (transferStatus === 'pending') && 
+          (giverApprovalStatus === 'pending' && receiverApprovalStatus === 'pending') && // No approvals yet
+          ((isCreator && isAreaAdmin));
+        
+        return canDelete;
+
+      default:
+        return true; // Default to show for other actions
+    }
+  };
+
+  // Safety check function to ensure action is callable
+  const safeCallAction = (item, row) => {
+    if (item && typeof item.action === 'function') {
+      item.action(row);
+    } else {
+      console.warn('Action is not a function:', item);
+    }
+  };
+
+  // Use normal business logic for action button visibility
+  const showAllFundTransferButtons = false;
+
   return (
     <React.Fragment>
       <div className="flex flex-row justify-center">
-            {rowActionButtons && rowActionButtons.map((item, index) => {
-                return (
-                    <React.Fragment key={index}>
-                      {item.label === 'Approve' && (
-                        <div className="px-2" onClick={() => item.action(row)} title="Approve">
-                          <CheckIcon className="cursor-pointer h-5" />
-                        </div>
-                      )}
-                      {item.label === 'Reject' && (
-                        <div className="px-2" onClick={() => item.action(row)} title="Reject">
-                          <XMarkIcon className="cursor-pointer h-5" />
-                        </div>
-                      )}
-                      {(item.label === 'Edit Loan' && status !== 'active') && (
-                        <div className="px-2" onClick={() => item.action(row)} title="Edit">
-                          <PencilIcon className="cursor-pointer h-5" />
-                        </div>
-                      )}
-                      {(item.label === 'Delete Loan' && status !== 'active') && (
-                        <div className="px-2" onClick={() => item.action(row)} title="Delete">
-                          <TrashIcon className="cursor-pointer h-5" />
-                        </div>
-                      )}
-                      {(item.label === 'View Disclosure' && status !== 'active') && (
-                        <div className="px-2" onClick={() => item.action(row)} title="View Disclosure">
-                          <DocumentIcon className="cursor-pointer h-5" />
-                        </div>
-                      )}
-                      {(item.label === 'Edit') && (
-                        <div className="px-2" onClick={() => item.action(row)} title="Edit">
-                          <PencilIcon className="cursor-pointer h-5" />
-                        </div>
-                      )}
-                      {(item.label === 'Delete') && (
-                        <div className="px-2" onClick={() => item.action(row)} title="Delete">
-                          <TrashIcon className="cursor-pointer h-5" />
-                        </div>
-                      )}
-                      {(item.label === 'Open' && page === 'loan-officer-summary' && status === 'close') && (
-                        <div className="px-2" onClick={() => item.action(row)} title="Open Transaction">
-                          <LockClosedIcon className="cursor-pointer h-5" />
-                        </div>
-                      )}
-                      {(item.label === 'Close' && page === 'loan-officer-summary' && status === 'open') && (
-                        <div className="px-2" onClick={() => item.action(row)} title="Close Transaction">
-                          <LockOpenIcon className="cursor-pointer h-5" />
-                        </div>
-                      )}
-                      {(item.label === 'Reloan') && (
-                        <div className="px-2" onClick={() => item.action(row)} title="Reloan">
-                          <ArrowPathIcon className="cursor-pointer h-5" />
-                        </div>
-                      )}
-                      {(item.label === 'Close Account') && (
-                        <div className="px-2" onClick={() => item.action(row)} title="Close Account">
-                          <XCircleIcon className="cursor-pointer h-5" />
-                        </div>
-                      )}
-                      {item.label === 'Reset Password' && (
-                        <div className="px-2" onClick={() => item.action(row)} title="Reset Password">
-                          <KeyIcon className="cursor-pointer h-5" />
-                        </div>
-                      )}
-                      {item.label === 'Update' && (
-                        <div className="px-2" onClick={() => item.action(row)} title={item.title}>
-                          <ArrowPathIcon className="cursor-pointer h-5" />
-                        </div>
-                      )}
-                      {item.label === 'Revert' && (
-                        <div className="px-2" onClick={() => item.action(row)} title={item.title}>
-                          <ArrowUturnLeftIcon className="cursor-pointer h-5" />
-                        </div>
-                      )}
-                      {item.label === 'Transfer' && (
-                        <div className="px-2" onClick={() => item.action(row)} title={item.title}>
-                          <ArrowsRightLeftIcon className="cursor-pointer h-5" />
-                        </div>
-                      )}
-                      {item.label === 'Unmark as Duplicate' && (
-                        <div className="px-2" onClick={() => item.action(row)} title={item.title}>
-                          {/* <ArrowPathIcon className="cursor-pointer h-5" /> */}
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="cursor-pointer h-5">
-                            <rect x="6" y="6" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2"/>
-                            <rect x="3" y="3" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2"/>
-                            <line x1="2" y1="2" x2="18" y2="18" stroke="currentColor" strokeWidth="2"/>
-                          </svg>
-                        </div>
-                      )}
-                    </React.Fragment>
-                );
-              })}
+        {rowActionButtons && rowActionButtons.map((item, index) => {
+          // Check visibility for fund transfer actions
+          if (isFundTransfer && !showAllFundTransferButtons && !getFundTransferActionVisibility(item.label)) {
+            return null; // Don't render if not visible
+          }
+
+          return (
+            <React.Fragment key={index}>
+              {/* Fund Transfer Actions */}
+              {item.label === 'Edit Transfer' && (
+                <div className="px-2 cursor-pointer hover:bg-gray-100 rounded" onClick={() => safeCallAction(item, row)} title="Edit Transfer">
+                  <PencilIcon className="h-5 text-blue-600" />
+                </div>
+              )}
+              {item.label === 'Approve Transfer' && (
+                <div className="px-2 cursor-pointer hover:bg-gray-100 rounded" onClick={() => safeCallAction(item, row)} title="Approve Transfer">
+                  <CheckIcon className="h-5 text-green-600" />
+                </div>
+              )}
+              {item.label === 'Reject Transfer' && (
+                <div className="px-2 cursor-pointer hover:bg-gray-100 rounded" onClick={() => safeCallAction(item, row)} title="Reject Transfer">
+                  <XMarkIcon className="h-5 text-red-600" />
+                </div>
+              )}
+              {item.label === 'Delete Transfer' && (
+                <div className="px-2 cursor-pointer hover:bg-gray-100 rounded" onClick={() => safeCallAction(item, row)} title="Delete Transfer">
+                  <TrashIcon className="h-5 text-red-600" />
+                </div>
+              )}
+
+              {/* Original Actions */}
+              {item.label === 'Approve' && (
+                <div className="px-2" onClick={() => safeCallAction(item, row)} title="Approve">
+                  <CheckIcon className="cursor-pointer h-5" />
+                </div>
+              )}
+              {item.label === 'Reject' && (
+                <div className="px-2" onClick={() => safeCallAction(item, row)} title="Reject">
+                  <XMarkIcon className="cursor-pointer h-5" />
+                </div>
+              )}
+              {(item.label === 'Edit Loan' && status !== 'active') && (
+                <div className="px-2" onClick={() => safeCallAction(item, row)} title="Edit">
+                  <PencilIcon className="cursor-pointer h-5" />
+                </div>
+              )}
+              {(item.label === 'Delete Loan' && status !== 'active') && (
+                <div className="px-2" onClick={() => safeCallAction(item, row)} title="Delete">
+                  <TrashIcon className="cursor-pointer h-5" />
+                </div>
+              )}
+              {(item.label === 'View Disclosure' && status !== 'active') && (
+                <div className="px-2" onClick={() => safeCallAction(item, row)} title="View Disclosure">
+                  <DocumentIcon className="cursor-pointer h-5" />
+                </div>
+              )}
+              {(item.label === 'Edit') && (
+                <div className="px-2" onClick={() => safeCallAction(item, row)} title="Edit">
+                  <PencilIcon className="cursor-pointer h-5" />
+                </div>
+              )}
+              {(item.label === 'Delete') && (
+                <div className="px-2" onClick={() => safeCallAction(item, row)} title="Delete">
+                  <TrashIcon className="cursor-pointer h-5" />
+                </div>
+              )}
+              {(item.label === 'Open' && page === 'loan-officer-summary' && status === 'close') && (
+                <div className="px-2" onClick={() => safeCallAction(item, row)} title="Open Transaction">
+                  <LockClosedIcon className="cursor-pointer h-5" />
+                </div>
+              )}
+              {(item.label === 'Close' && page === 'loan-officer-summary' && status === 'open') && (
+                <div className="px-2" onClick={() => safeCallAction(item, row)} title="Close Transaction">
+                  <LockOpenIcon className="cursor-pointer h-5" />
+                </div>
+              )}
+              {(item.label === 'Reloan') && (
+                <div className="px-2" onClick={() => safeCallAction(item, row)} title="Reloan">
+                  <ArrowPathIcon className="cursor-pointer h-5" />
+                </div>
+              )}
+              {(item.label === 'Close Account') && (
+                <div className="px-2" onClick={() => safeCallAction(item, row)} title="Close Account">
+                  <XCircleIcon className="cursor-pointer h-5" />
+                </div>
+              )}
+              {item.label === 'Reset Password' && (
+                <div className="px-2" onClick={() => safeCallAction(item, row)} title="Reset Password">
+                  <KeyIcon className="cursor-pointer h-5" />
+                </div>
+              )}
+              {item.label === 'Update' && (
+                <div className="px-2" onClick={() => safeCallAction(item, row)} title={item.title}>
+                  <ArrowPathIcon className="cursor-pointer h-5" />
+                </div>
+              )}
+              {item.label === 'Revert' && (
+                <div className="px-2" onClick={() => safeCallAction(item, row)} title={item.title}>
+                  <ArrowUturnLeftIcon className="cursor-pointer h-5" />
+                </div>
+              )}
+              {item.label === 'Transfer' && (
+                <div className="px-2" onClick={() => safeCallAction(item, row)} title={item.title}>
+                  <ArrowsRightLeftIcon className="cursor-pointer h-5" />
+                </div>
+              )}
+              {item.label === 'Unmark as Duplicate' && (
+                <div className="px-2" onClick={() => safeCallAction(item, row)} title={item.title}>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="cursor-pointer h-5">
+                    <rect x="6" y="6" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2"/>
+                    <rect x="3" y="3" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2"/>
+                    <line x1="2" y1="2" x2="18" y2="18" stroke="currentColor" strokeWidth="2"/>
+                  </svg>
+                </div>
+              )}
+            </React.Fragment>
+          );
+        })}
       </div>
     </React.Fragment>
   );
@@ -359,7 +493,8 @@ const TableComponent = React.memo(({
   pageSize: initialPageSize = 30,
   dropDownActions = [],
   actionDropDownDataOptions = {},
-  dropDownActionOrigin
+  dropDownActionOrigin,
+  currentUser = null
 }) => {
   // Add state for current page
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
@@ -415,31 +550,6 @@ const TableComponent = React.memo(({
             </div>
           </td>
         </tr>
-        {/* {Array(5).fill(null).map((_, index) => (
-          <tr key={`empty-row-${index}`} className="bg-white border-b">
-            {multiSelect && (
-              <td key={`empty-checkbox-${index}`} className="px-4 py-3 w-10">
-                <CheckBox
-                  name={`select-empty-${index}`}
-                  value={false}
-                  onChange={() => {}}
-                  size="md"
-                  disabled={true}
-                />
-              </td>
-            )}
-            {Array(columnCount).fill(null).map((_, colIndex) => (
-              <td key={`empty-col-${index}-${colIndex}`} className="px-4 py-3">
-                <div className="h-4 bg-gray-100 rounded"></div>
-              </td>
-            ))}
-            {(hasActionButtons || dropDownActions.length > 0) && (
-              <td key={`empty-actions-${index}`} className="px-4 py-3 w-24">
-                <div className="h-4 bg-gray-100 rounded"></div>
-              </td>
-            )}
-          </tr>
-        ))} */}
       </>
     )
   };
@@ -627,7 +737,12 @@ const handleSelectRow = useCallback((row, index) => {
                         <td className="px-4 py-3 w-24">
                           <div className="flex items-center justify-center space-x-2">
                             {hasActionButtons && !root && !row.original.system && (
-                              <ActionButton row={row} rowActionButtons={rowActionButtons} />
+                              <ActionButton 
+                                row={row} 
+                                rowActionButtons={rowActionButtons}
+                                currentUser={currentUser}
+                                dropDownActionOrigin={dropDownActionOrigin}
+                              />
                             )}
                             {dropDownActions.length > 0 && (
                               <ActionDropDown

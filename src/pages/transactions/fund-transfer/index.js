@@ -33,10 +33,11 @@ const FundTransferPage = () => {
     const [showAddDrawer, setShowAddDrawer] = useState(false);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [showApprovalDialog, setShowApprovalDialog] = useState(false);
+    const [showRejectDialog, setShowRejectDialog] = useState(false);
     const [mode, setMode] = useState('add');
     const [fundTransfer, setFundTransfer] = useState();
-    const [dropDownActions, setDropDownActions] = useState();
     const [approvalAction, setApprovalAction] = useState('');
+    const [rejectReason, setRejectReason] = useState('');
 
     const isMountedRef = useRef(true);
     const isLoadingRef = useRef(false);
@@ -143,13 +144,32 @@ const FundTransferPage = () => {
         },
         {
             Header: "Giver Approval Date",
-            accessor: 'giverApprovalDate',
+            accessor: 'giverApproveRejectDate',
             Cell: ({ value }) => value ? moment(value).format('MMM DD, YYYY HH:mm') : 'Pending'
         },
         {
             Header: "Receiver Approval Date",
-            accessor: 'receiverApprovalDate',
+            accessor: 'receiverApproveRejectDate',
             Cell: ({ value }) => value ? moment(value).format('MMM DD, YYYY HH:mm') : 'Pending'
+        },
+        {
+            Header: "Giver Status",
+            accessor: 'giverApprovalStatus',
+            Cell: StatusPill
+        },
+        {
+            Header: "Receiver Status",
+            accessor: 'receiverApprovalStatus',
+            Cell: StatusPill
+        },
+        {
+            Header: "Reject Reason",
+            accessor: 'rejectReason',
+            Cell: ({ row }) => {
+                const { giverRejectReason, receiverRejectReason } = row.original;
+                const reasons = [giverRejectReason, receiverRejectReason].filter(Boolean);
+                return reasons.length > 0 ? reasons.join('; ') : '';
+            }
         }
     ];
 
@@ -164,12 +184,38 @@ const FundTransferPage = () => {
     }
 
     const handleDeleteAction = (row) => {
-        if (row.original.status === 'pending') {
-            setFundTransfer(row.original);
-            setShowDeleteDialog(true);
-        } else {
-            toast.error("Cannot delete approved/rejected transfers.");
+        // Check if transfer is still deletable
+        if (row.original.status !== 'pending') {
+            toast.error("Cannot delete approved or rejected transfers.");
+            return;
         }
+        
+        // Check if any approval status is already approved
+        if (row.original.giverApprovalStatus === 'approved' || 
+            row.original.receiverApprovalStatus === 'approved') {
+            toast.error("Cannot delete transfer. At least one branch has already approved this transfer.");
+            return;
+        }
+        
+        // Check if any approval status is rejected
+        if (row.original.giverApprovalStatus === 'rejected' || 
+            row.original.receiverApprovalStatus === 'rejected') {
+            toast.error("Cannot delete rejected transfers.");
+            return;
+        }
+        
+        // Check authorization
+        const isCreator = row.original.insertedById === currentUser._id;
+        const isGiverBranch = currentUser.role?.shortCode === 'area_admin' && 
+                            currentUser.designatedBranchId === row.original.giverBranchId;
+        
+        if (!isCreator && !isGiverBranch) {
+            toast.error("You can only delete transfers that you created or transfers from your designated branch (giver branch only).");
+            return;
+        }
+        
+        setFundTransfer(row.original);
+        setShowDeleteDialog(true);
     }
 
     const handleApproveAction = (row) => {
@@ -181,7 +227,8 @@ const FundTransferPage = () => {
     const handleRejectAction = (row) => {
         setFundTransfer(row.original);
         setApprovalAction('reject');
-        setShowApprovalDialog(true);
+        setRejectReason('');
+        setShowRejectDialog(true);
     }
 
     const handleApprovalConfirm = async () => {
@@ -190,6 +237,7 @@ const FundTransferPage = () => {
             const url = getApiBaseUrl() + 'transactions/fund-transfer/approve';
             const payload = {
                 _id: fundTransfer._id,
+                currentUserId: currentUser._id,
                 status: approvalAction === 'approve' ? 'approved' : 'rejected'
             };
 
@@ -209,12 +257,43 @@ const FundTransferPage = () => {
         }
     }
 
+    const handleRejectConfirm = async () => {
+        if (fundTransfer && !isRefreshing && rejectReason.trim()) {
+            setIsRefreshing(true);
+            const url = getApiBaseUrl() + 'transactions/fund-transfer/approve';
+            const payload = {
+                _id: fundTransfer._id,
+                status: 'rejected',
+                rejectReason: rejectReason.trim(),
+                currentUserId: currentUser._id
+            };
+
+            try {
+                const response = await fetchWrapper.post(url, payload);
+                if (response.success) {
+                    setShowRejectDialog(false);
+                    setRejectReason('');
+                    toast.success('Transfer rejected successfully.');
+                    await refreshFundTransferList();
+                } else {
+                    toast.error(response.message || 'Failed to reject transfer.');
+                }
+            } catch (error) {
+                toast.error('Error rejecting transfer.');
+            }
+            setIsRefreshing(false);
+        } else if (!rejectReason.trim()) {
+            toast.error('Please provide a reason for rejection.');
+        }
+    }
+
     const handleDelete = async () => {
         if (fundTransfer && !isRefreshing) {
             setIsRefreshing(true);
             try {
                 const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/fund-transfer/delete', { 
-                    _id: fundTransfer._id 
+                    _id: fundTransfer._id,
+                    currentUserId: currentUser._id
                 });
                 if (response.success) {
                     setShowDeleteDialog(false);
@@ -248,17 +327,21 @@ const FundTransferPage = () => {
             if (response.success) {
                 let branches = [];
                 response.branches.map(branch => {
-                    branches.push({
-                        ...branch,
-                        value: branch._id,
-                        label: branch.name
-                    });
+                    if (branch.areaId === currentUser.areaId) {
+                        branches.push({
+                            ...branch,
+                            value: branch._id,
+                            label: branch.name
+                        });
+                    }
                 });
                 dispatch(setBranchList(branches));
 
-                const currentBranch = branches.find(branch => branch._id == currentUser.designatedBranchId);
-                if (currentBranch) {
-                    dispatch(setBranch(currentBranch));
+                if (currentUser.role.rep === 3) {
+                    const currentBranch = branches.find(branch => branch._id == currentUser.designatedBranchId);
+                    if (currentBranch) {
+                        dispatch(setBranch(currentBranch));
+                    }
                 }
             }
         } catch (error) {
@@ -305,12 +388,12 @@ const FundTransferPage = () => {
             if (transactionsResponse.success) {
                 const processedTransactions = transactionsResponse.data.map(transfer => ({
                     ...transfer,
+                    giverApprovalStatus: transfer.giverApprovalStatus || 'pending',
+                    receiverApprovalStatus: transfer.receiverApprovalStatus || 'pending',
                     amountStr: new Intl.NumberFormat('en-US', { 
                         style: 'currency', 
                         currency: 'PHP' 
-                    }).format(transfer.amount || 0),
-                    giverApprovalStatus: transfer.giverApprovalDate ? 'approved' : 'pending',
-                    receiverApprovalStatus: transfer.receiverApprovalDate ? 'approved' : 'pending'
+                    }).format(transfer.amount || 0)
                 }));
                 dispatch(setFundTransferList(processedTransactions));
             }
@@ -393,81 +476,19 @@ const FundTransferPage = () => {
     }, [currentDate, currentUser?.role?.rep]);
 
     useEffect(() => {
-        if (currentUser?.role?.rep <= 3) {
-            const actions = [
-                {
-                    label: 'Edit Transfer',
-                    action: handleEditAction,
-                    icon: <PencilIcon className="w-5 h-5" title="Edit Transfer" />,
-                    hidden: (row) => row.original.status !== 'pending' || 
-                                   (selectedTab === 'fund-transfer-transactions' && 
-                                    row.original.insertedById !== currentUser._id)
-                },
-                {
-                    label: 'Approve Transfer',
-                    action: handleApproveAction,
-                    icon: <CheckIcon className="w-5 h-5" title="Approve Transfer" />,
-                    hidden: (row) => {
-                        if (selectedTab !== 'fund-transfer-transactions' || row.original.status !== 'pending') {
-                            return true;
-                        }
-                        
-                        const canApprove = ['area_manager', 'finance'].includes(currentUser.role?.short_code);
-                        if (!canApprove) return true;
-                        
-                        if (currentUser.role?.short_code === 'area_manager') {
-                            const canApproveGiver = currentUser.designatedBranchId === row.original.giverBranchId && !row.original.giverApprovalDate;
-                            const canApproveReceiver = currentUser.designatedBranchId === row.original.receiverBranchId && !row.original.receiverApprovalDate;
-                            return !(canApproveGiver || canApproveReceiver);
-                        }
-                        
-                        if (currentUser.role?.short_code === 'finance') {
-                            return !row.original.giverApprovalDate || !row.original.receiverApprovalDate;
-                        }
-                        
-                        return true;
-                    }
-                },
-                {
-                    label: 'Reject Transfer',
-                    action: handleRejectAction,
-                    icon: <XMarkIcon className="w-5 h-5" title="Reject Transfer" />,
-                    hidden: (row) => {
-                        if (selectedTab !== 'fund-transfer-transactions' || row.original.status !== 'pending') {
-                            return true;
-                        }
-                        
-                        const canReject = ['area_manager', 'finance'].includes(currentUser.role?.short_code);
-                        if (!canReject) return true;
-                        
-                        if (currentUser.role?.short_code === 'area_manager') {
-                            return currentUser.designatedBranchId !== row.original.giverBranchId && 
-                                   currentUser.designatedBranchId !== row.original.receiverBranchId;
-                        }
-                        
-                        return false;
-                    }
-                },
-                {
-                    label: 'Delete Transfer',
-                    action: handleDeleteAction,
-                    icon: <TrashIcon className="w-5 h-5" title="Delete Transfer" />,
-                    hidden: (row) => selectedTab !== 'fund-transfer-transactions' || 
-                                   row.original.status !== 'pending' ||
-                                   row.original.insertedById !== currentUser._id
-                }
-            ];
-
-            setDropDownActions(actions);
-        }
-    }, [currentUser, selectedTab]);
-
-    useEffect(() => {
         isMountedRef.current = true;
         return () => {
             isMountedRef.current = false;
         };
     }, []);
+
+    // Define row action buttons after all handlers are defined
+    const rowActionButtons = [
+        { label: 'Edit Transfer', action: handleEditAction },
+        { label: 'Approve Transfer', action: handleApproveAction },
+        { label: 'Reject Transfer', action: handleRejectAction },
+        { label: 'Delete Transfer', action: handleDeleteAction }
+    ];
 
     // Show access denied message if user doesn't have permission
     if (accessDenied || currentUser?.role?.rep > 3) {
@@ -484,7 +505,7 @@ const FundTransferPage = () => {
     }
 
     return (
-        <Layout actionButtons={currentUser?.role?.rep <= 3 ? 
+        <Layout actionButtons={currentUser?.role?.shortCode === 'area_admin' ? 
             [<ButtonSolid 
                 key="add-transfer"
                 label="Add Fund Transfer" 
@@ -517,10 +538,11 @@ const FundTransferPage = () => {
                                     columns={transactionColumns} 
                                     data={fundTransferList || []} 
                                     pageSize={20} 
-                                    hasActionButtons={false} 
-                                    dropDownActions={dropDownActions} 
-                                    dropDownActionOrigin="fund-transfer" 
+                                    hasActionButtons={true} 
+                                    rowActionButtons={rowActionButtons}
                                     showFilters={true}
+                                    currentUser={currentUser}
+                                    dropDownActionOrigin="fund-transfer"
                                 />
                             </TabPanel>
                             
@@ -530,9 +552,9 @@ const FundTransferPage = () => {
                                     data={fundTransferHistoryList || []} 
                                     pageSize={20} 
                                     hasActionButtons={false} 
-                                    dropDownActions={[]} 
-                                    dropDownActionOrigin="fund-transfer-history" 
                                     showFilters={true}
+                                    currentUser={currentUser}
+                                    dropDownActionOrigin="fund-transfer-history"
                                 />
                             </TabPanel>
                         </React.Fragment>
@@ -551,8 +573,23 @@ const FundTransferPage = () => {
                                     <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-center">
                                         <div className="mt-2">
                                             <p className="text-2xl font-normal text-dark-color">
-                                                Are you sure you want to delete this fund transfer?
+                                                Delete Fund Transfer
                                             </p>
+                                            {fundTransfer && (
+                                                <div className="mt-4 text-sm text-gray-600">
+                                                    <p><strong>Amount:</strong> {fundTransfer.amountStr}</p>
+                                                    <p><strong>From:</strong> {fundTransfer.giverBranch?.name}</p>
+                                                    <p><strong>To:</strong> {fundTransfer.receiverBranch?.name}</p>
+                                                    <div className="mt-3 text-xs text-orange-600 bg-orange-50 p-2 rounded">
+                                                        <p className="font-semibold">⚠️ Warning:</p>
+                                                        <p>This action cannot be undone. The transfer will be permanently deleted.</p>
+                                                        {fundTransfer.giverApprovalStatus === 'pending' && 
+                                                         fundTransfer.receiverApprovalStatus === 'pending' && (
+                                                            <p className="mt-1">✓ No approvals yet - safe to delete</p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -579,13 +616,36 @@ const FundTransferPage = () => {
                                     <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-center">
                                         <div className="mt-2">
                                             <p className="text-2xl font-normal text-dark-color">
-                                                Are you sure you want to {approvalAction} this fund transfer?
+                                                {(() => {
+                                                    if (currentUser.role?.shortCode === 'finance') {
+                                                        return 'Finalize Fund Transfer Approval';
+                                                    } else if (currentUser.designatedBranchId === fundTransfer?.giverBranchId) {
+                                                        return 'Approve Fund Transfer (Step 1: Giver Branch)';
+                                                    } else if (currentUser.designatedBranchId === fundTransfer?.receiverBranchId) {
+                                                        return 'Approve Fund Transfer (Step 2: Receiver Branch)';
+                                                    }
+                                                    return 'Approve Fund Transfer';
+                                                })()}
                                             </p>
                                             {fundTransfer && (
                                                 <div className="mt-4 text-sm text-gray-600">
                                                     <p><strong>Amount:</strong> {fundTransfer.amountStr}</p>
                                                     <p><strong>From:</strong> {fundTransfer.giverBranch?.name}</p>
                                                     <p><strong>To:</strong> {fundTransfer.receiverBranch?.name}</p>
+                                                    {currentUser.role?.shortCode === 'finance' && (
+                                                        <div className="mt-2 text-xs text-green-600">
+                                                            <p>✓ Step 1: Giver branch approved</p>
+                                                            <p>✓ Step 2: Receiver branch approved</p>
+                                                            <p className="font-semibold">Ready for final approval</p>
+                                                        </div>
+                                                    )}
+                                                    {currentUser.role?.shortCode === 'area_manager' && 
+                                                     currentUser.designatedBranchId === fundTransfer?.receiverBranchId && (
+                                                        <div className="mt-2 text-xs text-green-600">
+                                                            <p>✓ Step 1: Giver branch approved</p>
+                                                            <p className="font-semibold">Proceeding to Step 2</p>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
@@ -600,10 +660,71 @@ const FundTransferPage = () => {
                                     onClick={() => setShowApprovalDialog(false)} 
                                 />
                                 <ButtonSolid 
-                                    label={`Yes, ${approvalAction}`} 
+                                    label={(() => {
+                                        if (currentUser.role?.shortCode === 'finance') {
+                                            return 'Finalize Approval';
+                                        } else if (currentUser.designatedBranchId === fundTransfer?.giverBranchId) {
+                                            return 'Approve (Step 1)';
+                                        } else if (currentUser.designatedBranchId === fundTransfer?.receiverBranchId) {
+                                            return 'Approve (Step 2)';
+                                        }
+                                        return 'Approve';
+                                    })()} 
                                     type="button" 
                                     className="p-2" 
                                     onClick={handleApprovalConfirm} 
+                                />
+                            </div>
+                        </Dialog>
+
+                        <Dialog show={showRejectDialog}>
+                            <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                                <div className="sm:flex sm:items-start justify-center">
+                                    <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-center">
+                                        <div className="mt-2">
+                                            <p className="text-2xl font-normal text-dark-color mb-4">
+                                                Reject Fund Transfer
+                                            </p>
+                                            {fundTransfer && (
+                                                <div className="mt-4 text-sm text-gray-600 mb-4">
+                                                    <p><strong>Amount:</strong> {fundTransfer.amountStr}</p>
+                                                    <p><strong>From:</strong> {fundTransfer.giverBranch?.name}</p>
+                                                    <p><strong>To:</strong> {fundTransfer.receiverBranch?.name}</p>
+                                                </div>
+                                            )}
+                                            <div className="mt-4">
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Reason for Rejection *
+                                                </label>
+                                                <textarea
+                                                    value={rejectReason}
+                                                    onChange={(e) => setRejectReason(e.target.value)}
+                                                    placeholder="Please provide a reason for rejecting this transfer..."
+                                                    rows={4}
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                    required
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex flex-row justify-center text-center px-4 py-3 sm:px-6 sm:flex">
+                                <ButtonOutline 
+                                    label="Cancel" 
+                                    type="button" 
+                                    className="p-2 mr-3" 
+                                    onClick={() => {
+                                        setShowRejectDialog(false);
+                                        setRejectReason('');
+                                    }} 
+                                />
+                                <ButtonSolid 
+                                    label="Reject Transfer" 
+                                    type="button" 
+                                    className="p-2" 
+                                    onClick={handleRejectConfirm}
+                                    disabled={!rejectReason.trim()}
                                 />
                             </div>
                         </Dialog>

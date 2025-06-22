@@ -16,14 +16,23 @@ const FUND_TRANSFER_TYPE = createGraphType('fund_transfer', `
 
 async function saveFundTransfer(req, res) {
     try {
-        const user = await findUserById(req.auth.sub);
+        // Handle user authentication - use currentUserId if req.auth.sub is null
+        const userId = req.auth?.sub || req.body.currentUserId;
+        if (!userId) {
+            return res.status(401).send({
+                success: false,
+                message: 'Authentication required. Please provide valid credentials or currentUserId.'
+            });
+        }
+
+        const user = await findUserById(userId);
         const fundTransfer = req.body;
 
-        // Access control validation
-        if (user.role.rep > 3) {
+        // Access control validation - UPDATED: Only area_admin can create fund transfers
+        if (user.role.shortCode !== 'area_admin') {
             return res.status(403).send({
                 success: false,
-                message: "Access denied. Insufficient permissions to create fund transfers."
+                message: "Access denied. Only area administrators can create fund transfers."
             });
         }
 
@@ -68,18 +77,6 @@ async function saveFundTransfer(req, res) {
             });
         }
 
-        // Role-based branch access validation
-        if (user.role.rep === 3 && user.designatedBranchId) {
-            // Branch users can only create transfers involving their designated branch
-            if (fundTransfer.giverBranchId !== user.designatedBranchId && 
-                fundTransfer.receiverBranchId !== user.designatedBranchId) {
-                return res.status(403).send({
-                    success: false,
-                    message: "You can only create transfers involving your designated branch."
-                });
-            }
-        }
-
         // Account type validation
         const validAccounts = ['cash', 'bank', 'petty_cash', 'operating_fund', 'emergency_fund', 'insurance_fund'];
         if (!validAccounts.includes(fundTransfer.account)) {
@@ -98,9 +95,13 @@ async function saveFundTransfer(req, res) {
                     description: fundTransfer.description.trim(),
                     giverBranchId: fundTransfer.giverBranchId,
                     receiverBranchId: fundTransfer.receiverBranchId,
-                    giverApprovalId: fundTransfer.giverApprovalId || null,
-                    receiverApprovalId: fundTransfer.receiverApprovalId || null,
+                    giverApprovalId: null,
+                    receiverApprovalId: null,
                     status: 'pending',
+                    giverApprovalStatus: 'pending',
+                    receiverApprovalStatus: 'pending',
+                    giverRejectReason: null,
+                    receiverRejectReason: null,
                     insertedById: user._id,
                     insertedDate: 'now()',
                     deleted: false

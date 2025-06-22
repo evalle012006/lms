@@ -136,8 +136,12 @@ const AddUpdateFundTransfer = ({ mode = 'add', fundTransfer = {}, showSidebar, s
             insertedById: currentUser._id,
             insertedDate: currentDate,
             status: 'pending',
-            giverApproval: null,
-            receiverApproval: null,
+            giverApprovalStatus: 'pending',
+            receiverApprovalStatus: 'pending',
+            giverApprovalId: null,
+            receiverApprovalId: null,
+            giverRejectReason: null,
+            receiverRejectReason: null,
             approvedRejectedDate: null
         };
 
@@ -166,7 +170,7 @@ const AddUpdateFundTransfer = ({ mode = 'add', fundTransfer = {}, showSidebar, s
             payload.modifiedById = currentUser._id;
             payload.modifiedDate = currentDate;
             
-            fetchWrapper.put(getApiBaseUrl() + 'transactions/fund-transfer', payload)
+            fetchWrapper.put(getApiBaseUrl() + 'transactions/fund-transfer/update', payload)
                 .then(response => {
                     setLoading(false);
                     if (response.error) {
@@ -441,6 +445,17 @@ const AddUpdateFundTransfer = ({ mode = 'add', fundTransfer = {}, showSidebar, s
                                                             </label>
                                                         </div>
                                                         <span className="text-gray-700">{currentDate}</span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="mt-2">
+                                                    <div className={`flex flex-col border rounded-md px-4 py-2 bg-gray-50 border-gray-300`}>
+                                                        <div className="flex justify-between">
+                                                            <label className={`font-proxima-bold text-xs font-bold text-gray-600`}>
+                                                                Initial Status
+                                                            </label>
+                                                        </div>
+                                                        <span className="text-yellow-600 font-medium">Pending Approval</span>
                                                     </div>
                                                 </div>
                                             </div>

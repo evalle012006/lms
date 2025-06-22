@@ -438,9 +438,9 @@ export const TRANSFER_CLIENT_FIELDS = `
   description
   status
   giverApproval
-  giverApprovalDate
+  giverApproveRejectDate
   receiverApproval
-  receiverApprovalDate
+  receiverApproveRejectDate
   approvedRejectedDate
   insertedDate
   insertedById
@@ -450,6 +450,10 @@ export const TRANSFER_CLIENT_FIELDS = `
   modifiedDate
   deleted
   deletedDate
+  giverApprovalStatus
+  receiverApprovalStatus
+  giverRejectReason
+  receiverRejectReason
 
   giverBranch { _id code name }
   receiverBranch { _id code name }
