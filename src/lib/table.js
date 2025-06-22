@@ -15,13 +15,39 @@ import ActionDropDown from './ui/action-dropdown';
 import Avatar from './avatar';
 import { useEffect } from 'react';
 
-// Helper function to check if a transfer is recent
-const isRecentTransfer = (insertedDate, modifiedDate = null) => {
+// Helper functions to check transfer status
+const isRecentlyCreated = (insertedDate) => {
   const now = new Date();
   const createdDate = new Date(insertedDate);
-  const lastModifiedDate = modifiedDate ? new Date(modifiedDate) : createdDate;
-  const hoursDiff = (now - lastModifiedDate) / (1000 * 60 * 60);
-  return hoursDiff <= 24; // Consider recent if within last 24 hours
+  const hoursDiff = (now - createdDate) / (1000 * 60 * 60);
+  return hoursDiff <= 24; // Consider new if created within last 24 hours
+};
+
+const isRecentlyModified = (insertedDate, modifiedDate) => {
+  if (!modifiedDate) return false;
+  
+  const now = new Date();
+  const createdDate = new Date(insertedDate);
+  const lastModifiedDate = new Date(modifiedDate);
+  
+  // Check if modifiedDate is actually newer than insertedDate (was actually modified)
+  const wasActuallyModified = lastModifiedDate > createdDate;
+  
+  if (!wasActuallyModified) return false;
+  
+  // Check if modification was within last 24 hours
+  const hoursSinceModified = (now - lastModifiedDate) / (1000 * 60 * 60);
+  return hoursSinceModified <= 24;
+};
+
+const getTransferIndicatorType = (insertedDate, modifiedDate) => {
+  // Priority: Modified indicator overrides new indicator
+  if (isRecentlyModified(insertedDate, modifiedDate)) {
+    return 'modified';
+  } else if (isRecentlyCreated(insertedDate)) {
+    return 'new';
+  }
+  return null;
 };
 
 // This is a custom filter UI for selecting
@@ -717,13 +743,13 @@ const handleSelectRow = useCallback((row, index) => {
 
                   const checkBoxDisable = disable || error;
                   
-                  // Check if this is a recent fund transfer
+                  // Check transfer indicator type for fund transfers
                   const isFundTransfer = dropDownActionOrigin === 'fund-transfer';
-                  const isRecent = isFundTransfer && 
-                                  status === 'pending' && 
-                                  isRecentTransfer(insertedDate, modifiedDate);
+                  const indicatorType = isFundTransfer && status === 'pending' 
+                    ? getTransferIndicatorType(insertedDate, modifiedDate) 
+                    : null;
 
-                  // Enhanced row class logic with recent indicator
+                  // Enhanced row class logic with transfer indicators
                   let rowClass = 'bg-white border-b hover:bg-gray-50';
                   
                   if (delinquent === 'Yes' || error) {
@@ -732,8 +758,11 @@ const handleSelectRow = useCallback((row, index) => {
                     rowClass = 'bg-blue-100 border-b hover:bg-blue-200';
                   } else if (ldfApproved) {
                     rowClass = 'bg-green-100 border-b hover:bg-green-200';
-                  } else if (isRecent) {
-                    // Recent fund transfer styling
+                  } else if (indicatorType === 'modified') {
+                    // Recently modified fund transfer styling
+                    rowClass = 'bg-orange-50 border-b border-l-4 border-l-orange-500 hover:bg-orange-100';
+                  } else if (indicatorType === 'new') {
+                    // Recently created fund transfer styling
                     rowClass = 'bg-green-50 border-b border-l-4 border-l-green-500 hover:bg-green-100';
                   }
 
@@ -765,14 +794,26 @@ const handleSelectRow = useCallback((row, index) => {
                         >
                           <div className="flex items-center space-x-2">
                             {cell.render('Cell')}
-                            {/* Add "New" badge for recent transfers in the first column (usually transaction code) */}
-                            {isRecent && index === 0 && (
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
-                                <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                </svg>
-                                New
-                              </span>
+                            {/* Add badges for recent transfers in the first column (usually transaction code) */}
+                            {indicatorType && index === 0 && (
+                              <>
+                                {indicatorType === 'new' && (
+                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                                    <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                    </svg>
+                                    New
+                                  </span>
+                                )}
+                                {indicatorType === 'modified' && (
+                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 border border-orange-200">
+                                    <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                                    </svg>
+                                    Updated
+                                  </span>
+                                )}
+                              </>
                             )}
                           </div>
                         </td>
