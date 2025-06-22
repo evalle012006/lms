@@ -17,7 +17,7 @@ export default apiHandler({
 });
 
 async function save(req, res) {
-    const { name = null, code = null, phoneNumber = null, email = null, address = null } = req.body;
+    const { name = null, code = null, phoneNumber = null, email = null, address = null, areaId = null, divisionId = null,  regionId = null } = req.body;
     let response = {};
     let statusCode = 200;
 
@@ -45,6 +45,9 @@ async function save(req, res) {
                     email: email,
                     phoneNumber: phoneNumber,
                     address: address,
+                    areaId: areaId, 
+                    divisionId: divisionId,
+                    regionId: regionId,
                     dateAdded: moment(getCurrentDate()).format('YYYY-MM-DD')
                 }]
             })
