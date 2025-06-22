@@ -20,10 +20,12 @@ import {
   findLoans,
 } from "@/lib/graph.functions";
 import { generateUUID } from "@/lib/utils";
+import moment from "moment";
+import { getCurrentDate } from "@/lib/date-utils";
 
 const loanType = createGraphType("loans", LOAN_FIELDS);
 const groupType = createGraphType("groups", GROUP_FIELDS);
-const clientType = createGraphType("clients", CLIENT_FIELDS);
+const clientType = createGraphType("client", CLIENT_FIELDS);
 const cashCollectionType = createGraphType("cashCollections", CASH_COLLECTIONS_FIELDS);
 const graph = new GraphProvider();
 
@@ -123,7 +125,7 @@ async function processData(req, res) {
             groupData = groupData[0];
 
             if (loan.status === "active") {
-              await updateClient(loanId, addToMutationList);
+              await updateClient(loan, addToMutationList);
               if (loan.coMaker) {
                 if (typeof loan.coMaker === "string") {
                   loan.coMakerId = loan.coMaker;
@@ -226,8 +228,7 @@ async function updateGroup(group, addToMutationList) {
   return { success: true, groupResp };
 }
 
-async function updateClient(loanId, addToMutationList) {
-  let [loan] = await findLoans({ _id: { _eq: loanId } });
+async function updateClient(loan, addToMutationList) {
   let [client] = await findClients({ _id: { _eq: loan?.clientId ?? null } });
 
   if (!!client) {
@@ -245,6 +246,7 @@ async function updateClient(loanId, addToMutationList) {
       
     }
 
+    const clientId = client._id;
     client.status = "active";
     delete client._id;
 

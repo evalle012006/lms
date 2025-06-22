@@ -1,4 +1,5 @@
 import { CASH_COLLECTIONS_FIELDS, CLIENT_FIELDS, GROUP_FIELDS, LOAN_FIELDS } from '@/lib/graph.fields';
+import { findClients, findGroups, findLoans } from '@/lib/graph.functions';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, deleteQl, queryQl, updateQl } from '@/lib/graph/graph.util';
 import logger from '@/logger';
@@ -31,6 +32,7 @@ async function revert(req, res) {
   
     try {
       // Process each cash collection sequentially to avoid race conditions
+      const groupCache = {};
       for (const cc of cashCollections) {
         let cashCollection = {...cc};
         let loanId = cashCollection.loanId;
@@ -56,9 +58,27 @@ async function revert(req, res) {
             }]
           })
         );
-  
+
         const loan_history = loanHistoryResult.data?.loan_history?.[0];
-  
+        const currentLoan = findLoans({ _id: { _eq: loan_history._id } });
+
+        const [client] = await findClients({ _id: { _eq: loan_history.data.clientId } });
+        const [group] = await findGroups({ _id: { _eq: loan_history.data['groupId'] } });
+
+        if (!groupCache[group._id]) {
+          groupCache[group._id] = {
+            groupId: group._id,
+            slots: []
+          }
+        }
+
+        // new loan should be ignore in rollback
+        const ignoreRollback = (currentLoan.status == 'pending' && currentLoan.loanCycle == 1);
+        if (ignoreRollback) {
+          continue;
+        }
+
+         // Update loan with history data
         if (loan_history) {
           // Delete cash collection
           mutationQL.push(
@@ -128,6 +148,35 @@ async function revert(req, res) {
               )
             );
           }
+
+          // update client if cashCollection is closed
+          if (cashCollection.status == 'closed') {
+            groupCache[group._id].slots.push(cashCollection.slotNo);
+            mutationQL.push(
+              updateQl(
+                createGraphType('client', `_id`)(`client_${mutationQL.length}`),
+                {
+                  set: {
+                    groupId: client.oldGroupId,
+                    loId: client.oldLoId,
+                    oldGroupId: null,
+                    oldLoId: null
+                  },
+                  where: {
+                    _id: { _eq: client._id }
+                  }
+                }
+              )
+            )
+          }
+        }
+      }
+
+      // there should only be one group here
+      const groups = Object.values(groupCache);
+      for(const group of groups) {
+        if(group.slots.length) {
+          await updateGroup(mutationQL, group.groupId, group.slots);
         }
       }
   
@@ -140,6 +189,7 @@ async function revert(req, res) {
       }
   
     } catch (error) {
+      console.error(error);
       logger.error({
         user_id,
         page: 'Rollback Transaction Error',
@@ -158,4 +208,31 @@ async function revert(req, res) {
         .setHeader('Content-Type', 'application/json')
         .end(JSON.stringify(response));
     }
+  }
+
+
+  async function updateGroup(mutationQl, groupId, slots) {
+      const [group] = await findGroups({ _id: { _eq: groupId, } });
+      group.availableSlots = group.availableSlots.filter(s => !slots.includes(s));
+      group.noOfClients = group.noOfClients + slots.length;
+      if (group.capacity == group.noOfClients) {
+          group.status = 'full';
+      } else {
+          group.status = 'available';
+      }
+
+      delete group._id;
+      
+      mutationQl.push(
+          updateQl(
+            createGraphType('groups', `_id`)(`groupst_${mutationQl.length}`),
+            {
+              set: {
+                  ... group
+              },
+              where: {
+                  _id: { _eq: groupId }
+              }
+            })
+      );
   }

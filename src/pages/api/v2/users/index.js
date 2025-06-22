@@ -45,6 +45,13 @@ async function updateUser(req, res) {
     let statusCode = 200;
     let response = { upload: true, success: false };
 
+    if(true) {
+        res.status(500)
+            .setHeader('Content-Type', 'application/json')
+            .end(JSON.stringify({ message: 'User update disabled temporarily' }));
+        return;
+    }
+
     const form = new formidable.IncomingForm({ keepExtensions: true });
     const promise = await new Promise((resolve, reject) => {
         form.parse(req, async function (err, payload, files) {
