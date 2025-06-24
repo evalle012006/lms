@@ -14,51 +14,58 @@ const FUND_TRANSFER_TYPE = createGraphType('fund_transfer', `
     ${FUND_TRANSFER_FIELDS}
 `)('results');
 
-
+// Function to generate transaction code with global counter per month
 async function generateTransactionCode(giverBranchCode) {
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
     const yearMonth = `${year}${month}`;
-    const prefix = `FT${yearMonth}-${giverBranchCode}`;
+    const prefix = `FT${yearMonth}`;
     
     try {
-        // Query existing fund transfers for current month and branch to get the highest counter
+        // Query ALL existing fund transfers for current month (regardless of branch) to get the highest counter globally
         const existingTransfers = await graph.query(
             queryQl(createGraphType('fund_transfer', `
                 _id
                 transactionCode
-                giverBranch { code }
             `)('results'), {
                 where: {
                     transactionCode: { _like: `${prefix}-%` },
                     deletedDate: { _is_null: true }
                 },
-                order_by: [{ transactionCode: "desc" }],
-                limit: 1
+                order_by: [{ transactionCode: "desc" }]
             })
         ).then(res => res.data.results ?? []);
 
-        let counter = 1;
+        let maxCounter = 0;
         
         if (existingTransfers.length > 0) {
-            const lastTransactionCode = existingTransfers[0].transactionCode;
-            // Extract counter from the last transaction code (format: FTYYYYMM-BCODE-###)
-            const lastCounterMatch = lastTransactionCode.match(/-(\d+)$/);
-            if (lastCounterMatch) {
-                counter = parseInt(lastCounterMatch[1]) + 1;
+            // Extract all counters from transaction codes and find the maximum
+            for (const transfer of existingTransfers) {
+                const transactionCode = transfer.transactionCode;
+                // Extract counter from transaction code (format: FTYYYYMM-BCODE-####)
+                const counterMatch = transactionCode.match(/-(\d+)$/);
+                if (counterMatch) {
+                    const counter = parseInt(counterMatch[1]);
+                    if (counter > maxCounter) {
+                        maxCounter = counter;
+                    }
+                }
             }
         }
         
-        // Format counter with leading zeros (3 digits)
-        const formattedCounter = String(counter).padStart(3, '0');
+        // Increment counter
+        const newCounter = maxCounter + 1;
         
-        return `${prefix}-${formattedCounter}`;
+        // Format counter with leading zeros (4 digits to handle 1000+ transactions)
+        const formattedCounter = String(newCounter).padStart(4, '0');
+        
+        return `${prefix}-${giverBranchCode}-${formattedCounter}`;
     } catch (error) {
         console.error('Error generating transaction code:', error);
         // Fallback: use timestamp-based counter if query fails
-        const timestamp = Date.now().toString().slice(-3);
-        return `${prefix}-${timestamp}`;
+        const timestamp = Date.now().toString().slice(-4);
+        return `${prefix}-${giverBranchCode}-${formattedCounter}`;
     }
 }
 
@@ -124,15 +131,6 @@ async function updateFundTransfer(req, res) {
             });
         }
 
-        // Account type validation
-        const validAccounts = ['cash', 'bank', 'petty_cash', 'operating_fund', 'emergency_fund', 'insurance_fund'];
-        if (!validAccounts.includes(fundTransfer.account)) {
-            return res.status(400).send({
-                success: false,
-                message: "Invalid account type. Must be one of: " + validAccounts.join(', ')
-            });
-        }
-
         // Check if the fund transfer exists and is editable
         const [existingTransfer] = await graph.query(
             queryQl(FUND_TRANSFER_TYPE, {
@@ -190,7 +188,7 @@ async function updateFundTransfer(req, res) {
                 });
             }
 
-            // Generate new transaction code with the new branch code
+            // Generate new transaction code with the new branch code and global counter
             newTransactionCode = await generateTransactionCode(newGiverBranch.code);
         }
 

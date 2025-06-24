@@ -1,7 +1,7 @@
 import React from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchWrapper } from "@/lib/fetch-wrapper";
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { toast } from "react-toastify";
 import { setBranch, setBranchList } from "@/redux/actions/branchActions";
 import TableComponent, { StatusPill } from "@/lib/table";
@@ -54,12 +54,66 @@ const FundTransferPage = () => {
         'fund-transfer-history'
     ]);
 
+    // Calculate totals for transactions
+    const transactionTotals = useMemo(() => {
+        if (!filteredTransactionData || filteredTransactionData.length === 0) {
+            return {
+                count: 0,
+                totalAmount: 0,
+                totalAmountStr: new Intl.NumberFormat('en-US', { 
+                    style: 'currency', 
+                    currency: 'PHP' 
+                }).format(0)
+            };
+        }
+
+        const totalAmount = filteredTransactionData.reduce((sum, transfer) => {
+            return sum + (transfer.amount || 0);
+        }, 0);
+
+        return {
+            count: filteredTransactionData.length,
+            totalAmount: totalAmount,
+            totalAmountStr: new Intl.NumberFormat('en-US', { 
+                style: 'currency', 
+                currency: 'PHP' 
+            }).format(totalAmount)
+        };
+    }, [filteredTransactionData]);
+
+    // Calculate totals for history
+    const historyTotals = useMemo(() => {
+        if (!filteredHistoryData || filteredHistoryData.length === 0) {
+            return {
+                count: 0,
+                totalAmount: 0,
+                totalAmountStr: new Intl.NumberFormat('en-US', { 
+                    style: 'currency', 
+                    currency: 'PHP' 
+                }).format(0)
+            };
+        }
+
+        const totalAmount = filteredHistoryData.reduce((sum, transfer) => {
+            return sum + (transfer.amount || 0);
+        }, 0);
+
+        return {
+            count: filteredHistoryData.length,
+            totalAmount: totalAmount,
+            totalAmountStr: new Intl.NumberFormat('en-US', { 
+                style: 'currency', 
+                currency: 'PHP' 
+            }).format(totalAmount)
+        };
+    }, [filteredHistoryData]);
+
     const handleShowAddDrawer = () => {
         setShowAddDrawer(true);
     }
 
-    // Columns for Transactions tab
-    const transactionColumns = [
+    // Enhanced columns for Transactions tab with totals configuration
+    const transactionColumns = useMemo(() => [
         {
             Header: "Transaction Code",
             accessor: 'transactionCode',
@@ -68,57 +122,69 @@ const FundTransferPage = () => {
                     {value}
                 </span>
             ),
-            width: 160
+            width: 160,
+            totalType: 'none' // First column will show "TOTAL"
         },
         {
             Header: "Transfer Date",
             accessor: 'insertedDate',
-            Cell: ({ value }) => value ? moment(value).format('MMM DD, YYYY') : ''
+            Cell: ({ value }) => value ? moment(value).format('MMM DD, YYYY') : '',
+            totalType: 'none'
         },
         {
             Header: "From Branch",
-            accessor: 'giverBranch.name'
+            accessor: 'giverBranch.name',
+            totalType: 'none'
         },
         {
             Header: "To Branch",
-            accessor: 'receiverBranch.name'
+            accessor: 'receiverBranch.name',
+            totalType: 'none'
         },
         {
             Header: "Amount",
-            accessor: 'amountStr'
+            accessor: 'amountStr',
+            totalType: 'sum',
+            totalValue: transactionTotals.totalAmountStr
         },
         {
             Header: "Account",
-            accessor: 'account'
+            accessor: 'account',
+            totalType: 'none'
         },
         {
             Header: "Description",
-            accessor: 'description'
+            accessor: 'description',
+            totalType: 'none'
         },
         {
             Header: "Status",
             accessor: 'status',
-            Cell: StatusPill
+            Cell: StatusPill,
+            totalType: 'none'
         },
         {
             Header: "Requested By",
             accessor: 'insertedBy',
-            Cell: ({ value }) => value ? `${value.firstName} ${value.lastName}` : ''
+            Cell: ({ value }) => value ? `${value.firstName} ${value.lastName}` : '',
+            totalType: 'none'
         },
         {
             Header: "Giver Approval",
             accessor: 'giverApprovalStatus',
-            Cell: StatusPill
+            Cell: StatusPill,
+            totalType: 'none'
         },
         {
             Header: "Receiver Approval",
             accessor: 'receiverApprovalStatus',
-            Cell: StatusPill
+            Cell: StatusPill,
+            totalType: 'none'
         }
-    ];
+    ], [transactionTotals]);
 
-    // Columns for History tab
-    const historyColumns = [
+    // Enhanced columns for History tab with totals configuration
+    const historyColumns = useMemo(() => [
         {
             Header: "Transaction Code",
             accessor: 'transactionCode',
@@ -127,67 +193,82 @@ const FundTransferPage = () => {
                     {value}
                 </span>
             ),
-            width: 160
+            width: 160,
+            totalType: 'none' // First column will show "TOTAL"
         },
         {
             Header: "Transfer Date",
             accessor: 'insertedDate',
-            Cell: ({ value }) => value ? moment(value).format('MMM DD, YYYY') : ''
+            Cell: ({ value }) => value ? moment(value).format('MMM DD, YYYY') : '',
+            totalType: 'none'
         },
         {
             Header: "From Branch",
-            accessor: 'giverBranch.name'
+            accessor: 'giverBranch.name',
+            totalType: 'none'
         },
         {
             Header: "To Branch",
-            accessor: 'receiverBranch.name'
+            accessor: 'receiverBranch.name',
+            totalType: 'none'
         },
         {
             Header: "Amount",
-            accessor: 'amountStr'
+            accessor: 'amountStr',
+            totalType: 'sum',
+            totalValue: historyTotals.totalAmountStr
         },
         {
             Header: "Account",
-            accessor: 'account'
+            accessor: 'account',
+            totalType: 'none'
         },
         {
             Header: "Description",
-            accessor: 'description'
+            accessor: 'description',
+            totalType: 'none'
         },
         {
             Header: "Status",
             accessor: 'status',
-            Cell: StatusPill
+            Cell: StatusPill,
+            totalType: 'none'
         },
         {
             Header: "Requested By",
             accessor: 'insertedBy',
-            Cell: ({ value }) => value ? `${value.firstName} ${value.lastName}` : ''
+            Cell: ({ value }) => value ? `${value.firstName} ${value.lastName}` : '',
+            totalType: 'none'
         },
         {
             Header: "Final Action Date",
             accessor: 'approvedRejectedDate',
-            Cell: ({ value }) => value ? moment(value).format('MMM DD, YYYY HH:mm') : ''
+            Cell: ({ value }) => value ? moment(value).format('MMM DD, YYYY HH:mm') : '',
+            totalType: 'none'
         },
         {
             Header: "Giver Approval Date",
             accessor: 'giverApproveRejectDate',
-            Cell: ({ value }) => value ? moment(value).format('MMM DD, YYYY HH:mm') : 'Pending'
+            Cell: ({ value }) => value ? moment(value).format('MMM DD, YYYY HH:mm') : 'Pending',
+            totalType: 'none'
         },
         {
             Header: "Receiver Approval Date",
             accessor: 'receiverApproveRejectDate',
-            Cell: ({ value }) => value ? moment(value).format('MMM DD, YYYY HH:mm') : 'Pending'
+            Cell: ({ value }) => value ? moment(value).format('MMM DD, YYYY HH:mm') : 'Pending',
+            totalType: 'none'
         },
         {
             Header: "Giver Status",
             accessor: 'giverApprovalStatus',
-            Cell: StatusPill
+            Cell: StatusPill,
+            totalType: 'none'
         },
         {
             Header: "Receiver Status",
             accessor: 'receiverApprovalStatus',
-            Cell: StatusPill
+            Cell: StatusPill,
+            totalType: 'none'
         },
         {
             Header: "Reject Reason",
@@ -196,10 +277,12 @@ const FundTransferPage = () => {
                 const { giverRejectReason, receiverRejectReason } = row.original;
                 const reasons = [giverRejectReason, receiverRejectReason].filter(Boolean);
                 return reasons.length > 0 ? reasons.join('; ') : '';
-            }
+            },
+            totalType: 'none'
         }
-    ];
+    ], [historyTotals]);
 
+    // Rest of the handlers remain the same...
     const handleEditAction = (row) => {
         if (row.original.status === 'pending') {
             setMode("edit");
@@ -588,6 +671,7 @@ const FundTransferPage = () => {
                                     dropDownActionOrigin="fund-transfer"
                                     isWeekend={isWeekend}
                                     isHoliday={isHoliday}
+                                    showTotals={true}
                                 />
                             </TabPanel>
                             
@@ -600,6 +684,7 @@ const FundTransferPage = () => {
                                     showFilters={false} // Disable table filters since we have custom filters
                                     currentUser={currentUser}
                                     dropDownActionOrigin="fund-transfer-history"
+                                    showTotals={true}
                                 />
                             </TabPanel>
                         </React.Fragment>
@@ -612,6 +697,7 @@ const FundTransferPage = () => {
                             onClose={handleCloseAddDrawer} 
                         />
                         
+                        {/* Dialog components remain the same... */}
                         <Dialog show={showDeleteDialog}>
                             <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                                 <div className="sm:flex sm:items-start justify-center">

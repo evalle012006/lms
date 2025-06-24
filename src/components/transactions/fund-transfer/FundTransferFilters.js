@@ -12,9 +12,17 @@ const FundTransferFilters = ({
 }) => {
     const branchList = useSelector(state => state.branch.list);
     
+    // Set default dates - current month (from 1st to today)
+    const getDefaultDates = () => {
+        const now = moment();
+        return {
+            dateFrom: now.clone().startOf('month').format('YYYY-MM-DD'),
+            dateTo: now.format('YYYY-MM-DD')
+        };
+    };
+
     const [filters, setFilters] = useState({
-        dateFrom: '',
-        dateTo: '',
+        ...getDefaultDates(), // Set default dates
         giverBranchId: '',
         receiverBranchId: '',
         account: '',
@@ -135,8 +143,7 @@ const FundTransferFilters = ({
 
     const clearFilters = () => {
         setFilters({
-            dateFrom: '',
-            dateTo: '',
+            ...getDefaultDates(), // Reset to default dates instead of empty
             giverBranchId: '',
             receiverBranchId: '',
             account: '',
@@ -144,10 +151,85 @@ const FundTransferFilters = ({
         });
     };
 
-    const hasActiveFilters = Object.values(filters).some(value => value !== '');
+    // Helper functions for quick date ranges
+    const setCurrentMonth = () => {
+        const dates = getDefaultDates();
+        setFilters(prev => ({
+            ...prev,
+            dateFrom: dates.dateFrom,
+            dateTo: dates.dateTo
+        }));
+    };
+
+    const setLast30Days = () => {
+        const now = moment();
+        setFilters(prev => ({
+            ...prev,
+            dateFrom: now.clone().subtract(30, 'days').format('YYYY-MM-DD'),
+            dateTo: now.format('YYYY-MM-DD')
+        }));
+    };
+
+    const setLast7Days = () => {
+        const now = moment();
+        setFilters(prev => ({
+            ...prev,
+            dateFrom: now.clone().subtract(7, 'days').format('YYYY-MM-DD'),
+            dateTo: now.format('YYYY-MM-DD')
+        }));
+    };
+
+    const setToday = () => {
+        const today = moment().format('YYYY-MM-DD');
+        setFilters(prev => ({
+            ...prev,
+            dateFrom: today,
+            dateTo: today
+        }));
+    };
+
+    // Check if current filters are not the default
+    const hasActiveFilters = () => {
+        const defaults = getDefaultDates();
+        return filters.dateFrom !== defaults.dateFrom || 
+               filters.dateTo !== defaults.dateTo ||
+               filters.giverBranchId !== '' ||
+               filters.receiverBranchId !== '' ||
+               filters.account !== '' ||
+               filters.status !== '';
+    };
 
     return (
         <div className="bg-white border-b border-gray-200 p-4 mb-4">
+            {/* Quick Date Range Buttons */}
+            <div className="flex flex-wrap items-center gap-2 mb-4 pb-3 border-b border-gray-100">
+                <span className="text-sm font-medium text-gray-600 mr-2">Quick Dates:</span>
+                <button
+                    onClick={setToday}
+                    className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
+                >
+                    Today
+                </button>
+                <button
+                    onClick={setLast7Days}
+                    className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors"
+                >
+                    Last 7 Days
+                </button>
+                <button
+                    onClick={setLast30Days}
+                    className="px-3 py-1 text-xs bg-purple-100 text-purple-700 rounded-md hover:bg-purple-200 transition-colors"
+                >
+                    Last 30 Days
+                </button>
+                <button
+                    onClick={setCurrentMonth}
+                    className="px-3 py-1 text-xs bg-orange-100 text-orange-700 rounded-md hover:bg-orange-200 transition-colors"
+                >
+                    Current Month
+                </button>
+            </div>
+
             <div className="flex flex-wrap items-center gap-4">
                 {/* Date Range Filters */}
                 <div className="flex items-center gap-2">
@@ -235,18 +317,18 @@ const FundTransferFilters = ({
                 </div>
 
                 {/* Clear Filters Button */}
-                {hasActiveFilters && (
+                {hasActiveFilters() && (
                     <button
                         onClick={clearFilters}
                         className="px-3 py-1 text-sm text-red-600 hover:text-red-800 border border-red-300 hover:border-red-400 rounded-md transition-colors"
                     >
-                        Clear Filters
+                        Reset to Current Month
                     </button>
                 )}
             </div>
 
             {/* Active Filters Summary */}
-            {hasActiveFilters && (
+            {hasActiveFilters() && (
                 <div className="mt-3 pt-3 border-t border-gray-100">
                     <div className="flex flex-wrap gap-2">
                         <span className="text-xs font-medium text-gray-600">Active filters:</span>

@@ -540,6 +540,7 @@ const TableComponent = React.memo(({
   currentUser = null,
   isWeekend = false,
   isHoliday = false,
+  showTotals = false, // New prop for showing totals
 }) => {
   // Add state for current page
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
@@ -597,6 +598,46 @@ const TableComponent = React.memo(({
         </tr>
       </>
     )
+  };
+
+  // Generate totals row
+  const generateTotalsRow = () => {
+    if (!showTotals || data.length === 0) return null;
+
+    return (
+      <tr className="bg-gray-100 border-t-2 border-gray-300 font-semibold text-red-600">
+        {multiSelect && (
+          <td className="px-4 py-3 w-10"></td>
+        )}
+        {columns.map((column, index) => {
+          const { totalType, totalValue } = column;
+          
+          let content = '';
+          if (totalType === 'sum' && totalValue) {
+            content = totalValue;
+          } else if (totalType === 'none' || !totalType) {
+            content = '';
+          }
+
+          // For the first column, always show "TOTAL"
+          if (index === 0) {
+            content = 'TOTAL';
+          }
+
+          return (
+            <td 
+              key={`total-${index}`}
+              className={`px-4 py-3 ${column.width || 'w-auto'} ${index === 0 ? 'text-left' : 'text-right'}`}
+            >
+              {content}
+            </td>
+          );
+        })}
+        {(hasActionButtons || dropDownActions.length > 0) && (
+          <td className="px-4 py-3 w-24"></td>
+        )}
+      </tr>
+    );
   };
 
   // And update the TableComponent's select all handler:
@@ -849,6 +890,8 @@ const handleSelectRow = useCallback((row, index) => {
               ) : (
                 generateEmptyRows(columns.length)
               )}
+              {/* Add totals row at the end of tbody */}
+              {generateTotalsRow()}
             </tbody>
           </table>
         </div>
