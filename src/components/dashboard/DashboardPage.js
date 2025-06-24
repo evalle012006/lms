@@ -88,6 +88,7 @@ const DashboardPage = () => {
     const [isNavVisible, setIsNavVisible] = useState(true);
     const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 0);
     const [dateFilter, setDateFilter] = useState(currentDate);
+    
 
     // Donut chart data for Clients Collection Rate
     const [clientsCollectionData, setClientsCollectionData] = useState({
@@ -319,6 +320,11 @@ const DashboardPage = () => {
         }
     }, [summaryData]);
 
+
+    useEffect(() => {
+        setDateFilter(currentDate);
+    }, [currentDate]);
+
     const formatNumber = (num) => {
         if (num === undefined || num === null) {
             return 'N/A';
@@ -338,7 +344,7 @@ const DashboardPage = () => {
     }, [loading])
 
     const fetchSummaries = async () => {
-        if (loading) {
+        if (loading || !currentDate) {
             return;
         }
 
@@ -346,16 +352,16 @@ const DashboardPage = () => {
             setLoading(true);
             let selectedDate = null;
             switch(timeFilter) {
-                case 'weekly': selectedDate = { value: moment(selectedFilter?.value ?? new Date()).format('YYYY-MM-DD'), field: 'date_added' }; break;
+                case 'weekly': selectedDate = { value: moment(selectedFilter?.value ?? currentDate).format('YYYY-MM-DD'), field: 'date_added' }; break;
                 case 'monthly': selectedDate = { value: moment(selectedYear + '-' + (selectedFilter?.value ?? '01')  + '-01').endOf('month').format('YYYY-MM-DD'), field: 'date_added' }; break;
                 case 'quarterly': selectedDate = { value: moment(selectedYear + '-01-01').quarter(selectedFilter?.value ?? 1).format('YYYY-MM-DD'), field: 'date_added' }; break;
                 case 'yearly': selectedDate = { value: moment(selectedYear + '-12-01').endOf('month').format('YYYY-MM-DD'), field: 'date_added' }; break;
-                default: selectedDate = { value: moment(dateFilter).format('YYYY-MM-DD'), field: 'date_added' }; break;
+                default: selectedDate = { value: moment(dateFilter ?? currentDate).format('YYYY-MM-DD'), field: 'date_added' }; break;
             }
 
             const queries = [
                 selectedDate,
-                { value: moment(currentDate ?? selectedDate).format('YYYY-MM-DD'), field: 'currentDate' },
+                { value: moment(currentDate).format('YYYY-MM-DD'), field: 'currentDate' },
                 { value: timeFilter, field: 'filter' },
                 { value: divisionFilter, field: 'divisionId'},
                 { value: regionFilter, field: 'regionId' }, 
@@ -544,7 +550,7 @@ const DashboardPage = () => {
                             />
 
                             {/* Date Filter for Daily */}
-                            {timeFilter === 'daily' && (
+                            {timeFilter === 'daily' && dateFilter && (
                                 <div className="w-40">
                                     <DatePicker 
                                         name="dateFilter" 
