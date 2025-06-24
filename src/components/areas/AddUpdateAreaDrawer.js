@@ -3,10 +3,8 @@ import { Formik } from 'formik';
 import * as yup from 'yup';
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { toast } from "react-toastify";
-import { useDispatch, useSelector } from "react-redux";
+import {  useSelector } from "react-redux";
 import SelectDropdown from "@/lib/ui/select";
-import { multiStyles, DropdownIndicator } from "@/styles/select";
-import Select from 'react-select';
 import InputText from "@/lib/ui/InputText";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
@@ -16,35 +14,34 @@ import { getApiBaseUrl } from "@/lib/constants";
 
 const AddUpdateArea = ({ mode = 'add', area = {}, managerList=[], showSidebar, setShowSidebar, onClose }) => {
     const formikRef = useRef();
-    const branchList = useSelector(state => state.branch.list);
+    const regionList = useSelector(state => state.region.list);
     const [loading, setLoading] = useState(false);
-    const [selectedBranches, setSelectedBranches] = useState([]);
-    const [selectedManagers, setSelectedManagers] = useState([]);
 
     const initialValues = {
         name: area.name,
-        managerIds: area.managerIds,
-        branchIds: area.branchIds
+        regionId: area.regionId,
     }
 
     const validationSchema = yup.object().shape({
         name: yup
             .string()
-            .required('Please enter name')
+            .required('Please enter name'),
+        regionId: yup
+            .string()
+            .required('Please choose region')
     });
 
-    const handleSelectManager = (selected) => {
-        setSelectedManagers(selected);
-    }
+    const handleRegionChange = (field, value) => {
+        const form = formikRef.current;
+        const region = regionList.find(r => r.value === value);
+        
+        form.setFieldValue(field, value);
+        form.setFieldValue('divisionId', region.divisionId);
 
-    const handleSelectBranch = (selectedBranch) => {
-        setSelectedBranches(selectedBranch);
-    }
+    };
 
     const handleSaveUpdate = (values, action) => {
         setLoading(true);
-        values.branchIds = selectedBranches.map(branch => branch._id);
-        values.managerIds = selectedManagers.map(manager => manager._id);
         if (mode === 'add') {
             const apiUrl = getApiBaseUrl() + 'areas/save/';
 
@@ -58,8 +55,6 @@ const AddUpdateArea = ({ mode = 'add', area = {}, managerList=[], showSidebar, s
                         toast.success('Area successfully added.');
                         action.setSubmitting = false;
                         action.resetForm({values: ''});
-                        setSelectedBranches([]);
-                        setSelectedManagers([]);
                         onClose();
                     }
                 }).catch(error => {
@@ -75,8 +70,6 @@ const AddUpdateArea = ({ mode = 'add', area = {}, managerList=[], showSidebar, s
                     toast.success('Area successfully updated.');
                     action.setSubmitting = false;
                     action.resetForm({values: ''});
-                    setSelectedBranches([]);
-                    setSelectedManagers([]);
                     onClose();
                 }).catch(error => {
                     console.log(error);
@@ -92,22 +85,13 @@ const AddUpdateArea = ({ mode = 'add', area = {}, managerList=[], showSidebar, s
 
     useEffect(() => {
         let mounted = true;
-        console.log(area, mode, branchList.length)
-        if (area && mode == 'edit' && branchList.length > 0) {
-            const branches = branchList.filter(branch => area?.branchIds.includes(branch._id));
-            console.log(branches)
-            setSelectedBranches(branches);
-            const managers = managerList.filter(manager => area?.managerIds.includes(manager._id));
-            console.log(managers)
-            setSelectedManagers(managers);
-        }
 
         mounted && setLoading(false);
 
         return () => {
             mounted = false;
         };
-    }, [area, mode, branchList]);
+    }, [area, mode, regionList]);
 
     return (
         <React.Fragment>
@@ -137,6 +121,20 @@ const AddUpdateArea = ({ mode = 'add', area = {}, managerList=[], showSidebar, s
                             }) => (
                                 <form onSubmit={handleSubmit} autoComplete="off">
                                     <div className="mt-4">
+                                        <SelectDropdown
+                                            name="regionId"
+                                            field="regionId"
+                                            value={values.regionId}
+                                            label="Region"
+                                            options={regionList}
+                                            onChange={(field, value) => handleRegionChange(field, value)}
+                                            onBlur={setFieldTouched}
+                                            disabled={mode !== 'add'}
+                                            placeholder="Select Region"
+                                            errors={touched.regionId && errors.regionId ? errors.regionId : undefined}
+                                        />
+                                    </div>
+                                    <div className="mt-4">
                                         <InputText
                                             name="name"
                                             value={values.name}
@@ -145,48 +143,6 @@ const AddUpdateArea = ({ mode = 'add', area = {}, managerList=[], showSidebar, s
                                             placeholder="Enter Name"
                                             setFieldValue={setFieldValue}
                                             errors={touched.name && errors.name ? errors.name : undefined} />
-                                    </div>
-                                    <div className="mt-4">
-                                        <div className={`flex flex-col border rounded-md px-4 py-2 bg-white ${selectedManagers?.length > 0 ? 'border-main' : 'border-slate-400'}`}>
-                                            <div className="flex justify-between">
-                                                <label htmlFor="designatedBranch" className={`font-proxima-bold text-xs font-bold  ${selectedManagers?.length > 0 ? 'text-main' : 'text-gray-500'}`}>
-                                                    Manager
-                                                </label>
-                                            </div>
-                                            <div className="block h-fit">
-                                                <Select 
-                                                    options={managerList}
-                                                    value={selectedManagers}
-                                                    isMulti
-                                                    styles={multiStyles}
-                                                    components={{ DropdownIndicator }}
-                                                    onChange={handleSelectManager}
-                                                    isSearchable={true}
-                                                    closeMenuOnSelect={true}
-                                                    placeholder={'Select manager'}/>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="mt-4">
-                                        <div className={`flex flex-col border rounded-md px-4 py-2 bg-white ${selectedBranches?.length > 0 ? 'border-main' : 'border-slate-400'}`}>
-                                            <div className="flex justify-between">
-                                                <label htmlFor="designatedBranch" className={`font-proxima-bold text-xs font-bold  ${selectedBranches?.length > 0 ? 'text-main' : 'text-gray-500'}`}>
-                                                    Branches
-                                                </label>
-                                            </div>
-                                            <div className="block h-fit">
-                                                <Select 
-                                                    options={branchList}
-                                                    value={selectedBranches}
-                                                    isMulti
-                                                    styles={multiStyles}
-                                                    components={{ DropdownIndicator }}
-                                                    onChange={handleSelectBranch}
-                                                    isSearchable={true}
-                                                    closeMenuOnSelect={true}
-                                                    placeholder={'Select branches'}/>
-                                            </div>
-                                        </div>
                                     </div>
                                     <div className="flex flex-row mt-5">
                                         <ButtonOutline label="Cancel" onClick={handleCancel} className="mr-3" />

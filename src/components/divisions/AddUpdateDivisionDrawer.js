@@ -1,30 +1,21 @@
-import React, { useState, useEffect, useRef } from "react";
-import { Formik } from 'formik';
-import * as yup from 'yup';
+import { getApiBaseUrl } from "@/lib/constants";
 import { fetchWrapper } from "@/lib/fetch-wrapper";
-import { toast } from "react-toastify";
-import { useDispatch, useSelector } from "react-redux";
-import SelectDropdown from "@/lib/ui/select";
-import { multiStyles, DropdownIndicator } from "@/styles/select";
-import Select from 'react-select';
-import InputText from "@/lib/ui/InputText";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
+import InputText from "@/lib/ui/InputText";
 import SideBar from "@/lib/ui/SideBar";
+import { Formik } from 'formik';
+import React, { useEffect, useRef, useState } from "react";
+import { toast } from "react-toastify";
+import * as yup from 'yup';
 import Spinner from "../Spinner";
-import { getApiBaseUrl } from "@/lib/constants";
 
 const AddUpdateDivision = ({ mode = 'add', division = {}, managerList=[], showSidebar, setShowSidebar, onClose }) => {
     const formikRef = useRef();
-    const regionList = useSelector(state => state.region.list);
     const [loading, setLoading] = useState(false);
-    const [selectedRegions, setSelectedRegions] = useState([]);
-    const [selectedManagers, setSelectedManagers] = useState([]);
 
     const initialValues = {
-        name: division.name,
-        managerIds: division.managerIds,
-        regionIds: division.areaIds
+        name: division.name
     }
 
     const validationSchema = yup.object().shape({
@@ -33,19 +24,8 @@ const AddUpdateDivision = ({ mode = 'add', division = {}, managerList=[], showSi
             .required('Please enter name')
     });
 
-    const handleSelectManager = (selected) => {
-        setSelectedManagers(selected);
-    }
-
-    const handleSelectRegion = (selected) => {
-        setSelectedRegions(selected);
-    }
-
     const handleSaveUpdate = (values, action) => {
         setLoading(true);
-        values.regionIds = selectedRegions.map(region => region._id);
-        values.managerIds = selectedManagers.map(manager => manager._id);
-        console.log(values.managerIds)
         if (mode === 'add') {
             const apiUrl = getApiBaseUrl() + 'divisions/save/';
 
@@ -93,20 +73,12 @@ const AddUpdateDivision = ({ mode = 'add', division = {}, managerList=[], showSi
 
     useEffect(() => {
         let mounted = true;
-
-        if (division && mode == 'edit') {
-            const regions = regionList.filter(region => division?.regionIds.includes(region._id));
-            setSelectedRegions(regions);
-            const managers = managerList.filter(manager => division?.managerIds.includes(manager._id));
-            setSelectedManagers(managers);
-        }
-
         mounted && setLoading(false);
 
         return () => {
             mounted = false;
         };
-    }, [division, regionList]);
+    }, [division]);
 
     return (
         <React.Fragment>
@@ -144,48 +116,6 @@ const AddUpdateDivision = ({ mode = 'add', division = {}, managerList=[], showSi
                                             placeholder="Enter Name"
                                             setFieldValue={setFieldValue}
                                             errors={touched.name && errors.name ? errors.name : undefined} />
-                                    </div>
-                                    <div className="mt-4">
-                                        <div className={`flex flex-col border rounded-md px-4 py-2 bg-white ${selectedManagers?.length > 0 ? 'border-main' : 'border-slate-400'}`}>
-                                            <div className="flex justify-between">
-                                                <label htmlFor="designatedBranch" className={`font-proxima-bold text-xs font-bold  ${selectedManagers?.length > 0 ? 'text-main' : 'text-gray-500'}`}>
-                                                    Manager
-                                                </label>
-                                            </div>
-                                            <div className="block h-fit">
-                                                <Select 
-                                                    options={managerList}
-                                                    value={selectedManagers}
-                                                    isMulti
-                                                    styles={multiStyles}
-                                                    components={{ DropdownIndicator }}
-                                                    onChange={handleSelectManager}
-                                                    isSearchable={true}
-                                                    closeMenuOnSelect={true}
-                                                    placeholder={'Select manager'}/>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="mt-4">
-                                        <div className={`flex flex-col border rounded-md px-4 py-2 bg-white ${selectedRegions?.length > 0 ? 'border-main' : 'border-slate-400'}`}>
-                                            <div className="flex justify-between">
-                                                <label htmlFor="designatedBranch" className={`font-proxima-bold text-xs font-bold  ${selectedRegions?.length > 0 ? 'text-main' : 'text-gray-500'}`}>
-                                                    Regions
-                                                </label>
-                                            </div>
-                                            <div className="block h-fit">
-                                                <Select 
-                                                    options={regionList}
-                                                    value={selectedRegions}
-                                                    isMulti
-                                                    styles={multiStyles}
-                                                    components={{ DropdownIndicator }}
-                                                    onChange={handleSelectRegion}
-                                                    isSearchable={true}
-                                                    closeMenuOnSelect={true}
-                                                    placeholder={'Select regions'}/>
-                                            </div>
-                                        </div>
                                     </div>
                                     <div className="flex flex-row mt-5">
                                         <ButtonOutline label="Cancel" onClick={handleCancel} className="mr-3" />

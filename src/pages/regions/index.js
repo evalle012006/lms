@@ -14,6 +14,8 @@ import { setAreaList } from "@/redux/actions/areaActions";
 import { setRegionList } from "@/redux/actions/regionActions";
 import AddUpdateRegion from "@/components/regions/AddUpdateRegionDrawer";
 import { getApiBaseUrl } from "@/lib/constants";
+import { UppercaseFirstLetter } from "@/lib/utils";
+import { setDivisionList } from "@/redux/actions/divisionActions";
 
 const RegionsPage = () => {
     const dispatch = useDispatch();
@@ -58,6 +60,7 @@ const RegionsPage = () => {
                 let temp = {
                     _id: region._id,
                     name: region.name,
+                    divisionId: region.divisionId,
                     managerIds: region.managerIds,
                     regionManagers: regionManagers,
                     areaIds: region.areaIds,
@@ -90,6 +93,23 @@ const RegionsPage = () => {
             setLoading(false);
             toast.error(response.message);
         }
+    }
+
+    const getListDivision = async () => {
+        const response = await fetchWrapper.get(getApiBaseUrl() + 'divisions/list');
+        if (response.success) {
+            let list = response.divisions?.map(division => ({
+                ...division,
+                value: division._id,
+                label: UppercaseFirstLetter(division.name)
+            })) ?? [];
+            dispatch(setDivisionList(list));
+        } else {
+
+            setLoading(false);
+            toast.error('Error retrieving area list.');
+        }
+
     }
 
     const getListManager = async () => {
@@ -188,7 +208,7 @@ const RegionsPage = () => {
 
     const fetchData = async () => {
         const promise = await new Promise(async (resolve) => {
-            const response = await Promise.all([getListRegion(), getListManager(), getListArea()]);
+            const response = await Promise.all([getListRegion(), getListManager(), getListArea(), getListDivision()]);
             resolve(response);
         });
 

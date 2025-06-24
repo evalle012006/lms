@@ -13,6 +13,8 @@ import Dialog from "@/lib/ui/Dialog";
 import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 import { getApiBaseUrl } from "@/lib/constants";
+import { UppercaseFirstLetter } from "@/lib/utils";
+import { setAreaList } from "@/redux/actions/areaActions";
 
 const BranchesPage = () => {
     const dispatch = useDispatch();
@@ -160,12 +162,29 @@ const BranchesPage = () => {
     useEffect(() => {
         let mounted = true;
 
-        mounted && getListBranch();
+        mounted && getListBranch() && getListArea()
 
         return () => {
             mounted = false;
         };
     }, []);
+
+
+    const getListArea = async () => {
+            const response = await fetchWrapper.get(getApiBaseUrl() + 'areas/list');
+            if (response.success) {
+                let list = response.areas?.map(area => ({
+                    ...area,
+                    value: area._id,
+                    label: UppercaseFirstLetter(area.name)
+                })) ?? [];
+                dispatch(setAreaList(list));
+            } else {
+                toast.error('Error retrieving area list.');
+            }
+    
+            setLoading(false);
+     }
 
     return (
         <Layout actionButtons={currentUser.root || (currentUser.role && currentUser.role.rep < 2) ? actionButtons : null}>

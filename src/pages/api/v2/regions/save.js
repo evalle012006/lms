@@ -59,34 +59,11 @@ async function save(req, res) {
             insertQl(REGION_TYPE(), {
                 objects: [{
                     _id,
+                    divisionId: input.divisionId,
                     name: input.name,
                     dateAdded: moment(getCurrentDate()).format('YYYY-MM-DD')
                 }]
-            }),
-            updateQl(USER_TYPE(), {
-                set: {
-                    regionId: _id
-                },
-                where: {
-                    _id: { _in: input.managerIds }
-                }
-            }),
-            updateQl(AREA_TYPE(), {
-                set: {
-                    regionId: _id
-                },
-                where: {
-                    _id: { _in: input.areaIds }
-                }
-            }),
-            updateQl(BRANCH_TYPE(), {
-                set: {
-                    regionId: _id
-                },
-                where: {
-                    areaId: { _in: input.areaIds }
-                }
-            }),
+            })
 
         ).then(res => res.data.regions.returning);
         

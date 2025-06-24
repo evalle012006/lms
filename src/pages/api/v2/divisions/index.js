@@ -60,42 +60,6 @@ async function updateDivision(req, res) {
             where: {
                 _id: { _eq: _id }
             }
-        }),
-
-        updateQl(USER_TYPE('remove_division_managers'), {
-            set: { divisionId: null },
-            where: { divisionId: { _eq: _id } }
-        }),
-        updateQl(USER_TYPE('update_division_managers'), {
-            set: { divisionId: _id },
-            where: { _id: { _in: division.managerIds } }
-        }),
-
-        updateQl(REGION_TYPE('remove_division_regions'), {
-            set: { divisionId: null },
-            where: { divisionId: { _eq: _id } }
-        }),
-        updateQl(REGION_TYPE('update_division_regions'), {
-            set: { divisionId: _id },
-            where: { _id: { _in: division.regionIds } }
-        }),
-
-        updateQl(AREA_TYPE('remove_division_areas'), {
-            set: { divisionId: null },
-            where: { divisionId: { _eq: _id } }
-        }),
-        updateQl(AREA_TYPE('update_division_areas'), {
-            set: { divisionId: _id },
-            where: { regionId: { _in: division.regionIds } }
-        }),
-
-        updateQl(BRANCH_TYPE('remove_division_branches'), {
-            set: { divisionId: null },
-            where: { divisionId: { _eq: _id } }
-        }),
-        updateQl(BRANCH_TYPE('update_division_branches'), {
-            set: { divisionId: _id },
-            where: { regionId: { _in: division.regionIds } }
         })
     );
 

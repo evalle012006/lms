@@ -12,15 +12,19 @@ import ButtonSolid from "@/lib/ui/ButtonSolid";
 import SideBar from "@/lib/ui/SideBar";
 import Spinner from "../Spinner";
 import { getApiBaseUrl } from "@/lib/constants";
+import SelectDropdown from "@/lib/ui/select";
 
 const AddUpdateBranch = ({ mode = 'add', branch = {}, showSidebar, setShowSidebar, onClose }) => {
     const formikRef = useRef();
     const dispatch = useDispatch();
     const [loading, setLoading] = useState(false);
 
+    const areaList = useSelector(state => state.area.list);
+
     const initialValues = {
         name: branch.name,
         code: branch.code,
+        areaId: branch.areaId,
         phoneNumber: branch.phoneNumber,
         address: branch.address,
         email: branch.email
@@ -42,9 +46,20 @@ const AddUpdateBranch = ({ mode = 'add', branch = {}, showSidebar, setShowSideba
             .required('Please enter phone number'),
         address: yup
             .string()
-            .required('Please enter address')
+            .required('Please enter address'),
+        areaId: yup
+            .string()
+            .required('Please select Area')
 
     });
+
+    const handleAreaChange = (field, value) => {
+        const form = formikRef.current;
+        const area = areaList.find(a => a.value === value);
+        form.setFieldValue(field, value);
+        form.setFieldValue('regionId', area.regionId);
+        form.setFieldValue('divisionId', area.divisionId);
+    }
 
     const handleSaveUpdate = (values, action) => {
         setLoading(true);
@@ -126,6 +141,20 @@ const AddUpdateBranch = ({ mode = 'add', branch = {}, showSidebar, setShowSideba
                                 setFieldTouched
                             }) => (
                                 <form onSubmit={handleSubmit} autoComplete="off">
+                                    <div className="mt-4">
+                                        <SelectDropdown
+                                            name="areaId"
+                                            field="areaId"
+                                            value={values.areaId}
+                                            label="Area"
+                                            options={areaList}
+                                            onChange={(field, value) => handleAreaChange(field, value)}
+                                            onBlur={setFieldTouched}
+                                            disabled={mode !== 'add'}
+                                            placeholder="Select Area"
+                                            errors={touched.areaId && errors.areaId ? errors.areaId : undefined}
+                                        />
+                                    </div>
                                     <div className="mt-4">
                                         <InputText
                                             name="code"

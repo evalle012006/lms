@@ -17,6 +17,9 @@ import Dialog from "@/lib/ui/Dialog";
 import { setBranchList } from "@/redux/actions/branchActions";
 import { getApiBaseUrl } from "@/lib/constants";
 import UserFilters from "@/components/settings/users/UserFilters";
+import { setAreaList } from "@/redux/actions/areaActions";
+import { setRegionList } from "@/redux/actions/regionActions";
+import { setDivisionList } from "@/redux/actions/divisionActions";
 
 const TeamPage = () => {
     const dispatch = useDispatch();
@@ -135,6 +138,55 @@ const TeamPage = () => {
             setPlatformRoles(roles);
         } else {
             toast.error('Error retrieving platform roles list.');
+        }
+
+        setLoading(false);
+    }
+
+
+    const getListArea = async () => {
+        const response = await fetchWrapper.get(getApiBaseUrl() + 'areas/list');
+        if (response.success) {
+            let list = response.areas?.map(area => ({
+                ...area,
+                value: area._id,
+                label: UppercaseFirstLetter(area.name)
+            })) ?? [];
+            dispatch(setAreaList(list));
+        } else {
+            toast.error('Error retrieving area list.');
+        }
+
+        setLoading(false);
+    }
+
+    const getListRegion = async () => {
+        const response = await fetchWrapper.get(getApiBaseUrl() + 'regions/list');
+        if (response.success) {
+            let list = response.regions?.map(region => ({
+                ...region,
+                 value: region._id,
+                label: UppercaseFirstLetter(region.name)
+            })) ?? [];
+            dispatch(setRegionList(list));
+        } else {
+            toast.error('Error retrieving area list.');
+        }
+
+        setLoading(false);
+    }
+
+    const getListDivision = async () => {
+        const response = await fetchWrapper.get(getApiBaseUrl() + 'divisions/list');
+        if (response.success) {
+            let list = response.divisions?.map(division => ({
+                ...division,
+                value: division._id,
+                label: UppercaseFirstLetter(division.name)
+            })) ?? [];
+            dispatch(setDivisionList(list));
+        } else {
+            toast.error('Error retrieving area list.');
         }
 
         setLoading(false);
@@ -289,7 +341,14 @@ const TeamPage = () => {
 
     const fetchData = async () => {
         const promise = await new Promise(async (resolve) => {
-            const response = await Promise.all([getListUsers(), getListPlatformRoles(), getListBranch()]);
+            const response = await Promise.all([
+                getListUsers(), 
+                getListPlatformRoles(), 
+                getListBranch(),
+                getListArea(),
+                getListDivision(),
+                getListRegion(),
+            ]);
             resolve(response);
         });
 

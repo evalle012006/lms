@@ -1,7 +1,8 @@
 import { LO_10_DAILY_GROUPS, LO_11_DAILY_GROUPS, LO_12_DAILY_GROUPS, LO_13_DAILY_GROUPS, LO_14_DAILY_GROUPS, LO_15_DAILY_GROUPS, LO_16_DAILY_GROUPS, LO_17_DAILY_GROUPS, LO_18_DAILY_GROUPS, LO_19_DAILY_GROUPS, LO_1_DAILY_GROUPS, LO_20_DAILY_GROUPS, LO_2_DAILY_GROUPS, LO_3_DAILY_GROUPS, LO_4_DAILY_GROUPS, LO_5_DAILY_GROUPS, LO_6_DAILY_GROUPS, LO_7_DAILY_GROUPS, LO_8_DAILY_GROUPS, LO_9_DAILY_GROUPS, WEEKLY_GROUPS } from '@/lib/constants';
 import { USER_FIELDS, AREA_FIELDS, REGION_FIELDS, DIVISION_FIELDS } from '@/lib/graph.fields';
+import { findAreas, findDivisions, findRegions, findUserById, findUsers } from '@/lib/graph.functions';
 import { GraphProvider } from '@/lib/graph/graph.provider';
-import { createGraphType, insertQl, queryQl } from '@/lib/graph/graph.util';
+import { createGraphType, insertQl, queryQl, updateQl } from '@/lib/graph/graph.util';
 import { generateUUID } from '@/lib/utils';
 import { apiHandler } from '@/services/api-handler';
 
@@ -15,18 +16,6 @@ const LOGROUPS = [
 const graph = new GraphProvider();
 const USER_TYPE = createGraphType('users', `
 ${USER_FIELDS}
-`)
-
-const AREA_TYPE = createGraphType('areas', `
-${AREA_FIELDS}
-`);
-
-const REGION_TYPE = createGraphType('regions', `
-${REGION_FIELDS}
-`);
-
-const DIVISION_TYPE = createGraphType('divisions', `
-${DIVISION_FIELDS}
 `);
 
 const GROUP_TYPE = createGraphType('groups', `_id`);
@@ -40,13 +29,7 @@ async function save(req, res) {
     const addToMutationList = (handler) => mutationList.push(handler(`add_mutation_${mutationList.length}`));
 
     const data = req.body;
-    const users = await graph.query(
-        queryQl(USER_TYPE('users'), {
-            where: {
-                email: { _eq: data.email ?? '' }
-            }
-        })
-    );
+    const users = await findUsers({ email: { _eq: data.email } });
 
     let response = {};
     let statusCode = 200;
@@ -72,76 +55,65 @@ async function save(req, res) {
             role: userRole,
             loNo: typeof data.loNo == 'string' ? parseInt(data.loNo) : data.loNo,
             transactionType: data.transactionType,
+            designatedBranchId: data.designatedBranchId ?? null,
+            areaId: data.areaId ?? null,
+            regionId: data.regionId ?? null,
+            divisionId: data.divisionId ?? null,
             root: false,
         };
 
         if (userRole.rep === 3 || userRole.rep === 4) {
             userData.designatedBranch = (data.designatedBranch && typeof data.designatedBranch !== "string") ? JSON.parse(data.designatedBranch) : data.designatedBranch;
             userData.designatedBranchId = (data.designatedBranchId && typeof data.designatedBranchId !== "string") ? JSON.parse(data.designatedBranch)._id : data.designatedBranchId;
-
-            userData.areaId = data.areaId;
-            userData.regionId = data.regionId;
-            userData.divisionId = data.divisionId;
-        } else if (userRole.rep === 2) {
-            if (userRole.shortCode === 'deputy_director') {
-                // Get division ID where user is in managerIds array
-                const divisionsResult = await graph.query(
-                    queryQl(DIVISION_TYPE('divisions'), {
-                        where: {
-                            managerIds: { _contains: `%${userData._id}%` }
-                        }
-                    })
-                );
-                
-                if (divisionsResult.length > 0) {
-                    userData.divisionId = divisionsResult[0]._id;
-                }
-            } else if (userRole.shortCode === 'regional_manager') {
-                // Get region ID where user is in managerIds array
-                const regionsResult = await graph.query(
-                    queryQl(REGION_TYPE('regions'), {
-                        where: {
-                            managerIds: { _like: `%${userData._id}%` }
-                        }
-                    })
-                );
-                
-                if (regionsResult.length > 0) {
-                    userData.regionId = regionsResult[0]._id;
-                    userData.divisionId = regionsResult[0].divisionId;
-                }
-            } else if (userRole.shortCode === 'area_admin') {
-                // Get area ID where user is in managerIds array
-                const areasResult = await graph.query(
-                    queryQl(AREA_TYPE('areas'), {
-                        where: {
-                            managerIds: { _like: `%${userData._id}%` }
-                        }
-                    })
-                );
-                
-                if (areasResult.length > 0) {
-                    userData.areaId = areasResult[0]._id;
-                    userData.regionId = areasResult[0].regionId;
-                    userData.divisionId = areasResult[0].divisionId;
-                }
-            }
         }
 
         if (userData.role.rep === 3) {
             userData.branchManagerName = data.branchManagerName;
         }
 
-        if(!userData.divisionId) {
-            delete userData.divisionId;
+        if (userRole.shortCode === 'area_admin') {
+            const [area] = await findAreas({ _id: { _eq: userData.areaId } }, `_id managerIds`);
+            const managerIds = JSON.parse(area.managerIds ?? '[]');
+            console.log(managerIds)
+            managerIds.push(userData._id);
+            addToMutationList((alias) => updateQl(createGraphType('areas', '_id')('area_' + alias), {
+                set: {
+                    managerIds: JSON.stringify([... new Set(managerIds)])
+                },
+                where: {
+                    _id: { _eq: area._id ?? null }
+                }
+            }));
+
+            userData.designatedBranch = (data.designatedBranch && typeof data.designatedBranch !== "string") ? JSON.parse(data.designatedBranch) : data.designatedBranch;
         }
 
-        if(!userData.regionId) {
-            delete userData.regionId;
+        if (userRole.shortCode === 'regional_manager') {
+            const [region] = await findRegions({ _id: { _eq: userData.regionId } }, `_id managerIds`);
+            const managerIds = JSON.parse(region.managerIds ?? '[]');
+            managerIds.push(userData._id);
+            addToMutationList((alias) => updateQl(createGraphType('regions', '_id')('region_' + alias), {
+                set: {
+                    managerIds: JSON.stringify([... new Set(managerIds)])
+                },
+                where: {
+                    _id: { _eq: region._id ?? null }
+                }
+            }));
         }
 
-        if(!userData.areaId) {
-            delete userData.areaId;
+        if (userRole.shortCode === 'deputy_director') {
+            const [division] = await findDivisions({ _id: { _eq: userData.divisionId } }, `_id managerIds`);
+            const managerIds = division.managerIds;
+            managerIds.push(userData._id);
+            addToMutationList((alias) => updateQl(createGraphType('divisions', '_id')('division_' + alias), {
+                set: {
+                    managerIds,
+                },
+                where: {
+                    _id: { _eq: division._id ?? null }
+                }
+            }));
         }
         
         addToMutationList((alias) => insertQl(USER_TYPE(alias), {
@@ -151,7 +123,6 @@ async function save(req, res) {
         if (userData.role.rep === 4) {
             await createGroups(userData, addToMutationList);
         }
-
 
         if(mutationList.length) {
             await graph.mutation(
