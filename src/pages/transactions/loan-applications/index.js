@@ -1135,7 +1135,7 @@ const LoanApplicationPage = () => {
                 if ((!client.fullName && (client.fullName && !client.fullName.length === 0))) {
                     errorMsg += `There are missing info for slot no ${loan.slotNo} from group ${group.name}!`;
                 }
-                if (!client.hasOwnProperty('profile') && !client.profile) {
+                if (!client.profile || !client.profile.trim()) {
                     errorMsg += `Slot no ${loan.slotNo} from group ${group.name} don't have photo uploaded!`;
                 }
 
