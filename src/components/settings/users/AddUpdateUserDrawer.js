@@ -60,7 +60,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
         }
 
         if(currentRole?.includes('2-')) {
-            const [rep, shortCode] = user.roleId.split('-');
+            const [rep, shortCode] = currentRole?.split('-');
             switch(shortCode) {
                 case 'area_admin': setSelectedBranchFilter({ id: user.areaId, field: 'areaId' }); break;
                 case 'regional_manager': setSelectedBranchFilter({ id: user.regionId, field: 'regionId' }); break;
