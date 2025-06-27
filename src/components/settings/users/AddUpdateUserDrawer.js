@@ -33,14 +33,23 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
     const divisionList = useSelector(state => state.division.list);
     const areaList = useSelector(state => state.area.list);
     const regionList = useSelector(state => state.region.list);
-    const [selectedBranchFilter, setSelectedBranchFilter] = useState();
+    const [selectedBranchFilter, setSelectedBranchFilter] = useState([]);
 
     const [selectedBranches, setSelectedBranches] = useState([]);
 
     const [role, setRole] = useState();
 
+    // reset hooks when close
+    const performClose = () => {
+        setRole(null);
+        setSelectedBranches([]);
+        setSelectedBranchFilter([])
+        onClose();
+    };
+
     // Use useEffect to set the initial photo state
     useEffect(() => {
+        const currentRole = role ?? user.roleId;
         if (mode === 'edit' && user.profile) {
             setPhoto(user.profile);
         }
@@ -50,7 +59,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
             user.transactionType && setOccurence(user.transactionType);
         }
 
-        if(user.roleId?.includes('2-')) {
+        if(currentRole?.includes('2-')) {
             const [rep, shortCode] = user.roleId.split('-');
             switch(shortCode) {
                 case 'area_admin': setSelectedBranchFilter({ id: user.areaId, field: 'areaId' }); break;
@@ -59,14 +68,14 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
                 default: break;
             }
         }
-        setRole(user.roleId);
+
+        setRole(currentRole);
     }, [user, mode, areaList, regionList, divisionList, branchList]);
 
 
     const filteredByRoleBranchList = useMemo(() => 
         {   
             const list = branchList.filter(b => !!selectedBranchFilter && b[selectedBranchFilter?.field] == selectedBranchFilter?.id );
-            console.log('filteredByRoleBranchList', list, selectedBranchFilter)
             return list;
         }, 
     [role, selectedBranchFilter]);
@@ -205,13 +214,13 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
                     toast.error(response.message);
                 } else if (response.success) {
                     toast.success('User successfully added.');
-                    onClose();
+                    performClose();
                 }
             } else if (mode === 'edit') {
                 values.file = image;
                 await handleUpdateUser(values);
                 toast.success('User successfully updated.');
-                onClose();
+                performClose();
             }
         } catch (error) {
             toast.error('An error occurred. Please try again.');
@@ -225,7 +234,6 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
     }, [mode, image, currentDate, roles, branchList, onClose, setShowSidebar]);
 
     const handleUpdateUser = async (userData) => {
-        console.log('payload data', userData);
         return await fetchWrapper.sendData(getApiBaseUrl() + 'users/', JSON.parse(JSON.stringify(userData)));
     };
 
@@ -288,7 +296,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
         setShowSidebar(false);
         formikRef.current.resetForm();
         handleRemoveImage();
-        onClose();
+        performClose();
     }, [setShowSidebar, handleRemoveImage, onClose]);
 
     return (
