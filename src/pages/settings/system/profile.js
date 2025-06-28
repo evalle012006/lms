@@ -4,47 +4,168 @@ import React, { useEffect, useRef, useState } from 'react';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { useSelector, useDispatch } from 'react-redux';
 import { toast } from "react-toastify";
-import InputEmail from '@/lib/ui/InputEmail';
-import InputText from '@/lib/ui/InputText';
 import { setSystemSettings } from '@/redux/actions/systemActions';
 import Spinner from '@/components/Spinner';
 import { getApiBaseUrl } from '@/lib/constants';
+import { 
+  BuildingOfficeIcon, 
+  MapPinIcon, 
+  EnvelopeIcon, 
+  PhoneIcon, 
+  CodeBracketIcon,
+  BuildingStorefrontIcon,
+  CheckCircleIcon,
+  ExclamationTriangleIcon,
+  ShieldCheckIcon,
+  EyeIcon,
+  EyeSlashIcon
+} from '@heroicons/react/24/outline';
+
+const ModernInput = ({ 
+  name, 
+  value, 
+  label, 
+  placeholder, 
+  icon: Icon, 
+  type = "text",
+  required = false,
+  onChange,
+  setFieldValue,
+  errors,
+  isPassword = false
+}) => {
+  const [showPassword, setShowPassword] = useState(false);
+  
+  return (
+    <div className="group">
+      <label className="block text-sm font-semibold text-gray-700 mb-2">
+        {label} {required && <span className="text-red-400">*</span>}
+      </label>
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+          <Icon className={`h-5 w-5 transition-colors ${
+            errors ? 'text-red-400' : 'text-gray-400 group-focus-within:text-blue-500'
+          }`} />
+        </div>
+        <input
+          type={isPassword ? (showPassword ? "text" : "password") : type}
+          name={name}
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          autoComplete={isPassword ? "new-password" : "off"}
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck="false"
+          className={`w-full pl-12 ${isPassword ? 'pr-12' : 'pr-4'} py-3 border rounded-xl focus:ring-2 focus:border-transparent transition-all duration-200 bg-white shadow-sm hover:shadow-md focus:shadow-lg ${
+            errors 
+              ? 'border-red-300 focus:ring-red-500' 
+              : 'border-gray-200 focus:ring-blue-500'
+          }`}
+        />
+        {isPassword && (
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute inset-y-0 right-0 pr-4 flex items-center"
+          >
+            {showPassword ? (
+              <EyeSlashIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+            ) : (
+              <EyeIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+            )}
+          </button>
+        )}
+      </div>
+      {errors && <span className="text-red-400 text-xs font-medium mt-1 block">{errors}</span>}
+    </div>
+  );
+};
 
 const ProfileSettingsPage = (props) => {
     const currentUser = useSelector(state => state.user.data);
-    const state = useSelector(state => state.systemSettings.data);
+    // Use the correct Redux state path from the screenshot: systemSettings.data
+    const state = useSelector(state => state.systemSettings?.data || {});
     const dispatch = useDispatch();
     const [loading, setLoading] = useState(false);
+    const [saved, setSaved] = useState(false);
 
     const initialValues = {
-        companyName: state.companyName, 
-        companyAddress: state.companyAddress, 
-        companyEmail: state.companyEmail,
-        companyPhoneNumber: state.companyPhoneNumber,
-        branchCode: state.branchCode,
-        branchName: state.branchName,
-        branchAddress: state.branchAddress,
-        branchPhoneNumber: state.branchPhoneNumber
+        companyName: state.companyName || '', 
+        companyAddress: state.companyAddress || '', 
+        companyEmail: state.companyEmail || '',
+        companyPhoneNumber: state.companyPhoneNumber || '',
+        branchCode: state.branchCode || '',
+        branchName: state.branchName || '',
+        branchAddress: state.branchAddress || '',
+        branchPhoneNumber: state.branchPhoneNumber || '',
+        superPwd: state.superPwd || ''
     }
 
-    const validationSchema = yup.object().shape({});
+    const validationSchema = yup.object().shape({
+        companyName: yup.string().required('Company name is required'),
+        companyEmail: yup.string().email('Invalid email format').required('Company email is required'),
+        companyPhoneNumber: yup.string().required('Company phone number is required'),
+        branchCode: yup.string().required('Branch code is required'),
+        branchName: yup.string().required('Branch name is required'),
+        superPwd: yup.string()
+    });
+
+    const fetchSystemSettings = async () => {
+        setLoading(true);
+        try {
+            const apiURL = `${getApiBaseUrl()}settings/system`;
+            const response = await fetchWrapper.get(apiURL);
+            
+            if (response.success && response.system) {
+                // The API returns data under 'system' key, not 'data'
+                dispatch(setSystemSettings(response.system));
+                console.log('Dispatched to Redux:', response.system); // Debug log
+            } else if (response.error) {
+                toast.error(response.message || 'Failed to load system settings');
+            }
+        } catch (error) {
+            console.error('Error fetching system settings:', error);
+            toast.error('Failed to load system settings');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleUpdate = async (values, action) => {
         setLoading(true);
-        const apiURL = `${getApiBaseUrl()}settings/system`;
-        const response = await fetchWrapper.post(apiURL, values);
+        try {
+            const updatedValues = {...values, _id: state._id};
+            const apiURL = `${getApiBaseUrl()}settings/system`;
+            const response = await fetchWrapper.post(apiURL, updatedValues);
 
-        if (response.success) {
-            dispatch(setSystemSettings({...values}));
+            if (response.success) {
+                // Update Redux with the new values
+                dispatch(setSystemSettings({...values}));
+                setSaved(true);
+                toast.success('System Profile updated successfully!');
+                setTimeout(() => setSaved(false), 3000);
+            } else {
+                toast.error(response.message || 'Failed to update system profile');
+            }
+        } catch (error) {
+            console.error('Update error:', error);
+            toast.error('Failed to update system profile');
+        } finally {
             setLoading(false);
-            toast.success('System Profile updated successfully!');
         }
     }
 
     useEffect(() => {
-        if ((currentUser.role && currentUser.role.rep > 2)) {
+        if (currentUser.role && currentUser.role.rep > 2) {
             router.push('/');
+            return;
         }
+        
+        console.log('Current Redux State:', state); // Debug log
+        
+        // Always fetch system settings since Redux state shows empty data
+        fetchSystemSettings();
     }, []);
 
     useEffect(() => {
@@ -57,115 +178,221 @@ const ProfileSettingsPage = (props) => {
     }, [state]);
 
     return (
-        <React.Fragment>
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
             {loading ? (
-                    // <div className="absolute top-1/2 left-1/2">
-                        <Spinner />
-                    // </div>
-                ) : (
-                    <div className="profile-photo bg-white rounded-lg p-3 proxima-regular mt-10 lg:w-5/6 w-80 lg:mt-0 m-4">
-                        <div className="proxima-bold mt-2">System Settings</div>
-                        <Formik onSubmit={handleUpdate} initialValues={initialValues} validationSchema={validationSchema}>
-                            {({ values, actions, touched, errors, handleChange, handleSubmit, setFieldValue }) => (
-                                <form onSubmit={handleSubmit} autoComplete="off">
-                                    <div className="mt-4">
-                                        <InputText
-                                            name="companyName"
-                                            value={values.companyName}
-                                            onChange={handleChange}
-                                            label="Company Name"
-                                            placeholder="Please type the Company Name"
-                                            setFieldValue={setFieldValue}
-                                            errors={touched.companyName && errors.companyName ? errors.companyName : undefined} />
+                <div className="flex justify-center items-center h-64">
+                    <Spinner />
+                </div>
+            ) : (
+                <Formik 
+                    initialValues={initialValues} 
+                    validationSchema={validationSchema}
+                    onSubmit={handleUpdate}
+                    enableReinitialize={true}
+                    key={JSON.stringify(initialValues)} // Force re-render when data changes
+                >
+                    {({ values, errors, touched, handleChange, handleSubmit, setFieldValue }) => (
+                        <form onSubmit={handleSubmit} autoComplete="off" autoCorrect="off" spellCheck="false">
+                            {/* Header */}
+                            <div className="bg-white border-b border-gray-200 shadow-sm">
+                                <div className="max-w-7xl mx-auto px-6 py-4">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <h1 className="text-2xl font-bold text-gray-900">System Settings</h1>
+                                            <p className="text-sm text-gray-600 mt-1">Configure your company and branch information</p>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            {saved && (
+                                                <div className="flex items-center px-3 py-2 bg-green-100 text-green-800 rounded-lg">
+                                                    <CheckCircleIcon className="h-5 w-5 mr-2" />
+                                                    <span className="text-sm font-medium">Settings saved!</span>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
-                                    <div className="mt-4">
-                                        <InputText
-                                            name="companyAddress"
-                                            value={values.companyAddress}
-                                            onChange={handleChange}
-                                            label="Company Address"
-                                            placeholder="Please type the Company Address"
-                                            setFieldValue={setFieldValue}
-                                            errors={touched.companyAddress && errors.companyAddress ? errors.companyAddress : undefined} />
+                                </div>
+                            </div>
+
+                            <div className="max-w-7xl mx-auto px-6 py-8">
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                    {/* Company Information Card */}
+                                    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                                        <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
+                                            <div className="flex items-center">
+                                                <BuildingOfficeIcon className="h-6 w-6 text-white mr-3" />
+                                                <h2 className="text-xl font-semibold text-white">Company Information</h2>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="p-6 space-y-6">
+                                            <ModernInput
+                                                name="companyName"
+                                                value={values.companyName}
+                                                label="Company Name"
+                                                placeholder="Enter company name"
+                                                icon={BuildingOfficeIcon}
+                                                onChange={handleChange}
+                                                setFieldValue={setFieldValue}
+                                                errors={touched.companyName && errors.companyName}
+                                                required
+                                            />
+                                            
+                                            <ModernInput
+                                                name="companyAddress"
+                                                value={values.companyAddress}
+                                                label="Company Address"
+                                                placeholder="Enter complete company address"
+                                                icon={MapPinIcon}
+                                                onChange={handleChange}
+                                                setFieldValue={setFieldValue}
+                                                errors={touched.companyAddress && errors.companyAddress}
+                                            />
+                                            
+                                            <ModernInput
+                                                name="companyEmail"
+                                                value={values.companyEmail}
+                                                label="Company Email"
+                                                placeholder="company@example.com"
+                                                icon={EnvelopeIcon}
+                                                type="email"
+                                                onChange={handleChange}
+                                                setFieldValue={setFieldValue}
+                                                errors={touched.companyEmail && errors.companyEmail}
+                                                required
+                                            />
+                                            
+                                            <ModernInput
+                                                name="companyPhoneNumber"
+                                                value={values.companyPhoneNumber}
+                                                label="Company Phone Number"
+                                                placeholder="+63 XXX XXXX XXXX"
+                                                icon={PhoneIcon}
+                                                onChange={handleChange}
+                                                setFieldValue={setFieldValue}
+                                                errors={touched.companyPhoneNumber && errors.companyPhoneNumber}
+                                                required
+                                            />
+                                            
+                                            <ModernInput
+                                                name="superPwd"
+                                                value={values.superPwd}
+                                                label="Super Password"
+                                                placeholder="Enter super password"
+                                                icon={ShieldCheckIcon}
+                                                onChange={handleChange}
+                                                setFieldValue={setFieldValue}
+                                                errors={touched.superPwd && errors.superPwd}
+                                                isPassword={true}
+                                            />
+                                        </div>
                                     </div>
-                                    <div className="mt-4">
-                                        <InputEmail
-                                            disabled={true}
-                                            name="companyEmail"
-                                            value={values.companyEmail}
-                                            onChange={handleChange}
-                                            label="Company Email"
-                                            placeholder="Please type the Company Email"
-                                            setFieldValue={setFieldValue}
-                                            errors={touched.companyEmail && errors.companyEmail ? errors.companyEmail : undefined} />
+
+                                    {/* Branch Information Card */}
+                                    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                                        <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 px-6 py-4">
+                                            <div className="flex items-center">
+                                                <BuildingStorefrontIcon className="h-6 w-6 text-white mr-3" />
+                                                <h2 className="text-xl font-semibold text-white">Branch Information</h2>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="p-6 space-y-6">
+                                            <ModernInput
+                                                name="branchCode"
+                                                value={values.branchCode}
+                                                label="Branch Code"
+                                                placeholder="Enter branch code"
+                                                icon={CodeBracketIcon}
+                                                onChange={handleChange}
+                                                setFieldValue={setFieldValue}
+                                                errors={touched.branchCode && errors.branchCode}
+                                                required
+                                            />
+                                            
+                                            <ModernInput
+                                                name="branchName"
+                                                value={values.branchName}
+                                                label="Branch Name"
+                                                placeholder="Enter branch name"
+                                                icon={BuildingStorefrontIcon}
+                                                onChange={handleChange}
+                                                setFieldValue={setFieldValue}
+                                                errors={touched.branchName && errors.branchName}
+                                                required
+                                            />
+                                            
+                                            <ModernInput
+                                                name="branchAddress"
+                                                value={values.branchAddress}
+                                                label="Branch Address"
+                                                placeholder="Enter complete branch address"
+                                                icon={MapPinIcon}
+                                                onChange={handleChange}
+                                                setFieldValue={setFieldValue}
+                                                errors={touched.branchAddress && errors.branchAddress}
+                                            />
+                                            
+                                            <ModernInput
+                                                name="branchPhoneNumber"
+                                                value={values.branchPhoneNumber}
+                                                label="Branch Phone Number"
+                                                placeholder="+63 XXX XXXX XXXX"
+                                                icon={PhoneIcon}
+                                                onChange={handleChange}
+                                                setFieldValue={setFieldValue}
+                                                errors={touched.branchPhoneNumber && errors.branchPhoneNumber}
+                                            />
+                                        </div>
                                     </div>
-                                    <div className="mt-4">
-                                        <InputText
-                                            name="companyPhoneNumber"
-                                            value={values.companyPhoneNumber}
-                                            onChange={handleChange}
-                                            label="Company Phone Number"
-                                            placeholder="Please type the Company Phone Number"
-                                            setFieldValue={setFieldValue}
-                                            errors={touched.companyPhoneNumber && errors.companyPhoneNumber ? errors.companyPhoneNumber : undefined} />
+                                </div>
+
+                                {/* Action Buttons */}
+                                <div className="mt-8 flex justify-end space-x-4">
+                                    <button
+                                        type="button"
+                                        className="px-6 py-3 border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200"
+                                    >
+                                        Cancel
+                                    </button>
+                                    
+                                    <button
+                                        type="submit"
+                                        disabled={loading}
+                                        className="px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-blue-800 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl"
+                                    >
+                                        {loading ? (
+                                            <div className="flex items-center">
+                                                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                                Updating...
+                                            </div>
+                                        ) : (
+                                            'Update Settings'
+                                        )}
+                                    </button>
+                                </div>
+
+                                {/* Info Banner */}
+                                <div className="mt-8 bg-blue-50 border border-blue-200 rounded-xl p-4">
+                                    <div className="flex items-start">
+                                        <ExclamationTriangleIcon className="h-5 w-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0" />
+                                        <div>
+                                            <h3 className="text-sm font-semibold text-blue-900">Important Notice</h3>
+                                            <p className="text-sm text-blue-700 mt-1">
+                                                Changes to company and branch information will affect all system-generated documents and reports. 
+                                                Please ensure all information is accurate before saving.
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div className="mt-4">
-                                        <InputText
-                                            name="branchCode"
-                                            value={values.branchCode}
-                                            onChange={handleChange}
-                                            label="Branch Code"
-                                            placeholder="Please type the Branch Code"
-                                            setFieldValue={setFieldValue}
-                                            errors={touched.branchCode && errors.branchCode ? errors.branchCode : undefined} />
-                                    </div>
-                                    <div className="mt-4">
-                                        <InputText
-                                            name="branchName"
-                                            value={values.branchName}
-                                            onChange={handleChange}
-                                            label="Branch Name"
-                                            placeholder="Please type the Branch Name"
-                                            setFieldValue={setFieldValue}
-                                            errors={touched.branchName && errors.branchName ? errors.branchName : undefined} />
-                                    </div>
-                                    <div className="mt-4">
-                                        <InputText
-                                            disabled={true}
-                                            name="branchAddress"
-                                            value={values.branchAddress}
-                                            onChange={handleChange}
-                                            label="Branch Address"
-                                            placeholder="Please type the Branch Address"
-                                            setFieldValue={setFieldValue}
-                                            errors={touched.branchAddress && errors.branchAddress ? errors.branchAddress : undefined} />
-                                    </div>
-                                    <div className="mt-4">
-                                        <InputText
-                                            name="branchPhoneNumber"
-                                            value={values.branchPhoneNumber}
-                                            onChange={handleChange}
-                                            label="Branch Phone Number"
-                                            placeholder="Please type the Branch Phone Number"
-                                            setFieldValue={setFieldValue}
-                                            errors={touched.branchPhoneNumber && errors.branchPhoneNumber ? errors.branchPhoneNumber : undefined} />
-                                    </div>
-                                    <div className="mt-4 grid justify-items-end">
-                                        <button type="submit" className="bg-main border border-main rounded-md text-sm text-white font-bold proxima-regular px-5 py-2">
-                                            {loading && <svg role="status" className="inline w-4 h-4 mr-3 text-white animate-spin" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                <path d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z" fill="#E5E7EB" />
-                                                <path d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z" fill="currentColor" />
-                                            </svg>}
-                                            Update
-                                        </button>
-                                    </div>
-                                </form>
-                            )}
-                        </Formik>
-                    </div>
-                )
-            }
-        </React.Fragment>
+                                </div>
+                            </div>
+                        </form>
+                    )}
+                </Formik>
+            )}
+        </div>
     );
 }
 

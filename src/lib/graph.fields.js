@@ -197,16 +197,24 @@ export const SETTINGS_FIELDS = `
   companyEmail
   companyName
   companyPhoneNumber
+  superPwd
   `;
 
 export const TRANSACTION_SETTINGS_FIELDS = `
   _id
+  serviceChargeRate
   loanDailyLimit
   loanWeeklyLimit
   mcbuRate
   allowWeekendTransaction
   startTransactionTime
-  superPwd
+  minDailyMcbuCollection
+  minWeeklyMcbuCollection
+  admissionFee
+  lrfRate
+  cbhbFee
+  otherPassbookFee
+  otherPictureFee
   `;
 
 export const BAD_DEBT_COLLECTIONS_FIELDS = `

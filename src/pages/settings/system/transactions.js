@@ -4,40 +4,172 @@ import React, { useEffect, useRef, useState } from 'react';
 import { fetchWrapper } from '@/lib/fetch-wrapper';
 import { useSelector, useDispatch } from 'react-redux';
 import { toast } from "react-toastify";
-import InputText from '@/lib/ui/InputText';
+import { setTransactionSettings } from "@/redux/actions/transactionsActions";
 import Spinner from '@/components/Spinner';
-import { setTransactionSettings } from '@/redux/actions/transactionsActions';
 import { getApiBaseUrl } from '@/lib/constants';
+import { 
+  ClockIcon, 
+  CurrencyDollarIcon, 
+  CalendarDaysIcon,
+  BanknotesIcon,
+  CheckCircleIcon,
+  ExclamationTriangleIcon,
+  CalculatorIcon,
+  ReceiptPercentIcon,
+  DocumentCurrencyDollarIcon,
+  TrophyIcon
+} from '@heroicons/react/24/outline';
+
+const ModernInput = ({ 
+  name, 
+  value, 
+  label, 
+  placeholder, 
+  icon: Icon, 
+  type = "text",
+  required = false,
+  onChange,
+  setFieldValue,
+  errors
+}) => (
+  <div className="group">
+    <label className="block text-sm font-semibold text-gray-700 mb-2">
+      {label} {required && <span className="text-red-400">*</span>}
+    </label>
+    <div className="relative">
+      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+        <Icon className={`h-5 w-5 transition-colors ${
+          errors ? 'text-red-400' : 'text-gray-400 group-focus-within:text-blue-500'
+        }`} />
+      </div>
+      <input
+        type={type}
+        name={name}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        className={`w-full pl-12 pr-4 py-3 border rounded-xl focus:ring-2 focus:border-transparent transition-all duration-200 bg-white shadow-sm hover:shadow-md focus:shadow-lg ${
+          errors 
+            ? 'border-red-300 focus:ring-red-500' 
+            : 'border-gray-200 focus:ring-blue-500'
+        }`}
+      />
+    </div>
+    {errors && <span className="text-red-400 text-xs font-medium mt-1 block">{errors}</span>}
+  </div>
+);
+
+const ModernToggle = ({ name, value, label, description, onChange, setFieldValue }) => (
+  <div className="flex items-start space-x-4">
+    <div className="flex-1">
+      <label className="block text-sm font-semibold text-gray-700 mb-1">
+        {label}
+      </label>
+      {description && (
+        <p className="text-sm text-gray-500 mb-2">{description}</p>
+      )}
+    </div>
+    <button
+      type="button"
+      onClick={() => setFieldValue(name, !value)}
+      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+        value ? 'bg-blue-600' : 'bg-gray-200'
+      }`}
+    >
+      <span
+        aria-hidden="true"
+        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+          value ? 'translate-x-5' : 'translate-x-0'
+        }`}
+      />
+    </button>
+  </div>
+);
 
 const TransactionsSettingsPage = (props) => {
     const currentUser = useSelector(state => state.user.data);
-    const state = useSelector(state => state.transactionsSettings.data);
+    
+    // Use the correct Redux state path from the screenshot: transactionsSettings.data
+    const transactionState = useSelector(state => state.transactionsSettings?.data || {});
+    
     const dispatch = useDispatch();
     const [loading, setLoading] = useState(false);
+    const [saved, setSaved] = useState(false);
 
     const initialValues = {
-        _id: state._id,
-        mcbuRate: state.mcbuRate,
-        loanDailyLimit: state.loanDailyLimit,
-        loanWeeklyLimit: state.loanWeeklyLimit
-    };
+        // Loan Limits
+        loanDailyLimit: transactionState.loanDailyLimit || '',
+        loanWeeklyLimit: transactionState.loanWeeklyLimit || '',
+        
+        // Rate Settings
+        serviceChargeRate: transactionState.serviceChargeRate || '',
+        mcbuRate: transactionState.mcbuRate || '',
+        lrfRate: transactionState.lrfRate || '',
+        
+        // MCBU Collection Settings
+        minDailyMcbuCollection: transactionState.minDailyMcbuCollection || '',
+        minWeeklyMcbuCollection: transactionState.minWeeklyMcbuCollection || '',
+        
+        // Transaction Rules
+        allowWeekendTransaction: transactionState.allowWeekendTransaction || false, 
+        startTransactionTime: transactionState.startTransactionTime || '',
+        
+        // Fee Settings
+        admissionFee: transactionState.admissionFee || '',
+        cbhbFee: transactionState.cbhbFee || '',
+        otherPassbookFee: transactionState.otherPassbookFee || '',
+        otherPictureFee: transactionState.otherPictureFee || ''
+    }
 
-    const validationSchema = yup.object().shape({});
+    const validationSchema = yup.object().shape({
+        // Loan Limits
+        loanDailyLimit: yup.number().positive('Must be a positive number').required('Daily limit is required'),
+        loanWeeklyLimit: yup.number().positive('Must be a positive number').required('Weekly limit is required'),
+        
+        // Rate Settings
+        serviceChargeRate: yup.number().min(0, 'Cannot be negative').max(100, 'Cannot exceed 100%').required('Service charge rate is required'),
+        mcbuRate: yup.number().min(0, 'Cannot be negative').max(100, 'Cannot exceed 100%').required('MCBU rate is required'),
+        lrfRate: yup.number().min(0, 'Cannot be negative').max(100, 'Cannot exceed 100%').required('LRF rate is required'),
+        
+        // MCBU Collection Settings
+        minDailyMcbuCollection: yup.number().min(0, 'Cannot be negative').required('Minimum daily MCBU collection is required'),
+        minWeeklyMcbuCollection: yup.number().min(0, 'Cannot be negative').required('Minimum weekly MCBU collection is required'),
+        
+        // Transaction Rules
+        startTransactionTime: yup.string().required('Start transaction time is required'),
+        
+        // Fee Settings
+        admissionFee: yup.number().min(0, 'Cannot be negative').required('Admission fee is required'),
+        cbhbFee: yup.number().min(0, 'Cannot be negative').required('CBHB fee is required'),
+        otherPassbookFee: yup.number().min(0, 'Cannot be negative').required('Passbook fee is required'),
+        otherPictureFee: yup.number().min(0, 'Cannot be negative').required('Picture fee is required')
+    });
 
     const handleUpdate = async (values, action) => {
         setLoading(true);
+        try {
+            let updatedValues = {...transactionState};
+            Object.keys(values).forEach(key => {
+                updatedValues[key] = values[key];
+            });
 
-        values.mcbuRate = parseFloat(values.mcbuRate);
-        values.loanDailyLimit = parseFloat(values.loanDailyLimit);
-        values.loanWeeklyLimit = parseFloat(values.loanWeeklyLimit);
-
-        const apiURL = `${getApiBaseUrl()}settings/transactions`;
-        const response = await fetchWrapper.post(apiURL, values);
-
-        if (response.success) {
-            dispatch(setTransactionSettings({...values}));
+            const apiURL = `${getApiBaseUrl()}settings/transactions`;
+            const response = await fetchWrapper.post(apiURL, updatedValues);
+            console.log('Update response:', response);
+            if (response.success) {
+                // Use setTransactionSettings to match the action that loads the data
+                dispatch(setTransactionSettings(updatedValues));
+                setSaved(true);
+                toast.success('Transaction Settings updated successfully!');
+                setTimeout(() => setSaved(false), 3000);
+            } else {
+                toast.error('Failed to update transaction settings');
+            }
+        } catch (error) {
+            console.error('Update error:', error);
+            toast.error('Failed to update transaction settings');
+        } finally {
             setLoading(false);
-            toast.success('Transaction Settings updated successfully!');
         }
     }
 
@@ -49,72 +181,326 @@ const TransactionsSettingsPage = (props) => {
 
     useEffect(() => {
         let mounted = true;
-
-        mounted && setLoading(false);
+        setLoading(false);
 
         return () => {
             mounted = false;
         };
-    }, []);
+    }, [transactionState]);
 
     return (
-        <React.Fragment>
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
             {loading ? (
-                    // <div className="absolute top-1/2 left-1/2">
-                        <Spinner />
-                    // </div>
-                ) : (
-                    <div className="profile-photo bg-white rounded-lg p-3 proxima-regular mt-10 lg:w-5/6 w-80 lg:mt-0 m-4">
-                        <div className="proxima-bold mt-2">Transaction Settings</div>
-                        <Formik onSubmit={handleUpdate} initialValues={initialValues} validationSchema={validationSchema}>
-                            {({ values, actions, touched, errors, handleChange, handleSubmit, setFieldValue }) => (
-                                <form onSubmit={handleSubmit} autoComplete="off">
-                                    <div className="mt-4">
-                                        <InputText
-                                            name="mcbuRate"
-                                            value={values.mcbuRate}
-                                            onChange={handleChange}
-                                            label="MCBU Rate (%)"
-                                            placeholder="Please type the MCBU Rate"
-                                            setFieldValue={setFieldValue}
-                                            errors={touched.mcbuRate && errors.mcbuRate ? errors.mcbuRate : undefined} />
+                <div className="flex justify-center items-center h-64">
+                    <Spinner />
+                </div>
+            ) : (
+                <Formik 
+                    initialValues={initialValues} 
+                    validationSchema={validationSchema}
+                    onSubmit={handleUpdate}
+                    enableReinitialize
+                >
+                    {({ values, errors, touched, handleChange, handleSubmit, setFieldValue }) => (
+                        <form onSubmit={handleSubmit}>
+                            {/* Header */}
+                            <div className="bg-white border-b border-gray-200 shadow-sm">
+                                <div className="max-w-7xl mx-auto px-6 py-4">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <h1 className="text-2xl font-bold text-gray-900">Transaction Settings</h1>
+                                            <p className="text-sm text-gray-600 mt-1">Configure transaction limits, rates, fees, and operational rules</p>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            {saved && (
+                                                <div className="flex items-center px-3 py-2 bg-green-100 text-green-800 rounded-lg">
+                                                    <CheckCircleIcon className="h-5 w-5 mr-2" />
+                                                    <span className="text-sm font-medium">Settings saved!</span>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
-                                    <div className="mt-4">
-                                        <InputText
-                                            name="loanDailyLimit"
-                                            value={values.loanDailyLimit}
-                                            onChange={handleChange}
-                                            label="Loan Daily Limit"
-                                            placeholder="Please type the Loan Daily Limit"
-                                            setFieldValue={setFieldValue}
-                                            errors={touched.loanDailyLimit && errors.loanDailyLimit ? errors.loanDailyLimit : undefined} />
+                                </div>
+                            </div>
+
+                            <div className="max-w-7xl mx-auto px-6 py-8">
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                    {/* Loan Limits Card */}
+                                    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                                        <div className="bg-gradient-to-r from-green-600 to-green-700 px-6 py-4">
+                                            <div className="flex items-center">
+                                                <CurrencyDollarIcon className="h-6 w-6 text-white mr-3" />
+                                                <h2 className="text-xl font-semibold text-white">Loan Limits</h2>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="p-6 space-y-6">
+                                            <ModernInput
+                                                name="loanDailyLimit"
+                                                value={values.loanDailyLimit}
+                                                label="Daily Loan Limit"
+                                                placeholder="Enter daily limit amount"
+                                                icon={CurrencyDollarIcon}
+                                                type="number"
+                                                onChange={handleChange}
+                                                setFieldValue={setFieldValue}
+                                                errors={touched.loanDailyLimit && errors.loanDailyLimit}
+                                                required
+                                            />
+                                            
+                                            <ModernInput
+                                                name="loanWeeklyLimit"
+                                                value={values.loanWeeklyLimit}
+                                                label="Weekly Loan Limit"
+                                                placeholder="Enter weekly limit amount"
+                                                icon={BanknotesIcon}
+                                                type="number"
+                                                onChange={handleChange}
+                                                setFieldValue={setFieldValue}
+                                                errors={touched.loanWeeklyLimit && errors.loanWeeklyLimit}
+                                                required
+                                            />
+                                        </div>
                                     </div>
-                                    <div className="mt-4">
-                                        <InputText
-                                            name="loanWeeklyLimit"
-                                            value={values.loanWeeklyLimit}
-                                            onChange={handleChange}
-                                            label="Loan Weekly Limit"
-                                            placeholder="Please type the Loan Weekly Limit"
-                                            setFieldValue={setFieldValue}
-                                            errors={touched.loanWeeklyLimit && errors.loanWeeklyLimit ? errors.loanWeeklyLimit : undefined} />
+
+                                    {/* Rate Settings Card */}
+                                    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                                        <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
+                                            <div className="flex items-center">
+                                                <CalculatorIcon className="h-6 w-6 text-white mr-3" />
+                                                <h2 className="text-xl font-semibold text-white">Rate Settings (%)</h2>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="p-6 space-y-6">
+                                            <ModernInput
+                                                name="serviceChargeRate"
+                                                value={values.serviceChargeRate}
+                                                label="Service Charge Rate (%)"
+                                                placeholder="Enter service charge rate percentage"
+                                                icon={ReceiptPercentIcon}
+                                                type="number"
+                                                onChange={handleChange}
+                                                setFieldValue={setFieldValue}
+                                                errors={touched.serviceChargeRate && errors.serviceChargeRate}
+                                                required
+                                            />
+                                            
+                                            <ModernInput
+                                                name="mcbuRate"
+                                                value={values.mcbuRate}
+                                                label="MCBU Rate (%)"
+                                                placeholder="Enter MCBU rate percentage"
+                                                icon={CalculatorIcon}
+                                                type="number"
+                                                onChange={handleChange}
+                                                setFieldValue={setFieldValue}
+                                                errors={touched.mcbuRate && errors.mcbuRate}
+                                                required
+                                            />
+                                            
+                                            <ModernInput
+                                                name="lrfRate"
+                                                value={values.lrfRate}
+                                                label="LRF Rate (%)"
+                                                placeholder="Enter LRF rate percentage"
+                                                icon={DocumentCurrencyDollarIcon}
+                                                type="number"
+                                                onChange={handleChange}
+                                                setFieldValue={setFieldValue}
+                                                errors={touched.lrfRate && errors.lrfRate}
+                                                required
+                                            />
+                                        </div>
                                     </div>
-                                    <div className="mt-4 grid justify-items-end">
-                                        <button type="submit" className="bg-main border border-main rounded-md text-sm text-white font-bold proxima-regular px-5 py-2">
-                                            {loading && <svg role="status" className="inline w-4 h-4 mr-3 text-white animate-spin" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                <path d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z" fill="#E5E7EB" />
-                                                <path d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z" fill="currentColor" />
-                                            </svg>}
-                                            Update
-                                        </button>
+
+                                    {/* MCBU Collection Settings Card */}
+                                    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                                        <div className="bg-gradient-to-r from-purple-600 to-purple-700 px-6 py-4">
+                                            <div className="flex items-center">
+                                                <TrophyIcon className="h-6 w-6 text-white mr-3" />
+                                                <h2 className="text-xl font-semibold text-white">MCBU Collection Targets</h2>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="p-6 space-y-6">
+                                            <ModernInput
+                                                name="minDailyMcbuCollection"
+                                                value={values.minDailyMcbuCollection}
+                                                label="Minimum Daily MCBU Collection"
+                                                placeholder="Enter minimum daily MCBU collection"
+                                                icon={CurrencyDollarIcon}
+                                                type="number"
+                                                onChange={handleChange}
+                                                setFieldValue={setFieldValue}
+                                                errors={touched.minDailyMcbuCollection && errors.minDailyMcbuCollection}
+                                                required
+                                            />
+                                            
+                                            <ModernInput
+                                                name="minWeeklyMcbuCollection"
+                                                value={values.minWeeklyMcbuCollection}
+                                                label="Minimum Weekly MCBU Collection"
+                                                placeholder="Enter minimum weekly MCBU collection"
+                                                icon={BanknotesIcon}
+                                                type="number"
+                                                onChange={handleChange}
+                                                setFieldValue={setFieldValue}
+                                                errors={touched.minWeeklyMcbuCollection && errors.minWeeklyMcbuCollection}
+                                                required
+                                            />
+                                        </div>
                                     </div>
-                                </form>
-                            )}
-                        </Formik>
-                    </div>
-                )
-            }
-        </React.Fragment>
+
+                                    {/* Transaction Rules Card */}
+                                    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                                        <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 px-6 py-4">
+                                            <div className="flex items-center">
+                                                <ClockIcon className="h-6 w-6 text-white mr-3" />
+                                                <h2 className="text-xl font-semibold text-white">Transaction Rules</h2>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="p-6 space-y-6">
+                                            <ModernInput
+                                                name="startTransactionTime"
+                                                value={values.startTransactionTime}
+                                                label="Start Transaction Time"
+                                                placeholder="e.g., 09:00 AM"
+                                                icon={ClockIcon}
+                                                onChange={handleChange}
+                                                setFieldValue={setFieldValue}
+                                                errors={touched.startTransactionTime && errors.startTransactionTime}
+                                                required
+                                            />
+                                            
+                                            <div className="p-4 bg-gray-50 rounded-xl">
+                                                <ModernToggle
+                                                    name="allowWeekendTransaction"
+                                                    value={values.allowWeekendTransaction}
+                                                    label="Allow Weekend Transactions"
+                                                    description="Enable transactions during weekends (Saturday & Sunday)"
+                                                    onChange={handleChange}
+                                                    setFieldValue={setFieldValue}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Fee Settings Card - Full Width */}
+                                <div className="mt-8 bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                                    <div className="bg-gradient-to-r from-orange-600 to-orange-700 px-6 py-4">
+                                        <div className="flex items-center">
+                                            <DocumentCurrencyDollarIcon className="h-6 w-6 text-white mr-3" />
+                                            <h2 className="text-xl font-semibold text-white">Fee Settings</h2>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="p-6">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                            <ModernInput
+                                                name="admissionFee"
+                                                value={values.admissionFee}
+                                                label="Admission Fee"
+                                                placeholder="Enter admission fee"
+                                                icon={CurrencyDollarIcon}
+                                                type="number"
+                                                onChange={handleChange}
+                                                setFieldValue={setFieldValue}
+                                                errors={touched.admissionFee && errors.admissionFee}
+                                                required
+                                            />
+                                            
+                                            <ModernInput
+                                                name="cbhbFee"
+                                                value={values.cbhbFee}
+                                                label="CBHB Fee"
+                                                placeholder="Enter CBHB fee"
+                                                icon={DocumentCurrencyDollarIcon}
+                                                type="number"
+                                                onChange={handleChange}
+                                                setFieldValue={setFieldValue}
+                                                errors={touched.cbhbFee && errors.cbhbFee}
+                                                required
+                                            />
+                                            
+                                            <ModernInput
+                                                name="otherPassbookFee"
+                                                value={values.otherPassbookFee}
+                                                label="Passbook Fee"
+                                                placeholder="Enter passbook fee"
+                                                icon={CurrencyDollarIcon}
+                                                type="number"
+                                                onChange={handleChange}
+                                                setFieldValue={setFieldValue}
+                                                errors={touched.otherPassbookFee && errors.otherPassbookFee}
+                                                required
+                                            />
+                                            
+                                            <ModernInput
+                                                name="otherPictureFee"
+                                                value={values.otherPictureFee}
+                                                label="Picture Fee"
+                                                placeholder="Enter picture fee"
+                                                icon={CurrencyDollarIcon}
+                                                type="number"
+                                                onChange={handleChange}
+                                                setFieldValue={setFieldValue}
+                                                errors={touched.otherPictureFee && errors.otherPictureFee}
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Action Buttons */}
+                                <div className="mt-8 flex justify-end space-x-4">
+                                    <button
+                                        type="button"
+                                        className="px-6 py-3 border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200"
+                                    >
+                                        Reset
+                                    </button>
+                                    
+                                    <button
+                                        type="submit"
+                                        disabled={loading}
+                                        className="px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-blue-800 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl"
+                                    >
+                                        {loading ? (
+                                            <div className="flex items-center">
+                                                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                                Updating...
+                                            </div>
+                                        ) : (
+                                            'Update Settings'
+                                        )}
+                                    </button>
+                                </div>
+
+                                {/* Info Banner */}
+                                <div className="mt-8 bg-amber-50 border border-amber-200 rounded-xl p-4">
+                                    <div className="flex items-start">
+                                        <ExclamationTriangleIcon className="h-5 w-5 text-amber-600 mt-0.5 mr-3 flex-shrink-0" />
+                                        <div>
+                                            <h3 className="text-sm font-semibold text-amber-900">Important Notice</h3>
+                                            <p className="text-sm text-amber-700 mt-1">
+                                                Changes to transaction limits, rates, fees, and rules will affect all users immediately. 
+                                                Please ensure all settings are properly configured before saving.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    )}
+                </Formik>
+            )}
+        </div>
     );
 }
 
