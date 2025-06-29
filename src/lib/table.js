@@ -40,14 +40,12 @@ const isRecentlyModified = (insertedDate, modifiedDate) => {
   return hoursSinceModified <= 24;
 };
 
-const getTransferIndicatorType = (insertedDate, modifiedDate) => {
-  // Priority: Modified indicator overrides new indicator
-  if (isRecentlyModified(insertedDate, modifiedDate)) {
+const getTransferIndicatorType = (insertedDate, modifiedDate, modifiedById) => {
+  if (modifiedDate && modifiedDate !== insertedDate && modifiedById) {
     return 'modified';
-  } else if (isRecentlyCreated(insertedDate)) {
-    return 'new';
   }
-  return null;
+
+  return 'new';
 };
 
 // This is a custom filter UI for selecting
@@ -779,7 +777,8 @@ const handleSelectRow = useCallback((row, index) => {
                     ldfApproved,
                     withError: error,
                     insertedDate,
-                    modifiedDate
+                    modifiedDate,
+                    modifiedById
                   } = row.original;
 
                   const checkBoxDisable = disable || error;
@@ -787,7 +786,7 @@ const handleSelectRow = useCallback((row, index) => {
                   // Check transfer indicator type for fund transfers
                   const isFundTransfer = dropDownActionOrigin === 'fund-transfer';
                   const indicatorType = isFundTransfer && status === 'pending' 
-                    ? getTransferIndicatorType(insertedDate, modifiedDate) 
+                    ? getTransferIndicatorType(insertedDate, modifiedDate, modifiedById) 
                     : null;
 
                   // Enhanced row class logic with transfer indicators

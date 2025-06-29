@@ -172,13 +172,7 @@ async function processData(data, date, currentDate) {
         let branchTotalCOH = 0;
 
         division?.branchCollection?.map(branch => {
-            if (branch?.draftCollections?.length > 0) {
-                const transactionStatus = branch.draftCollections[0].groupStatusArr?.filter(status => status === "pending") ?? [];
-                const draft = branch.draftCollections[0].hasDraftsArr?.filter(d => d === true) ?? [];
-                if (transactionStatus?.length == 0 && draft?.length == 0) {
-                    groupStatus = 'close';
-                }
-            } else if (branch.cashCollections?.length > 0) {
+            if (branch.cashCollections?.length > 0) {
                 const transactionStatus = branch.cashCollections[0].groupStatusArr?.filter(status => status === "pending") ?? [];
                 const draft = branch.cashCollections[0].hasDraftsArr?.filter(d => d === true) ?? [];
                 if (transactionStatus?.length == 0 && draft?.length == 0) {

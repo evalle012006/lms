@@ -161,3 +161,9 @@ export const jsonTryParse = (str, defVal) => {
 }
 
 export const generateUUID = () => uuidv4();
+
+
+export const safeNumber = (value) => {
+    const num = Number(value);
+    return isNaN(num) ? 0 : num;
+};

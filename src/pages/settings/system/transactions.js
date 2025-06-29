@@ -48,6 +48,10 @@ const ModernInput = ({
         value={value}
         onChange={onChange}
         placeholder={placeholder}
+        autoComplete="off"
+        autoCorrect="off"
+        autoCapitalize="off"
+        spellCheck="false"
         className={`w-full pl-12 pr-4 py-3 border rounded-xl focus:ring-2 focus:border-transparent transition-all duration-200 bg-white shadow-sm hover:shadow-md focus:shadow-lg ${
           errors 
             ? 'border-red-300 focus:ring-red-500' 
@@ -96,6 +100,22 @@ const TransactionsSettingsPage = (props) => {
     const [loading, setLoading] = useState(false);
     const [saved, setSaved] = useState(false);
 
+    // Function to fetch transaction settings from API
+    const fetchTransactionSettings = async () => {
+        try {
+            const apiURL = `${getApiBaseUrl()}settings/transactions`;
+            const response = await fetchWrapper.get(apiURL);
+            
+            if (response.success && response.transactions) {
+                dispatch(setTransactionSettings(response.transactions));
+            } else {
+                console.log('No transaction data received from API');
+            }
+        } catch (error) {
+            console.error('Error fetching transaction settings:', error);
+        }
+    };
+
     const initialValues = {
         // Loan Limits
         loanDailyLimit: transactionState.loanDailyLimit || '',
@@ -106,9 +126,10 @@ const TransactionsSettingsPage = (props) => {
         mcbuRate: transactionState.mcbuRate || '',
         lrfRate: transactionState.lrfRate || '',
         
-        // MCBU Collection Settings
+        // Collection Settings
         minDailyMcbuCollection: transactionState.minDailyMcbuCollection || '',
         minWeeklyMcbuCollection: transactionState.minWeeklyMcbuCollection || '',
+        minCsfCollection: transactionState.minCsfCollection || '',
         
         // Transaction Rules
         allowWeekendTransaction: transactionState.allowWeekendTransaction || false, 
@@ -131,9 +152,10 @@ const TransactionsSettingsPage = (props) => {
         mcbuRate: yup.number().min(0, 'Cannot be negative').max(100, 'Cannot exceed 100%').required('MCBU rate is required'),
         lrfRate: yup.number().min(0, 'Cannot be negative').max(100, 'Cannot exceed 100%').required('LRF rate is required'),
         
-        // MCBU Collection Settings
+        // Collection Settings
         minDailyMcbuCollection: yup.number().min(0, 'Cannot be negative').required('Minimum daily MCBU collection is required'),
         minWeeklyMcbuCollection: yup.number().min(0, 'Cannot be negative').required('Minimum weekly MCBU collection is required'),
+        minCsfCollection: yup.number().min(0, 'Cannot be negative').required('Minimum CSF collection is required'),
         
         // Transaction Rules
         startTransactionTime: yup.string().required('Start transaction time is required'),
@@ -155,15 +177,19 @@ const TransactionsSettingsPage = (props) => {
 
             const apiURL = `${getApiBaseUrl()}settings/transactions`;
             const response = await fetchWrapper.post(apiURL, updatedValues);
-            console.log('Update response:', response);
+
             if (response.success) {
-                // Use setTransactionSettings to match the action that loads the data
-                dispatch(setTransactionSettings(updatedValues));
+                // Show success immediately
                 setSaved(true);
                 toast.success('Transaction Settings updated successfully!');
                 setTimeout(() => setSaved(false), 3000);
+                
+                // Refresh data from API to ensure Redux state is updated
+                console.log('Refreshing transaction data from API...');
+                await fetchTransactionSettings();
+                
             } else {
-                toast.error('Failed to update transaction settings');
+                toast.error(response.message || 'Failed to update transaction settings');
             }
         } catch (error) {
             console.error('Update error:', error);
@@ -176,6 +202,12 @@ const TransactionsSettingsPage = (props) => {
     useEffect(() => {
         if ((currentUser.role && currentUser.role.rep > 2)) {
             router.push('/');
+            return;
+        }
+        
+        // If transaction state is empty, try to fetch it
+        if (!transactionState || Object.keys(transactionState).length === 0) {
+            fetchTransactionSettings();
         }
     }, []);
 
@@ -199,10 +231,11 @@ const TransactionsSettingsPage = (props) => {
                     initialValues={initialValues} 
                     validationSchema={validationSchema}
                     onSubmit={handleUpdate}
-                    enableReinitialize
+                    enableReinitialize={true}
+                    key={JSON.stringify(initialValues)} // Force re-render when data changes
                 >
                     {({ values, errors, touched, handleChange, handleSubmit, setFieldValue }) => (
-                        <form onSubmit={handleSubmit}>
+                        <form onSubmit={handleSubmit} autoComplete="off" autoCorrect="off" spellCheck="false">
                             {/* Header */}
                             <div className="bg-white border-b border-gray-200 shadow-sm">
                                 <div className="max-w-7xl mx-auto px-6 py-4">
@@ -314,12 +347,12 @@ const TransactionsSettingsPage = (props) => {
                                         </div>
                                     </div>
 
-                                    {/* MCBU Collection Settings Card */}
+                                    {/* Collection Targets Card */}
                                     <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
                                         <div className="bg-gradient-to-r from-purple-600 to-purple-700 px-6 py-4">
                                             <div className="flex items-center">
                                                 <TrophyIcon className="h-6 w-6 text-white mr-3" />
-                                                <h2 className="text-xl font-semibold text-white">MCBU Collection Targets</h2>
+                                                <h2 className="text-xl font-semibold text-white">Collection Targets</h2>
                                             </div>
                                         </div>
                                         
@@ -347,6 +380,19 @@ const TransactionsSettingsPage = (props) => {
                                                 onChange={handleChange}
                                                 setFieldValue={setFieldValue}
                                                 errors={touched.minWeeklyMcbuCollection && errors.minWeeklyMcbuCollection}
+                                                required
+                                            />
+                                            
+                                            <ModernInput
+                                                name="minCsfCollection"
+                                                value={values.minCsfCollection}
+                                                label="Minimum CSF Collection"
+                                                placeholder="Enter minimum CSF collection"
+                                                icon={TrophyIcon}
+                                                type="number"
+                                                onChange={handleChange}
+                                                setFieldValue={setFieldValue}
+                                                errors={touched.minCsfCollection && errors.minCsfCollection}
                                                 required
                                             />
                                         </div>
