@@ -42,12 +42,12 @@ const TransferClientPage = () => {
 
     const [selectedTab, setSelectedTab] = useTabs([
         'transfer-transaction',
-        // 'history-branch',
-        // 'history-lo',
         'history-revert-transfer'
     ]);
 
     const handleShowAddDrawer = () => {
+        setMode('add');
+        setClient({});
         setShowAddDrawer(true);
     }
 
@@ -167,6 +167,7 @@ const TransferClientPage = () => {
         return transfer;
     }
 
+    // FIXED: Optimized to avoid unnecessary calls to getTransferList()
     const updateTransferStatus = async (data, status) => {
         setLoading(true);
         
@@ -195,9 +196,8 @@ const TransferClientPage = () => {
                     console.log(response)
                     setLoading(false);
                     toast.success(msg);
-                    setTimeout(() => {
-                        getTransferList();
-                    }, 500);
+                    // FIXED: Call getTransferList directly instead of setTimeout
+                    await getTransferList();
                 }
             }
         }
@@ -206,13 +206,7 @@ const TransferClientPage = () => {
     const handleEditAction = (row) => {
         setMode("edit");
         setClient(row);
-        // let clientListData = [...clientList];
-        // let client = row.original.client;
-        // client.label = `${client.lastName}, ${client.firstName} ${client.middleName ? client.middleName : ''}`;
-        // client.value = client._id;
-        // clientListData.push(client);
-        // dispatch(setClientList(clientListData));
-        handleShowAddDrawer();
+        setShowAddDrawer(true);
     }
 
     const handleDeleteAction = (row) => {
@@ -221,49 +215,49 @@ const TransferClientPage = () => {
     }
 
     const handleApprove = (row) => {
-        // if (row.original.allowApproved) {
-            updateTransferStatus(row.original, 'approved');
-        // } else {
-        //     toast.error("Group transaction is already closed for the day.");
-        // }
+        updateTransferStatus(row.original, 'approved');
     }
 
     const handleReject = (row) => {
-        // if (row.original.allowApproved) {
-            updateTransferStatus(row, 'reject');
-        // } else {
-        //     toast.error("Group transaction is already closed for the day.");
-        // }
+        updateTransferStatus(row, 'reject');
     }
 
-    const handleDelete = () => {
+    // FIXED: Optimized to avoid unnecessary calls
+    const handleDelete = async () => {
         if (client) {
             setLoading(true);
-            fetchWrapper.postCors(getApiBaseUrl() + 'transactions/transfer-client/delete', { id: client._id })
-                .then(response => {
-                    if (response.success) {
-                        setShowDeleteDialog(false);
-                        toast.success('Transfer successfully deleted.');
-                        setLoading(false);
-                        getTransferList();
-                    } else if (response.error) {
-                        toast.error(response.message);
-                    } else {
-                        console.log(response);
-                    }
-                });
-            setLoading(false);
+            try {
+                const response = await fetchWrapper.postCors(getApiBaseUrl() + 'transactions/transfer-client/delete', { id: client._id });
+                
+                if (response.success) {
+                    setShowDeleteDialog(false);
+                    toast.success('Transfer successfully deleted.');
+                    // FIXED: Call getTransferList directly instead of setTimeout
+                    await getTransferList();
+                } else if (response.error) {
+                    toast.error(response.message);
+                } else {
+                    console.log(response);
+                }
+            } catch (error) {
+                console.error('Delete error:', error);
+                toast.error('An error occurred while deleting the transfer.');
+            } finally {
+                setLoading(false);
+            }
         }
     }
 
-    const handleCloseAddDrawer = () => {
-        setLoading(true);
-        // getTransferList();
+    // FIXED: Only refresh data when needed
+    const handleCloseAddDrawer = (shouldRefresh = false) => {
         setMode('add');
         setClient({});
-        setTimeout(() => {
-            window.location.reload();
-        }, 800);
+        setShowAddDrawer(false);
+        
+        // Only refresh data if something was actually changed
+        if (shouldRefresh) {
+            getTransferList();
+        }
     }
 
     const handleMultiSelect = (mode, selectAll, rows, currentPageIndex) => {
@@ -309,12 +303,14 @@ const TransferClientPage = () => {
     
         try {
             const updatedList = updateTransferList();
+            // NOTE: Don't re-sort here to avoid confusing users during multi-select
             dispatch(setTransferList(updatedList));
         } catch (error) {
             console.error('Error updating transfer list:', error);
         }
     };
 
+    // FIXED: Optimized to avoid window.location.reload()
     const handleMultiApprove = async () => {
         setLoading(true);
         let selectedList = transferList && transferList.filter(t => t.selected === true);
@@ -335,8 +331,7 @@ const TransferClientPage = () => {
                 } else {
                     selectedList = selectedList.map(transfer => {
                         let temp = {...transfer};
-
-                        temp .status = "approved";
+                        temp.status = "approved";
                         temp.currentDate = currentDate;
                         return temp;
                     });
@@ -346,37 +341,43 @@ const TransferClientPage = () => {
                     if (response.success) {
                         setLoading(false);
                         toast.success('Selected clients successfully transferred.');
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 1000);
+                        // FIXED: Call getTransferList directly instead of window.location.reload()
+                        await getTransferList();
                     }
                 }
             }
         } else {
+            setLoading(false);
             toast.error('No client selected!');
         }
     }
 
+    // FIXED: Optimized to avoid unnecessary calls
     const handleRepair = async (data) => {
         if (data) {
             if (data.errorMsg?.includes('slot number')) {
                 toast.info('Please contact system administrator!');
             } else {
                 setLoading(true);
-                fetchWrapper.post(getApiBaseUrl() + 'transactions/transfer-client/repair', { _id: data._id })
-                    .then(response => {
-                        if (response.success) {
-                            setLoading(false);
-                            toast.success('Transfer successfully repaired.');
-                            setTimeout(() => {
-                                getTransferList();
-                            }, 1000);
-                        } else if (response.error) {
-                            toast.error(response.message);
-                        } else {
-                            console.log(response);
-                        }
-                    });
+                try {
+                    const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/transfer-client/repair', { _id: data._id });
+                    
+                    if (response.success) {
+                        setLoading(false);
+                        toast.success('Transfer successfully repaired.');
+                        // FIXED: Call getTransferList directly instead of setTimeout
+                        await getTransferList();
+                    } else if (response.error) {
+                        toast.error(response.message);
+                    } else {
+                        console.log(response);
+                    }
+                } catch (error) {
+                    console.error('Repair error:', error);
+                    toast.error('An error occurred while repairing the transfer.');
+                } finally {
+                    setLoading(false);
+                }
             }
         }
     }
@@ -385,112 +386,155 @@ const TransferClientPage = () => {
 
     const getListBranch = async () => {
         let url = getApiBaseUrl() + 'branches/list';
-        if (currentUser.role.rep === 1) {
-            const response = await fetchWrapper.get(url);
-            if (response.success) {
-                let branches = [];
-                response.branches.map(branch => {
-                    branches.push({
-                        ...branch,
-                        value: branch._id,
-                        label: branch.name
+        
+        try {
+            if (currentUser.role.rep === 1) {
+                const response = await fetchWrapper.get(url);
+                if (response.success) {
+                    let branches = [];
+                    response.branches.map(branch => {
+                        branches.push({
+                            ...branch,
+                            value: branch._id,
+                            label: branch.name
+                        });
                     });
-                });
-                dispatch(setBranchList(branches));
-            } else if (response.error) {
-                setLoading(false);
-                toast.error(response.message);
-            }
-        } else if (currentUser.role.rep === 2) {
-            url = url + '?' + new URLSearchParams({ currentUserId: currentUser._id });
-            const response = await fetchWrapper.get(url);
-            if (response.success) {
-                let branches = [];
-                response.branches.map(branch => {
-                    branches.push({
-                        ...branch,
-                        value: branch._id,
-                        label: branch.name
+                    dispatch(setBranchList(branches));
+                } else if (response.error) {
+                    toast.error(response.message);
+                }
+            } else if (currentUser.role.rep === 2) {
+                url = url + '?' + new URLSearchParams({ currentUserId: currentUser._id });
+                const response = await fetchWrapper.get(url);
+                if (response.success) {
+                    let branches = [];
+                    response.branches.map(branch => {
+                        branches.push({
+                            ...branch,
+                            value: branch._id,
+                            label: branch.name
+                        });
                     });
-                });
-                dispatch(setBranchList(branches));
-            } else if (response.error) {
-                setLoading(false);
-                toast.error(response.message);
-            }
-        }  else if (currentUser.role.rep === 3) {
-            const branchCodes = currentUser.designatedBranch;
-            url = url + '?' + new URLSearchParams({ branchCode: [branchCodes] });
-            const response = await fetchWrapper.get(url);
-            if (response.success) {
-                let branches = [];
-                response.branches.map(branch => {
-                    branches.push({
-                        ...branch,
-                        value: branch._id,
-                        label: branch.name
+                    dispatch(setBranchList(branches));
+                } else if (response.error) {
+                    toast.error(response.message);
+                }
+            } else if (currentUser.role.rep === 3) {
+                const branchCodes = currentUser.designatedBranch;
+                url = url + '?' + new URLSearchParams({ branchCode: [branchCodes] });
+                const response = await fetchWrapper.get(url);
+                if (response.success) {
+                    let branches = [];
+                    response.branches.map(branch => {
+                        branches.push({
+                            ...branch,
+                            value: branch._id,
+                            label: branch.name
+                        });
                     });
-                });
-                dispatch(setBranchList(branches));
-            } else if (response.error) {
-                setLoading(false);
-                toast.error(response.message);
+                    dispatch(setBranchList(branches));
+                } else if (response.error) {
+                    toast.error(response.message);
+                }
             }
+        } catch (error) {
+            console.error('Error fetching branch list:', error);
+            toast.error('Failed to fetch branch list.');
         }
     }
+
+    // FIXED: Add sorting function to prioritize pending transfers with no errors
+    const sortTransferList = (transfers) => {
+        return transfers.sort((a, b) => {
+            // Priority 1: Pending with no errors (highest priority)
+            const aIsPendingNoError = a.status === 'pending' && !a.withError;
+            const bIsPendingNoError = b.status === 'pending' && !b.withError;
+            
+            if (aIsPendingNoError && !bIsPendingNoError) return -1;
+            if (!aIsPendingNoError && bIsPendingNoError) return 1;
+            
+            // Priority 2: Pending with errors (second priority)
+            const aIsPendingWithError = a.status === 'pending' && a.withError;
+            const bIsPendingWithError = b.status === 'pending' && b.withError;
+            
+            if (aIsPendingWithError && !bIsPendingWithError) return -1;
+            if (!aIsPendingWithError && bIsPendingWithError) return 1;
+            
+            // Priority 3: All other statuses (maintain current order)
+            return 0;
+        });
+    };
 
     const getTransferList = async () => {
         const holidays = holidayList.map(holiday => holiday.date);
         const previousMonthEndDate = getLastWeekdayOfTheMonth(moment().subtract(1, 'months').format('YYYY'), moment().subtract(1, 'months').format('MM'), holidays);
         const endMonthDate = isEndMonthDate(currentDate, holidays);
         const previousLastMonthDate = endMonthDate ? currentDate : previousMonthEndDate;
-        if (previousLastMonthDate) {
-            let url = getApiBaseUrl() + 'transactions/transfer-client';
+        
+        if (!previousLastMonthDate) {
+            return;
+        }
+
+        let url = getApiBaseUrl() + 'transactions/transfer-client';
+        
+        try {
             if (currentUser.role.rep === 1) {
                 url = url + '?' + new URLSearchParams({ previousLastMonthDate: previousLastMonthDate });
                 const response = await fetchWrapper.get(url);
                 if (response.success) {
-                    dispatch(setTransferList(response.data));
+                    // FIXED: Sort the data before dispatching to Redux
+                    const sortedData = sortTransferList([...response.data]);
+                    dispatch(setTransferList(sortedData));
                 } else if (response.error) {
-                    setLoading(false);
                     toast.error(response.message);
                 }
             } else if (currentUser.role.rep === 2) {
                 url = url + '?' + new URLSearchParams({ _id: currentUser._id, previousLastMonthDate: previousLastMonthDate });
                 const response = await fetchWrapper.get(url);
                 if (response.success) {
-                    dispatch(setTransferList(response.data));
+                    // FIXED: Sort the data before dispatching to Redux
+                    const sortedData = sortTransferList([...response.data]);
+                    dispatch(setTransferList(sortedData));
                 } else if (response.error) {
-                    setLoading(false);
                     toast.error(response.message);
                 }
-            }  else if (currentUser.role.rep === 3) {
+            } else if (currentUser.role.rep === 3) {
                 url = url + '?' + new URLSearchParams({ branchId: currentUser.designatedBranchId, previousLastMonthDate: previousLastMonthDate });
                 const response = await fetchWrapper.get(url);
                 if (response.success) {
-                    dispatch(setTransferList(response.data));
+                    // FIXED: Sort the data before dispatching to Redux
+                    const sortedData = sortTransferList([...response.data]);
+                    dispatch(setTransferList(sortedData));
                 } else if (response.error) {
-                    setLoading(false);
                     toast.error(response.message);
                 }
             }
+        } catch (error) {
+            console.error('Error fetching transfer list:', error);
+            toast.error('Failed to fetch transfer list.');
         }
     }
 
     useEffect(() => {
-        if ((currentUser?.role?.rep > 3)) {
+        if (currentUser?.role?.rep > 3) {
             router.push('/');
         }
-    }, []);
+    }, [currentUser?.role?.rep, router]); // FIXED: Add proper dependencies
 
+    // FIXED: Add guards to prevent unnecessary API calls
     const fetchData = async () => {
+        // Don't fetch if user data isn't loaded yet
+        if (!currentUser?.role?.rep) {
+            return;
+        }
+        
         setLoading(true);
-        const promise = await new Promise(async (resolve) => {
-            const response = await Promise.all([getListBranch(), getTransferList()]);
-            resolve(response);
-        });
-
-        if (promise) {
+        try {
+            await Promise.all([getListBranch(), getTransferList()]);
+        } catch (error) {
+            console.error('Error fetching data:', error);
+            toast.error('An error occurred while fetching data.');
+        } finally {
             setLoading(false);
         }
     }
@@ -498,25 +542,28 @@ const TransferClientPage = () => {
     useEffect(() => {
         let mounted = true;
 
-        mounted && fetchData();
+        if (mounted && currentDate && holidayList.length > 0) {
+            fetchData();
+        }
 
         return (() => {
             mounted = false;
         })
-    }, [currentDate, holidayList]);
+    }, [currentDate, holidayList.length]); // FIXED: Use holidayList.length instead of the whole array
 
     useEffect(() => {
         if (currentUser.role.rep < 4) {
             const holidays = holidayList.map(holiday => holiday.date);
             const lastWorkingDayOfWeek = getLastWorkingDayOfWeek(currentDate, holidays);
+
             if (currentUser.role.rep < 3 && lastWorkingDayOfWeek.format("YYYY-MM-DD") == currentDate && !isHoliday && !isWeekend) {
                 setActionButtons([
-                    <ButtonOutline label="Approved Selected Transfer" type="button" className="p-2 mr-3" onClick={handleMultiApprove} disabled={loading} />,
-                    <ButtonSolid label="Add Transfer" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
+                    <ButtonOutline key="approve-btn" label="Approved Selected Transfer" type="button" className="p-2 mr-3" onClick={handleMultiApprove} disabled={loading} />,
+                    <ButtonSolid key="add-btn" label="Add Transfer" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
                 ]);
             } else {
                 setActionButtons([
-                    <ButtonSolid label="Add Transfer" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
+                    <ButtonSolid key="add-btn" label="Add Transfer" type="button" className="p-2 mr-3" onClick={handleShowAddDrawer} icon={[<PlusIcon className="w-5 h-5" />, 'left']} />
                 ]);
             }
 
@@ -553,9 +600,7 @@ const TransferClientPage = () => {
         <Layout actionButtons={currentUser.role.rep <= 3 && actionButtons}>
             <div className="pb-4">
                 { loading ? (
-                    // <div className="absolute top-1/2 left-1/2">
-                        <Spinner />
-                    // </div>
+                    <Spinner />
                 ) : (
                     <React.Fragment>
                         <nav className="flex pl-10 bg-white border-b border-gray-300">
@@ -574,6 +619,23 @@ const TransferClientPage = () => {
                         </nav>
                         <React.Fragment>
                             <TabPanel hidden={selectedTab !== "transfer-transaction"}>
+                                {/* FIXED: Show sorting info only when there are pending transfers */}
+                                {transferList && transferList.some(t => t.status === 'pending') && (
+                                    <div className="bg-blue-50 border-l-4 border-blue-400 p-3 mb-4 mx-4">
+                                        <div className="flex">
+                                            <div className="flex-shrink-0">
+                                                <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fillRule="evenodd" d="M3 3a1 1 0 000 2h11a1 1 0 100-2H3zM3 7a1 1 0 000 2h7a1 1 0 100-2H3zM3 11a1 1 0 100 2h4a1 1 0 100-2H3z" clipRule="evenodd" />
+                                                </svg>
+                                            </div>
+                                            <div className="ml-3">
+                                                <p className="text-sm text-blue-700">
+                                                    <strong>Sorted by Priority:</strong> Pending transfers without errors appear first for easier processing.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                                 <TableComponent columns={columns} data={transferList} pageSize={20} hasActionButtons={false} dropDownActions={dropDownActions} dropDownActionOrigin="transfer" showFilters={false} multiSelect={currentUser.role.rep <= 3 ? true : false} multiSelectActionFn={handleMultiSelect} />
                             </TabPanel>
                             {currentUser.role.rep < 3 && (
