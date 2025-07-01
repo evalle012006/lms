@@ -282,7 +282,7 @@ export const getLastFiveWeekdaysOfMonth = (year, month, holidays = []) => {
  * @param {string[]} holidays - Array of holidays in "MM-DD" format
  * @returns {moment.Moment} Moment object representing the last non-holiday weekday
  */
-export const getLastWorkingDayOfWeek = (holidays = []) => {
+export const getLastWorkingDayOfWeek2 = (holidays = []) => {
     let weekOffset = 0;
     let foundWorkingDay = false;
     let candidateDay;
@@ -292,8 +292,9 @@ export const getLastWorkingDayOfWeek = (holidays = []) => {
       // Check days from Friday to Monday (5 down to 1) of the current+offset week
       for (let dayOfWeek = 5; dayOfWeek >= 1; dayOfWeek--) {
         // Create a moment for the day in the current+offset week
-        candidateDay = moment().add(weekOffset, 'weeks').day(dayOfWeek);
+        candidateDay = moment(new Date('2025-06-29 00:00:00')).add(weekOffset, 'weeks').day(dayOfWeek);
         const candidateDayFormatted = candidateDay.format('MM-DD');
+        console.log(candidateDayFormatted, !holidays.includes(candidateDayFormatted));
         
         // If this day is not a holiday, we found our day
         if (!holidays.includes(candidateDayFormatted)) {
@@ -310,3 +311,63 @@ export const getLastWorkingDayOfWeek = (holidays = []) => {
     
     return candidateDay;
   };
+
+  function getLastWorkingDayOfMonth(currenDate) {
+    // Create a date for the last day of the month
+    // Month is 0-indexed in JavaScript Date
+    const year = moment(currenDate).year();
+    const month = moment(currenDate).month();
+
+    const lastDay = new Date(year, month + 1, 0);
+    
+    // Start from the last day and work backwards
+    while (lastDay.getDay() === 0 || lastDay.getDay() === 6) {
+        lastDay.setDate(lastDay.getDate() - 1);
+    }
+    
+    return lastDay;
+}
+
+  export const getLastWorkingDayOfWeek = (currentDate, holidays = []) => {
+    let last_day = getLastWorkingDayOfWeekContaining(currentDate);
+    while( holidays.includes(moment(last_day).format('MM-DD')) ) {
+        last_day = getPreviousWorkingDay(last_day);
+    }
+    return moment(last_day);
+  }
+
+
+  export function getLastWorkingDayOfWeekContaining(date) {
+
+    const last_day_of_month = getLastWorkingDayOfMonth(date);
+
+    const targetDate = new Date(date);
+    const dayOfWeek = targetDate.getDay();
+    
+    // Find the Saturday of this week
+    const saturday = new Date(targetDate);
+    saturday.setDate(targetDate.getDate() + (6 - dayOfWeek));
+    
+    // Work backwards to find the last working day
+    let lastWorkingDay = new Date(saturday > last_day_of_month ? last_day_of_month : saturday);
+
+    while (lastWorkingDay.getDay() === 0 || lastWorkingDay.getDay() === 6) {
+        lastWorkingDay.setDate(lastWorkingDay.getDate() - 1);
+    }
+    
+    return lastWorkingDay;
+}
+
+export function getPreviousWorkingDay(date, excludedDays = [0, 6], holidays) {
+    const previousDay = new Date(date);
+    
+    // Go back one day
+    previousDay.setDate(previousDay.getDate() - 1);
+    
+    // Keep going back until we find a working day
+    while (excludedDays.includes(previousDay.getDay())) {
+        previousDay.setDate(previousDay.getDate() - 1);
+    }
+    
+    return previousDay;
+}

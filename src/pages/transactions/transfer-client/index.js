@@ -508,8 +508,7 @@ const TransferClientPage = () => {
     useEffect(() => {
         if (currentUser.role.rep < 4) {
             const holidays = holidayList.map(holiday => holiday.date);
-            const lastWorkingDayOfWeek = getLastWorkingDayOfWeek(holidays);
-
+            const lastWorkingDayOfWeek = getLastWorkingDayOfWeek(currentDate, holidays);
             if (currentUser.role.rep < 3 && lastWorkingDayOfWeek.format("YYYY-MM-DD") == currentDate && !isHoliday && !isWeekend) {
                 setActionButtons([
                     <ButtonOutline label="Approved Selected Transfer" type="button" className="p-2 mr-3" onClick={handleMultiApprove} disabled={loading} />,
