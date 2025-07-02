@@ -121,13 +121,13 @@ const HeaderComponent = () => {
               </div> */}
             </div>
             
-            <button 
+            {/* <button 
               onClick={navigateToProfile}
               className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
             >
               <PencilSquareIcon className="w-4 h-4 mr-2" />
               Edit Profile
-            </button>
+            </button> */}
             
             {(userState?.role?.rep === 1 || userState?.root) && (
               <button 
