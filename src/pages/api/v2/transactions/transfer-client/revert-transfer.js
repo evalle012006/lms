@@ -47,7 +47,7 @@ async function revertTransfer(req, res) {
         let originalGroup = transferData.originalGroup;
         let newGroup = transferData.newGroup;
 
-        let prevLoan = await findLoans({ _id: { _eq: originalCC?.prevLoanId } });
+        let prevLoan =  await findLoans({ _id: { _eq: originalCC?.prevLoanId ?? 'null' } });
         if (prevLoan.length > 0) {
             prevLoan = prevLoan[0];
             delete prevLoan.transferredReleased;
