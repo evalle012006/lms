@@ -61,7 +61,7 @@ async function getList(req, res) {
     const { _id, branchId, previousLastMonthDate } = req.query;
 
     const pendingTransferClients = await getPendingTransfer(_id, branchId);
-    const approvedTransferClients = await getApprovedTransfer(_id, branchId, previousLastMonthDate);
+    const approvedTransferClients = [];//await getApprovedTransfer(_id, branchId, previousLastMonthDate);
 
     // get error = true from approvedTransferClients and append it on the pendingData
 
