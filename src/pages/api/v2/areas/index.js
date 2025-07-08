@@ -63,12 +63,14 @@ async function updateArea(req, res) {
             set: {
                 name: updateArea.name,
                 regionId: updateArea.regionId,
+                divisionId: updateArea.divisionId,
             },
             where: { _id: { _eq: updateArea._id } }
         }),
         updateQl(BRANCH_TYPE(), {
             set: {
                 regionId: updateArea.regionId,
+                divisionId: updateArea.divisionId,
             },
             where: {
                 areaId: { _eq: updateArea._id }
@@ -76,7 +78,8 @@ async function updateArea(req, res) {
         }),
         updateQl(USER_TYPE(), {
             set: {
-                regionId: updateArea.regionId
+                regionId: updateArea.regionId,
+                divisionId: updateArea.divisionId,
             },
             where: {
                 areaId: { _eq: updateArea._id } 
