@@ -5,6 +5,8 @@ import { apiHandler } from '@/services/api-handler';
 
 const graph = new GraphProvider();
 
+const BRANCH_TYPE = (alias) => createGraphType('branches', '_id')(alias);
+const USER_TYPE = (alias) => createGraphType('users', '_id') (alias);
 const AREA_TYPE = (alias) => createGraphType('areas', `
 ${AREA_FIELDS}
 managers (where: {
@@ -54,12 +56,31 @@ async function updateArea(req, res) {
 
     const updateArea = req.body;
 
+    console.log(updateArea);
+
     await graph.mutation(
         updateQl(AREA_TYPE(), {
             set: {
-                name: updateArea.name
+                name: updateArea.name,
+                regionId: updateArea.regionId,
             },
             where: { _id: { _eq: updateArea._id } }
+        }),
+        updateQl(BRANCH_TYPE(), {
+            set: {
+                regionId: updateArea.regionId,
+            },
+            where: {
+                areaId: { _eq: updateArea._id }
+            }
+        }),
+        updateQl(USER_TYPE(), {
+            set: {
+                regionId: updateArea.regionId
+            },
+            where: {
+                areaId: { _eq: updateArea._id } 
+            }
         })
     );
 
