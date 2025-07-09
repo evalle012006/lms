@@ -74,14 +74,11 @@ async function updateBranch(req, res) {
     const branch = req.body;
     const branchId = branch._id;
     delete branch._id;
-    delete branch.areaId;
-    delete branch.regionId;
-    delete branch.divisionId;
 
     const resp = await graph.mutation(
         updateQl(createGraphType('branches', `_id`)('branches'), {
             set: {
-                ... branch
+                ... branch,
             },
             where: {
                 _id: { _eq: branchId }
