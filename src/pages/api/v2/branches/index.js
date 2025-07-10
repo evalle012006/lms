@@ -83,7 +83,17 @@ async function updateBranch(req, res) {
             where: {
                 _id: { _eq: branchId }
             }
-        })
+        }),
+        updateQl(createGraphType('users', '_id'), {
+            set: {
+                areaId: branch.areaId,
+                regionId: branch.regionId,
+                divisionId: branch.divisionId
+            },
+            where: {
+                designatedBranchId: { _eq: branchId }
+            }
+        }),
     )
 
     response = { success: true, branch: resp };
