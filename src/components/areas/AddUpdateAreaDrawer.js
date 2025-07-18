@@ -129,7 +129,6 @@ const AddUpdateArea = ({ mode = 'add', area = {}, managerList=[], showSidebar, s
                                             options={regionList}
                                             onChange={(field, value) => handleRegionChange(field, value)}
                                             onBlur={setFieldTouched}
-                                            disabled={mode !== 'add'}
                                             placeholder="Select Region"
                                             errors={touched.regionId && errors.regionId ? errors.regionId : undefined}
                                         />

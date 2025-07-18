@@ -4,7 +4,7 @@ import { apiHandler } from '@/services/api-handler';
 
 const graph = new GraphProvider();
 
-const USER_TYPE = createGraphType('users', `_id firstName lastName areaId divisionId designatedBranchId regionId role`)('users');
+const USER_TYPE = createGraphType('users', `_id firstName lastName areaId divisionId designatedBranchId regionId role root`)('users');
 
 export default apiHandler({
     get: getLoanOfficers
@@ -12,12 +12,18 @@ export default apiHandler({
 
 const findUserByID = async (id) => {
     const [user] = await graph.query(
-        queryQl(USER_TYPE, {
-            where: {
-                _id: { _eq: id }
-            }
-        })
-    ).then(res => res.data.users);
+            queryQl(USER_TYPE, {
+                where: {
+                    _id: { _eq: id }
+                }
+            })
+        ).then(res => res.data.users.map(u => ({
+            ... u,
+            areaId: u.root ? null : u.areaId,
+            divisionId: u.root ? null : u.divisionId,
+            designatedBranchId: u.root ? null : u.designatedBranchId,
+            regionId: u.root ? null : u.regionId,
+        })));
     
     return user;
 }

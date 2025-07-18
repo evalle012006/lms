@@ -10,11 +10,11 @@ import { filterGraphFields, findLoans, findTransferClients } from "@/lib/graph.f
 import { createGraphType, deleteQl, updateQl } from '@/lib/graph/graph.util';
 
 const graph = new GraphProvider();
-const loansType = createGraphType('loans', '_id')();
-const ccType = createGraphType('cashCollections', '_id')();
-const transferClientsType = createGraphType('transferClients', '_id')();
-const clientType = createGraphType('client', '_id')();
-const groupsType = createGraphType('groups', '_id')();
+const loansType = (alias) => createGraphType('loans', '_id') (alias);
+const ccType = (alias) => createGraphType('cashCollections', '_id')(alias);
+const transferClientsType = (alias) => createGraphType('transferClients', '_id')(alias);
+const clientType = (alias) => createGraphType('client', '_id')(alias);
+const groupsType = (alias) => createGraphType('groups', '_id')(alias);
 
 const transferFields = `
  ${TRANSFER_CLIENT_FIELDS}
@@ -32,6 +32,11 @@ async function revertTransfer(req, res) {
     const { transferId } = req.body;
     const transfer = await findTransferClients({ _id: { _eq: transferId }}, transferFields);
     let response;
+
+    const mutationList = [];
+    const addToMutationList = (handler) => {
+      mutationList.push(handler('update_' + mutationList));
+    }
     
     if (transfer.length > 0) {
         const transferData = transfer[0];
@@ -42,18 +47,19 @@ async function revertTransfer(req, res) {
         let originalGroup = transferData.originalGroup;
         let newGroup = transferData.newGroup;
 
-        let prevLoan = await findLoans({ _id: { _eq: originalCC?.prevLoanId } });
+        let prevLoan =  await findLoans({ _id: { _eq: originalCC?.prevLoanId ?? 'null' } });
         if (prevLoan.length > 0) {
             prevLoan = prevLoan[0];
             delete prevLoan.transferredReleased;
             delete prevLoan._id;
-            await graph.mutation(updateQl(loansType, {
+
+            addToMutationList((alias) => updateQl(loansType(alias), {
               where: { _id: { _eq: originalCC.prevLoanId }},
               set: filterGraphFields(LOAN_FIELDS, {
                 transferredReleased: null,
                 ...prevLoan,
               })
-            }));
+            }))
         }
 
         originalLoan.status = originalCC.status !== 'pending' ? originalCC.status !== 'completed' ? 'active' : 'completed' : 'pending';
@@ -64,7 +70,7 @@ async function revertTransfer(req, res) {
 
         const originalLoanId = originalLoan._id;
         delete originalLoan._id;
-        await graph.mutation(updateQl(loansType, {
+        addToMutationList((alias) => updateQl(loansType(alias), {
           where: { _id: { _eq: originalLoanId } },
           set: filterGraphFields(LOAN_FIELDS, {
             transferred: null,
@@ -72,6 +78,7 @@ async function revertTransfer(req, res) {
             ...originalLoan,
           })
         }));
+        
 
         delete originalCC.transferred;
         delete originalCC.sameLo;
@@ -81,7 +88,8 @@ async function revertTransfer(req, res) {
 
         const originalCCId = originalCC._id;
         delete originalCC._id;
-        await graph.mutation(updateQl(ccType, {
+
+        addToMutationList((alias) => updateQl(ccType(alias), {
           where: { _id: { _eq: originalCCId }},
           set: filterGraphFields(CASH_COLLECTIONS_FIELDS, {
             transferred: null,
@@ -93,8 +101,8 @@ async function revertTransfer(req, res) {
           })
         }));
 
-        await graph.mutation(deleteQl(loansType, { _id: { _eq: newLoan._id}}));
-        await graph.mutation(deleteQl(ccType, { _id: { _eq: newCC._id }}));
+        addToMutationList((alias) => deleteQl(loansType(alias), { _id: { _eq: newLoan._id}}));
+        addToMutationList((alias) => deleteQl(ccType(alias), { _id: { _eq: newCC._id }}));
 
         // update groups
         originalGroup.availableSlots = originalGroup.availableSlots.filter(s => s !== originalLoan.slotNo);
@@ -113,26 +121,34 @@ async function revertTransfer(req, res) {
 
         const originalGroupId = originalGroup._id;
         delete originalGroup._id;
-        await graph.mutation(updateQl(groupsType, {
+
+        addToMutationList((alias) => updateQl(groupsType(alias), {
           where: { _id: { _eq: originalGroupId } },
           set: { ...originalGroup }
         }));
+        
 
         const newGroupId = newGroup._id;
         delete newGroup._id;
-        await graph.mutation(updateQl(groupsType, {
+
+        addToMutationList((alias) => updateQl(groupsType(alias), {
           where: { _id: newGroupId },
           set: { ...newGroup }
         }));
-
-        await graph.mutation(updateQl(clientType, {
+        
+        addToMutationList((alias) => updateQl(clientType(alias), {
           where: { _id: { _eq: transferData.selectedClientId } },
           set: {
             branchId: originalGroup.branchId, loId: originalGroup.loanOfficerId, groupId: originalGroupId + '', groupName: originalGroup.name
           }
         }));
+        
+        addToMutationList((alias) => deleteQl(transferClientsType(alias), { _id: transferData._id }));
 
-        await graph.mutation(deleteQl(transferClientsType, { _id: transferData._id }));
+        await graph.mutation(
+          ... mutationList
+        );
+
         response = { success: true, message: "Selected transfer were properly reverted!" };
     } else {
         response = { error: true, message: "No transfer transaction found." };

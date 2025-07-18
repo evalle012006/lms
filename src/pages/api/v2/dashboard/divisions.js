@@ -4,7 +4,7 @@ import { apiHandler } from '@/services/api-handler';
 
 const graph = new GraphProvider();
 
-const USER_TYPE = createGraphType('users', `_id firstName lastName areaId divisionId designatedBranchId regionId`)('users');
+const USER_TYPE = createGraphType('users', `_id firstName lastName areaId divisionId designatedBranchId regionId root`)('users');
 const DIVISION_TYPE = createGraphType('divisions', `_id name`)('divisions');
 
 export default apiHandler({
@@ -18,7 +18,13 @@ const findUserByID = async (id) => {
                 _id: { _eq: id }
             }
         })
-    ).then(res => res.data.users);
+    ).then(res => res.data.users.map(u => ({
+        ... u,
+        areaId: u.root ? null : u.areaId,
+        divisionId: u.root ? null : u.divisionId,
+        designatedBranchId: u.root ? null : u.designatedBranchId,
+        regionId: u.root ? null : u.regionId,
+    })));
     
     return user;
 }
@@ -29,31 +35,9 @@ async function getDivisions(req, res) {
     
     const _and = [];
 
-    if(user.regionId) {
+    if (user.divisionId) {
         _and.push({
-            regionId: { _eq: user.regionId }
-        })
-    }
-
-    if(user.areaId) {
-        _and.push({
-            _id: { _eq: user.areaId }
-        })
-    }
-
-    if(user.divisionId) {
-        _and.push({
-            divisionId: { _eq: user.divisionId }
-        })
-    }
-
-    if(user.designatedBranchId) {
-        _and.push({
-            regions: {
-                branches: { 
-                    _id: { _eq: user.designatedBranchId }
-                }
-            }
+            _id: { _eq: user.divisionId }
         })
     }
 
