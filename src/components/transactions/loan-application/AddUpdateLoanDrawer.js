@@ -71,9 +71,10 @@ const AddUpdateLoan = ({ origin, client, mode = 'add', loan = {}, showSidebar, s
         clientId: loan.clientId,
         fullName: loan.fullName,
         admissionDate: loan.admissionDate,
-        mcbu: type === 'weekly' ? (mode === 'edit' || mode === 'reloan') ? loan.mcbu : 50 : (mode === 'edit' || mode === 'reloan') ? loan.mcbu : 0,
+        mcbu: type === 'weekly' ? (mode === 'edit' || mode === 'reloan') ? loan.mcbu : transactionSettings.minWeeklyMcbuCollection : (mode === 'edit' || mode === 'reloan') ? loan.mcbu : 0,
+        csf: (mode === 'edit' || mode === 'reloan') ? loan.csf : 0,
         dateGranted: mode !== 'reloan' ? loan.dateGranted : null,
-        principalLoan: loan.principalLoan,
+        principalLoan: loan.principalLoan ? parseInt(loan.principalLoan) : 5000,
         activeLoan: loan.activeLoan,
         loanBalance: loan.loanBalance,
         amountRelease: loan.amountRelease,
@@ -296,32 +297,55 @@ const AddUpdateLoan = ({ origin, client, mode = 'add', loan = {}, showSidebar, s
             values.groupDay = loan.groupDay;
         }
 
+        const loanCycle = values.loanCycle ? values.loanCycle : 1;
+        if (loanCycle == 1) {
+            values.admissionCollection = transactionSettings.admissionFee;
+            values.lrfCollection = values.principalLoan * transactionSettings.lrfRate;
+            values.cbhbCollection = transactionSettings.cbhbFee;
+            values.otherPassbookCollection = transactionSettings.otherPassbookFee;
+            values.otherPictureCollection = transactionSettings.otherPictureFee;
+        } else {
+            values.admissionCollection = 0;
+            values.lrfCollection = values.principalLoan * transactionSettings.lrfRate;
+            values.cbhbCollection = transactionSettings.cbhbFee;
+            values.otherPassbookCollection = transactionSettings.otherPassbookFee;
+            values.otherPictureCollection = 0;
+        }
+
+        values.csfCollection = 0;
+        values.csfWithdrawal = 0;
+        values.csfReturnAmt = 0;
+
         const loanLimit = values.occurence == 'daily' ? transactionSettings.loanDailyLimit : transactionSettings.loanWeeklyLimit;
         if (values.principalLoan > loanLimit) {
             setLoading(false);
             toast.error(`Invalid Principal Loan. Maximum loanable amount is up to ${formatPricePhp(loanLimit)} only.`);
+        } else if (loanCycle == 1 && groupLeader && values.mcbu < transactionSettings.mcbuCsfMCBUForNM) {
+            setLoading(false);
+            toast.error(`Invalid MCBU. Minimum MCBU amount for group leader client is ${formatPricePhp(transactionSettings.mcbuCsfMCBUForNM)}.`);
         } else if (values.principalLoan % 1000 === 0) {
-            if (type === 'weekly' && (!values.mcbu || parseFloat(values.mcbu) < 50)) {
+            if (type === 'weekly' && (!values.mcbu || parseFloat(values.mcbu) < transactionSettings.minWeeklyMcbuCollection)) {
                 setLoading(false);
-                toast.error('Invalid MCBU amount. Please enter at least 50.');
+                toast.error(`Invalid MCBU amount. Please enter at least ${transactionSettings.minWeeklyMcbuCollection}.`);
             } else if (loanTerms === 100 && values.principalLoan < 10000) {
                 setLoading(false);
                 toast.error('For 100 days loan term, principal amount should be greater than or equal to 10,0000.');
             } else {
                 if (values.status !== 'active') {
+                    const serviceChargeRate = transactionSettings.serviceChargeRate;
                     if (values.occurence === 'weekly') {
-                        values.activeLoan = (values.principalLoan * 1.20) / 24;
+                        values.activeLoan = (values.principalLoan * serviceChargeRate) / 24;
                         values.loanTerms = 24;
                     } else if (values.occurence === 'daily') {
                         values.loanTerms = loanTerms;
                         if (loanTerms === 60) {
-                            values.activeLoan = (values.principalLoan * 1.20) / 60;
+                            values.activeLoan = (values.principalLoan * serviceChargeRate) / 60;
                         } else {
-                            values.activeLoan = (values.principalLoan * 1.20) / 100;
+                            values.activeLoan = (values.principalLoan * serviceChargeRate) / 100;
                         }
                     }
             
-                    values.loanBalance = values.principalLoan * 1.20; // initial
+                    values.loanBalance = values.principalLoan * serviceChargeRate; // initial
                     values.amountRelease = values.loanBalance;
                 }
 
@@ -334,7 +358,7 @@ const AddUpdateLoan = ({ origin, client, mode = 'add', loan = {}, showSidebar, s
                     values.lastUpdated = null;  // use only when updating the mispayments
                     values.admissionDate = currentDate;
                     values.status = 'pending';
-                    values.loanCycle = values.loanCycle ? values.loanCycle : 1;
+                    values.loanCycle = loanCycle;
                     values.noOfPayments = 0;
                     values.insertedBy = currentUser._id;
                     values.currentReleaseAmount = values.amountRelease;

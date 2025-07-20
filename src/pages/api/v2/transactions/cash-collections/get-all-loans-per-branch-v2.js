@@ -2,7 +2,7 @@ import { USER_FIELDS } from '@/lib/graph.fields';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, queryQl } from '@/lib/graph/graph.util';
 import { transferBranchDetailsTotal } from '@/lib/transfer-util';
-import { formatPricePhp } from '@/lib/utils';
+import { formatPricePhp, safeNumber } from '@/lib/utils';
 import logger from '@/logger';
 import { apiHandler } from '@/services/api-handler';
 import { gql } from 'node_modules/apollo-boost/lib/index';
@@ -280,6 +280,16 @@ async function processData(data, date, currentDate) {
     // let totalMcbuDailyWithdrawal = 0;
     let totalTransfer = 0;
     let totalCOH = 0;
+    // New column totals
+    let totalCsf = 0;
+    let totalCsfCollection = 0;
+    let totalCsfWithdrawal = 0;
+    let totalCsfReturnAmt = 0;
+    let totalAdmissionFee = 0;
+    let totalLrf = 0;
+    let totalCbhb = 0;
+    let totalOtherIncome = 0;
+    let totalNetCollections = 0;
 
     const filter = date !== currentDate;
     
@@ -310,6 +320,16 @@ async function processData(data, date, currentDate) {
             noPastDue: '-',
             transfer: '-',
             cohStr: '-',
+            // New columns initialization
+            csfStr: '-',
+            csfCollectionStr: '-',
+            csfWithdrawalStr: '-',
+            csfReturnAmtStr: '-',
+            admissionCollectionStr: '-',
+            lrfCollectionStr: '-',
+            cbhbCollectionStr: '-',
+            otherIncomeStr: '-',
+            totalNetCollectionStr: '-',
             page: 'branch-summary',
             status: '-'
         };
@@ -356,6 +376,26 @@ async function processData(data, date, currentDate) {
                 collection.mcbuReturnAmtStr = '-';
                 collection.status = groupStatus;
 
+                // Initialize new columns from loans
+                collection.csf = branch.loans[0].csf || 0;
+                collection.csfStr = collection.csf > 0 ? formatPricePhp(collection.csf) : '-';
+                collection.csfCollection = 0;
+                collection.csfCollectionStr = '-';
+                collection.csfWithdrawal = 0;
+                collection.csfWithdrawalStr = '-';
+                collection.csfReturnAmt = 0;
+                collection.csfReturnAmtStr = '-';
+                collection.admissionCollection = 0;
+                collection.admissionCollectionStr = '-';
+                collection.lrfCollection = 0;
+                collection.lrfCollectionStr = '-';
+                collection.cbhbCollection = 0;
+                collection.cbhbCollectionStr = '-';
+                collection.otherIncome = 0;
+                collection.otherIncomeStr = '-';
+                collection.totalNetCollection = 0;
+                collection.totalNetCollectionStr = '-';
+
                 totalsLoanRelease += collection.totalReleases;
                 totalsLoanBalance += collection.totalLoanBalance;
                 totalPastDue += collection.pastDue;
@@ -386,6 +426,27 @@ async function processData(data, date, currentDate) {
                 collection.transfer = 0;
                 collection.transferStr = '-';
 
+                // Process new columns from cash collections
+                collection.csf = branch.cashCollections[0].csf || collection.csf;
+                collection.csfStr = collection.csf > 0 ? formatPricePhp(collection.csf) : '-';
+                collection.csfCollection = branch.cashCollections[0].csfCollection || 0;
+                collection.csfCollectionStr = collection.csfCollection > 0 ? formatPricePhp(collection.csfCollection) : '-';
+                collection.csfWithdrawal = branch.cashCollections[0].csfWithdrawal || 0;
+                collection.csfWithdrawalStr = collection.csfWithdrawal > 0 ? formatPricePhp(collection.csfWithdrawal) : '-';
+                collection.csfReturnAmt = branch.cashCollections[0].csfReturnAmt || 0;
+                collection.csfReturnAmtStr = collection.csfReturnAmt > 0 ? formatPricePhp(collection.csfReturnAmt) : '-';
+                collection.admissionCollection = branch.cashCollections[0].admissionCollection || 0;
+                collection.admissionCollectionStr = collection.admissionCollection > 0 ? formatPricePhp(collection.admissionCollection) : '-';
+                collection.lrfCollection = branch.cashCollections[0].lrfCollection || 0;
+                collection.lrfCollectionStr = collection.lrfCollection > 0 ? formatPricePhp(collection.lrfCollection) : '-';
+                collection.cbhbCollection = branch.cashCollections[0].cbhbCollection || 0;
+                collection.cbhbCollectionStr = collection.cbhbCollection > 0 ? formatPricePhp(collection.cbhbCollection) : '-';
+                
+                // Calculate other income
+                const otherIncome = (branch.cashCollections[0].otherPassbookCollection || 0) + (branch.cashCollections[0].otherPictureCollection || 0);
+                collection.otherIncome = otherIncome;
+                collection.otherIncomeStr = otherIncome > 0 ? formatPricePhp(otherIncome) : '-';
+
                 excess += branch.cashCollections[0].excess;
                 totalLoanCollection += branch.cashCollections[0].collection;
                 mispayment += branch.cashCollections[0].mispayment;
@@ -395,6 +456,15 @@ async function processData(data, date, currentDate) {
                 totalMcbuReturnNo += collection.noMcbuReturn ? collection.noMcbuReturn : 0;
                 totalMcbuReturnAmt += collection.mcbuReturnAmt ? collection.mcbuReturnAmt : 0;
                 totalTransfer += collection.transfer !== '-' ? collection.transfer : 0;
+                
+                // Update new column totals
+                totalCsfCollection += collection.csfCollection;
+                totalCsfWithdrawal += collection.csfWithdrawal;
+                totalCsfReturnAmt += collection.csfReturnAmt;
+                totalAdmissionFee += collection.admissionCollection;
+                totalLrf += collection.lrfCollection;
+                totalCbhb += collection.cbhbCollection;
+                totalOtherIncome += collection.otherIncome;
             }
 
             if (branch.currentRelease.length > 0) {
@@ -455,6 +525,26 @@ async function processData(data, date, currentDate) {
                 collection.mcbuDailyWithdrawal = branch.cashCollections[0].mcbuDailyWithdrawal;
                 collection.mcbuDailyWithdrawalStr = collection.mcbuDailyWithdrawal ? formatPricePhp(collection.mcbuDailyWithdrawal) : '-';
 
+                // Process new columns for filtered data
+                collection.csf = branch.cashCollections[0].csf || 0;
+                collection.csfStr = collection.csf > 0 ? formatPricePhp(collection.csf) : '-';
+                collection.csfCollection = branch.cashCollections[0].csfCollection || 0;
+                collection.csfCollectionStr = collection.csfCollection > 0 ? formatPricePhp(collection.csfCollection) : '-';
+                collection.csfWithdrawal = branch.cashCollections[0].csfWithdrawal || 0;
+                collection.csfWithdrawalStr = collection.csfWithdrawal > 0 ? formatPricePhp(collection.csfWithdrawal) : '-';
+                collection.csfReturnAmt = branch.cashCollections[0].csfReturnAmt || 0;
+                collection.csfReturnAmtStr = collection.csfReturnAmt > 0 ? formatPricePhp(collection.csfReturnAmt) : '-';
+                collection.admissionCollection = branch.cashCollections[0].admissionCollection || 0;
+                collection.admissionCollectionStr = collection.admissionCollection > 0 ? formatPricePhp(collection.admissionCollection) : '-';
+                collection.lrfCollection = branch.cashCollections[0].lrfCollection || 0;
+                collection.lrfCollectionStr = collection.lrfCollection > 0 ? formatPricePhp(collection.lrfCollection) : '-';
+                collection.cbhbCollection = branch.cashCollections[0].cbhbCollection || 0;
+                collection.cbhbCollectionStr = collection.cbhbCollection > 0 ? formatPricePhp(collection.cbhbCollection) : '-';
+                
+                const otherIncome = (branch.cashCollections[0].otherPassbookCollection || 0) + (branch.cashCollections[0].otherPictureCollection || 0);
+                collection.otherIncome = otherIncome;
+                collection.otherIncomeStr = otherIncome > 0 ? formatPricePhp(otherIncome) : '-';
+
                 const newReleasePerson = branch.cashCollections[0].newCurrentRelease;
                 const reReleasePerson = branch.cashCollections[0].reCurrentRelease;
                 collection.noCurrentReleaseStr = newReleasePerson + ' / ' + reReleasePerson;
@@ -490,6 +580,15 @@ async function processData(data, date, currentDate) {
                 totalMcbuReturnNo += collection.noMcbuReturn ? collection.noMcbuReturn : 0;
                 totalMcbuReturnAmt += collection.mcbuReturnAmt ? collection.mcbuReturnAmt : 0;
                 totalTransfer += collection.transfer !== '-' ? collection.transfer : 0;
+                
+                // Update new column totals for filtered data
+                totalCsfCollection += collection.csfCollection;
+                totalCsfWithdrawal += collection.csfWithdrawal;
+                totalCsfReturnAmt += collection.csfReturnAmt;
+                totalAdmissionFee += collection.admissionCollection;
+                totalLrf += collection.lrfCollection;
+                totalCbhb += collection.cbhbCollection;
+                totalOtherIncome += collection.otherIncome;
             }
         }
 
@@ -693,12 +792,32 @@ async function processData(data, date, currentDate) {
             totalTransfer += transfer;
         }
 
+        // Calculate branch-level net collection
+        const branchNetCollection = (
+            safeNumber(collection.mcbuCol) + 
+            safeNumber(collection.csfCollection) + 
+            safeNumber(collection.admissionCollection) + 
+            safeNumber(collection.lrfCollection) + 
+            safeNumber(collection.cbhbCollection) + 
+            safeNumber(collection.otherIncome)
+        ) - (
+            safeNumber(collection.mcbuWithdrawal) + 
+            safeNumber(collection.csfWithdrawal) + 
+            safeNumber(collection.mcbuReturnAmt) +
+            safeNumber(collection.csfReturnAmt)
+        );
+
+        collection.totalNetCollection = branchNetCollection;
+        collection.totalNetCollectionStr = formatPricePhp(branchNetCollection);
+
         collectionData.push(collection);
     });
 
     collectionData.map(c => {
         totalMcbu += c.mcbu ? c.mcbu : 0;
         totalMcbuCol += c.mcbuCol ? c.mcbuCol : 0;
+        totalCsf += c.csf || 0;
+        totalNetCollections += c.totalNetCollection || 0;
     });
 
     const transferGvr = transferBranchDetailsTotal(collectionDailyTransferred, collectionWeeklyTransferred, 'Transfer GVR');
@@ -741,6 +860,25 @@ async function processData(data, date, currentDate) {
         mcbuReturnAmtStr: formatPricePhp(totalMcbuReturnAmt),
         coh: totalCOH,
         cohStr: formatPricePhp(totalCOH),
+        // New column totals
+        csf: totalCsf,
+        csfStr: formatPricePhp(totalCsf),
+        csfCollection: totalCsfCollection,
+        csfCollectionStr: formatPricePhp(totalCsfCollection),
+        csfWithdrawal: totalCsfWithdrawal,
+        csfWithdrawalStr: formatPricePhp(totalCsfWithdrawal),
+        csfReturnAmt: totalCsfReturnAmt,
+        csfReturnAmtStr: formatPricePhp(totalCsfReturnAmt),
+        admissionCollection: totalAdmissionFee,
+        admissionCollectionStr: formatPricePhp(totalAdmissionFee),
+        lrfCollection: totalLrf,
+        lrfCollectionStr: formatPricePhp(totalLrf),
+        cbhbCollection: totalCbhb,
+        cbhbCollectionStr: formatPricePhp(totalCbhb),
+        otherIncome: totalOtherIncome,
+        otherIncomeStr: formatPricePhp(totalOtherIncome),
+        totalNetCollection: totalNetCollections,
+        totalNetCollectionStr: formatPricePhp(totalNetCollections),
         totalData: true
     };
 

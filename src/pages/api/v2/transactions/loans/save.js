@@ -309,6 +309,15 @@ async function saveCashCollection(user_id, loan, reloan, group, loanId, currentD
             dateAdded: currentDate,
             insertedDateTime: new Date(),
             groupStatus: groupStatus,
+            admissionCollection: loan.admissionCollection,
+            lrfCollection: loan.lrfCollection,
+            cbhbCollection: loan.cbhbCollection,
+            otherPassbookCollection: loan.otherPassbookCollection,
+            otherPictureCollection: loan.otherPictureCollection,
+            csf: loan.csf,
+            csfCollection: loan.csfCollection,
+            csfWithdrawal: loan.csfWithdrawal,
+            csfReturnAmt: loan.csfReturnAmt,
             origin: 'automation-loan'
         };
 
@@ -338,6 +347,15 @@ async function saveCashCollection(user_id, loan, reloan, group, loanId, currentD
             status: loan.status,
             modifiedBy: "automation-loan",
             modifiedDateTime: new Date(),
+            admissionCollection: loan.admissionCollection,
+            lrfCollection: loan.lrfCollection,
+            cbhbCollection: loan.cbhbCollection,
+            otherPassbookCollection: loan.otherPassbookCollection,
+            otherPictureCollection: loan.otherPictureCollection,
+            csf: loan.csf,
+            csfCollection: loan.csfCollection,
+            csfWithdrawal: loan.csfWithdrawal,
+            csfReturnAmt: loan.csfReturnAmt,
           },
           where: {
             _id: { _eq: cashCollection[0]._id }

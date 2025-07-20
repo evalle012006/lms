@@ -1,6 +1,6 @@
 import { apiHandler } from "@/services/api-handler";
 import logger from "@/logger";
-import { formatPricePhp } from "@/lib/utils";
+import { formatPricePhp, safeNumber } from "@/lib/utils";
 import { transferBranchDetailsTotal } from "@/lib/transfer-util";
 import { GraphProvider } from "@/lib/graph/graph.provider";
 import { findAreas, findUsers } from "@/lib/graph.functions";
@@ -140,6 +140,16 @@ async function processData(data, date, currentDate) {
     let totalMcbuDailyWithdrawal = 0;
     let totalTransfer = 0;
     let totalCOH = 0;
+    // New column totals
+    let totalCsf = 0;
+    let totalCsfCollection = 0;
+    let totalCsfWithdrawal = 0;
+    let totalCsfReturnAmt = 0;
+    let totalAdmissionFee = 0;
+    let totalLrf = 0;
+    let totalCbhb = 0;
+    let totalOtherIncome = 0;
+    let totalNetCollections = 0;
 
     data.map(area => {
         let groupStatus = 'open';
@@ -168,6 +178,16 @@ async function processData(data, date, currentDate) {
         let branchTotalTransfer = 0;
         let branchTotalMcbuDailyWithdrawal = 0;
         let branchTotalCOH = 0;
+        // New branch-level totals
+        let branchTotalCsf = 0;
+        let branchTotalCsfCollection = 0;
+        let branchTotalCsfWithdrawal = 0;
+        let branchTotalCsfReturnAmt = 0;
+        let branchTotalAdmissionFee = 0;
+        let branchTotalLrf = 0;
+        let branchTotalCbhb = 0;
+        let branchTotalOtherIncome = 0;
+        let branchTotalNetCollections = 0;
 
         area?.branchCollection?.map(branch => {
             if (branch.cashCollections?.length > 0) {
@@ -180,6 +200,8 @@ async function processData(data, date, currentDate) {
 
             if (!filter) {
                 let mcbu = 0;
+                let csf = 0;
+                
                 if (branch.activeLoans?.length > 0) {
                     branchNoOfClients += branch.activeLoans[0].activeClients;
                     branchNoOfBorrowers += branch.activeLoans[0].activeBorrowers;
@@ -193,6 +215,7 @@ async function processData(data, date, currentDate) {
                     branchTotalPastDue += branch.loans[0].pastDue;
                     branchTotalNoPastDue += branch.loans[0].noPastDue;
                     mcbu = branch.loans[0].mcbu;
+                    csf = branch.loans[0].csf || 0;
                 }
 
                 if (branch.cashCollections?.length > 0 && branch.cashCollections[0].collection > 0) {
@@ -201,11 +224,24 @@ async function processData(data, date, currentDate) {
                     branchTotalLoanCollection += branch.cashCollections[0].collection;
                     branchMispayment += branch.cashCollections[0].mispayment;
                     mcbu = branch.cashCollections[0].mcbu;
+                    csf = branch.cashCollections[0].csf || csf;
                     branchTotalMcbuCol += branch.cashCollections[0].mcbuCol;
                     branchTotalMcbuWithdrawal += branch.cashCollections[0].mcbuWithdrawal;
                     branchTotalMcbuReturnNo += branch.cashCollections[0].mcbuReturnNo;
                     branchTotalMcbuReturnAmt += branch.cashCollections[0].mcbuReturnAmt;
                     branchTotalMcbuDailyWithdrawal += branch.cashCollections[0].mcbuDailyWithdrawal;
+                    
+                    // Process new columns
+                    branchTotalCsfCollection += branch.cashCollections[0].csfCollection || 0;
+                    branchTotalCsfWithdrawal += branch.cashCollections[0].csfWithdrawal || 0;
+                    branchTotalCsfReturnAmt += branch.cashCollections[0].csfReturnAmt || 0;
+                    branchTotalAdmissionFee += branch.cashCollections[0].admissionCollection || 0;
+                    branchTotalLrf += branch.cashCollections[0].lrfCollection || 0;
+                    branchTotalCbhb += branch.cashCollections[0].cbhbCollection || 0;
+                    
+                    // Calculate other income
+                    const otherIncome = (branch.cashCollections[0].otherPassbookCollection || 0) + (branch.cashCollections[0].otherPictureCollection || 0);
+                    branchTotalOtherIncome += otherIncome;
                 }
 
                 if (branch.currentRelease?.length > 0) {
@@ -214,7 +250,7 @@ async function processData(data, date, currentDate) {
                     branchNoOfReCurrentRelease += branch.currentRelease[0].reCurrentRelease;
                     branchCurrentReleaseAmount += branch.currentRelease[0].currentReleaseAmount;
 
-                    if (newReleasePerson > 0 && branch.activeLoans[0].activeClients == 0) {
+                    if (newReleasePerson > 0 && branch.activeLoans[0]?.activeClients == 0) {
                         branchNoOfClients += newReleasePerson;
                     }
                 }
@@ -225,6 +261,7 @@ async function processData(data, date, currentDate) {
                 }
 
                 branchTotalMcbu += mcbu;
+                branchTotalCsf += csf;
             } else {
                 if (branch.cashCollections?.length > 0) {
                     branchNoOfClients += branch.cashCollections[0].activeClients;
@@ -254,6 +291,18 @@ async function processData(data, date, currentDate) {
 
                     branchNoOfFullPayment += branch.cashCollections[0].noOfFullPayment;
                     branchFullPaymentAmount += branch.cashCollections[0].fullPaymentAmount;
+                    
+                    // Process new columns for filtered data
+                    branchTotalCsf += branch.cashCollections[0].csf || 0;
+                    branchTotalCsfCollection += branch.cashCollections[0].csfCollection || 0;
+                    branchTotalCsfWithdrawal += branch.cashCollections[0].csfWithdrawal || 0;
+                    branchTotalCsfReturnAmt += branch.cashCollections[0].csfReturnAmt || 0;
+                    branchTotalAdmissionFee += branch.cashCollections[0].admissionCollection || 0;
+                    branchTotalLrf += branch.cashCollections[0].lrfCollection || 0;
+                    branchTotalCbhb += branch.cashCollections[0].cbhbCollection || 0;
+                    
+                    const otherIncome = (branch.cashCollections[0].otherPassbookCollection || 0) + (branch.cashCollections[0].otherPictureCollection || 0);
+                    branchTotalOtherIncome += otherIncome;
                 }
             }
 
@@ -305,7 +354,7 @@ async function processData(data, date, currentDate) {
 
                         if (!filter) {
                             if (rcv.status !== 'pending') {
-                                collection.activeClients += 1;
+                                branchNoOfClients += 1;
                                 if (rcv.status !== "completed") {
                                     branchNoOfBorrowers += 1;
                                 }
@@ -365,7 +414,7 @@ async function processData(data, date, currentDate) {
 
                         if (!filter) {
                             if (rcv.status !== 'pending') {
-                                collection.activeClients += 1;
+                                branchNoOfClients += 1;
                                 if (rcv.status !== "completed") {
                                     branchNoOfBorrowers += 1;
                                 }
@@ -397,6 +446,21 @@ async function processData(data, date, currentDate) {
             }
         });
 
+        // Calculate branch-level net collection
+        branchTotalNetCollections = (
+            safeNumber(branchTotalMcbuCol) + 
+            safeNumber(branchTotalCsfCollection) + 
+            safeNumber(branchTotalAdmissionFee) + 
+            safeNumber(branchTotalLrf) + 
+            safeNumber(branchTotalCbhb) + 
+            safeNumber(branchTotalOtherIncome)
+        ) - (
+            safeNumber(branchTotalMcbuWithdrawal) + 
+            safeNumber(branchTotalCsfWithdrawal) + 
+            safeNumber(branchTotalMcbuReturnAmt) +
+            safeNumber(branchTotalCsfReturnAmt)
+        );
+
         let collection = {
             _id: area._id,
             name: area.name,
@@ -422,6 +486,16 @@ async function processData(data, date, currentDate) {
             noPastDue: '-',
             transfer: '-',
             cohStr: '-',
+            // New columns initialization
+            csfStr: '-',
+            csfCollectionStr: '-',
+            csfWithdrawalStr: '-',
+            csfReturnAmtStr: '-',
+            admissionCollectionStr: '-',
+            lrfCollectionStr: '-',
+            cbhbCollectionStr: '-',
+            otherIncomeStr: '-',
+            totalNetCollectionStr: '-',
             page: 'area-summary',
             status: '-'
         }
@@ -468,6 +542,26 @@ async function processData(data, date, currentDate) {
             collection.cohStr = branchTotalCOH > 0 ? formatPricePhp(branchTotalCOH) : '-';
             collection.status = groupStatus;
             collection.noMcbuReturn = branchTotalMcbuReturnNo;
+            
+            // Set new columns
+            collection.csf = branchTotalCsf;
+            collection.csfStr = branchTotalCsf > 0 ? formatPricePhp(branchTotalCsf) : '-';
+            collection.csfCollection = branchTotalCsfCollection;
+            collection.csfCollectionStr = branchTotalCsfCollection > 0 ? formatPricePhp(branchTotalCsfCollection) : '-';
+            collection.csfWithdrawal = branchTotalCsfWithdrawal;
+            collection.csfWithdrawalStr = branchTotalCsfWithdrawal > 0 ? formatPricePhp(branchTotalCsfWithdrawal) : '-';
+            collection.csfReturnAmt = branchTotalCsfReturnAmt;
+            collection.csfReturnAmtStr = branchTotalCsfReturnAmt > 0 ? formatPricePhp(branchTotalCsfReturnAmt) : '-';
+            collection.admissionCollection = branchTotalAdmissionFee;
+            collection.admissionCollectionStr = branchTotalAdmissionFee > 0 ? formatPricePhp(branchTotalAdmissionFee) : '-';
+            collection.lrfCollection = branchTotalLrf;
+            collection.lrfCollectionStr = branchTotalLrf > 0 ? formatPricePhp(branchTotalLrf) : '-';
+            collection.cbhbCollection = branchTotalCbhb;
+            collection.cbhbCollectionStr = branchTotalCbhb > 0 ? formatPricePhp(branchTotalCbhb) : '-';
+            collection.otherIncome = branchTotalOtherIncome;
+            collection.otherIncomeStr = branchTotalOtherIncome > 0 ? formatPricePhp(branchTotalOtherIncome) : '-';
+            collection.totalNetCollection = branchTotalNetCollections;
+            collection.totalNetCollectionStr = branchTotalNetCollections > 0 ? formatPricePhp(branchTotalNetCollections) : '-';
         }
 
         collectionData.push(collection);
@@ -499,6 +593,17 @@ async function processData(data, date, currentDate) {
             totalMcbuDailyWithdrawal += collection.mcbuDailyWithdrawal;
             totalTransfer += collection.transfer;
             totalCOH += collection.coh;
+            
+            // Add new column totals
+            totalCsf += collection.csf || 0;
+            totalCsfCollection += collection.csfCollection || 0;
+            totalCsfWithdrawal += collection.csfWithdrawal || 0;
+            totalCsfReturnAmt += collection.csfReturnAmt || 0;
+            totalAdmissionFee += collection.admissionCollection || 0;
+            totalLrf += collection.lrfCollection || 0;
+            totalCbhb += collection.cbhbCollection || 0;
+            totalOtherIncome += collection.otherIncome || 0;
+            totalNetCollections += collection.totalNetCollection || 0;
         }
     });
 
@@ -541,6 +646,25 @@ async function processData(data, date, currentDate) {
         mcbuReturnAmt: totalMcbuReturnAmt,
         mcbuReturnAmtStr: formatPricePhp(totalMcbuReturnAmt),
         cohStr: formatPricePhp(totalCOH),
+        // New column totals
+        csf: totalCsf,
+        csfStr: formatPricePhp(totalCsf),
+        csfCollection: totalCsfCollection,
+        csfCollectionStr: formatPricePhp(totalCsfCollection),
+        csfWithdrawal: totalCsfWithdrawal,
+        csfWithdrawalStr: formatPricePhp(totalCsfWithdrawal),
+        csfReturnAmt: totalCsfReturnAmt,
+        csfReturnAmtStr: formatPricePhp(totalCsfReturnAmt),
+        admissionCollection: totalAdmissionFee,
+        admissionCollectionStr: formatPricePhp(totalAdmissionFee),
+        lrfCollection: totalLrf,
+        lrfCollectionStr: formatPricePhp(totalLrf),
+        cbhbCollection: totalCbhb,
+        cbhbCollectionStr: formatPricePhp(totalCbhb),
+        otherIncome: totalOtherIncome,
+        otherIncomeStr: formatPricePhp(totalOtherIncome),
+        totalNetCollection: totalNetCollections,
+        totalNetCollectionStr: formatPricePhp(totalNetCollections),
         totalData: true
     };
 

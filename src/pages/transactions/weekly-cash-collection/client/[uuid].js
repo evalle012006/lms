@@ -10,7 +10,7 @@ import { setCashCollectionGroup } from '@/redux/actions/cashCollectionActions';
 import { setGroup, setGroupList } from '@/redux/actions/groupActions';
 import DetailsHeader from '@/components/groups/DetailsHeader';
 import moment from 'moment';
-import { containsAnyLetters, formatPricePhp, UppercaseFirstLetter } from '@/lib/utils';
+import { containsAnyLetters, formatPricePhp, safeNumber, UppercaseFirstLetter } from '@/lib/utils';
 import { ArrowPathIcon, ArrowUturnLeftIcon, ClockIcon, CurrencyDollarIcon, ExclamationTriangleIcon, ReceiptPercentIcon, StopCircleIcon } from '@heroicons/react/24/outline';
 import Select from 'react-select';
 import { DropdownIndicator, borderStyles } from "@/styles/select";
@@ -207,6 +207,10 @@ const CashCollectionDetailsPage = () => {
                     let currentReleaseAmount = 0;
                     let noOfPayments = cc.noOfPayments;
                     let fullPayment = cc.fullPayment.length > 0 ? cc.fullPayment[0].fullPaymentAmount : 0;
+                    let csf = 0;
+                    let csfCollection = 0;
+                    let csfWithdrawal = 0;
+                    let csfReturnAmt = 0;
                     if (cc.current.length > 0) {
                         const current = cc.current[0];
                         mispayment = current.mispayment;
@@ -216,6 +220,7 @@ const CashCollectionDetailsPage = () => {
                             amountRelease = current.amountRelease;
                             loanBalance = current.loanBalance;
                             numMispayment = '';
+                            csf = current.csf;
                         }
 
                         if (cc?.transferred) {
@@ -227,6 +232,9 @@ const CashCollectionDetailsPage = () => {
                             excess = cc.fullPaymentDate ? cc.history.excess : cc.excess;
                             paymentCollection = cc.fullPaymentDate ? cc.history.collection : cc.paymentCollection;
                             coMaker = '-';
+                            csfCollection = current.csfCollection;
+                            csfWithdrawal = current.csfWithdrawal;
+                            csfReturnAmt = current.csfReturnAmt;
                         }
 
                         if (current.status == "tomorrow") {
@@ -246,6 +254,7 @@ const CashCollectionDetailsPage = () => {
                             loanBalance = cc.loanBalance;
                             numMispayment = '';
                             fullPayment = 0;
+                            csf = cc.csf;
                         }
 
                         if (cc?.transferred) {
@@ -253,6 +262,9 @@ const CashCollectionDetailsPage = () => {
                             mcbuCol = cc.mcbuCol;
                             mcbuWithdrawal = cc.mcbuWithdrawal;
                             mcbuReturnAmt = cc.mcbuReturnAmt;
+                            csfCollection = cc.csfCollection;
+                            csfWithdrawal = cc.csfWithdrawal;
+                            csfReturnAmt = cc.csfReturnAmt;
                             if (cc.status == 'active') {
                                 activeLoan = cc.activeLoan;
                                 excess = cc.excess;
@@ -284,6 +296,7 @@ const CashCollectionDetailsPage = () => {
                         groupName: cc.groupName,
                         clientId: cc.clientId,
                         slotNo: cc.slotNo,
+                        groupLeader: cc.client.groupLeader,
                         fullName: cc.transfer ? cc.client.lastName + ', ' + cc.client.firstName : '-',
                         loanCycle: cc.transfer ? cc?.history?.loanCycle ? cc?.history?.loanCycle : cc.loanCycle : '-',
                         mispayment: mispayment,
@@ -330,7 +343,15 @@ const CashCollectionDetailsPage = () => {
                         history: cc.history,
                         prevData: cc.prevData,
                         loanTerms: cc.loanTerms,
-                        transferStr: transferStr
+                        transferStr: transferStr,
+                        csf: csf,
+                        csfStr: safeNumber(csf) > 0 ? formatPricePhp(csf) : '-',
+                        csfCollection: csfCollection,
+                        csfCollectionStr: csfCollection > 0 ? formatPricePhp(csfCollection) : '-',
+                        csfWithdrawal: csfWithdrawal,
+                        csfWithdrawalStr: csfWithdrawal > 0 ? formatPricePhp(csfWithdrawal) : '-',
+                        csfReturnAmt: csfReturnAmt,
+                        csfReturnAmtStr: csfReturnAmt > 0 ? formatPricePhp(csfReturnAmt) : '-',
                     }
 
                     if (cc?.transferred && loanBalance > 0) {
@@ -338,7 +359,7 @@ const CashCollectionDetailsPage = () => {
                     }
                     // setEditMode(false);
                 } else {
-                    if (cc.status === "tomorrow" || cc.status === "pending") {
+                    if (cc.status === "tomorrow" || cc.status === "pending") { // only when filter
                         let numMispayment = 0;
                         if (date) {
                             numMispayment = cc.noMispayment && cc.noMispayment !== '-' ? cc.noMispayment : 0;
@@ -356,6 +377,7 @@ const CashCollectionDetailsPage = () => {
                             groupName: cc.groupName,
                             clientId: cc.clientId,
                             slotNo: cc.slotNo,
+                            groupLeader: cc.client.groupLeader,
                             fullName: cc.client.lastName + ', ' + cc.client.firstName,
                             loanCycle: cc.loanCycle,
                             mispayment: '-',
@@ -401,7 +423,16 @@ const CashCollectionDetailsPage = () => {
                             fullPaymentDate: cc.fullPaymentDate ? cc.fullPaymentDate : null,
                             history: cc.history,
                             prevData: cc.prevData,
-                            loanTerms: cc.loanTerms
+                            loanTerms: cc.loanTerms,
+                            otherIncome: cc.otherPassbookCollection + cc.otherPictureCollection,
+                            csf: safeNumber(cc.csf),
+                            csfStr: safeNumber(cc.csf) > 0 ? formatPricePhp(cc.csf) : '-',
+                            csfCollection: cc.csfCollection,
+                            csfCollectionStr: cc.csfCollection > 0 ? formatPricePhp(cc.csfCollection) : '-',
+                            csfWithdrawal: cc.csfWithdrawal,
+                            csfWithdrawalStr: cc.csfWithdrawal > 0 ? formatPricePhp(cc.csfWithdrawal) : '-',
+                            csfReturnAmt: cc.csfReturnAmt,
+                            csfReturnAmtStr: cc.csfReturnAmt > 0 ? formatPricePhp(cc.csfReturnAmt) : '-',
                         }
     
                         setEditMode(false);
@@ -469,6 +500,7 @@ const CashCollectionDetailsPage = () => {
                             groupName: cc.groupName,
                             clientId: cc.clientId,
                             slotNo: cc.slotNo,
+                            groupLeader: cc.client.groupLeader,
                             fullName: cc.client.lastName + ', ' + cc.client.firstName,
                             loanCycle: cc.history?.loanCycle,
                             mispayment: mispayment,
@@ -516,7 +548,16 @@ const CashCollectionDetailsPage = () => {
                             prevData: prevData,
                             loanTerms: cc.loanTerms,
                             draft: draft,
-                            reverted: reverted
+                            reverted: reverted,
+                            otherIncome: cc.otherPassbookCollection + cc.otherPictureCollection,
+                            csf: safeNumber(cc.csf),
+                            csfStr: safeNumber(cc.csf) > 0 ? formatPricePhp(cc.csf) : '-',
+                            csfCollection: cc.csfCollection,
+                            csfCollectionStr: cc.csfCollection > 0 ? formatPricePhp(cc.csfCollection) : '-',
+                            csfWithdrawal: cc.csfWithdrawal,
+                            csfWithdrawalStr: cc.csfWithdrawal > 0 ? formatPricePhp(cc.csfWithdrawal) : '-',
+                            csfReturnAmt: cc.csfReturnAmt,
+                            csfReturnAmtStr: cc.csfReturnAmt > 0 ? formatPricePhp(cc.csfReturnAmt) : '-',
                         }
     
                         if (loanBalance > 0) {
@@ -569,6 +610,7 @@ const CashCollectionDetailsPage = () => {
                         
                         collection = {
                             client: cc.client,
+                            groupLeader: cc.client.groupLeader,
                             coMaker: (cc.coMaker && typeof cc.coMaker == 'number') ? cc.coMaker : '-',
                             group: cc.group,
                             loanId: cc._id,
@@ -635,72 +677,19 @@ const CashCollectionDetailsPage = () => {
                             loanRelease: cc.loanRelease,
                             maturedPD: cc.maturedPD ? cc.maturedPD : false,
                             advance: cc.advance ? cc.advance : false,
+                            csf: safeNumber(cc.csf),
+                            csfStr: safeNumber(cc.csf) > 0 ? formatPricePhp(cc.csf) : '-',
+                            csfCollection: 0,
+                            csfCollectionStr: '-',
+                            csfWithdrawal: 0,
+                            csfWithdrawalStr: '-',
+                            csfReturnAmt: 0,
+                            csfReturnAmtStr: '-',
                             _dirty: true
                         }
     
                         delete cc._id;
-                        if (type !== 'filter' && cc?.draftCollection?.length > 0) {
-                            const draftCC = cc.draftCollection[cc.draftCollection.length - 1];
-                            setEditMode(true);
-
-                            collection.targetCollection = draftCC.targetCollection;
-                            collection.targetCollectionStr = collection.targetCollection > 0 ? formatPricePhp(collection.targetCollection) : '-';
-                            collection.excess = draftCC.excess;
-                            collection.excessStr = collection.excess > 0 ? formatPricePhp(collection.excess) : '-';
-                            collection.paymentCollection = draftCC.paymentCollection;
-                            collection.paymentCollectionStr = collection.paymentCollection > 0 ? formatPricePhp(collection.paymentCollection) : '-';
-                            collection.mispayment = draftCC.mispayment;
-                            collection.mispaymentStr = draftCC.mispaymentStr = draftCC.mispayment ? 'Yes' : 'No';
-                            collection.remarks = draftCC.remarks;
-                            collection.delinquent = draftCC.delinquent ? draftCC.delinquent : false;
-                            collection._id = draftCC._id;
-                            collection.prevData = draftCC.prevData;
-                            collection.pastDue = draftCC.pastDue ? draftCC.pastDue : 0;
-                            collection.pastDue = draftCC.pastDue ? draftCC.pastDue : 0;
-                            collection.pastDueStr = draftCC.pastDue ? formatPricePhp(draftCC.pastDue) : '-';
-                            collection.mcbuCol = draftCC.mcbuCol;
-                            collection.mcbuColStr = draftCC.mcbuCol > 0 ? formatPricePhp(draftCC.mcbuCol) : '-';
-                            collection.mcbuWithdrawal = draftCC.mcbuWithdrawal;
-                            collection.mcbuWithdrawalStr = draftCC.mcbuWithdrawal > 0 ? formatPricePhp(draftCC.mcbuWithdrawal) : '-';
-                            collection.mcbuReturnAmt = draftCC.mcbuReturnAmt;
-                            collection.mcbuReturnAmtStr = draftCC.mcbuReturnAmt > 0 ? formatPricePhp(draftCC.mcbuReturnAmt) : '-';
-                            collection.mcbuInterest = draftCC.mcbuInterest ? cc.mcbuInterest : 0,
-                            collection.mcbuInterestStr = draftCC.mcbuInterest > 0 ? formatPricePhp(draftCC.mcbuInterest) : '-',
-                            collection.advanceDays = draftCC.advanceDays;
-                            collection.draft = draftCC.draft;
-                            collection.dcmc = draftCC.dcmc;
-                            collection.excused = draftCC.excused ? draftCC.excused : false;
-                            collection.latePayment = draftCC.latePayment ? draftCC.latePayment : false;
-                            collection.mpdc = current.mpdc ? current.mpdc : false;
-
-                            if (draftCC?.origin) {
-                                collection.origin = draftCC.origin;
-                                if (collection.origin !== 'pre-save') {
-                                    setEditMode(false);
-                                }
-                            } else if (draftCC.draft) {
-                                collection.error = draftCC.error;
-                                collection.mcbu = draftCC.mcbu;
-                                collection.mcbuStr = draftCC.mcbu > 0 ? formatPricePhp(draftCC.mcbu) : '-',
-                                collection.loanBalance = draftCC.loanBalance;
-                                collection.loanBalanceStr = formatPricePhp(draftCC.loanBalance);
-                                collection.noOfPayments = (collection.status === "active" || (collection.status === "completed" && collection.fullPaymentDate === currentDate)) ? draftCC.noOfPayments : 0;
-                                collection.noOfPaymentStr = (collection.status === "active" || (collection.status === "completed" && collection.fullPaymentDate === currentDate)) ? draftCC.noOfPayments + ' / ' + maxDays : '-';
-                                collection.total = draftCC.total;
-                                collection.fullPayment = draftCC.fullPayment;
-                                collection.fullPaymentStr = formatPricePhp(draftCC.fullPayment);
-                                collection.fullPaymentDate = draftCC.fullPaymentDate;
-                                collection.history = draftCC.history;
-                                collection.amountRelease = draftCC.amountRelease;
-                                collection.amountReleaseStr = formatPricePhp(draftCC.amountRelease);
-                                setEditMode(true);
-                            } else {
-                                setEditMode(false);
-                            }
-
-                            collection.previousDraft = true;
-                            collection.dateAdded = draftCC.dateAdded;
-                        } else if (cc.current.length > 0) {
+                        if (cc.current.length > 0) {
                             const current = cc.current.find(cur => cur.transferId == null);
                             if (current) {
                                 collection.targetCollection = current.targetCollection;
@@ -731,6 +720,12 @@ const CashCollectionDetailsPage = () => {
                                 collection.excused = current.excused ? current.excused : false;
                                 collection.latePayment = current.latePayment ? current.latePayment : false;
                                 collection._dirty = !!current.draft;
+                                collection.csfCollection = current.csfCollection;
+                                collection.csfCollectionStr = current.csfCollection > 0 ? formatPricePhp(current.csfCollection) : '-';
+                                collection.csfWithdrawal = current.csfWithdrawal;
+                                collection.csfWithdrawalStr = current.csfWithdrawal > 0 ? formatPricePhp(current.csfWithdrawal) : '-';
+                                collection.csfReturnAmt = current.csfReturnAmt;
+                                collection.csfReturnAmtStr = current.csfReturnAmt > 0 ? formatPricePhp(current.csfReturnAmt) : '-';
     
                                 if (current?.origin) {
                                     collection.origin = current.origin;
@@ -752,6 +747,8 @@ const CashCollectionDetailsPage = () => {
                                     collection.history = current.history;
                                     collection.amountRelease = current.amountRelease;
                                     collection.amountReleaseStr = formatPricePhp(current.amountRelease);
+                                    collection.csf = current.csf;
+                                    collection.csfStr = formatPricePhp(current.csf);
                                     setEditMode(true);
                                 } else {
                                     setEditMode(false);
@@ -785,6 +782,24 @@ const CashCollectionDetailsPage = () => {
                             collection.transfer = true;
                             transferStr = 'TCR';
                         }
+
+                        if (!collection.prevData) {
+                            collection.prevData = {
+                                amountRelease: collection.amountRelease,
+                                paymentCollection: collection.paymentCollection,
+                                excess: collection.excess !== '-' ? collection.excess : 0,
+                                loanBalance: collection.loanBalance,
+                                activeLoan: collection.activeLoan,
+                                noOfPayments: collection.noOfPayments,
+                                total: collection.total,
+                                pastDue: collection.pastDue,
+                                mcbu: collection.mcbu,
+                                advanceDays: collection.advanceDays,
+                                mcbuCol: collection.mcbuCol,
+                                csf: collection.csf,
+                                csfCollection: collection.csfCollection
+                            };
+                        }
                     } else {
                         return;
                     }
@@ -814,16 +829,25 @@ const CashCollectionDetailsPage = () => {
                 }
 
                 collection.hasMcbuWithdrawal = false;
+                collection.hasCsfWithdrawal = false;
                 if (cc.mcbuWithdrawalList.length > 0) {
                     const mcbuWithdrawal = cc.mcbuWithdrawalList[cc.mcbuWithdrawalList.length - 1];
-                    collection.hasMcbuWithdrawal = true;
-                    collection.mcbuWithdrawalIsPending = mcbuWithdrawal.status == 'pending' ? true : false;
-                    collection.mcbuWithdrawalId = mcbuWithdrawal._id;
-                    if (mcbuWithdrawal?.status == 'pending') {
-                        collection.mcbuWithdrawal = mcbuWithdrawal.mcbu_withdrawal_amount || 0;
-                        collection.mcbuWithdrawalStr = collection.mcbuWithdrawal > 0 ? formatPricePhp(collection.mcbuWithdrawal) : '-';
-                        // collection.mcbu = collection.mcbu - collection.mcbuWithdrawal;
-                        // collection.mcbuStr = formatPricePhp(collection.mcbu);
+                    if (mcbuWithdrawal && mcbuWithdrawal.group_leader) {
+                        collection.hasCsfWithdrawal = true;
+                        collection.csfWithdrawalIsPending = mcbuWithdrawal.status == 'pending' ? true : false;
+                        collection.csfWithdrawalId = mcbuWithdrawal._id;
+                        if (mcbuWithdrawal?.status == 'pending') {
+                            collection.csfWithdrawal = mcbuWithdrawal.mcbu_withdrawal_amount || 0;
+                            collection.csfWithdrawalStr = collection.csfWithdrawal > 0 ? formatPricePhp(collection.csfWithdrawal) : '-';
+                        }
+                    } else {
+                        collection.hasMcbuWithdrawal = true;
+                        collection.mcbuWithdrawalIsPending = mcbuWithdrawal.status == 'pending' ? true : false;
+                        collection.mcbuWithdrawalId = mcbuWithdrawal._id;
+                        if (mcbuWithdrawal?.status == 'pending') {
+                            collection.mcbuWithdrawal = mcbuWithdrawal.mcbu_withdrawal_amount || 0;
+                            collection.mcbuWithdrawalStr = collection.mcbuWithdrawal > 0 ? formatPricePhp(collection.mcbuWithdrawal) : '-';
+                        }
                     }
                 }
 
@@ -909,6 +933,20 @@ const CashCollectionDetailsPage = () => {
                             selected: false,
                             advanceTransaction: currentLoan?.advanceTransaction ? currentLoan.advanceTransaction : false,
                             dateOfRelease: dateOfRelease,
+                             admissionCollection: loan.admissionCollection,
+                            lrfCollection: loan.lrfCollection,
+                            cbhbCollection: loan.cbhbCollection,
+                            otherPassbookCollection: loan.otherPassbookCollection,
+                            otherPictureCollection: loan.otherPictureCollection,
+                            otherIncome: loan.otherPassbookCollection + loan.otherPictureCollection,
+                            csf: loan.csf,
+                            csfStr: loan.csf > 0 ? formatPricePhp(loan.csf) : '-',
+                            csfCollection: safeNumber(currentLoan.csfCollection),
+                            csfCollectionStr: safeNumber(currentLoan.csfCollection) > 0 ? formatPricePhp(safeNumber(currentLoan.csfCollection)) : '-',
+                            csfWithdrawal: safeNumber(currentLoan.csfWithdrawal),
+                            csfWithdrawalStr: safeNumber(currentLoan.csfWithdrawal) > 0 ? formatPricePhp(safeNumber(currentLoan.csfWithdrawal)) : '-',
+                            csfReturnAmt: safeNumber(currentLoan.csfReturnAmt),
+                            csfReturnAmtStr: safeNumber(currentLoan.csfReturnAmt) > 0 ? formatPricePhp(safeNumber(currentLoan.csfReturnAmt)) : '-',
                         };
 
                         if (currentLoan?.current?.length > 0) {
@@ -926,6 +964,8 @@ const CashCollectionDetailsPage = () => {
                             cashCollection[index].paymentCollection = loan.current[0].history?.collection ? loan.current[0].history?.collection : 0;
                             cashCollection[index].paymentCollectionStr = loan.current[0].history?.collection ? formatPricePhp(loan.current[0].history?.collection) : '-';
                             cashCollection[index].remarks = loan.current[0].history?.remarks;
+                            cashCollection[index].csfCollection = loan.current[0].csfCollection;
+                            cashCollection[index].csfCollectionStr = loan.current[0].csfCollection > 0 ? formatPricePhp(loan.current[0].csfCollection) : '-';
                         }
                     } else if (currentLoan.status == 'completed' && !currentLoan?.advance  && (loan?.loanFor == 'today' || (loan?.loanFor == 'tomorrow' && diff >= 0))) {
                         cashCollection[index] = {
@@ -974,6 +1014,20 @@ const CashCollectionDetailsPage = () => {
                             selected: false,
                             advanceTransaction: currentLoan?.advanceTransaction ? currentLoan.advanceTransaction : false,
                             dateOfRelease: dateOfRelease,
+                            admissionCollection: loan.admissionCollection,
+                            lrfCollection: loan.lrfCollection,
+                            cbhbCollection: loan.cbhbCollection,
+                            otherPassbookCollection: loan.otherPassbookCollection,
+                            otherPictureCollection: loan.otherPictureCollection,
+                            otherIncome: loan.otherPassbookCollection + loan.otherPictureCollection,
+                            csf: loan.csf,
+                            csfStr: loan.csf > 0 ? formatPricePhp(loan.csf) : '-',
+                            csfCollection: safeNumber(currentLoan.csfCollection),
+                            csfCollectionStr: safeNumber(currentLoan.csfCollection) > 0 ? formatPricePhp(safeNumber(currentLoan.csfCollection)) : '-',
+                            csfWithdrawal: safeNumber(currentLoan.csfWithdrawal),
+                            csfWithdrawalStr: safeNumber(currentLoan.csfWithdrawal) > 0 ? formatPricePhp(safeNumber(currentLoan.csfWithdrawal)) : '-',
+                            csfReturnAmt: safeNumber(currentLoan.csfReturnAmt),
+                            csfReturnAmtStr: safeNumber(currentLoan.csfReturnAmt) > 0 ? formatPricePhp(safeNumber(currentLoan.csfReturnAmt)) : '-',
                         };
 
                         if (currentLoan.current.length > 0) {
@@ -991,6 +1045,8 @@ const CashCollectionDetailsPage = () => {
                             cashCollection[index].paymentCollection = loan.current[0].history?.collection ? loan.current[0].history?.collection : 0;
                             cashCollection[index].paymentCollectionStr = loan.current[0].history?.collection ? formatPricePhp(loan.current[0].history?.collection) : '-';
                             cashCollection[index].remarks = loan.current[0].history?.remarks;
+                            cashCollection[index].csfCollection = loan.current[0].csfCollection;
+                            cashCollection[index].csfCollectionStr = loan.current[0].csfCollection > 0 ? formatPricePhp(loan.current[0].csfCollection) : '-';
                         }
                     } else if (currentLoan.status === 'closed' && (currentLoan?.advance && loan.advanceTransaction && (loan?.loanFor == 'today' || (loan?.loanFor == 'tomorrow' && currentDate == loan.dateOfRelease)))) {
                         cashCollection[index] = {
@@ -1040,6 +1096,20 @@ const CashCollectionDetailsPage = () => {
                             selected: false,
                             advanceTransaction: currentLoan?.advanceTransaction ? currentLoan.advanceTransaction : false,
                             dateOfRelease: dateOfRelease,
+                            admissionCollection: loan.admissionCollection,
+                            lrfCollection: loan.lrfCollection,
+                            cbhbCollection: loan.cbhbCollection,
+                            otherPassbookCollection: loan.otherPassbookCollection,
+                            otherPictureCollection: loan.otherPictureCollection,
+                            otherIncome: loan.otherPassbookCollection + loan.otherPictureCollection,
+                            csf: loan.csf,
+                            csfStr: loan.csf > 0 ? formatPricePhp(loan.csf) : '-',
+                            csfCollection: safeNumber(currentLoan.csfCollection),
+                            csfCollectionStr: safeNumber(currentLoan.csfCollection) > 0 ? formatPricePhp(safeNumber(currentLoan.csfCollection)) : '-',
+                            csfWithdrawal: safeNumber(currentLoan.csfWithdrawal),
+                            csfWithdrawalStr: safeNumber(currentLoan.csfWithdrawal) > 0 ? formatPricePhp(safeNumber(currentLoan.csfWithdrawal)) : '-',
+                            csfReturnAmt: safeNumber(currentLoan.csfReturnAmt),
+                            csfReturnAmtStr: safeNumber(currentLoan.csfReturnAmt) > 0 ? formatPricePhp(safeNumber(currentLoan.csfReturnAmt)) : '-',
                         };
 
                         if (currentLoan.current.length > 0) {
@@ -1099,6 +1169,20 @@ const CashCollectionDetailsPage = () => {
                         dateOfRelease: loan.dateOfRelease ? loan.dateOfRelease : null,
                         advanceTransaction: currentLoan?.advanceTransaction ? currentLoan.advanceTransaction : false,
                         prevLoanId: loan?.prevLoanId,
+                        admissionCollection: loan.admissionCollection,
+                        lrfCollection: loan.lrfCollection,
+                        cbhbCollection: loan.cbhbCollection,
+                        otherPassbookCollection: loan.otherPassbookCollection,
+                        otherPictureCollection: loan.otherPictureCollection,
+                        otherIncome: loan.otherPassbookCollection + loan.otherPictureCollection,
+                        csf: loan.csf,
+                        csfStr: loan.csf > 0 ? formatPricePhp(loan.csf) : '-',
+                        csfCollection: 0,
+                        csfCollectionStr: '-',
+                        csfWithdrawal: 0,
+                        csfWithdrawalStr: '-',
+                        csfReturnAmt: 0,
+                        csfReturnAmtStr: '-',
                     };
 
                     const current = loan.current.length > 0 ? loan.current[0] : null;
@@ -1122,6 +1206,30 @@ const CashCollectionDetailsPage = () => {
 
                     cashCollection.push(pendingTomorrow);
                 }
+            });
+            
+            // totals
+            cashCollection = [...cashCollection].map(cc => {
+                const totalCollection = (
+                    safeNumber(cc.mcbuCol) + 
+                    safeNumber(cc.csfCollection) + 
+                    safeNumber(cc.paymentCollection) + 
+                    safeNumber(cc.admissionCollection) + 
+                    safeNumber(cc.lrfCollection) + 
+                    safeNumber(cc.cbhbCollection) + 
+                    safeNumber(cc.otherIncome)
+                ) - (
+                    safeNumber(cc.mcbuWithdrawal) + 
+                    safeNumber(cc.csfWithdrawal) + 
+                    safeNumber(cc.mcbuReturnAmt) +
+                    safeNumber(cc.csfReturnAmt)
+                );
+                
+                return {
+                    ...cc,
+                    mcbuCol: safeNumber(cc.mcbuCol),
+                    totalCollection: totalCollection
+                };
             });
 
             const hasDraft = cashCollection.filter(cc => cc.draft);
@@ -1195,6 +1303,15 @@ const CashCollectionDetailsPage = () => {
         let totalMcbuWithdraw = 0;
         let totalMcbuReturn = 0;
         let totalMcbuInterest = 0;
+        let totalCsf = 0;
+        let totalCsfCollection = 0;
+        let totalAdmissionFee = 0;
+        let totalLrf = 0;
+        let totalCbhb = 0;
+        let totalOtherIncome = 0;
+        let totalCsfWithdrawal = 0;
+        let totalCollection = 0;
+        let totalCsfReturnAmt = 0;
 
         dataArr.map(collection => {
             if (collection.status !== 'open' && collection.status !== 'totals') {
@@ -1224,6 +1341,18 @@ const CashCollectionDetailsPage = () => {
 
                 totalMcbuReturn += collection.mcbuReturnAmt ? collection.mcbuReturnAmt : 0;
                 totalMcbuInterest += collection.mcbuInterest ? collection.mcbuInterest : 0;
+
+                if (!['pending', 'rejected'].includes(collection.status)) {
+                    totalCsf += safeNumber(collection.csf);
+                    totalCsfCollection += safeNumber(collection.csfCollection);
+                    totalAdmissionFee += safeNumber(collection.admissionCollection);
+                    totalLrf += safeNumber(collection.lrfCollection);
+                    totalCbhb += safeNumber(collection.cbhbCollection);
+                    totalOtherIncome += safeNumber(collection.otherIncome);
+                    totalCsfWithdrawal += safeNumber(collection.csfWithdrawal);
+                    totalCollection += safeNumber(collection.totalCollection);
+                    totalCsfReturnAmt += safeNumber(collection.csfReturnAmt);
+                }
             }
         });
 
@@ -1239,12 +1368,25 @@ const CashCollectionDetailsPage = () => {
             currentReleaseAmount: totalReleaseAmount,
             currentReleaseAmountStr: totalReleaseAmount ? formatPricePhp(totalReleaseAmount) : 0,
             noOfPayments: '-',
+            csf: totalCsf,
+            csfStr: totalCsf > 0 ? formatPricePhp(totalCsf) : '-',
             mcbuStr: totalMcbu > 0 ? formatPricePhp(totalMcbu) : '-',
             mcbuColStr: totalMcbuCol > 0 ? formatPricePhp(totalMcbuCol) : '-',
             mcbuWithdrawalStr: totalMcbuWithdraw > 0 ? formatPricePhp(totalMcbuWithdraw) : '-',
             mcbuReturnAmtStr: totalMcbuReturn > 0 ? formatPricePhp(totalMcbuReturn) : '-',
             mcbuInterest: totalMcbuInterest,
             mcbuInterestStr: totalMcbuInterest > 0 ? formatPricePhp(totalMcbuInterest) : '-',
+            csfCollection: totalCsfCollection,
+            csfCollectionStr: totalCsfCollection > 0 ? formatPricePhp(totalCsfCollection) : '-',
+            admissionCollection: totalAdmissionFee,
+            lrfCollection: totalLrf,
+            cbhbCollection: totalCbhb,
+            otherIncome: totalOtherIncome,
+            csfWithdrawal: totalCsfWithdrawal,
+            csfWithdrawalStr: totalCsfWithdrawal > 0 ? formatPricePhp(totalCsfWithdrawal) : '-',
+            csfReturnAmt: totalCsfReturnAmt,
+            csfReturnAmtStr: totalCsfReturnAmt > 0 ? formatPricePhp(totalCsfReturnAmt) : '-',
+            totalCollection: totalCollection,
             targetCollection: totalTargetLoanCollection,
             targetCollectionStr: totalTargetLoanCollection ? formatPricePhp(totalTargetLoanCollection) : 0,
             excess: totalExcess,
@@ -1294,11 +1436,11 @@ const CashCollectionDetailsPage = () => {
                             && !cc.remarks.value?.startsWith('collection-') && cc.remarks.value !== 'matured-past due') ) {
                             errorMsg.add(`Actual collection should be divisible by ${cc.activeLoan}.`);
                         }
-                    } else if (cc.loanBalance > 0 && parseFloat(cc.paymentCollection) === (cc.activeLoan * 2) && (!cc.remarks || cc.remarks && cc.remarks.value !== "double payment" && cc.remarks.value !== "past due collection")) {
-                        errorMsg.add('Error occured. Actual collection is a double payment please set remarks as Double Payment.');
-                    } else if (cc.loanBalance > 0 && parseFloat(cc.paymentCollection) > parseFloat(cc.activeLoan) && parseFloat(cc.paymentCollection) > parseFloat(cc.activeLoan * 2) && cc.loanBalance !== 0) {
-                        if (parseFloat(cc.paymentCollection) % parseFloat(cc.activeLoan) === 0 && (!cc.remarks || cc.remarks && cc.remarks.value !== "advance payment" && cc.remarks.value !== "past due collection")) {
-                            errorMsg.add('Error occured. Actual collection is a advance payment please set remarks as Advance Payment.');
+                    } else if (cc.loanBalance > 0 && parseFloat(cc.paymentCollection) > parseFloat(cc.activeLoan) && (parseFloat(cc.paymentCollection) === (cc.activeLoan * 2) || parseFloat(cc.paymentCollection) > parseFloat(cc.activeLoan * 2)) && cc.loanBalance !== 0) {
+                        if (parseFloat(cc.paymentCollection) > parseFloat(cc.activeLoan * 2) && parseFloat(cc.paymentCollection) % parseFloat(cc.activeLoan) === 0 && (!cc.remarks || cc.remarks && cc.remarks.value !== "advance payment" && cc.remarks.value !== "past due collection")) {
+                            errorMsg.add(`Error occured. Actual collection is a advance payment please set remarks as Advance Payment.`);
+                        } else if (parseFloat(cc.paymentCollection) === (cc.activeLoan * 2) && parseFloat(cc.paymentCollection) % parseFloat(cc.activeLoan) === 0 && (!cc.remarks || cc.remarks && cc.remarks.value !== "double payment" && cc.remarks.value !== "advance payment" && cc.remarks.value !== "past due collection")) {
+                            errorMsg.add('Error occured. Actual collection is a double payment please set remarks as Double Payment or Advance Payment.');
                         }
                     } else if (cc.status === "active" && cc.loanBalance === 0 && !cc.remarks ) {
                         errorMsg.add('Error occured. Please select PENDING, RELOANER or OFFSET remarks for full payment transaction.');
@@ -1314,7 +1456,7 @@ const CashCollectionDetailsPage = () => {
                 } 
                 
                 if (cc.groupDay === dayName || cc.offsetTransFlag) {
-                    if (!cc.mcbuCol || parseFloat(cc.mcbuCol) < 50) {
+                    if (!cc.mcbuCol || parseFloat(cc.mcbuCol) < transactionSettings.minWeeklyMcbuCollection) {
                         if (!cc.remarks || (cc.remarks 
                             && (cc.remarks.value !== 'past due' && cc.remarks.value?.startsWith('excused-')
                             && cc.remarks.value?.startsWith('delinquent') && cc.remarks.value?.startsWith('offset') && cc.remarks.value !== 'past due collection'))) {
@@ -1342,37 +1484,38 @@ const CashCollectionDetailsPage = () => {
                 if (cc.dcmc && cc.remarks?.value == 'delinquent-mcbu' && cc.mcbuCol <= 0) {
                     errorMsg.add('Error occured. Please add MCBU amount.');
                 }
+
+                
+                if ((cc.remarks == '' && cc.paymentCollection > 0) && (cc.remarks && ['reloaner', 'double payment', 'advance payment'].includes(cc.remarks?.value))) {
+                    const noPaymentsToday = cc.paymentCollection / cc.activeLoan;
+                    const expectedMcbu = transactionSettings.minWeeklyMcbuCollection * noPaymentsToday;
+                    
+                    if (!cc.mcbuCol) {
+                        errorMsg.add(`Error occured. No MCBU Collection detected.`);
+                    } else if (cc.mcbuCol < expectedMcbu) {
+                        errorMsg.add(`Error occured. MCBU Collection is below the expected amount of ${expectedMcbu}.`);
+                    }
+                }
+
+                if (cc.csfError || (cc?.groupLeader && safeNumber(cc.csfCollection) <= 0)) {
+                    errorMsg.add('Error occured. Please double check the CSF Collection column.');
+                }
             } else if (cc.status !== 'totals' && (cc?.transferStr == null || cc?.transferStr == '-') && (cc.status === 'completed' || (cc?.status !== 'closed' && cc?.loanBalance <= 0)) && (!cc.remarks || (cc.remarks && (cc.remarks.value !== 'pending' && !cc.remarks.value?.startsWith('reloaner') && !cc.remarks.value?.startsWith('offset'))))) {
                 errorMsg.add("Invalid remarks. Fullpayment transaction has no remarks. Please set the remarks to RELOANER OR OFFSET.");
+            } else if (cc.status == 'completed' && cc.paymentCollection > 0 && (cc.remarks && ['reloaner', 'double payment', 'advance payment'].includes(cc.remarks?.value))) {
+                const activeLoan = cc.activeLoan > 0 ? cc.activeLoan : cc.history?.activeLoan;
+                const noPaymentsToday = cc.paymentCollection / activeLoan;
+                const expectedMcbu = transactionSettings.minWeeklyMcbuCollection * noPaymentsToday;
+
+                if (!cc.mcbuCol) {
+                    errorMsg.add(`Error occured. No MCBU Collection detected.`);
+                } else if (cc.mcbuCol < expectedMcbu) {
+                    errorMsg.add(`Error occured. MCBU Collection is below the expected amount of ${expectedMcbu}.`);
+                }
             }
         });
 
         return errorMsg;
-    }
-
-    const handlePaymentValidation = (e, selected, index, col) => {
-        const value = e.target.value ? parseFloat(e.target.value) : 0;
-        let temp = {...selected};
-        switch (col) {
-            case 'mcbuCol':
-                if (!value || value < 50) {
-                    toast.error('Error occured. Minimum MCBU collection is 50.');
-                    temp.mcbuError = true;
-                } else if (value > 50 && value % 10 !== 0) {
-                    toast.error('Error occured. MCBU collection must be divisible by 10.');
-                    temp.mcbuError = true;
-                } else {
-                    temp.mcbuError = false;
-                }
-                break;
-            default: break;
-        }
-
-        let tempList = [...data];
-        tempList[index] = temp;
-
-        tempList.sort((a, b) => { return a.slotNo - b.slotNo; });
-        dispatch(setCashCollectionGroup(tempList));
     }
 
     const handleSaveUpdate = async (draft) => {
@@ -1395,7 +1538,7 @@ const CashCollectionDetailsPage = () => {
             } else {
                 let prevDraftDate =  null;
                 let dataArr = data.filter(cc => cc.status !== 'open').filter(cc => !!cc._dirty).map(cc => {
-                    let temp = {...cc};
+                    let temp = JSON.parse(JSON.stringify(cc));
                     if (cc.status !== 'totals') {
                         temp.groupDay = temp.group.day;
                     }
@@ -1596,7 +1739,7 @@ const CashCollectionDetailsPage = () => {
         }, 2000);
     }
 
-    const handlePaymentCollectionChange = (e, index, type, targetCollection) => {
+    const handlePaymentCollectionChange = (e, index, type) => {
         const totalObj = data.find(o => o.status === 'totals');
         const totalIdx = data.indexOf(totalObj);
 
@@ -1623,6 +1766,7 @@ const CashCollectionDetailsPage = () => {
                             temp.excessStr = (temp.excess > 0 || temp.excess !== '-') ? formatPricePhp(temp.excess) : '-';
                             temp.fullPayment = 0;
                             temp.fullPaymentStr = '-';
+                            temp.activeLoan = temp.prevData.activeLoan;
                             temp.targetCollection = temp.activeLoan;
                             temp.targetCollectionStr = formatPricePhp(temp.activeLoan);
                             temp.remarks = '';
@@ -1630,8 +1774,8 @@ const CashCollectionDetailsPage = () => {
                             temp.pastDueStr = temp.pastDue > 0 ? formatPricePhp(temp.pastDue) : '-';
                             temp.status = 'active';
                             temp.advanceDays = temp.prevData.advanceDays;
-                            temp.mcbu = temp.prevData.mcbu;
-                            temp.mcbuStr = temp.mcbu > 0 ? formatPricePhp(temp.mcbu) : '-';
+                            // temp.mcbu = temp.prevData.mcbu;
+                            // temp.mcbuStr = temp.mcbu > 0 ? formatPricePhp(temp.mcbu) : '-';
                             // temp.mcbuCol = 0;
                             // temp.mcbuColStr = '-';
                             if (!temp.hasMcbuWithdrawal) {
@@ -1654,13 +1798,9 @@ const CashCollectionDetailsPage = () => {
                                 total: temp.total,
                                 pastDue: temp.pastDue,
                                 mcbu: temp.mcbu,
+                                csf: temp.csf,
                                 advanceDays: temp.advanceDays
                             };
-                        }
-
-                        if (temp.mcbuCol > 0) {
-                            temp.mcbu = temp.mcbu + temp.mcbuCol;
-                            temp.mcbuStr = temp.mcbu > 0 ? formatPricePhp(temp.mcbu) : '-';
                         }
 
                         if (value && parseInt(value) != 0) {
@@ -1694,6 +1834,8 @@ const CashCollectionDetailsPage = () => {
                                     temp.mispayment = true;
                                     temp.mispaymentStr = 'Yes';
                                 } else if (parseFloat(payment) > parseFloat(temp.activeLoan)) {
+                                    temp.mcbu = safeNumber(temp.prevData.mcbu);
+                                    temp.mcbuStr = formatPricePhp(temp.mcbu);
                                     temp.excess = parseFloat(payment) - parseFloat(temp.activeLoan);
                                     temp.excessStr = formatPricePhp(temp.excess);
                                     temp.mispayment = false;
@@ -1701,15 +1843,26 @@ const CashCollectionDetailsPage = () => {
     
                                     const noPayments = parseInt(payment) / parseInt(temp.activeLoan);
                                     temp.noOfPayments = temp.noOfPayments + noPayments;
-                                    // temp.remarks = { label: 'Advance Payment', value: 'advance payment'};
+                                    const excessMcbu = temp.excess / temp.activeLoan;
+                                    const finalMcbu = (excessMcbu * transactionSettings.minWeeklyMcbuCollection) + transactionSettings.minWeeklyMcbuCollection;
+                                    temp.mcbuCol = finalMcbu;
+                                    temp.mcbuColStr = formatPricePhp(temp.mcbuCol);
+                                    temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + temp.mcbuCol : 0 + temp.mcbuCol;
+                                    temp.mcbuStr = formatPricePhp(temp.mcbu);
+                                    temp.mcbuError = false;
                                 } else if (parseFloat(payment) < parseFloat(temp.activeLoan)) {
                                     temp.excess =  0;
                                     temp.mispayment = true;
                                     temp.mispaymentStr = 'Yes';
-                                    // temp.noOfPayments = temp.noOfPayments + 1;
                                     temp.error = true;
-                                    // temp.remarks = { label: 'Excused', value: 'excused'};
                                 } else {
+                                    temp.mcbu = safeNumber(temp.prevData.mcbu);
+                                    temp.mcbuStr = formatPricePhp(temp.mcbu);
+                                    temp.mcbuCol = transactionSettings.minWeeklyMcbuCollection;
+                                    temp.mcbuColStr = formatPricePhp(temp.mcbuCol);
+                                    temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + temp.mcbuCol : 0 + temp.mcbuCol;
+                                    temp.mcbuStr = formatPricePhp(temp.mcbu);
+                                    temp.mcbuError = false;
                                     temp.mispayment = false;
                                     temp.mispaymentStr = 'No';
                                     temp.noOfPayments = temp.noOfPayments + 1;
@@ -1725,6 +1878,12 @@ const CashCollectionDetailsPage = () => {
                                     temp.loanBalanceStr = 0;
                                     temp.amountRelease = 0;
                                     temp.amountReleaseStr = 0;
+                                }
+
+                                const noPaymentsToday = value / temp.activeLoan;
+                                const minMcbuCol = transactionSettings.minWeeklyMcbuCollection * noPaymentsToday;
+                                if (!temp.mcbuCol || temp.mcbuCol < minMcbuCol) {
+                                    temp.mcbuError = true;
                                 }
                             } 
                             // else if (parseFloat(payment) > 0 && parseFloat(payment) < targetCollection) {
@@ -1761,163 +1920,201 @@ const CashCollectionDetailsPage = () => {
             list.sort((a, b) => { return a.slotNo - b.slotNo; });
             dispatch(setCashCollectionGroup(list));
         } else if (type === 'mcbuCol') {
-            const value = e.target.value ? parseFloat(e.target.value) : 0;
+            const value = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0;
+                    
+            const mcbuCol = value;
+            let list = data.map((cc, idx) => {
+                let temp = JSON.parse(JSON.stringify(cc));
+        
+                if (idx === index) {
+                    if (temp.prevData == null) {
+                        temp.prevData = {
+                            amountRelease: temp.amountRelease,
+                            paymentCollection: temp.paymentCollection,
+                            excess: temp.excess !== '-' ? temp.excess : 0,
+                            loanBalance: temp.loanBalance,
+                            activeLoan: temp.activeLoan,
+                            noOfPayments: temp.noOfPayments,
+                            total: temp.total,
+                            pastDue: temp.pastDue,
+                            mcbu: temp.mcbu,
+                            advanceDays: temp.advanceDays,
+                            mcbuCol: temp.mcbuCol,
+                            csf: temp.csf,
+                            csfCollection: temp.csfCollection
+                        };
+                    }
 
-            if (value > 0) {
-                const mcbuCol = value;
-                let list = data.map((cc, idx) => {
-                    let temp = {...cc};
-
-                    if (idx === index) {
-                        if (!temp.hasMcbuWithdrawal) {
-                            temp.mcbuWithdrawFlag = false;
-                            temp.mcbuWithdrawal = 0;
-                            temp.mcbuWithdrawalStr = '-';
-                        }
-                        if (temp.prevData != null) {
-                            temp.mcbu = temp.prevData.mcbu;
-                            temp.mcbuStr = formatPricePhp(temp.mcbu);
-                        } else {
-                            temp.prevData = {
-                                amountRelease: temp.amountRelease,
-                                paymentCollection: temp.paymentCollection,
-                                excess: temp.excess !== '-' ? temp.excess : 0,
-                                loanBalance: temp.loanBalance,
-                                activeLoan: temp.activeLoan,
-                                noOfPayments: temp.noOfPayments,
-                                total: temp.total,
-                                pastDue: temp.pastDue,
-                                mcbu: temp.mcbu,
-                                advanceDays: temp.advanceDays,
-                            };
-                        }
-
-                        if (temp?.dcmc || temp?.mpdc) {
-                            if (mcbuCol > 0) {
-                                if (temp?.prevData?.activeLoan > 0 && temp?.prevData?.activeLoan == mcbuCol) {
-                                    toast.error('Error occured. MCBU Collection should not be equal to the target collection. You can use the normal transaction');
-                                    temp.mcbuCol = 0;
-                                } else {
-                                    temp.mcbuCol = mcbuCol;
-                                    temp.mcbuColStr = formatPricePhp(mcbuCol);
-                                    temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + mcbuCol : 0 + mcbuCol;
-                                    temp.mcbuStr = formatPricePhp(temp.mcbu);
-                                    temp.prevData = {
-                                        ...temp.prevData,
-                                        mcbuCol: mcbuCol
-                                    };
-                                }
+                    temp.mcbu = temp.prevData.mcbu;
+        
+                    if (mcbuCol >= 0) {
+                        if (temp.dcmc || temp.mpdc) {
+                            if (temp?.prevData?.activeLoan > 0 && temp?.prevData?.activeLoan == mcbuCol) {
+                                toast.error('Error occured. MCBU Collection should not be equal to the target collection. You can use the normal transaction');
+                                temp.mcbuError = true;
+                                temp.mcbuCol = mcbuCol;
+                                temp.mcbuColStr = '-';
                             } else {
-                                toast.error('MCBU Collection must be greater than 0.');
-                                temp.mcbuCol = 0;
+                                temp.mcbuCol = mcbuCol;
+                                temp.mcbuColStr = formatPricePhp(mcbuCol);
+                                temp.mcbu += mcbuCol;
+                                temp.mcbuStr = formatPricePhp(temp.mcbu);
+                                temp.prevData = {
+                                    ...temp.prevData,
+                                    mcbuCol: mcbuCol,
+                                    csfCollection: 0
+                                };
                             }
                         } else {
-                            if (mcbuCol < 50) {
+                            const noPaymentsToday = temp.paymentCollection / temp.activeLoan;
+                            const minMcbuCol = transactionSettings.minWeeklyMcbuCollection * noPaymentsToday;
+                            if (mcbuCol > 0 && mcbuCol < minMcbuCol) {
                                 temp.mcbuError = true;
-                                temp.mcbuCol = 0;
+                                temp.mcbuCol = mcbuCol;
+                                temp.mcbuColStr = formatPricePhp(mcbuCol);
                             } else {
                                 temp.mcbuError = false;
                                 temp.mcbuCol = mcbuCol;
                                 temp.mcbuColStr = formatPricePhp(mcbuCol);
-                                temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + mcbuCol : 0 + mcbuCol;
+                                temp.mcbu += mcbuCol;
                                 temp.mcbuStr = formatPricePhp(temp.mcbu);
                                 temp.prevData = {
                                     ...temp.prevData,
                                     mcbuCol: mcbuCol
                                 };
                             }
-
-                            temp._dirty = true;
                         }
+
+                        temp._dirty = true;
+                    } else {
+                        temp.mcbuCol = 0;
+                        temp.mcbuColStr = '-';
+                    }
+                }
+        
+                return temp;
+            });
+        
+            const totalsObj = calculateTotals(list);
+            list[totalIdx] = totalsObj;
+        
+            list.sort((a, b) => { return a.slotNo - b.slotNo; });
+            dispatch(setCashCollectionGroup(list));
+        } else if (type === 'csfCol') {
+            const value = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0;
+            
+            const csfCol = value;
+            let list = data.map((cc, idx) => {
+                let temp = JSON.parse(JSON.stringify(cc));
+        
+                if (idx === index) {
+                    if (temp.prevData == null) {
+                        temp.prevData = {
+                            amountRelease: temp.amountRelease,
+                            paymentCollection: temp.paymentCollection,
+                            excess: temp.excess !== '-' ? temp.excess : 0,
+                            loanBalance: temp.loanBalance,
+                            activeLoan: temp.activeLoan,
+                            noOfPayments: temp.noOfPayments,
+                            total: temp.total,
+                            pastDue: temp.pastDue,
+                            mcbu: temp.mcbu,
+                            csf: temp.csf,
+                            advanceDays: temp.advanceDays,
+                            csfCollection: temp.csfCollection,
+                            mcbuCol: temp.mcbuCol
+                        };
                     }
 
-                    return temp;
-                });
-
-                const totalsObj = calculateTotals(list);
-                list[totalIdx] = totalsObj;
-
-                list.sort((a, b) => { return a.slotNo - b.slotNo; });
-                dispatch(setCashCollectionGroup(list));
-            } else {
-                let list = data.map((cc, idx) => {
-                    let temp = {...cc};
-
-                    if (idx === index) {
-                        if (temp?.prevData) {
-                            temp.mcbu = temp.prevData.mcbu;
-                            temp.mcbuStr = temp.mcbu > 0 ? formatPricePhp(temp.mcbu) : '-';
+                    temp.csf = safeNumber(temp.prevData.csf);
+        
+                    if (csfCol >= 0) {
+                        if (csfCol > 0 && csfCol < transactionSettings.minCsfCollection) {
+                            temp.csfError = true;
+                            temp.csfCollection = csfCol;
+                        } else {
+                            temp.csfError = false;
+                            temp.csfCollection = csfCol;
+                            temp.csfCollectionStr = csfCol > 0 ? formatPricePhp(csfCol) : '-';
+                            temp.csf += csfCol;
+                            temp.csfStr = temp.csf > 0 ? formatPricePhp(temp.csf) : '-';
+                            temp.prevData = {
+                                ...temp.prevData,
+                                csfCollection: csfCol
+                            };
                         }
+                        temp._dirty = true;
+                    } else {
+                        temp.csfCollection = 0;
                     }
-                    return temp;
-                });
-
-                const totalsObj = calculateTotals(list);
-                list[totalIdx] = totalsObj;
-
-                list.sort((a, b) => { return a.slotNo - b.slotNo; });
-                dispatch(setCashCollectionGroup(list));
-            }
+                }
+        
+                return temp;
+            });
+        
+            const totalsObj = calculateTotals(list);
+            list[totalIdx] = totalsObj;
+        
+            list.sort((a, b) => { return a.slotNo - b.slotNo; });
+            dispatch(setCashCollectionGroup(list));
         } else if (type === 'mcbuWithdrawal') {
             const value = e.target.value ? parseFloat(e.target.value) : 0;
             
-            if (value > 0) {
-                const mcbuWithdrawal = value;
+            const mcbuWithdrawal = value;
 
-                let list = data.map((cc, idx) => {
-                    let temp = {...cc};
+            let list = data.map((cc, idx) => {
+                let temp = JSON.parse(JSON.stringify(cc));
 
-                    if (idx === index) {
-                        if (temp?.prevData != null) {
-                            temp.mcbu = temp.prevData.mcbu;
-                            temp.mcbuStr = formatPricePhp(temp.mcbu);
-                        } else {
-                            temp.prevData = {
-                                amountRelease: temp.amountRelease,
-                                paymentCollection: temp.paymentCollection,
-                                excess: temp.excess !== '-' ? temp.excess : 0,
-                                loanBalance: temp.loanBalance,
-                                activeLoan: temp.activeLoan,
-                                noOfPayments: temp.noOfPayments,
-                                total: temp.total,
-                                pastDue: temp.pastDue,
-                                mcbu: temp.mcbu
-                            };
-                        }
-
-                        if (mcbuWithdrawal < 50) {
-                            temp.mcbuError = true;
-                        } else if (mcbuWithdrawal > temp.mcbu) {
-                            temp.mcbuError = true;
-                        } else {
-                            temp.mcbuError = false;
-                            temp.mcbuWithdrawal = mcbuWithdrawal;
-                            temp.mcbuWithdrawalStr = formatPricePhp(mcbuWithdrawal);
-                            temp.mcbu += temp.mcbuCol;
-                            if (temp.mcbu > 0) {
-                                temp.mcbu = parseFloat(temp.mcbu) - mcbuWithdrawal;
-                                temp.mcbuStr = formatPricePhp(temp.mcbu);   
-                            }
-                            
-                            temp._dirty = true;
-                        }
+                if (idx === index) {
+                    if (temp?.prevData != null) {
+                        temp.mcbu = temp.prevData.mcbu;
+                        temp.mcbuStr = formatPricePhp(temp.mcbu);
+                    } else {
+                        temp.prevData = {
+                            amountRelease: temp.amountRelease,
+                            paymentCollection: temp.paymentCollection,
+                            excess: temp.excess !== '-' ? temp.excess : 0,
+                            loanBalance: temp.loanBalance,
+                            activeLoan: temp.activeLoan,
+                            noOfPayments: temp.noOfPayments,
+                            total: temp.total,
+                            pastDue: temp.pastDue,
+                            mcbu: temp.mcbu
+                        };
                     }
 
-                    return temp;
-                });
+                    if (mcbuWithdrawal < 50) {
+                        temp.mcbuError = true;
+                    } else if (mcbuWithdrawal > temp.mcbu) {
+                        temp.mcbuError = true;
+                    } else {
+                        temp.mcbuError = false;
+                        temp.mcbuWithdrawal = mcbuWithdrawal;
+                        temp.mcbuWithdrawalStr = formatPricePhp(mcbuWithdrawal);
+                        temp.mcbu += temp.mcbuCol;
+                        if (temp.mcbu > 0) {
+                            temp.mcbu = parseFloat(temp.mcbu) - mcbuWithdrawal;
+                            temp.mcbuStr = formatPricePhp(temp.mcbu);   
+                        }
+                        
+                        temp._dirty = true;
+                    }
+                }
 
-                const totalsObj = calculateTotals(list);
-                list[totalIdx] = totalsObj;
+                return temp;
+            });
 
-                list.sort((a, b) => { return a.slotNo - b.slotNo; });
-                dispatch(setCashCollectionGroup(list));
-            }
+            const totalsObj = calculateTotals(list);
+            list[totalIdx] = totalsObj;
+
+            list.sort((a, b) => { return a.slotNo - b.slotNo; });
+            dispatch(setCashCollectionGroup(list));
         } else if (type === 'mcbuInterest') {
             const value = e.target.value ? parseFloat(e.target.value) : 0;
             if (value > 0) {
                 const mcbuInterest = value;
                 let list = data.map((cc, idx) => {
-                    let temp = {...cc};
+                    let temp = JSON.parse(JSON.stringify(cc));
 
                     if (idx === index) {
                         if (temp.prevData != null) {
@@ -1961,7 +2158,7 @@ const CashCollectionDetailsPage = () => {
         } else if (type === 'remarks') {
             const remarks = e;
             let list = data.map((cc, idx) => {
-                let temp = {...cc};
+                let temp = JSON.parse(JSON.stringify(cc));
                 
                 if (idx === index) {
                     if (temp.status === 'completed' && prevDraft) {
@@ -1973,13 +2170,34 @@ const CashCollectionDetailsPage = () => {
                             setEditMode(true);
                             setChangeRemarks(true);
                         }
+
+                        let mcbuErrorData = false;
+                        
+                        if ((temp.status == 'active' || (temp.status == 'completed' && temp.paymentCollection > 0)) && (remarks.value && ['reloaner', 'double payment', 'advance payment'].includes(remarks.value))) {
+                            const activeLoan = temp.activeLoan > 0 ? temp.activeLoan : temp.history?.activeLoan;
+                            const noPaymentsToday = temp.paymentCollection / activeLoan;
+                            const expectedMcbu = transactionSettings.minWeeklyMcbuCollection * noPaymentsToday;
+                            
+                            if (!temp.mcbuCol) {
+                                temp.mcbuError = true;
+                                toast.error(`Error occured. No MCBU Collection detected.`);
+                                mcbuErrorData = true;
+                            } else if (temp.mcbuCol < expectedMcbu) {
+                                temp.mcbuError = true;
+                                toast.error(`Error occured. MCBU Collection is below the expected amount of ${expectedMcbu}.`);
+                                mcbuErrorData = true;
+                            } else {
+                                temp.mcbuError = false;
+                                mcbuErrorData = false;
+                            }
+                        }
     
                         if (temp.status === "completed" && (remarks.value && !(remarks.value?.startsWith('offset') || remarks.value?.startsWith('reloaner')))) {
                             toast.error("Error occured. Invalid remarks. Should only choose a reloaner/offset remarks.");
                         } else if (temp.status == 'completed' && temp?.advance && remarks.value?.startsWith('offset')) {
                             toast.error(`Error occured. Slot No ${temp.slotNo} has a pending loan release.`);
-                        } else if (temp.status === "completed" && temp.hasMcbuWithdrawal && (remarks?.value && !remarks.value.startsWith('reloaner'))) {
-                            toast.error(`Error occured. Invalid remarks. Slot No ${temp.slotNo} has MCBU withdrawal transaction. Should only choose a reloaner remarks.`);
+                        } else if (temp.status === "completed" && (temp.hasMcbuWithdrawal || temp.hasCsfWithdrawal) && (remarks?.value && !remarks.value.startsWith('reloaner'))) {
+                            toast.error(`Error occured. Invalid remarks. Slot No ${temp.slotNo} has ${temp.hasMcbuWithdrawal ? 'MCBU' : 'CSF'} withdrawal transaction. Should only choose a reloaner remarks.`);
                         } else if (!temp.maturedPD && remarks.value == 'offset-matured-pd' ) {
                             temp.error = true;
                             toast.error("Invalid remarks. Client was not mark as matured past due.");
@@ -1987,7 +2205,7 @@ const CashCollectionDetailsPage = () => {
                             toast.error("Error occured. Invalid remarks. Should only choose a reloaner/offset remarks.");
                         } else if (temp.hasMcbuWithdrawal &&(remarks.value && remarks.value?.startsWith('offset'))) {
                             toast.error("Error occured. Invalid remarks. Slot No " + temp.slotNo + " has MCBU withdrawal transaction. Should only choose a reloaner remarks.");
-                        } else {
+                        } else if (!mcbuErrorData) {
                             // always reset these fields
                             temp.error = false;
                             temp.dcmc = false;
@@ -2015,10 +2233,17 @@ const CashCollectionDetailsPage = () => {
     
                             temp.mcbuReturnAmt = 0;
                             temp.mcbuReturnAmtStr = '-';
+                            temp.csfReturnAmt = 0;
+                            temp.csfReturnAmtStr = '-';
                             
                             if (!temp?.hasMcbuWithdrawal) {
                                 temp.mcbuWithdrawal = 0;
                                 temp.mcbuWithdrawalStr = '-';
+                            }
+
+                            if (!temp?.hasCsfWithdrawal) {
+                                temp.csfWithdrawal = 0;
+                                temp.csfWithdrawalStr = '-';
                             }
 
                             temp.targetCollection = temp.activeLoan;
@@ -2041,14 +2266,21 @@ const CashCollectionDetailsPage = () => {
         
                                         if (temp.history && (temp.history?.remarks?.value?.startsWith('offset') || temp.history?.remarks?.value?.startsWith('reloaner'))) {
                                             temp.mcbu = temp.prevData.mcbu;
+                                            temp.csf = temp.prevData.csf;
                                         }
                                         
                                         if (temp.mcbu !== temp.prevData.mcbu && temp.mcbuCol && temp.mcbuCol > 0) {
                                             temp.mcbu = temp.mcbu - temp.mcbuCol;
                                         }
+
+                                        if (temp.csf !== temp.prevData.csf && temp.csfCollection && temp.csfCollection > 0) {
+                                            temp.csf = temp.csf - temp.csfCollection;
+                                        }
         
                                         temp.mcbuCol = 0;
                                         temp.mcbuColStr = '-';
+                                        temp.csfCollection = 0;
+                                        temp.csfCollectionStr = '-';
                                         
                                         let history = {...temp.history};
                                         let prevData = {...temp.prevData};
@@ -2076,10 +2308,15 @@ const CashCollectionDetailsPage = () => {
                                         }
                                         temp.mcbuReturnAmt = parseFloat(temp.mcbu);
                                         temp.mcbuReturnAmtStr = formatPricePhp(temp.mcbuReturnAmt);
+                                        temp.csfReturnAmt = temp.csf;
+                                        temp.csfReturnAmtStr = formatPricePhp(temp.csf);
                                         
                                         temp.mcbu = 0;
                                         temp.mcbuStr = '-';
                                         temp.mcbuError = false;
+                                        temp.csf = 0;
+                                        temp.csfStr = '-';
+                                        temp.csfError = false;
 
                                         if (temp?.maturedPD && remarks.value == 'offset-matured-pd') {
                                             prevData.loanBalance = temp.loanBalance;
@@ -2113,8 +2350,15 @@ const CashCollectionDetailsPage = () => {
                                     temp.mcbuStr = temp.mcbu > 0 ? formatPricePhp(temp.mcbu) : '-';
                                 }
     
+                                if (safeNumber(temp.csfCollection) > 0) {
+                                    temp.csf = temp.csf - temp.csfCollection;
+                                    temp.csfStr = temp.csf > 0 ? formatPricePhp(temp.csf) : '-';
+                                }
+    
                                 temp.mcbuCol = 0;
                                 temp.mcbuColStr = '-';
+                                temp.csfCollection = 0;
+                                temp.csfCollectionStr = '-';
                             } else if (remarks.value?.startsWith('delinquent') || remarks.value?.startsWith('excused-')) {
                                 // add no of mispayments / maximum of payments per cycle // change to #of mispay
                                 temp.error = false;
@@ -2206,6 +2450,23 @@ const CashCollectionDetailsPage = () => {
                                             temp.mispaymentStr = 'Yes';
                                         }
                                     }
+
+                                    if (!temp.error) {
+                                        if (temp.mcbuCol && temp.mcbuCol > 0) {
+                                            temp.mcbu = temp.mcbu - temp.mcbuCol;
+                                            temp.mcbuStr = temp.mcbu > 0 ? formatPricePhp(temp.mcbu) : '-';
+                                        }
+
+                                        if (safeNumber(temp.csfCollection) > 0) {
+                                            temp.csf = temp.csf - temp.csfCollection;
+                                            temp.csfStr = temp.csf > 0 ? formatPricePhp(temp.csf) : '-';
+                                        }
+        
+                                        temp.mcbuCol = 0;
+                                        temp.mcbuColStr = '-';
+                                        temp.csfCollection = 0;
+                                        temp.csfCollectionStr = '-';
+                                    }
                                 }
                             } else if (remarks.value === "past due collection") {
                                 // if payment > targetCollection, then put subtract it on the past due amount not on excess
@@ -2229,6 +2490,16 @@ const CashCollectionDetailsPage = () => {
                                 } else {
                                     temp.error = true;
                                     toast.error("Error occured. Invalid remarks.");
+                                }
+                            } else if (remarks.value === 'double payment') {
+                                if (temp.activeLoan * 2 != temp.paymentCollection || temp.paymentCollection == 0) {
+                                    temp.error = true;
+                                    toast.error("Invalid remarks. Payment is not double to be considered as double payment.");
+                                }
+        
+                                if (temp.loanBalance <= 0) {
+                                    temp.error = true;
+                                    toast.error('Invalid remarks. Please mark it as Reloaner or Offset');
                                 }
                             } else if (remarks.value === 'advance payment') {
                                 if (temp.excess > 0) {
@@ -2278,14 +2549,15 @@ const CashCollectionDetailsPage = () => {
     
                                         if (temp.mcbuCol > 0) {
                                             temp.mcbu -= temp.mcbuCol;
-                                            temp.mcbuColStr = formatPricePhp(temp.mcbu);
+                                            temp.mcbuStr = formatPricePhp(temp.mcbu);
                                             temp.noOfPayments -= 1;
                                             temp.noOfPaymentStr = temp.noOfPayments + ' / ' + temp.loanTerms;
                                             temp.mcbuCol = 0;
                                             temp.mcbuColStr = '-';
                                         }
                                     }
-    
+                                    temp.disableMcbuCol = true;
+                                    temp.disableCsfCol = true;
                                     temp.advanceDays = temp.advanceDays - 1;
                                     temp.targetCollection = 0;
                                     temp.targetCollectionStr = '-';
@@ -2294,6 +2566,8 @@ const CashCollectionDetailsPage = () => {
                                     temp.mispayment = false;
                                     temp.mispaymentStr = 'No';
                                     temp.error = false;
+                                    temp.mcbuError = false;
+                                    temp.csfError = false;
                                 } else {
                                     temp.error = true;
                                     toast.error('Error occured. Yesterday transaction is not an Advanced payment');
@@ -2316,12 +2590,24 @@ const CashCollectionDetailsPage = () => {
                                             temp.excess = parseFloat(newPayment) - parseFloat(temp.activeLoan);
                                             temp.excessStr = formatPricePhp(temp.excess);
                                             temp.noOfPayments = parseInt(temp.noOfPayments) + noOfPayments;
+                                            const excessMcbu = temp.excess / temp.activeLoan;
+                                            const finalMcbu = (excessMcbu * transactionSettings.minWeeklyMcbuCollection) + transactionSettings.minWeeklyMcbuCollection;
+                                            temp.mcbuCol = finalMcbu;
+                                            temp.mcbuColStr = formatPricePhp(temp.mcbuCol);
+                                            temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + temp.mcbuCol : 0 + temp.mcbuCol;
+                                            temp.mcbuStr = formatPricePhp(temp.mcbu);
                                         } else if (parseFloat(payment) < parseFloat(temp.activeLoan)) {
                                             temp.excess =  0;
                                             temp.excessStr = '-';
+                                            temp.mcbuCol = 0;
+                                            temp.mcbuColStr = temp.mcbuCol > 0 ? formatPricePhp(temp.mcbuCol) : '-';
                                             temp.noOfPayments = parseInt(temp.noOfPayments);
                                         } else {
                                             temp.noOfPayments = parseInt(temp.noOfPayments) + 1;
+                                            temp.mcbuCol = transactionSettings.minWeeklyMcbuCollection;
+                                            temp.mcbuColStr = formatPricePhp(temp.mcbuCol);
+                                            temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + temp.mcbuCol : 0 + temp.mcbuCol;
+                                            temp.mcbuStr = formatPricePhp(temp.mcbu);
                                         }
     
                                         temp.mispayment = false;
@@ -2386,6 +2672,13 @@ const CashCollectionDetailsPage = () => {
         
                                         temp.mcbuCol = 0;
                                         temp.mcbuColStr = '-';
+                                        
+                                        temp.csfError = false;
+                                        if (safeNumber(temp.csfCollection) > 0) {
+                                            temp.csf = temp.csf - temp.csfCollection;
+                                        }
+        
+                                        temp.csfCollection = 0;
                                     // } else {
                                     //     temp.error = true;
                                     //     toast.error(`Invalid remarks. Loan is not yet past ${temp.loanTerms} days.`);
@@ -2408,6 +2701,12 @@ const CashCollectionDetailsPage = () => {
                                         temp.mcbuCol = 0;
                                         temp.mcbuColStr = '-';
                                     }
+
+                                    if (safeNumber(temp.csfCollection) > 0) {
+                                        temp.csf = temp.csf - temp.csfCollection;
+                                        temp.csfCollection = 0;
+                                    }
+
                                     temp.paymentCollection = 0;
                                     temp.paymentCollectionStr = '-';
                                 } else {
@@ -2415,22 +2714,66 @@ const CashCollectionDetailsPage = () => {
                                     toast.error('Invalid remarks. Loan not declared as Matured Past Due.');
                                 }
                             } else {
-                                if (remarks.value === 'reloaner' && (temp.remarks && (temp?.remarks?.value.startsWith("reloaner") || temp?.remarks?.value?.startsWith('offset')))) {
-                                    temp.mcbu = temp.prevData.mcbu;
-                                    temp.mcbuCol = temp.prevData.mcbuCol;
-                                    temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + temp.mcbuCol : 0 + temp.mcbuCol;
-                                    temp.mcbuStr = formatPricePhp(temp.mcbu);
+                                if (remarks.value === 'reloaner') {
+                                    // Reset mcbu to previous value if there were previous offset/reloaner remarks
+                                    if (temp.remarks && (temp?.remarks?.value.startsWith("reloaner") || temp?.remarks?.value?.startsWith('offset'))) {
+                                        if (!temp?.hasMcbuWithdrawal && !temp?.hasCsfWithdrawal) {
+                                            const prevMcbu = temp?.prevData?.mcbu ? temp.prevData.mcbu : 0;
+                                            temp.mcbu = prevMcbu;
+                                        }
+                                    }
+
+                                    temp.mcbu = temp.mcbu - safeNumber(temp.mcbuCol);
+
+                                    // Calculate mcbuCol based on payment collection and loan status
+                                    temp.mcbuCol = 0;
+                                    temp.mcbuColStr = '-';
+                                    
+                                    // Determine the active loan amount for calculation
+                                    const activeLoan = temp.activeLoan > 0 ? temp.activeLoan : (temp?.history?.activeLoan || 0);
+                                    if (temp.paymentCollection > 0 && activeLoan > 0) {
+                                        // Calculate number of payments made today
+                                        const noPaymentsToday = temp.paymentCollection / activeLoan;
+                                        // Calculate base MCBU collection
+                                        let calculatedMcbuCol = transactionSettings.minWeeklyMcbuCollection * noPaymentsToday;
+                                        temp.mcbuCol = calculatedMcbuCol;
+                                        temp.mcbuColStr = formatPricePhp(temp.mcbuCol);
+                                    }
+
+                                    if (temp.status === 'completed' && temp.noOfPayments === temp.loanTerms && temp?.prevData?.noOfPayments === temp.loanTerms) {
+                                        temp.mcbuCol = 0;
+                                        temp.mcbuColStr = '-';
+                                    }
+
+                                    // Add mcbuCol to total MCBU (only if mcbuCol > 0)
+                                    if (temp.mcbuCol > 0) {
+                                        const currentMcbu = temp.mcbu ? parseFloat(temp.mcbu) : 0;
+                                        temp.mcbu = currentMcbu + temp.mcbuCol;
+                                        temp.mcbuStr = formatPricePhp(temp.mcbu);
+                                    }
+
+                                    // Update prevData to include the new mcbuCol
+                                    if (temp.prevData) {
+                                        temp.prevData = {
+                                            ...temp.prevData,
+                                            mcbuCol: temp.mcbuCol
+                                        };
+                                    }
                                 }
-    
+
                                 temp.closeRemarks = '';
                                 setCloseLoan();
                                 temp.error = false;
                                 temp.mcbuError = false;
+                                temp.csfError = false;
                                 temp.mispayment = false;
                                 temp.mispaymentStr = 'No';
                             }
-    
+
                             if (!temp.error) {
+                                temp.remarks = remarks;
+                                temp._dirty = true;
+                                
                                 // update the mcbuHistory
                                 temp.mcbuHistory = {
                                     mcbu: temp.mcbu,
@@ -2445,9 +2788,6 @@ const CashCollectionDetailsPage = () => {
                                 } else {
                                     temp = setHistory(temp);
                                 }
-        
-                                temp.remarks = remarks;
-                                temp._dirty = true;
                             }
                         }
                     }
@@ -2461,7 +2801,7 @@ const CashCollectionDetailsPage = () => {
     }
 
     const setHistory = (selected, prevLoanBalance) => {
-        let temp = {...selected};
+        let temp = JSON.parse(JSON.stringify(selected));
 
         temp.history = {
             amountRelease: temp.amountRelease,
@@ -2480,6 +2820,44 @@ const CashCollectionDetailsPage = () => {
 
         return temp;
     }
+
+    const handlePaymentValidation = (e, selected, index, col) => {
+        const value = e.target.value ? parseFloat(e.target.value) : 0;
+        let temp = {...selected};
+        switch (col) {
+            case 'mcbuCol':
+                const noPaymentsToday = temp.paymentCollection / temp.activeLoan;
+                const minMcbuCol = transactionSettings.minWeeklyMcbuCollection * noPaymentsToday;
+                if (!value || (value < minMcbuCol && Number.isInteger(minMcbuCol))) {
+                    toast.error(`Error occured. Minimum MCBU collection is ${minMcbuCol}.`);
+                    temp.mcbuError = true;
+                } else if (value > 5 && value % 5 !== 0) {
+                    toast.error('Error occured. MCBU collection must be divisible by 5.');
+                    temp.mcbuError = true;
+                } else {
+                    temp.mcbuError = false;
+                }
+                break;
+            case 'csfCol':
+                if (!value || value < transactionSettings.minCsfCollection) {
+                    toast.error(`Error occured. Minimum CSF collection is ${transactionSettings.minCsfCollection}.`);
+                    temp.csfError = true;
+                } else if (value > 5 && value % 5 !== 0) {
+                    toast.error('Error occured. CSF collection must be divisible by 5.');
+                    temp.csfError = true;
+                } else {
+                    temp.csfError = false;
+                }
+                break;
+            default: break;
+        }
+
+        let tempList = [...data];
+        tempList[index] = temp;
+
+        tempList.sort((a, b) => { return a.slotNo - b.slotNo; });
+        dispatch(setCashCollectionGroup(tempList));
+    };
 
     const handleNewRevert = async () => {
         setShowWarningDialog(false);
@@ -2520,11 +2898,12 @@ const CashCollectionDetailsPage = () => {
 
     const handleSetCloseAccountRemarks = () => {
         const list = data.map(cc => {
-            let temp = {...cc};
+            let temp = JSON.parse(JSON.stringify(cc));
             
             if (cc.loanId === closeLoan.loanId) {
                 temp.closeRemarks = closeAccountRemarks;
                 temp.disableMcbuCol = true;
+                temp.disableCsfCol = true;
             }
             
             return temp;
@@ -2536,7 +2915,7 @@ const CashCollectionDetailsPage = () => {
 
     const handleExitCloseAccountRemarks = () => {
         const list = data.map(cc => {
-            let temp = {...cc};
+            let temp = JSON.parse(JSON.stringify(cc));
             
             if (cc.loanId === closeLoan.loanId) {
                 temp.remarks = "";
@@ -2573,7 +2952,7 @@ const CashCollectionDetailsPage = () => {
     const handleMcbuWithdrawal = (selected, index) => {
         if (parseFloat(selected.mcbu) > 0) {
             const list = data.map((cc, idx) => {
-                let temp = {...cc};
+                let temp = JSON.parse(JSON.stringify(cc));
 
                 if (selected.slotNo === cc.slotNo) {
                     temp.mcbuWithdrawFlag = !temp.mcbuWithdrawFlag;
@@ -2598,7 +2977,7 @@ const CashCollectionDetailsPage = () => {
 
     const handleOffset = (selected, index) => {
         const list = data.map((cc, idx) => {
-            let temp = {...cc};
+            let temp = JSON.parse(JSON.stringify(cc));
 
             if (selected.slotNo === cc.slotNo) {
                 temp.offsetTransFlag = !temp.offsetTransFlag;
@@ -2621,7 +3000,7 @@ const CashCollectionDetailsPage = () => {
     const handleMCBUInterest = (selected, index) => {
         if (parseFloat(selected.mcbu) > 1000) {
             const list = data.map((cc, idx) => {
-                let temp = {...cc};
+                let temp = JSON.parse(JSON.stringify(cc));
 
                 if (selected.slotNo === cc.slotNo) {
                     setEditMode(true);
@@ -2642,7 +3021,7 @@ const CashCollectionDetailsPage = () => {
     const handleMarkLate = (selected) => {
         if (selected?.status == 'active') {
             const list = data.map((cc, idx) => {
-                let temp = {...cc};
+                let temp = JSON.parse(JSON.stringify(cc));
 
                 if (selected.slotNo === cc.slotNo) {
                     temp.latePayment = !temp.latePayment;
@@ -2680,7 +3059,7 @@ const CashCollectionDetailsPage = () => {
     }
 
     const addBlankAndTotal = (isFiltering, dataArr) => {
-        let cashCollection = [...dataArr];
+        let cashCollection = JSON.parse(JSON.stringify(dataArr));
         const groupCapacity = currentGroup && currentGroup.capacity;
         const totalIdx = cashCollection.findIndex(cc => cc.status === 'totals');
 
@@ -2709,6 +3088,10 @@ const CashCollectionDetailsPage = () => {
                         remarks: '-',
                         fullPaymentStr: '-',
                         clientStatus: '-',
+                        csfStr: '-',
+                        csfCollectionStr: '-',
+                        csfWithdrawalStr: '-',
+                        csfReturnAmtStr: '-',
                         status: 'open',
                     });
                 } else if (!existData.group) {
@@ -2898,16 +3281,16 @@ const CashCollectionDetailsPage = () => {
         } else if (branchList.length > 0 && currentUser.role.rep === 4) {
             getListGroup(currentUser._id);
         }
-    }, [branchList]);
+    }, [branchList.length]);
 
     useEffect(() => {
         let cashCollections = [];
         const dateF = moment(dateFilter).format("YYYY-MM-DD");
 
         if (dateF !== currentDate) {
-            cashCollections = addBlankAndTotal(true, groupClients);
+            cashCollections = addBlankAndTotal(true, JSON.parse(JSON.stringify(groupClients)));
         } else {
-            cashCollections = addBlankAndTotal(false, groupClients);
+            cashCollections = addBlankAndTotal(false, JSON.parse(JSON.stringify(groupClients)));
         }
 
         setData(cashCollections);
@@ -2994,18 +3377,27 @@ const CashCollectionDetailsPage = () => {
                                         <th className="p-2 text-center">Co-Maker</th>
                                         <th className="p-2 text-center">Cycle #</th>
                                         <th className="p-2 text-center">MCBU</th>
+                                        <th className="p-2 text-center">CSF</th>
                                         <th className="p-2 text-center">Total Loan Release w/ SC</th>
                                         <th className="p-2 text-center">Total Loan Balance</th>
                                         <th className="p-2 text-center">Current Releases</th>
                                         <th className="p-2 text-center"># of Payments</th>
                                         <th className="p-2 text-center">MCBU Collection</th>
+                                        <th className="p-2 text-center">CSF Collection</th>
                                         <th className="p-2 text-center">Target Collection</th>
                                         <th className="p-2 text-center">Excess</th>
                                         <th className="p-2 text-center">Actual Collection</th>
+                                        <th className="p-2 text-center">Admission Fee</th>
+                                        <th className="p-2 text-center">LRF</th>
+                                        <th className="p-2 text-center">C.B.H.B Collection</th>
+                                        <th className="p-2 text-center">Other Income Passbook/Picture</th>
                                         <th className="p-2 text-center">MCBU Withdrawal</th>
+                                        <th className="p-2 text-center">CSF Withdrawal</th>
                                         {currentMonth === 11 && (<th className="p-2 text-center">MCBU Interest</th>)}
                                         <th className="p-2 text-center">MCBU Return Amt</th>
+                                        <th className="p-2 text-center">CSF Return Amt</th>
                                         <th className="p-2 text-center">Full Payment</th>
+                                        <th className="p-2 text-center">Total Net Collection</th>
                                         <th className="p-2 text-center">Mispay</th>
                                         <th className="p-2 text-center"># of Mispay</th>
                                         <th className="p-2 text-center">Past Due</th>
@@ -3037,7 +3429,7 @@ const CashCollectionDetailsPage = () => {
                                             rowBg = 'bg-blue-100';
                                         }
 
-                                        if (cc.error || cc.mcbuError) {
+                                        if (cc.error || cc.mcbuError || cc?.csfError) {
                                             rowBg = 'bg-red-100';
                                         }
 
@@ -3051,6 +3443,7 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.coMaker }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.loanCycle }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.mcbuStr }</td>
+                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.csfStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.amountReleaseStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.loanBalanceStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.currentReleaseAmountStr }</td>
@@ -3061,14 +3454,43 @@ const CashCollectionDetailsPage = () => {
                                                             || (cc.offsetTransFlag && cc.otherDay)
                                                       ) ? (
                                                         <React.Fragment>
-                                                            <input type="number" name={`${cc.clientId}-mcbuCol`} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'mcbuCol')} disabled={cc.disableMcbuCol}
-                                                                onClick={(e) => e.stopPropagation()} onBlur={(e) => handlePaymentValidation(e, cc, index, 'mcbuCol')} defaultValue={(cc.mcbuCol && !cc.disableMcbuCol) ? cc.mcbuCol : 0} tabIndex={index + 1}
-                                                                onWheel={(e) => e.target.blur()} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg 
-                                                                            focus:ring-main focus:border-main block p-2.5" style={{ width: '100px' }}/>
+                                                           <input type="number" name={`${cc.clientId}-mcbuCol`} min={0} step={5} 
+                                                                onChange={(e) => handlePaymentCollectionChange(e, index, 'mcbuCol')} 
+                                                                disabled={cc.disableMcbuCol}
+                                                                onClick={(e) => e.stopPropagation()} 
+                                                                onBlur={(e) => handlePaymentValidation(e, cc, index, 'mcbuCol')} 
+                                                                value={cc.mcbuCol ?? ''} 
+                                                                tabIndex={index + 1} onWheel={(e) => e.target.blur()}
+                                                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg 
+                                                                            focus:ring-main focus:border-main block p-2.5" 
+                                                                style={{ width: '100px' }}/>
                                                         </React.Fragment>
                                                         ): 
                                                             <React.Fragment>
                                                                 {(!editMode || filter || !cc.reverted || cc.status === 'completed' || cc.status === 'pending' || cc.status === 'totals' || cc.status === 'closed') ? cc.mcbuColStr : '-'}
+                                                            </React.Fragment>
+                                                    }
+                                                </td>
+                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
+                                                    { (!isWeekend && !isHoliday && currentUser.role.rep > 2 && cc.status === 'active' && editMode && cc?.groupLeader
+                                                            && ((cc?.origin && (cc?.origin === 'pre-save' || cc?.origin === 'automation-trf')) || cc.reverted || cc.draft) 
+                                                            || (cc.offsetTransFlag && cc.otherDay)
+                                                      ) ? (
+                                                            <React.Fragment>
+                                                                <input type="number" name={`${cc.clientId}-csfCol`} min={0} step={5} 
+                                                                    onChange={(e) => handlePaymentCollectionChange(e, index, 'csfCol')} 
+                                                                    disabled={cc.disableCsfCol}
+                                                                    onClick={(e) => e.stopPropagation()} 
+                                                                    onBlur={(e) => handlePaymentValidation(e, cc, index, 'csfCol')} 
+                                                                    value={cc.csfCollection ?? ''} 
+                                                                    tabIndex={index + 1} onWheel={(e) => e.target.blur()}
+                                                                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg 
+                                                                                focus:ring-main focus:border-main block p-2.5" 
+                                                                    style={{ width: '100px' }}/>
+                                                            </React.Fragment>
+                                                        ): 
+                                                            <React.Fragment>
+                                                                {((!editMode || filter || !cc.reverted || cc.status === 'completed' || cc.status === 'pending' || cc.status === 'totals' || cc.status === 'closed')) && cc.csfCollectionStr}
                                                             </React.Fragment>
                                                     }
                                                 </td>
@@ -3079,7 +3501,7 @@ const CashCollectionDetailsPage = () => {
                                                         && editMode && ((cc?.origin && (cc?.origin === 'pre-save' || cc?.origin === 'automation-trf')) || cc?.reverted || cc.draft)
                                                         || (cc.offsetTransFlag && cc.otherDay) && !cc?.dcmc && !cc?.mpdc && !cc?.maturedPD && (cc?.transferStr == null || cc?.transferStr == '-')) ? (
                                                         <React.Fragment>
-                                                            <input type="number" name={cc.clientId} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'amount', cc.activeLoan)}
+                                                            <input type="number" name={cc.clientId} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'amount')}
                                                                 onClick={(e) => e.stopPropagation()} value={cc.paymentCollection} tabIndex={index + 2} onWheel={(e) => e.target.blur()}
                                                                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg 
                                                                             focus:ring-main focus:border-main block p-2.5" style={{ width: '100px' }}/>
@@ -3090,22 +3512,19 @@ const CashCollectionDetailsPage = () => {
                                                             </React.Fragment>
                                                     }
                                                 </td>
-                                                <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
+                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.admissionCollection > 0 ? formatPricePhp(cc.admissionCollection) : '-' }</td>
+                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.lrfCollection > 0 ? formatPricePhp(cc.lrfCollection) : '-' }</td>
+                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.cbhbCollection > 0 ? formatPricePhp(cc.cbhbCollection) : '-' }</td>
+                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.otherIncome > 0 ? formatPricePhp(cc.otherIncome) : '-' }</td>
+                                                <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center`}>
                                                     { (cc.hasMcbuWithdrawal && cc.mcbuWithdrawalIsPending) ? (
                                                         <WarningIconWithTooltip amount={cc.mcbuWithdrawalStr} message="MCBU Withdrawal is pending." />
                                                     ) : cc.mcbuWithdrawalStr}
-                                                    {/* { (cc.mcbuWithdrawFlag && (cc?.transferStr == null || cc?.transferStr == '-')) ? (
-                                                        <React.Fragment>
-                                                            <input type="number" name={`${cc.clientId}-mcbuWithdrawal`} min={0} step={10} onChange={(e) => handlePaymentCollectionChange(e, index, 'mcbuWithdrawal')}
-                                                                onClick={(e) => e.stopPropagation()} onBlur={(e) => handlePaymentValidation(e, cc, index, 'mcbuWithdrawal')} defaultValue={cc.mcbuWithdrawal ? cc.mcbuWithdrawal : 0} tabIndex={index + 3}
-                                                                onWheel={(e) => e.target.blur()} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg 
-                                                                            focus:ring-main focus:border-main block p-2.5" style={{ width: '100px' }}/>
-                                                        </React.Fragment>
-                                                        ): 
-                                                            <React.Fragment>
-                                                                {(!editMode || filter || !cc.reverted || cc.status === 'completed' || cc.status === 'pending' || cc.status === 'totals' || cc.status === 'closed') ? cc.mcbuWithdrawalStr : '-'}
-                                                            </React.Fragment>
-                                                    } */}
+                                                </td>
+                                                <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center`}>
+                                                    { (cc.hasCsfWithdrawal && cc.mcbuCsfWithdrawalIsPending) ? (
+                                                        <WarningIconWithTooltip amount={formatPricePhp(cc.csfWithdrawal)} message="CSF Withdrawal is pending." />
+                                                    ) : cc.csfWithdrawalStr}
                                                 </td>
                                                 {currentMonth === 11 && (
                                                     <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">
@@ -3122,7 +3541,9 @@ const CashCollectionDetailsPage = () => {
                                                     </td>
                                                 )}
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.mcbuReturnAmtStr }</td>
+                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.csfReturnAmtStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.fullPaymentStr }</td>
+                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.totalCollection > 0 ? formatPricePhp(cc.totalCollection) : '-' }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.mispaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.noMispaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.pastDueStr }</td>

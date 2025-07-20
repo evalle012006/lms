@@ -15,6 +15,7 @@ import '@/styles/settings.css';
 import '@/styles/table.css';
 import '@/styles/avatar.css';
 import '@/styles/print.css';
+import '@/styles/modal.css';
 
 const ACLoanManagementApp = ({ Component, pageProps }) => {
     return (
