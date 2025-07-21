@@ -283,7 +283,6 @@ async function processData(data, date, currentDate) {
     // New column totals
     let totalCsf = 0;
     let totalCsfCollection = 0;
-    let totalPaymentCollection = 0;
     let totalCsfWithdrawal = 0;
     let totalCsfReturnAmt = 0;
     let totalAdmissionFee = 0;
@@ -428,7 +427,6 @@ async function processData(data, date, currentDate) {
                 collection.transferStr = '-';
 
                 // Process new columns from cash collections
-                collection.paymentCollection = branch.cashCollections[0].paymentCollection || 0;
                 collection.csf = branch.cashCollections[0].csf || collection.csf;
                 collection.csfStr = collection.csf > 0 ? formatPricePhp(collection.csf) : '-';
                 collection.csfCollection = branch.cashCollections[0].csfCollection || 0;
@@ -460,7 +458,6 @@ async function processData(data, date, currentDate) {
                 totalTransfer += collection.transfer !== '-' ? collection.transfer : 0;
                 
                 // Update new column totals
-                totalPaymentCollection += collection.paymentCollection;
                 totalCsfCollection += collection.csfCollection;
                 totalCsfWithdrawal += collection.csfWithdrawal;
                 totalCsfReturnAmt += collection.csfReturnAmt;
@@ -797,7 +794,7 @@ async function processData(data, date, currentDate) {
 
         // Calculate branch-level net collection
         const branchNetCollection = (
-            safeNumber(collection.paymentCollection) +
+            safeNumber(collection.total) +
             safeNumber(collection.mcbuCol) + 
             safeNumber(collection.csfCollection) + 
             safeNumber(collection.admissionCollection) + 
@@ -867,7 +864,6 @@ async function processData(data, date, currentDate) {
         csf: totalCsf,
         csfStr: formatPricePhp(totalCsf),
         csfCollection: totalCsfCollection,
-        paymentCollection: totalPaymentCollection,
         csfCollectionStr: formatPricePhp(totalCsfCollection),
         csfWithdrawal: totalCsfWithdrawal,
         csfWithdrawalStr: formatPricePhp(totalCsfWithdrawal),

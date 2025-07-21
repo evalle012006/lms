@@ -429,7 +429,7 @@ async function processData(data, date, mode, dayName, currentDate) {
                 totalCsfCollection += collection.csfCollection;
                 totalCsfWithdrawal += collection.csfWithdrawal;
                 totalCsfReturnAmt += collection.csfReturnAmt;
-                totalPaymentCollection += collection.paymentCollection;
+                totalPaymentCollection += collection.collection;
 
                 // Handle transferred amounts
                 if (cc.cashCollections[0].transferredAmountRelease > 0) {
@@ -602,7 +602,7 @@ async function processData(data, date, mode, dayName, currentDate) {
                 totalCbhb += collection.cbhbCollection;
                 totalOtherIncome += collection.otherIncome;
                 totalCsfCollection += collection.csfCollection;
-                totalPaymentCollection += collection.paymentCollection;
+                totalPaymentCollection += collection.collection;
                 totalCsfWithdrawal += collection.csfWithdrawal;
                 totalCsfReturnAmt += collection.csfReturnAmt;
             }
@@ -700,7 +700,7 @@ async function processData(data, date, mode, dayName, currentDate) {
         const totalNetCollection = (
             safeNumber(collection.mcbuCol) + 
             safeNumber(collection.csfCollection) + 
-            safeNumber(collection.paymentCollection) + 
+            safeNumber(collection.collection) + 
             safeNumber(collection.admissionCollection) + 
             safeNumber(collection.lrfCollection) + 
             safeNumber(collection.cbhbCollection) + 
@@ -799,7 +799,6 @@ async function processData(data, date, mode, dayName, currentDate) {
             csf: totalCsf,
             csfStr: totalCsf > 0 ? formatPricePhp(totalCsf) : '-',
             csfCollection: totalCsfCollection,
-            paymentCollection: totalPaymentCollection,
             csfCollectionStr: totalCsfCollection > 0 ? formatPricePhp(totalCsfCollection) : '-',
             csfWithdrawal: totalCsfWithdrawal,
             csfWithdrawalStr: totalCsfWithdrawal > 0 ? formatPricePhp(totalCsfWithdrawal) : '-',

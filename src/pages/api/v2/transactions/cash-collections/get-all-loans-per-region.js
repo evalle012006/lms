@@ -182,7 +182,6 @@ async function processData(data, date, currentDate) {
         // New branch-level totals
         let branchTotalCsf = 0;
         let branchTotalCsfCollection = 0;
-        let branchTotalPaymentCollection = 0;
         let branchTotalCsfWithdrawal = 0;
         let branchTotalCsfReturnAmt = 0;
         let branchTotalAdmissionFee = 0;
@@ -234,7 +233,6 @@ async function processData(data, date, currentDate) {
                     branchTotalMcbuDailyWithdrawal += branch.cashCollections[0].mcbuDailyWithdrawal;
                     
                     // Process new columns
-                    branchTotalPaymentCollection += branch.cashCollection[0].paymentCollection || 0;
                     branchTotalCsfCollection += branch.cashCollections[0].csfCollection || 0;
                     branchTotalCsfWithdrawal += branch.cashCollections[0].csfWithdrawal || 0;
                     branchTotalCsfReturnAmt += branch.cashCollections[0].csfReturnAmt || 0;
@@ -296,7 +294,6 @@ async function processData(data, date, currentDate) {
                     branchFullPaymentAmount += branch.cashCollections[0].fullPaymentAmount;
                     
                     // Process new columns for filtered data
-                    branchTotalPaymentCollection += branch.cashCollection[0].paymentCollection || 0;
                     branchTotalCsf += branch.cashCollections[0].csf || 0;
                     branchTotalCsfCollection += branch.cashCollections[0].csfCollection || 0;
                     branchTotalCsfWithdrawal += branch.cashCollections[0].csfWithdrawal || 0;
@@ -452,7 +449,7 @@ async function processData(data, date, currentDate) {
 
         // Calculate branch-level net collection
         branchTotalNetCollections = (
-            safeNumber(branchTotalPaymentCollection) +
+            safeNumber(branchTotalLoanCollection) +
             safeNumber(branchTotalMcbuCol) + 
             safeNumber(branchTotalCsfCollection) + 
             safeNumber(branchTotalAdmissionFee) + 
