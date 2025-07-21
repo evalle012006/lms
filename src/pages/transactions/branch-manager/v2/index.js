@@ -282,6 +282,7 @@ const ModernBranchCashCollections = () => {
             item.name;
   
           const transformedItem = {
+            ... item,
             _id: item._id,
             name: formattedName,
             code: item.code,
@@ -344,7 +345,15 @@ const ModernBranchCashCollections = () => {
             `${item.currentReleasePerson_New} / ${item.currentReleasePerson_Rel}` : '-',
             currentReleaseAmountStr: item.currentReleaseAmount ? 
             `₱${Number(item.currentReleaseAmount).toLocaleString()}` : '-',
-            
+
+            csf: item.csf ? `₱${Number(item.csf).toLocaleString()}` : '-',
+            csfCollection: item.csfCollection ? `₱${Number(item.csfCollection).toLocaleString()}` : '-',
+            admissionCollection: item.admissionCollection ? `₱${Number(item.admissionCollection).toLocaleString()}` : '-',
+            lrfCollection: item.lrfCollection ? `₱${Number(item.lrfCollection).toLocaleString()}` : '-',
+            cbhbCollection: item.cbhbCollection ? `₱${Number(item.cbhbCollection).toLocaleString()}` : '-',
+            otherCollection: item.otherCollection ? `₱${Number(item.otherCollection).toLocaleString()}` : '-',
+            csfWithdrawal: item.admissionCollection ? `₱${Number(item.csfWithdrawal).toLocaleString()}` : '-',
+
             status: item.status || 'open',
             totalData: item.row_num === null
           };
@@ -877,7 +886,7 @@ const ModernBranchCashCollections = () => {
     { key: 'name', label: getEntityColumnLabel(), width: 'w-64' },
     { key: 'activeClients', label: 'Active Clients', width: 'w-28', hasComparison: true },
     { key: 'mcbu', label: 'MCBU', width: 'w-40', },
-     { key: 'csf', label: 'CSF', width: 'w-40', },
+    { key: 'csf', label: 'CSF', width: 'w-40', },
     { key: 'totalReleasesStr', label: 'Total Loan Releases', width: 'w-40', hasComparison: true },
     { key: 'activeBorrowers', label: 'Active Borrowers', width: 'w-36', hasComparison: true },
     { key: 'totalLoanBalanceStr', label: 'Total Loan Balance', width: 'w-40', hasComparison: true },
@@ -1151,7 +1160,7 @@ const ModernBranchCashCollections = () => {
                                             ) : row[column.key] === '-' ? (
                                             <span className="text-gray-400">-</span>
                                             ) : (
-                                            row[column.key]
+                                            row[column.key] ?? '-'
                                             )}
                                         </td>
                                         ))}
