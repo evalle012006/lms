@@ -447,7 +447,8 @@ export const TRANSFER_CLIENT_FIELDS = `
   client_id
   loan_id
   mcbu_withdrawal_amount
-  group_id
+  csf_withdrawal_amount
+  group_leader
   status
   approved_date
   rejected_date

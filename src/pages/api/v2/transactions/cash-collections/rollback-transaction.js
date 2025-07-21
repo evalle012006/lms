@@ -113,6 +113,11 @@ async function revert(req, res) {
             prevLoanData.mcbu = prevLoanData.mcbu + prevLoanData.mcbuWithdrawal;
             prevLoanData.mcbuWithdrawal = 0;
           }
+
+          if (cashCollection?.csfWithdrawalId) {
+            prevLoanData.csf = prevLoanData.csf + prevLoanData.csfWithdrawal;
+            prevLoanData.csfWithdrawal = 0;
+          }
   
           // Update loan with history data
           mutationQL.push(

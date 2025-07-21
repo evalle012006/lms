@@ -10,6 +10,7 @@ import ButtonOutline from "@/lib/ui/ButtonOutline";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 import { getApiBaseUrl } from "@/lib/constants";
 import Modal from "@/lib/ui/Modal";
+import AddUpdateMcbuWithdrawalDrawer from "@/components/transactions/mcbu-withdrawal/AddUpdateMcbuWithdrawalDrawer";
 
 const McbuWithdrawalPage = () => {
     const currentDate = useSelector(state => state.systemSettings.currentDate);
@@ -58,47 +59,55 @@ const McbuWithdrawalPage = () => {
         return activeTab === 'pending' ? pendingList : approvedList;
     };
 
-    // Column configs remain the same
+    // Updated column configs with CSF withdrawal amounts
     const columnConfigs = {
         admin: [
             {
                 Header: "DIVISION",
                 accessor: row => row.division && row.division.length > 0 ? row.division[0].name : '',
                 id: 'division',
-                width: 'w-1/6'
+                width: 'w-1/8'
             },
             {
-                Header: "TOTAL AMOUNT",
+                Header: "TOTAL MCBU AMOUNT",
                 accessor: 'totalMcbuWithdrawalAmount',
                 Cell: ({ value }) => formatCurrency(value),
-                width: 'w-1/6'
+                width: 'w-1/8'
             },
             {
-                Header: "PENDING AMOUNT",
+                Header: "TOTAL CSF AMOUNT",
+                accessor: 'totalCsfWithdrawalAmount',
+                Cell: ({ value }) => formatCurrency(value || 0),
+                width: 'w-1/8'
+            },
+            {
+                Header: "PENDING MCBU",
                 accessor: 'pendingMcbuWithdrawalAmount',
                 Cell: ({ value }) => formatCurrency(value),
-                width: 'w-1/6'
+                width: 'w-1/8'
             },
             {
-                Header: "APPROVED AMOUNT",
+                Header: "PENDING CSF",
+                accessor: 'pendingCsfWithdrawalAmount',
+                Cell: ({ value }) => formatCurrency(value || 0),
+                width: 'w-1/8'
+            },
+            {
+                Header: "APPROVED MCBU",
                 accessor: 'approvedMcbuWithdrawalAmount',
                 Cell: ({ value }) => formatCurrency(value),
-                width: 'w-1/6'
+                width: 'w-1/8'
             },
             {
-                Header: "PENDING",
-                accessor: 'pendingMcbuWithdrawals',
-                width: 'w-1/6'
-            },
-            {
-                Header: "APPROVED",
-                accessor: 'approvedMcbuWithdrawals',
-                width: 'w-1/6'
+                Header: "APPROVED CSF",
+                accessor: 'approvedCsfWithdrawalAmount',
+                Cell: ({ value }) => formatCurrency(value || 0),
+                width: 'w-1/8'
             },
             {
                 Header: "TOTAL COUNT",
                 accessor: 'totalNoOfMcbuWithdrawals',
-                width: 'w-1/6'
+                width: 'w-1/8'
             },
         ],
         division: [
@@ -106,40 +115,48 @@ const McbuWithdrawalPage = () => {
                 Header: "REGION",
                 accessor: row => row.region && row.region.length > 0 ? row.region[0].name : '',
                 id: 'region',
-                width: 'w-1/6'
+                width: 'w-1/8'
             },
             {
-                Header: "TOTAL AMOUNT",
+                Header: "TOTAL MCBU AMOUNT",
                 accessor: 'totalMcbuWithdrawalAmount',
                 Cell: ({ value }) => formatCurrency(value),
-                width: 'w-1/6'
+                width: 'w-1/8'
             },
             {
-                Header: "PENDING AMOUNT",
+                Header: "TOTAL CSF AMOUNT",
+                accessor: 'totalCsfWithdrawalAmount',
+                Cell: ({ value }) => formatCurrency(value || 0),
+                width: 'w-1/8'
+            },
+            {
+                Header: "PENDING MCBU",
                 accessor: 'pendingMcbuWithdrawalAmount',
                 Cell: ({ value }) => formatCurrency(value),
-                width: 'w-1/6'
+                width: 'w-1/8'
             },
             {
-                Header: "APPROVED AMOUNT",
+                Header: "PENDING CSF",
+                accessor: 'pendingCsfWithdrawalAmount',
+                Cell: ({ value }) => formatCurrency(value || 0),
+                width: 'w-1/8'
+            },
+            {
+                Header: "APPROVED MCBU",
                 accessor: 'approvedMcbuWithdrawalAmount',
                 Cell: ({ value }) => formatCurrency(value),
-                width: 'w-1/6'
+                width: 'w-1/8'
             },
             {
-                Header: "PENDING",
-                accessor: 'pendingMcbuWithdrawals',
-                width: 'w-1/6'
-            },
-            {
-                Header: "APPROVED",
-                accessor: 'approvedMcbuWithdrawals',
-                width: 'w-1/6'
+                Header: "APPROVED CSF",
+                accessor: 'approvedCsfWithdrawalAmount',
+                Cell: ({ value }) => formatCurrency(value || 0),
+                width: 'w-1/8'
             },
             {
                 Header: "TOTAL COUNT",
                 accessor: 'totalNoOfMcbuWithdrawals',
-                width: 'w-1/6'
+                width: 'w-1/8'
             },
         ],
         region: [
@@ -147,40 +164,48 @@ const McbuWithdrawalPage = () => {
                 Header: "AREA",
                 accessor: row => row.area && row.area.length > 0 ? row.area[0].name : '',
                 id: 'area',
-                width: 'w-1/6'
+                width: 'w-1/8'
             },
             {
-                Header: "TOTAL AMOUNT",
+                Header: "TOTAL MCBU AMOUNT",
                 accessor: 'totalMcbuWithdrawalAmount',
                 Cell: ({ value }) => formatCurrency(value),
-                width: 'w-1/6'
+                width: 'w-1/8'
             },
             {
-                Header: "PENDING AMOUNT",
+                Header: "TOTAL CSF AMOUNT",
+                accessor: 'totalCsfWithdrawalAmount',
+                Cell: ({ value }) => formatCurrency(value || 0),
+                width: 'w-1/8'
+            },
+            {
+                Header: "PENDING MCBU",
                 accessor: 'pendingMcbuWithdrawalAmount',
                 Cell: ({ value }) => formatCurrency(value),
-                width: 'w-1/6'
+                width: 'w-1/8'
             },
             {
-                Header: "APPROVED AMOUNT",
+                Header: "PENDING CSF",
+                accessor: 'pendingCsfWithdrawalAmount',
+                Cell: ({ value }) => formatCurrency(value || 0),
+                width: 'w-1/8'
+            },
+            {
+                Header: "APPROVED MCBU",
                 accessor: 'approvedMcbuWithdrawalAmount',
                 Cell: ({ value }) => formatCurrency(value),
-                width: 'w-1/6'
+                width: 'w-1/8'
             },
             {
-                Header: "PENDING",
-                accessor: 'pendingMcbuWithdrawals',
-                width: 'w-1/6'
-            },
-            {
-                Header: "APPROVED",
-                accessor: 'approvedMcbuWithdrawals',
-                width: 'w-1/6'
+                Header: "APPROVED CSF",
+                accessor: 'approvedCsfWithdrawalAmount',
+                Cell: ({ value }) => formatCurrency(value || 0),
+                width: 'w-1/8'
             },
             {
                 Header: "TOTAL COUNT",
                 accessor: 'totalNoOfMcbuWithdrawals',
-                width: 'w-1/6'
+                width: 'w-1/8'
             },
         ],
         area: [
@@ -188,40 +213,48 @@ const McbuWithdrawalPage = () => {
                 Header: "BRANCH",
                 accessor: row => row.branch && row.branch.length > 0 ? row.branch[0].name : '',
                 id: 'branch',
-                width: 'w-1/6'
+                width: 'w-1/8'
             },
             {
-                Header: "TOTAL AMOUNT",
+                Header: "TOTAL MCBU AMOUNT",
                 accessor: 'totalMcbuWithdrawalAmount',
                 Cell: ({ value }) => formatCurrency(value),
-                width: 'w-1/6'
+                width: 'w-1/8'
             },
             {
-                Header: "PENDING AMOUNT",
+                Header: "TOTAL CSF AMOUNT",
+                accessor: 'totalCsfWithdrawalAmount',
+                Cell: ({ value }) => formatCurrency(value || 0),
+                width: 'w-1/8'
+            },
+            {
+                Header: "PENDING MCBU",
                 accessor: 'pendingMcbuWithdrawalAmount',
                 Cell: ({ value }) => formatCurrency(value),
-                width: 'w-1/6'
+                width: 'w-1/8'
             },
             {
-                Header: "APPROVED AMOUNT",
+                Header: "PENDING CSF",
+                accessor: 'pendingCsfWithdrawalAmount',
+                Cell: ({ value }) => formatCurrency(value || 0),
+                width: 'w-1/8'
+            },
+            {
+                Header: "APPROVED MCBU",
                 accessor: 'approvedMcbuWithdrawalAmount',
                 Cell: ({ value }) => formatCurrency(value),
-                width: 'w-1/6'
+                width: 'w-1/8'
             },
             {
-                Header: "PENDING",
-                accessor: 'pendingMcbuWithdrawals',
-                width: 'w-1/6'
-            },
-            {
-                Header: "APPROVED",
-                accessor: 'approvedMcbuWithdrawals',
-                width: 'w-1/6'
+                Header: "APPROVED CSF",
+                accessor: 'approvedCsfWithdrawalAmount',
+                Cell: ({ value }) => formatCurrency(value || 0),
+                width: 'w-1/8'
             },
             {
                 Header: "TOTAL COUNT",
                 accessor: 'totalNoOfMcbuWithdrawals',
-                width: 'w-1/6'
+                width: 'w-1/8'
             },
         ],
         branch: [
@@ -230,40 +263,48 @@ const McbuWithdrawalPage = () => {
                 accessor: row => row.loanOfficer && row.loanOfficer.length > 0 ? 
                     `${row.loanOfficer[0].firstName} ${row.loanOfficer[0].lastName}` : '',
                 id: 'loanOfficer',
-                width: 'w-1/6'
+                width: 'w-1/8'
             },
             {
-                Header: "TOTAL AMOUNT",
+                Header: "TOTAL MCBU AMOUNT",
                 accessor: 'totalMcbuWithdrawalAmount',
                 Cell: ({ value }) => formatCurrency(value),
-                width: 'w-1/6'
+                width: 'w-1/8'
             },
             {
-                Header: "PENDING AMOUNT",
+                Header: "TOTAL CSF AMOUNT",
+                accessor: 'totalCsfWithdrawalAmount',
+                Cell: ({ value }) => formatCurrency(value || 0),
+                width: 'w-1/8'
+            },
+            {
+                Header: "PENDING MCBU",
                 accessor: 'pendingMcbuWithdrawalAmount',
                 Cell: ({ value }) => formatCurrency(value),
-                width: 'w-1/6'
+                width: 'w-1/8'
             },
             {
-                Header: "APPROVED AMOUNT",
+                Header: "PENDING CSF",
+                accessor: 'pendingCsfWithdrawalAmount',
+                Cell: ({ value }) => formatCurrency(value || 0),
+                width: 'w-1/8'
+            },
+            {
+                Header: "APPROVED MCBU",
                 accessor: 'approvedMcbuWithdrawalAmount',
                 Cell: ({ value }) => formatCurrency(value),
-                width: 'w-1/6'
+                width: 'w-1/8'
             },
             {
-                Header: "PENDING",
-                accessor: 'pendingMcbuWithdrawals',
-                width: 'w-1/6'
-            },
-            {
-                Header: "APPROVED",
-                accessor: 'approvedMcbuWithdrawals',
-                width: 'w-1/6'
+                Header: "APPROVED CSF",
+                accessor: 'approvedCsfWithdrawalAmount',
+                Cell: ({ value }) => formatCurrency(value || 0),
+                width: 'w-1/8'
             },
             {
                 Header: "TOTAL COUNT",
                 accessor: 'totalNoOfMcbuWithdrawals',
-                width: 'w-1/6'
+                width: 'w-1/8'
             },
         ],
         loan_officer: [
@@ -271,66 +312,86 @@ const McbuWithdrawalPage = () => {
                 Header: "GROUP",
                 accessor: row => row.group && row.group.length > 0 ? row.group[0].name : '',
                 id: 'group',
-                width: 'w-1/6'
+                width: 'w-1/8'
             },
             {
-                Header: "TOTAL AMOUNT",
+                Header: "TOTAL MCBU AMOUNT",
                 accessor: 'totalMcbuWithdrawalAmount',
                 Cell: ({ value }) => formatCurrency(value),
-                width: 'w-1/6'
+                width: 'w-1/8'
             },
             {
-                Header: "PENDING AMOUNT",
+                Header: "TOTAL CSF AMOUNT",
+                accessor: 'totalCsfWithdrawalAmount',
+                Cell: ({ value }) => formatCurrency(value || 0),
+                width: 'w-1/8'
+            },
+            {
+                Header: "PENDING MCBU",
                 accessor: 'pendingMcbuWithdrawalAmount',
                 Cell: ({ value }) => formatCurrency(value),
-                width: 'w-1/6'
+                width: 'w-1/8'
             },
             {
-                Header: "APPROVED AMOUNT",
+                Header: "PENDING CSF",
+                accessor: 'pendingCsfWithdrawalAmount',
+                Cell: ({ value }) => formatCurrency(value || 0),
+                width: 'w-1/8'
+            },
+            {
+                Header: "APPROVED MCBU",
                 accessor: 'approvedMcbuWithdrawalAmount',
                 Cell: ({ value }) => formatCurrency(value),
-                width: 'w-1/6'
+                width: 'w-1/8'
             },
             {
-                Header: "PENDING",
-                accessor: 'pendingMcbuWithdrawals',
-                width: 'w-1/6'
-            },
-            {
-                Header: "APPROVED",
-                accessor: 'approvedMcbuWithdrawals',
-                width: 'w-1/6'
+                Header: "APPROVED CSF",
+                accessor: 'approvedCsfWithdrawalAmount',
+                Cell: ({ value }) => formatCurrency(value || 0),
+                width: 'w-1/8'
             },
             {
                 Header: "TOTAL COUNT",
                 accessor: 'totalNoOfMcbuWithdrawals',
-                width: 'w-1/6'
+                width: 'w-1/8'
             },
         ],
-        // Keep the group level columns unchanged
+        // Updated group level columns to include CSF withdrawal
         group: [
             {
                 Header: "CLIENT",
                 accessor: row => row.client && row.client.length > 0 ? row.client[0].name : '',
                 id: 'client',
-                width: 'w-1/6'
+                width: 'w-1/9'
             },
             {
                 Header: "MCBU WITHDRAWAL AMOUNT",
                 accessor: 'mcbu_withdrawal_amount',
                 Cell: ({ value }) => formatCurrency(value),
-                width: 'w-1/6'
+                width: 'w-1/9'
+            },
+            {
+                Header: "CSF WITHDRAWAL AMOUNT",
+                accessor: 'csf_withdrawal_amount',
+                Cell: ({ value }) => value ? formatCurrency(value) : '-',
+                width: 'w-1/9'
+            },
+            {
+                Header: "GROUP LEADER",
+                accessor: 'group_leader',
+                Cell: ({ value }) => value ? 'Yes' : 'No',
+                width: 'w-1/9'
             },
             {
                 Header: "STATUS",
                 accessor: 'status',
-                width: 'w-1/6'
+                width: 'w-1/9'
             },
             {
                 Header: "ADDED DATE",
                 accessor: 'inserted_date',
                 Cell: ({ value }) => formatDate(value),
-                width: 'w-1/6'
+                width: 'w-1/9'
             },
             {
                 Header: "STATUS DATE",
@@ -343,12 +404,12 @@ const McbuWithdrawalPage = () => {
                     }
                     return '';
                 },
-                width: 'w-1/6'
+                width: 'w-1/9'
             },
             {
                 Header: "REMARKS",
                 accessor: 'reason',
-                width: 'w-1/6'
+                width: 'w-1/9'
             }
         ]
     };
@@ -518,7 +579,7 @@ const McbuWithdrawalPage = () => {
         }
     };
 
-    // Enhanced data processing function with better error handling
+    // Enhanced data processing function with CSF withdrawal support
     const processDataByLevel = (data, level) => {
         console.log(`Processing ${data.length} items for level: ${level}`);
         
@@ -552,7 +613,7 @@ const McbuWithdrawalPage = () => {
         console.log(`Sample data item for level ${level}:`, data[0]);
         console.log(`Looking for ${groupByField} property in data`);
         
-        // Group and aggregate with separate totals for PENDING and APPROVED
+        // Group and aggregate with separate totals for PENDING and APPROVED (both MCBU and CSF)
         const groupedData = {};
         let validItemCount = 0;
         let invalidItemCount = 0;
@@ -572,8 +633,11 @@ const McbuWithdrawalPage = () => {
                 groupedData[id] = {
                     [groupByField]: [entityInfo],
                     totalMcbuWithdrawalAmount: 0,
+                    totalCsfWithdrawalAmount: 0,
                     pendingMcbuWithdrawalAmount: 0,
+                    pendingCsfWithdrawalAmount: 0,
                     approvedMcbuWithdrawalAmount: 0,
+                    approvedCsfWithdrawalAmount: 0,
                     totalNoOfMcbuWithdrawals: 0,
                     pendingMcbuWithdrawals: 0,
                     approvedMcbuWithdrawals: 0,
@@ -581,19 +645,33 @@ const McbuWithdrawalPage = () => {
                 };
             }
             
-            // Add withdrawal amount (with error handling)
-            const amount = parseFloat(item.mcbu_withdrawal_amount || 0);
-            if (!isNaN(amount)) {
+            // Add MCBU withdrawal amount (with error handling)
+            const mcbuAmount = parseFloat(item.mcbu_withdrawal_amount || 0);
+            if (!isNaN(mcbuAmount)) {
                 // Add to total amount
-                groupedData[id].totalMcbuWithdrawalAmount += amount;
+                groupedData[id].totalMcbuWithdrawalAmount += mcbuAmount;
                 
                 // Separate amounts by status
                 if (item.status === 'pending') {
-                    groupedData[id].pendingMcbuWithdrawalAmount += amount;
+                    groupedData[id].pendingMcbuWithdrawalAmount += mcbuAmount;
                     groupedData[id].pendingMcbuWithdrawals += 1;
                 } else if (item.status === 'approved') {
-                    groupedData[id].approvedMcbuWithdrawalAmount += amount;
+                    groupedData[id].approvedMcbuWithdrawalAmount += mcbuAmount;
                     groupedData[id].approvedMcbuWithdrawals += 1;
+                }
+            }
+            
+            // Add CSF withdrawal amount (with error handling)
+            const csfAmount = parseFloat(item.csf_withdrawal_amount || 0);
+            if (!isNaN(csfAmount)) {
+                // Add to total CSF amount
+                groupedData[id].totalCsfWithdrawalAmount += csfAmount;
+                
+                // Separate CSF amounts by status
+                if (item.status === 'pending') {
+                    groupedData[id].pendingCsfWithdrawalAmount += csfAmount;
+                } else if (item.status === 'approved') {
+                    groupedData[id].approvedCsfWithdrawalAmount += csfAmount;
                 }
             }
             
@@ -833,7 +911,7 @@ const McbuWithdrawalPage = () => {
         setSelectAll(!selectAll);
     };
     
-    // Handle bulk approve
+    // Updated bulk approve function to handle CSF withdrawals
     const handleBulkApprove = async () => {
         if (selectedClients.length === 0) {
             toast.warning('Please select at least one client');
@@ -844,12 +922,13 @@ const McbuWithdrawalPage = () => {
         try {
             const currentDate = new Date().toISOString();
             
-            // Example API call with proper fields for approval
+            // Updated API call to include CSF withdrawal amount
             const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/mcbu-withdrawal/bulk-approve', {
                 withdrawals: selectedClients.map(client => ({
                     id: client._id,
                     loan_id: client.loan_id,
                     mcbu_withdrawal_amount: client.mcbu_withdrawal_amount,
+                    csf_withdrawal_amount: client.csf_withdrawal_amount || 0, // Include CSF withdrawal
                     status: 'approved',
                     approved_date: currentDate,
                     modified_date: currentDate,
@@ -989,7 +1068,6 @@ const McbuWithdrawalPage = () => {
         }
     ];
     
-    // Get custom columns for client level that include checkboxes
     // Get custom columns for client level that include checkboxes only for pending items
     const getClientLevelColumns = () => {
         if (currentLevel === 'group') {
@@ -1311,8 +1389,13 @@ const McbuWithdrawalPage = () => {
                                     Client: {deleteItem.client && deleteItem.client.length > 0 ? deleteItem.client[0].name : 'Unknown'}
                                 </p>
                                 <p className="text-sm text-gray-600">
-                                    Amount: {formatCurrency(deleteItem.mcbu_withdrawal_amount)}
+                                    MCBU Amount: {formatCurrency(deleteItem.mcbu_withdrawal_amount)}
                                 </p>
+                                {deleteItem.csf_withdrawal_amount > 0 && (
+                                    <p className="text-sm text-gray-600">
+                                        CSF Amount: {formatCurrency(deleteItem.csf_withdrawal_amount)}
+                                    </p>
+                                )}
                                 <p className="text-sm text-gray-600">
                                     Date: {formatDate(deleteItem.inserted_date)}
                                 </p>

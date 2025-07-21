@@ -832,21 +832,23 @@ const CashCollectionDetailsPage = () => {
                 collection.hasCsfWithdrawal = false;
                 if (cc.mcbuWithdrawalList.length > 0) {
                     const mcbuWithdrawal = cc.mcbuWithdrawalList[cc.mcbuWithdrawalList.length - 1];
-                    if (mcbuWithdrawal && mcbuWithdrawal.group_leader) {
-                        collection.hasCsfWithdrawal = true;
-                        collection.csfWithdrawalIsPending = mcbuWithdrawal.status == 'pending' ? true : false;
-                        collection.csfWithdrawalId = mcbuWithdrawal._id;
-                        if (mcbuWithdrawal?.status == 'pending') {
-                            collection.csfWithdrawal = mcbuWithdrawal.mcbu_withdrawal_amount || 0;
-                            collection.csfWithdrawalStr = collection.csfWithdrawal > 0 ? formatPricePhp(collection.csfWithdrawal) : '-';
-                        }
-                    } else {
-                        collection.hasMcbuWithdrawal = true;
-                        collection.mcbuWithdrawalIsPending = mcbuWithdrawal.status == 'pending' ? true : false;
-                        collection.mcbuWithdrawalId = mcbuWithdrawal._id;
-                        if (mcbuWithdrawal?.status == 'pending') {
-                            collection.mcbuWithdrawal = mcbuWithdrawal.mcbu_withdrawal_amount || 0;
-                            collection.mcbuWithdrawalStr = collection.mcbuWithdrawal > 0 ? formatPricePhp(collection.mcbuWithdrawal) : '-';
+                    if (mcbuWithdrawal) {
+                        if (mcbuWithdrawal.group_leader) {
+                            collection.hasCsfWithdrawal = true;
+                            collection.csfWithdrawalIsPending = mcbuWithdrawal.status == 'pending' ? true : false;
+                            collection.csfWithdrawalId = mcbuWithdrawal._id;
+                            if (mcbuWithdrawal?.status == 'pending') {
+                                collection.csfWithdrawal = mcbuWithdrawal.csf_withdrawal_amount || 0;
+                                collection.csfWithdrawalStr = collection.csfWithdrawal > 0 ? formatPricePhp(collection.csfWithdrawal) : '-';
+                            }
+
+                            collection.hasMcbuWithdrawal = true;
+                            collection.mcbuWithdrawalIsPending = mcbuWithdrawal.status == 'pending' ? true : false;
+                            collection.mcbuWithdrawalId = mcbuWithdrawal._id;
+                            if (mcbuWithdrawal?.status == 'pending') {
+                                collection.mcbuWithdrawal = mcbuWithdrawal.mcbu_withdrawal_amount || 0;
+                                collection.mcbuWithdrawalStr = collection.mcbuWithdrawal > 0 ? formatPricePhp(collection.mcbuWithdrawal) : '-';
+                            }
                         }
                     }
                 }
@@ -1843,8 +1845,7 @@ const CashCollectionDetailsPage = () => {
     
                                     const noPayments = parseInt(payment) / parseInt(temp.activeLoan);
                                     temp.noOfPayments = temp.noOfPayments + noPayments;
-                                    const excessMcbu = temp.excess / temp.activeLoan;
-                                    const finalMcbu = (excessMcbu * transactionSettings.minWeeklyMcbuCollection) + transactionSettings.minWeeklyMcbuCollection;
+                                    const finalMcbu = noPayments * transactionSettings.minWeeklyMcbuCollection;
                                     temp.mcbuCol = finalMcbu;
                                     temp.mcbuColStr = formatPricePhp(temp.mcbuCol);
                                     temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + temp.mcbuCol : 0 + temp.mcbuCol;
@@ -3524,8 +3525,8 @@ const CashCollectionDetailsPage = () => {
                                                     ) : cc.mcbuWithdrawalStr}
                                                 </td>
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center`}>
-                                                    { (cc.hasCsfWithdrawal && cc.mcbuCsfWithdrawalIsPending) ? (
-                                                        <WarningIconWithTooltip amount={formatPricePhp(cc.csfWithdrawal)} message="CSF Withdrawal is pending." />
+                                                    { (cc.hasCsfWithdrawal && cc.csfWithdrawalIsPending) ? (
+                                                        <WarningIconWithTooltip amount={cc.csfWithdrawalStr} message="CSF Withdrawal is pending." />
                                                     ) : cc.csfWithdrawalStr}
                                                 </td>
                                                 {currentMonth === 11 && (
