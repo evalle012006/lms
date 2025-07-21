@@ -112,10 +112,10 @@ const ViewByAreaPage = ({dateFilter, type, selectedBranchGroup, viewMode}) => {
             Header: "MCBU Return",
             accessor: 'mcbuReturnAmtStr'
         },
-        {
-            Header: "CSF Return Amount",
-            accessor: 'csfReturnAmtStr'
-        },
+        // {
+        //     Header: "CSF Return Amount",
+        //     accessor: 'csfReturnAmtStr'
+        // },
         {
             Header: "Full Payment Person",
             accessor: 'noOfFullPayment'

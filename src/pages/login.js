@@ -23,6 +23,9 @@ const LoginPage = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [focusedField, setFocusedField] = useState('');
     
+    // Store the actual password value separately for reliability
+    const [actualPassword, setActualPassword] = useState('');
+    
     // Refs for inputs
     const emailRef = useRef(null);
     const passwordRef = useRef(null);
@@ -31,54 +34,115 @@ const LoginPage = () => {
     // Initialize masked password input
     useEffect(() => {
         if (passwordRef.current && !maskedPasswordRef.current) {
-            maskedPasswordRef.current = applyMaskedInput(passwordRef.current, {
-                character: '•' // Use bullet character for masking
-            });
+            try {
+                maskedPasswordRef.current = applyMaskedInput(passwordRef.current, {
+                    character: '•' // Use bullet character for masking
+                });
+                
+                // Add input event listener to track actual password value
+                const handlePasswordInput = (e) => {
+                    setActualPassword(e.target.value);
+                    // Clear password error when user starts typing
+                    if (errors.password) {
+                        setErrors(prev => ({ ...prev, password: '' }));
+                    }
+                };
+                
+                passwordRef.current.addEventListener('input', handlePasswordInput);
+                
+                // Cleanup function to remove event listener
+                return () => {
+                    if (passwordRef.current) {
+                        passwordRef.current.removeEventListener('input', handlePasswordInput);
+                    }
+                };
+            } catch (error) {
+                console.warn('Failed to initialize masked password:', error);
+                // If masked input fails, fall back to regular password handling
+            }
         }
         
         return () => {
             if (maskedPasswordRef.current) {
-                maskedPasswordRef.current.destroy();
+                try {
+                    maskedPasswordRef.current.destroy();
+                } catch (error) {
+                    console.warn('Failed to destroy masked password:', error);
+                }
             }
         };
     }, []);
     
-    // Toggle password visibility
-    const togglePasswordVisibility = () => {
-        if (maskedPasswordRef.current) {
-            if (showPassword) {
-                maskedPasswordRef.current.addEvent(); // Enable masking
-            } else {
-                maskedPasswordRef.current.destroy(); // Disable masking temporarily
-                // Reinitialize after showing password
-                setTimeout(() => {
-                    if (passwordRef.current) {
-                        maskedPasswordRef.current = applyMaskedInput(passwordRef.current, {
-                            character: '•'
-                        });
-                    }
-                }, 100);
+    // Get password value with multiple fallback mechanisms
+    const getPasswordValue = () => {
+        let password = '';
+        
+        // Try to get from masked library first
+        try {
+            if (maskedPasswordRef.current && typeof maskedPasswordRef.current.getOriginalValue === 'function') {
+                password = maskedPasswordRef.current.getOriginalValue();
             }
-            setShowPassword(!showPassword);
+        } catch (error) {
+            console.warn('Failed to get password from masked library:', error);
         }
+        
+        // Fallback to tracked actual password
+        if (!password && actualPassword) {
+            password = actualPassword;
+        }
+        
+        // Fallback to direct input value
+        if (!password && passwordRef.current) {
+            password = passwordRef.current.value;
+        }
+        
+        // Final fallback to form data
+        if (!password && formData.password) {
+            password = formData.password;
+        }
+        
+        return password || '';
     };
     
-    // Validation
+    // Toggle password visibility
+    const togglePasswordVisibility = () => {
+        try {
+            if (maskedPasswordRef.current) {
+                if (showPassword) {
+                    maskedPasswordRef.current.addEvent(); // Enable masking
+                } else {
+                    maskedPasswordRef.current.destroy(); // Disable masking temporarily
+                    // Reinitialize after showing password
+                    setTimeout(() => {
+                        if (passwordRef.current) {
+                            maskedPasswordRef.current = applyMaskedInput(passwordRef.current, {
+                                character: '•'
+                            });
+                        }
+                    }, 100);
+                }
+            }
+        } catch (error) {
+            console.warn('Failed to toggle password visibility:', error);
+        }
+        setShowPassword(!showPassword);
+    };
+    
+    // Validation with robust password checking
     const validateForm = () => {
         const newErrors = {};
         
+        // Email validation
         if (!formData.email.trim()) {
             newErrors.email = 'Email is required';
         } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
             newErrors.email = 'Please enter a valid email address';
         }
         
-        // Get the real password value
-        const actualPassword = maskedPasswordRef.current 
-            ? maskedPasswordRef.current.getOriginalValue() 
-            : formData.password;
-            
-        if (!actualPassword.trim()) {
+        // Password validation with multiple fallbacks
+        const password = getPasswordValue();
+        
+        if (!password || !password.trim()) {
             newErrors.password = 'Password is required';
         }
         
@@ -98,6 +162,20 @@ const LoginPage = () => {
         }
     };
     
+    // Handle password change (backup mechanism)
+    const handlePasswordChange = (e) => {
+        const value = e.target.value;
+        setFormData(prev => ({
+            ...prev,
+            password: value
+        }));
+        setActualPassword(value);
+        
+        if (errors.password) {
+            setErrors(prev => ({ ...prev, password: '' }));
+        }
+    };
+    
     // Handle form submission
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -110,9 +188,14 @@ const LoginPage = () => {
         
         try {
             const email = formData.email;
-            const password = maskedPasswordRef.current 
-                ? maskedPasswordRef.current.getOriginalValue() 
-                : formData.password;
+            const password = getPasswordValue();
+            
+            // Additional check before submission
+            if (!password) {
+                toast.error('Password cannot be empty');
+                setIsSubmitting(false);
+                return;
+            }
                 
             const response = await userService.login(email, password);
             
@@ -125,6 +208,7 @@ const LoginPage = () => {
                 router.push('/');
             }
         } catch (error) {
+            console.error('Login error:', error);
             toast.error('An unexpected error occurred during login.');
         } finally {
             setIsSubmitting(false);
@@ -225,7 +309,7 @@ const LoginPage = () => {
                                     )}
                                 </div>
                                 
-                                {/* Password field - Uses masked-password library */}
+                                {/* Password field - Enhanced with multiple fallbacks */}
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium text-gray-700 block">
                                         Password
@@ -245,6 +329,7 @@ const LoginPage = () => {
                                             autoCorrect="off"
                                             autoCapitalize="off"
                                             spellCheck="false"
+                                            onChange={handlePasswordChange} // Added backup change handler
                                             onFocus={() => setFocusedField('password')}
                                             onBlur={() => setFocusedField('')}
                                             className={`w-full pl-12 pr-12 py-4 rounded-xl border-2 transition-all duration-200 bg-gray-50/50 focus:bg-white focus:outline-none ${

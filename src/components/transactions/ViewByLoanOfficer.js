@@ -327,12 +327,12 @@ const ViewByLoanOfficerPage = ({ pageNo, dateFilter, type, selectedLoGroup }) =>
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
-        {
-            Header: "CSF Return Amount",
-            accessor: 'csfReturnAmtStr',
-            Filter: SelectColumnFilter,
-            filter: 'includes'
-        },
+        // {
+        //     Header: "CSF Return Amount",
+        //     accessor: 'csfReturnAmtStr',
+        //     Filter: SelectColumnFilter,
+        //     filter: 'includes'
+        // },
         {
             Header: "Full Payment Person",
             accessor: 'noOfFullPayment',

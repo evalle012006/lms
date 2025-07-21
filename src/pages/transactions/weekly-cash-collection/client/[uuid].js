@@ -2307,9 +2307,12 @@ const CashCollectionDetailsPage = () => {
                                             temp.pastDueStr = '-';
                                         }
                                         temp.mcbuReturnAmt = parseFloat(temp.mcbu);
-                                        temp.mcbuReturnAmtStr = formatPricePhp(temp.mcbuReturnAmt);
                                         temp.csfReturnAmt = temp.csf;
                                         temp.csfReturnAmtStr = formatPricePhp(temp.csf);
+
+                                        // add mcbu and csf values
+                                        temp.mcbuReturnAmt += temp.csf;
+                                        temp.mcbuReturnAmtStr = formatPricePhp(temp.mcbuReturnAmt);
                                         
                                         temp.mcbu = 0;
                                         temp.mcbuStr = '-';
@@ -3395,7 +3398,6 @@ const CashCollectionDetailsPage = () => {
                                         <th className="p-2 text-center">CSF Withdrawal</th>
                                         {currentMonth === 11 && (<th className="p-2 text-center">MCBU Interest</th>)}
                                         <th className="p-2 text-center">MCBU Return Amt</th>
-                                        <th className="p-2 text-center">CSF Return Amt</th>
                                         <th className="p-2 text-center">Full Payment</th>
                                         <th className="p-2 text-center">Total Net Collection</th>
                                         <th className="p-2 text-center">Mispay</th>
@@ -3541,7 +3543,6 @@ const CashCollectionDetailsPage = () => {
                                                     </td>
                                                 )}
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.mcbuReturnAmtStr }</td>
-                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.csfReturnAmtStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.fullPaymentStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.totalCollection > 0 ? formatPricePhp(cc.totalCollection) : '-' }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.mispaymentStr }</td>
