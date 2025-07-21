@@ -3397,7 +3397,7 @@ const CashCollectionDetailsPage = () => {
                                         <th className="p-2 text-center">MCBU Withdrawal</th>
                                         <th className="p-2 text-center">CSF Withdrawal</th>
                                         {currentMonth === 11 && (<th className="p-2 text-center">MCBU Interest</th>)}
-                                        <th className="p-2 text-center">MCBU Return Amt</th>
+                                        <th className="p-2 text-center">MCBU/CSF Return Amt</th>
                                         <th className="p-2 text-center">Full Payment</th>
                                         <th className="p-2 text-center">Total Net Collection</th>
                                         <th className="p-2 text-center">Mispay</th>

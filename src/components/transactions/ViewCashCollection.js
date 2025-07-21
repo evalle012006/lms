@@ -222,7 +222,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
             filter: 'includes'
         },
         {
-            Header: "MCBU Return Amount",
+            Header: "MCBU/CSF Return Amount",
             accessor: 'mcbuReturnAmtStr',
             Filter: SelectColumnFilter,
             filter: 'includes'

@@ -146,32 +146,74 @@ const DetailsHeader = ({ pageTitle, page, pageName, currentDate, mode, selectedB
                                 <DatePicker name="dateFilter" value={moment(dateFilter).format('YYYY-MM-DD')} maxDate={moment(new Date()).format('YYYY-MM-DD')} onChange={handleDateFilter} />
                             </div>
                         </div>
-                        { currentUser.role.rep < 4 && currentBranch?.noOfLO?.count > 10 && (
+                        {currentUser.role.rep < 4 && currentBranch?.noOfLO?.count > 10 && (
                             <div className="flex flex-row ml-4">
-                                <RadioButton id={"radio_all"} name="radio-lo" label={"All"} checked={selectedLoGroup === 'all'} value="all" onChange={handleLoGroupChange} />
-                                <RadioButton id={"radio_main"} name="radio-lo" label={"Main"} checked={selectedLoGroup === 'main'} value="main" onChange={handleLoGroupChange} />
-                                <RadioButton id={"radio_ext"} name="radio-lo" label={"Extension"} checked={selectedLoGroup === 'ext'} value="ext" onChange={handleLoGroupChange} />
-                            </div>
-                        ) }
-
-                        {(currentUser.role.rep < 3 && currentUser.role.shortCode !== 'area_admin' && pageName == 'branch-view') && (
-                            <div className="flex flex-row ml-4">
-                                <RadioButton id={"radio_branch"} name="radio-branch" label={"View by Branch"} checked={viewMode === 'branch'} value="branch" onChange={handleViewModeChange} />
-                                <RadioButton id={"radio_area"} name="radio-area" label={"View by Area"} checked={viewMode === 'area'} value="area" onChange={handleViewModeChange} />
-                                <RadioButton id={"radio_region"} name="radio-region" label={"View by Region"} checked={viewMode === 'region'} value="region" onChange={handleViewModeChange} />
-                                <RadioButton id={"radio_division"} name="radio-division" label={"View by Division"} checked={viewMode === 'division'} value="division" onChange={handleViewModeChange} />
+                                <span className="text-gray-400 text-sm mt-1 mr-4">LO Group:</span>
+                                <div className="flex w-32">
+                                    <Select 
+                                        options={[
+                                            { value: 'all', label: 'All' },
+                                            { value: 'main', label: 'Main' },
+                                            { value: 'ext', label: 'Extension' }
+                                        ]}
+                                        value={{ value: selectedLoGroup, label: selectedLoGroup?.charAt(0).toUpperCase() + selectedLoGroup?.slice(1) }}
+                                        styles={borderStyles}
+                                        components={{ DropdownIndicator }}
+                                        onChange={(selectedOption) => handleLoGroupChange(selectedOption.value)}
+                                        isSearchable={false}
+                                        closeMenuOnSelect={true}
+                                        placeholder="Select LO Group"
+                                    />
+                                </div>
                             </div>
                         )}
 
-                        { (currentUser.role.rep == 2 && currentUser.role.shortCode !== 'area_admin' && pageName == 'branch-view') && (
+                        {(currentUser.role.rep < 3 && currentUser.role.shortCode !== 'area_admin' && pageName == 'branch-view') && (
                             <div className="flex flex-row ml-4">
-                                <RadioButton id={"radio_mine"} name="radio-lo" label={"Mine"} checked={selectedBranchGroup === 'mine'} value="mine" onChange={handleBranchGroup} />
-                                <RadioButton id={"radio_all"} name="radio-lo" label={"All"} checked={selectedBranchGroup === 'all'} value="all" onChange={handleBranchGroup} />
+                                <span className="text-gray-400 text-sm mt-1 mr-4">View by:</span>
+                                <div className="flex w-48">
+                                    <Select 
+                                        options={[
+                                            { value: 'branch', label: 'Branch' },
+                                            { value: 'area', label: 'Area' },
+                                            { value: 'region', label: 'Region' },
+                                            { value: 'division', label: 'Division' }
+                                        ]}
+                                        value={{ value: viewMode, label: viewMode.charAt(0).toUpperCase() + viewMode.slice(1) }}
+                                        styles={borderStyles}
+                                        components={{ DropdownIndicator }}
+                                        onChange={(selectedOption) => handleViewModeChange(selectedOption.value)}
+                                        isSearchable={false}
+                                        closeMenuOnSelect={true}
+                                        placeholder="Select view mode"
+                                    />
+                                </div>
                             </div>
-                        ) }
+                        )}
+
+                        {(currentUser.role.rep == 2 && currentUser.role.shortCode !== 'area_admin' && pageName == 'branch-view') && (
+                            <div className="flex flex-row ml-4">
+                                <span className="text-gray-400 text-sm mt-1 mr-4">Branch Group:</span>
+                                <div className="flex w-32">
+                                    <Select 
+                                        options={[
+                                            { value: 'mine', label: 'Mine' },
+                                            { value: 'all', label: 'All' }
+                                        ]}
+                                        value={{ value: selectedBranchGroup, label: selectedBranchGroup.charAt(0).toUpperCase() + selectedBranchGroup.slice(1) }}
+                                        styles={borderStyles}
+                                        components={{ DropdownIndicator }}
+                                        onChange={(selectedOption) => handleBranchGroup(selectedOption.value)}
+                                        isSearchable={false}
+                                        closeMenuOnSelect={true}
+                                        placeholder="Select branch group"
+                                    />
+                                </div>
+                            </div>
+                        )}
 
                         { (currentUser.role.rep == 3) && (
-                            <div className="flex flex-row ml-4">
+                            <div className="flex flex-row ml-28">
                                 <span className="text-gray-400 text-sm mt-1 mr-4">COH:</span >
                                 <InputNumber 
                                     name="coh"
@@ -255,13 +297,27 @@ const DetailsHeader = ({ pageTitle, page, pageName, currentDate, mode, selectedB
                                             </div>
                                             { (currentUser.role.rep < 4 && currentBranch?.noOfLO?.count > 10 && pageName !== 'lo-view') && (
                                                 <div className="flex flex-row ml-4">
-                                                    <RadioButton id={"radio_all"} name="radio-lo" label={"All"} checked={selectedLoGroup === 'all'} value="all" onChange={handleLoGroupChange} />
-                                                    <RadioButton id={"radio_main"} name="radio-lo" label={"Main"} checked={selectedLoGroup === 'main'} value="main" onChange={handleLoGroupChange} />
-                                                    <RadioButton id={"radio_ext"} name="radio-lo" label={"Extension"} checked={selectedLoGroup === 'ext'} value="ext" onChange={handleLoGroupChange} />
+                                                    <span className="text-gray-400 text-sm mt-1 mr-4">LO Group:</span>
+                                                    <div className="flex w-32">
+                                                        <Select 
+                                                            options={[
+                                                                { value: 'all', label: 'All' },
+                                                                { value: 'main', label: 'Main' },
+                                                                { value: 'ext', label: 'Extension' }
+                                                            ]}
+                                                            value={{ value: selectedLoGroup, label: selectedLoGroup?.charAt(0)?.toUpperCase() + selectedLoGroup?.slice(1) }}
+                                                            styles={borderStyles}
+                                                            components={{ DropdownIndicator }}
+                                                            onChange={(selectedOption) => handleLoGroupChange(selectedOption.value)}
+                                                            isSearchable={false}
+                                                            closeMenuOnSelect={true}
+                                                            placeholder="Select LO Group"
+                                                        />
+                                                    </div>
                                                 </div>
                                             ) }
                                             { (currentUser.role.rep < 3) && (
-                                                <div className="flex flex-row ml-4">
+                                                <div className="flex flex-row ml-28">
                                                     <span className="text-gray-400 text-sm mt-1 mr-4">COH:</span >
                                                     <InputNumber 
                                                         name="coh"

@@ -15,8 +15,8 @@ const FUND_TRANSFER_TYPE = createGraphType('fund_transfer', `
     ${FUND_TRANSFER_FIELDS}
 `)('results');
 
-// Function to generate transaction code with global counter per month
-async function generateTransactionCode(giverBranchCode) {
+// Function to generate transaction code with global counter per month (without branch code)
+async function generateTransactionCode() {
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
@@ -24,7 +24,7 @@ async function generateTransactionCode(giverBranchCode) {
     const prefix = `FT${yearMonth}`;
     
     try {
-        // Query ALL existing fund transfers for current month (regardless of branch) to get the highest counter globally
+        // Query ALL existing fund transfers for current month to get the highest counter globally
         const existingTransfers = await graph.query(
             queryQl(createGraphType('fund_transfer', `
                 _id
@@ -44,7 +44,7 @@ async function generateTransactionCode(giverBranchCode) {
             // Extract all counters from transaction codes and find the maximum
             for (const transfer of existingTransfers) {
                 const transactionCode = transfer.transactionCode;
-                // Extract counter from transaction code (format: FTYYYYMM-BCODE-####)
+                // Extract counter from transaction code (format: FTYYYYMM-####)
                 const counterMatch = transactionCode.match(/-(\d+)$/);
                 if (counterMatch) {
                     const counter = parseInt(counterMatch[1]);
@@ -61,12 +61,12 @@ async function generateTransactionCode(giverBranchCode) {
         // Format counter with leading zeros (4 digits to handle 1000+ transactions)
         const formattedCounter = String(newCounter).padStart(4, '0');
         
-        return `${prefix}-${giverBranchCode}-${formattedCounter}`;
+        return `${prefix}-${formattedCounter}`;
     } catch (error) {
         console.error('Error generating transaction code:', error);
         // Fallback: use timestamp-based counter if query fails
         const timestamp = Date.now().toString().slice(-4);
-        return `${prefix}-${giverBranchCode}-${timestamp}`;
+        return `${prefix}-${timestamp}`;
     }
 }
 
@@ -133,7 +133,7 @@ async function saveFundTransfer(req, res) {
             });
         }
 
-        // Get giver branch details to extract branch code for transaction code generation
+        // Validate that giver branch exists (still needed for business logic)
         const giverBranch = await graph.query(
             queryQl(createGraphType('branches', `
                 _id
@@ -151,8 +151,8 @@ async function saveFundTransfer(req, res) {
             });
         }
 
-        // Generate unique transaction code with global counter
-        const transactionCode = await generateTransactionCode(giverBranch.code);
+        // Generate unique transaction code (without branch code)
+        const transactionCode = await generateTransactionCode();
 
         const [data] = await graph.mutation(
             insertQl(FUND_TRANSFER_TYPE, {
@@ -178,7 +178,7 @@ async function saveFundTransfer(req, res) {
             })
         ).then(res => res.data.results.returning);
 
-        res.send({
+        return res.send({
             success: true,
             message: "Fund transfer created successfully",
             data,
@@ -187,7 +187,7 @@ async function saveFundTransfer(req, res) {
 
     } catch (error) {
         console.error('Error saving fund transfer:', error);
-        res.status(500).send({
+        return res.status(500).send({
             success: false,
             message: "Error creating fund transfer. Please try again."
         });
