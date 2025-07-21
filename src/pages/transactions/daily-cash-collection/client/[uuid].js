@@ -1217,8 +1217,7 @@ const CashCollectionDetailsPage = () => {
                 ) - (
                     safeNumber(cc.mcbuWithdrawal) + 
                     safeNumber(cc.csfWithdrawal) + 
-                    safeNumber(cc.mcbuReturnAmt) +
-                    safeNumber(cc.csfReturnAmt)
+                    safeNumber(cc.mcbuReturnAmt)
                 );
                 
                 return {
