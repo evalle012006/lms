@@ -320,7 +320,7 @@ const MenuItems = [
                 roles: []
             },
             {
-              label: "Mcbu Withdrawals",
+              label: "MCBU/CSF Withdrawals",
               url: "/transactions/mcbu-withdrawal",
               icon: {
                   active: (props) => <McbuWithdrawalIcon {...props} />,

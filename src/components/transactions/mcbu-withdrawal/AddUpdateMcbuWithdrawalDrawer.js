@@ -31,8 +31,10 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
     const [slotNo, setSlotNo] = useState(null);
     const [loanBalance, setLoanBalance] = useState(0);
     const [mcbu, setMcbu] = useState(0);
+    const [csf, setCsf] = useState(0); // Add CSF state
     const [isGroupLeader, setIsGroupLeader] = useState(false);
     const [maxWithdrawalAmount, setMaxWithdrawalAmount] = useState(0);
+    const [maxCsfWithdrawalAmount, setMaxCsfWithdrawalAmount] = useState(0); // Add max CSF withdrawal state
     const [occurence, setOccurence] = useState('daily');
 
     // Define a clear initial state based on mcbuData, loan, or defaults
@@ -43,6 +45,7 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
         group_id: mcbuData?.group_id || loan?.groupId || "",
         client_id: mcbuData?.client_id || loan?.clientId || "",
         mcbu_withdrawal_amount: mcbuData?.mcbu_withdrawal_amount || 0,
+        csf_withdrawal_amount: mcbuData?.csf_withdrawal_amount || 0, // Add CSF withdrawal amount
         status: mcbuData?.status || "pending",
         division_id: mcbuData?.division_id || (currentUser?.divisionId || ""),
         region_id: mcbuData?.region_id || (currentUser?.regionId || ""),
@@ -60,6 +63,7 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
         group_id: formState.group_id,
         client_id: formState.client_id,
         mcbu_withdrawal_amount: formState.mcbu_withdrawal_amount,
+        csf_withdrawal_amount: formState.csf_withdrawal_amount, // Add CSF field
         status: formState.status,
         division_id: formState.division_id,
         region_id: formState.region_id,
@@ -80,7 +84,16 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
                 .required('Please enter mcbu withdrawal amount')
         };
 
-        // If we're in collection mode, we only need to validate the withdrawal amount
+        // Add CSF validation for group leaders with CSF > 0
+        if (isGroupLeader && csf > 0) {
+            baseSchema.csf_withdrawal_amount = yup
+                .number()
+                .integer()
+                .min(0, 'Amount should be 0 or greater')
+                .max(maxCsfWithdrawalAmount, `CSF amount cannot exceed ${formatPricePhp(maxCsfWithdrawalAmount)}`);
+        }
+
+        // If we're in collection mode, we only need to validate the withdrawal amounts
         // as other fields are pre-filled and read-only
         if (origin === "collection" && loan) {
             return yup.object().shape(baseSchema);
@@ -120,6 +133,7 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
             group_id: formState.group_id,
             client_id: formState.client_id,
             mcbu_withdrawal_amount: values.mcbu_withdrawal_amount, // Get this from form values
+            csf_withdrawal_amount: values.csf_withdrawal_amount || 0, // Get CSF withdrawal from form values
             inserted_date: currentDate,
             inserted_by: currentUser._id,
             status: 'pending',
@@ -148,8 +162,6 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
             return;
         }
 
-        const client = loan?.client;
-
         // Validate MCBU withdrawal amount against available balance and client type limits
         if (submitValues.mcbu_withdrawal_amount > maxWithdrawalAmount) {
             setLoading(false);
@@ -158,11 +170,16 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
             } else if (occurence == 'daily') {
                 toast.error("Clients cannot withdraw more than the excess over ₱1,000 MCBU balance");
             }
+            return;
+        }
 
+        // Validate CSF withdrawal amount for group leaders
+        if (isGroupLeader && submitValues.csf_withdrawal_amount > maxCsfWithdrawalAmount) {
+            setLoading(false);
+            toast.error(`CSF withdrawal amount cannot exceed ${formatPricePhp(maxCsfWithdrawalAmount)}`);
             return;
         }
           
-    
         // API call for saving the form
         if (mode === 'add') {
             const apiUrl = getApiBaseUrl() + 'transactions/mcbu-withdrawal/save/';
@@ -253,7 +270,7 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
         setLoading(false);
     };
     
-    // Improved handler for client_id changes
+    // Improved handler for client_id changes - updated to handle CSF
     const handleClientIdChange = (field, value) => {
         setLoading(true);
         if (!formikRef.current) return;
@@ -271,6 +288,7 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
             setSlotNo(client.slotNo);
             setLoanBalance(client.loans[0].loanBalance || 0);
             setMcbu(client.loans[0].mcbu || 0);
+            setCsf(client.loans[0].csf || 0); // Set CSF balance
             
             form.setFieldValue('loan_id', client.loans[0]._id);
             form.setFieldValue('group_leader', client.groupLeader);
@@ -405,6 +423,7 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
             setSlotNo(loan.slotNo || null);
             setLoanBalance(loan.loanBalance || 0);
             setMcbu(loan.mcbu || 0);
+            setCsf(loan.csf || 0); // Set CSF balance
             setOccurence(loan.occurence || 'daily');
             
             // Update form state with loan values - use all available loan data
@@ -520,7 +539,7 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
         }
     }, [mcbuData, origin, groupList]);
 
-    // Update form state when editing an existing record
+    // Update form state when editing an existing record - updated to include CSF
     useEffect(() => {
         if (mode === 'edit' && mcbuData?._id) {
             setFormState(prev => ({
@@ -531,8 +550,14 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
                 group_id: mcbuData?.group_id || prev.group_id,
                 client_id: mcbuData?.client_id || prev.client_id,
                 mcbu_withdrawal_amount: mcbuData?.mcbu_withdrawal_amount || prev.mcbu_withdrawal_amount,
+                csf_withdrawal_amount: mcbuData?.csf_withdrawal_amount || prev.csf_withdrawal_amount,
                 group_leader: mcbuData?.group_leader || prev.group_leader
             }));
+            
+            // Set CSF balance if available in the loan data
+            if (mcbuData?.loan?.csf) {
+                setCsf(mcbuData.loan.csf);
+            }
         }
     }, [mode, mcbuData?._id]);
 
@@ -548,8 +573,8 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
         }
     }, [formState]);
 
-     // Calculate maximum withdrawal amount based on MCBU balance and client type
-     useEffect(() => {
+    // Calculate maximum withdrawal amounts based on MCBU balance, CSF balance, and client type
+    useEffect(() => {
         const groupLeader = formState.group_leader || 
                            (loan?.client?.groupLeader) || 
                            (loan?.groupLeader) || 
@@ -557,19 +582,28 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
         
         setIsGroupLeader(groupLeader);
         
-        let maxAmount = 0;
-        if (groupLeader && loan.status == 'active') {
+        // Calculate MCBU max amount
+        let mcbuMaxAmount = 0;
+        if (groupLeader && loan?.status === 'active') {
             // Group leaders can only withdraw excess over 3000
-            maxAmount = Math.max(0, mcbu - 3000);
+            mcbuMaxAmount = Math.max(0, mcbu - 3000);
         } else if (occurence === 'daily') {
             // Regular clients can only withdraw excess over 1000
-            maxAmount = Math.max(0, mcbu - 1000);
+            mcbuMaxAmount = Math.max(0, mcbu - 1000);
         } else {
-            maxAmount = mcbu;
+            mcbuMaxAmount = mcbu;
         }
         
-        setMaxWithdrawalAmount(maxAmount);
-    }, [mcbu, formState.group_leader, loan, occurence]);
+        // Calculate CSF max amount (only for group leaders)
+        let csfMaxAmount = 0;
+        if (groupLeader && csf > 0) {
+            // Group leaders can withdraw all their CSF (no minimum balance required)
+            csfMaxAmount = csf;
+        }
+        
+        setMaxWithdrawalAmount(mcbuMaxAmount);
+        setMaxCsfWithdrawalAmount(csfMaxAmount);
+    }, [mcbu, csf, formState.group_leader, loan, occurence]);
 
     return (
         <React.Fragment>
@@ -719,6 +753,18 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
                                             <span className="text-gray-600 font-medium">{formatPricePhp(mcbu)}</span>
                                         </div>
                                     </div>
+
+                                    {/* CSF Balance field */}
+                                    <div className="mt-4">
+                                        <div className={`flex flex-col border rounded-md px-4 py-2 bg-white border-main`}>
+                                            <div className="flex justify-between">
+                                                <label htmlFor={'csf'} className={`font-proxima-bold text-xs font-bold text-main`}>
+                                                    CSF Balance
+                                                </label>
+                                            </div>
+                                            <span className="text-gray-600 font-medium">{formatPricePhp(csf)}</span>
+                                        </div>
+                                    </div>
                                     
                                     <div className="mt-4">
                                         <InputNumber
@@ -734,10 +780,31 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
                                         />
                                         {mcbu > 0 && (
                                             <p className="text-xs text-gray-500 mt-1">
-                                                Maximum withdrawal amount: {formatPricePhp(maxWithdrawalAmount)}
+                                                Maximum MCBU withdrawal amount: {formatPricePhp(maxWithdrawalAmount)}
                                             </p>
                                         )}
                                     </div>
+
+                                    {/* CSF Withdrawal Amount field - Only show for group leaders with CSF > 0 */}
+                                    {isGroupLeader && csf > 0 && (
+                                        <div className="mt-4">
+                                            <InputNumber
+                                                name="csf_withdrawal_amount"
+                                                field="csf_withdrawal_amount"
+                                                value={values.csf_withdrawal_amount}
+                                                onChange={handleChange}
+                                                label="CSF Withdrawal Amount (Optional)"
+                                                placeholder="Enter CSF Withdrawal Amount"
+                                                setFieldValue={setFieldValue}
+                                                errors={touched.csf_withdrawal_amount && errors.csf_withdrawal_amount ? errors.csf_withdrawal_amount : undefined}
+                                            />
+                                            {csf > 0 && (
+                                                <p className="text-xs text-gray-500 mt-1">
+                                                    Maximum CSF withdrawal amount: {formatPricePhp(maxCsfWithdrawalAmount)}
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
                                     
                                     <div className="flex flex-row mt-5">
                                         <ButtonOutline label="Cancel" onClick={handleCancel} className="mr-3" />
