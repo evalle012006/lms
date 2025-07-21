@@ -65,6 +65,7 @@ async function getData(req, res) {
             response = { error: true, message: "Error fetching data" };
         }
     } catch (error) {
+        console.error(error);
         logger.error('Error in cash collection API:', error);
         statusCode = 500;
         response = { error: true, message: "Error processing cash collection data" };
@@ -182,6 +183,7 @@ async function processData(data, date, mode, dayName, currentDate) {
     let totalOtherIncome = 0;
     let totalCsf = 0;
     let totalCsfCollection = 0;
+    let totalPaymentCollection = 0;
     let totalCsfWithdrawal = 0;
     let totalNetCollections = 0;
     let totalCsfReturnAmt = 0;
@@ -232,7 +234,7 @@ async function processData(data, date, mode, dayName, currentDate) {
             csfCollectionStr: '-',
             csfWithdrawalStr: '-',
             csfReturnAmtStr: '-',
-            totalNetCollectionStr: '-',
+            totalNetCollectionStr: '-'
         };
 
         let selectedBranch = cc.branchId;
@@ -362,6 +364,7 @@ async function processData(data, date, mode, dayName, currentDate) {
 
                 collection = { 
                     ...collection,
+                    paymentCollection: cc.cashCollections[0].paymentCollection,
                     mispayment: cc.cashCollections[0].mispayment ? cc.cashCollections[0].mispayment : 0,
                     collection: cc.cashCollections[0].collection || 0,
                     collectionStr: cc.cashCollections[0].collection ? formatPricePhp(cc.cashCollections[0].collection) : '-',
@@ -426,6 +429,7 @@ async function processData(data, date, mode, dayName, currentDate) {
                 totalCsfCollection += collection.csfCollection;
                 totalCsfWithdrawal += collection.csfWithdrawal;
                 totalCsfReturnAmt += collection.csfReturnAmt;
+                totalPaymentCollection += collection.paymentCollection;
 
                 // Handle transferred amounts
                 if (cc.cashCollections[0].transferredAmountRelease > 0) {
@@ -598,6 +602,7 @@ async function processData(data, date, mode, dayName, currentDate) {
                 totalCbhb += collection.cbhbCollection;
                 totalOtherIncome += collection.otherIncome;
                 totalCsfCollection += collection.csfCollection;
+                totalPaymentCollection += collection.paymentCollection;
                 totalCsfWithdrawal += collection.csfWithdrawal;
                 totalCsfReturnAmt += collection.csfReturnAmt;
             }
@@ -703,8 +708,7 @@ async function processData(data, date, mode, dayName, currentDate) {
         ) - (
             safeNumber(collection.mcbuWithdrawal) + 
             safeNumber(collection.csfWithdrawal) + 
-            safeNumber(collection.mcbuReturnAmt) +
-            safeNumber(collection.csfReturnAmt)
+            safeNumber(collection.mcbuReturnAmt)
         );
 
         collection.totalNetCollection = totalNetCollection;
@@ -795,6 +799,7 @@ async function processData(data, date, mode, dayName, currentDate) {
             csf: totalCsf,
             csfStr: totalCsf > 0 ? formatPricePhp(totalCsf) : '-',
             csfCollection: totalCsfCollection,
+            paymentCollection: totalPaymentCollection,
             csfCollectionStr: totalCsfCollection > 0 ? formatPricePhp(totalCsfCollection) : '-',
             csfWithdrawal: totalCsfWithdrawal,
             csfWithdrawalStr: totalCsfWithdrawal > 0 ? formatPricePhp(totalCsfWithdrawal) : '-',

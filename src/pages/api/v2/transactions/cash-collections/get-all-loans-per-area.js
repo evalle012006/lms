@@ -172,6 +172,7 @@ async function processData(data, date, currentDate) {
         let branchTotalNoPastDue = 0;
         let branchTotalMcbu = 0;
         let branchTotalMcbuCol = 0;
+        let branchTotalPaymentCollection = 0;
         let branchTotalMcbuWithdrawal = 0;
         let branchTotalMcbuReturnNo = 0;
         let branchTotalMcbuReturnAmt = 0;
@@ -226,6 +227,7 @@ async function processData(data, date, currentDate) {
                     mcbu = branch.cashCollections[0].mcbu;
                     csf = branch.cashCollections[0].csf || csf;
                     branchTotalMcbuCol += branch.cashCollections[0].mcbuCol;
+                    branchTotalPaymentCollection += branch.cashCollection[0].paymentCollection;
                     branchTotalMcbuWithdrawal += branch.cashCollections[0].mcbuWithdrawal;
                     branchTotalMcbuReturnNo += branch.cashCollections[0].mcbuReturnNo;
                     branchTotalMcbuReturnAmt += branch.cashCollections[0].mcbuReturnAmt;
@@ -280,6 +282,7 @@ async function processData(data, date, currentDate) {
 
                     branchTotalMcbu += branch.cashCollections[0].mcbu ? branch.cashCollections[0].mcbu: 0;
                     branchTotalMcbuCol += branch.cashCollections[0].mcbuCol ? branch.cashCollections[0].mcbuCol: 0;
+                    branchTotalPaymentCollection += branch.cashCollections[0].paymentCollection ? branch.cashCollections[0].paymentCollection: 0;
                     branchTotalMcbuWithdrawal += branch.cashCollections[0].mcbuWithdrawal ? branch.cashCollections[0].mcbuWithdrawal: 0;
                     branchTotalMcbuReturnNo += branch.cashCollections[0].mcbuReturnNo ? branch.cashCollections[0].mcbuReturnNo: 0;
                     branchTotalMcbuReturnAmt += branch.cashCollections[0].mcbuReturnAmt ? branch.cashCollections[0].mcbuReturnAmt: 0;
@@ -438,6 +441,7 @@ async function processData(data, date, currentDate) {
 
                 if (branch.transferDailyReceivedDetails?.length > 0 || branch.transferDailyGiverDetails?.length > 0 || branch.transferWeeklyReceivedDetails?.length > 0 || branch.transferWeeklyGiverDetails?.length > 0) {
                     branchTotalMcbuCol += totalTransferMcbu;
+                    branchTotalPaymentCollection += 
                     branchTargetLoanCollection += totalTransferTargetCollection;
                     branchTotalLoanCollection += totalTransferActualCollection;
                 }
@@ -448,6 +452,7 @@ async function processData(data, date, currentDate) {
 
         // Calculate branch-level net collection
         branchTotalNetCollections = (
+            safeNumber(branchTotalPaymentCollection) +
             safeNumber(branchTotalMcbuCol) + 
             safeNumber(branchTotalCsfCollection) + 
             safeNumber(branchTotalAdmissionFee) + 
@@ -457,8 +462,7 @@ async function processData(data, date, currentDate) {
         ) - (
             safeNumber(branchTotalMcbuWithdrawal) + 
             safeNumber(branchTotalCsfWithdrawal) + 
-            safeNumber(branchTotalMcbuReturnAmt) +
-            safeNumber(branchTotalCsfReturnAmt)
+            safeNumber(branchTotalMcbuReturnAmt)
         );
 
         let collection = {

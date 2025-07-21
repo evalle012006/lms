@@ -174,6 +174,7 @@ async function processData(data, date, currentDate) {
         let branchTotalNoPastDue = 0;
         let branchTotalMcbu = 0;
         let branchTotalMcbuCol = 0;
+        let branchTotalPaymentCollection = 0;
         let branchTotalMcbuWithdrawal = 0;
         let branchTotalMcbuReturnNo = 0;
         let branchTotalMcbuReturnAmt = 0;
@@ -234,6 +235,7 @@ async function processData(data, date, currentDate) {
                     branchTotalMcbuDailyWithdrawal += branch.cashCollections[0].mcbuDailyWithdrawal;
                     
                     // Process new columns
+                    branchTotalPaymentCollection += branch.cashCollection[0].paymentCollection;
                     branchTotalCsfCollection += branch.cashCollections[0].csfCollection || 0;
                     branchTotalCsfWithdrawal += branch.cashCollections[0].csfWithdrawal || 0;
                     branchTotalCsfReturnAmt += branch.cashCollections[0].csfReturnAmt || 0;
@@ -295,6 +297,7 @@ async function processData(data, date, currentDate) {
                     branchFullPaymentAmount += branch.cashCollections[0].fullPaymentAmount;
                     
                     // Process new columns for filtered data
+                    branchTotalPaymentCollection += branch.cashCollection[0].paymentCollection || 0;
                     branchTotalCsf += branch.cashCollections[0].csf || 0;
                     branchTotalCsfCollection += branch.cashCollections[0].csfCollection || 0;
                     branchTotalCsfWithdrawal += branch.cashCollections[0].csfWithdrawal || 0;
@@ -459,8 +462,7 @@ async function processData(data, date, currentDate) {
         ) - (
             safeNumber(branchTotalMcbuWithdrawal) + 
             safeNumber(branchTotalCsfWithdrawal) + 
-            safeNumber(branchTotalMcbuReturnAmt) +
-            safeNumber(branchTotalCsfReturnAmt)
+            safeNumber(branchTotalMcbuReturnAmt)
         );
 
         let collection = {

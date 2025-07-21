@@ -184,6 +184,7 @@ async function processLoanOfficerData(data, date, currentDate) {
     let totalTransfer = 0;
     let totalCsf = 0;
     let totalCsfCollection = 0;
+    let totalPaymentCollection = 0;
     let totalCsfWithdrawal = 0;
     let totalCsfReturnAmt = 0;
     let totalAdmissionFee = 0;
@@ -410,6 +411,7 @@ async function processLoanOfficerData(data, date, currentDate) {
                 totalTransfer += collection.transfer !== '-' ? collection.transfer : 0;
                 
                 // Update new column totals
+                totalPaymentCollection += collection.paymentCollection;
                 totalCsfCollection += collection.csfCollection;
                 totalCsfWithdrawal += collection.csfWithdrawal;
                 totalCsfReturnAmt += collection.csfReturnAmt;
@@ -548,6 +550,7 @@ async function processLoanOfficerData(data, date, currentDate) {
                 totalMcbuInterest += collection.mcbuInterest ? collection.mcbuInterest : 0;
                 
                 // Update new column totals for filtered data
+                totalPaymentCollection += collection.paymentCollection;
                 totalCsfCollection += collection.csfCollection;
                 totalCsfWithdrawal += collection.csfWithdrawal;
                 totalCsfReturnAmt += collection.csfReturnAmt;
@@ -742,6 +745,7 @@ async function processLoanOfficerData(data, date, currentDate) {
 
         // Calculate total net collection
         const totalNetCollection = (
+            safeNumber(collection.paymentCollection) + 
             safeNumber(collection.mcbuCol) + 
             safeNumber(collection.csfCollection) + 
             safeNumber(collection.admissionCollection) + 
@@ -751,8 +755,7 @@ async function processLoanOfficerData(data, date, currentDate) {
         ) - (
             safeNumber(collection.mcbuWithdrawal) + 
             safeNumber(collection.csfWithdrawal) + 
-            safeNumber(collection.mcbuReturnAmt) +
-            safeNumber(collection.csfReturnAmt)
+            safeNumber(collection.mcbuReturnAmt)
         );
 
         collection.totalNetCollection = totalNetCollection;
@@ -837,6 +840,7 @@ async function processLoanOfficerData(data, date, currentDate) {
         csf: totalCsf,
         csfStr: formatPricePhp(totalCsf),
         csfCollection: totalCsfCollection,
+        paymentCollection: totalPaymentCollection,
         csfCollectionStr: formatPricePhp(totalCsfCollection),
         csfWithdrawal: totalCsfWithdrawal,
         csfWithdrawalStr: formatPricePhp(totalCsfWithdrawal),
