@@ -1836,7 +1836,7 @@ const CashCollectionDetailsPage = () => {
                                 } else {
                                     temp.mcbu = safeNumber(temp.prevData.mcbu);
                                     temp.mcbuStr = formatPricePhp(temp.mcbu);
-                                    temp.mcbuCol = transactionSettings.minWeeklyMcbuCollection;
+                                    temp.mcbuCol = transactionSettings.minDailyMcbuCollection;
                                     temp.mcbuColStr = formatPricePhp(temp.mcbuCol);
                                     temp.mcbu = temp.mcbu ? parseFloat(temp.mcbu) + temp.mcbuCol : 0 + temp.mcbuCol;
                                     temp.mcbuStr = formatPricePhp(temp.mcbu);
