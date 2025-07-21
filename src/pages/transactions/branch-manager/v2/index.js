@@ -38,30 +38,6 @@ const ModernBranchCashCollections = () => {
   const [currentLevel, setCurrentLevel] = useState(null);
   const [parentId, setParentId] = useState(router.query.parentId || null);
   const [parentViewMode, setParentViewMode] = useState(router.query.parentViewMode || null);
-  
-  const [visibleColumns, setVisibleColumns] = useState({
-    name: true,
-    loanTargetStr: true,
-    excess: true, 
-    actualLoanCollection: true,
-    mcbuCollection: true,
-    mcbu: true,
-    noPersonRelease: true,
-    currentReleaseAmountStr: true,
-    mcbuWithdrawal: true,
-    noMcbuReturn: true,
-    mcbuReturn: true,
-    fullPaymentPerson: true,
-    fullPaymentAmount: true,
-    mispay: true,
-    noPastDue: true,
-    pastDueAmount: true,
-    activeClients: true,
-    activeBorrowers: true,
-    pendingClients: true,
-    totalReleasesStr: true,
-    totalLoanBalanceStr: true
-  });
 
   const buildApiParams = (baseParams) => {
     const params = new URLSearchParams();
@@ -864,20 +840,60 @@ const ModernBranchCashCollections = () => {
     });
   }, [filteredData, sortConfig, currentFilter]);
 
+
+  const [visibleColumns, setVisibleColumns] = useState({
+    name: true,
+    loanTargetStr: true,
+    excess: true, 
+    actualLoanCollection: true,
+    mcbuCollection: true,
+    mcbu: true,
+    noPersonRelease: true,
+    currentReleaseAmountStr: true,
+    mcbuWithdrawal: true,
+    noMcbuReturn: true,
+    mcbuReturn: true,
+    fullPaymentPerson: true,
+    fullPaymentAmount: true,
+    mispay: true,
+    noPastDue: true,
+    pastDueAmount: true,
+    activeClients: true,
+    activeBorrowers: true,
+    pendingClients: true,
+    totalReleasesStr: true,
+    totalLoanBalanceStr: true,
+    csf: true,
+    csfCollection: true,
+    admissionCollection: true,
+    lrfCollection: true,
+    cbhbCollection: true,
+    otherCollection: true,
+    csfWithdrawal: true,
+    transferClients: true,
+  });
+
   const columnDefs = useMemo(() => [
     { key: 'name', label: getEntityColumnLabel(), width: 'w-64' },
     { key: 'activeClients', label: 'Active Clients', width: 'w-28', hasComparison: true },
     { key: 'mcbu', label: 'MCBU', width: 'w-40', },
+     { key: 'csf', label: 'CSF', width: 'w-40', },
     { key: 'totalReleasesStr', label: 'Total Loan Releases', width: 'w-40', hasComparison: true },
     { key: 'activeBorrowers', label: 'Active Borrowers', width: 'w-36', hasComparison: true },
     { key: 'totalLoanBalanceStr', label: 'Total Loan Balance', width: 'w-40', hasComparison: true },
     { key: 'noPersonRelease', label: 'Current Release Person', width: 'w-32', },
     { key: 'currentReleaseAmountStr', label: 'Current Release Amount', width: 'w-32', },
     { key: 'mcbuCollection', label: 'MCBU Collections', width: 'w-40', },
+    { key: 'csfCollection', label: 'CSF Collections', width: 'w-40', },
     { key: 'loanTargetStr', label: 'Target Loan Collection', width: 'w-40' },
     { key: 'excess', label: 'Excess', width: 'w-40', },
     { key: 'actualLoanCollection', label: 'Actual Loan Collection', width: 'w-40', },
+    { key: 'admissionCollection', label: 'Admission Fee', width: 'w-40', },
+    { key: 'lrfCollection', label: 'LRF', width: 'w-40', },
+    { key: 'cbhbCollection', label: 'C.B.H.B Collection', width: 'w-40', },
+    { key: 'otherCollection', label: 'Other Income', width: 'w-40', },
     { key: 'mcbuWithdrawal', label: 'MCBU Withdrawals', width: 'w-40', },
+    { key: 'csfWithdrawal', label: 'CSF Withdrawals', width: 'w-40', },
     { key: 'noMcbuReturn', label: '# MCBU Return', width: 'w-32', },
     { key: 'mcbuReturn', label: 'MCBU Return Amount', width: 'w-32', },
     { key: 'fullPaymentPerson', label: 'Full Payment Person', width: 'w-40', },
@@ -886,6 +902,7 @@ const ModernBranchCashCollections = () => {
     { key: 'noPastDue', label: 'PD #', width: 'w-20', hasComparison: true },
     { key: 'pastDueAmount', label: 'PD Amount', width: 'w-20', hasComparison: true },
     { key: 'pendingClients', label: 'PND', width: 'w-20' },
+    { key: 'transferClients', label: 'TOC', width: 'w-20' },
   ], [currentFilter]);
 
   useEffect(() => {
