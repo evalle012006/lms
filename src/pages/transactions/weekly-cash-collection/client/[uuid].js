@@ -1499,7 +1499,8 @@ const CashCollectionDetailsPage = () => {
                     }
                 }
 
-                if (cc.csfError || (cc?.groupLeader && safeNumber(cc.csfCollection) <= 0)) {
+                if (cc.csfError || (cc?.groupLeader && safeNumber(cc.csfCollection) <= 0) 
+                        && (cc.remarks && (!cc.remarks.value?.startsWith('delinquent') && cc.remarks.value !== "past due" && !cc.remarks.value?.startsWith('excused')))) {
                     errorMsg.add('Error occured. Please double check the CSF Collection column.');
                 }
             } else if (cc.status !== 'totals' && (cc?.transferStr == null || cc?.transferStr == '-') && (cc.status === 'completed' || (cc?.status !== 'closed' && cc?.loanBalance <= 0)) && (!cc.remarks || (cc.remarks && (cc.remarks.value !== 'pending' && !cc.remarks.value?.startsWith('reloaner') && !cc.remarks.value?.startsWith('offset'))))) {
