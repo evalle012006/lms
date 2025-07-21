@@ -2,128 +2,431 @@ import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import logo from '/public/images/logo.png';
 import { useRouter } from 'next/router';
-import { Formik } from 'formik'
-import * as yup from 'yup';
 import { userService } from '@/services/user-service';
 import { toast } from "react-toastify";
 import { useDispatch } from 'react-redux';
 import { setUser } from '@/redux/actions/userActions';
-import InputEmail from '@/lib/ui/InputEmail';
-import InputPassword from '@/lib/ui/InputPassword';
-import ButtonSolid from '@/lib/ui/ButtonSolid';
-import ButtonOutline from '@/lib/ui/ButtonOutline';
+import { applyMaskedInput } from '@krozamdev/masked-password';
+import { EyeIcon, EyeSlashIcon, UserIcon, LockClosedIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
 
 const LoginPage = () => {
     const router = useRouter();
     const dispatch = useDispatch();
-
-    const initialValues = { email: '', password: '' };
-
-    const validationSchema = yup.object().shape({
-        email: yup.string().required('Email is required'),
-        password: yup.string().required('Password is required')
+    
+    // Form state
+    const [formData, setFormData] = useState({
+        email: '',
+        password: ''
     });
-
-    const handleError = (message) => {
-        toast.error('Error during authentication. ' + message);
-    }
-
-    const handleSuccess = (user) => {
-        dispatch(setUser(user));
-        router.push('/');
-        // if (user.status !== 'active') {
-        //     router.push('/register?action=inactive');
-        // } else {
-        //     dispatch(setUser(user)); 
-        //     const returnUrl = router.query.returnUrl || '/';
-        //     router.push(returnUrl);
-        // }
-    }
-
-    const handleLogin = async (values, actions) => {        
-        const { email, password } = values;
-        const response = await userService.login(email, password);
+    const [errors, setErrors] = useState({});
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+    const [focusedField, setFocusedField] = useState('');
+    
+    // Store the actual password value separately for reliability
+    const [actualPassword, setActualPassword] = useState('');
+    
+    // Refs for inputs
+    const emailRef = useRef(null);
+    const passwordRef = useRef(null);
+    const maskedPasswordRef = useRef(null);
+    
+    // Initialize masked password input
+    useEffect(() => {
+        if (passwordRef.current && !maskedPasswordRef.current) {
+            try {
+                maskedPasswordRef.current = applyMaskedInput(passwordRef.current, {
+                    character: '•' // Use bullet character for masking
+                });
+                
+                // Add input event listener to track actual password value
+                const handlePasswordInput = (e) => {
+                    setActualPassword(e.target.value);
+                    // Clear password error when user starts typing
+                    if (errors.password) {
+                        setErrors(prev => ({ ...prev, password: '' }));
+                    }
+                };
+                
+                passwordRef.current.addEventListener('input', handlePasswordInput);
+                
+                // Cleanup function to remove event listener
+                return () => {
+                    if (passwordRef.current) {
+                        passwordRef.current.removeEventListener('input', handlePasswordInput);
+                    }
+                };
+            } catch (error) {
+                console.warn('Failed to initialize masked password:', error);
+                // If masked input fails, fall back to regular password handling
+            }
+        }
         
-        if (response.error) {
-            toast.error(`Error during Authentication. ${response.message}`)
+        return () => {
+            if (maskedPasswordRef.current) {
+                try {
+                    maskedPasswordRef.current.destroy();
+                } catch (error) {
+                    console.warn('Failed to destroy masked password:', error);
+                }
+            }
+        };
+    }, []);
+    
+    // Get password value with multiple fallback mechanisms
+    const getPasswordValue = () => {
+        let password = '';
+        
+        // Try to get from masked library first
+        try {
+            if (maskedPasswordRef.current && typeof maskedPasswordRef.current.getOriginalValue === 'function') {
+                password = maskedPasswordRef.current.getOriginalValue();
+            }
+        } catch (error) {
+            console.warn('Failed to get password from masked library:', error);
         }
-
-        if (response.success) {
-            handleSuccess(response.user);
+        
+        // Fallback to tracked actual password
+        if (!password && actualPassword) {
+            password = actualPassword;
+        }
+        
+        // Fallback to direct input value
+        if (!password && passwordRef.current) {
+            password = passwordRef.current.value;
+        }
+        
+        // Final fallback to form data
+        if (!password && formData.password) {
+            password = formData.password;
+        }
+        
+        return password || '';
+    };
+    
+    // Toggle password visibility
+    const togglePasswordVisibility = () => {
+        try {
+            if (maskedPasswordRef.current) {
+                if (showPassword) {
+                    maskedPasswordRef.current.addEvent(); // Enable masking
+                } else {
+                    maskedPasswordRef.current.destroy(); // Disable masking temporarily
+                    // Reinitialize after showing password
+                    setTimeout(() => {
+                        if (passwordRef.current) {
+                            maskedPasswordRef.current = applyMaskedInput(passwordRef.current, {
+                                character: '•'
+                            });
+                        }
+                    }, 100);
+                }
+            }
+        } catch (error) {
+            console.warn('Failed to toggle password visibility:', error);
+        }
+        setShowPassword(!showPassword);
+    };
+    
+    // Validation with robust password checking
+    const validateForm = () => {
+        const newErrors = {};
+        
+        // Email validation
+        if (!formData.email.trim()) {
+            newErrors.email = 'Email is required';
+        } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+            newErrors.email = 'Please enter a valid email address';
+        }
+        
+        // Password validation with multiple fallbacks
+        const password = getPasswordValue();
+        
+        if (!password || !password.trim()) {
+            newErrors.password = 'Password is required';
+        }
+        
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+    
+    // Handle input changes
+    const handleEmailChange = (e) => {
+        setFormData(prev => ({
+            ...prev,
+            email: e.target.value
+        }));
+        
+        if (errors.email) {
+            setErrors(prev => ({ ...prev, email: '' }));
+        }
+    };
+    
+    // Handle password change (backup mechanism)
+    const handlePasswordChange = (e) => {
+        const value = e.target.value;
+        setFormData(prev => ({
+            ...prev,
+            password: value
+        }));
+        setActualPassword(value);
+        
+        if (errors.password) {
+            setErrors(prev => ({ ...prev, password: '' }));
+        }
+    };
+    
+    // Handle form submission
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        
+        if (!validateForm()) {
+            return;
+        }
+        
+        setIsSubmitting(true);
+        
+        try {
+            const email = formData.email;
+            const password = getPasswordValue();
+            
+            // Additional check before submission
+            if (!password) {
+                toast.error('Password cannot be empty');
+                setIsSubmitting(false);
+                return;
+            }
+                
+            const response = await userService.login(email, password);
+            
+            if (response.error) {
+                toast.error(`Error during Authentication. ${response.message}`);
+            }
+            
+            if (response.success) {
+                dispatch(setUser(response.user));
+                router.push('/');
+            }
+        } catch (error) {
+            console.error('Login error:', error);
+            toast.error('An unexpected error occurred during login.');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
-    const handleRegister = () => {
-        router.push('/register');
+    const handleKeyPress = (e) => {
+        if (e.key === 'Enter') {
+            handleSubmit(e);
+        }
     };
-
-    const handleForgotPassword = () => {
-        router.push('/forgot-password');
-    }
 
     return (
-        <div className="bg-no-repeat bg-cover bg-center relative login-page-bg">
-            <div className="absolute bg-gradient-to-b from-gray-500 to-gray-400 opacity-60 inset-0 z-0"></div>
-            <div className="flex flex-row min-h-screen sm:flex sm:flex-row mx-0 justify-center">
-                <div className="flex-col flex  self-center p-10 sm:max-w-5xl max-w-3xl xl:max-w-xl  z-10">
-                    <div className="self-start hidden lg:flex flex-col  text-white">
-                        <h1 className="mb-3 font-bold text-5xl">Lending Management System </h1>
-                        <p className="pr-3">Lorem ipsum is placeholder text commonly used in the graphic, print,
-                            and publishing industries for previewing layouts and visual mockups</p>
+        <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 flex items-center justify-center p-4">
+            {/* Background decoration */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-100 rounded-full opacity-20 blur-3xl"></div>
+                <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-blue-100 rounded-full opacity-20 blur-3xl"></div>
+            </div>
+            
+            <div className="relative w-full max-w-md">
+                {/* Main login card */}
+                <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 overflow-hidden">
+                    {/* Header section with branding */}
+                    <div className="text-center pt-12 pb-8 px-8">
+                        {/* Logo - AmberCash actual logo */}
+                        <div className="w-20 h-20 mx-auto mb-6">
+                            <Image 
+                                src={logo} 
+                                alt="AmberCash PH Micro Lending Corp." 
+                                width={80} 
+                                height={80} 
+                                className="w-full h-full object-contain"
+                                priority
+                            />
+                        </div>
+                        
+                        {/* Company name */}
+                        <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-2">
+                            AmberCashPh
+                        </h1>
+                        
+                        {/* Tagline */}
+                        <p className="text-gray-600 font-medium mb-8">
+                            Your helping hands
+                        </p>
+                        
+                        {/* Welcome message */}
+                        <div className="space-y-1">
+                            <h2 className="text-2xl font-semibold text-gray-800">Welcome back</h2>
+                            <p className="text-gray-500">Sign in to your account to continue</p>
+                        </div>
+                    </div>
+                    
+                    {/* Form section */}
+                    <div className="px-8 pb-8">
+                        <form onSubmit={handleSubmit} autoComplete="off" noValidate>
+                            <div className="space-y-6">
+                                {/* Email field */}
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-gray-700 block">
+                                        Email Address
+                                    </label>
+                                    <div className="relative">
+                                        <div className={`absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors duration-200 ${
+                                            focusedField === 'email' ? 'text-purple-500' : 'text-gray-400'
+                                        }`}>
+                                            <UserIcon className="h-5 w-5" />
+                                        </div>
+                                        <input
+                                            ref={emailRef}
+                                            id="email-field"
+                                            name={`email_${Date.now()}`}
+                                            type="text"
+                                            autoComplete="new-password"
+                                            autoCorrect="off"
+                                            autoCapitalize="off"
+                                            spellCheck="false"
+                                            value={formData.email}
+                                            onChange={handleEmailChange}
+                                            onFocus={() => setFocusedField('email')}
+                                            onBlur={() => setFocusedField('')}
+                                            className={`w-full pl-12 pr-4 py-4 rounded-xl border-2 transition-all duration-200 bg-gray-50/50 focus:bg-white focus:outline-none ${
+                                                errors.email 
+                                                    ? 'border-red-300 focus:border-red-500' 
+                                                    : focusedField === 'email'
+                                                        ? 'border-purple-400 focus:border-purple-500'
+                                                        : 'border-gray-200 focus:border-purple-400'
+                                            }`}
+                                            placeholder="Enter your email"
+                                        />
+                                    </div>
+                                    {errors.email && (
+                                        <p className="text-red-500 text-sm mt-1 flex items-center">
+                                            <span className="mr-1">⚠</span>
+                                            {errors.email}
+                                        </p>
+                                    )}
+                                </div>
+                                
+                                {/* Password field - Enhanced with multiple fallbacks */}
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-gray-700 block">
+                                        Password
+                                    </label>
+                                    <div className="relative">
+                                        <div className={`absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors duration-200 ${
+                                            focusedField === 'password' ? 'text-purple-500' : 'text-gray-400'
+                                        }`}>
+                                            <LockClosedIcon className="h-5 w-5" />
+                                        </div>
+                                        <input
+                                            ref={passwordRef}
+                                            id="password-field"
+                                            name={`password_${Date.now()}`}
+                                            type="text" // Always text type to avoid password detection
+                                            autoComplete="new-password"
+                                            autoCorrect="off"
+                                            autoCapitalize="off"
+                                            spellCheck="false"
+                                            onChange={handlePasswordChange} // Added backup change handler
+                                            onFocus={() => setFocusedField('password')}
+                                            onBlur={() => setFocusedField('')}
+                                            className={`w-full pl-12 pr-12 py-4 rounded-xl border-2 transition-all duration-200 bg-gray-50/50 focus:bg-white focus:outline-none ${
+                                                errors.password 
+                                                    ? 'border-red-300 focus:border-red-500' 
+                                                    : focusedField === 'password'
+                                                        ? 'border-purple-400 focus:border-purple-500'
+                                                        : 'border-gray-200 focus:border-purple-400'
+                                            }`}
+                                            placeholder="Enter your password"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={togglePasswordVisibility}
+                                            className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors duration-200"
+                                        >
+                                            {showPassword ? (
+                                                <EyeSlashIcon className="h-5 w-5" />
+                                            ) : (
+                                                <EyeIcon className="h-5 w-5" />
+                                            )}
+                                        </button>
+                                    </div>
+                                    {errors.password && (
+                                        <p className="text-red-500 text-sm mt-1 flex items-center">
+                                            <span className="mr-1">⚠</span>
+                                            {errors.password}
+                                        </p>
+                                    )}
+                                </div>
+                                
+                                {/* Login button */}
+                                <button
+                                    type="submit"
+                                    disabled={isSubmitting}
+                                    className={`w-full py-4 rounded-xl font-semibold text-white transition-all duration-200 flex items-center justify-center space-x-2 mt-8 ${
+                                        isSubmitting
+                                            ? 'bg-gray-400 cursor-not-allowed'
+                                            : 'bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 hover:shadow-lg transform hover:-translate-y-0.5 active:translate-y-0'
+                                    }`}
+                                >
+                                    {isSubmitting ? (
+                                        <>
+                                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                            <span>Signing In...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span>Sign In</span>
+                                            <ArrowRightIcon className="h-5 w-5" />
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
-                <div className="flex justify-center self-center z-10">
-                    <div className="p-12 bg-white mx-auto rounded-2xl w-100 ">
-                        <div className="mb-4">
-                            <h3 className="font-semibold text-2xl text-gray-800">Sign In </h3>
-                            <p className="text-gray-500">Please sign in to your account.</p>
-                        </div>
-                        <div className="space-y-5">
-                        <Formik onSubmit={handleLogin} initialValues={initialValues} validationSchema={validationSchema}>
-                            {props => (
-                                <form onSubmit={props.handleSubmit} autoComplete="off">
-                                    <div className="mt-12">
-                                        <InputEmail
-                                            name="email"
-                                            width="20rem"
-                                            value={props.values.email}
-                                            onChange={props.handleChange}
-                                            label="Email" 
-                                            placeholder="Enter your email"
-                                            setFieldValue={props.setFieldValue}
-                                            errors={props.touched.email && props.errors.email ? props.errors.email : undefined} />
-                                    </div>
-                                    <div className="mt-12">
-                                        <InputPassword 
-                                            name="password" 
-                                            value={props.values.password}
-                                            label="Password"
-                                            placeholder="Enter your password"
-                                            onChange={props.handleChange}
-                                            errors={props.touched.password && props.errors.password ? props.errors.password : undefined} />
-                                    </div>
-                                    <div className="flex flex-row-reverse pt-5 px-2">
-                                        <button className="login-forgot-password" type="button" onClick={handleForgotPassword}>Forgot Password?</button>
-                                    </div>
-                                    <div className="flex flex-row pt-8">
-                                        <ButtonSolid className="font-bold" label="Login" type="submit" isSubmitting={!props.isValidating && props.isSubmitting} />
-                                        {/* <ButtonOutline className="font-bold text-sm" label="Register" type="button" onClick={handleRegister} /> */}
-                                    </div>
-                                </form>
-                            )}
-                        </Formik>
-                        </div>
-                        <div className="pt-5 text-center text-gray-400 text-xs">
-                            <span>
-                                Copyright © 2022-2025
-                                <a href="#" rel="" target="_blank" title="Ajimon" className="text-green hover:text-main "> xdonie11</a>
-                            </span>
-                        </div>
+                
+                {/* Social Media Links */}
+                <div className="text-center mt-6">
+                    <p className="text-sm text-gray-600 mb-4">Follow us on social media</p>
+                    <div className="flex justify-center space-x-4">
+                        {/* Facebook */}
+                        <a
+                            href="https://www.facebook.com/ambercash.ph.2025"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-10 h-10 bg-blue-600 hover:bg-blue-700 rounded-full flex items-center justify-center transition-all duration-200 transform hover:scale-110 hover:shadow-lg"
+                        >
+                            <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                            </svg>
+                        </a>
+                        
+                        {/* TikTok */}
+                        <a
+                            href="https://tiktok.com/@ambercashph"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-10 h-10 bg-black hover:bg-gray-800 rounded-full flex items-center justify-center transition-all duration-200 transform hover:scale-110 hover:shadow-lg"
+                        >
+                            <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+                            </svg>
+                        </a>
                     </div>
+                </div>
+                
+                {/* Footer */}
+                <div className="text-center mt-8 text-sm text-gray-500">
+                    <p>
+                        © 2022-2025 AmberCashPh. All rights reserved.
+                    </p>
                 </div>
             </div>
         </div>
     );
-}
+};
 
 export default LoginPage;

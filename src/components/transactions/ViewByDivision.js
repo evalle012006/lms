@@ -33,6 +33,10 @@ const ViewByDivisionPage = ({dateFilter, type, selectedBranchGroup, viewMode}) =
             accessor: 'mcbuStr'
         },
         {
+            Header: "CSF",
+            accessor: 'csfStr'
+        },
+        {
             Header: "Total Loan Releases",
             accessor: 'totalReleasesStr'
         },
@@ -57,6 +61,10 @@ const ViewByDivisionPage = ({dateFilter, type, selectedBranchGroup, viewMode}) =
             accessor: 'mcbuColStr'
         },
         {
+            Header: "CSF Collection",
+            accessor: 'csfCollectionStr'
+        },
+        {
             Header: "Target Loan Collection",
             accessor: 'loanTargetStr'
         },
@@ -69,8 +77,28 @@ const ViewByDivisionPage = ({dateFilter, type, selectedBranchGroup, viewMode}) =
             accessor: 'totalStr'
         },
         {
+            Header: "Admission Fee",
+            accessor: 'admissionCollectionStr'
+        },
+        {
+            Header: "LRF",
+            accessor: 'lrfCollectionStr'
+        },
+        {
+            Header: "C.B.H.B Collection",
+            accessor: 'cbhbCollectionStr'
+        },
+        {
+            Header: "Other Income",
+            accessor: 'otherIncomeStr'
+        },
+        {
             Header: "MCBU Withdrawal",
             accessor: 'mcbuWithdrawalStr'
+        },
+        {
+            Header: "CSF Withdrawal",
+            accessor: 'csfWithdrawalStr'
         },
         // {
         //     Header: "MCBU Withdrawal",
@@ -84,6 +112,10 @@ const ViewByDivisionPage = ({dateFilter, type, selectedBranchGroup, viewMode}) =
             Header: "MCBU Return",
             accessor: 'mcbuReturnAmtStr'
         },
+        // {
+        //     Header: "CSF Return Amount",
+        //     accessor: 'csfReturnAmtStr'
+        // },
         {
             Header: "Full Payment Person",
             accessor: 'noOfFullPayment'
@@ -91,6 +123,10 @@ const ViewByDivisionPage = ({dateFilter, type, selectedBranchGroup, viewMode}) =
         {
             Header: "Full Payment Amount",
             accessor: 'fullPaymentAmountStr'
+        },
+        {
+            Header: "Total Net Collection",
+            accessor: 'totalNetCollectionStr'
         },
         {
             Header: "Mispay",

@@ -1,0 +1,217 @@
+/* Enhanced Client Form Styles */
+
+/* Toggle Switch Animations */
+.toggle-switch {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.toggle-switch:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Form Section Enhancements */
+.form-section {
+    transition: all 0.2s ease-in-out;
+}
+
+.form-section:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* Section Header Styling */
+.section-header-icon {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+/* Important Notice Animations */
+.important-notice {
+    animation: slideInFromTop 0.3s ease-out;
+}
+
+@keyframes slideInFromTop {
+    0% {
+        transform: translateY(-10px);
+        opacity: 0;
+    }
+    100% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Enhanced Photo Upload Area */
+.photo-upload-area {
+    transition: all 0.3s ease;
+}
+
+.photo-upload-area:hover {
+    border-color: #3B82F6;
+    background-color: #F8FAFC;
+}
+
+/* Gradient Background for Important Section */
+.client-settings-gradient {
+    background: linear-gradient(135deg, #EBF8FF 0%, #E0E7FF 100%);
+    border: 2px solid #BFDBFE;
+    position: relative;
+    overflow: hidden;
+}
+
+.client-settings-gradient::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #3B82F6, #8B5CF6, #06B6D4);
+    opacity: 0.8;
+}
+
+/* Enhanced Toggle Switch States */
+.toggle-active {
+    background-color: #3B82F6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.toggle-inactive {
+    background-color: #E5E7EB;
+}
+
+.toggle-danger {
+    background-color: #EF4444;
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+
+/* Form Validation Enhancements */
+.field-error {
+    animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+    0%, 100% {
+        transform: translateX(0);
+    }
+    25% {
+        transform: translateX(-5px);
+    }
+    75% {
+        transform: translateX(5px);
+    }
+}
+
+/* Sticky Button Enhancement */
+.sticky-actions {
+    backdrop-filter: blur(10px);
+    background-color: rgba(255, 255, 255, 0.95);
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Loading State Improvements */
+.loading-overlay {
+    backdrop-filter: blur(4px);
+    background-color: rgba(255, 255, 255, 0.8);
+}
+
+/* Responsive Enhancements */
+@media (max-width: 768px) {
+    .client-form-container {
+        padding: 1rem;
+    }
+    
+    .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .photo-upload-container {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .toggle-switch-container {
+        flex-direction: column;
+        gap: 1rem;
+    }
+}
+
+/* Focus States */
+.form-input:focus {
+    outline: 2px solid #3B82F6;
+    outline-offset: 2px;
+    border-color: #3B82F6;
+}
+
+/* Success States */
+.form-success {
+    border-color: #10B981;
+    background-color: #ECFDF5;
+}
+
+/* Hover Effects for Interactive Elements */
+.interactive-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease-in-out;
+}
+
+/* Custom Scrollbar for Sidebar */
+.sidebar-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar-content::-webkit-scrollbar-track {
+    background: #F1F5F9;
+    border-radius: 3px;
+}
+
+.sidebar-content::-webkit-scrollbar-thumb {
+    background: #CBD5E1;
+    border-radius: 3px;
+}
+
+.sidebar-content::-webkit-scrollbar-thumb:hover {
+    background: #94A3B8;
+}
+
+/* Enhanced Button States */
+.button-primary {
+    transition: all 0.2s ease-in-out;
+}
+
+.button-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.button-secondary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Status Indicators */
+.status-pending {
+    background-color: #FEF3C7;
+    color: #92400E;
+}
+
+.status-active {
+    background-color: #D1FAE5;
+    color: #065F46;
+}
+
+.status-delinquent {
+    background-color: #FEE2E2;
+    color: #991B1B;
+}

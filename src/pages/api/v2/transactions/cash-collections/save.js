@@ -1,7 +1,7 @@
 import { CASH_COLLECTIONS_FIELDS, CLIENT_FIELDS, GROUP_FIELDS, LOAN_FIELDS } from '@/lib/graph.fields';
 import { GraphProvider } from '@/lib/graph/graph.provider';
 import { createGraphType, insertQl, queryQl, updateQl } from '@/lib/graph/graph.util';
-import { generateUUID } from '@/lib/utils';
+import { generateUUID, safeNumber } from '@/lib/utils';
 import logger from '@/logger';
 import { apiHandler } from '@/services/api-handler';
 import { savePendingLoans } from './update-pending-loans';
@@ -297,6 +297,11 @@ async function updateLoan(user_id, mutationQL, collection, currentDate) {
                 loan.mcbuWithdrawal = collection.mcbuWithdrawal;
             }
         }
+
+        loan.csf = safeNumber(collection.csf);
+        loan.csfCollection = safeNumber(loan.csfCollection) + safeNumber(collection.csfCollection);
+        loan.csfWithdrawal = safeNumber(loan.csfWithdrawal) + safeNumber(collection.csfWithdrawal);
+        loan.csfReturnAmt = safeNumber(loan.csfReturnAmt) + safeNumber(collection.csfReturnAmt);
 
         // if (collection?.mcbuDailyWithdrawal > 0) {
         //     if (loan.hasOwnProperty('mcbuDailyWithdrawal')) {

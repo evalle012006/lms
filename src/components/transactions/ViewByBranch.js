@@ -77,6 +77,12 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup, viewMode}) => 
             filter: 'includes'
         },
         {
+            Header: "CSF",
+            accessor: 'csfStr',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
             Header: "Total Loan Releases",
             accessor: 'totalReleasesStr',
             Filter: SelectColumnFilter,
@@ -113,6 +119,12 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup, viewMode}) => 
             filter: 'includes'
         },
         {
+            Header: "CSF Collection",
+            accessor: 'csfCollectionStr',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
             Header: "Target Loan Collection",
             accessor: 'loanTargetStr',
             Filter: SelectColumnFilter,
@@ -131,8 +143,40 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup, viewMode}) => 
             filter: 'includes'
         },
         {
+            Header: "Admission Fee",
+            accessor: 'admissionCollectionStr',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "LRF",
+            accessor: 'lrfCollectionStr',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "C.B.H.B Collection",
+            accessor: 'cbhbCollectionStr',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "Other Income",
+            accessor: 'otherIncomeStr',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
             Header: "MCBU Withdrawal",
             accessor: 'mcbuWithdrawalStr',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "CSF Withdrawal",
+            accessor: 'csfWithdrawalStr',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
         },
         // {
         //     Header: "MCBU Withdrawal",
@@ -150,6 +194,12 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup, viewMode}) => 
             Filter: SelectColumnFilter,
             filter: 'includes'
         },
+        // {
+        //     Header: "CSF Return Amount",
+        //     accessor: 'csfReturnAmtStr',
+        //     Filter: SelectColumnFilter,
+        //     filter: 'includes'
+        // },
         {
             Header: "Full Payment Person",
             accessor: 'noOfFullPayment',
@@ -159,6 +209,12 @@ const ViewByBranchPage = ({dateFilter, type, selectedBranchGroup, viewMode}) => 
         {
             Header: "Full Payment Amount",
             accessor: 'fullPaymentAmountStr',
+            Filter: SelectColumnFilter,
+            filter: 'includes'
+        },
+        {
+            Header: "Total Net Collection",
+            accessor: 'totalNetCollectionStr',
             Filter: SelectColumnFilter,
             filter: 'includes'
         },

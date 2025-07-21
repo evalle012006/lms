@@ -158,6 +158,15 @@ export const LOAN_FIELDS = `
   dateOfRelease
   ciName
   advanceTransaction
+  admissionCollection
+  lrfCollection
+  cbhbCollection
+  otherPassbookCollection
+  otherPictureCollection
+  csfCollection
+  csfWithdrawal
+  csf
+  csfReturnAmt
   `;
 
 export const GROUP_FIELDS = `
@@ -210,11 +219,14 @@ export const TRANSACTION_SETTINGS_FIELDS = `
   startTransactionTime
   minDailyMcbuCollection
   minWeeklyMcbuCollection
+  minCsfCollection
   admissionFee
   lrfRate
   cbhbFee
   otherPassbookFee
   otherPictureFee
+  mcbuCsfMCBUForNM
+  mcbuCsfMinimumBalance
   `;
 
 export const BAD_DEBT_COLLECTIONS_FIELDS = `
@@ -313,6 +325,15 @@ export const CASH_COLLECTIONS_FIELDS = `
   dateOfRelease
   transferredDate
   transferDate
+  admissionCollection
+  lrfCollection
+  cbhbCollection
+  otherPassbookCollection
+  otherPictureCollection
+  csfCollection
+  csfWithdrawal
+  csf
+  csfReturnAmt
   `;
 
 export const LOS_TOTALS_FIELDS = `

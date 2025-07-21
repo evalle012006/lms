@@ -17,7 +17,8 @@ import {
   CalculatorIcon,
   ReceiptPercentIcon,
   DocumentCurrencyDollarIcon,
-  TrophyIcon
+  TrophyIcon,
+  ChartBarIcon
 } from '@heroicons/react/24/outline';
 
 const ModernInput = ({ 
@@ -126,10 +127,12 @@ const TransactionsSettingsPage = (props) => {
         mcbuRate: transactionState.mcbuRate || '',
         lrfRate: transactionState.lrfRate || '',
         
-        // Collection Settings
+        // MCBU/CSF Settings
         minDailyMcbuCollection: transactionState.minDailyMcbuCollection || '',
         minWeeklyMcbuCollection: transactionState.minWeeklyMcbuCollection || '',
         minCsfCollection: transactionState.minCsfCollection || '',
+        mcbuCsfMCBUForNM: transactionState.mcbuCsfMCBUForNM || '',
+        mcbuCsfMinimumBalance: transactionState.mcbuCsfMinimumBalance || '',
         
         // Transaction Rules
         allowWeekendTransaction: transactionState.allowWeekendTransaction || false, 
@@ -152,10 +155,12 @@ const TransactionsSettingsPage = (props) => {
         mcbuRate: yup.number().min(0, 'Cannot be negative').max(100, 'Cannot exceed 100%').required('MCBU rate is required'),
         lrfRate: yup.number().min(0, 'Cannot be negative').max(100, 'Cannot exceed 100%').required('LRF rate is required'),
         
-        // Collection Settings
+        // MCBU/CSF Settings
         minDailyMcbuCollection: yup.number().min(0, 'Cannot be negative').required('Minimum daily MCBU collection is required'),
         minWeeklyMcbuCollection: yup.number().min(0, 'Cannot be negative').required('Minimum weekly MCBU collection is required'),
         minCsfCollection: yup.number().min(0, 'Cannot be negative').required('Minimum CSF collection is required'),
+        mcbuCsfMCBUForNM: yup.number().min(0, 'Cannot be negative').required('MCBU for New Members is required'),
+        mcbuCsfMinimumBalance: yup.number().min(0, 'Cannot be negative').required('Minimum balance is required'),
         
         // Transaction Rules
         startTransactionTime: yup.string().required('Start transaction time is required'),
@@ -347,16 +352,53 @@ const TransactionsSettingsPage = (props) => {
                                         </div>
                                     </div>
 
-                                    {/* Collection Targets Card */}
+                                    {/* Transaction Rules Card */}
                                     <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-                                        <div className="bg-gradient-to-r from-purple-600 to-purple-700 px-6 py-4">
+                                        <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 px-6 py-4">
                                             <div className="flex items-center">
-                                                <TrophyIcon className="h-6 w-6 text-white mr-3" />
-                                                <h2 className="text-xl font-semibold text-white">Collection Targets</h2>
+                                                <ClockIcon className="h-6 w-6 text-white mr-3" />
+                                                <h2 className="text-xl font-semibold text-white">Transaction Rules</h2>
                                             </div>
                                         </div>
                                         
                                         <div className="p-6 space-y-6">
+                                            <ModernInput
+                                                name="startTransactionTime"
+                                                value={values.startTransactionTime}
+                                                label="Start Transaction Time"
+                                                placeholder="e.g., 09:00 AM"
+                                                icon={ClockIcon}
+                                                onChange={handleChange}
+                                                setFieldValue={setFieldValue}
+                                                errors={touched.startTransactionTime && errors.startTransactionTime}
+                                                required
+                                            />
+                                            
+                                            <div className="p-4 bg-gray-50 rounded-xl">
+                                                <ModernToggle
+                                                    name="allowWeekendTransaction"
+                                                    value={values.allowWeekendTransaction}
+                                                    label="Allow Weekend Transactions"
+                                                    description="Enable transactions during weekends (Saturday & Sunday)"
+                                                    onChange={handleChange}
+                                                    setFieldValue={setFieldValue}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* MCBU/CSF Settings Card - Full Width */}
+                                <div className="mt-8 bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                                    <div className="bg-gradient-to-r from-purple-600 to-purple-700 px-6 py-4">
+                                        <div className="flex items-center">
+                                            <ChartBarIcon className="h-6 w-6 text-white mr-3" />
+                                            <h2 className="text-xl font-semibold text-white">MCBU/CSF Settings</h2>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="p-6">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                             <ModernInput
                                                 name="minDailyMcbuCollection"
                                                 value={values.minDailyMcbuCollection}
@@ -395,41 +437,32 @@ const TransactionsSettingsPage = (props) => {
                                                 errors={touched.minCsfCollection && errors.minCsfCollection}
                                                 required
                                             />
-                                        </div>
-                                    </div>
-
-                                    {/* Transaction Rules Card */}
-                                    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-                                        <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 px-6 py-4">
-                                            <div className="flex items-center">
-                                                <ClockIcon className="h-6 w-6 text-white mr-3" />
-                                                <h2 className="text-xl font-semibold text-white">Transaction Rules</h2>
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="p-6 space-y-6">
+                                            
                                             <ModernInput
-                                                name="startTransactionTime"
-                                                value={values.startTransactionTime}
-                                                label="Start Transaction Time"
-                                                placeholder="e.g., 09:00 AM"
-                                                icon={ClockIcon}
+                                                name="mcbuCsfMCBUForNM"
+                                                value={values.mcbuCsfMCBUForNM}
+                                                label="Minimum MCBU for New Members Group Leader"
+                                                placeholder="Enter MCBU amount for new members"
+                                                icon={CurrencyDollarIcon}
+                                                type="number"
                                                 onChange={handleChange}
                                                 setFieldValue={setFieldValue}
-                                                errors={touched.startTransactionTime && errors.startTransactionTime}
+                                                errors={touched.mcbuCsfMCBUForNM && errors.mcbuCsfMCBUForNM}
                                                 required
                                             />
                                             
-                                            <div className="p-4 bg-gray-50 rounded-xl">
-                                                <ModernToggle
-                                                    name="allowWeekendTransaction"
-                                                    value={values.allowWeekendTransaction}
-                                                    label="Allow Weekend Transactions"
-                                                    description="Enable transactions during weekends (Saturday & Sunday)"
-                                                    onChange={handleChange}
-                                                    setFieldValue={setFieldValue}
-                                                />
-                                            </div>
+                                            <ModernInput
+                                                name="mcbuCsfMinimumBalance"
+                                                value={values.mcbuCsfMinimumBalance}
+                                                label="Minimum MCBU Balance FOR Group Leader"
+                                                placeholder="Enter minimum balance required"
+                                                icon={BanknotesIcon}
+                                                type="number"
+                                                onChange={handleChange}
+                                                setFieldValue={setFieldValue}
+                                                errors={touched.mcbuCsfMinimumBalance && errors.mcbuCsfMinimumBalance}
+                                                required
+                                            />
                                         </div>
                                     </div>
                                 </div>
