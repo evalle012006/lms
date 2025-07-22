@@ -106,7 +106,7 @@ async function save(req, res) {
     // Additional business logic validation for MCBU
     // Group leaders: can only withdraw excess over 3000
     // Regular clients (daily): can only withdraw excess over 1000
-    if (group_leader) {
+    if (group_leader && csf_withdrawal_amount > 0) {
       const maxMcbuWithdrawal = Math.max(0, currentMcbu - 3000);
       if (mcbuAmount > maxMcbuWithdrawal) {
         return res.status(400).json({

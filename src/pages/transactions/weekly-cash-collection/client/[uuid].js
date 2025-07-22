@@ -833,7 +833,7 @@ const CashCollectionDetailsPage = () => {
                 if (cc.mcbuWithdrawalList.length > 0) {
                     const mcbuWithdrawal = cc.mcbuWithdrawalList[cc.mcbuWithdrawalList.length - 1];
                     if (mcbuWithdrawal) {
-                        if (mcbuWithdrawal.group_leader) {
+                        if (mcbuWithdrawal.group_leader && mcbuWithdrawal.csf_withdrawal_amount > 0) {
                             collection.hasCsfWithdrawal = true;
                             collection.csfWithdrawalIsPending = mcbuWithdrawal.status == 'pending' ? true : false;
                             collection.csfWithdrawalId = mcbuWithdrawal._id;
@@ -841,14 +841,14 @@ const CashCollectionDetailsPage = () => {
                                 collection.csfWithdrawal = mcbuWithdrawal.csf_withdrawal_amount || 0;
                                 collection.csfWithdrawalStr = collection.csfWithdrawal > 0 ? formatPricePhp(collection.csfWithdrawal) : '-';
                             }
+                        }
 
-                            collection.hasMcbuWithdrawal = true;
-                            collection.mcbuWithdrawalIsPending = mcbuWithdrawal.status == 'pending' ? true : false;
-                            collection.mcbuWithdrawalId = mcbuWithdrawal._id;
-                            if (mcbuWithdrawal?.status == 'pending') {
-                                collection.mcbuWithdrawal = mcbuWithdrawal.mcbu_withdrawal_amount || 0;
-                                collection.mcbuWithdrawalStr = collection.mcbuWithdrawal > 0 ? formatPricePhp(collection.mcbuWithdrawal) : '-';
-                            }
+                        collection.hasMcbuWithdrawal = true;
+                        collection.mcbuWithdrawalIsPending = mcbuWithdrawal.status == 'pending' ? true : false;
+                        collection.mcbuWithdrawalId = mcbuWithdrawal._id;
+                        if (mcbuWithdrawal?.status == 'pending') {
+                            collection.mcbuWithdrawal = mcbuWithdrawal.mcbu_withdrawal_amount || 0;
+                            collection.mcbuWithdrawalStr = collection.mcbuWithdrawal > 0 ? formatPricePhp(collection.mcbuWithdrawal) : '-';
                         }
                     }
                 }
