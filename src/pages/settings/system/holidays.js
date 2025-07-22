@@ -312,7 +312,7 @@ const HolidaysSettingsPage = (props) => {
             let apiURL, payload;
             
             if (mode === 'add') {
-                apiURL = `${getApiBaseUrl()}settings/holidays/add`;
+                apiURL = `${getApiBaseUrl()}settings/holidays/save`;
                 payload = values;
             } else {
                 apiURL = `${getApiBaseUrl()}settings/holidays`;
