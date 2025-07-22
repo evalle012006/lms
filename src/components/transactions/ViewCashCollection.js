@@ -629,7 +629,7 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                 totalMcbu += c.mcbu ? c.mcbu : 0
                 noOfClients += c.activeClients !== '-' ? c.activeClients : 0;
                 noOfBorrowers += c.activeBorrowers !== '-' ? c.activeBorrowers : 0;
-                totalCsf += c.csf;
+                totalCsf += c.csf ?? 0;
                 totalNetCollections += c.totalNetCollection;
             });
 
