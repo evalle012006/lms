@@ -755,16 +755,18 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
                                     </div>
 
                                     {/* CSF Balance field */}
-                                    <div className="mt-4">
-                                        <div className={`flex flex-col border rounded-md px-4 py-2 bg-white border-main`}>
-                                            <div className="flex justify-between">
-                                                <label htmlFor={'csf'} className={`font-proxima-bold text-xs font-bold text-main`}>
-                                                    CSF Balance
-                                                </label>
+                                    {isGroupLeader && csf > 0 && (
+                                        <div className="mt-4">
+                                            <div className={`flex flex-col border rounded-md px-4 py-2 bg-white border-main`}>
+                                                <div className="flex justify-between">
+                                                    <label htmlFor={'csf'} className={`font-proxima-bold text-xs font-bold text-main`}>
+                                                        CSF Balance
+                                                    </label>
+                                                </div>
+                                                <span className="text-gray-600 font-medium">{formatPricePhp(csf)}</span>
                                             </div>
-                                            <span className="text-gray-600 font-medium">{formatPricePhp(csf)}</span>
                                         </div>
-                                    </div>
+                                    )}
                                     
                                     <div className="mt-4">
                                         <InputNumber

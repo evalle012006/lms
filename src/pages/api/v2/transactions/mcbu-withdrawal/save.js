@@ -84,6 +84,7 @@ async function save(req, res) {
     // Validate MCBU withdrawal amount against available balance
     const mcbuAmount = parseFloat(mcbu_withdrawal_amount);
     const currentMcbu = parseFloat(loan.mcbu) || 0;
+    const currentCsf = parseFloat(loan.csf) || 0;
     
     if (mcbuAmount > currentMcbu) {
       return res.status(400).json({
@@ -93,14 +94,11 @@ async function save(req, res) {
     }
     
     // Validate CSF withdrawal amount against available balance
-    if (csfAmount > 0) {
-      const currentCsf = parseFloat(loan.csf) || 0;
-      if (csfAmount > currentCsf) {
-        return res.status(400).json({
-          error: true,
-          message: `CSF withdrawal amount (${csfAmount}) exceeds available balance (${currentCsf})`
-        });
-      }
+    if (csfAmount > currentCsf && group_leader) {
+      return res.status(400).json({
+        error: true,
+        message: `CSF withdrawal amount (${csfAmount}) exceeds available balance (${currentCsf})`
+      });
     }
     
     // Additional business logic validation for MCBU
@@ -117,7 +115,8 @@ async function save(req, res) {
     } else {
       // Assuming daily occurrence for regular clients - this could be enhanced with actual occurrence check
       const maxMcbuWithdrawal = Math.max(0, currentMcbu - 1000);
-      if (mcbuAmount > maxMcbuWithdrawal) {
+      console.log(loan.occurence, maxMcbuWithdrawal, mcbuAmount);
+      if (mcbuAmount > maxMcbuWithdrawal && loan.occurence !== 'weekly') {
         return res.status(400).json({
           error: true,
           message: `Clients can only withdraw excess over ₱1,000 MCBU balance. Maximum allowed: ₱${maxMcbuWithdrawal}`
