@@ -310,6 +310,15 @@ async function saveCashCollection(loan, group, currentDate, addToMutationList) {
         status: status,
         loanCycle: loan.loanCycle,
         modifiedDate: currentDate,
+        admissionCollection: loan.admissionCollection,
+        lrfCollection: loan.lrfCollection,
+        cbhbCollection: loan.cbhbCollection,
+        otherPassbookCollection: loan.otherPassbookCollection,
+        otherPictureCollection: loan.otherPictureCollection,
+        csf: loan.csf,
+        csfCollection: 0,
+        csfWithdrawal: 0,
+        csfReturnAmt: 0,
       }),
     }));
   } else {
