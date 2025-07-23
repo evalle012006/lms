@@ -115,7 +115,6 @@ async function save(req, res) {
     } else {
       // Assuming daily occurrence for regular clients - this could be enhanced with actual occurrence check
       const maxMcbuWithdrawal = Math.max(0, currentMcbu - 1000);
-      console.log(loan.occurence, maxMcbuWithdrawal, mcbuAmount);
       if (mcbuAmount > maxMcbuWithdrawal && loan.occurence !== 'weekly') {
         return res.status(400).json({
           error: true,
