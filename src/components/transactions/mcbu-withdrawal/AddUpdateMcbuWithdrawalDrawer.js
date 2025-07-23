@@ -22,6 +22,7 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
     const dispatch = useDispatch();
     const currentDate = useSelector(state => state.systemSettings.currentDate);
     const currentUser = useSelector(state => state.user.data);
+    const last5DaysOfTheMonth = useSelector(state => state.systemSettings.last5DaysOfTheMonth);
     const [loading, setLoading] = useState(false);
     const [title, setTitle] = useState('Add Mcbu Withdrawal');
     const userList = useSelector(state => state.user.list);
@@ -36,6 +37,9 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
     const [maxWithdrawalAmount, setMaxWithdrawalAmount] = useState(0);
     const [maxCsfWithdrawalAmount, setMaxCsfWithdrawalAmount] = useState(0); // Add max CSF withdrawal state
     const [occurence, setOccurence] = useState('daily');
+    const [currentCsfWithdrawalAmount, setCurrentCsfWithdrawalAmount] = useState(0); // Track current CSF amount
+
+    const [allowedCsfWithdrawal, setAllowedCsfWithdrawal] = useState(false);
 
     // Define a clear initial state based on mcbuData, loan, or defaults
     const initialFormState = {
@@ -52,9 +56,9 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
         area_id: mcbuData?.area_id || (currentUser?.areaId || ""),
         group_leader: mcbuData?.group_leader || loan?.client?.groupLeader || false
     };
-    
+
     const [formState, setFormState] = useState(initialFormState);
-    
+
     // Initial values for Formik - keep in sync with formState
     const initialValues = {
         loan_id: formState.loan_id,
@@ -71,26 +75,45 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
         group_leader: formState.group_leader
     };
 
-    // Create a custom validation schema based on if we're in collection mode
-    const getValidationSchema = () => {
-        // Base schema for mcbu_withdrawal_amount - applies in all modes
-        const baseSchema = {
-            mcbu_withdrawal_amount: yup
+    // Create a dynamic validation schema that responds to CSF withdrawal amount changes
+    const getValidationSchema = (csfAmount = 0) => {
+        let baseSchema = {
+            // Other fields if not in collection mode will be added dynamically below
+        };
+
+        // MCBU Withdrawal Amount Validation
+        // Allow MCBU to be 0 if group leader has CSF withdrawal > 0
+        if (isGroupLeader && csfAmount > 0) {
+            // If group leader AND CSF withdrawal amount > 0, MCBU can be 0 or positive
+            baseSchema.mcbu_withdrawal_amount = yup
+                .number()
+                .integer()
+                .min(0, 'Amount should be 0 or greater') // Allow 0
+                .max(maxWithdrawalAmount, `Amount cannot exceed ${formatPricePhp(maxWithdrawalAmount)}`)
+                .required('Please enter mcbu withdrawal amount');
+        } else {
+            // Otherwise, MCBU must be greater than 0
+            baseSchema.mcbu_withdrawal_amount = yup
                 .number()
                 .integer()
                 .positive()
                 .moreThan(0, 'Amount should be greater than 0')
                 .max(maxWithdrawalAmount, `Amount cannot exceed ${formatPricePhp(maxWithdrawalAmount)}`)
-                .required('Please enter mcbu withdrawal amount')
-        };
+                .required('Please enter mcbu withdrawal amount');
+        }
 
-        // Add CSF validation for group leaders with CSF > 0
-        if (isGroupLeader && csf > 0) {
+        // Add CSF validation for group leaders with CSF > 0 and allowed
+        if (isGroupLeader && csf > 0 && allowedCsfWithdrawal) {
             baseSchema.csf_withdrawal_amount = yup
                 .number()
                 .integer()
                 .min(0, 'Amount should be 0 or greater')
                 .max(maxCsfWithdrawalAmount, `CSF amount cannot exceed ${formatPricePhp(maxCsfWithdrawalAmount)}`);
+        } else if (csf === 0 || !allowedCsfWithdrawal) {
+            baseSchema.csf_withdrawal_amount = yup
+                .number()
+                .integer()
+                .equals([0], 'CSF withdrawal is not allowed or no CSF balance');
         }
 
         // If we're in collection mode, we only need to validate the withdrawal amounts
@@ -120,11 +143,9 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
         });
     };
 
-    const validationSchema = getValidationSchema();
-
     const handleSaveUpdate = (values, action) => {
         setLoading(true);
-        
+
         // Create final submission values using formState as the primary source of truth
         let submitValues = {
             loan_id: formState.loan_id,
@@ -142,23 +163,31 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
             area_id: formState.area_id,
             group_leader: formState.group_leader
         };
-        
+
         // Additional validation
         if (!submitValues.lo_id) {
             setLoading(false);
             toast.error("Please select a loan officer");
             return;
         }
-        
+
         if (!submitValues.group_id) {
             setLoading(false);
             toast.error("Please select a group");
             return;
         }
-        
+
         if (!submitValues.client_id) {
             setLoading(false);
             toast.error("Please select a client");
+            return;
+        }
+
+        // Updated validation: Allow MCBU amount to be 0 if group leader has CSF withdrawal > 0
+        if (submitValues.mcbu_withdrawal_amount <= 0 && 
+            (!isGroupLeader || (isGroupLeader && submitValues.csf_withdrawal_amount <= 0))) {
+            setLoading(false);
+            toast.error("At least one withdrawal amount (MCBU or CSF) must be greater than 0");
             return;
         }
 
@@ -179,11 +208,11 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
             toast.error(`CSF withdrawal amount cannot exceed ${formatPricePhp(maxCsfWithdrawalAmount)}`);
             return;
         }
-          
+
         // API call for saving the form
         if (mode === 'add') {
             const apiUrl = getApiBaseUrl() + 'transactions/mcbu-withdrawal/save/';
-            
+
             fetchWrapper.post(apiUrl, submitValues)
                 .then(response => {
                     setLoading(false);
@@ -193,7 +222,7 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
                         setShowSidebar(false);
                         toast.success('MCBU Withdrawal successfully added.');
                         action.setSubmitting = false;
-                        action.resetForm({values: ''});
+                        action.resetForm({ values: '' });
                         onClose();
                     }
                 }).catch(error => {
@@ -206,7 +235,7 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
             submitValues._id = mcbuData?._id;
             submitValues.modifiedBy = currentUser._id;
             submitValues.modifiedDate = currentDate;
-            
+
             fetchWrapper.post(apiUrl, submitValues)
                 .then(response => {
                     if (response.success) {
@@ -231,79 +260,90 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
     // Improved handler for lo_id changes
     const handleLoIdChange = (field, value) => {
         if (!formikRef.current) return;
-        
+
         const form = formikRef.current;
         const user = userList.find(u => u._id === value);
-        
+
         if (user) {
             // Update both Formik AND internal state
             form.setFieldValue(field, value);
-            
+
             setFormState(prev => ({
                 ...prev,
                 lo_id: value
             }));
-            
+
             // Fetch groups for this LO
             getListGroup(user.transactionType, value, 'filter');
         }
     };
-    
+
     // Improved handler for group_id changes
     const handleGroupIdChange = (field, value) => {
         setLoading(true);
         if (!formikRef.current) return;
-        
+
         const form = formikRef.current;
-        
+
         // Update both Formik AND internal state
         form.setFieldValue(field, value);
-        
+
         setFormState(prev => ({
             ...prev,
             group_id: value
         }));
-        
+
         // Get clients for this group
         getListClient('active', value);
-        
+
         setLoading(false);
     };
-    
+
     // Improved handler for client_id changes - updated to handle CSF
     const handleClientIdChange = (field, value) => {
         setLoading(true);
         if (!formikRef.current) return;
-        
+
         const form = formikRef.current;
         const client = clientList.find(c => c.value === value);
-        
+
         // Update Formik field
         form.setFieldValue(field, value);
-        
+
         const updates = { client_id: value };
-        
+
         // Add loan information if available
         if (client && client.loans && client.loans.length > 0) {
             setSlotNo(client.slotNo);
             setLoanBalance(client.loans[0].loanBalance || 0);
             setMcbu(client.loans[0].mcbu || 0);
             setCsf(client.loans[0].csf || 0); // Set CSF balance
-            
+
             form.setFieldValue('loan_id', client.loans[0]._id);
             form.setFieldValue('group_leader', client.groupLeader);
-            
+
             updates.loan_id = client.loans[0]._id;
             updates.group_leader = client.groupLeader;
         }
-        
+
         // Update form state with all necessary changes
         setFormState(prev => ({
             ...prev,
             ...updates
         }));
-        
+
         setLoading(false);
+    };
+
+    // Handler for CSF withdrawal amount changes
+    const handleCsfWithdrawalChange = (field, value) => {
+        if (!formikRef.current) return;
+
+        const form = formikRef.current;
+        const numericValue = parseFloat(value) || 0;
+        
+        form.setFieldValue(field, numericValue);
+        setCurrentCsfWithdrawalAmount(numericValue);
     };
 
     const getListUser = async () => {
@@ -330,11 +370,11 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
 
     const getListGroup = async (occurence, loId, mode) => {
         setLoading(true);
-        
+
         let url = getApiBaseUrl() + 'groups/list-by-group-occurence';
         const effectiveLoId = loId || formState.lo_id;
-        
-        if (currentUser.role.rep === 4) { 
+
+        if (currentUser.role.rep === 4) {
             let branchId = currentUser.designatedBranchId;
             if (mode === 'filter') {
                 url = url + '?' + new URLSearchParams({ branchId: branchId, loId: currentUser._id, occurence: occurence, mode: 'filter' });
@@ -364,7 +404,7 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
                     label: UppercaseFirstLetter(group.name)
                 });
             });
-            groups.sort((a,b) => { return a.groupNo - b.groupNo });
+            groups.sort((a, b) => { return a.groupNo - b.groupNo });
             dispatch(setGroupList(groups));
             setLoading(false);
         } else if (response.error) {
@@ -375,14 +415,14 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
 
     const getListClient = async (status, groupId) => {
         setLoading(true);
-        
-        const url = getApiBaseUrl() + 'clients/list?' + new URLSearchParams({ 
-            mode: "view_existing_loan", 
-            branchId: currentUser.designatedBranchId, 
-            groupId: groupId, 
-            status: status 
+
+        const url = getApiBaseUrl() + 'clients/list?' + new URLSearchParams({
+            mode: "view_existing_loan",
+            branchId: currentUser.designatedBranchId,
+            groupId: groupId,
+            status: status
         });
-        
+
         const response = await fetchWrapper.get(url);
         if (response.success) {
             let clients = [];
@@ -397,9 +437,9 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
                 delete temp.loans[0].client;
                 clients.push(temp);
             });
-            
-            clients.sort((a,b) => { return a.slotNo - b.slotNo });
-            
+
+            clients.sort((a, b) => { return a.slotNo - b.slotNo });
+
             dispatch(setClientList(clients));
             setLoading(false);
         } else if (response.error) {
@@ -425,7 +465,7 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
             setMcbu(loan.mcbu || 0);
             setCsf(loan.csf || 0); // Set CSF balance
             setOccurence(loan.occurence || 'daily');
-            
+
             // Update form state with loan values - use all available loan data
             setFormState(prev => ({
                 ...prev,
@@ -439,7 +479,7 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
                 region_id: currentUser.regionId || prev.region_id,
                 area_id: currentUser.areaId || prev.area_id
             }));
-            
+
             // Also update Formik if available
             if (formikRef.current) {
                 formikRef.current.setFieldValue('loan_id', loan.loanId || '');
@@ -459,11 +499,11 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
     useEffect(() => {
         // Skip API calls if in collection mode with loan data
         if (origin === "collection" && loan) return;
-        
+
         if (currentUser && currentUser.role && currentUser.role.rep === 3) {
             getListUser();
         }
-        
+
         if (currentUser && currentUser.role && currentUser.role.rep === 4) {
             // Update form state with current user values
             setFormState(prev => ({
@@ -474,7 +514,7 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
                 region_id: currentUser.regionId,
                 area_id: currentUser.areaId
             }));
-            
+
             // Make sure Formik has the same values
             if (formikRef.current) {
                 formikRef.current.setFieldValue('branch_id', currentUser.designatedBranchId);
@@ -483,7 +523,7 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
                 formikRef.current.setFieldValue('region_id', currentUser.regionId);
                 formikRef.current.setFieldValue('area_id', currentUser.areaId);
             }
-            
+
             // Fetch groups if we have transaction type
             if (currentUser.transactionType) {
                 getListGroup(currentUser.transactionType, currentUser._id, 'filter');
@@ -494,15 +534,15 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
     // Mode change effect
     useEffect(() => {
         let mounted = true;
-        
+
         if (mode === 'add') {
             setTitle('Add MCBU Withdrawal');
         } else if (mode === 'edit') {
             setTitle('Edit MCBU Withdrawal');
         }
-    
+
         mounted && setLoading(false);
-    
+
         return () => {
             mounted = false;
         };
@@ -512,10 +552,10 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
     useEffect(() => {
         // Skip API calls if origin is collection
         if (origin === "collection") return;
-        
+
         // Get loan officer ID from mcbuData
         let selectedLoId = mcbuData?.lo_id;
-        
+
         // If we have a loan officer ID, find the user and get their groups
         if (selectedLoId) {
             const user = userList.find(u => u._id === selectedLoId);
@@ -529,10 +569,10 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
     useEffect(() => {
         // Skip API calls if origin is collection
         if (origin === "collection") return;
-        
+
         // Get group ID from mcbuData
         let selectedGroupId = mcbuData?.group_id;
-        
+
         // If we have a group ID, get its clients
         if (selectedGroupId) {
             getListClient('active', selectedGroupId);
@@ -553,11 +593,14 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
                 csf_withdrawal_amount: mcbuData?.csf_withdrawal_amount || prev.csf_withdrawal_amount,
                 group_leader: mcbuData?.group_leader || prev.group_leader
             }));
-            
+
             // Set CSF balance if available in the loan data
             if (mcbuData?.loan?.csf) {
                 setCsf(mcbuData.loan.csf);
             }
+
+            // Set current CSF withdrawal amount for validation
+            setCurrentCsfWithdrawalAmount(mcbuData?.csf_withdrawal_amount || 0);
         }
     }, [mode, mcbuData?._id]);
 
@@ -575,16 +618,16 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
 
     // Calculate maximum withdrawal amounts based on MCBU balance, CSF balance, and client type
     useEffect(() => {
-        const groupLeader = formState.group_leader || 
-                           (loan?.client?.groupLeader) || 
-                           (loan?.groupLeader) || 
-                           false;
-        
+        const groupLeader = formState.group_leader ||
+            (loan?.client?.groupLeader) ||
+            (loan?.groupLeader) ||
+            false;
+
         setIsGroupLeader(groupLeader);
-        
+
         // Calculate MCBU max amount
         let mcbuMaxAmount = 0;
-        if (groupLeader && loan?.status === 'active') {
+        if (groupLeader && (loan?.status === 'active' || loan?.status === 'tomorrow')) {
             // Group leaders can only withdraw excess over 3000
             mcbuMaxAmount = Math.max(0, mcbu - 3000);
         } else if (occurence === 'daily') {
@@ -593,17 +636,34 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
         } else {
             mcbuMaxAmount = mcbu;
         }
-        
+
         // Calculate CSF max amount (only for group leaders)
         let csfMaxAmount = 0;
         if (groupLeader && csf > 0) {
             // Group leaders can withdraw all their CSF (no minimum balance required)
             csfMaxAmount = csf;
         }
-        
+
         setMaxWithdrawalAmount(mcbuMaxAmount);
         setMaxCsfWithdrawalAmount(csfMaxAmount);
     }, [mcbu, csf, formState.group_leader, loan, occurence]);
+
+    useEffect(() => {
+        if (!currentDate || !last5DaysOfTheMonth) return;
+
+        // Allow CSF withdrawal for group leaders under these conditions:
+        // 1. (Daily or Weekly loan with "tomorrow" status) OR
+        // 2. Current date is in the last 5 days of the month
+        const isTomorrowLoan = loan && (loan.occurence === 'daily' || loan.occurence === 'weekly') && loan.status === 'tomorrow';
+
+        const isLast5Days = last5DaysOfTheMonth.includes(currentDate);
+
+        if (isGroupLeader && (isTomorrowLoan || isLast5Days)) {
+            setAllowedCsfWithdrawal(true);
+        } else {
+            setAllowedCsfWithdrawal(false);
+        }
+    }, [currentDate, isGroupLeader, last5DaysOfTheMonth, loan?.status, loan?.occurence]);
 
     return (
         <React.Fragment>
@@ -612,11 +672,11 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
                     <Spinner />
                 ) : (
                     <div className="px-2 pb-4">
-                        <Formik 
+                        <Formik
                             enableReinitialize={true}
                             onSubmit={handleSaveUpdate}
                             initialValues={initialValues}
-                            validationSchema={validationSchema}
+                            validationSchema={getValidationSchema(currentCsfWithdrawalAmount)} // Pass current CSF amount to validation
                             innerRef={formikRef}
                         >
                             {({
@@ -645,7 +705,7 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
                                                     <span className="text-gray-600 font-medium">{loan.fullName}</span>
                                                 </div>
                                             </div>
-                                            
+
                                             {/* Group Name */}
                                             <div className="mt-4">
                                                 <div className={`flex flex-col border rounded-md px-4 py-2 bg-white border-main`}>
@@ -654,10 +714,10 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
                                                             Group
                                                         </label>
                                                     </div>
-                                                    <span className="text-gray-600">{loan?.group?.name|| '-'}</span>
+                                                    <span className="text-gray-600">{loan?.group?.name || '-'}</span>
                                                 </div>
                                             </div>
-                                            
+
                                             {/* Branch Name - if available */}
                                             {loan.branchName && (
                                                 <div className="mt-4">
@@ -690,7 +750,7 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
                                                     />
                                                 </div>
                                             )}
-                                            
+
                                             <div className="mt-4">
                                                 <SelectDropdown
                                                     name="group_id"
@@ -704,7 +764,7 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
                                                     errors={touched.group_id && errors.group_id ? errors.group_id : undefined}
                                                 />
                                             </div>
-                                            
+
                                             <div className="mt-4">
                                                 <SelectDropdown
                                                     name="client_id"
@@ -720,7 +780,7 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
                                             </div>
                                         </>
                                     )}
-                                    
+
                                     <div className="mt-4">
                                         <div className={`flex flex-col border rounded-md px-4 py-2 bg-white border-main`}>
                                             <div className="flex justify-between">
@@ -731,7 +791,7 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
                                             <span className="text-gray-600">{slotNo ? slotNo : '-'}</span>
                                         </div>
                                     </div>
-                                    
+
                                     <div className="mt-4">
                                         <div className={`flex flex-col border rounded-md px-4 py-2 bg-white border-main`}>
                                             <div className="flex justify-between">
@@ -742,7 +802,7 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
                                             <span className="text-gray-600">{formatPricePhp(loanBalance)}</span>
                                         </div>
                                     </div>
-                                    
+
                                     <div className="mt-4">
                                         <div className={`flex flex-col border rounded-md px-4 py-2 bg-white border-main`}>
                                             <div className="flex justify-between">
@@ -755,7 +815,7 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
                                     </div>
 
                                     {/* CSF Balance field */}
-                                    {isGroupLeader && csf > 0 && (
+                                    {isGroupLeader && csf > 0 && ( // Display CSF balance for group leaders with CSF
                                         <div className="mt-4">
                                             <div className={`flex flex-col border rounded-md px-4 py-2 bg-white border-main`}>
                                                 <div className="flex justify-between">
@@ -767,14 +827,14 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
                                             </div>
                                         </div>
                                     )}
-                                    
+
                                     <div className="mt-4">
                                         <InputNumber
                                             name="mcbu_withdrawal_amount"
                                             field="mcbu_withdrawal_amount"
                                             value={values.mcbu_withdrawal_amount}
                                             onChange={handleChange}
-                                            label="MCBU Withdrawal Amount (Required)"
+                                            label={`MCBU Withdrawal Amount ${(isGroupLeader && values.csf_withdrawal_amount > 0) ? '(Optional if CSF > 0)' : '(Required)'}`}
                                             disabled={values.status === 'active'}
                                             placeholder="Enter MCBU Withdrawal Amount"
                                             setFieldValue={setFieldValue}
@@ -787,14 +847,17 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
                                         )}
                                     </div>
 
-                                    {/* CSF Withdrawal Amount field - Only show for group leaders with CSF > 0 */}
-                                    {isGroupLeader && csf > 0 && (
+                                    {/* CSF Withdrawal Amount field - Only show for group leaders with CSF > 0 and allowed */}
+                                    {allowedCsfWithdrawal && isGroupLeader && csf > 0 && (
                                         <div className="mt-4">
                                             <InputNumber
                                                 name="csf_withdrawal_amount"
                                                 field="csf_withdrawal_amount"
                                                 value={values.csf_withdrawal_amount}
-                                                onChange={handleChange}
+                                                onChange={(e) => {
+                                                    handleChange(e);
+                                                    handleCsfWithdrawalChange('csf_withdrawal_amount', e.target.value);
+                                                }}
                                                 label="CSF Withdrawal Amount (Optional)"
                                                 placeholder="Enter CSF Withdrawal Amount"
                                                 setFieldValue={setFieldValue}
@@ -807,14 +870,19 @@ const AddUpdateMcbuWithdrawalDrawer = ({ origin, mode = 'add', mcbuData = {}, lo
                                             )}
                                         </div>
                                     )}
-                                    
+
                                     <div className="flex flex-row mt-5">
                                         <ButtonOutline label="Cancel" onClick={handleCancel} className="mr-3" />
-                                        <ButtonSolid 
-                                            label="Submit" 
-                                            type="submit" 
-                                            isSubmitting={isValidating && isSubmitting} 
-                                            disabled={mcbu <= 0}
+                                        <ButtonSolid
+                                            label="Submit"
+                                            type="submit"
+                                            isSubmitting={isValidating && isSubmitting}
+                                            disabled={
+                                                // Updated logic: disable if both MCBU and CSF are 0 or negative
+                                                (values.mcbu_withdrawal_amount <= 0 && values.csf_withdrawal_amount <= 0) ||
+                                                // Or if no balances are available
+                                                (mcbu <= 0 && (!isGroupLeader || csf <= 0))
+                                            }
                                         />
                                     </div>
                                 </form>

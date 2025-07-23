@@ -49,15 +49,19 @@ async function save(req, res) {
       });
     }
     
-    if (!mcbu_withdrawal_amount || mcbu_withdrawal_amount <= 0) {
+    // Parse withdrawal amounts
+    const mcbuAmount = parseFloat(mcbu_withdrawal_amount) || 0;
+    const csfAmount = parseFloat(csf_withdrawal_amount) || 0;
+    
+    // Updated validation: Allow MCBU to be 0 if group leader has CSF withdrawal > 0
+    if (mcbuAmount <= 0 && (!group_leader || (group_leader && csfAmount <= 0))) {
       return res.status(400).json({
         error: true,
-        message: "MCBU withdrawal amount is required and must be greater than 0"
+        message: "At least one withdrawal amount (MCBU or CSF) must be greater than 0"
       });
     }
     
     // Validate CSF withdrawal amount if provided
-    const csfAmount = parseFloat(csf_withdrawal_amount) || 0;
     if (csfAmount > 0 && !group_leader) {
       return res.status(400).json({
         error: true,
@@ -82,7 +86,6 @@ async function save(req, res) {
     }
     
     // Validate MCBU withdrawal amount against available balance
-    const mcbuAmount = parseFloat(mcbu_withdrawal_amount);
     const currentMcbu = parseFloat(loan.mcbu) || 0;
     const currentCsf = parseFloat(loan.csf) || 0;
     
@@ -102,27 +105,46 @@ async function save(req, res) {
     }
     
     // Additional business logic validation for MCBU
-    // Group leaders: can only withdraw excess over 3000
-    // Regular clients (daily): can only withdraw excess over 1000
-    if (group_leader && csf_withdrawal_amount > 0) {
-      const maxMcbuWithdrawal = Math.max(0, currentMcbu - 3000);
-      if (mcbuAmount > maxMcbuWithdrawal) {
-        return res.status(400).json({
-          error: true,
-          message: `Group leaders can only withdraw excess over ₱3,000 MCBU balance. Maximum allowed: ₱${maxMcbuWithdrawal}`
-        });
-      }
-    } else {
-      // Assuming daily occurrence for regular clients - this could be enhanced with actual occurrence check
-      const maxMcbuWithdrawal = Math.max(0, currentMcbu - 1000);
-      if (mcbuAmount > maxMcbuWithdrawal && loan.occurence !== 'weekly') {
-        return res.status(400).json({
-          error: true,
-          message: `Clients can only withdraw excess over ₱1,000 MCBU balance. Maximum allowed: ₱${maxMcbuWithdrawal}`
-        });
+    if (mcbuAmount > 0) { // Only validate MCBU limits if amount > 0
+      // Group leaders: can only withdraw excess over 3000
+      // Regular clients (daily): can only withdraw excess over 1000
+      if (group_leader) {
+        const maxMcbuWithdrawal = Math.max(0, currentMcbu - 3000);
+        if (mcbuAmount > maxMcbuWithdrawal) {
+          return res.status(400).json({
+            error: true,
+            message: `Group leaders can only withdraw excess over ₱3,000 MCBU balance. Maximum allowed: ₱${maxMcbuWithdrawal}`
+          });
+        }
+      } else {
+        // Assuming daily occurrence for regular clients - this could be enhanced with actual occurrence check
+        const maxMcbuWithdrawal = Math.max(0, currentMcbu - 1000);
+        if (mcbuAmount > maxMcbuWithdrawal && loan.occurence !== 'weekly') {
+          return res.status(400).json({
+            error: true,
+            message: `Clients can only withdraw excess over ₱1,000 MCBU balance. Maximum allowed: ₱${maxMcbuWithdrawal}`
+          });
+        }
       }
     }
-    
+
+    // Check for existing pending/approved withdrawals
+    const existingWithdrawals = await graph.query(
+      queryQl(mcbuWithdrawalsType(), {
+        where: {
+          loan_id: { _eq: loan_id },
+          status: { _in: ['pending', 'approved'] }
+        }
+      })
+    );
+
+    if (existingWithdrawals.data && existingWithdrawals.data.mcbu_withdrawals && existingWithdrawals.data.mcbu_withdrawals.length > 0) {
+      return res.status(400).json({
+        error: true,
+        message: "There are existing approved or pending withdrawals for this loan."
+      });
+    }
+
     // Prepare withdrawal data
     const withdrawalData = {
       _id: generateUUID(),

@@ -834,12 +834,14 @@ const CashCollectionDetailsPage = () => {
                             }
                         }
 
-                        collection.hasMcbuWithdrawal = true;
-                        collection.mcbuWithdrawalIsPending = mcbuWithdrawal.status == 'pending' ? true : false;
-                        collection.mcbuWithdrawalId = mcbuWithdrawal._id;
-                        if (mcbuWithdrawal?.status == 'pending') {
-                            collection.mcbuWithdrawal = mcbuWithdrawal.mcbu_withdrawal_amount || 0;
-                            collection.mcbuWithdrawalStr = collection.mcbuWithdrawal > 0 ? formatPricePhp(collection.mcbuWithdrawal) : '-';
+                        if (mcbuWithdrawal.mcbu_withdrawal_amount > 0) {
+                            collection.hasMcbuWithdrawal = true;
+                            collection.mcbuWithdrawalIsPending = mcbuWithdrawal.status == 'pending' ? true : false;
+                            collection.mcbuWithdrawalId = mcbuWithdrawal._id;
+                            if (mcbuWithdrawal?.status == 'pending') {
+                                collection.mcbuWithdrawal = mcbuWithdrawal.mcbu_withdrawal_amount || 0;
+                                collection.mcbuWithdrawalStr = collection.mcbuWithdrawal > 0 ? formatPricePhp(collection.mcbuWithdrawal) : '-';
+                            }
                         }
                     }
                 }

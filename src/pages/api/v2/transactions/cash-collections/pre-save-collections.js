@@ -74,7 +74,7 @@ async function save(req, res) {
         cbhbCollection: 0,
         otherPassbookCollection: 0,
         otherPictureCollection: 0,
-        csf: 0,
+        csf: loan.csf || 0,
         csfCollection: 0,
         csfWithdrawal: 0,
         csfReturnAmt: 0,
