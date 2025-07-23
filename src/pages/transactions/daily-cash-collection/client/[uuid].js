@@ -444,6 +444,10 @@ const CashCollectionDetailsPage = () => {
                         let remarks = cc.remarks ? cc.remarks : '';
                         let ccId = cc._id;
                         let loanId = cc._id;
+                        let csf = cc.csf;
+                        let csfCollection = cc.csfCollection;
+                        let csfWithdrawal = cc.csfWithdrawal;
+
                         if (cc?.current?.length > 0) {
                             const current = cc.current.find(cur => cur?.transfer !== true);
                             if (current) {
@@ -467,6 +471,9 @@ const CashCollectionDetailsPage = () => {
                                 remarks = current.remarks;
                                 ccId = current._id;
                                 loanId = current.loanId;
+                                csf = current.csf;
+                                csfCollection = current.csfCollection;
+                                csfWithdrawal = current.csfWithdrawal;
                             }
                         }
 
@@ -543,14 +550,12 @@ const CashCollectionDetailsPage = () => {
                             draft: draft,
                             reverted: reverted,
                             otherIncome: cc.otherPassbookCollection + cc.otherPictureCollection,
-                            csf: safeNumber(cc.csf),
-                            csfStr: safeNumber(cc.csf) > 0 ? formatPricePhp(cc.csf) : '-',
-                            csfCollection: cc.csfCollection,
-                            csfCollectionStr: cc.csfCollection > 0 ? formatPricePhp(cc.csfCollection) : '-',
-                            csfWithdrawal: cc.csfWithdrawal,
-                            csfWithdrawalStr: cc.csfWithdrawal > 0 ? formatPricePhp(cc.csfWithdrawal) : '-',
-                            csfReturnAmt: cc.csfReturnAmt,
-                            csfReturnAmtStr: cc.csfReturnAmt > 0 ? formatPricePhp(cc.csfReturnAmt) : '-',
+                            csf: safeNumber(csf),
+                            csfStr: safeNumber(csf) > 0 ? formatPricePhp(csf) : '-',
+                            csfCollection: csfCollection,
+                            csfCollectionStr: csfCollection > 0 ? formatPricePhp(csfCollection) : '-',
+                            csfWithdrawal: csfWithdrawal,
+                            csfWithdrawalStr: csfWithdrawal > 0 ? formatPricePhp(csfWithdrawal) : '-',
                         }
 
                         if (loanBalance > 0 && !cc?.maturedPD) {
@@ -933,8 +938,8 @@ const CashCollectionDetailsPage = () => {
                             otherIncome: loan.otherPassbookCollection + loan.otherPictureCollection,
                             csf: loan.csf,
                             csfStr: loan.csf > 0 ? formatPricePhp(loan.csf) : '-',
-                            csfCollection: safeNumber(currentLoan.csfCollection),
-                            csfCollectionStr: safeNumber(currentLoan.csfCollection) > 0 ? formatPricePhp(safeNumber(currentLoan.csfCollection)) : '-',
+                            // csfCollection: safeNumber(currentLoan.csfCollection),
+                            // csfCollectionStr: safeNumber(currentLoan.csfCollection) > 0 ? formatPricePhp(safeNumber(currentLoan.csfCollection)) : '-',
                             csfWithdrawal: safeNumber(currentLoan.csfWithdrawal),
                             csfWithdrawalStr: safeNumber(currentLoan.csfWithdrawal) > 0 ? formatPricePhp(safeNumber(currentLoan.csfWithdrawal)) : '-',
                             csfReturnAmt: safeNumber(currentLoan.csfReturnAmt),
@@ -956,8 +961,8 @@ const CashCollectionDetailsPage = () => {
                             cashCollection[index].paymentCollection = loan.current[0].history?.collection ? loan.current[0].history?.collection : 0;
                             cashCollection[index].paymentCollectionStr = loan.current[0].history?.collection ? formatPricePhp(loan.current[0].history?.collection) : '-';
                             cashCollection[index].remarks = loan.current[0].history?.remarks;
-                            cashCollection[index].csfCollection = loan.current[0].csfCollection;
-                            cashCollection[index].csfCollectionStr = loan.current[0].csfCollection > 0 ? formatPricePhp(loan.current[0].csfCollection) : '-';
+                            // cashCollection[index].csfCollection = loan.current[0].csfCollection;
+                            // cashCollection[index].csfCollectionStr = loan.current[0].csfCollection > 0 ? formatPricePhp(loan.current[0].csfCollection) : '-';
                         }
                     } else if (currentLoan.status == 'completed' && !currentLoan?.advance  && (loan?.loanFor == 'today' || (loan?.loanFor == 'tomorrow' && diff >= 0))) {
                         cashCollection[index] = {

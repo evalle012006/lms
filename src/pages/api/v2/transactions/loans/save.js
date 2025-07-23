@@ -352,10 +352,6 @@ async function saveCashCollection(user_id, loan, reloan, group, loanId, currentD
             cbhbCollection: loan.cbhbCollection,
             otherPassbookCollection: loan.otherPassbookCollection,
             otherPictureCollection: loan.otherPictureCollection,
-            csf: loan.csf,
-            csfCollection: loan.csfCollection,
-            csfWithdrawal: loan.csfWithdrawal,
-            csfReturnAmt: loan.csfReturnAmt,
           },
           where: {
             _id: { _eq: cashCollection[0]._id }

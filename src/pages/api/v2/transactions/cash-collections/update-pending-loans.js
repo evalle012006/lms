@@ -132,6 +132,11 @@ async function updatePendingLoan(user_id, collection, currentDate) {
           loanId: pendingLoan._id,
           currentReleaseAmount: pendingLoan.amountRelease,
           prevLoanId: currentLoan._id,
+          admissionCollection: pendingLoan.admissionCollection,
+          lrfCollection: pendingLoan.lrfCollection,
+          cbhbCollection: pendingLoan.cbhbCollection,
+          otherPassbookCollection: pendingLoan.otherPassbookCollection,
+          otherPictureCollection: pendingLoan.otherPictureCollection,
           status: 'tomorrow',
         };
 
