@@ -926,9 +926,11 @@ const McbuWithdrawalPage = () => {
             const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/mcbu-withdrawal/bulk-approve', {
                 withdrawals: selectedClients.map(client => ({
                     id: client._id,
+                    client_id: client.client_id,
                     loan_id: client.loan_id,
                     mcbu_withdrawal_amount: client.mcbu_withdrawal_amount,
                     csf_withdrawal_amount: client.csf_withdrawal_amount || 0, // Include CSF withdrawal
+                    group_leader: client.group_leader || false,
                     status: 'approved',
                     approved_date: currentDate,
                     modified_date: currentDate,
@@ -947,7 +949,7 @@ const McbuWithdrawalPage = () => {
             }
         } catch (error) {
             console.error('Error approving withdrawals:', error);
-            toast.error('An error occurred while approving withdrawals');
+            toast.error(error);
         } finally {
             setLoading(false);
         }
