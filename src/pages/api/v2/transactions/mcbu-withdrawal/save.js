@@ -133,7 +133,8 @@ async function save(req, res) {
       queryQl(mcbuWithdrawalsType(), {
         where: {
           loan_id: { _eq: loan_id },
-          status: { _in: ['pending', 'approved'] }
+          status: { _in: ['pending', 'approved'] },
+          inserted_date: { _eq: inserted_date }
         }
       })
     );
