@@ -792,6 +792,7 @@ const DashboardPage = () => {
                                     <div className="space-y-2">
                                         <CardItem title="Active Clients" value={summaryData.activeClients} prevValue={summaryData.prev_activeClients} Icon={UserPlus} />
                                         <CardItem title="MCBU" value={summaryData.mcbu} prevValue={summaryData.prev_mcbu} Icon={Wallet} />
+                                        <CardItem title="CSF" value={summaryData.csf} prevValue={summaryData.prev_csf} Icon={Wallet} />
                                         <CardItem title="Total Loan Release" value={summaryData.totalLoanRelease} prevValue={summaryData.prev_totalLoanRelease} Icon={Banknote} />
                                         <CardItem title="Active Borrowers" value={summaryData.activeBorrowers} prevValue={summaryData.prev_activeBorrowers} Icon={Scale} />
                                         <CardItem title="Total Loan Balance" value={summaryData.totalLoanBalance} prevValue={summaryData.prev_totalLoanBalance} Icon={DollarSign} />
@@ -854,14 +855,15 @@ const DashboardPage = () => {
                                         <CardItem title="Loan Collection Weekly:" value={summaryData.loanCollectionWeekly} prevValue={summaryData.prev_loanCollectionWeekly} Icon={Banknote} />
                                         <CardItem title="Staff CBU Collection:" value={summaryData.staffCbuCollection} prevValue={summaryData.prev_staffCbuCollection} Icon={Users} />
                                         <CardItem title="Staff Loan Collection:" value={summaryData.staffLoanCollection} prevValue={summaryData.prev_staffLoanCollection} Icon={Banknote} />
-                                        <CardItem title="Admin Fees:" value={summaryData.adminFees} prevValue={summaryData.prev_adminFees} Icon={DollarSign} />
+                                        <CardItem title="Admin Fees:" value={summaryData.admissionCollection} prevValue={summaryData.prev_admissionCollection} Icon={DollarSign} />
                                         <CardItem title="L R F Collection:" value={summaryData.lrfCollection} prevValue={summaryData.prev_lrfCollection} Icon={Banknote} />
-                                        <CardItem title="C H B Collection:" value={summaryData.chbCollection} prevValue={summaryData.prev_chbCollection} Icon={Banknote} />
+                                        <CardItem title="C B H B Collection:" value={summaryData.cbhbCollection} prevValue={summaryData.prev_cbhbCollection} Icon={Banknote} />
+                                        <CardItem title="CSF Collection:" value={summaryData.csfCollection} prevValue={summaryData.prev_csfCollection} Icon={Banknote} />
                                         <CardItem title="Add. Hospitalization:" value={summaryData.addHospitalization} prevValue={summaryData.prev_addHospitalization} Icon={Heart} />
                                         <CardItem title="W/Tax, EE&ER:" value={summaryData.wtaxEeEr} prevValue={summaryData.prev_wtaxEeEr} Icon={DollarSign} />
                                         <CardItem title="MCBU Unclaimed (N):" value={summaryData.mcbuUnclaimedN} prevValue={summaryData.prev_mcbuUnclaimedN} Icon={AlertCircle} />
                                         <CardItem title="Other Income (Passbook):" value={summaryData.otherIncomePassbook} prevValue={summaryData.prev_otherIncomePassbook} Icon={DollarSign} />
-                                        <CardItem title="Other Income:" value={summaryData.otherIncome} prevValue={summaryData.prev_otherIncome} Icon={DollarSign} />
+                                        <CardItem title="Other Income:" value={summaryData.otherCollection} prevValue={summaryData.prev_otherCollection} Icon={DollarSign} />
                                         <CardItem title="Other Receipts (Picture):" value={summaryData.otherReceiptsPicture} prevValue={summaryData.prev_otherReceiptsPicture} Icon={DollarSign} />
                                         <CardItem title="Other Receipts:" value={summaryData.otherReceipts} prevValue={summaryData.prev_otherReceipts} Icon={DollarSign} />
                                         <CardItem title="Fund Transfer:" value={summaryData.fundTransferReceipts} prevValue={summaryData.prev_fundTransferReceipts} Icon={ArrowLeftRight} />
