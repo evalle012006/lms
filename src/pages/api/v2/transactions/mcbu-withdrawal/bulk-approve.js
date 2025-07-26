@@ -196,15 +196,15 @@ async function bulkApprove(req, res) {
               ...loan,
               mcbu: Math.max(0, (parseFloat(loan.mcbu) || 0) - mcbuAmount),
               mcbuWithdrawal: (parseFloat(loan.mcbuWithdrawal) || 0) + mcbuAmount,
-              csf: Math.max(0, (parseFloat(loan.csf) || 0) - csfAmount), // Subtract CSF withdrawal
-              csfWithdrawal: (parseFloat(loan.csfWithdrawal) || 0) + csfAmount, // Add to CSF withdrawal total
+              csf: Math.max(0, (parseFloat(loan.csf) || 0) - csfAmount),
+              csfWithdrawal: (parseFloat(loan.csfWithdrawal) || 0) + csfAmount,
               modifiedBy: user_id,
               modifiedDateTime: new Date().toISOString()
             };
             
             // Add loan update to mutation list
             addToMutationList(alias => updateQl(loansType(alias), {
-              where: { _id: { _eq: id } },
+              where: { _id: { _eq: loan._id } },
               set: filterGraphFields(LOAN_FIELDS, {
                 ...updatedLoan,
                 mcbu: updatedLoan.mcbu,

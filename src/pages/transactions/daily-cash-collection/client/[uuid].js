@@ -828,9 +828,9 @@ const CashCollectionDetailsPage = () => {
                             collection.hasCsfWithdrawal = true;
                             collection.csfWithdrawalIsPending = mcbuWithdrawal.status == 'pending' ? true : false;
                             collection.csfWithdrawalId = mcbuWithdrawal._id;
-                            if (mcbuWithdrawal?.status == 'pending') {
+                            if (mcbuWithdrawal.status == 'pending') {
                                 collection.csfWithdrawal = mcbuWithdrawal.csf_withdrawal_amount || 0;
-                                collection.csfWithdrawalStr = collection.csfWithdrawal > 0 ? formatPricePhp(collection.csfWithdrawal) : '-';
+                                collection.csfWithdrawalStr = formatPricePhp(mcbuWithdrawal.csf_withdrawal_amount);
                             }
                         }
 
@@ -838,9 +838,9 @@ const CashCollectionDetailsPage = () => {
                             collection.hasMcbuWithdrawal = true;
                             collection.mcbuWithdrawalIsPending = mcbuWithdrawal.status == 'pending' ? true : false;
                             collection.mcbuWithdrawalId = mcbuWithdrawal._id;
-                            if (mcbuWithdrawal?.status == 'pending') {
+                            if (mcbuWithdrawal.status == 'pending') {
                                 collection.mcbuWithdrawal = mcbuWithdrawal.mcbu_withdrawal_amount || 0;
-                                collection.mcbuWithdrawalStr = collection.mcbuWithdrawal > 0 ? formatPricePhp(collection.mcbuWithdrawal) : '-';
+                                collection.mcbuWithdrawalStr = formatPricePhp(mcbuWithdrawal.mcbu_withdrawal_amount);
                             }
                         }
                     }
@@ -1079,8 +1079,8 @@ const CashCollectionDetailsPage = () => {
                             mcbuStr: loan.mcbu > 0 ? formatPricePhp(loan.mcbu) : '-',
                             mcbuCol: 0,
                             mcbuColStr: '-',
-                            mcbuWithdrawal: loan.mcbuWithdrawal,
-                            mcbuWithdrawalStr: loan.mcbuWithdrawal > 0 ? formatPricePhp(loan.mcbuWithdrawal) : '-',
+                            mcbuWithdrawal: currentLoan.mcbuWithdrawal,
+                            mcbuWithdrawalStr: formatPricePhp(currentLoan.mcbuWithdrawal),
                             mcbuReturnAmt: 0,
                             mcbuReturnAmtStr: '-',
                             mcbuInterest: loan.mcbuInterest,
@@ -3484,6 +3484,7 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.cbhbCollection > 0 ? formatPricePhp(cc.cbhbCollection) : '-' }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.otherIncome > 0 ? formatPricePhp(cc.otherIncome) : '-' }</td>
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center`}>
+                                                    {console.log("MCBU Withdrawal: ", cc.mcbuWithdrawalStr)}
                                                     { (cc.hasMcbuWithdrawal && cc.mcbuWithdrawalIsPending) ? (
                                                         <WarningIconWithTooltip amount={cc.mcbuWithdrawalStr} message="MCBU Withdrawal is pending." />
                                                     ) : cc.mcbuWithdrawalStr}
