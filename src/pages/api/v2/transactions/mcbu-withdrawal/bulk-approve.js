@@ -44,247 +44,49 @@ async function bulkApprove(req, res) {
     const errors = [];
     
     // Process each withdrawal update
-    for (const withdrawal of withdrawals) {
-      const { id, client_id, loan_id, mcbu_withdrawal_amount, csf_withdrawal_amount, group_leader, modified_by, modified_date } = withdrawal;
-      
-      if (!id) {
-        errors.push({ error: true, message: "Withdrawal ID is required", withdrawal });
-        continue;
-      }
-      
-      try {
-        // Get the loan information for this withdrawal
-        const loanResponse = await graph.query(
-          queryQl(loansType(), {
-            where: { clientId: { _eq: client_id }, status: { _eq: 'active' } }
-          })
-        );
-        
-        const loan = loanResponse.data?.loans?.[0];
-        
-        if (!loan) {
-          errors.push({ 
-            error: true, 
-            message: `Loan with ID ${loan_id} not found`, 
-            withdrawal 
-          });
-          continue;
-        }
-        
-        // Get the group information for this loan
-        const groupResponse = await graph.query(
-          queryQl(groupType(), {
-            where: { _id: { _eq: loan.groupId } }
-          })
-        );
-        
-        const group = groupResponse.data?.groups?.[0];
-        
-        if (!group) {
-          errors.push({ 
-            error: true, 
-            message: `Group with ID ${loan.groupId} not found`, 
-            withdrawal 
-          });
-          continue;
-        }
-        
-        // Validate withdrawal amounts
-        const mcbuAmount = parseFloat(mcbu_withdrawal_amount) || 0;
-        const csfAmount = parseFloat(csf_withdrawal_amount) || 0;
-        
-        const currentMcbu = parseFloat(loan.mcbu) || 0;
-        const currentCsf = parseFloat(loan.csf) || 0;
-        
-        if (mcbuAmount > currentMcbu) {
-          return res.status(400).json({
+
+    const validWithdrawalMap = {};
+
+    // validated all withdrawals and add it in a map for distinct duplicates
+    for(const withdrawal of withdrawals) {
+      if (!validWithdrawalMap[withdrawal.id]) {
+        const validWithdrawal = await validate(withdrawal.id, errors).catch(err => {
+          errors.push({
             error: true,
-            message: `MCBU withdrawal amount (${mcbuAmount}) exceeds available balance (${currentMcbu})`
+            message: 'Error in validating withdrawal',
+            withdrawal
           });
-        }
-        
-        // Validate CSF withdrawal amount against available balance
-        if (csfAmount > currentCsf && group_leader) {
-          return res.status(400).json({
-            error: true,
-            message: `CSF withdrawal amount (${csfAmount}) exceeds available balance (${currentCsf})`
-          });
-        }
-        
-        // Additional business logic validation for MCBU
-        if (mcbuAmount > 0) { // Only validate MCBU limits if amount > 0
-          // Group leaders: can only withdraw excess over 3000
-          // Regular clients (daily): can only withdraw excess over 1000
-          if (group_leader) {
-            const maxMcbuWithdrawal = Math.max(0, currentMcbu - 3000);
-            if (mcbuAmount > maxMcbuWithdrawal) {
-              return res.status(400).json({
-                error: true,
-                message: `Group leaders can only withdraw excess over ₱3,000 MCBU balance. Maximum allowed: ₱${maxMcbuWithdrawal}`
-              });
-            }
-          } else {
-            // Assuming daily occurrence for regular clients - this could be enhanced with actual occurrence check
-            const maxMcbuWithdrawal = Math.max(0, currentMcbu - 1000);
-            if (mcbuAmount > maxMcbuWithdrawal && loan.occurence !== 'weekly') {
-              return res.status(400).json({
-                error: true,
-                message: `Clients can only withdraw excess over ₱1,000 MCBU balance. Maximum allowed: ₱${maxMcbuWithdrawal}`
-              });
-            }
-          }
-        }
-        
-        // Validate CSF withdrawal amount (only for group leaders)
-        if (csfAmount > 0) {
-          const currentCsf = parseFloat(loan.csf) || 0;
-          if (csfAmount > currentCsf) {
-            errors.push({ 
-              error: true, 
-              message: `CSF withdrawal amount (${csfAmount}) exceeds available balance (${currentCsf})`, 
-              withdrawal 
-            });
-            continue;
-          }
-          
-          // Additional validation: CSF withdrawal should only be allowed for group leaders
-          // This check should be done on the frontend, but we add it here for security
-          const withdrawalRecord = await graph.query(
-            queryQl(mcbuWithdrawalsType(), {
-              where: { _id: { _eq: id } }
-            })
-          );
-          
-          const withdrawalData = withdrawalRecord.data?.mcbu_withdrawals?.[0];
-          if (withdrawalData && !withdrawalData.group_leader) {
-            errors.push({ 
-              error: true, 
-              message: `CSF withdrawal is only allowed for group leaders`, 
-              withdrawal 
-            });
-            continue;
-          }
-        }
-        
-        // Set up the update data for withdrawal
-        const updateData = {
-          status: 'approved',
-          approved_date: currentDate,
-          modified_by: modified_by,
-          modified_date: modified_date || new Date().toISOString()
-        };
-        
-        // Execute update query for the MCBU withdrawal
-        const withdrawalResult = await graph.mutation(
-          updateQl(mcbuWithdrawalsType(), {
-            where: { _id: { _eq: id } },
-            set: updateData
-          })
-        );
-        
-        if (withdrawalResult.errors) {
-          errors.push({ 
-            error: true, 
-            message: withdrawalResult.errors[0].message, 
-            withdrawal 
-          });
-        } else {
-          // Check if any records were updated
-          if (withdrawalResult.data.mcbu_withdrawals.returning.length > 0) {
-            // Update the loan with withdrawal information
-            const updatedLoan = {
-              ...loan,
-              mcbu: Math.max(0, (parseFloat(loan.mcbu) || 0) - mcbuAmount),
-              mcbuWithdrawal: (parseFloat(loan.mcbuWithdrawal) || 0) + mcbuAmount,
-              csf: Math.max(0, (parseFloat(loan.csf) || 0) - csfAmount),
-              csfWithdrawal: (parseFloat(loan.csfWithdrawal) || 0) + csfAmount,
-              modifiedBy: user_id,
-              modifiedDateTime: new Date().toISOString()
-            };
-            
-            // Add loan update to mutation list
-            addToMutationList(alias => updateQl(loansType(alias), {
-              where: { _id: { _eq: loan._id } },
-              set: filterGraphFields(LOAN_FIELDS, {
-                ...updatedLoan,
-                mcbu: updatedLoan.mcbu,
-                mcbuWithdrawal: updatedLoan.mcbuWithdrawal,
-                csf: updatedLoan.csf,
-                csfWithdrawal: updatedLoan.csfWithdrawal
-              })
-            }));
-            
-            // Get group cash collections for status determination
-            const groupCashCollections = (await graph.query(queryQl(cashCollectionsType(), {
-              where: {
-                groupId: { _eq: loan.groupId },
-                dateAdded: { _eq: currentDate },
-              }
-            }))).data?.cashCollections;
-            
-            let groupStatus = 'pending';
-            if (groupCashCollections.length > 0) {
-              const groupStatuses = groupCashCollections.filter(cc => cc.groupStatus === 'pending');
-              if (groupStatuses.length === 0) {
-                groupStatus = 'closed';
-              }
-            }
-            
-            // Save the cash collection with CSF withdrawal information
-            await saveCashCollection(
-              user_id, 
-              updatedLoan,
-              mcbuAmount,
-              csfAmount, // Pass CSF withdrawal amount
-              group, 
-              loan_id, 
-              currentDate, 
-              groupStatus, 
-              addToMutationList
-            );
-            
-            // Execute all mutations in a single transaction
-            if (mutationList.length > 0) {
-              try {
-                await graph.mutation(...mutationList);
-                // Clear mutation list after successful execution
-                mutationList.length = 0;
-              } catch (mutationError) {
-                console.error("Error executing mutations:", mutationError);
-                errors.push({ 
-                  error: true, 
-                  message: `Error executing mutations: ${mutationError.message}`, 
-                  withdrawal 
-                });
-                continue;
-              }
-            }
-            
-            results.push({
-              success: true,
-              id: id,
-              mcbu_withdrawal_amount: mcbuAmount,
-              csf_withdrawal_amount: csfAmount,
-              data: withdrawalResult.data.mcbu_withdrawals.returning[0]
-            });
-          } else {
-            errors.push({ 
-              error: true, 
-              message: "Withdrawal not found or not updated", 
-              withdrawal 
-            });
-          }
-        }
-      } catch (error) {
-        console.error(`Error processing withdrawal ${id}:`, error);
-        errors.push({ 
-          error: true, 
-          message: `Error updating withdrawal: ${error.message}`, 
-          withdrawal 
+          return false;
         });
+
+        if(!!validWithdrawal) {
+          validWithdrawalMap[withdrawal.id] = validWithdrawal;
+          await performApprovalWithdrawal(validWithdrawal, user_id, currentDate, addToMutationList, mutationList)
+              .then(() => {
+                results.push({ 
+                  success: true, 
+                  id: withdrawal._id, 
+                  mcbu_withdrawal_amount: validWithdrawal.withdrawal.mcbu_withdrawal_amount, 
+                  csf_withdrawal_amount: validWithdrawal.withdrawal.csf_withdrawal_amount, 
+                  data: {
+                    id: withdrawal._id,
+                    ... validWithdrawal.withdrawal
+                  } 
+                });
+              })
+              .catch((err) => {
+                errors.push({
+                  error: true,
+                  message: 'Error in saving withdrawal',
+                  withdrawal
+                })
+              }).finally(() => {
+                mutationList.length = 0
+              });
+        }
       }
     }
-    
+
     // Return results with success/error status
     return res.status(200).json({
       success: errors.length === 0,
@@ -413,4 +215,224 @@ async function saveCashCollection(user_id, loan, mcbuWithdrawalAmount, csfWithdr
       }
     }));
   }
+}
+
+async function performApprovalWithdrawal({withdrawal, loan, group}, user_id, currentDate, addToMutationList, mutationList) {
+  const { _id, loan_id, modified_by, csf_withdrawal_amount, mcbu_withdrawal_amount, modified_date } = withdrawal;
+
+  // Validate withdrawal amounts
+  const mcbuAmount = parseFloat(mcbu_withdrawal_amount) || 0;
+  const csfAmount = parseFloat(csf_withdrawal_amount) || 0;
+  
+  const updateData = {
+          status: 'approved',
+          approved_date: currentDate,
+          modified_by: modified_by,
+          modified_date: modified_date || new Date().toISOString()
+  };
+  
+  addToMutationList(alias => updateQl(mcbuWithdrawalsType(alias), {
+    where: { _id: { _eq: _id } },
+    set: updateData
+  }))
+
+  const updatedLoan = {
+    mcbu: Math.max(0, (parseFloat(loan.mcbu) || 0) - mcbuAmount),
+    mcbuWithdrawal: (parseFloat(loan.mcbuWithdrawal) || 0) + mcbuAmount,
+    csf: Math.max(0, (parseFloat(loan.csf) || 0) - csfAmount),
+    csfWithdrawal: (parseFloat(loan.csfWithdrawal) || 0) + csfAmount,
+    modifiedBy: user_id,
+    modifiedDateTime: new Date().toISOString()
+  };
+  
+  // Add loan update to mutation list
+  addToMutationList(alias => updateQl(loansType(alias), {
+    where: { _id: { _eq: loan._id } },
+    set: filterGraphFields(LOAN_FIELDS, {
+      ...updatedLoan,
+      mcbu: updatedLoan.mcbu,
+      mcbuWithdrawal: updatedLoan.mcbuWithdrawal,
+      csf: updatedLoan.csf,
+      csfWithdrawal: updatedLoan.csfWithdrawal
+    })
+  }));
+  
+  // Get group cash collections for status determination
+  const groupCashCollections = (await graph.query(queryQl(cashCollectionsType(), {
+    where: {
+      groupId: { _eq: loan.groupId },
+      dateAdded: { _eq: currentDate },
+    }
+  }))).data?.cashCollections;
+  
+  let groupStatus = 'pending';
+  if (groupCashCollections.length > 0) {
+    const groupStatuses = groupCashCollections.filter(cc => cc.groupStatus === 'pending');
+    if (groupStatuses.length === 0) {
+      groupStatus = 'closed';
+    }
+  }
+  
+  // Save the cash collection with CSF withdrawal information
+  await saveCashCollection(
+    user_id, 
+    {
+      ... loan,
+      ... updatedLoan,
+    },
+    mcbuAmount,
+    csfAmount, // Pass CSF withdrawal amount
+    group, 
+    loan_id, 
+    currentDate, 
+    groupStatus, 
+    addToMutationList
+  );
+
+  await graph.mutation(
+    ... mutationList
+  );
+}
+
+async function validate(id, errors) {
+  const [withdrawal] = await graph.query(
+    queryQl(mcbuWithdrawalsType('results'), {
+      where: { _id: { _eq: id } }
+    })
+  ).then(res => res.data.results);
+
+  if(!withdrawal) {
+    errors.push({ 
+        error: true, 
+        message: `Withdrawal is not found.`,
+        withdrawal: { _id: id }
+    });
+    return false;
+  }
+
+  const { client_id, loan_id, mcbu_withdrawal_amount, csf_withdrawal_amount, group_leader } = withdrawal;
+
+  if (withdrawal.status !== 'pending') {
+    errors.push({ 
+        error: true, 
+        message: `Withdrawal is already ${withdrawal.status}.`,
+        withdrawal 
+    });
+    return false;
+  } 
+
+   const loanResponse = await graph.query(
+      queryQl(loansType(), {
+        where: { clientId: { _eq: client_id }, status: { _eq: 'active' } }
+      })
+    );
+    
+    const loan = loanResponse.data?.loans?.[0];
+    
+    if (!loan) {
+      errors.push({ 
+        error: true, 
+        message: `Loan with ID ${loan_id} not found`, 
+        withdrawal 
+      });
+      return false;
+    }
+    
+    // Get the group information for this loan
+    const groupResponse = await graph.query(
+      queryQl(groupType(), {
+        where: { _id: { _eq: loan.groupId } }
+      })
+    );
+    
+    const group = groupResponse.data?.groups?.[0];
+    
+    if (!group) {
+      errors.push({ 
+        error: true, 
+        message: `Group with ID ${loan.groupId} not found`, 
+        withdrawal 
+      });
+      return false;
+    }
+    
+    // Validate withdrawal amounts
+    const mcbuAmount = parseFloat(mcbu_withdrawal_amount) || 0;
+    const csfAmount = parseFloat(csf_withdrawal_amount) || 0;
+    
+    const currentMcbu = parseFloat(loan.mcbu) || 0;
+    const currentCsf = parseFloat(loan.csf) || 0;
+    
+    if (mcbuAmount > currentMcbu) {
+      errors.push({ 
+        error: true, 
+        message: `MCBU withdrawal amount (${mcbuAmount}) exceeds available balance (${currentMcbu})`, 
+        withdrawal 
+      });
+
+      return false;
+    }
+    
+    // Validate CSF withdrawal amount against available balance
+    if (csfAmount > currentCsf && group_leader) {
+
+      errors.push({ 
+        error: true, 
+        message: `CSF withdrawal amount (${csfAmount}) exceeds available balance (${currentCsf})`,
+      });
+    }
+    
+    // Additional business logic validation for MCBU
+    if (mcbuAmount > 0) { // Only validate MCBU limits if amount > 0
+      // Group leaders: can only withdraw excess over 3000
+      // Regular clients (daily): can only withdraw excess over 1000
+      if (group_leader) {
+        const maxMcbuWithdrawal = Math.max(0, currentMcbu - 3000);
+        if (mcbuAmount > maxMcbuWithdrawal) {
+
+           errors.push({ 
+            error: true, 
+            message: `Group leaders can only withdraw excess over ₱3,000 MCBU balance. Maximum allowed: ₱${maxMcbuWithdrawal}`,
+            withdrawal
+          });
+
+          return false;
+        }
+      } else {
+        // Assuming daily occurrence for regular clients - this could be enhanced with actual occurrence check
+        const maxMcbuWithdrawal = Math.max(0, currentMcbu - 1000);
+        if (mcbuAmount > maxMcbuWithdrawal && loan.occurence !== 'weekly') {
+          
+          errors.push({ 
+            error: true, 
+            message: `Clients can only withdraw excess over ₱1,000 MCBU balance. Maximum allowed: ₱${maxMcbuWithdrawal}`,
+            withdrawal
+          });
+          return false;
+        }
+      }
+    }
+    
+    // Validate CSF withdrawal amount (only for group leaders)
+    if (csfAmount > 0) {
+      const currentCsf = parseFloat(loan.csf) || 0;
+      if (csfAmount > currentCsf) {
+        errors.push({ 
+          error: true, 
+          message: `CSF withdrawal amount (${csfAmount}) exceeds available balance (${currentCsf})`, 
+          withdrawal 
+        });
+        return false;
+      }
+      
+      if (!withdrawal.group_leader) {
+        errors.push({ 
+          error: true, 
+          message: `CSF withdrawal is only allowed for group leaders`, 
+          withdrawal 
+        });
+        return false;
+      }
+    }
+    return { withdrawal, loan, group };
 }
