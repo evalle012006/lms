@@ -315,7 +315,8 @@ async function saveCashCollection(loan, group, currentDate, addToMutationList) {
         cbhbCollection: loan.cbhbCollection,
         otherPassbookCollection: loan.otherPassbookCollection,
         otherPictureCollection: loan.otherPictureCollection,
-        csf: loan.csf
+        csf: loan.csf,
+        loanId: loan._id, // update the cash collection to the new loan
       }),
     }));
   } else {
