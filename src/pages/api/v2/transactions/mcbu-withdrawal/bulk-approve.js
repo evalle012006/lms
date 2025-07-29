@@ -65,11 +65,11 @@ async function bulkApprove(req, res) {
               .then(() => {
                 results.push({ 
                   success: true, 
-                  id: withdrawal._id, 
+                  id: withdrawal.id, 
                   mcbu_withdrawal_amount: validWithdrawal.withdrawal.mcbu_withdrawal_amount, 
                   csf_withdrawal_amount: validWithdrawal.withdrawal.csf_withdrawal_amount, 
                   data: {
-                    id: withdrawal._id,
+                    id: withdrawal.id,
                     ... validWithdrawal.withdrawal
                   } 
                 });
@@ -238,9 +238,9 @@ async function performApprovalWithdrawal({withdrawal, loan, group}, user_id, cur
 
   const updatedLoan = {
     mcbu: Math.max(0, (parseFloat(loan.mcbu) || 0) - mcbuAmount),
-    mcbuWithdrawal: (parseFloat(loan.mcbuWithdrawal) || 0) + mcbuAmount,
+    mcbuWithdrawal: mcbuAmount,
     csf: Math.max(0, (parseFloat(loan.csf) || 0) - csfAmount),
-    csfWithdrawal: (parseFloat(loan.csfWithdrawal) || 0) + csfAmount,
+    csfWithdrawal: csfAmount,
     modifiedBy: user_id,
     modifiedDateTime: new Date().toISOString()
   };
