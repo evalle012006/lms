@@ -250,8 +250,7 @@ async function saveCashCollection(loan, group, currentDate, addToMutationList) {
           set: filterGraphFields(CASH_COLLECTIONS_FIELDS, { 
             ...cashCollection, 
             status: status, 
-            loanCycle: 
-            loan.loanCycle, 
+            loanCycle: loan.loanCycle, 
             lrfCollection: 0,
             cbhbCollection: 0,
             otherPassbookCollection: 0,
