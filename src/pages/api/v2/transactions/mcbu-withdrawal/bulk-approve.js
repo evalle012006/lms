@@ -201,9 +201,9 @@ async function saveCashCollection(user_id, loan, mcbuWithdrawalAmount, csfWithdr
 
     const updateFields = {
       mcbu: loan.mcbu || 0,
-      mcbuWithdrawal: (parseFloat(cashCollection[0].mcbuWithdrawal || 0)) + mcbuWithdrawalAmount,
+      mcbuWithdrawal: mcbuWithdrawalAmount,
       csf: loan.csf || 0, // Update CSF balance
-      csfWithdrawal: (parseFloat(cashCollection[0].csfWithdrawal || 0)) + csfWithdrawalAmount, // Add to existing CSF withdrawal
+      csfWithdrawal: csfWithdrawalAmount, // Add to existing CSF withdrawal
       modifiedBy: "automation-mcbu-withdrawal",
       modifiedDateTime: new Date(),
     };
