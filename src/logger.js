@@ -80,7 +80,7 @@ const logger = winston.createLogger({
   transports: [
     logs,
     errors,
-    dbLogger,
+    // dbLogger,
   ]
 });
 
