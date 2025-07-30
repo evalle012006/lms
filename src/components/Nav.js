@@ -180,7 +180,7 @@ const MenuItems = [
         active: false,
         hasSub: false,
         hidden: false,
-        roles: [1, 2, 3] // Only visible to roles 1, 2, 3
+        roles: [1, 2]
     },
     {
         label: "Areas",
