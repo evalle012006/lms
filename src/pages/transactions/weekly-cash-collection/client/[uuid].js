@@ -1131,7 +1131,7 @@ const CashCollectionDetailsPage = () => {
                     }
 
                     cashCollection[index] = {...cashCollection[index], loanFor: loan?.loanFor, dateOfRelease: loan?.dateOfRelease};
-                } else if (loan) {
+                } else if (loan && (currentLoan == null || currentLoan?.status !== 'active')) {
                     const prevLoan = loan.prevLoans.length > 0 ? loan.prevLoans[loan.prevLoans.length - 1] : null;
                     let pendingTomorrow = {
                         _id: loan._id,
@@ -1139,6 +1139,7 @@ const CashCollectionDetailsPage = () => {
                         coMaker: (loan.coMaker && typeof loan.coMaker == 'number') ? loan.coMaker : '-',
                         slotNo: loan.slotNo,
                         loanId: loan._id,
+                        group: prevLoan ? prevLoan.group : loan.group,
                         groupId: loan.groupId,
                         branchId: loan.branchId,
                         clientId: loan.clientId,
