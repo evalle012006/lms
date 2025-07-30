@@ -247,7 +247,17 @@ async function saveCashCollection(loan, group, currentDate, addToMutationList) {
 
         addToMutationList(alias =>updateQl(cashCollectionType(alias), {
           where: { _id: { _eq: ccId } },
-          set: filterGraphFields(CASH_COLLECTIONS_FIELDS, { ...cashCollection, status: status, loanCycle: loan.loanCycle, modifiedDate: currentDate })
+          set: filterGraphFields(CASH_COLLECTIONS_FIELDS, { 
+            ...cashCollection, 
+            status: status, 
+            loanCycle: loan.loanCycle, 
+            lrfCollection: 0,
+            cbhbCollection: 0,
+            otherPassbookCollection: 0,
+            otherPictureCollection: 0,
+            csf: 0,
+            modifiedDate: currentDate 
+          })
         }));
 
     } else {

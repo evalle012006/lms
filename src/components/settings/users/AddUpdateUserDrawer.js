@@ -29,7 +29,6 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
     const currentDate = useSelector(state => state.systemSettings.currentDate);
     const [occurence, setOccurence] = useState('daily');
     const branchList = useSelector(state => state.branch.list);
-    
     const divisionList = useSelector(state => state.division.list);
     const areaList = useSelector(state => state.area.list);
     const regionList = useSelector(state => state.region.list);
@@ -192,7 +191,7 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
 
             if (selectedRole.rep === 2) {
                 values.designatedBranch = values.designatedBranch || '[]';
-            } else if (selectedRole.rep > 3) {
+            } else if (selectedRole.rep >= 3) {
                 const selectedBranch = branchList.find(b => b.code === values.designatedBranch);
                 if (selectedBranch) {
                     values.designatedBranchId = selectedBranch._id;
