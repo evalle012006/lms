@@ -358,7 +358,8 @@ const ModernBranchCashCollections = () => {
             admissionCollection: item.admissionCollection ? `₱${Number(item.admissionCollection).toLocaleString()}` : '-',
             lrfCollection: item.lrfCollection ? `₱${Number(item.lrfCollection).toLocaleString()}` : '-',
             cbhbCollection: item.cbhbCollection ? `₱${Number(item.cbhbCollection).toLocaleString()}` : '-',
-            otherCollection: item.otherCollection ? `₱${Number(item.otherCollection).toLocaleString()}` : '-',
+            otherCollection: item.otherIncome ? `₱${Number(item.otherIncome).toLocaleString()}` : '-',
+            csfIn: item.csfIn ? `₱${Number(item.csfIn).toLocaleString()}` : '-',
             csfWithdrawal: item.admissionCollection ? `₱${Number(item.csfWithdrawal).toLocaleString()}` : '-',
 
             status: item.status || 'open',
@@ -947,6 +948,7 @@ const ModernBranchCashCollections = () => {
     otherCollection: true,
     csfWithdrawal: true,
     transferClients: true,
+    csfIn: true,
   });
 
   const columnDefs = useMemo(() => [
@@ -967,6 +969,7 @@ const ModernBranchCashCollections = () => {
     { key: 'admissionCollection', label: 'Admission Fee', width: 'w-40', },
     { key: 'lrfCollection', label: 'LRF', width: 'w-40', },
     { key: 'cbhbCollection', label: 'C.B.H.B Collection', width: 'w-40', },
+    { key: 'csfIn', label: 'CSF In', width: 'w-40', },
     { key: 'otherCollection', label: 'Other Income', width: 'w-40', },
     { key: 'mcbuWithdrawal', label: 'MCBU Withdrawals', width: 'w-40', },
     { key: 'csfWithdrawal', label: 'CSF Withdrawals', width: 'w-40', },
