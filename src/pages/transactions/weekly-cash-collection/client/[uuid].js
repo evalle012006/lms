@@ -1239,7 +1239,8 @@ const CashCollectionDetailsPage = () => {
                     safeNumber(cc.admissionCollection) + 
                     safeNumber(cc.lrfCollection) + 
                     safeNumber(cc.cbhbCollection) + 
-                    safeNumber(updateOtherIncome)
+                    safeNumber(updateOtherIncome) + 
+                    safeNumber(csfIn) 
                 ) - (
                     safeNumber(cc.mcbuWithdrawal) + 
                     safeNumber(cc.csfWithdrawal) + 
@@ -1249,8 +1250,8 @@ const CashCollectionDetailsPage = () => {
                 return {
                     ...cc,
                     mcbuCol: safeNumber(cc.mcbuCol),
-                    csfIn: cc.csfIn,
-                    csfInStr: cc.csfIn > 0 ? formatPricePhp(cc.csfIn) : '-',
+                    csfIn: csfIn,
+                    csfInStr: csfIn > 0 ? formatPricePhp(csfIn) : '-',
                     otherIncome: updateOtherIncome,
                     otherIncomeStr: updateOtherIncome > 0 ? formatPricePhp(updateOtherIncome) : '-',
                     totalCollection: totalCollection
@@ -1337,6 +1338,7 @@ const CashCollectionDetailsPage = () => {
         let totalCsfWithdrawal = 0;
         let totalCollection = 0;
         let totalCsfReturnAmt = 0;
+        let totalCsfIn = 0;
 
         dataArr.map(collection => {
             if (collection.status !== 'open' && collection.status !== 'totals') {
@@ -1369,6 +1371,7 @@ const CashCollectionDetailsPage = () => {
 
                 if (!['pending', 'rejected'].includes(collection.status)) {
                     totalCsf += safeNumber(collection.csf);
+                    totalCsfIn += safeNumber(collection.csfIn);
                     totalCsfCollection += safeNumber(collection.csfCollection);
                     totalAdmissionFee += safeNumber(collection.admissionCollection);
                     totalLrf += safeNumber(collection.lrfCollection);
@@ -1401,6 +1404,8 @@ const CashCollectionDetailsPage = () => {
             mcbuReturnAmtStr: totalMcbuReturn > 0 ? formatPricePhp(totalMcbuReturn) : '-',
             mcbuInterest: totalMcbuInterest,
             mcbuInterestStr: totalMcbuInterest > 0 ? formatPricePhp(totalMcbuInterest) : '-',
+            csfIn: totalCsfIn,
+            csfInStr: totalCsfIn > 0 ? formatPricePhp(totalCsfIn) : '-',
             csfCollection: totalCsfCollection,
             csfCollectionStr: totalCsfCollection > 0 ? formatPricePhp(totalCsfCollection) : '-',
             admissionCollection: totalAdmissionFee,
@@ -3418,7 +3423,7 @@ const CashCollectionDetailsPage = () => {
                                         <th className="p-2 text-center">Admission Fee</th>
                                         <th className="p-2 text-center">LRF</th>
                                         <th className="p-2 text-center">C.B.H.B Collection</th>
-                                        {hasGroupLeader && <th className="p-2 text-center">CSF In</th> }
+                                        {!hasGroupLeader && <th className="p-2 text-center">CSF In</th> }
                                         <th className="p-2 text-center">Other Income Passbook/Picture</th>
                                         <th className="p-2 text-center">MCBU Withdrawal</th>
                                         <th className="p-2 text-center">CSF Withdrawal</th>
@@ -3544,7 +3549,7 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.admissionCollection > 0 ? formatPricePhp(cc.admissionCollection) : '-' }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.lrfCollection > 0 ? formatPricePhp(cc.lrfCollection) : '-' }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.cbhbCollection > 0 ? formatPricePhp(cc.cbhbCollection) : '-' }</td>
-                                                { hasGroupLeader && <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.csfInStr }</td> }
+                                                { !hasGroupLeader && <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.csfInStr }</td> }
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.otherIncomeStr }</td>
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center`}>
                                                     { (cc.hasMcbuWithdrawal && cc.mcbuWithdrawalIsPending) ? (
