@@ -360,7 +360,8 @@ const ModernBranchCashCollections = () => {
             cbhbCollection: item.cbhbCollection ? `₱${Number(item.cbhbCollection).toLocaleString()}` : '-',
             otherCollection: item.otherIncome ? `₱${Number(item.otherIncome).toLocaleString()}` : '-',
             csfIn: item.csfIn ? `₱${Number(item.csfIn).toLocaleString()}` : '-',
-            csfWithdrawal: item.admissionCollection ? `₱${Number(item.csfWithdrawal).toLocaleString()}` : '-',
+            csfWithdrawal: item.csfWithdrawal ? `₱${Number(item.csfWithdrawal).toLocaleString()}` : '-',
+            cashOnHand: item.cashOnHand ? `₱${Number(item.cashOnHand).toLocaleString()}` : '-',
 
             status: item.status || 'open',
             totalData: item.row_num === null
@@ -949,6 +950,7 @@ const ModernBranchCashCollections = () => {
     csfWithdrawal: true,
     transferClients: true,
     csfIn: true,
+    cashOnHand: true,
   });
 
   const columnDefs = useMemo(() => [
@@ -982,6 +984,7 @@ const ModernBranchCashCollections = () => {
     { key: 'pastDueAmount', label: 'PD Amount', width: 'w-20', hasComparison: true },
     { key: 'pendingClients', label: 'PND', width: 'w-20' },
     { key: 'transferClients', label: 'TOC', width: 'w-20' },
+    { key: 'cashOnHand', label: 'Cash On Hand', width: 'w-20' },
   ], [currentFilter]);
 
   useEffect(() => {
