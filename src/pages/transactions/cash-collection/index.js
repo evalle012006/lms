@@ -950,6 +950,7 @@ const ModernBranchCashCollections = () => {
     csfWithdrawal: true,
     transferClients: true,
     csfIn: true,
+    cashOnHand: true,
   });
 
   const columnDefs = useMemo(() => [
