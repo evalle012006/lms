@@ -950,7 +950,7 @@ const ModernBranchCashCollections = () => {
     csfWithdrawal: true,
     transferClients: true,
     csfIn: true,
-    cashOnHand: true,
+    cashOnHand: currentUser.role.rep <= 3,
   });
 
   const columnDefs = useMemo(() => [
