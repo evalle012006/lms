@@ -37,7 +37,7 @@ async function save(req, res) {
         const promiseData = data.collection.map(async cc => {
             if (cc.status !== "totals") {
 
-                const collection = JSON.parse(JSON.stringify(cc))// clone entry to avoid reference update
+                const collection = JSON.parse(JSON.stringify(cc))
                 delete collection.reverted;
 
                 // get loan snapshot 
@@ -55,8 +55,6 @@ async function save(req, res) {
                     })
                 );
 
-                const timeArgs = currentTime.split(" ");
-                // put this in the config settings should be by hour and minute?
                 // collection.latePayment = (timeArgs[1] == 'PM' && timeArgs[0].startsWith('6')) ? true : false;
                 collection.timeAdded = currentTime;
 
@@ -302,6 +300,7 @@ async function updateLoan(user_id, mutationQL, collection, currentDate) {
         loan.csfCollection = safeNumber(loan.csfCollection) + safeNumber(collection.csfCollection);
         loan.csfWithdrawal = safeNumber(loan.csfWithdrawal) + safeNumber(collection.csfWithdrawal);
         loan.csfReturnAmt = safeNumber(loan.csfReturnAmt) + safeNumber(collection.csfReturnAmt);
+        loan.csfIn = safeNumber(loan.csfIn) + safeNumber(collection.csfIn);
 
         // if (collection?.mcbuDailyWithdrawal > 0) {
         //     if (loan.hasOwnProperty('mcbuDailyWithdrawal')) {

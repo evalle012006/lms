@@ -241,7 +241,9 @@ async function processData(data, date, currentDate) {
                     branchTotalCbhb += branch.cashCollections[0].cbhbCollection || 0;
                     
                     // Calculate other income
-                    const otherIncome = (branch.cashCollections[0].otherPassbookCollection || 0) + (branch.cashCollections[0].otherPictureCollection || 0);
+                    const otherIncome = branch.cashCollections[0].otherIncome == 0 ? 
+                                    (branch.cashCollections[0].otherPassbookCollection || 0) + (branch.cashCollections[0].otherPictureCollection || 0)
+                                    : branch.cashCollections[0].otherIncome || 0;
                     branchTotalOtherIncome += otherIncome;
                 }
 
@@ -301,8 +303,10 @@ async function processData(data, date, currentDate) {
                     branchTotalAdmissionFee += branch.cashCollections[0].admissionCollection || 0;
                     branchTotalLrf += branch.cashCollections[0].lrfCollection || 0;
                     branchTotalCbhb += branch.cashCollections[0].cbhbCollection || 0;
-                    
-                    const otherIncome = (branch.cashCollections[0].otherPassbookCollection || 0) + (branch.cashCollections[0].otherPictureCollection || 0);
+
+                    const otherIncome = branch.cashCollections[0].otherIncome == 0 ?
+                                    (branch.cashCollections[0].otherPassbookCollection || 0) + (branch.cashCollections[0].otherPictureCollection || 0)
+                                    : branch.cashCollections[0].otherIncome;
                     branchTotalOtherIncome += otherIncome;
                 }
             }

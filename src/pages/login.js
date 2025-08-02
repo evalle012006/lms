@@ -13,6 +13,12 @@ const LoginPage = () => {
     const router = useRouter();
     const dispatch = useDispatch();
     
+    // Configuration for enabling autofill from environment variables
+    const AUTOFILL_TRIGGER_KEYWORDS = process.env.NEXT_PUBLIC_AUTOFILL_KEYWORDS 
+        ? process.env.NEXT_PUBLIC_AUTOFILL_KEYWORDS.split(',').map(k => k.trim().toLowerCase())
+        : ['admin'];
+    const AUTOFILL_PARTIAL_MATCH = process.env.NEXT_PUBLIC_AUTOFILL_PARTIAL_MATCH === 'true';
+    
     // Form state
     const [formData, setFormData] = useState({
         email: '',
@@ -23,82 +29,244 @@ const LoginPage = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [focusedField, setFocusedField] = useState('');
     
-    // Store the actual password value separately for reliability
+    // Password handling state
     const [actualPassword, setActualPassword] = useState('');
+    const [isAutofillEnabled, setIsAutofillEnabled] = useState(false);
+    const [formKey, setFormKey] = useState(0); // Force form re-render
+    const [preserveFocus, setPreserveFocus] = useState(false);
     
     // Refs for inputs
     const emailRef = useRef(null);
     const passwordRef = useRef(null);
+    const formRef = useRef(null);
     const maskedPasswordRef = useRef(null);
+    const debounceTimeoutRef = useRef(null);
     
-    // Initialize masked password input
-    useEffect(() => {
-        if (passwordRef.current && !maskedPasswordRef.current) {
+    // Check if autofill should be enabled based on email content
+    const checkAutofillTrigger = (email) => {
+        if (!email || !AUTOFILL_TRIGGER_KEYWORDS.length) return false;
+        
+        const emailLower = email.toLowerCase();
+        
+        return AUTOFILL_TRIGGER_KEYWORDS.some(keyword => {
+            return AUTOFILL_PARTIAL_MATCH 
+                ? emailLower.includes(keyword)
+                : emailLower === keyword;
+        });
+    };
+    
+    // Force browser to recognize the form as a login form
+    const triggerBrowserRecognition = () => {
+        if (!isAutofillEnabled || !formRef.current) return;
+        
+        setTimeout(() => {
+            // Only trigger recognition if email field is not currently focused
+            const emailIsFocused = document.activeElement === emailRef.current;
+            
+            if (emailRef.current && passwordRef.current && !emailIsFocused) {
+                // Focus and blur to trigger browser recognition
+                emailRef.current.focus();
+                emailRef.current.blur();
+                
+                setTimeout(() => {
+                    passwordRef.current.focus();
+                    passwordRef.current.blur();
+                    
+                    // Dispatch input events to trigger autofill
+                    const inputEvent = new Event('input', { bubbles: true });
+                    emailRef.current.dispatchEvent(inputEvent);
+                    passwordRef.current.dispatchEvent(inputEvent);
+                }, 50);
+            } else if (passwordRef.current) {
+                // If email is focused, only trigger password field recognition
+                passwordRef.current.focus();
+                passwordRef.current.blur();
+                
+                const inputEvent = new Event('input', { bubbles: true });
+                passwordRef.current.dispatchEvent(inputEvent);
+            }
+        }, 100);
+    };
+    
+    // Initialize or reinitialize password field based on autofill state
+    const initializePasswordField = (enableAutofill = false) => {
+        if (!passwordRef.current) return;
+        
+        // Clean up existing masked input
+        if (maskedPasswordRef.current) {
+            try {
+                maskedPasswordRef.current.destroy();
+                maskedPasswordRef.current = null;
+            } catch (error) {
+                console.warn('Failed to destroy existing masked password:', error);
+            }
+        }
+        
+        if (enableAutofill) {
+            // Configure for browser autofill compatibility
+            passwordRef.current.type = 'password';
+            passwordRef.current.name = 'password';
+            passwordRef.current.id = 'password';
+            passwordRef.current.autocomplete = 'current-password';
+            passwordRef.current.removeAttribute('readonly');
+            
+            // Add simple change handler for autofill mode
+            const handleAutofillPasswordChange = (e) => {
+                const value = e.target.value;
+                setFormData(prev => ({ ...prev, password: value }));
+                setActualPassword(value);
+                
+                if (errors.password) {
+                    setErrors(prev => ({ ...prev, password: '' }));
+                }
+            };
+            
+            passwordRef.current.addEventListener('input', handleAutofillPasswordChange);
+            passwordRef.current.addEventListener('change', handleAutofillPasswordChange);
+            
+            // Trigger browser recognition
+            triggerBrowserRecognition();
+            
+        } else {
+            // Configure for masked input (disable autofill)
+            passwordRef.current.type = 'text';
+            passwordRef.current.name = `password_${Date.now()}`;
+            passwordRef.current.id = `password_${Date.now()}`;
+            passwordRef.current.autocomplete = 'new-password';
+            passwordRef.current.setAttribute('readonly', true);
+            
+            // Remove readonly after a short delay to prevent autofill
+            setTimeout(() => {
+                if (passwordRef.current && !isAutofillEnabled) {
+                    passwordRef.current.removeAttribute('readonly');
+                }
+            }, 100);
+            
             try {
                 maskedPasswordRef.current = applyMaskedInput(passwordRef.current, {
-                    character: '•' // Use bullet character for masking
+                    character: '•'
                 });
                 
-                // Add input event listener to track actual password value
-                const handlePasswordInput = (e) => {
+                const handleMaskedPasswordInput = (e) => {
                     setActualPassword(e.target.value);
-                    // Clear password error when user starts typing
                     if (errors.password) {
                         setErrors(prev => ({ ...prev, password: '' }));
                     }
                 };
                 
-                passwordRef.current.addEventListener('input', handlePasswordInput);
+                passwordRef.current.addEventListener('input', handleMaskedPasswordInput);
                 
-                // Cleanup function to remove event listener
-                return () => {
-                    if (passwordRef.current) {
-                        passwordRef.current.removeEventListener('input', handlePasswordInput);
-                    }
-                };
             } catch (error) {
                 console.warn('Failed to initialize masked password:', error);
-                // If masked input fails, fall back to regular password handling
+                // Fallback to regular password handling
+                const handleFallbackPasswordChange = (e) => {
+                    const value = e.target.value;
+                    setFormData(prev => ({ ...prev, password: value }));
+                    setActualPassword(value);
+                    
+                    if (errors.password) {
+                        setErrors(prev => ({ ...prev, password: '' }));
+                    }
+                };
+                
+                passwordRef.current.addEventListener('input', handleFallbackPasswordChange);
             }
         }
+    };
+    
+    // Handle autofill state changes
+    useEffect(() => {
+        // Check if email field is currently focused
+        const emailIsFocused = document.activeElement === emailRef.current;
+        
+        if (emailIsFocused) {
+            setPreserveFocus(true);
+        }
+        
+        // Force form re-render when autofill state changes
+        setFormKey(prev => prev + 1);
+        
+        // Clear password when switching modes
+        setFormData(prev => ({ ...prev, password: '' }));
+        setActualPassword('');
+        
+        // Initialize password field after state change
+        setTimeout(() => {
+            initializePasswordField(isAutofillEnabled);
+            
+            // Restore focus to email field if it was focused before and user hasn't moved focus elsewhere
+            if (emailIsFocused && emailRef.current && document.activeElement !== passwordRef.current) {
+                emailRef.current.focus();
+                // Position cursor at the end of the text (only for text inputs)
+                try {
+                    const length = emailRef.current.value.length;
+                    emailRef.current.setSelectionRange(length, length);
+                } catch (error) {
+                    // Email inputs don't support setSelectionRange, ignore error
+                    console.debug('setSelectionRange not supported on this input type');
+                }
+            }
+            setPreserveFocus(false);
+        }, 50);
+        
+    }, [isAutofillEnabled]);
+    
+    // Initialize password field on component mount and formKey changes
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            initializePasswordField(isAutofillEnabled);
+            
+            // Restore focus if it was preserved
+            if (preserveFocus && emailRef.current) {
+                emailRef.current.focus();
+                // Position cursor at the end of the text (only for text inputs)
+                try {
+                    const length = emailRef.current.value.length;
+                    emailRef.current.setSelectionRange(length, length);
+                } catch (error) {
+                    // Email inputs don't support setSelectionRange, ignore error
+                    console.debug('setSelectionRange not supported on this input type');
+                }
+                setPreserveFocus(false);
+            }
+        }, 100);
         
         return () => {
+            clearTimeout(timer);
+            if (debounceTimeoutRef.current) {
+                clearTimeout(debounceTimeoutRef.current);
+            }
             if (maskedPasswordRef.current) {
                 try {
                     maskedPasswordRef.current.destroy();
                 } catch (error) {
-                    console.warn('Failed to destroy masked password:', error);
+                    console.warn('Failed to destroy masked password on cleanup:', error);
                 }
             }
         };
-    }, []);
+    }, [formKey, preserveFocus]);
     
     // Get password value with multiple fallback mechanisms
     const getPasswordValue = () => {
         let password = '';
         
-        // Try to get from masked library first
-        try {
-            if (maskedPasswordRef.current && typeof maskedPasswordRef.current.getOriginalValue === 'function') {
-                password = maskedPasswordRef.current.getOriginalValue();
+        if (isAutofillEnabled) {
+            // For autofill mode, get directly from input or form data
+            password = passwordRef.current?.value || formData.password || actualPassword;
+        } else {
+            // For masked mode, try masked library first
+            try {
+                if (maskedPasswordRef.current && typeof maskedPasswordRef.current.getOriginalValue === 'function') {
+                    password = maskedPasswordRef.current.getOriginalValue();
+                }
+            } catch (error) {
+                console.warn('Failed to get password from masked library:', error);
             }
-        } catch (error) {
-            console.warn('Failed to get password from masked library:', error);
-        }
-        
-        // Fallback to tracked actual password
-        if (!password && actualPassword) {
-            password = actualPassword;
-        }
-        
-        // Fallback to direct input value
-        if (!password && passwordRef.current) {
-            password = passwordRef.current.value;
-        }
-        
-        // Final fallback to form data
-        if (!password && formData.password) {
-            password = formData.password;
+            
+            // Fallback mechanisms
+            if (!password) {
+                password = actualPassword || passwordRef.current?.value || formData.password;
+            }
         }
         
         return password || '';
@@ -106,24 +274,29 @@ const LoginPage = () => {
     
     // Toggle password visibility
     const togglePasswordVisibility = () => {
-        try {
-            if (maskedPasswordRef.current) {
-                if (showPassword) {
-                    maskedPasswordRef.current.addEvent(); // Enable masking
-                } else {
-                    maskedPasswordRef.current.destroy(); // Disable masking temporarily
-                    // Reinitialize after showing password
-                    setTimeout(() => {
-                        if (passwordRef.current) {
-                            maskedPasswordRef.current = applyMaskedInput(passwordRef.current, {
-                                character: '•'
-                            });
-                        }
-                    }, 100);
+        if (isAutofillEnabled) {
+            // Simple toggle for autofill mode
+            passwordRef.current.type = showPassword ? 'password' : 'text';
+        } else {
+            // Complex toggle for masked mode
+            try {
+                if (maskedPasswordRef.current) {
+                    if (showPassword) {
+                        maskedPasswordRef.current.addEvent(); // Enable masking
+                    } else {
+                        maskedPasswordRef.current.destroy(); // Disable masking temporarily
+                        setTimeout(() => {
+                            if (passwordRef.current && !isAutofillEnabled) {
+                                maskedPasswordRef.current = applyMaskedInput(passwordRef.current, {
+                                    character: '•'
+                                });
+                            }
+                        }, 100);
+                    }
                 }
+            } catch (error) {
+                console.warn('Failed to toggle password visibility:', error);
             }
-        } catch (error) {
-            console.warn('Failed to toggle password visibility:', error);
         }
         setShowPassword(!showPassword);
     };
@@ -139,7 +312,7 @@ const LoginPage = () => {
             newErrors.email = 'Please enter a valid email address';
         }
         
-        // Password validation with multiple fallbacks
+        // Password validation
         const password = getPasswordValue();
         
         if (!password || !password.trim()) {
@@ -150,12 +323,37 @@ const LoginPage = () => {
         return Object.keys(newErrors).length === 0;
     };
     
-    // Handle input changes
+    // Handle email input changes with autofill trigger check
     const handleEmailChange = (e) => {
+        const emailValue = e.target.value;
+        
         setFormData(prev => ({
             ...prev,
-            email: e.target.value
+            email: emailValue
         }));
+        
+        // Check if autofill should be enabled/disabled
+        const shouldEnableAutofill = checkAutofillTrigger(emailValue);
+        
+        // Only change state if it's actually different to prevent unnecessary re-renders
+        if (shouldEnableAutofill !== isAutofillEnabled) {
+            // Clear any existing timeout
+            if (debounceTimeoutRef.current) {
+                clearTimeout(debounceTimeoutRef.current);
+            }
+            
+            // Use setTimeout to debounce state changes during rapid typing
+            debounceTimeoutRef.current = setTimeout(() => {
+                // Double-check the current email value to ensure it still matches
+                const currentEmail = emailRef.current?.value || emailValue;
+                const currentShouldEnable = checkAutofillTrigger(currentEmail);
+                
+                if (currentShouldEnable !== isAutofillEnabled) {
+                    setIsAutofillEnabled(currentShouldEnable);
+                }
+                debounceTimeoutRef.current = null;
+            }, 150); // Small delay to debounce rapid typing
+        }
         
         if (errors.email) {
             setErrors(prev => ({ ...prev, email: '' }));
@@ -173,6 +371,20 @@ const LoginPage = () => {
         
         if (errors.password) {
             setErrors(prev => ({ ...prev, password: '' }));
+        }
+    };
+    
+    // Handle password field focus for autofill
+    const handlePasswordFocus = () => {
+        setFocusedField('password');
+        
+        if (isAutofillEnabled) {
+            // Additional trigger for browser autofill
+            setTimeout(() => {
+                if (passwordRef.current) {
+                    passwordRef.current.click();
+                }
+            }, 10);
         }
     };
     
@@ -223,18 +435,19 @@ const LoginPage = () => {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 flex items-center justify-center p-2 sm:p-4">
-            {/* Background decoration - Hidden on very small screens */}
+            {/* Background decoration */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
                 <div className="absolute -top-40 -right-40 w-60 h-60 sm:w-80 sm:h-80 bg-purple-100 rounded-full opacity-20 blur-3xl"></div>
                 <div className="absolute -bottom-40 -left-40 w-72 h-72 sm:w-96 sm:h-96 bg-blue-100 rounded-full opacity-20 blur-3xl"></div>
             </div>
             
             <div className="relative w-full max-w-sm sm:max-w-md">
+                
                 {/* Main login card */}
                 <div className="bg-white/80 backdrop-blur-xl rounded-2xl sm:rounded-3xl shadow-2xl border border-white/20 overflow-hidden mx-2 sm:mx-0">
                     {/* Header section with branding */}
                     <div className="text-center pt-6 sm:pt-12 pb-4 sm:pb-8 px-4 sm:px-8">
-                        {/* Logo - Responsive sizing */}
+                        {/* Logo */}
                         <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 sm:mb-6">
                             <Image 
                                 src={logo} 
@@ -246,7 +459,7 @@ const LoginPage = () => {
                             />
                         </div>
                         
-                        {/* Company name - Responsive text size */}
+                        {/* Company name */}
                         <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-1 sm:mb-2">
                             AmberCashPh
                         </h1>
@@ -256,20 +469,28 @@ const LoginPage = () => {
                             Your helping hands
                         </p>
                         
-                        {/* Welcome message - Responsive text sizing */}
+                        {/* Welcome message */}
                         <div className="space-y-1">
                             <h2 className="text-xl sm:text-2xl font-semibold text-gray-800">Welcome back</h2>
                             <p className="text-gray-500 text-sm sm:text-base">Sign in to your account to continue</p>
                         </div>
                     </div>
                     
-                    {/* Form section - Responsive padding */}
+                    {/* Form section */}
                     <div className="px-4 sm:px-8 pb-4 sm:pb-8">
-                        <form onSubmit={handleSubmit} autoComplete="off" noValidate>
+                        <form 
+                            ref={formRef}
+                            key={formKey}
+                            onSubmit={handleSubmit} 
+                            autoComplete={isAutofillEnabled ? "on" : "off"} 
+                            method="post"
+                            action="/login"
+                            noValidate
+                        >
                             <div className="space-y-4 sm:space-y-6">
                                 {/* Email field */}
                                 <div className="space-y-1 sm:space-y-2">
-                                    <label className="text-sm font-medium text-gray-700 block">
+                                    <label htmlFor={isAutofillEnabled ? "username" : `email_${formKey}`} className="text-sm font-medium text-gray-700 block">
                                         Email Address
                                     </label>
                                     <div className="relative">
@@ -280,10 +501,10 @@ const LoginPage = () => {
                                         </div>
                                         <input
                                             ref={emailRef}
-                                            id="email-field"
-                                            name={`email_${Date.now()}`}
-                                            type="text"
-                                            autoComplete="new-password"
+                                            id={isAutofillEnabled ? "username" : `email_${formKey}`}
+                                            name={isAutofillEnabled ? "username" : `email_${formKey}`}
+                                            type="email"
+                                            autoComplete={isAutofillEnabled ? "username email" : "new-password"}
                                             autoCorrect="off"
                                             autoCapitalize="off"
                                             spellCheck="false"
@@ -309,9 +530,9 @@ const LoginPage = () => {
                                     )}
                                 </div>
                                 
-                                {/* Password field - Enhanced with multiple fallbacks */}
+                                {/* Password field */}
                                 <div className="space-y-1 sm:space-y-2">
-                                    <label className="text-sm font-medium text-gray-700 block">
+                                    <label htmlFor={isAutofillEnabled ? "password" : `password_${formKey}`} className="text-sm font-medium text-gray-700 block">
                                         Password
                                     </label>
                                     <div className="relative">
@@ -322,15 +543,16 @@ const LoginPage = () => {
                                         </div>
                                         <input
                                             ref={passwordRef}
-                                            id="password-field"
-                                            name={`password_${Date.now()}`}
-                                            type="text" // Always text type to avoid password detection
-                                            autoComplete="new-password"
+                                            id={isAutofillEnabled ? "password" : `password_${formKey}`}
+                                            name={isAutofillEnabled ? "password" : `password_${formKey}`}
+                                            type={isAutofillEnabled ? "password" : "text"}
+                                            autoComplete={isAutofillEnabled ? "current-password" : "new-password"}
                                             autoCorrect="off"
                                             autoCapitalize="off"
                                             spellCheck="false"
-                                            onChange={handlePasswordChange} // Added backup change handler
-                                            onFocus={() => setFocusedField('password')}
+                                            value={isAutofillEnabled ? formData.password : undefined}
+                                            onChange={handlePasswordChange}
+                                            onFocus={handlePasswordFocus}
                                             onBlur={() => setFocusedField('')}
                                             className={`w-full pl-10 sm:pl-12 pr-10 sm:pr-12 py-3 sm:py-4 rounded-lg sm:rounded-xl border-2 transition-all duration-200 bg-gray-50/50 focus:bg-white focus:outline-none text-sm sm:text-base ${
                                                 errors.password 
@@ -361,7 +583,7 @@ const LoginPage = () => {
                                     )}
                                 </div>
                                 
-                                {/* Login button - Responsive sizing */}
+                                {/* Login button */}
                                 <button
                                     type="submit"
                                     disabled={isSubmitting}
@@ -388,7 +610,7 @@ const LoginPage = () => {
                     </div>
                 </div>
                 
-                {/* Social Media Links - Responsive spacing and sizing */}
+                {/* Social Media Links */}
                 <div className="text-center mt-4 sm:mt-6 px-2">
                     <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">Follow us on social media</p>
                     <div className="flex justify-center space-x-3 sm:space-x-4">
@@ -411,17 +633,17 @@ const LoginPage = () => {
                             rel="noopener noreferrer"
                             className="w-8 h-8 sm:w-10 sm:h-10 bg-black hover:bg-gray-800 rounded-full flex items-center justify-center transition-all duration-200 transform hover:scale-110 hover:shadow-lg"
                         >
-                            <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-4 h-4 sm:w-5 sm:w-5 text-white" fill="currentColor" viewBox="0 0 24 24">
                                 <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
                             </svg>
                         </a>
                     </div>
                 </div>
                 
-                {/* Footer - Responsive text */}
+                {/* Footer */}
                 <div className="text-center mt-4 sm:mt-8 text-xs sm:text-sm text-gray-500 px-2">
                     <p>
-                        © 2022-2025 AmberCashPh. All rights reserved.
+                        © 2022-{new Date().getFullYear()} AmberCashPh. All rights reserved.
                     </p>
                 </div>
             </div>

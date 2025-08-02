@@ -389,7 +389,8 @@ async function processLoanOfficerData(data, date, currentDate) {
                 collection.cbhbCollectionStr = collection.cbhbCollection > 0 ? formatPricePhp(collection.cbhbCollection) : '-';
                 
                 // Calculate other income
-                const otherIncome = (lo.cashCollections[0].otherPassbookCollection || 0) + (lo.cashCollections[0].otherPictureCollection || 0);
+                const otherIncome = lo.cashCollections[0].otherIncome == 0 ? 
+                                (lo.cashCollections[0].otherPassbookCollection || 0) + (lo.cashCollections[0].otherPictureCollection || 0) : lo.cashCollections[0].otherIncome;
                 collection.otherIncome = otherIncome;
                 collection.otherIncomeStr = otherIncome > 0 ? formatPricePhp(otherIncome) : '-';
                 
@@ -503,8 +504,10 @@ async function processLoanOfficerData(data, date, currentDate) {
                 collection.lrfCollectionStr = collection.lrfCollection > 0 ? formatPricePhp(collection.lrfCollection) : '-';
                 collection.cbhbCollection = lo.cashCollections[0].cbhbCollection || 0;
                 collection.cbhbCollectionStr = collection.cbhbCollection > 0 ? formatPricePhp(collection.cbhbCollection) : '-';
-                
-                const otherIncome = (lo.cashCollections[0].otherPassbookCollection || 0) + (lo.cashCollections[0].otherPictureCollection || 0);
+
+                const otherIncome = lo.cashCollections[0].otherIncome == 0 ? 
+                                (lo.cashCollections[0].otherPassbookCollection || 0) + (lo.cashCollections[0].otherPictureCollection || 0) 
+                                : lo.cashCollections[0].otherIncome;
                 collection.otherIncome = otherIncome;
                 collection.otherIncomeStr = otherIncome > 0 ? formatPricePhp(otherIncome) : '-';
 

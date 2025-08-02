@@ -443,7 +443,9 @@ async function processData(data, date, currentDate) {
                 collection.cbhbCollectionStr = collection.cbhbCollection > 0 ? formatPricePhp(collection.cbhbCollection) : '-';
                 
                 // Calculate other income
-                const otherIncome = (branch.cashCollections[0].otherPassbookCollection || 0) + (branch.cashCollections[0].otherPictureCollection || 0);
+                const otherIncome = branch.cashCollections[0].otherIncome == 0 ?
+                        (branch.cashCollections[0].otherPassbookCollection || 0) + (branch.cashCollections[0].otherPictureCollection || 0)
+                        : branch.cashCollections[0].otherIncome || 0;
                 collection.otherIncome = otherIncome;
                 collection.otherIncomeStr = otherIncome > 0 ? formatPricePhp(otherIncome) : '-';
 
@@ -541,7 +543,9 @@ async function processData(data, date, currentDate) {
                 collection.cbhbCollection = branch.cashCollections[0].cbhbCollection || 0;
                 collection.cbhbCollectionStr = collection.cbhbCollection > 0 ? formatPricePhp(collection.cbhbCollection) : '-';
                 
-                const otherIncome = (branch.cashCollections[0].otherPassbookCollection || 0) + (branch.cashCollections[0].otherPictureCollection || 0);
+                const otherIncome = branch.cashCollections[0].otherIncome == 0 ?
+                        (branch.cashCollections[0].otherPassbookCollection || 0) + (branch.cashCollections[0].otherPictureCollection || 0)
+                        : branch.cashCollections[0].otherIncome || 0;
                 collection.otherIncome = otherIncome;
                 collection.otherIncomeStr = otherIncome > 0 ? formatPricePhp(otherIncome) : '-';
 
