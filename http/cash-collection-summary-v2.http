@@ -1,0 +1,23 @@
+### LOGIN
+POST http://localhost:3000/api/v2/authenticate
+Content-Type: application/json
+
+{
+  "username": "admin@ambercashph.com",
+  "password": "AC_$upeR21"
+}
+
+
+### GET BMS (branch_id is required) 
+GET http://localhost:3000/api/v2/data/get_cash_collection_summary_v2?branch_id=639e80c8aeb5b756302b6cf4&selected_date=2025-06-30
+Content-Type: "application/json"
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2MzllODQ4MDkyNzMxZTFkMTFmYjZmZDIiLCJpYXQiOjE3NTQxMTc5MTksImV4cCI6MTc1NDEzMjMxOX0.2mkeZoTTGbbwouMjF3KVT3-CbsMmszd44I4Ie5F_CCw
+
+
+
+### GET LOS (branch_id is required) 
+GET http://localhost:3000/api/v2/data/get_cash_collection_summary_v2?branch_id=639e80c8aeb5b756302b6cf4&lo_id=639e848092731e1d11fb6fd5&selected_date=2025-06-30
+Content-Type: "application/json"
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2MzllODQ4MDkyNzMxZTFkMTFmYjZmZDIiLCJpYXQiOjE3NTQxMTc5MTksImV4cCI6MTc1NDEzMjMxOX0.2mkeZoTTGbbwouMjF3KVT3-CbsMmszd44I4Ie5F_CCw
+
+
