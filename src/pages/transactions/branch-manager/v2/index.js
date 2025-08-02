@@ -20,10 +20,32 @@ const ModernBranchCashCollections = () => {
   const currentDate = useSelector(state => state.systemSettings.currentDate);
   const isHoliday = useSelector(state => state.systemSettings.holiday);
   const isWeekend = useSelector(state => state.systemSettings.weekend);
+
+  // Helper function to determine if viewMode should be included in URLs
+  const shouldIncludeViewMode = (currentUser) => {
+    if (!currentUser?.role) return false;
+    
+    // Exclude viewMode for role.rep 3 or 4, or area_admin
+    if (currentUser.role.rep === 3 || currentUser.role.rep === 4) {
+      return false;
+    }
+    
+    if (currentUser.role.shortCode === 'area_admin') {
+      return false;
+    }
+    
+    return true;
+  };
   
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState(moment().format('YYYY-MM-DD'));
-  const [viewMode, setViewMode] = useState(router.query.viewMode || 'branch');
+  const [viewMode, setViewMode] = useState(() => {
+    // Set default based on user role
+    if (currentUser && !shouldIncludeViewMode(currentUser)) {
+      return 'branch'; // default for restricted users
+    }
+    return router.query.viewMode || 'branch';
+  });
   const [selectedBranchGroup, setSelectedBranchGroup] = useState('mine');
   const [selectedLoGroup, setSelectedLoGroup] = useState('all');
   const [numberOfLo, setNumberOfLo] = useState(0);
@@ -409,7 +431,8 @@ const ModernBranchCashCollections = () => {
   }, [currentUser, router]);
 
   useEffect(() => {
-    if (router.query.viewMode) {
+    // Only set viewMode from router if user role allows it
+    if (router.query.viewMode && shouldIncludeViewMode(currentUser)) {
       setViewMode(router.query.viewMode);
     }
     
@@ -428,7 +451,7 @@ const ModernBranchCashCollections = () => {
       setCurrentFilter(router.query.filter);
       setCurrentLevel(router.query.filter);
     }
-  }, [router.query.viewMode, router.query.id, router.query.parentId, router.query.parentViewMode, router.query.filter]);
+  }, [router.query.viewMode, router.query.id, router.query.parentId, router.query.parentViewMode, router.query.filter, currentUser]);
 
   useEffect(() => {
     setLoading(true);
@@ -452,9 +475,12 @@ const ModernBranchCashCollections = () => {
     setParentViewMode(null);
     setCurrentFilter(null);
     
+    // Only include viewMode in URL if user role allows it
+    const query = shouldIncludeViewMode(currentUser) ? { viewMode: mode } : {};
+    
     router.push({
       pathname: router.pathname,
-      query: { viewMode: mode }
+      query
     }, undefined, { shallow: true });
   };
 
@@ -495,13 +521,25 @@ const ModernBranchCashCollections = () => {
     if (!selected?.totalData) {
       setSelectedBranchGroup('mine');
       
-      // Determine current level based on router query and view mode
+      // Determine current level based on router query, view mode, and user role
       const getCurrentLevel = () => {
+        // If there's a filter in the router query, use that
         if (router.query.filter) {
           return router.query.filter;
         }
         
-        // Determine level based on view mode and navigation depth
+        // If currentFilter is already set (from fetchCashCollectionsData), use that
+        if (currentFilter) {
+          return currentFilter;
+        }
+        
+        // Apply the same user role logic as in fetchCashCollectionsData
+        if (currentUser.role.rep >= 3) {
+          // For branch managers (role.rep = 3) and group leaders (role.rep = 4)
+          return currentUser.role.rep === 3 ? 'lo' : 'group';
+        }
+        
+        // For admin users (role.rep < 3), determine level based on view mode and navigation depth
         if (viewMode === 'branch') {
           return 'branch';
         } else if (viewMode === 'area') {
@@ -530,7 +568,7 @@ const ModernBranchCashCollections = () => {
           }
         }
         
-        return currentFilter || viewMode;
+        return viewMode;
       };
       
       const currentLevel = getCurrentLevel();
@@ -549,8 +587,7 @@ const ModernBranchCashCollections = () => {
           case 'lo':
             return { filter: 'group', nextLevel: 'group' };
           case 'group':
-            // Navigate to transaction page
-            router.push(`/transactions/${currentUser.transactionType}-cash-collection`);
+            router.push(`/transactions/${selected.occurence}-cash-collection/client/${selected._id}`);
             return null;
           default:
             return { filter: 'branch', nextLevel: 'branch' };
@@ -566,10 +603,14 @@ const ModernBranchCashCollections = () => {
       
       // Build query based on navigation level
       let updatedQuery = {
-        viewMode,
         id: selected._id,
         filter: navigation.filter
       };
+      
+      // Only include viewMode if user role allows it
+      if (shouldIncludeViewMode(currentUser)) {
+        updatedQuery.viewMode = viewMode;
+      }
       
       // Handle specific parameter setting based on the next level
       switch (navigation.nextLevel) {
@@ -608,41 +649,49 @@ const ModernBranchCashCollections = () => {
           break;
         case 'group':
           updatedQuery.loId = selected._id;
-          updatedQuery.parentId = router.query.id; // branch ID
-          // Preserve deeper hierarchy if exists
-          if (router.query.parentId) {
-            updatedQuery.branchId = router.query.id;
+          // For role.rep = 3 (branch manager), the parentId should be the branch ID
+          if (currentUser.role.rep === 3) {
+            updatedQuery.parentId = currentUser.designatedBranchId;
+          } else {
+            // For other roles, preserve the existing logic
+            updatedQuery.parentId = router.query.id; // branch ID
+            // Preserve deeper hierarchy if exists
+            if (router.query.parentId) {
+              updatedQuery.branchId = router.query.id;
+            }
           }
           break;
       }
       
-      // Handle hierarchy preservation for nested navigation
-      if (viewMode === 'division') {
-        if (router.query.grandParentId) {
-          // Fourth level: area -> branch
-          updatedQuery.parentId = router.query.id;
-          updatedQuery.grandParentId = router.query.parentId;
-        } else if (router.query.parentId) {
-          // Third level: region -> area
-          updatedQuery.parentId = router.query.id;
-          updatedQuery.grandParentId = router.query.parentId;
-        } else if (router.query.id) {
-          // Second level: division -> region
-          updatedQuery.parentId = router.query.id;
-        }
-      } else if (viewMode === 'region') {
-        if (router.query.parentId) {
-          // Third level: area -> branch
-          updatedQuery.parentId = router.query.id;
-          updatedQuery.grandParentId = router.query.parentId;
-        } else if (router.query.id) {
-          // Second level: region -> area
-          updatedQuery.parentId = router.query.id;
-        }
-      } else if (viewMode === 'area') {
-        if (router.query.id) {
-          // Second level: area -> branch
-          updatedQuery.parentId = router.query.id;
+      // Handle hierarchy preservation for nested navigation (mainly for admin users)
+      if (currentUser.role.rep < 3) {
+        if (viewMode === 'division') {
+          if (router.query.grandParentId) {
+            // Fourth level: area -> branch
+            updatedQuery.parentId = router.query.id;
+            updatedQuery.grandParentId = router.query.parentId;
+          } else if (router.query.parentId) {
+            // Third level: region -> area
+            updatedQuery.parentId = router.query.id;
+            updatedQuery.grandParentId = router.query.parentId;
+          } else if (router.query.id) {
+            // Second level: division -> region
+            updatedQuery.parentId = router.query.id;
+          }
+        } else if (viewMode === 'region') {
+          if (router.query.parentId) {
+            // Third level: area -> branch
+            updatedQuery.parentId = router.query.id;
+            updatedQuery.grandParentId = router.query.parentId;
+          } else if (router.query.id) {
+            // Second level: region -> area
+            updatedQuery.parentId = router.query.id;
+          }
+        } else if (viewMode === 'area') {
+          if (router.query.id) {
+            // Second level: area -> branch
+            updatedQuery.parentId = router.query.id;
+          }
         }
       }
       
@@ -663,51 +712,77 @@ const ModernBranchCashCollections = () => {
   const handleBackNavigation = () => {
     // If we're in the group view, go back to the loan officer view
     if (router.query.filter === 'group') {
+      const query = {
+        id: router.query.parentId,
+        filter: 'lo',
+        branchId: router.query.parentId,
+      };
+      
+      // Only include viewMode if user role allows it
+      if (shouldIncludeViewMode(currentUser)) {
+        query.viewMode = router.query.viewMode || viewMode;
+      }
+      
       router.push({
         pathname: router.pathname,
-        query: {
-          viewMode: router.query.viewMode || viewMode,
-          id: router.query.parentId, // The parent LO ID becomes our new ID
-          filter: 'lo',
-          branchId: router.query.parentId, // Need to keep the branch ID for context
-        }
+        query
       }, undefined, { shallow: true });
       return;
     }
     
     // If we're in the loan officer view, go back to the branch list view
     if (router.query.filter === 'lo') {
-      // Go back to branch view
+      const query = {};
+      
+      // Only include viewMode if user role allows it
+      if (shouldIncludeViewMode(currentUser)) {
+        query.viewMode = router.query.viewMode || viewMode;
+      }
+      
       router.push({
         pathname: router.pathname,
-        query: {
-          viewMode: router.query.viewMode || viewMode
-        }
+        query
       }, undefined, { shallow: true });
       return;
     }
   
     // Handle standard hierarchy navigation
     if (router.query.grandParentId) {
+      const query = {
+        id: router.query.grandParentId
+      };
+      
+      if (shouldIncludeViewMode(currentUser)) {
+        query.viewMode = router.query.grandParentViewMode || viewMode;
+      }
+      
       router.push({
         pathname: router.pathname,
-        query: {
-          viewMode: router.query.grandParentViewMode || viewMode,
-          id: router.query.grandParentId
-        }
+        query
       }, undefined, { shallow: true });
     } else if (router.query.parentId) {
+      const query = {
+        id: router.query.parentId
+      };
+      
+      if (shouldIncludeViewMode(currentUser)) {
+        query.viewMode = router.query.parentViewMode || viewMode;
+      }
+      
       router.push({
         pathname: router.pathname,
-        query: {
-          viewMode: router.query.parentViewMode || viewMode,
-          id: router.query.parentId
-        }
+        query
       }, undefined, { shallow: true });
     } else {
+      const query = {};
+      
+      if (shouldIncludeViewMode(currentUser)) {
+        query.viewMode = viewMode;
+      }
+      
       router.push({
         pathname: router.pathname,
-        query: { viewMode }
+        query
       }, undefined, { shallow: true });
     }
   };
@@ -964,7 +1039,7 @@ const ModernBranchCashCollections = () => {
                         <Calendar className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
                     </div>
                     
-                    {currentUser.role && currentUser.role.rep < 3 && (
+                    {currentUser.role && currentUser.role.rep < 3 && shouldIncludeViewMode(currentUser) && (
                         <div className="flex space-x-1">
                         <button 
                             onClick={() => handleViewModeChange('branch')}
