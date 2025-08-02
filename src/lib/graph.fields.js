@@ -167,6 +167,7 @@ export const LOAN_FIELDS = `
   csfWithdrawal
   csf
   csfReturnAmt
+  csfIn
   `;
 
 export const GROUP_FIELDS = `
@@ -334,6 +335,8 @@ export const CASH_COLLECTIONS_FIELDS = `
   csfWithdrawal
   csf
   csfReturnAmt
+  csfIn
+  otherIncome
   `;
 
 export const LOS_TOTALS_FIELDS = `

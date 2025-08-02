@@ -10,7 +10,7 @@ import { setCashCollectionGroup } from '@/redux/actions/cashCollectionActions';
 import { setGroup, setGroupList } from '@/redux/actions/groupActions';
 import DetailsHeader from '@/components/groups/DetailsHeader';
 import moment from 'moment';
-import { containsAnyLetters, formatPricePhp, safeNumber, UppercaseFirstLetter } from '@/lib/utils';
+import { containsAnyLetters, formatPricePhp, hasValidGroupLeader, safeNumber, UppercaseFirstLetter } from '@/lib/utils';
 import { ArrowPathIcon, ArrowUturnLeftIcon, ClockIcon, CurrencyDollarIcon, ExclamationTriangleIcon, ReceiptPercentIcon, StopCircleIcon } from '@heroicons/react/24/outline';
 import Select from 'react-select';
 import { DropdownIndicator, borderStyles } from "@/styles/select";
@@ -1218,8 +1218,18 @@ const CashCollectionDetailsPage = () => {
                 }
             });
             
+            const hasGroupLeader = hasValidGroupLeader(cashCollection);
+
             // totals
             cashCollection = [...cashCollection].map(cc => {
+                let updateOtherIncome = safeNumber(cc.otherIncome);
+                let csfIn = 0;
+
+                if (!hasGroupLeader) {
+                    csfIn = transactionSettings.minCsfCollection;
+                    updateOtherIncome += csfIn;
+                }
+
                 const totalCollection = (
                     safeNumber(cc.mcbuCol) + 
                     safeNumber(cc.csfCollection) + 
@@ -1227,7 +1237,7 @@ const CashCollectionDetailsPage = () => {
                     safeNumber(cc.admissionCollection) + 
                     safeNumber(cc.lrfCollection) + 
                     safeNumber(cc.cbhbCollection) + 
-                    safeNumber(cc.otherIncome)
+                    safeNumber(updateOtherIncome)
                 ) - (
                     safeNumber(cc.mcbuWithdrawal) + 
                     safeNumber(cc.csfWithdrawal) + 
@@ -1237,6 +1247,9 @@ const CashCollectionDetailsPage = () => {
                 return {
                     ...cc,
                     mcbuCol: safeNumber(cc.mcbuCol),
+                    csfIn: csfIn,
+                    otherIncome: updateOtherIncome,
+                    otherIncomeStr: updateOtherIncome > 0 ? formatPricePhp(updateOtherIncome) : '-',
                     totalCollection: totalCollection
                 };
             });
@@ -3264,7 +3277,7 @@ const CashCollectionDetailsPage = () => {
         return () => {
             mounted = false;
         };
-    }, [uuid, currentDate]);
+    }, [currentDate, transactionSettings]);
 
     useEffect(() => {
         const getListGroup = async (selectedLO) => {
@@ -3460,7 +3473,8 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.currentReleaseAmountStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.noOfPaymentStr }</td>
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
-                                                    { (!isWeekend && !isHoliday && currentUser.role.rep > 2 && cc.status === 'active' && editMode 
+                                                    { cc.mcbuColStr }
+                                                    {/* { (!isWeekend && !isHoliday && currentUser.role.rep > 2 && cc.status === 'active' && editMode 
                                                             && ((cc?.origin && (cc?.origin === 'pre-save' || cc?.origin === 'automation-trf')) || cc.reverted || cc.draft) 
                                                             || (cc.offsetTransFlag && cc.otherDay)
                                                       ) ? (
@@ -3480,7 +3494,7 @@ const CashCollectionDetailsPage = () => {
                                                             <React.Fragment>
                                                                 {(!editMode || filter || !cc.reverted || cc.status === 'completed' || cc.status === 'pending' || cc.status === 'totals' || cc.status === 'closed') ? cc.mcbuColStr : '-'}
                                                             </React.Fragment>
-                                                    }
+                                                    } */}
                                                 </td>
                                                  <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
                                                     { (!isWeekend && !isHoliday && currentUser.role.rep > 2 && cc.status === 'active' && editMode && cc?.groupLeader
@@ -3526,7 +3540,7 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.admissionCollection > 0 ? formatPricePhp(cc.admissionCollection) : '-' }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.lrfCollection > 0 ? formatPricePhp(cc.lrfCollection) : '-' }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.cbhbCollection > 0 ? formatPricePhp(cc.cbhbCollection) : '-' }</td>
-                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.otherIncome > 0 ? formatPricePhp(cc.otherIncome) : '-' }</td>
+                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.otherIncomeStr }</td>
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center`}>
                                                     { (cc.hasMcbuWithdrawal && cc.mcbuWithdrawalIsPending) ? (
                                                         <WarningIconWithTooltip amount={cc.mcbuWithdrawalStr} message="MCBU Withdrawal is pending." />

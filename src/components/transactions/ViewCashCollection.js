@@ -261,7 +261,9 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                             // targetLoanCollection = targetLoanCollection - cc.cashCollections[0].loanTarget;
                         }
 
-                        let otherIncome = (cc.cashCollections[0].otherPassbookCollection || 0) + (cc.cashCollections[0].otherPictureCollection || 0);
+                        let otherIncome = cc.cashCollections[0].otherIncome == 0 ? 
+                                            (cc.cashCollections[0].otherPassbookCollection || 0) + (cc.cashCollections[0].otherPictureCollection || 0) 
+                                        : cc.cashCollections[0].otherIncome || 0;
 
                         collection = { ...collection,
                             mispayment: cc.cashCollections[0].mispayment ? cc.cashCollections[0].mispayment : 0,
@@ -407,7 +409,9 @@ const ViewCashCollectionPage = ({ pageNo, dateFilter, type }) => {
                             loanTarget = cc.cashCollections[0].loanTarget && cc.cashCollections[0].loanTarget;
                         }
 
-                        let otherIncome = (cc.cashCollections[0].otherPassbookCollection || 0) + (cc.cashCollections[0].otherPictureCollection || 0);
+                        let otherIncome = cc.cashCollections[0].otherIncome == 0 ? 
+                                            (cc.cashCollections[0].otherPassbookCollection || 0) + (cc.cashCollections[0].otherPictureCollection || 0) 
+                                        : cc.cashCollections[0].otherIncome || 0;
 
                         collection = {
                             groupId: cc._id,

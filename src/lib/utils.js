@@ -167,3 +167,20 @@ export const safeNumber = (value) => {
     const num = Number(value);
     return isNaN(num) ? 0 : num;
 };
+
+export const hasValidGroupLeader = (arr) => {
+  // First, check if the overall "no group leader" condition is met by *any* person.
+  // If any person has loanCycle = 1 AND status = 'pending', then NO group leader overall.
+  // We'll use 'some' to check if *any* individual in the array satisfies this disqualifying condition.
+  const disqualifiesGroupLeader = arr.some(person => {
+    return person.loanCycle === 1 && person.status === 'pending';
+  });
+
+  if (disqualifiesGroupLeader) {
+    return false; // If this condition is met for ANY person, then no group leader overall.
+  }
+
+  // If no one disqualifies the group leader based on loanCycle/status,
+  // then we proceed to check if any object actually has groupLeader = true.
+  return arr.some(person => person.groupLeader === true);
+}
