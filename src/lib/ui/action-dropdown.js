@@ -19,7 +19,7 @@ const ActionDropDown = ({ data, options=[], dataOptions = {}, origin }) => {
                 // if (option.label == 'MCBU Refund' && (!dataOptions?.filter && data.status == 'completed' && !data?.draft)) {
                 //     tempOption.hidden = false;
                 // }
-                if (option.label == 'MCBU Withdrawal' && !data?.hasMcbuWithdrawal && (!dataOptions?.filter && (data.status == 'completed' || data.status == 'tomorrow' || (data.occurence == 'weekly' && data.status == 'active') || (client?.groupLeader && data.mcbu > 3000 && last5DaysOfTheMonth.includes(dataOptions?.currentDate))) && !data?.draft)) {
+                if (option.label == 'MCBU Withdrawal' && !data?.hasMcbuWithdrawal && (!dataOptions?.filter && (data.status == 'tomorrow' || (data.occurence == 'weekly' && (data.status == 'active' || data.status == 'completed')) || (client?.groupLeader && data.mcbu > 3000 && last5DaysOfTheMonth.includes(dataOptions?.currentDate))) && !data?.draft)) {
                     tempOption.hidden = false;
                 }
 
