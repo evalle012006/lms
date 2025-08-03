@@ -1,6 +1,6 @@
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { useDispatch, useSelector } from 'react-redux';
-import { UppercaseFirstLetter } from "@/lib/utils";
+import { shouldIncludeViewMode, UppercaseFirstLetter } from "@/lib/utils";
 import ButtonSolid from "@/lib/ui/ButtonSolid";
 import Select from 'react-select';
 import { styles, DropdownIndicator, borderStyles } from "@/styles/select";
@@ -10,11 +10,16 @@ import DatePicker from "@/lib/ui/DatePicker";
 import { useRouter } from 'next/router';
 import { ArrowLeftCircleIcon } from '@heroicons/react/24/solid';
 import ButtonOutline from "@/lib/ui/ButtonOutline";
+import { fetchWrapper } from "@/lib/fetch-wrapper";
+import { getApiBaseUrl } from "@/lib/constants";
+import { setGroupList } from "@/redux/actions/groupActions";
+import { toast } from "react-toastify";
 
 const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, dateFilter, setDateFilter, handleDateFilter, revertMode = false,
                             groupFilter, handleGroupFilter, groupTransactionStatus, allowMcbuWithdrawal, allowOffsetTransaction, hasDraft, changeRemarks,
                             handleShowWarningDialog, loading, allowMcbuInterest }) => {
     const router = useRouter();
+    const dispatch = useDispatch();
     const currentUser = useSelector(state => state.user.data);
     const groupList = useSelector(state => state.group.list);
     const group = useSelector(state => state.group.data);
@@ -23,6 +28,8 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
     const [branchName, setBranchName] = useState();
     const isHoliday = useSelector(state => state.systemSettings.holiday);
     const isWeekend = useSelector(state => state.systemSettings.weekend);
+    const [fetchingGroups, setFetchingGroups] = useState(false);
+    
     const statusClass = {
         'available': "text-green-700 bg-green-100",
         'full': "text-red-400 bg-red-100",
@@ -36,6 +43,84 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
         {label: 'Completed', bg: 'bg-green-100'},
         {label: 'For Tomorrow', bg: 'bg-lime-100'}
     ];
+
+    // Function to fetch groups for the loan officer
+    const fetchGroupsForLoanOfficer = async (loId) => {
+        if (fetchingGroups || !loId) return;
+        
+        setFetchingGroups(true);
+        try {
+            const url = `${getApiBaseUrl()}groups/list?`;
+            const params = new URLSearchParams({
+                loId: loId,
+                mode: 'all' // Get all groups including closed ones
+            });
+
+            const response = await fetchWrapper.get(url + params.toString());
+            
+            if (response.success && response.groups) {
+                // Format groups for the dropdown
+                const formattedGroups = response.groups.map(g => ({
+                    ...g,
+                    value: g._id,
+                    label: g.name
+                }));
+                
+                dispatch(setGroupList(formattedGroups));
+                console.log(`Fetched ${formattedGroups.length} groups for loan officer ${loId}`);
+            } else {
+                console.warn('Failed to fetch groups:', response.message || 'Unknown error');
+                toast.error('Failed to load groups for filter');
+            }
+        } catch (error) {
+            console.error('Error fetching groups:', error);
+            toast.error('Error loading groups for filter');
+        } finally {
+            setFetchingGroups(false);
+        }
+    };
+
+    // Effect to fetch groups when groupList is empty and we have a loan officer ID
+    useEffect(() => {
+        if (page === 'transaction' && groupList.length === 0 && group?.loanOfficerId) {
+            console.log('Fetching groups for loan officer:', group.loanOfficerId);
+            fetchGroupsForLoanOfficer(group.loanOfficerId);
+        }
+    }, [page, groupList.length, group?.loanOfficerId]);
+
+    // Handle group filter change with backward compatibility
+    const handleGroupFilterChange = (selectedGroup) => {
+        // Check if we came from ModernBranchCashCollections
+        const isFromModernBranch = router.query.fromModernBranchCashCollections === 'true';
+        
+        if (isFromModernBranch && selectedGroup && selectedGroup._id !== group?._id) {
+            // NEW BEHAVIOR: Preserve all URL parameters when coming from ModernBranchCashCollections
+            const newQuery = {
+                ...router.query, // Preserve all existing query parameters
+                uuid: selectedGroup._id, // Update the UUID to the new group
+            };
+
+            // Get the current pathname and replace the UUID
+            let newPathname = router.asPath.split('?')[0]; // Get pathname without query string
+            newPathname = newPathname.replace(/\/[^\/]+$/, `/${selectedGroup._id}`); // Replace the last segment (UUID)
+            
+            console.log('ModernBranchCashCollections mode - preserving parameters');
+            console.log('Current path:', router.asPath);
+            console.log('New pathname:', newPathname);
+            console.log('Preserved params:', newQuery);
+            
+            router.push({
+                pathname: newPathname,
+                query: newQuery
+            });
+        } else {
+            // ORIGINAL BEHAVIOR: Use the original handler for backward compatibility
+            console.log('Original mode - using existing handler');
+            if (handleGroupFilter) {
+                handleGroupFilter(selectedGroup);
+            }
+        }
+    };
 
     const handleRemarkFilter = (selected) => {
         if (data.length > 0) {
@@ -55,15 +140,58 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
 
     const handleBack = () => {
         if (page == 'transaction') {
+            // Check if we came from ModernBranchCashCollections
+            if (router.query.fromModernBranchCashCollections === 'true') {
+            // Build the query to navigate back to ModernBranchCashCollections
+            const backQuery = {};
+            
+            // Add viewMode if it was provided and user role allows it
+            if (router.query.sourceViewMode && shouldIncludeViewMode(currentUser)) {
+                backQuery.viewMode = router.query.sourceViewMode;
+            }
+            
+            // Add hierarchical navigation parameters
+            if (router.query.sourceId) {
+                backQuery.id = router.query.sourceId;
+            }
+            
+            if (router.query.sourceFilter) {
+                backQuery.filter = router.query.sourceFilter;
+            }
+            
+            if (router.query.sourceParentId) {
+                backQuery.parentId = router.query.sourceParentId;
+            }
+            
+            if (router.query.sourceGrandParentId) {
+                backQuery.grandParentId = router.query.sourceGrandParentId;
+            }
+            
+            // Navigate back to ModernBranchCashCollections with the preserved state
+            router.push({
+                pathname: '/transactions/branch-manager/v2',
+                query: backQuery
+            });
+            
+            // If there was a date filter, restore it in localStorage
+            if (router.query.sourceDateFilter) {
+                localStorage.setItem('cashCollectionDateFilter', router.query.sourceDateFilter);
+            }
+            
+            return;
+            }
+            
+            // Original back navigation logic for other cases
             if (currentUser.role.rep == 4) {
-                router.push(`/transactions/${currentUser.transactionType}-cash-collection`);
+            router.push(`/transactions/${currentUser.transactionType}-cash-collection`);
             } else {
-                router.push(`/transactions/${group.occurence}-cash-collection/group/${group.loanOfficerId}`);
+            router.push(`/transactions/${group.occurence}-cash-collection/group/${group.loanOfficerId}`);
             }
         } else {
+            // For non-transaction pages, use the default back behavior
             router.back();
         }
-    }
+        };
 
     useEffect(() => {
         if (group) {
@@ -134,16 +262,17 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
                         <div className="ml-4 flex w-40">
                             <Select 
                                 options={groupList}
-                                value={groupFilter && groupList.find(g => {
-                                    return g._id === groupFilter
-                                })}
+                                value={groupList.find(g => g._id === group?._id) || (groupFilter && groupList.find(g => g._id === groupFilter))}
                                 styles={borderStyles}
                                 components={{ DropdownIndicator }}
-                                onChange={handleGroupFilter}
+                                onChange={handleGroupFilterChange}
                                 isSearchable={true}
                                 closeMenuOnSelect={true}
                                 menuPortalTarget={document.body}
-                                placeholder={'Group Filter'}/>
+                                placeholder={fetchingGroups ? 'Loading...' : 'Group Filter'}
+                                isLoading={fetchingGroups}
+                                isDisabled={fetchingGroups}
+                            />
                         </div>
                         <div className="ml-24 flex w-64">
                             <div className="relative w-full" onClick={openCalendar}>

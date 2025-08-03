@@ -184,3 +184,78 @@ export const hasValidGroupLeader = (arr) => {
   // then we proceed to check if any object actually has groupLeader = true.
   return arr.some(person => person.groupLeader === true);
 }
+
+// lib/navigationUtils.js
+
+export const shouldIncludeViewMode = (currentUser) => {
+  if (!currentUser?.role) return false;
+  
+  // Exclude viewMode for role.rep 3 or 4, or area_admin
+  if (currentUser.role.rep === 3 || currentUser.role.rep === 4) {
+    return false;
+  }
+  
+  if (currentUser.role.shortCode === 'area_admin') {
+    return false;
+  }
+  
+  return true;
+};
+
+export const buildModernBranchCashCollectionsSourceQuery = (router, viewMode, currentFilter, selectedBranchGroup, dateFilter) => {
+  return {
+    fromModernBranchCashCollections: 'true',
+    sourceViewMode: viewMode,
+    sourceFilter: currentFilter,
+    sourceId: router.query.id,
+    sourceParentId: router.query.parentId,
+    sourceGrandParentId: router.query.grandParentId,
+    sourceBranchGroup: selectedBranchGroup,
+    sourceDateFilter: dateFilter
+  };
+};
+
+export const handleBackToModernBranchCashCollections = (router, currentUser) => {
+  // Check if we came from ModernBranchCashCollections
+  if (router.query.fromModernBranchCashCollections !== 'true') {
+    return false; // Not from ModernBranchCashCollections
+  }
+  
+  // Build the query to navigate back to ModernBranchCashCollections
+  const backQuery = {};
+  
+  // Add viewMode if it was provided and user role allows it
+  if (router.query.sourceViewMode && shouldIncludeViewMode(currentUser)) {
+    backQuery.viewMode = router.query.sourceViewMode;
+  }
+  
+  // Add hierarchical navigation parameters
+  if (router.query.sourceId) {
+    backQuery.id = router.query.sourceId;
+  }
+  
+  if (router.query.sourceFilter) {
+    backQuery.filter = router.query.sourceFilter;
+  }
+  
+  if (router.query.sourceParentId) {
+    backQuery.parentId = router.query.sourceParentId;
+  }
+  
+  if (router.query.sourceGrandParentId) {
+    backQuery.grandParentId = router.query.sourceGrandParentId;
+  }
+  
+  // Navigate back to ModernBranchCashCollections with the preserved state
+  router.push({
+    pathname: '/transactions/branch-manager/v2',
+    query: backQuery
+  });
+  
+  // If there was a date filter, restore it in localStorage
+  if (router.query.sourceDateFilter) {
+    localStorage.setItem('cashCollectionDateFilter', router.query.sourceDateFilter);
+  }
+  
+  return true; // Successfully handled back navigation
+};

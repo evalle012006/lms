@@ -309,7 +309,7 @@ const MenuItems = [
             },
             {
                 label: "Loan Officer Register (Daily)",
-                url: "/transactions/daily-cash-collection", 
+                url: "/transactions/cash-collection/",
                 icon: {
                     active: (props) => <Ticket {...props} />,
                     notActive: (props) => <Ticket {...props} />,
@@ -385,7 +385,7 @@ const MenuItems = [
             },
             {
                 label: "Loan Officer Register (Weekly)",
-                url: "/transactions/weekly-cash-collection", 
+                url: "/transactions/cash-collection/",
                 icon: {
                     active: (props) => <Ticket {...props} />,
                     notActive: (props) => <Ticket {...props} />,
@@ -459,9 +459,21 @@ const MenuItems = [
                 hidden: false,
                 roles: []
             },
+            // {
+            //     label: "Loan Officer Register",
+            //     url: "/transactions/branch-manager/cash-collection", 
+            //     icon: {
+            //         active: (props) => <Ticket {...props} />,
+            //         notActive: (props) => <Ticket {...props} />,
+            //     },
+            //     active: false,
+            //     hasSub: false,
+            //     hidden: false,
+            //     roles: []
+            // },
             {
                 label: "Loan Officer Register",
-                url: "/transactions/branch-manager/cash-collection", 
+                url: "/transactions/cash-collection/", 
                 icon: {
                     active: (props) => <Ticket {...props} />,
                     notActive: (props) => <Ticket {...props} />,
@@ -470,18 +482,6 @@ const MenuItems = [
                 hasSub: false,
                 hidden: false,
                 roles: []
-            },
-            {
-                label: "LOR (NEW)",
-                url: "/transactions/branch-manager/v2", 
-                icon: {
-                    active: (props) => <Ticket {...props} />,
-                    notActive: (props) => <Ticket {...props} />,
-                },
-                active: false,
-                hasSub: false,
-                hidden: false,
-                roles: [1,2,3]
             },
             {
                 label: "Branch Manager Summary",
