@@ -8,7 +8,7 @@ import { setLosList } from "@/redux/actions/losActions";
 import moment from 'moment';
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { toast } from "react-toastify";
-import LOSHeader from "@/components/transactions/los/Header";
+import LOSHeader from "@/components/transactions/los/Header_bak";
 import { formatPricePhp } from "@/lib/utils";
 import { getDaysOfMonth } from "@/lib/date-utils";
 import { useRouter } from "node_modules/next/router";

@@ -320,6 +320,18 @@ const MenuItems = [
                 roles: []
             },
             {
+                label: "Transaction Summary",
+                url: "/transactions/summary", 
+                icon: {
+                    active: (props) => <BarChart3 {...props} />,
+                    notActive: (props) => <BarChart3 {...props} />,
+                },
+                active: false,
+                hasSub: false,
+                hidden: false,
+                roles: [3, 4]
+            },
+            {
               label: "MCBU/CSF Withdrawals",
               url: "/transactions/mcbu-withdrawal",
               icon: {
@@ -330,18 +342,6 @@ const MenuItems = [
               hasSub: false,
               hidden: false,
               roles: []
-            },
-            {
-                label: "Loan Officer Summary",
-                url: "/transactions/loan-officer-summary", 
-                icon: {
-                    active: (props) => <BarChart3 {...props} />,
-                    notActive: (props) => <BarChart3 {...props} />,
-                },
-                active: false,
-                hasSub: false,
-                hidden: false,
-                roles: [3, 4]
             },
             {
                 label: "Bad Debts",
@@ -396,6 +396,18 @@ const MenuItems = [
                 roles: []
             },
             {
+                label: "Transaction Summary",
+                url: "/transactions/summary", 
+                icon: {
+                    active: (props) => <BarChart3 {...props} />,
+                    notActive: (props) => <BarChart3 {...props} />,
+                },
+                active: false,
+                hasSub: false,
+                hidden: false,
+                roles: [3, 4]
+            },
+            {
               label: "MCBU/CSF Withdrawals",
               url: "/transactions/mcbu-withdrawal",
               icon: {
@@ -406,18 +418,6 @@ const MenuItems = [
               hasSub: false,
               hidden: false,
               roles: []
-            },
-            {
-                label: "Loan Officer Summary",
-                url: "/transactions/loan-officer-summary", 
-                icon: {
-                    active: (props) => <BarChart3 {...props} />,
-                    notActive: (props) => <BarChart3 {...props} />,
-                },
-                active: false,
-                hasSub: false,
-                hidden: false,
-                roles: [3, 4]
             },
             {
                 label: "Bad Debts",
@@ -484,8 +484,8 @@ const MenuItems = [
                 roles: []
             },
             {
-                label: "Branch Manager Summary",
-                url: "/transactions/branch-manager/summary", 
+                label: "Transaction Summary",
+                url: "/transactions/summary", 
                 icon: {
                     active: (props) => <BarChart3 {...props} />,
                     notActive: (props) => <BarChart3 {...props} />,
