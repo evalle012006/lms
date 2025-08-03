@@ -3482,8 +3482,8 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.currentReleaseAmountStr }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center">{ cc.noOfPaymentStr }</td>
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
-                                                    { cc.mcbuColStr }
-                                                    {/* { (!isWeekend && !isHoliday && currentUser.role.rep > 2 && cc.status === 'active' && editMode 
+                                                    {/* { cc.mcbuColStr } */}
+                                                    { (!isWeekend && !isHoliday && currentUser.role.rep > 2 && cc.status === 'active' && editMode 
                                                             && ((cc?.origin && (cc?.origin === 'pre-save' || cc?.origin === 'automation-trf')) || cc.reverted || cc.draft) 
                                                             || (cc.offsetTransFlag && cc.otherDay)
                                                       ) ? (
@@ -3503,7 +3503,7 @@ const CashCollectionDetailsPage = () => {
                                                             <React.Fragment>
                                                                 {(!editMode || filter || !cc.reverted || cc.status === 'completed' || cc.status === 'pending' || cc.status === 'totals' || cc.status === 'closed') ? cc.mcbuColStr : '-'}
                                                             </React.Fragment>
-                                                    } */}
+                                                    }
                                                 </td>
                                                  <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right`}>
                                                     { (!isWeekend && !isHoliday && currentUser.role.rep > 2 && cc.status === 'active' && editMode && cc?.groupLeader
