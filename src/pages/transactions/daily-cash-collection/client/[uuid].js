@@ -82,6 +82,7 @@ const CashCollectionDetailsPage = () => {
     const [selectAll, setSelectAll] = useState(false);
 
     const [showMcbuWithdrawalDrawer, setShowMcbuWithdrawalDrawer] = useState(false);
+    const [hasGroupLeader, setHasGroupLeader] = useState(false);
 
     const handleCloseMcbuWithdrawalDrawer = () => {
         setShowMcbuWithdrawalDrawer(false);
@@ -1212,15 +1213,16 @@ const CashCollectionDetailsPage = () => {
             });
 
             const hasGroupLeader = hasValidGroupLeader(cashCollection);
+            setHasGroupLeader(hasGroupLeader);
 
             // totals
             cashCollection = [...cashCollection].map(cc => {
                 let updateOtherIncome = safeNumber(cc.otherIncome);
-                let csfIn = 0;
+                let csfIn = cc.csfIn;
 
                 if (!hasGroupLeader) {
                     csfIn = transactionSettings.minCsfCollection;
-                    updateOtherIncome += csfIn;
+                    // updateOtherIncome += csfIn;
                 }
 
                 const totalCollection = (
@@ -1240,7 +1242,8 @@ const CashCollectionDetailsPage = () => {
                 return {
                     ...cc,
                     mcbuCol: safeNumber(cc.mcbuCol),
-                    csfIn: csfIn,
+                    csfIn: cc.csfIn,
+                    csfInStr: cc.csfIn > 0 ? formatPricePhp(cc.csfIn) : '-',
                     otherIncome: updateOtherIncome,
                     otherIncomeStr: updateOtherIncome > 0 ? formatPricePhp(updateOtherIncome) : '-',
                     totalCollection: totalCollection
@@ -3371,6 +3374,8 @@ const CashCollectionDetailsPage = () => {
                                         <th className="p-2 text-center">Admission Fee</th>
                                         <th className="p-2 text-center">LRF</th>
                                         <th className="p-2 text-center">C.B.H.B Collection</th>
+                                        {/** is group leader */}
+                                        {hasGroupLeader && <th className="p-2 text-center">CSF In</th> }
                                         <th className="p-2 text-center">Other Income Passbook/Picture</th>
                                         <th className="p-2 text-center">MCBU Withdrawal</th>
                                         <th className="p-2 text-center">CSF Withdrawal</th>
@@ -3496,6 +3501,7 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.admissionCollection > 0 ? formatPricePhp(cc.admissionCollection) : '-' }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.lrfCollection > 0 ? formatPricePhp(cc.lrfCollection) : '-' }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.cbhbCollection > 0 ? formatPricePhp(cc.cbhbCollection) : '-' }</td>
+                                                { hasGroupLeader && <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.csfInStr }</td> }
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.otherIncomeStr }</td>
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center`}>
                                                     { (cc.hasMcbuWithdrawal && cc.mcbuWithdrawalIsPending) ? (
