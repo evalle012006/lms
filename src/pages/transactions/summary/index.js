@@ -207,6 +207,9 @@ const TransactionSummary = () => {
             mcbuWithdrawal: 0,
             mcbuReturnNo: 0,
             mcbuReturn: 0,
+            csf: 0,
+            csfCollection: 0,
+            csfWithdrawal: 0,
             activeClients: 0,
             currentReleasePerson_New: 0,
             currentReleasePerson_Rel: 0,
@@ -383,8 +386,10 @@ const TransactionSummary = () => {
                         <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">TOC</th>
                         <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">NM</th>
                         <th colSpan={6} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">MCBU</th>
+                        <th colSpan={2} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">CSF</th>
                         <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">Act. Clie.</th>
                         <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">MCBU Bal.</th>
+                        <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">CSF Bal.</th>
                         <th rowSpan={2} colSpan={2} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">Curr. Loan Rel. w/SC (Regular Loan Daily)</th>
                         <th rowSpan={2} colSpan={2} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">Curr. Loan Rel. w/SC (Other Loan Weekly)</th>
                         <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">Pers.</th>
@@ -406,6 +411,13 @@ const TransactionSummary = () => {
                         <th rowSpan={2} className="sticky top-[2.8rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">WD</th>
                         <th rowSpan={2} className="sticky top-[2.8rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Int.</th>
                         <th colSpan={2} className="sticky top-[2.8rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">MCBU Return</th>
+                        <th rowSpan={2} className="sticky top-[2.8rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Actual Deposit</th>
+                        <th rowSpan={2} className="sticky top-[2.8rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">WD</th>
+                        <th rowSpan={2} className="sticky top-[2.8rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Target Deposit</th>
+                        <th rowSpan={2} className="sticky top-[2.8rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Actual Deposit</th>
+                        <th rowSpan={2} className="sticky top-[2.8rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">WD</th>
+                        <th rowSpan={2} className="sticky top-[2.8rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Int.</th>
+                        <th rowSpan={2} className="sticky top-[2.8rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">CSF Return</th>
                         <th colSpan={3} className="sticky top-[2.8rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">REG. LOAN (Daily)</th>
                         <th colSpan={3} className="sticky top-[2.8rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">OTHER LOAN (Weekly)</th>
                     </tr>
@@ -454,8 +466,10 @@ const TransactionSummary = () => {
                         <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">TOC</th>
                         <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">NM</th>
                         <th colSpan={6} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">MCBU</th>
+                        <th colSpan={2} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">CSF</th>
                         <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">Act. Clie.</th>
                         <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">MCBU Bal.</th>
+                        <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">CSF Bal.</th>
                         <th rowSpan={2} colSpan={2} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">Curr. Loan Rel. with Serv. Charge</th>
                         <th rowSpan={2} colSpan={2} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">ACT LOAN RELEASE W/ Serv. Charge</th>
                         <th colSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">COLLECTION (w/ serv. charge)</th>
@@ -553,6 +567,51 @@ const TransactionSummary = () => {
                     {/* MCBU Balance - from API mcbu field */}
                     <td className="px-4 py-3 text-center whitespace-nowrap">
                         {formatCurrency(item.mcbu)}
+                    </td>
+                    
+                    {/* CSF Actual Deposit */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {formatCurrency(item.csfCollection)}
+                    </td>
+                    
+                    {/* CSF Withdrawal */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {formatCurrency(item.csfWithdrawal)}
+                    </td>
+                    
+                    {/* CSF Balance - from API csf field */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {formatCurrency(item.csf)}
+                    </td>
+                    
+                    {/* CSF Target Deposit */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {formatCurrency(item.csfIn)}
+                    </td>
+                    
+                    {/* CSF Actual Deposit */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {formatCurrency(item.csfCollection)}
+                    </td>
+                    
+                    {/* CSF Withdrawal */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {formatCurrency(item.csfWithdrawal)}
+                    </td>
+                    
+                    {/* CSF Interest */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        -
+                    </td>
+                    
+                    {/* CSF Return Amount */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {formatCurrency(item.csfReturnAmt)}
+                    </td>
+                    
+                    {/* CSF Balance - from API csf field */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {formatCurrency(item.csf)}
                     </td>
                     
                     {/* Daily Release Person */}
@@ -849,7 +908,7 @@ const TransactionSummary = () => {
                                                 summaryData.map((item, index) => renderTableCells(item, index))
                                             ) : (
                                                 <tr>
-                                                    <td colSpan={isBranchManagerView ? "30" : "21"} className="px-4 py-12 text-center text-gray-500 bg-gray-50">
+                                                    <td colSpan={isBranchManagerView ? "39" : "27"} className="px-4 py-12 text-center text-gray-500 bg-gray-50">
                                                         <div className="flex flex-col items-center">
                                                             <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mb-4">
                                                                 <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -865,7 +924,7 @@ const TransactionSummary = () => {
                                         </tbody>
                                         <tfoot className="bg-gray-50">
                                             <tr>
-                                                <td colSpan={isBranchManagerView ? "30" : "21"} className="px-4 py-3 text-center text-gray-500"></td>
+                                                <td colSpan={isBranchManagerView ? "39" : "27"} className="px-4 py-3 text-center text-gray-500"></td>
                                             </tr>
                                         </tfoot>
                                     </table>
