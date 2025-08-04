@@ -169,21 +169,24 @@ export const safeNumber = (value) => {
 };
 
 export const hasValidGroupLeader = (arr) => {
-  // First, check if the overall "no group leader" condition is met by *any* person.
-  // If any person has loanCycle = 1 AND status = 'pending', then NO group leader overall.
-  // We'll use 'some' to check if *any* individual in the array satisfies this disqualifying condition.
-  const disqualifiesGroupLeader = arr.some(person => {
-    return person.loanCycle === 1 && person.status === 'pending';
-  });
+  // 1. Find all individuals designated as group leaders.
+  const designatedGroupLeaders = arr.filter(person => person.groupLeader === true);
 
-  if (disqualifiesGroupLeader) {
-    return false; // If this condition is met for ANY person, then no group leader overall.
+  // 2. If no one is even designated as a group leader, then there's no valid group leader.
+  if (designatedGroupLeaders.length === 0) {
+    return false;
   }
 
-  // If no one disqualifies the group leader based on loanCycle/status,
-  // then we proceed to check if any object actually has groupLeader = true.
-  return arr.some(person => person.groupLeader === true);
-}
+  // 3. Check if *any* of these designated group leaders are *not* disqualified.
+  // A designated group leader is "disqualified" if their own loanCycle is 1 AND their own status is 'pending'.
+  const hasAtLeastOneValidLeader = designatedGroupLeaders.some(leader => {
+    // A leader is valid if they DO NOT meet the disqualifying criteria
+    return !(leader.loanCycle === 1 && leader.status === 'pending');
+  });
+
+  // If at least one designated group leader is found who is not disqualified, return true.
+  return hasAtLeastOneValidLeader;
+};
 
 // lib/navigationUtils.js
 

@@ -1211,10 +1211,10 @@ const CashCollectionDetailsPage = () => {
                     cashCollection.push(pendingTomorrow);
                 }
             });
-
+            console.log('Cash Collection: ', cashCollection);
             const hasGroupLeader = hasValidGroupLeader(cashCollection);
             setHasGroupLeader(hasGroupLeader);
-
+            console.log('Has Group Leader: ', hasGroupLeader);
             // totals
             cashCollection = [...cashCollection].map(cc => {
                 let updateOtherIncome = safeNumber(cc.otherIncome);
@@ -1222,7 +1222,6 @@ const CashCollectionDetailsPage = () => {
 
                 if (!hasGroupLeader) {
                     csfIn = transactionSettings.minCsfCollection;
-                    // updateOtherIncome += csfIn;
                 }
 
                 const totalCollection = (
