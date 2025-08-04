@@ -350,6 +350,21 @@ const ModernBranchCashCollections = () => {
           const formattedName = filter === 'branch' && item.code ? 
             `${item.code} - ${item.name}` : 
             item.name;
+
+          // Get current day name for weekly group filtering
+          const currentDayName = moment().format('dddd').toLowerCase();
+          
+          // Check if we should show target loan collection (for weekly groups only)
+          const shouldShowTarget = () => {
+            // If not viewing groups, always show target
+            if (filter !== 'group') return true;
+            // If not weekly occurrence, always show target
+            if (item.occurence !== 'weekly') return true;
+            // If no groupDay specified, always show target
+            if (!item.groupDay) return true;
+            // For weekly groups with groupDay, only show if it matches current day
+            return item.groupDay.toLowerCase() === currentDayName;
+          };
   
           const transformedItem = {
             ... item,
@@ -357,8 +372,11 @@ const ModernBranchCashCollections = () => {
             name: formattedName,
             code: item.code,
             loNo: item.loNo || null, // ADDED: Include loNo for sorting
+            transactionType: item.transactionType || '-', // ADDED: Include transactionType for Occurrence column
+            occurence: item.occurence || '-', // ADDED: Include occurrence
+            groupDay: item.groupDay || null, // ADDED: Include groupDay
             
-            loanTargetStr: item.targetLoanCollection ? 
+            loanTargetStr: shouldShowTarget() && item.targetLoanCollection ? 
             `₱${Number(item.targetLoanCollection).toLocaleString()}` : '-',
             
             excessCurrent: item.excess ? `₱${Number(item.excess).toLocaleString()}` : '-',
@@ -519,6 +537,76 @@ const ModernBranchCashCollections = () => {
     }, 1000);
     return () => clearTimeout(mounted);
   }, [dateFilter, selectedBranchGroup, selectedLoGroup, viewMode, router.query.id]);
+
+  // Pre-save collections for weekly groups
+  useEffect(() => {
+    const shouldPreSave = () => {
+      // Must be viewing groups
+      if (currentFilter !== 'group' && router.query.filter !== 'group') {
+        return false;
+      }
+
+      // Must have required conditions
+      if (isHoliday || isWeekend || !currentDate || !router.query.id) {
+        return false;
+      }
+
+      // Must have data loaded
+      if (!data || data.length === 0) {
+        return false;
+      }
+
+      // Check if any groups have weekly occurrence
+      const hasWeeklyGroups = data.some(item => 
+        !item.totalData && item.occurence === 'weekly'
+      );
+
+      console.log('Pre-save check:', {
+        currentFilter,
+        routerFilter: router.query.filter,
+        isHoliday,
+        isWeekend,
+        currentDate,
+        currentDayName: moment().format('dddd').toLowerCase(),
+        loId: router.query.id,
+        dataLength: data.length,
+        hasWeeklyGroups,
+        weeklyGroupsData: data.filter(item => !item.totalData && item.occurence === 'weekly').map(item => ({
+          name: item.name,
+          occurence: item.occurence,
+          groupDay: item.groupDay,
+          targetLoanCollection: item.targetLoanCollection
+        }))
+      });
+
+      return hasWeeklyGroups;
+    };
+
+    if (shouldPreSave()) {
+      const preSaveCollections = async () => {
+        const requestData = {
+          loId: router.query.id, // This is the loan officer ID when viewing groups
+          currentDate: currentDate,
+          currentUser: currentUser._id
+        };
+
+        console.log('Triggering pre-save collections with data:', requestData);
+
+        try {
+          const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collections/pre-save-collections', requestData);
+          console.log('Pre-save collections completed for weekly groups:', response);
+        } catch (error) {
+          console.error('Error in pre-save collections:', error);
+        }
+      };
+
+      const timer = setTimeout(() => {
+        preSaveCollections();
+      }, 1500); // Slightly longer delay to ensure data is loaded
+
+      return () => clearTimeout(timer);
+    }
+  }, [currentFilter, router.query.filter, isHoliday, isWeekend, currentDate, router.query.id, data, currentUser]);
   
   const handleViewModeChange = (mode) => {
     setViewMode(mode);
@@ -1053,6 +1141,7 @@ const ModernBranchCashCollections = () => {
 
   const [visibleColumns, setVisibleColumns] = useState({
     name: true,
+    transactionType: true, // ADDED: Include transactionType column for loan officers only
     loanTargetStr: true,
     excess: true, 
     actualLoanCollection: true,
@@ -1087,6 +1176,7 @@ const ModernBranchCashCollections = () => {
 
   const columnDefs = useMemo(() => [
     { key: 'name', label: getEntityColumnLabel(), width: 'w-64' },
+    { key: 'transactionType', label: 'Occurrence', width: 'w-24' }, // ADDED: Transaction Type/Occurrence column for loan officers only
     { key: 'activeClients', label: 'Active Clients', width: 'w-28', hasComparison: true },
     { key: 'mcbu', label: 'MCBU', width: 'w-40', },
     { key: 'csf', label: 'CSF', width: 'w-40', },
@@ -1119,13 +1209,16 @@ const ModernBranchCashCollections = () => {
     { key: 'cashOnHand', label: 'Cash On Hand', width: 'w-20' },
   ], [currentFilter]);
 
-  // useEffect(() => {
-  //   console.log(currentFilter, columnDefs)
-  // }, [currentFilter])
-
+  // UPDATED: Filter visible columns - only show transactionType when filter is 'lo'
   const visibleColumnDefs = useMemo(() => {
-    return columnDefs.filter(col => visibleColumns[col.key]);
-  }, [visibleColumns, columnDefs]);
+    return columnDefs.filter(col => {
+      // Show transactionType column ONLY when currentFilter is 'lo'
+      if (col.key === 'transactionType') {
+        return currentFilter === 'lo' && visibleColumns[col.key];
+      }
+      return visibleColumns[col.key];
+    });
+  }, [visibleColumns, columnDefs, currentFilter]);
 
   return (
     <Layout header={false} noPad={true}>
@@ -1274,20 +1367,27 @@ const ModernBranchCashCollections = () => {
                 <div className="absolute right-4 mt-16 bg-white shadow-lg border border-gray-200 rounded-md z-10 p-4 max-h-96 overflow-y-auto">
                 <h3 className="font-medium text-gray-700 mb-2">Show/Hide Columns</h3>
                 <div className="grid grid-cols-2 gap-2">
-                    {columnDefs.map(col => (
-                    <div key={col.key} className="flex items-center">
-                        <input
-                        type="checkbox"
-                        id={`col-${col.key}`}
-                        checked={visibleColumns[col.key]}
-                        onChange={() => toggleColumnVisibility(col.key)}
-                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                        />
-                        <label htmlFor={`col-${col.key}`} className="ml-2 text-sm text-gray-700">
-                        {col.label}
-                        </label>
-                    </div>
-                    ))}
+                    {columnDefs.map(col => {
+                      // UPDATED: Only show transactionType column option when filter is 'lo'
+                      if (col.key === 'transactionType' && currentFilter !== 'lo') {
+                        return null;
+                      }
+                      
+                      return (
+                        <div key={col.key} className="flex items-center">
+                            <input
+                            type="checkbox"
+                            id={`col-${col.key}`}
+                            checked={visibleColumns[col.key]}
+                            onChange={() => toggleColumnVisibility(col.key)}
+                            className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                            />
+                            <label htmlFor={`col-${col.key}`} className="ml-2 text-sm text-gray-700">
+                            {col.label}
+                            </label>
+                        </div>
+                      );
+                    })}
                 </div>
                 </div>
             )}
@@ -1339,6 +1439,10 @@ const ModernBranchCashCollections = () => {
                                         <td key={`${row._id}-${column.key}`} className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                                             {column.key === 'name' ? (
                                             <div className="font-medium text-gray-900">{row[column.key]}</div>
+                                            ) : column.key === 'transactionType' ? (
+                                              <div className="text-xs font-medium uppercase tracking-wider text-gray-700 bg-gray-100 px-2 py-1 rounded">
+                                                {row[column.key] || '-'}
+                                              </div>
                                             ) : column.key === 'excess' && column.hasComparison ? (
                                             formatWithComparison(row.excessCurrent, row.excessPrevious)
                                             ) : column.key === 'actualLoanCollection' && column.hasComparison ? (
@@ -1388,6 +1492,10 @@ const ModernBranchCashCollections = () => {
                                     <td key={`grand-total-${column.key}`} className="whitespace-nowrap px-3 py-4 text-sm text-gray-900 font-semibold border-t-2 border-gray-300">
                                             {column.key === 'name' ? (
                                             <div className="font-medium text-gray-900">GRAND TOTALS</div>
+                                            ) : column.key === 'transactionType' ? (
+                                              <div className="text-xs font-medium uppercase tracking-wider text-gray-700 bg-gray-200 px-2 py-1 rounded">
+                                                {grandTotalRow[column.key] || 'ALL'}
+                                              </div>
                                             ) : column.key === 'excess' && column.hasComparison ? (
                                             formatWithComparison(grandTotalRow.excessCurrent, grandTotalRow.excessPrevious)
                                             ) : column.key === 'actualLoanCollection' && column.hasComparison ? (

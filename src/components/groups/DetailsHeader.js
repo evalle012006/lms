@@ -104,11 +104,6 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
             let newPathname = router.asPath.split('?')[0]; // Get pathname without query string
             newPathname = newPathname.replace(/\/[^\/]+$/, `/${selectedGroup._id}`); // Replace the last segment (UUID)
             
-            console.log('ModernBranchCashCollections mode - preserving parameters');
-            console.log('Current path:', router.asPath);
-            console.log('New pathname:', newPathname);
-            console.log('Preserved params:', newQuery);
-            
             router.push({
                 pathname: newPathname,
                 query: newQuery
@@ -169,7 +164,7 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
             
             // Navigate back to ModernBranchCashCollections with the preserved state
             router.push({
-                pathname: '/transactions/branch-manager/v2',
+                pathname: '/transactions/cash-collection',
                 query: backQuery
             });
             

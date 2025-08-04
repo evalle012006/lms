@@ -81,7 +81,7 @@ const Breadcrumbs = () => {
                             }
 
                             const queryString = new URLSearchParams(backToModernBranchQuery).toString();
-                            const backUrl = `/transactions/branch-manager/v2${queryString ? '?' + queryString : ''}`;
+                            const backUrl = `/transactions/cash-collection/${queryString ? '?' + queryString : ''}`;
 
                             if (paths[2] === 'client') {
                                 try {
