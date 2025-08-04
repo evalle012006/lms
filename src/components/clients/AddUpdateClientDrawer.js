@@ -646,6 +646,7 @@ const AddUpdateClient = ({ mode = 'add', client = {}, showSidebar, setShowSideba
                                                                 : 'bg-gray-200 border-gray-300'
                                                         }`}
                                                         onClick={() => setFieldValue('groupLeader', !values.groupLeader)}
+                                                        disabled={mode === 'edit' && client?.status !== 'pending'}
                                                     >
                                                         <span
                                                             className={`inline-block h-5 w-5 transform rounded-full bg-white transition shadow-sm ${
