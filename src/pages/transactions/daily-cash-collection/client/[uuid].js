@@ -1211,7 +1211,7 @@ const CashCollectionDetailsPage = () => {
                     cashCollection.push(pendingTomorrow);
                 }
             });
-            
+
             const hasGroupLeader = hasValidGroupLeader(cashCollection);
             setHasGroupLeader(hasGroupLeader);
             // totals
@@ -1681,6 +1681,10 @@ const CashCollectionDetailsPage = () => {
                         if (diff < 0) {
                             temp.status = 'completed';
                         }
+                    }
+
+                    if (safeNumber(temp.paymentCollection) <= 0) {
+                        temp.csfIn = 0;
                     }
 
                     // if admin it should not override what it is currently saved

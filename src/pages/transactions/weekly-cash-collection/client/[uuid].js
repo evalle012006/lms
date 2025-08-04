@@ -1695,6 +1695,10 @@ const CashCollectionDetailsPage = () => {
                         }
                     }
 
+                    if (safeNumber(temp.paymentCollection) <= 0) {
+                        temp.csfIn = 0;
+                    }
+
                     // if admin it should not override what it is currently saved
                     temp.groupStatus = 'pending';
                     temp.draft = temp.loanBalance <= 0 ? false : draft;
@@ -1715,9 +1719,9 @@ const CashCollectionDetailsPage = () => {
                     dataArr = dataArr.filter(cc => cc.mcbuWithdrawFlag || cc.offsetTransFlag);
                 }
 
-                const pendings = dataArr.filter(cc => {
-                    return cc?.advance && cc.status == 'pending';
-                });
+                // const pendings = dataArr.filter(cc => {
+                //     return cc?.advance && cc.status == 'pending';
+                // });
                 // console.log(dataArr)
                 if (save) {
                     let cashCollection;
