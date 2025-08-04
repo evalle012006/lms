@@ -23,7 +23,10 @@ const ModernBranchCashCollections = () => {
   const isWeekend = useSelector(state => state.systemSettings.weekend);
   
   const [loading, setLoading] = useState(true);
-  const [dateFilter, setDateFilter] = useState(moment().format('YYYY-MM-DD'));
+  const [dateFilter, setDateFilter] = useState(() => {
+    // Check if there's a date in the URL parameters, otherwise use current date
+    return router.query.date || moment().format('YYYY-MM-DD');
+  });
   const [viewMode, setViewMode] = useState(() => {
     // Set default based on user role
     if (currentUser && !shouldIncludeViewMode(currentUser)) {
@@ -133,6 +136,26 @@ const ModernBranchCashCollections = () => {
     }
   };
 
+  // Helper function for formatting Current Release Person
+  const formatCurrentReleasePerson = (newValue, relValue) => {
+    // Convert to numbers in case they come as strings
+    const newNum = Number(newValue);
+    const relNum = Number(relValue);
+    
+    // Check if both are valid numbers
+    if (isNaN(newNum) || isNaN(relNum)) {
+      return '-';
+    }
+    
+    // If both are 0, return '-'
+    if (newNum === 0 && relNum === 0) {
+      return '-';
+    }
+    
+    // Otherwise, return formatted string with spaces
+    return `${newNum} / ${relNum}`;
+  };
+
   const fetchCashCollectionsData = async (date) => {
     setLoading(true);
     try {
@@ -154,49 +177,49 @@ const ModernBranchCashCollections = () => {
           // Show loan officers for the selected branch
           baseParams.branchId = router.query.id; 
           filter = 'lo';
-          console.log('LO LEVEL: Showing loan officers in branch', router.query.id);
+          // console.log('LO LEVEL: Showing loan officers in branch', router.query.id);
         } 
         else if (router.query.filter === 'group') {
           // Show groups for the selected loan officer
           baseParams.loId = router.query.id;
           baseParams.branchId = router.query.parentId; // Branch ID should be in parentId
           filter = 'group';
-          console.log('GROUP LEVEL: Showing groups for loan officer', router.query.id);
+          // console.log('GROUP LEVEL: Showing groups for loan officer', router.query.id);
         }
         // Standard hierarchy navigation
         else if (viewMode === 'division') {
           if (router.query.grandParentId || router.asPath.includes('grandParentId')) {
             baseParams.areaId = router.query.id;
             filter = 'branch';
-            console.log('FOURTH LEVEL (Division view): Showing branches in area', router.query.id);
+            // console.log('FOURTH LEVEL (Division view): Showing branches in area', router.query.id);
           } 
           else if (router.query.parentId) {
             baseParams.regionId = router.query.id;
             filter = 'area';
-            console.log('THIRD LEVEL (Division view): Showing areas in region', router.query.id);
+            // console.log('THIRD LEVEL (Division view): Showing areas in region', router.query.id);
           } else {
             baseParams.divisionId = router.query.id;
             filter = 'region';
-            console.log('SECOND LEVEL (Division view): Showing regions in division', router.query.id);
+            // console.log('SECOND LEVEL (Division view): Showing regions in division', router.query.id);
           }
         } else if (viewMode === 'region') {
           if (router.query.parentId || currentFilter === 'branch') {
             baseParams.areaId = router.query.id;
             filter = 'branch';
-            console.log('THIRD LEVEL (Region view): Showing branches in area', router.query.id);
+            // console.log('THIRD LEVEL (Region view): Showing branches in area', router.query.id);
           } else {
             baseParams.regionId = router.query.id;
             filter = 'area';
-            console.log('SECOND LEVEL (Region view): Showing areas in region', router.query.id);
+            // console.log('SECOND LEVEL (Region view): Showing areas in region', router.query.id);
           }
         } else if (viewMode === 'area') {
           baseParams.areaId = router.query.id;
           filter = 'branch';
-          console.log('SECOND LEVEL (Area view): Showing branches in area', router.query.id);
+          // console.log('SECOND LEVEL (Area view): Showing branches in area', router.query.id);
         } else {
           baseParams.branchId = router.query.id;
           filter = 'branch';
-          console.log('Branch view: Showing branch details for', router.query.id);
+          // console.log('Branch view: Showing branch details for', router.query.id);
         }
       }
       
@@ -229,7 +252,7 @@ const ModernBranchCashCollections = () => {
             // Only override to region view if not in nested navigation
             if (!router.query.id) {
               filter = 'region';
-              console.log('Overriding to region view for Regional Manager');
+              // console.log('Overriding to region view for Regional Manager');
             }
             // If in nested navigation, keep the filter that was set above
           }
@@ -242,7 +265,7 @@ const ModernBranchCashCollections = () => {
             baseParams.areaId = currentUser.areaId;
           }
           filter = 'branch'; // Area admins see branches in their area
-          console.log('Area Admin filtering by areaId:', currentUser.areaId);
+          // console.log('Area Admin filtering by areaId:', currentUser.areaId);
         }
       } 
       // UPDATED: When 'all' is selected, don't add any filtering IDs unless they're already set from router.query.id
@@ -312,9 +335,9 @@ const ModernBranchCashCollections = () => {
            !router.query.id ? currentUser.regionId : null),
       });
       
-      console.log('API parameters:', params.toString());
+      // console.log('API parameters:', params.toString());
       const response = await fetchWrapper.get(getApiBaseUrl() + 'data/get_cash_collections_page_data?' + params.toString());
-      console.log('API Response:', response);
+      // console.log('API Response:', response);
       
       if (router.query.id && response && response.parentName) {
         setParentEntityName(response.parentName);
@@ -323,7 +346,6 @@ const ModernBranchCashCollections = () => {
       }
   
       if (response && response.data) {
-        console.log('columns ', visibleColumnDefs);
         const processedData = response.data.map(item => {
           const formattedName = filter === 'branch' && item.code ? 
             `${item.code} - ${item.name}` : 
@@ -389,9 +411,8 @@ const ModernBranchCashCollections = () => {
             totalLoanBalancePreviousStr: item.prev_totalLoanBalance ? 
             `₱${Number(item.prev_totalLoanBalance).toLocaleString()}` : '-',
             
-            noCurrentReleaseStr: (typeof item.currentReleasePerson_New === 'number' && typeof item.currentReleasePerson_Rel === 'number' && 
-            (item.currentReleasePerson_New > 0 || item.currentReleasePerson_Rel > 0)) ? 
-            `${item.currentReleasePerson_New} / ${item.currentReleasePerson_Rel}` : '-',
+            // FIXED: Updated Current Release Person logic
+            noCurrentReleaseStr: formatCurrentReleasePerson(item.currentReleasePerson_New, item.currentReleasePerson_Rel),
             currentReleaseAmountStr: item.currentReleaseAmount ? 
             `₱${Number(item.currentReleaseAmount).toLocaleString()}` : '-',
 
@@ -410,9 +431,8 @@ const ModernBranchCashCollections = () => {
           };
   
           transformedItem.pastDueAmount = item.pastDueAmount ? `₱${Number(item.pastDueAmount).toLocaleString()}` : '-',
-          transformedItem.noPersonRelease = (typeof item.currentReleasePerson_New === 'number' && typeof item.currentReleasePerson_Rel === 'number' && 
-          (item.currentReleasePerson_New > 0 || item.currentReleasePerson_Rel > 0)) ? 
-          `${item.currentReleasePerson_New} / ${item.currentReleasePerson_Rel}` : '-';
+          // FIXED: Updated noPersonRelease logic as well
+          transformedItem.noPersonRelease = formatCurrentReleasePerson(item.currentReleasePerson_New, item.currentReleasePerson_Rel);
           transformedItem.mcbuCollection = item.mcbuCollection ? `₱${Number(item.mcbuCollection).toLocaleString()}` : '-',
           transformedItem.excess = transformedItem.excessCurrent;
           transformedItem.mcbuWithdrawal = transformedItem.mcbuWithdrawalCurrent;
@@ -425,8 +445,8 @@ const ModernBranchCashCollections = () => {
           return transformedItem;
         });
         
-        console.log('Processed data length:', processedData.length);
-        console.log('Current filter:', filter);
+        // console.log('Processed data length:', processedData.length);
+        // console.log('Current filter:', filter);
         
         // UPDATED: Set numberOfLo when currentUser.role.rep === 3 OR filter === 'lo'
         if (currentUser.role.rep === 3 || filter === 'lo') {
@@ -436,10 +456,8 @@ const ModernBranchCashCollections = () => {
         }
         
         if (filter === 'branch') {
-          console.log('Storing data in Redux');
           dispatch(setCashCollectionBranch(processedData));
         } else {
-          console.log('Storing data in local state');
           setData(processedData);
         }
         
@@ -467,6 +485,11 @@ const ModernBranchCashCollections = () => {
       setViewMode(router.query.viewMode);
     }
     
+    // Set date from URL parameter if it exists
+    if (router.query.date) {
+      setDateFilter(router.query.date);
+    }
+    
     setViewingNestedContent(!!router.query.id);
     
     if (router.query.parentId) {
@@ -482,7 +505,7 @@ const ModernBranchCashCollections = () => {
       setCurrentFilter(router.query.filter);
       setCurrentLevel(router.query.filter);
     }
-  }, [router.query.viewMode, router.query.id, router.query.parentId, router.query.parentViewMode, router.query.filter, currentUser]);
+  }, [router.query.viewMode, router.query.id, router.query.parentId, router.query.parentViewMode, router.query.filter, router.query.date, currentUser]);
 
   useEffect(() => {
     setLoading(true);
@@ -506,8 +529,18 @@ const ModernBranchCashCollections = () => {
     setParentViewMode(null);
     setCurrentFilter(null);
     
+    // Build query object
+    const query = {};
+    
     // Only include viewMode in URL if user role allows it
-    const query = shouldIncludeViewMode(currentUser) ? { viewMode: mode } : {};
+    if (shouldIncludeViewMode(currentUser)) {
+      query.viewMode = mode;
+    }
+    
+    // Preserve date parameter if it exists and is different from current date
+    if (router.query.date && router.query.date !== moment().format('YYYY-MM-DD')) {
+      query.date = router.query.date;
+    }
     
     router.push({
       pathname: router.pathname,
@@ -524,7 +557,27 @@ const ModernBranchCashCollections = () => {
   };
 
   const handleDateChange = (e) => {
-    setDateFilter(e.target.value);
+    const selectedDate = e.target.value;
+    const currentDate = moment().format('YYYY-MM-DD');
+    
+    setDateFilter(selectedDate);
+    
+    // Update URL parameters to persist the date selection
+    const currentQuery = { ...router.query };
+    
+    // Only add date to URL if it's different from current date
+    if (selectedDate !== currentDate) {
+      currentQuery.date = selectedDate;
+    } else {
+      // Remove date parameter if user selects current date
+      delete currentQuery.date;
+    }
+    
+    // Update URL with the new query parameters
+    router.push({
+      pathname: router.pathname,
+      query: currentQuery
+    }, undefined, { shallow: true });
   };
   
   const handleSearch = (e) => {
@@ -656,6 +709,11 @@ const ModernBranchCashCollections = () => {
         updatedQuery.viewMode = viewMode;
       }
       
+      // Preserve date parameter if it exists and is different from current date
+      if (router.query.date && router.query.date !== moment().format('YYYY-MM-DD')) {
+        updatedQuery.date = router.query.date;
+      }
+      
       // Handle specific parameter setting based on the next level
       switch (navigation.nextLevel) {
         case 'region':
@@ -745,9 +803,6 @@ const ModernBranchCashCollections = () => {
         }
       }
       
-      console.log('Navigation from', currentLevel, 'to', navigation.nextLevel);
-      console.log('Updated query:', updatedQuery);
-      
       router.push({
         pathname: router.pathname,
         query: updatedQuery
@@ -773,6 +828,11 @@ const ModernBranchCashCollections = () => {
         query.viewMode = router.query.viewMode || viewMode;
       }
       
+      // Preserve date parameter if it exists and is different from current date
+      if (router.query.date && router.query.date !== moment().format('YYYY-MM-DD')) {
+        query.date = router.query.date;
+      }
+      
       router.push({
         pathname: router.pathname,
         query
@@ -787,6 +847,11 @@ const ModernBranchCashCollections = () => {
       // Only include viewMode if user role allows it
       if (shouldIncludeViewMode(currentUser)) {
         query.viewMode = router.query.viewMode || viewMode;
+      }
+      
+      // Preserve date parameter if it exists and is different from current date
+      if (router.query.date && router.query.date !== moment().format('YYYY-MM-DD')) {
+        query.date = router.query.date;
       }
       
       router.push({
@@ -806,6 +871,11 @@ const ModernBranchCashCollections = () => {
         query.viewMode = router.query.grandParentViewMode || viewMode;
       }
       
+      // Preserve date parameter if it exists and is different from current date
+      if (router.query.date && router.query.date !== moment().format('YYYY-MM-DD')) {
+        query.date = router.query.date;
+      }
+      
       router.push({
         pathname: router.pathname,
         query
@@ -819,6 +889,11 @@ const ModernBranchCashCollections = () => {
         query.viewMode = router.query.parentViewMode || viewMode;
       }
       
+      // Preserve date parameter if it exists and is different from current date
+      if (router.query.date && router.query.date !== moment().format('YYYY-MM-DD')) {
+        query.date = router.query.date;
+      }
+      
       router.push({
         pathname: router.pathname,
         query
@@ -828,6 +903,11 @@ const ModernBranchCashCollections = () => {
       
       if (shouldIncludeViewMode(currentUser)) {
         query.viewMode = viewMode;
+      }
+      
+      // Preserve date parameter if it exists and is different from current date
+      if (router.query.date && router.query.date !== moment().format('YYYY-MM-DD')) {
+        query.date = router.query.date;
       }
       
       router.push({
@@ -895,10 +975,6 @@ const ModernBranchCashCollections = () => {
   };
 
   const filteredData = useMemo(() => {
-    console.log('Filtering data with currentFilter:', currentFilter);
-    console.log('branchCollectionData length:', branchCollectionData?.length);
-    console.log('data length:', data?.length);
-    
     const dataSource = currentFilter === 'branch' && branchCollectionData?.length > 0 
       ? branchCollectionData 
       : data;
@@ -1043,9 +1119,9 @@ const ModernBranchCashCollections = () => {
     { key: 'cashOnHand', label: 'Cash On Hand', width: 'w-20' },
   ], [currentFilter]);
 
-  useEffect(() => {
-    console.log(currentFilter, columnDefs)
-  }, [currentFilter])
+  // useEffect(() => {
+  //   console.log(currentFilter, columnDefs)
+  // }, [currentFilter])
 
   const visibleColumnDefs = useMemo(() => {
     return columnDefs.filter(col => visibleColumns[col.key]);
