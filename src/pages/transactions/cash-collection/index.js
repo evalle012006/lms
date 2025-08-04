@@ -200,12 +200,17 @@ const ModernBranchCashCollections = () => {
         }
       }
       
-      // Handle selectedBranchGroup filtering
+      // FIXED: Handle selectedBranchGroup filtering - only apply user-specific filtering when not in nested navigation
       if (selectedBranchGroup === 'mine' && !router.query.filter) {
         // When 'mine' is selected, filter according to the user's role and permissions
+        // BUT only if we're not in nested navigation (router.query.id doesn't exist)
+        
         if (currentUser.role.shortCode === 'deputy_director') {
           // Deputy Director - filter by division
-          baseParams.divisionId = currentUser.divisionId;
+          // Only apply user-specific filtering if not navigating into a specific entity
+          if (!router.query.id) {
+            baseParams.divisionId = currentUser.divisionId;
+          }
           if (viewMode === 'branch') filter = 'branch';
           else if (viewMode === 'area') filter = 'area';
           else if (viewMode === 'region') filter = 'region';
@@ -213,15 +218,31 @@ const ModernBranchCashCollections = () => {
         } 
         else if (currentUser.role.shortCode === 'regional_manager') {
           // Regional Manager - filter by region
-          baseParams.regionId = currentUser.regionId;
+          // Only apply user-specific filtering if not navigating into a specific entity
+          if (!router.query.id) {
+            baseParams.regionId = currentUser.regionId;
+          }
           if (viewMode === 'branch') filter = 'branch';
           else if (viewMode === 'area') filter = 'area';
           else if (viewMode === 'region') filter = 'region';
           else if (viewMode === 'division') {
-            filter = 'region';
-            // Override viewMode for division view when user is regional_manager
-            console.log('Overriding to region view for Regional Manager');
+            // Only override to region view if not in nested navigation
+            if (!router.query.id) {
+              filter = 'region';
+              console.log('Overriding to region view for Regional Manager');
+            }
+            // If in nested navigation, keep the filter that was set above
           }
+        }
+        // ADDED: Area Admin filtering logic
+        else if (currentUser.role.shortCode === 'area_admin') {
+          // Area Admin - filter by area
+          // Only apply user-specific filtering if not navigating into a specific entity
+          if (!router.query.id) {
+            baseParams.areaId = currentUser.areaId;
+          }
+          filter = 'branch'; // Area admins see branches in their area
+          console.log('Area Admin filtering by areaId:', currentUser.areaId);
         }
       } 
       // UPDATED: When 'all' is selected, don't add any filtering IDs unless they're already set from router.query.id
@@ -237,7 +258,18 @@ const ModernBranchCashCollections = () => {
       
       // Set the filter based on user role if not already overridden
       if (!router.query.filter) {
-        baseParams.filter = currentUser.role.rep < 3 ? filter : (currentUser.role.rep === 3 ? 'lo' : 'group');
+        if (currentUser.role.rep < 3) {
+          baseParams.filter = filter;
+        } else if (currentUser.role.rep === 3) {
+          // Handle both branch managers and area managers with role.rep = 3
+          if (currentUser.role.shortCode === 'area_manager' || currentUser.role.shortCode === 'area_admin') {
+            baseParams.filter = 'branch'; // Area managers see branches in their area
+          } else {
+            baseParams.filter = 'lo'; // Branch managers see loan officers
+          }
+        } else {
+          baseParams.filter = 'group'; // Group leaders see groups
+        }
         filter = baseParams.filter;
       } else {
         baseParams.filter = filter;
@@ -256,19 +288,28 @@ const ModernBranchCashCollections = () => {
         
         // UPDATED: For 'all' mode, only include IDs that were set from router.query.id (nested navigation)
         // For 'mine' mode with non-admin roles, include user's IDs when appropriate
+        // IMPORTANT: Don't override IDs that were already set in baseParams during nested navigation
         branchId: baseParams.branchId || router.query.branchId || 
-          (selectedBranchGroup === 'mine' && currentUser.role.rep !== 1 ? currentUser.designatedBranchId : null),
+          (selectedBranchGroup === 'mine' && currentUser.role.rep !== 1 && !router.query.id ? currentUser.designatedBranchId : null),
         
+        // UPDATED: Include areaId based on role and selection mode
+        // Don't override if already set in baseParams during nested navigation
         areaId: baseParams.areaId || 
-          (selectedBranchGroup === 'mine' && currentUser.role.rep !== 1 ? currentUser.areaId : null),
+          (selectedBranchGroup === 'mine' && currentUser.role.rep !== 1 && !router.query.id ? currentUser.areaId : null),
         
-        // UPDATED: Only send divisionId when selectedBranchGroup is 'mine'
+        // UPDATED: For area admins, don't include division/region IDs when filtering by 'mine'
+        // Don't override if already set in baseParams during nested navigation
         divisionId: baseParams.divisionId || 
-          (selectedBranchGroup === 'mine' && currentUser.role.rep !== 1 ? currentUser.divisionId : null),
+          (selectedBranchGroup === 'mine' && 
+           currentUser.role.rep !== 1 && 
+           currentUser.role.shortCode !== 'area_admin' && 
+           !router.query.id ? currentUser.divisionId : null),
         
-        // UPDATED: Only send regionId when selectedBranchGroup is 'mine'
         regionId: baseParams.regionId || 
-          (selectedBranchGroup === 'mine' && currentUser.role.rep !== 1 ? currentUser.regionId : null),
+          (selectedBranchGroup === 'mine' && 
+           currentUser.role.rep !== 1 && 
+           currentUser.role.shortCode !== 'area_admin' && 
+           !router.query.id ? currentUser.regionId : null),
       });
       
       console.log('API parameters:', params.toString());
@@ -348,7 +389,8 @@ const ModernBranchCashCollections = () => {
             totalLoanBalancePreviousStr: item.prev_totalLoanBalance ? 
             `₱${Number(item.prev_totalLoanBalance).toLocaleString()}` : '-',
             
-            noCurrentReleaseStr: item.currentReleasePerson_New && item.currentReleasePerson_Rel ? 
+            noCurrentReleaseStr: (typeof item.currentReleasePerson_New === 'number' && typeof item.currentReleasePerson_Rel === 'number' && 
+            (item.currentReleasePerson_New > 0 || item.currentReleasePerson_Rel > 0)) ? 
             `${item.currentReleasePerson_New} / ${item.currentReleasePerson_Rel}` : '-',
             currentReleaseAmountStr: item.currentReleaseAmount ? 
             `₱${Number(item.currentReleaseAmount).toLocaleString()}` : '-',
@@ -368,7 +410,9 @@ const ModernBranchCashCollections = () => {
           };
   
           transformedItem.pastDueAmount = item.pastDueAmount ? `₱${Number(item.pastDueAmount).toLocaleString()}` : '-',
-          transformedItem.noPersonRelease = item.currentReleasePerson_New ? item.currentReleasePerson_New + '/' + item.currentReleasePerson_Rel : '-';
+          transformedItem.noPersonRelease = (typeof item.currentReleasePerson_New === 'number' && typeof item.currentReleasePerson_Rel === 'number' && 
+          (item.currentReleasePerson_New > 0 || item.currentReleasePerson_Rel > 0)) ? 
+          `${item.currentReleasePerson_New} / ${item.currentReleasePerson_Rel}` : '-';
           transformedItem.mcbuCollection = item.mcbuCollection ? `₱${Number(item.mcbuCollection).toLocaleString()}` : '-',
           transformedItem.excess = transformedItem.excessCurrent;
           transformedItem.mcbuWithdrawal = transformedItem.mcbuWithdrawalCurrent;
@@ -523,7 +567,13 @@ const ModernBranchCashCollections = () => {
         // Apply the same user role logic as in fetchCashCollectionsData
         if (currentUser.role.rep >= 3) {
           // For branch managers (role.rep = 3) and group leaders (role.rep = 4)
-          return currentUser.role.rep === 3 ? 'lo' : 'group';
+          if (currentUser.role.shortCode === 'area_admin') {
+            return 'branch'; // Area admins see branches
+          } else if (currentUser.role.rep === 3) {
+            return 'lo'; // Branch managers see loan officers
+          } else {
+            return 'group'; // Group leaders see groups
+          }
         }
         
         // For admin users (role.rep < 3), determine level based on view mode and navigation depth
@@ -645,7 +695,13 @@ const ModernBranchCashCollections = () => {
           updatedQuery.loId = selected._id;
           // For role.rep = 3 (branch manager), the parentId should be the branch ID
           if (currentUser.role.rep === 3) {
-            updatedQuery.parentId = currentUser.designatedBranchId;
+            if (currentUser.role.shortCode === 'area_admin') {
+              // For area admins, parentId should be the branch ID from the selected branch
+              updatedQuery.parentId = selected._id;
+            } else {
+              // For branch managers, parentId should be their designated branch
+              updatedQuery.parentId = currentUser.designatedBranchId;
+            }
           } else {
             // For other roles, preserve the existing logic
             updatedQuery.parentId = router.query.id; // branch ID
@@ -1066,8 +1122,11 @@ const ModernBranchCashCollections = () => {
                         </div>
                     )}
                     
-                    {(currentUser.role && currentUser.role.rep == 2 && 
-                      (currentUser.role.shortCode === "deputy_director" || currentUser.role.shortCode === "regional_manager") &&
+                    {(currentUser.role && 
+                      (currentUser.role.rep == 2) && 
+                      (currentUser.role.shortCode === "deputy_director" || 
+                       currentUser.role.shortCode === "regional_manager" ||
+                       currentUser.role.shortCode === "area_admin") &&
                       !viewingNestedContent && // Add this condition to hide when viewing nested content
                       !router.query.id && // Also hide when there's an ID in the query (alternative check)
                       !router.query.filter // Hide when there's a filter applied (lo, group, etc.)
