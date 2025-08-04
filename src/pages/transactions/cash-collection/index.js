@@ -375,6 +375,8 @@ const ModernBranchCashCollections = () => {
             transactionType: item.transactionType || '-', // ADDED: Include transactionType for Occurrence column
             occurence: item.occurence || '-', // ADDED: Include occurrence
             groupDay: item.groupDay || null, // ADDED: Include groupDay
+            groupStatus: item.groupStatus || null, // ADDED: Include groupStatus for row background colors
+            isDraft: item.isDraft || false, // ADDED: Include isDraft for draft row background colors
             
             loanTargetStr: shouldShowTarget() && item.targetLoanCollection ? 
             `₱${Number(item.targetLoanCollection).toLocaleString()}` : '-',
@@ -1433,7 +1435,12 @@ const ModernBranchCashCollections = () => {
                                     <tr 
                                         key={row._id || index} 
                                         onClick={() => handleRowClick(row)}
-                                        className={`${row.status === 'close' ? 'bg-red-50' : ''} hover:bg-gray-50 cursor-pointer`}
+                                        className={`
+                                          ${row.status === 'close' ? 'bg-red-50' : ''} 
+                                          ${row.isDraft ? 'bg-orange-100' : ''} 
+                                          ${!row.isDraft && row.groupStatus && row.groupStatus !== 'closed' ? 'bg-blue-100' : ''} 
+                                          hover:bg-gray-50 cursor-pointer
+                                        `.trim()}
                                     >
                                         {visibleColumnDefs.map(column => (
                                         <td key={`${row._id}-${column.key}`} className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
