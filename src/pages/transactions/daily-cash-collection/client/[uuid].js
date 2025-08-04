@@ -23,7 +23,7 @@ import { BehaviorSubject } from 'rxjs';
 import Modal from '@/lib/ui/Modal';
 import ClientDetailPage from '@/components/clients/ClientDetailPage';
 import { setClient } from '@/redux/actions/clientActions';
-import { LOR_DAILY_REMARKS, getApiBaseUrl } from '@/lib/constants';
+import { LOR_NO_CSF_IN_REMARKS, LOR_DAILY_REMARKS, getApiBaseUrl } from '@/lib/constants';
 import CheckBox from '@/lib/ui/checkbox';
 import ActionDropDown from '@/lib/ui/action-dropdown';
 import AddUpdateMcbuWithdrawalDrawer from '@/components/transactions/mcbu-withdrawal/AddUpdateMcbuWithdrawalDrawer';
