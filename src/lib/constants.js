@@ -86,6 +86,21 @@ export const LOR_MISPAY_REMARKS = [
     { label: 'Excused - Death of Clients/Family Member', value: 'excused-death'}
 ];
 
+export const LOR_NO_CSF_IN_REMARKS = [
+    'past due',
+    'delinquent-mcbu',
+    'delinquent',
+    'delinquent-offset',
+    'excused-calamity',
+    'excused-hospital',
+    'excused-death',
+    'excused advance payment',
+    'offset-good',
+    'offset-delinquent',
+    'offset-unclaimed',
+    'offset-matured-pd'
+]
+
 export const WEEKLY_GROUPS = [
     "APPLE", "BANANA", "CHERRY", "MANGO", "PINEAPPLE", "WATERMELON", "GRAPES", "KIWI", "PEAR", "PEACH", "STRAWBERRY", "BLUEBERRY", "RASPBERRY", "LEMON", "LIME"
 ];

@@ -67,7 +67,6 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
                 }));
                 
                 dispatch(setGroupList(formattedGroups));
-                console.log(`Fetched ${formattedGroups.length} groups for loan officer ${loId}`);
             } else {
                 console.warn('Failed to fetch groups:', response.message || 'Unknown error');
                 toast.error('Failed to load groups for filter');
@@ -83,7 +82,6 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
     // Effect to fetch groups when groupList is empty and we have a loan officer ID
     useEffect(() => {
         if (page === 'transaction' && groupList.length === 0 && group?.loanOfficerId) {
-            console.log('Fetching groups for loan officer:', group.loanOfficerId);
             fetchGroupsForLoanOfficer(group.loanOfficerId);
         }
     }, [page, groupList.length, group?.loanOfficerId]);
@@ -109,8 +107,6 @@ const DetailsHeader = ({ page, handleSaveUpdate, data, setData, showSaveButton, 
                 query: newQuery
             });
         } else {
-            // ORIGINAL BEHAVIOR: Use the original handler for backward compatibility
-            console.log('Original mode - using existing handler');
             if (handleGroupFilter) {
                 handleGroupFilter(selectedGroup);
             }

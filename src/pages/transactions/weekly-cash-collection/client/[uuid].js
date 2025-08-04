@@ -23,7 +23,7 @@ import { BehaviorSubject } from 'rxjs';
 import Modal from '@/lib/ui/Modal';
 import ClientDetailPage from '@/components/clients/ClientDetailPage';
 import { setClient } from '@/redux/actions/clientActions';
-import { LOR_ONLY_OFFSET_REMARKS, LOR_WEEKLY_REMARKS, getApiBaseUrl } from '@/lib/constants';
+import { LOR_NO_CSF_IN_REMARKS, LOR_ONLY_OFFSET_REMARKS, LOR_WEEKLY_REMARKS, getApiBaseUrl } from '@/lib/constants';
 import CheckBox from '@/lib/ui/checkbox';
 import ActionDropDown from '@/lib/ui/action-dropdown';
 import WarningIconWithTooltip from '@/lib/ui/icons/warning-icon';
@@ -212,6 +212,7 @@ const CashCollectionDetailsPage = () => {
                     let csfCollection = 0;
                     let csfWithdrawal = 0;
                     let csfReturnAmt = 0;
+                    let csfIn = 0;
                     if (cc.current.length > 0) {
                         const current = cc.current[0];
                         mispayment = current.mispayment;
@@ -236,6 +237,7 @@ const CashCollectionDetailsPage = () => {
                             csfCollection = current.csfCollection;
                             csfWithdrawal = current.csfWithdrawal;
                             csfReturnAmt = current.csfReturnAmt;
+                            csfIn = current.csfIn;
                         }
 
                         if (current.status == "tomorrow") {
@@ -353,6 +355,8 @@ const CashCollectionDetailsPage = () => {
                         csfWithdrawalStr: csfWithdrawal > 0 ? formatPricePhp(csfWithdrawal) : '-',
                         csfReturnAmt: csfReturnAmt,
                         csfReturnAmtStr: csfReturnAmt > 0 ? formatPricePhp(csfReturnAmt) : '-',
+                        csfIn: csfIn,
+                        csfInStr: csfIn > 0 ? formatPricePhp(csfIn) : '-',
                     }
 
                     if (cc?.transferred && loanBalance > 0) {
@@ -460,6 +464,7 @@ const CashCollectionDetailsPage = () => {
                         let csf = cc.csf;
                         let csfCollection = cc.csfCollection;
                         let csfWithdrawal = cc.csfWithdrawal;
+                        let csfIn = 0;
                         
                         if (cc?.current?.length > 0) {
                             const current = cc.current.find(cur => cur?.transfer !== true);
@@ -483,6 +488,7 @@ const CashCollectionDetailsPage = () => {
                                 csf = current.csf;
                                 csfCollection = current.csfCollection;
                                 csfWithdrawal = current.csfWithdrawal;
+                                csfIn = current.csfIn;
                             }
                         }
 
@@ -564,6 +570,8 @@ const CashCollectionDetailsPage = () => {
                             csfCollectionStr: csfCollection > 0 ? formatPricePhp(csfCollection) : '-',
                             csfWithdrawal: csfWithdrawal,
                             csfWithdrawalStr: csfWithdrawal > 0 ? formatPricePhp(csfWithdrawal) : '-',
+                            csfIn: csfIn,
+                            csfInStr: csfIn > 0 ? formatPricePhp(csfIn) : '-',
                         }
     
                         if (loanBalance > 0) {
@@ -732,6 +740,8 @@ const CashCollectionDetailsPage = () => {
                                 collection.csfWithdrawalStr = current.csfWithdrawal > 0 ? formatPricePhp(current.csfWithdrawal) : '-';
                                 collection.csfReturnAmt = current.csfReturnAmt;
                                 collection.csfReturnAmtStr = current.csfReturnAmt > 0 ? formatPricePhp(current.csfReturnAmt) : '-';
+                                collection.csfIn = current.csfIn;
+                                collection.csfInStr = current.csfIn > 0 ? formatPricePhp(current.csfIn) : '-';
     
                                 if (current?.origin) {
                                     collection.origin = current.origin;
@@ -1038,6 +1048,8 @@ const CashCollectionDetailsPage = () => {
                             csfWithdrawalStr: safeNumber(currentLoan.csfWithdrawal) > 0 ? formatPricePhp(safeNumber(currentLoan.csfWithdrawal)) : '-',
                             csfReturnAmt: safeNumber(currentLoan.csfReturnAmt),
                             csfReturnAmtStr: safeNumber(currentLoan.csfReturnAmt) > 0 ? formatPricePhp(safeNumber(currentLoan.csfReturnAmt)) : '-',
+                            csfIn: safeNumber(currentLoan.csfIn),
+                            csfInStr: safeNumber(currentLoan.csfIn) > 0 ? formatPricePhp(safeNumber(currentLoan.csfIn)) : '-',
                         };
 
                         if (currentLoan.current.length > 0) {
@@ -1057,6 +1069,8 @@ const CashCollectionDetailsPage = () => {
                             cashCollection[index].remarks = loan.current[0].history?.remarks;
                             cashCollection[index].csfCollection = loan.current[0].csfCollection;
                             cashCollection[index].csfCollectionStr = loan.current[0].csfCollection > 0 ? formatPricePhp(loan.current[0].csfCollection) : '-';
+                            cashCollection[index].csfIn = loan.current[0].csfIn;
+                            cashCollection[index].csfInStr = loan.current[0].csfIn > 0 ? formatPricePhp(loan.current[0].csfIn) : '-';
                         }
                     } else if (currentLoan.status === 'closed' && (currentLoan?.advance && loan.advanceTransaction && (loan?.loanFor == 'today' || (loan?.loanFor == 'tomorrow' && currentDate == loan.dateOfRelease)))) {
                         cashCollection[index] = {
@@ -1120,6 +1134,8 @@ const CashCollectionDetailsPage = () => {
                             csfWithdrawalStr: safeNumber(currentLoan.csfWithdrawal) > 0 ? formatPricePhp(safeNumber(currentLoan.csfWithdrawal)) : '-',
                             csfReturnAmt: safeNumber(currentLoan.csfReturnAmt),
                             csfReturnAmtStr: safeNumber(currentLoan.csfReturnAmt) > 0 ? formatPricePhp(safeNumber(currentLoan.csfReturnAmt)) : '-',
+                            csfIn: safeNumber(currentLoan.csfIn),
+                            csfInStr: safeNumber(currentLoan.csfIn) > 0 ? formatPricePhp(safeNumber(currentLoan.csfIn)) : '-',
                         };
 
                         if (currentLoan.current.length > 0) {
@@ -1225,11 +1241,11 @@ const CashCollectionDetailsPage = () => {
             // totals
             cashCollection = [...cashCollection].map(cc => {
                 let updateOtherIncome = safeNumber(cc.otherIncome);
-                let csfIn = 0;
+                let csfIn = safeNumber(cc.csfIn);
 
-                if (!hasGroupLeader) {
-                    csfIn = transactionSettings.minCsfCollection;
-                    // updateOtherIncome += csfIn;
+                console.log('CC: ', cc);
+                if (!hasGroupLeader && cc.status === 'active' && (!cc.remarks || (cc.remarks && !LOR_NO_CSF_IN_REMARKS.includes(cc.remarks.value)))) {
+                    csfIn = cc.csfIn > 0 ? cc.csfIn : transactionSettings.minCsfCollection;
                 }
 
                 const totalCollection = (
@@ -1695,7 +1711,7 @@ const CashCollectionDetailsPage = () => {
                         }
                     }
 
-                    if (safeNumber(temp.paymentCollection) <= 0) {
+                    if (safeNumber(temp.paymentCollection) <= 0 || temp.status == "closed") {
                         temp.csfIn = 0;
                     }
 
@@ -1937,6 +1953,8 @@ const CashCollectionDetailsPage = () => {
                             }
                         } else {
                             temp.paymentCollection = 0;
+                            temp.mcbuCol = 0;
+                            temp.mcbuColStr = '-';
                             temp.mispayment = false;
                             temp.mispaymentStr = 'No';
                             temp.remarks = "";
@@ -2269,6 +2287,9 @@ const CashCollectionDetailsPage = () => {
                             temp.mcbuReturnAmtStr = '-';
                             temp.csfReturnAmt = 0;
                             temp.csfReturnAmtStr = '-';
+
+                            temp.csfIn = calculateCsfIn(temp, 1);
+                            temp.csfInStr = temp.csfIn > 0 ? formatPricePhp(temp.csfIn) : '-';
                             
                             if (!temp?.hasMcbuWithdrawal) {
                                 temp.mcbuWithdrawal = 0;
@@ -2367,6 +2388,8 @@ const CashCollectionDetailsPage = () => {
 
                                         temp.history = history;
                                         temp.prevData = prevData;
+
+                                        temp = removeCsfIn(temp);
                                     }
                                 }
     
@@ -2396,6 +2419,7 @@ const CashCollectionDetailsPage = () => {
                                 temp.mcbuColStr = '-';
                                 temp.csfCollection = 0;
                                 temp.csfCollectionStr = '-';
+                                temp = removeCsfIn(temp);
                             } else if (remarks.value?.startsWith('delinquent') || remarks.value?.startsWith('excused-')) {
                                 // add no of mispayments / maximum of payments per cycle // change to #of mispay
                                 temp.error = false;
@@ -2411,7 +2435,7 @@ const CashCollectionDetailsPage = () => {
     
                                 if (remarks.value?.startsWith('delinquent')) {
                                     if (temp.mcbu >= temp.loanBalance) {
-                                        toast.error("Invalid remarks. Please contact admin for assistance.");
+                                        toast.error("Invalid remarks. MCBU is greater than the loan balance. Please contact admin for assistance.");
                                         temp.error = true;
                                     } else {
                                         temp.delinquent = true;
@@ -2428,6 +2452,7 @@ const CashCollectionDetailsPage = () => {
                                         // temp.loanBalanceStr = formatPricePhp(temp.loanBalance);
                                         // temp.noOfPayments += 1;
                                         // temp.noOfPaymentStr = temp.noOfPayments + ' / ' + temp.loanTerms;
+                                        temp = removeCsfIn(temp);
                                     } else {
                                         temp.error = true;
                                         toast.error("Invalid remarks. Delinquent for Offset must be equal to the target collection.");
@@ -2436,7 +2461,7 @@ const CashCollectionDetailsPage = () => {
     
                                 if (remarks.value === 'delinquent-mcbu') {
                                     if (temp.mcbu >= temp.loanBalance) {
-                                        toast.error("Invalid remarks. Please contact admin for assistance.");
+                                        toast.error("Invalid remarks. MCBU is greater than the loan balance. Please contact admin for assistance.");
                                         temp.error = true;
                                     } else {
                                         temp.dcmc = true;
@@ -2459,7 +2484,8 @@ const CashCollectionDetailsPage = () => {
                                         }
                                         temp.paymentCollection = 0;
                                         temp.paymentCollectionStr = '-';
-                                        toast.warning("Please don't forget to add the collection in MCBU Collection field.");   
+                                        toast.warning("Please don't forget to add the collection in MCBU Collection field.");
+                                        temp = removeCsfIn(temp);
                                     }
                                 } else {
                                     if (remarks.value === 'delinquent-offset') {
@@ -2503,6 +2529,7 @@ const CashCollectionDetailsPage = () => {
                                         temp.mcbuColStr = '-';
                                         temp.csfCollection = 0;
                                         temp.csfCollectionStr = '-';
+                                        temp = removeCsfIn(temp);
                                     }
                                 }
                             } else if (remarks.value === "past due collection") {
@@ -2524,6 +2551,7 @@ const CashCollectionDetailsPage = () => {
     
                                     temp.error = false;
                                     temp.mcbuError = false;
+                                    temp = removeCsfIn(temp);
                                 } else {
                                     temp.error = true;
                                     toast.error("Error occured. Invalid remarks.");
@@ -2538,12 +2566,26 @@ const CashCollectionDetailsPage = () => {
                                     temp.error = true;
                                     toast.error('Invalid remarks. Please mark it as Reloaner or Offset');
                                 }
+
+                                temp.csfIn = calculateCsfIn(temp, 2);
+                                temp.csfInStr = formatPricePhp(temp.csfIn);
+                                if (temp.totalCollection > 0 && temp.csfIn > 0) {
+                                    temp.totalCollection = (temp.totalCollection - transactionSettings.minCsfCollection) + temp.csfIn;
+                                    temp.totalCollectionStr = formatPricePhp(temp.totalCollection);
+                                }
                             } else if (remarks.value === 'advance payment') {
                                 if (temp.excess > 0) {
                                     // TODO: Check if collection is divisible by activeLoan
                                     const advanceDays = parseFloat(temp.paymentCollection) / parseFloat(temp.activeLoan);
                                     temp.advanceDays = temp.advanceDays ? temp.advanceDays + (advanceDays - 1) : advanceDays - 1;
                                     temp.error = false;
+
+                                    temp.csfIn = calculateCsfIn(temp, advanceDays);
+                                    temp.csfInStr = formatPricePhp(temp.csfIn);
+                                    if (temp.totalCollection > 0 && temp.csfIn > 0) {
+                                        temp.totalCollection = (temp.totalCollection - transactionSettings.minCsfCollection) + temp.csfIn;
+                                        temp.totalCollectionStr = formatPricePhp(temp.totalCollection);
+                                    }
                                 } else {
                                     temp.error = true;
                                     toast.error("Invalid remarks. There's no excess amount to be considered as advance payment.");
@@ -2605,6 +2647,8 @@ const CashCollectionDetailsPage = () => {
                                     temp.error = false;
                                     temp.mcbuError = false;
                                     temp.csfError = false;
+
+                                    temp = removeCsfIn(temp);
                                 } else {
                                     temp.error = true;
                                     toast.error('Error occured. Yesterday transaction is not an Advanced payment');
@@ -2855,6 +2899,21 @@ const CashCollectionDetailsPage = () => {
             temp.history.loanCycle = temp.loanCycle;
         }
 
+        return temp;
+    }
+
+    const calculateCsfIn = (selected, noOfPayments) => {
+        return !hasGroupLeader ? transactionSettings.minCsfCollection * noOfPayments : 0;
+    }
+
+    const removeCsfIn = (selected) => {
+        let temp = JSON.parse(JSON.stringify(selected));
+        if (!hasGroupLeader) {
+            temp.totalCollection = temp.totalCollection - temp.csfIn;
+            temp.totalCollectionStr = formatPricePhp(temp.totalCollection);
+            temp.csfIn = 0;
+            temp.csfInStr = '-';
+        }
         return temp;
     }
 
