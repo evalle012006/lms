@@ -1234,7 +1234,7 @@ const CashCollectionDetailsPage = () => {
                 let csfIn = cc.csfIn;
 
                 if (!hasGroupLeader && cc.status === 'active' && (!cc.remarks || (cc.remarks && !LOR_NO_CSF_IN_REMARKS.includes(cc.remarks.value)))) {
-                    csfIn = transactionSettings.minCsfCollection;
+                    csfIn = cc.csfIn > 0 ? cc.csfIn : transactionSettings.minCsfCollection;
                 }
 
                 const totalCollection = (
