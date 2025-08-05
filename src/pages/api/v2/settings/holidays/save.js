@@ -16,6 +16,7 @@ async function save(req, res) {
     const holidayData = {
         ...req.body,
         _id: generateUUID(),
+        date: moment(req.body.date).format('MM-DD'),
         dateAdded: moment(getCurrentDate()).format('YYYY-MM-DD')
     };
 
