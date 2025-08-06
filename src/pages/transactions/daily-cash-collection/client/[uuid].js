@@ -1807,6 +1807,8 @@ const CashCollectionDetailsPage = () => {
                             temp.pastDueStr = temp.pastDue > 0 ? formatPricePhp(temp.pastDue) : '-';
                             temp.status = 'active';
                             temp.advanceDays = temp.prevData.advanceDays;
+                            temp.mcbu = temp.prevData.mcbu;
+                            temp.mcbuStr = formatPricePhp(temp.prevData.mcbu);
                             temp.mcbuWithdrawal = 0;
                             temp.mcbuWithdrawalStr = '-';
                             temp.mcbuReturnAmt = 0;
