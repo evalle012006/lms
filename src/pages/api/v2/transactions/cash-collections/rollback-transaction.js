@@ -40,6 +40,10 @@ async function revert(req, res) {
             loanId = cashCollection.prevLoanId;
         }
 
+        if(!loanId) {
+          continue;
+        }
+
         logger.debug({
           user_id, 
           page: `Reverting Transaction Loan: ${cashCollection.clientId}`, 
@@ -58,6 +62,8 @@ async function revert(req, res) {
             }]
           })
         );
+
+        console.log('done loan fetch')
 
         const loan_history = loanHistoryResult.data?.loan_history?.[0];
         const currentLoan = findLoans({ _id: { _eq: loan_history._id } });
@@ -177,20 +183,20 @@ async function revert(req, res) {
         }
       }
 
-      // there should only be one group here
-      const groups = Object.values(groupCache);
-      for(const group of groups) {
-        if(group.slots.length) {
-          await updateGroup(mutationQL, group.groupId, group.slots);
-        }
-      }
-  
       // Execute mutations if there are any
       if (mutationQL.length > 0) {
+        // there should only be one group here
+        const groups = Object.values(groupCache);
+        for(const group of groups) {
+          if(group.slots.length) {
+            await updateGroup(mutationQL, group.groupId, group.slots);
+          }
+        }
+        
         const result = await graph.mutation(...mutationQL);
         response = { success: true, data: result?.data };
       } else {
-        response = { success: false, message: "No valid records to revert" };
+        response = { success: true, message: "No valid records to revert" };
       }
   
     } catch (error) {
