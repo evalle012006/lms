@@ -430,6 +430,7 @@ const ModernBranchCashCollections = () => {
             `₱${Number(item.totalLoanBalance).toLocaleString()}` : '-',
             totalLoanBalancePreviousStr: item.prev_totalLoanBalance ? 
             `₱${Number(item.prev_totalLoanBalance).toLocaleString()}` : '-',
+            totalNetCollectionStr: `₱${Number(item.totalNetCollection).toLocaleString()}`,
             
             // FIXED: Updated Current Release Person logic
             noCurrentReleaseStr: formatCurrentReleasePerson(item.currentReleasePerson_New, item.currentReleasePerson_Rel),
@@ -1174,6 +1175,7 @@ const ModernBranchCashCollections = () => {
     transferClients: true,
     csfIn: true,
     cashOnHand: currentUser.role.rep <= 3,
+    totalNetCollectionStr: true,
   });
 
   const columnDefs = useMemo(() => [
@@ -1203,6 +1205,7 @@ const ModernBranchCashCollections = () => {
     { key: 'mcbuReturn', label: 'MCBU Return Amount', width: 'w-32', },
     { key: 'fullPaymentPerson', label: 'Full Payment Person', width: 'w-40', },
     { key: 'fullPaymentAmount', label: 'Full Payment Amount', width: 'w-40', },
+    { key: 'totalNetCollectionStr', label: 'Total Net Collection', width: 'w-40', },
     { key: 'mispay', label: 'Mispay', width: 'w-28', hasComparison: true },
     { key: 'noPastDue', label: 'PD #', width: 'w-20', hasComparison: true },
     { key: 'pastDueAmount', label: 'PD Amount', width: 'w-20', hasComparison: true },
