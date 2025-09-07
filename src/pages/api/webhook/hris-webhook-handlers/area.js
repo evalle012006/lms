@@ -36,54 +36,58 @@ export async function insertOrUpdateArea(area) {
   console.log(`Done syncing updates from HRIS for area ${area.id} ${area.name}`);
 }
 
-async function insertArea(hrisAreaFullInfo) {
-  console.log(`Inserting area ${hrisAreaFullInfo.id} ${hrisAreaFullInfo.name} from HRIS`);
-  
+async function insertArea(area) {
+  console.log(`Inserting area ${area.id} ${area.name} from HRIS`);
   return graph.mutation(
     insertQl(createGraphType("areas", "_id")(), {
       objects: [
         {
-          _id: hrisAreaFullInfo.id,
-          branchIds: await resolveLmsBranchIds(hrisAreaFullInfo),
-          dateAdded: hrisAreaFullInfo.create_date,
-          dateModified: hrisAreaFullInfo.modify_date,
-          managerIds: await resolveLmsUserIds(hrisAreaFullInfo),
-          name: hrisAreaFullInfo.name,
-          regionId: hrisAreaFullInfo.region_id,
-          divisionId: hrisAreaFullInfo.division_id,
-          hrisId: hrisAreaFullInfo.id,
+          _id: area.id,
+          dateAdded: area.create_date,
+          dateModified: area.modify_date,
+          name: area.name,
+          regionId: area.region_id,
+          divisionId: area.division_id,
+          hrisId: area.id,
+          ...(await resolveLmsReferences(area)),
         },
       ],
     })
   );
 }
 
-async function updateArea(hrisAreaFullInfo) {
-  console.log(`Updating area ${hrisAreaFullInfo.id} ${hrisAreaFullInfo.name} from HRIS`);
-  
+async function updateArea(area) {
+  console.log(`Updating area ${area.id} ${area.name} from HRIS`);
   return graph.mutation(
     updateQl(createGraphType("areas", "_id")(), {
       set: {
-        branchIds: await resolveLmsBranchIds(hrisAreaFullInfo),
-        dateModified: hrisAreaFullInfo.modify_date,
-        managerIds: await resolveLmsUserIds(hrisAreaFullInfo),
-        name: hrisAreaFullInfo.name,
-        regionId: hrisAreaFullInfo.region_id,
-        divisionId: hrisAreaFullInfo.division_id,
+        dateModified: area.modify_date,
+        name: area.name,
+        regionId: area.region_id,
+        divisionId: area.division_id,
+        ...(await resolveLmsReferences(area)),
       },
-      where: { hrisId: { _eq: hrisAreaFullInfo.id } },
+      where: { hrisId: { _eq: area.id } },
     })
   );
 }
 
-async function resolveLmsBranchIds(hrisAreaFullInfo) {
-  const hrisBranchIds = hrisAreaFullInfo.branches?.map((b) => b.id) ?? [];
+async function resolveLmsReferences(area) {
+  const [branchIds, managerIds] = await Promise.all([
+    resolveLmsBranchIds(area),
+    resolveLmsUserIds(area),
+  ]);
+  return { branchIds, managerIds };
+}
+
+async function resolveLmsBranchIds(area) {
+  const hrisBranchIds = area.branches?.map((b) => b.id) ?? [];
   const lmsIds = await hrisBranchIdsToLmsBranchIds(hrisBranchIds);
   return JSON.stringify(lmsIds);
 }
 
-async function resolveLmsUserIds(hrisAreaFullInfo) {
-  const hrisUserIds = hrisAreaFullInfo.managers?.map((m) => m.employee_id) ?? []
+async function resolveLmsUserIds(area) {
+  const hrisUserIds = area.managers?.map((m) => m.employee_id) ?? []
   const lmsIds = await hrisUserIdsToLmsUserIds(hrisUserIds);
   return JSON.stringify(lmsIds);
 }

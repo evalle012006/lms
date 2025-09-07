@@ -36,24 +36,17 @@ export async function insertOrUpdateRegion(region) {
 
 async function insertRegion(region) {
   console.log(`Inserting region ${region.id} ${region.name}`);
-  
-  const [areaIds, managerIds] = await Promise.all([
-    resolveLmsAreaId(region),
-    resolveLmsUserIds(region)
-  ]);
-  
   return graph.mutation(
     insertQl(regionGraphType, {
       objects: [
         {
           _id: region.id,
-          areaIds: areaIds,
           dateAdded: region.create_date,
           dateModified: region.modify_date,
           divisionId: region.division_id,
-          managerIds: managerIds,
           name: region.name,
           hrisId: region.id,
+          ...(await resolveLmsReferences(region)),
         },
       ],
     })
@@ -62,34 +55,36 @@ async function insertRegion(region) {
 
 async function updateRegion(region) {
   console.log(`Updating region ${region.id} ${region.name}`);
-
-  const [areaIds, managerIds] = await Promise.all([
-    resolveLmsAreaId(region),
-    resolveLmsUserIds(region)
-  ]);
-  
   return graph.mutation(
     updateQl(regionGraphType, {
       set: {
-        areaIds: areaIds,
         dateModified: region.modify_date,
         divisionId: region.division_id,
-        managerIds: managerIds,
         name: region.name,
+        ...(await resolveLmsReferences(region)),
       },
       where: { hrisId: { _eq: region.id } },
     })
   );
 }
 
-async function resolveLmsAreaId(hrisRegionFullInfo) {
-  const hrisRegionIds = hrisRegionFullInfo.areas?.map(a => a.id) ?? [];
+async function resolveLmsReferences(region) { 
+  const [areaIds, managerIds] = await Promise.all([
+    resolveLmsAreaId(region),
+    resolveLmsUserIds(region)
+  ]);
+  
+  return { areaIds, managerIds };
+}
+
+async function resolveLmsAreaId(region) {
+  const hrisRegionIds = region.areas?.map(a => a.id) ?? [];
   const lmsIds = await hrisAreaIdsToLmsAreaIds(hrisRegionIds);
   return JSON.stringify(lmsIds);
 }
 
-async function resolveLmsUserIds(hrisRegionFullInfo) {
-  const hrisUserIds = hrisRegionFullInfo.managers?.map((m) => m.employee_id) ?? []
+async function resolveLmsUserIds(region) {
+  const hrisUserIds = region.managers?.map((m) => m.employee_id) ?? []
   const lmsIds = await hrisUserIdsToLmsUserIds(hrisUserIds);
   return JSON.stringify(lmsIds);
 }

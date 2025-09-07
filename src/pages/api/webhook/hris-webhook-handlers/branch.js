@@ -45,10 +45,8 @@ async function insertBranch(branch) {
         email: branch.email,
         name: branch.name,
         phoneNumber: branch.contact_number,
-        areaId: branch.area_id ? await hrisAreaIdsToLmsAreaIds([branch.area_id]).then(ids => ids?.[0]) : null,
-        regionId: branch.region_id ? await hrisRegionIdsToLmsRegionIds([branch.region_id]).then(ids => ids?.[0]) : null,
-        divisionId: branch.division_id ? await hrisDivisionIdsToLmsDivisionIds([branch.division_id]).then(ids => ids?.[0]) : null,
         hrisId: branch.id,
+        ...(await resolveLmsReferences(branch)),
       }]
     }
   ));
@@ -65,12 +63,20 @@ async function updateBranch(branch) {
         email: branch.email,
         name: branch.name,
         phoneNumber: branch.contact_number,
-        areaId: branch.area_id ? await hrisAreaIdsToLmsAreaIds([branch.area_id]).then(ids => ids?.[0]) : null,
-        regionId: branch.region_id ? await hrisRegionIdsToLmsRegionIds([branch.region_id]).then(ids => ids?.[0]) : null,
-        divisionId: branch.division_id ? await hrisDivisionIdsToLmsDivisionIds([branch.division_id]).then(ids => ids?.[0]) : null,
         dateModified: branch.modify_date,
+        ...(await resolveLmsReferences(branch)),
       },
       where: { hrisId: { _eq: branch.id } }
     }
   ))
+}
+
+async function resolveLmsReferences(branch) {
+  const [areaId, regionId, divisionId] = await Promise.all([
+    branch.area_id ? hrisAreaIdsToLmsAreaIds([branch.area_id]).then(ids => ids?.[0]) : null,
+    branch.region_id ? hrisRegionIdsToLmsRegionIds([branch.region_id]).then(ids => ids?.[0]) : null,
+    branch.division_id ? hrisDivisionIdsToLmsDivisionIds([branch.division_id]).then(ids => ids?.[0]) : null,
+  ]);
+  
+  return { areaId, regionId, divisionId };
 }

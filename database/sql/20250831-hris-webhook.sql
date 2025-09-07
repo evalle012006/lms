@@ -11,6 +11,7 @@ alter table regions
   add column "hrisId" varchar (36);
 
 alter table divisions
+  add column "dateModified" timestamptz,
   add column "hrisId" varchar (36);
 
 alter table users
