@@ -3,10 +3,11 @@ alter table branches
   add column "hrisId" varchar (36);
 
 alter table areas
-  add column "hrisId" varchar (36),
-  add column "dateModified" timestamptz;
+  add column "dateModified" timestamptz,
+  add column "hrisId" varchar (36);
 
 alter table regions
+  add column "dateModified" timestamptz,
   add column "hrisId" varchar (36);
 
 alter table divisions

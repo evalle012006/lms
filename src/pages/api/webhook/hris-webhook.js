@@ -4,10 +4,9 @@ import {
   insertEmployee,
   insertOrUpdateArea,
   insertOrUpdateBranch,
-  insertRegion,
+  insertOrUpdateRegion,
   updateDivision,
   updateEmployee,
-  updateRegion,
 } from "@/pages/api/webhook/hris-webhook-handlers";
 
 const handlers = {
@@ -20,8 +19,8 @@ const handlers = {
     update: insertOrUpdateArea,
   },
   regions: {
-    insert: insertRegion,
-    update: updateRegion,
+    insert: insertOrUpdateRegion,
+    update: insertOrUpdateRegion,
   },
   division: {
     insert: insertDivision,

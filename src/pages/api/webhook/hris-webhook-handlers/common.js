@@ -52,3 +52,28 @@ export async function hrisDivisionIdsToLmsDivisionIds(hrisDivisionIds) {
   const result = await graph.query(queryQl(divisionType, { where: { hrisId: { _in: hrisDivisionIds }}}));
   return result.data?.divisions?.map(d => d._id) ?? [];
 }
+
+export async function fetchFromHris(restPath) {
+  const url = `${process.env.HRIS_HASURA_URL}/api/rest/${restPath}`;
+  console.log(`Fetching from HRIS: ${url}`);
+
+  const result = await fetch(url, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: `${process.env.HRIS_HASURA_AUTH_TOKEN}`,
+    },
+  });
+
+  if (result.status !== 200) {
+    throw new Error(`Failed to fetch from HRIS for resource ${url}`);
+  }
+
+  const data = await result.json();
+  if (data.errors?.length) {
+    throw new Error(`Failed to fetch from HRIS. Cause: ${data.errors[0]}`);
+  }
+
+  return data;
+}
