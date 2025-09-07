@@ -1,11 +1,10 @@
 import { apiHandler } from "@/services/api-handler";
 import {
-  insertBranch,
   insertDivision,
   insertEmployee,
   insertOrUpdateArea,
+  insertOrUpdateBranch,
   insertRegion,
-  updateBranch,
   updateDivision,
   updateEmployee,
   updateRegion,
@@ -13,8 +12,8 @@ import {
 
 const handlers = {
   branches: {
-    insert: insertBranch,
-    update: updateBranch,
+    insert: insertOrUpdateBranch,
+    update: insertOrUpdateBranch,
   },
   areas: {
     insert: insertOrUpdateArea,
@@ -47,6 +46,11 @@ async function update(req, res) {
     return res.status(400).end({message: `No webhook handler found for table=${payload.table.name} and event=${payload.event.op}`});
   }
   
-  await handler(payload.event.data.new);
-  res.status(201).end();
+  try {
+    await handler(payload.event.data.new);
+    res.status(201).end();
+  } catch (error) {
+    console.error('Error processing webhook event:', error);
+    throw error;
+  }
 }

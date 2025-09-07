@@ -1,12 +1,40 @@
-import { createGraphType, insertQl, updateQl } from "@/lib/graph/graph.util";
+import {
+  createGraphType,
+  insertQl,
+  queryQl,
+  updateQl,
+} from "@/lib/graph/graph.util";
 import { GraphProvider } from "@/lib/graph/graph.provider";
+import {
+  hrisAreaIdsToLmsAreaIds,
+  hrisDivisionIdsToLmsDivisionIds,
+  hrisRegionIdsToLmsRegionIds,
+} from "@/pages/api/webhook/hris-webhook-handlers/common";
 
 const graph = new GraphProvider();
+const branchGraphType = createGraphType("branches", "_id")();
 
-export function insertBranch(branch) {
+export async function insertOrUpdateBranch(branch) {
+  console.log(`Syncing updates from HRIS for branch ${branch.id} ${branch.code} ${branch.name}`);
+  if (branch.name.match(/exit\s+staff/i)) {
+    console.log(`Skipping Exit Staff branch.`);
+    return;
+  }
+
+  const savedBranch = await graph.query(queryQl(branchGraphType, { where: { hrisId: { _eq: branch.id } } }));
+  if (savedBranch.data?.branches?.length) {
+    await updateBranch(branch);
+  } else {
+    await insertBranch(branch);
+  }
+  
+  console.log(`Done syncing updates from HRIS for branch ${branch.id} ${branch.code} ${branch.name}`);
+}
+
+async function insertBranch(branch) {
   console.log(`Inserting branch ${branch.id} ${branch.code}`)
   return graph.mutation(insertQl(
-    createGraphType('branches', '_id')(),
+    branchGraphType,
     {
       objects: [{
         _id: branch.id,
@@ -17,19 +45,19 @@ export function insertBranch(branch) {
         email: branch.email,
         name: branch.name,
         phoneNumber: branch.contact_number,
-        areaId: branch.area_id,
-        regionId: branch.region_id,
-        divisionId: branch.division_id,
+        areaId: branch.area_id ? await hrisAreaIdsToLmsAreaIds([branch.area_id]).then(ids => ids?.[0]) : null,
+        regionId: branch.region_id ? await hrisRegionIdsToLmsRegionIds([branch.region_id]).then(ids => ids?.[0]) : null,
+        divisionId: branch.division_id ? await hrisDivisionIdsToLmsDivisionIds([branch.division_id]).then(ids => ids?.[0]) : null,
         hrisId: branch.id,
       }]
     }
-  ))
+  ));
 }
 
-export function updateBranch(branch) {
+async function updateBranch(branch) {
   console.log(`Updating branch ${branch.id} ${branch.code}`)
   return graph.mutation(updateQl(
-    createGraphType('branches', '_id')(),
+    branchGraphType,
     {
       set: {
         address: branch.address,
@@ -37,12 +65,12 @@ export function updateBranch(branch) {
         email: branch.email,
         name: branch.name,
         phoneNumber: branch.contact_number,
-        areaId: branch.area_id,
-        regionId: branch.region_id,
-        divisionId: branch.division_id,
+        areaId: branch.area_id ? await hrisAreaIdsToLmsAreaIds([branch.area_id]).then(ids => ids?.[0]) : null,
+        regionId: branch.region_id ? await hrisRegionIdsToLmsRegionIds([branch.region_id]).then(ids => ids?.[0]) : null,
+        divisionId: branch.division_id ? await hrisDivisionIdsToLmsDivisionIds([branch.division_id]).then(ids => ids?.[0]) : null,
         dateModified: branch.modify_date,
       },
-      where: { hrisId: branch.id }
+      where: { hrisId: { _eq: branch.id } }
     }
   ))
 }

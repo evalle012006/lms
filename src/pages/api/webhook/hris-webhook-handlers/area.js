@@ -5,6 +5,7 @@ import {
   updateQl,
 } from "@/lib/graph/graph.util";
 import { GraphProvider } from "@/lib/graph/graph.provider";
+import { hrisBranchIdsToLmsBranchIds, hrisUserIdsToLmsUserIds } from "@/pages/api/webhook/hris-webhook-handlers/common";
 
 const graph = new GraphProvider();
 const areaGraphType = createGraphType("areas", "_id")();
@@ -97,22 +98,10 @@ async function getAreaInfoFromHris(id) {
 
 async function resolveLmsBranchIds(hrisAreaFullInfo) {
   const hrisBranchIds = hrisAreaFullInfo.branches?.map((b) => b.id) ?? [];
-  if (!hrisBranchIds?.length)
-    return [];
-  
-  console.log(`Resolving HRIS branch IDs into LMS branch IDs`);
-  const branchType = createGraphType('branches', '_id')();
-  const result = await graph.query(queryQl(branchType, { where: { hrisId: { _in: hrisBranchIds }}}));
-  return result.data?.branches?.map(b => b._id) ?? [];
+  return hrisBranchIdsToLmsBranchIds(hrisBranchIds);
 }
 
 async function resolveLmsUserIds(hrisAreaFullInfo) {
   const hrisUserIds = hrisAreaFullInfo.managerIds?.map((m) => m.employee_id) ?? []
-  if (!hrisUserIds?.length)
-    return [];
-
-  console.log(`Resolving HRIS employee IDs into LMS user IDs`);
-  const branchType = createGraphType('users', '_id')();
-  const result = await graph.query(queryQl(branchType, { where: { hrisId: { _in: hrisUserIds }}}));
-  return result.data?.branches?.map(b => b._id) ?? [];
+  return hrisUserIdsToLmsUserIds(hrisUserIds);
 }
