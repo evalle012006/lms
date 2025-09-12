@@ -150,7 +150,6 @@ const AddUpdateBranch = ({ mode = 'add', branch = {}, showSidebar, setShowSideba
                                             options={areaList}
                                             onChange={(field, value) => handleAreaChange(field, value)}
                                             onBlur={setFieldTouched}
-                                            disabled={mode !== 'add'}
                                             placeholder="Select Area"
                                             errors={touched.areaId && errors.areaId ? errors.areaId : undefined}
                                         />

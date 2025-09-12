@@ -5,6 +5,7 @@ import { apiHandler } from '@/services/api-handler';
 
 const graph = new GraphProvider();
 
+const USER_TYPE = (alias) => createGraphType('users', '_id') (alias);
 const addDatedAddedCondition = (date) => !date ? ` { _is_null: true } ` : ` { _eq: "${date}" }`; 
 
 const BRANCH_TYPE = (date) => createGraphType('branches', `
@@ -74,9 +75,6 @@ async function updateBranch(req, res) {
     const branch = req.body;
     const branchId = branch._id;
     delete branch._id;
-    delete branch.areaId;
-    delete branch.regionId;
-    delete branch.divisionId;
 
     const resp = await graph.mutation(
         updateQl(createGraphType('branches', `_id`)('branches'), {
@@ -85,6 +83,16 @@ async function updateBranch(req, res) {
             },
             where: {
                 _id: { _eq: branchId }
+            }
+        }),
+        updateQl(USER_TYPE(), {
+            set: {
+                areaId: branch.areaId,
+                regionId: branch.regionId,
+                divisionId: branch.divisionId,
+            },
+            where: {
+                designatedBranchId: { _eq: branchId } 
             }
         })
     )
