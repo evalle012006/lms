@@ -135,6 +135,7 @@ async function updatePendingLoan(user_id, collection, currentDate) {
           admissionCollection: pendingLoan.admissionCollection,
           lrfCollection: pendingLoan.lrfCollection,
           cbhbCollection: pendingLoan.cbhbCollection,
+          addHospitalization: pendingLoan.addHospitalization,
           otherPassbookCollection: pendingLoan.otherPassbookCollection,
           otherPictureCollection: pendingLoan.otherPictureCollection,
           status: 'tomorrow',

@@ -72,6 +72,7 @@ async function save(req, res) {
         admissionCollection: 0,
         lrfCollection: 0,
         cbhbCollection: 0,
+        addHospitalization: 0,
         otherPassbookCollection: 0,
         otherPictureCollection: 0,
         csf: loan.csf || 0,

@@ -946,6 +946,7 @@ const CashCollectionDetailsPage = () => {
                             admissionCollection: loan.admissionCollection,
                             lrfCollection: loan.lrfCollection,
                             cbhbCollection: loan.cbhbCollection,
+                            addHospitalization: loan.addHospitalization,
                             otherPassbookCollection: loan.otherPassbookCollection,
                             otherPictureCollection: loan.otherPictureCollection,
                             otherIncome: loan.otherPassbookCollection + loan.otherPictureCollection,
@@ -1027,6 +1028,7 @@ const CashCollectionDetailsPage = () => {
                             admissionCollection: loan.admissionCollection,
                             lrfCollection: loan.lrfCollection,
                             cbhbCollection: loan.cbhbCollection,
+                            addHospitalization: loan.addHospitalization,
                             otherPassbookCollection: loan.otherPassbookCollection,
                             otherPictureCollection: loan.otherPictureCollection,
                             otherIncome: loan.otherPassbookCollection + loan.otherPictureCollection,
@@ -1116,6 +1118,7 @@ const CashCollectionDetailsPage = () => {
                             admissionCollection: loan.admissionCollection,
                             lrfCollection: loan.lrfCollection,
                             cbhbCollection: loan.cbhbCollection,
+                            addHospitalization: loan.addHospitalization,
                             otherPassbookCollection: loan.otherPassbookCollection,
                             otherPictureCollection: loan.otherPictureCollection,
                             otherIncome: loan.otherPassbookCollection + loan.otherPictureCollection,
@@ -1190,6 +1193,7 @@ const CashCollectionDetailsPage = () => {
                         admissionCollection: loan.admissionCollection,
                         lrfCollection: loan.lrfCollection,
                         cbhbCollection: loan.cbhbCollection,
+                        addHospitalization: loan.addHospitalization,
                         otherPassbookCollection: loan.otherPassbookCollection,
                         otherPictureCollection: loan.otherPictureCollection,
                         otherIncome: loan.otherPassbookCollection + loan.otherPictureCollection,
@@ -1244,6 +1248,7 @@ const CashCollectionDetailsPage = () => {
                     safeNumber(cc.admissionCollection) + 
                     safeNumber(cc.lrfCollection) + 
                     safeNumber(cc.cbhbCollection) + 
+                    safeNumber(cc.addHospitalization) + 
                     safeNumber(updateOtherIncome) + 
                     safeNumber(csfIn) 
                 ) - (
@@ -1339,6 +1344,7 @@ const CashCollectionDetailsPage = () => {
         let totalAdmissionFee = 0;
         let totalLrf = 0;
         let totalCbhb = 0;
+        let totalAddHospitalization = 0;
         let totalOtherIncome = 0;
         let totalCsfWithdrawal = 0;
         let totalCollection = 0;
@@ -1380,6 +1386,7 @@ const CashCollectionDetailsPage = () => {
                     totalAdmissionFee += safeNumber(collection.admissionCollection);
                     totalLrf += safeNumber(collection.lrfCollection);
                     totalCbhb += safeNumber(collection.cbhbCollection);
+                    totalAddHospitalization += safeNumber(collection.addHospitalization);
                     totalOtherIncome += safeNumber(collection.otherIncome);
                     totalCsfWithdrawal += safeNumber(collection.csfWithdrawal);
                     totalCollection += safeNumber(collection.totalCollection);
@@ -1417,6 +1424,7 @@ const CashCollectionDetailsPage = () => {
             admissionCollection: totalAdmissionFee,
             lrfCollection: totalLrf,
             cbhbCollection: totalCbhb,
+            addHospitalization: totalAddHospitalization,
             otherIncome: totalOtherIncome,
             otherIncomeStr: totalOtherIncome > 0 ? formatPricePhp(totalOtherIncome) : '-',
             csfWithdrawal: totalCsfWithdrawal,
@@ -3442,6 +3450,7 @@ const CashCollectionDetailsPage = () => {
                                         <th className="p-2 text-center">Admission Fee</th>
                                         <th className="p-2 text-center">LRF</th>
                                         <th className="p-2 text-center">C.B.H.B Collection</th>
+                                        <th className="p-2 text-center">Add. Hosp.</th>
                                         {/** is group leader */}
                                         {!hasGroupLeader && <th className="p-2 text-center">CSF In</th> }
                                         <th className="p-2 text-center">Other Income Passbook/Picture</th>
@@ -3571,6 +3580,7 @@ const CashCollectionDetailsPage = () => {
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.admissionCollection > 0 ? formatPricePhp(cc.admissionCollection) : '-' }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.lrfCollection > 0 ? formatPricePhp(cc.lrfCollection) : '-' }</td>
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.cbhbCollection > 0 ? formatPricePhp(cc.cbhbCollection) : '-' }</td>
+                                                <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.addHospitalization > 0 ? formatPricePhp(cc.addHospitalization) : '-' }</td>
                                                 { !hasGroupLeader && <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.csfInStr }</td> }
                                                 <td className="px-4 py-3 whitespace-nowrap-custom cursor-pointer text-right">{ cc.otherIncomeStr }</td>
                                                 <td className={`px-4 py-3 whitespace-nowrap-custom cursor-pointer text-center`}>

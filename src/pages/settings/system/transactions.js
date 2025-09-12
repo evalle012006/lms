@@ -18,7 +18,8 @@ import {
   ReceiptPercentIcon,
   DocumentCurrencyDollarIcon,
   TrophyIcon,
-  ChartBarIcon
+  ChartBarIcon,
+  HeartIcon
 } from '@heroicons/react/24/outline';
 
 const ModernInput = ({ 
@@ -142,7 +143,8 @@ const TransactionsSettingsPage = (props) => {
         admissionFee: transactionState.admissionFee || '',
         cbhbFee: transactionState.cbhbFee || '',
         otherPassbookFee: transactionState.otherPassbookFee || '',
-        otherPictureFee: transactionState.otherPictureFee || ''
+        otherPictureFee: transactionState.otherPictureFee || '',
+        addHospitalization: transactionState.addHospitalization || ''
     }
 
     const validationSchema = yup.object().shape({
@@ -169,7 +171,8 @@ const TransactionsSettingsPage = (props) => {
         admissionFee: yup.number().min(0, 'Cannot be negative').required('Admission fee is required'),
         cbhbFee: yup.number().min(0, 'Cannot be negative').required('CBHB fee is required'),
         otherPassbookFee: yup.number().min(0, 'Cannot be negative').required('Passbook fee is required'),
-        otherPictureFee: yup.number().min(0, 'Cannot be negative').required('Picture fee is required')
+        otherPictureFee: yup.number().min(0, 'Cannot be negative').required('Picture fee is required'),
+        addHospitalization: yup.number().min(0, 'Cannot be negative').required('Hospitalization fee is required')
     });
 
     const handleUpdate = async (values, action) => {
@@ -477,7 +480,7 @@ const TransactionsSettingsPage = (props) => {
                                     </div>
                                     
                                     <div className="p-6">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
                                             <ModernInput
                                                 name="admissionFee"
                                                 value={values.admissionFee}
@@ -527,6 +530,19 @@ const TransactionsSettingsPage = (props) => {
                                                 onChange={handleChange}
                                                 setFieldValue={setFieldValue}
                                                 errors={touched.otherPictureFee && errors.otherPictureFee}
+                                                required
+                                            />
+                                            
+                                            <ModernInput
+                                                name="addHospitalization"
+                                                value={values.addHospitalization}
+                                                label="Hospitalization Fee"
+                                                placeholder="Enter hospitalization fee"
+                                                icon={HeartIcon}
+                                                type="number"
+                                                onChange={handleChange}
+                                                setFieldValue={setFieldValue}
+                                                errors={touched.addHospitalization && errors.addHospitalization}
                                                 required
                                             />
                                         </div>

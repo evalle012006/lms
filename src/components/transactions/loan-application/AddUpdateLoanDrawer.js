@@ -302,12 +302,14 @@ const AddUpdateLoan = ({ origin, client, mode = 'add', loan = {}, showSidebar, s
             values.admissionCollection = transactionSettings.admissionFee;
             values.lrfCollection = values.principalLoan * transactionSettings.lrfRate;
             values.cbhbCollection = transactionSettings.cbhbFee;
+            values.addHospitalization = transactionSettings.addHospitalization;
             values.otherPassbookCollection = transactionSettings.otherPassbookFee;
             values.otherPictureCollection = transactionSettings.otherPictureFee;
         } else {
             values.admissionCollection = 0;
             values.lrfCollection = values.principalLoan * transactionSettings.lrfRate;
             values.cbhbCollection = transactionSettings.cbhbFee;
+            values.addHospitalization = transactionSettings.addHospitalization;
             values.otherPassbookCollection = transactionSettings.otherPassbookFee;
             values.otherPictureCollection = 0;
         }

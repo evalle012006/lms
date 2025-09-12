@@ -168,6 +168,7 @@ export const LOAN_FIELDS = `
   csf
   csfReturnAmt
   csfIn
+  addHospitalization
   `;
 
 export const GROUP_FIELDS = `
@@ -228,6 +229,7 @@ export const TRANSACTION_SETTINGS_FIELDS = `
   otherPictureFee
   mcbuCsfMCBUForNM
   mcbuCsfMinimumBalance
+  addHospitalization
   `;
 
 export const BAD_DEBT_COLLECTIONS_FIELDS = `
@@ -337,6 +339,7 @@ export const CASH_COLLECTIONS_FIELDS = `
   csfReturnAmt
   csfIn
   otherIncome
+  addHospitalization
   `;
 
 export const LOS_TOTALS_FIELDS = `

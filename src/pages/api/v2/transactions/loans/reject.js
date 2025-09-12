@@ -253,6 +253,7 @@ async function saveCashCollection(loan, group, currentDate, addToMutationList) {
             loanCycle: loan.loanCycle, 
             lrfCollection: 0,
             cbhbCollection: 0,
+            addHospitalization: 0,
             otherPassbookCollection: 0,
             otherPictureCollection: 0,
             csf: 0,
