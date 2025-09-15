@@ -10,12 +10,15 @@ import Spinner from "@/components/Spinner";
 import { toast } from "react-toastify";
 import Layout from '@/components/Layout';
 import { buildModernBranchCashCollectionsSourceQuery, shouldIncludeViewMode } from '@/lib/utils';
+import InputNumber from "@/lib/ui/InputNumber";
+import { setBranch } from "@/redux/actions/branchActions";
 
 const ModernBranchCashCollections = () => {
   const dispatch = useDispatch();
   const router = useRouter();
   
   const currentUser = useSelector(state => state.user.data);
+  const currentBranch = useSelector(state => state.branch.data);
   const branchList = useSelector(state => state.branch.list);
   const branchCollectionData = useSelector(state => state.cashCollection.branch);
   const currentDate = useSelector(state => state.systemSettings.currentDate);
@@ -49,6 +52,81 @@ const ModernBranchCashCollections = () => {
   const [currentLevel, setCurrentLevel] = useState(null);
   const [parentId, setParentId] = useState(router.query.parentId || null);
   const [parentViewMode, setParentViewMode] = useState(router.query.parentViewMode || null);
+
+  const [cohData, setCohData] = useState();
+  const [cohAmount, setCohAmount] = useState(0);
+
+  const getCurrentBranch = async () => {
+    console.log('Fetching current branch data for branch ID:', currentUser);
+    if (currentUser.role.rep >= 3) {
+      try {
+        const apiUrl = `${getApiBaseUrl()}branches?`;
+        const params = { 
+          _id: currentUser.designatedBranchId, 
+          date: currentDate 
+        };
+        const response = await fetchWrapper.get(apiUrl + new URLSearchParams(params));
+        
+        if (response.success) {
+          dispatch(setBranch(response.branch));
+          // Set COH data from the fetched branch
+          if (response.branch?.cashOnHand?.length > 0) {
+            setCohData(response.branch.cashOnHand[0]);
+          } else {
+            setCohData({ amount: 0 });
+          }
+        } else {
+          toast.error('Error while loading branch data');
+        }
+      } catch (error) {
+        console.error('Error fetching current branch:', error);
+        toast.error('Error while loading branch data');
+      }
+    }
+  };
+
+  const handleCOHDataChange = async (value) => {
+    // Validation
+    if (value && isNaN(parseFloat(value))) {
+      toast.error('Please enter a valid number');
+      return;
+    }
+
+    const amount = value ? parseFloat(value) : 0;
+    
+    // Prevent negative values
+    if (amount < 0) {
+      toast.error('COH amount cannot be negative');
+      setCohAmount(0);
+      return;
+    }
+
+    let updatedCohData = {...cohData};
+    if (cohData && cohData.hasOwnProperty("_id")) {
+      updatedCohData.amount = amount;
+      updatedCohData.modifiedBy = currentUser._id;
+    } else {
+      updatedCohData.branchId = currentUser.designatedBranchId;
+      updatedCohData.amount = amount;
+      updatedCohData.insertedBy = currentUser._id;
+      updatedCohData.dateAdded = currentDate;
+    }
+
+    try {
+      const apiUrl = getApiBaseUrl() + 'branches/save-update-coh';
+      const response = await fetchWrapper.post(apiUrl, updatedCohData);
+      
+      if (response.success) {
+        toast.success('Cash on Hand data successfully saved.');
+        setCohData(updatedCohData);
+      } else {
+        toast.error('Error saving Cash on Hand data.');
+      }
+    } catch (error) {
+      console.error('Error saving COH data:', error);
+      toast.error('Error saving Cash on Hand data.');
+    }
+  };
 
   // Action handlers for open/close transactions
   const handleOpen = async (row) => {
@@ -607,11 +685,26 @@ const ModernBranchCashCollections = () => {
     }
   };
 
-  // useEffect(() => {
-  //   if (currentUser?.role && currentUser.role.rep > 3) {
-  //     router.push('/');
-  //   }
-  // }, [currentUser, router]);
+  useEffect(() => {
+    if (currentUser.role.rep === 3 && currentFilter === 'lo' && currentBranch?._id) {
+      // Use currentBranch from redux if available
+      if (currentBranch?.cashOnHand?.length > 0) {
+        setCohData(currentBranch.cashOnHand[0]);
+      } else {
+        setCohData({ amount: 0 });
+      }
+    } else if (currentUser.role.rep === 3 && currentFilter === 'lo') {
+      // Fetch currentBranch if not available
+      getCurrentBranch();
+    }
+  }, [currentUser, currentFilter, currentBranch, currentDate]);
+
+  // Update cohAmount when cohData changes
+  useEffect(() => {
+    if (cohData) {
+      setCohAmount(cohData?.amount || 0);
+    }
+  }, [cohData]);
 
   useEffect(() => {
     // Only set viewMode from router if user role allows it
@@ -1450,6 +1543,23 @@ const ModernBranchCashCollections = () => {
                           <option value="main">Main</option>
                           <option value="ext">Extension</option>
                         </select>
+                      </div>
+                    )}
+                    {(currentUser.role.rep === 3 && currentFilter === 'lo') && (
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm font-medium text-gray-700">COH:</span>
+                        <div className="w-32">
+                          <InputNumber 
+                            name="coh"
+                            value={cohAmount}
+                            onChange={(val) => { setCohAmount(val.target.value) }}
+                            onBlur={(val) => { handleCOHDataChange(val.target.value) }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                            filter={true}
+                            disabled={loading} 
+                            placeholder="0.00"
+                          />
+                        </div>
                       </div>
                     )}
                 </div>
