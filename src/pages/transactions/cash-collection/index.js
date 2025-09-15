@@ -1481,7 +1481,6 @@ const ModernBranchCashCollections = () => {
                                         key={row._id || index} 
                                         onClick={() => handleRowClick(row)}
                                         className={`
-                                          ${row.isDraft ? 'bg-orange-100' : ''} 
                                           ${!row.isDraft && row.groupStatus !== 'closed' ? 'bg-blue-100' : ''} 
                                           hover:bg-gray-50 cursor-pointer
                                         `.trim()}
