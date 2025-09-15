@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ChevronDown, ChevronUp, Search, Calendar, Download, RefreshCw, Eye, EyeOff, Info, ArrowUpDown } from 'lucide-react';
+import { ChevronDown, ChevronUp, Search, Calendar, Download, RefreshCw, Eye, EyeOff, Info, ArrowUpDown, Lock, Unlock } from 'lucide-react';
 import { useDispatch, useSelector } from "react-redux";
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { getApiBaseUrl } from "@/lib/constants";
@@ -19,6 +19,7 @@ const ModernBranchCashCollections = () => {
   const branchList = useSelector(state => state.branch.list);
   const branchCollectionData = useSelector(state => state.cashCollection.branch);
   const currentDate = useSelector(state => state.systemSettings.currentDate);
+  const currentTime = useSelector(state => state.systemSettings.currentTime);
   const isHoliday = useSelector(state => state.systemSettings.holiday);
   const isWeekend = useSelector(state => state.systemSettings.weekend);
   
@@ -48,6 +49,80 @@ const ModernBranchCashCollections = () => {
   const [currentLevel, setCurrentLevel] = useState(null);
   const [parentId, setParentId] = useState(router.query.parentId || null);
   const [parentViewMode, setParentViewMode] = useState(router.query.parentViewMode || null);
+
+  // Action handlers for open/close transactions
+  const handleOpen = async (row) => {
+    if (row.activeClients > 0 && !row.hasOwnProperty("allNew")) {
+      setLoading(true);
+
+      let data = { 
+        loId: row._id, 
+        mode: 'open', 
+        currentDate: currentDate, 
+        transactionType: row.transactionType 
+      };
+
+      try {
+        const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collections/update-group-transaction-status', data);
+        
+        if (response.success) {
+          toast.success(`${row.name} groups transactions are now open!`);
+          // Refresh the data instead of reloading the page
+          await fetchCashCollectionsData(dateFilter);
+        } else if (response.error && response.message) {
+          toast.error(response.message);
+        } else {
+          toast.error('Error updating group summary.');
+        }
+      } catch (error) {
+        console.error('Error opening transactions:', error);
+        toast.error('Error updating group summary.');
+      }
+
+      setLoading(false);
+    } else if (row.hasOwnProperty("allNew")) {
+      toast.error("All transactions are current releases no need to change the group's status.");
+    } else {
+      toast.error('No transaction detected for this Loan Officer!');
+    }
+  };
+
+  const handleClose = async (row) => {
+    if (row.activeClients > 0 && !row.hasOwnProperty("allNew")) {
+      setLoading(true);
+
+      let data = { 
+        loId: row._id, 
+        mode: 'close', 
+        currentDate: currentDate, 
+        currentTime: currentTime, 
+        transactionType: row.transactionType 
+      };
+
+      try {
+        const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collections/update-group-transaction-status', data);
+        
+        if (response.success) {
+          toast.success(`Selected loan officer groups are now closed!`);
+          // Refresh the data instead of reloading the page
+          await fetchCashCollectionsData(dateFilter);
+        } else if (response.error && response.message) {
+          toast.error(response.message);
+        } else {
+          toast.error('Error updating group summary.');
+        }
+      } catch (error) {
+        console.error('Error closing transactions:', error);
+        toast.error('Error updating group summary.');
+      }
+
+      setLoading(false);
+    } else if (row.hasOwnProperty("allNew")) {
+      toast.error("All transactions are current releases no need to change the group's status.");
+    } else {
+      toast.error('No transaction detected for this Loan Officer!');
+    }
+  };
 
   const buildApiParams = (baseParams) => {
     const params = new URLSearchParams();
@@ -1216,6 +1291,7 @@ const ModernBranchCashCollections = () => {
     csfIn: true,
     cashOnHand: currentUser.role.rep <= 3,
     totalNetCollectionStr: true,
+    actions: true, // ADDED: Actions column visibility
   });
 
   const columnDefs = useMemo(() => [
@@ -1254,18 +1330,23 @@ const ModernBranchCashCollections = () => {
     { key: 'pendingClients', label: 'PND', width: 'w-20' },
     { key: 'transferClients', label: 'TOC', width: 'w-20' },
     { key: 'cashOnHand', label: 'Cash On Hand', width: 'w-20' },
+    { key: 'actions', label: 'Actions', width: 'w-24' }, // ADDED: Actions column
   ], [currentFilter]);
 
-  // UPDATED: Filter visible columns - only show transactionType when filter is 'lo'
+  // UPDATED: Filter visible columns - only show transactionType and actions when filter is 'lo'
   const visibleColumnDefs = useMemo(() => {
     return columnDefs.filter(col => {
       // Show transactionType column ONLY when currentFilter is 'lo'
       if (col.key === 'transactionType') {
         return currentFilter === 'lo' && visibleColumns[col.key];
       }
+      // Show actions column ONLY when currentFilter is 'lo' AND user has rep === 3
+      if (col.key === 'actions') {
+        return currentFilter === 'lo' && currentUser.role.rep === 3 && visibleColumns[col.key];
+      }
       return visibleColumns[col.key];
     });
-  }, [visibleColumns, columnDefs, currentFilter]);
+  }, [visibleColumns, columnDefs, currentFilter, currentUser.role.rep]);
 
   return (
     <Layout header={false} noPad={true}>
@@ -1418,6 +1499,10 @@ const ModernBranchCashCollections = () => {
                       if (col.key === 'transactionType' && currentFilter !== 'lo') {
                         return null;
                       }
+                      // Hide actions column from selector if not relevant
+                      if (col.key === 'actions' && (currentFilter !== 'lo' || currentUser.role.rep !== 3)) {
+                        return null;
+                      }
                       
                       return (
                         <div key={col.key} className="flex items-center">
@@ -1452,22 +1537,24 @@ const ModernBranchCashCollections = () => {
                                     <th 
                                     key={column.key}
                                     scope="col" 
-                                    className={`${column.width || 'w-auto'} px-3 py-3.5 text-left text-sm font-semibold text-gray-900 cursor-pointer group`}
-                                    onClick={() => handleSort(column.key)}
+                                    className={`${column.width || 'w-auto'} px-3 py-3.5 text-left text-sm font-semibold text-gray-900 ${column.key === 'actions' ? '' : 'cursor-pointer group'}`}
+                                    onClick={column.key === 'actions' ? undefined : () => handleSort(column.key)}
                                     >
                                     <div className="flex items-center">
                                         <span>{column.label}</span>
-                                        <span className="ml-1 flex-none text-gray-400 group-hover:text-gray-700">
-                                        {sortConfig.key === column.key ? (
-                                            sortConfig.direction === 'ascending' ? (
-                                            <ChevronUp size={16} />
-                                            ) : (
-                                            <ChevronDown size={16} />
-                                            )
-                                        ) : (
-                                            <ArrowUpDown size={16} className="opacity-0 group-hover:opacity-100" />
+                                        {column.key !== 'actions' && (
+                                          <span className="ml-1 flex-none text-gray-400 group-hover:text-gray-700">
+                                          {sortConfig.key === column.key ? (
+                                              sortConfig.direction === 'ascending' ? (
+                                              <ChevronUp size={16} />
+                                              ) : (
+                                              <ChevronDown size={16} />
+                                              )
+                                          ) : (
+                                              <ArrowUpDown size={16} className="opacity-0 group-hover:opacity-100" />
+                                          )}
+                                          </span>
                                         )}
-                                        </span>
                                     </div>
                                     </th>
                                 ))}
@@ -1478,17 +1565,47 @@ const ModernBranchCashCollections = () => {
                                   sortedData.map((row, index) => (
                                     <tr 
                                         key={row._id || index} 
-                                        onClick={() => handleRowClick(row)}
+                                        onClick={visibleColumnDefs.find(col => col.key === 'actions') ? undefined : () => handleRowClick(row)}
                                         className={`
                                           ${(row.isDraft && currentFilter === 'group') ? 'bg-orange-100' : ''}
                                           ${(row.groupStatus == 'pending' || row.groupStatus == null) ? 'bg-blue-100' : ''} 
-                                          hover:bg-gray-50 cursor-pointer
+                                          ${visibleColumnDefs.find(col => col.key === 'actions') ? '' : 'hover:bg-gray-50 cursor-pointer'}
                                         `.trim()}
                                     >
                                         {visibleColumnDefs.map(column => (
                                         <td key={`${row._id}-${column.key}`} className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                                             {column.key === 'name' ? (
-                                            <div className="font-medium text-gray-900">{row[column.key]}</div>
+                                            <div 
+                                              className={`font-medium text-gray-900 ${!visibleColumnDefs.find(col => col.key === 'actions') ? 'cursor-pointer' : ''}`}
+                                              onClick={visibleColumnDefs.find(col => col.key === 'actions') ? () => handleRowClick(row) : undefined}
+                                            >
+                                              {row[column.key]}
+                                            </div>
+                                            ) : column.key === 'actions' ? (
+                                              <div className="flex space-x-2">
+                                                <button
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleOpen(row);
+                                                  }}
+                                                  className="p-1 text-green-600 hover:text-green-900 hover:bg-green-50 rounded"
+                                                  title="Open Transaction"
+                                                  disabled={loading}
+                                                >
+                                                  <Unlock size={16} />
+                                                </button>
+                                                <button
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleClose(row);
+                                                  }}
+                                                  className="p-1 text-red-600 hover:text-red-900 hover:bg-red-50 rounded"
+                                                  title="Close Transaction"
+                                                  disabled={loading}
+                                                >
+                                                  <Lock size={16} />
+                                                </button>
+                                              </div>
                                             ) : column.key === 'transactionType' ? (
                                               <div className="text-xs font-medium uppercase tracking-wider text-gray-700 bg-gray-100 px-2 py-1 rounded">
                                                 {row[column.key] || '-'}
@@ -1546,6 +1663,8 @@ const ModernBranchCashCollections = () => {
                                     <td key={`grand-total-${column.key}`} className="whitespace-nowrap px-3 py-4 text-sm text-gray-900 font-semibold border-t-2 border-gray-300">
                                             {column.key === 'name' ? (
                                             <div className="font-medium text-gray-900">GRAND TOTALS</div>
+                                            ) : column.key === 'actions' ? (
+                                              <div className="text-center text-gray-400">-</div>
                                             ) : column.key === 'transactionType' ? (
                                               <div className="text-xs font-medium uppercase tracking-wider text-gray-700 bg-gray-200 px-2 py-1 rounded">
                                                 {grandTotalRow[column.key] || 'ALL'}
