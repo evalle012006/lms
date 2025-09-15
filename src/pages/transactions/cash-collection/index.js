@@ -1415,7 +1415,6 @@ const ModernBranchCashCollections = () => {
                 <h3 className="font-medium text-gray-700 mb-2">Show/Hide Columns</h3>
                 <div className="grid grid-cols-2 gap-2">
                     {columnDefs.map(col => {
-                      // UPDATED: Only show transactionType column option when filter is 'lo'
                       if (col.key === 'transactionType' && currentFilter !== 'lo') {
                         return null;
                       }
@@ -1481,7 +1480,8 @@ const ModernBranchCashCollections = () => {
                                         key={row._id || index} 
                                         onClick={() => handleRowClick(row)}
                                         className={`
-                                          ${!row.isDraft && row.groupStatus !== 'closed' ? 'bg-blue-100' : ''} 
+                                          ${(row.isDraft && currentFilter === 'group') ? 'bg-orange-100' : ''}
+                                          ${(row.groupStatus == 'pending' || row.groupStatus == null) ? 'bg-blue-100' : ''} 
                                           hover:bg-gray-50 cursor-pointer
                                         `.trim()}
                                     >
