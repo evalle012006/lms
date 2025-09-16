@@ -29,7 +29,7 @@ const ModernBranchCashCollections = () => {
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState(() => {
     // Check if there's a date in the URL parameters, otherwise use current date
-    return router.query.date || moment().format('YYYY-MM-DD');
+    return router.query.date || currentDate;
   });
   const [viewMode, setViewMode] = useState(() => {
     // Set default based on user role
