@@ -1675,27 +1675,30 @@ const ModernBranchCashCollections = () => {
                                   sortedData.map((row, index) => (
                                     <tr 
                                         key={row._id || index} 
-                                        onClick={visibleColumnDefs.find(col => col.key === 'actions') ? undefined : () => handleRowClick(row)}
+                                        onClick={(e) => {
+                                            // Check if the click came from an action button
+                                            if (e.target.closest('button')) {
+                                                return; // Don't handle row click if action button was clicked
+                                            }
+                                            handleRowClick(row);
+                                        }}
                                         className={`
                                           ${(row.isDraft && currentFilter === 'group') ? 'bg-orange-100' : ''}
                                           ${(row.groupStatus == 'pending' || row.groupStatus == null) ? 'bg-blue-100' : ''} 
-                                          ${visibleColumnDefs.find(col => col.key === 'actions') ? '' : 'hover:bg-gray-50 cursor-pointer'}
+                                          hover:bg-gray-50 cursor-pointer
                                         `.trim()}
                                     >
                                         {visibleColumnDefs.map(column => (
                                         <td key={`${row._id}-${column.key}`} className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                                             {column.key === 'name' ? (
-                                            <div 
-                                              className={`font-medium text-gray-900 ${!visibleColumnDefs.find(col => col.key === 'actions') ? 'cursor-pointer' : ''}`}
-                                              onClick={visibleColumnDefs.find(col => col.key === 'actions') ? () => handleRowClick(row) : undefined}
-                                            >
+                                            <div className="font-medium text-gray-900">
                                               {row[column.key]}
                                             </div>
                                             ) : column.key === 'actions' ? (
                                               <div className="flex space-x-2">
                                                 <button
                                                   onClick={(e) => {
-                                                    e.stopPropagation();
+                                                    e.stopPropagation(); // Prevent row click when button is clicked
                                                     handleOpen(row);
                                                   }}
                                                   className="p-1 text-green-600 hover:text-green-900 hover:bg-green-50 rounded"
@@ -1706,7 +1709,7 @@ const ModernBranchCashCollections = () => {
                                                 </button>
                                                 <button
                                                   onClick={(e) => {
-                                                    e.stopPropagation();
+                                                    e.stopPropagation(); // Prevent row click when button is clicked
                                                     handleClose(row);
                                                   }}
                                                   className="p-1 text-red-600 hover:text-red-900 hover:bg-red-50 rounded"

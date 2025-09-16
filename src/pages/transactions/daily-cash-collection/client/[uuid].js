@@ -453,6 +453,13 @@ const CashCollectionDetailsPage = () => {
                         let csfCollection = cc.csfCollection;
                         let csfWithdrawal = cc.csfWithdrawal;
                         let csfIn = 0;
+                        let admissionCollection = loan.admissionCollection;
+                        let lrfCollection = loan.lrfCollection;
+                        let cbhbCollection = loan.cbhbCollection;
+                        let addHospitalization = loan.addHospitalization;
+                        let otherPassbookCollection = loan.otherPassbookCollection;
+                        let otherPictureCollection = loan.otherPictureCollection;
+                        let otherIncome = loan.otherPassbookCollection + loan.otherPictureCollection;
 
                         if (cc?.current?.length > 0) {
                             const current = cc.current.find(cur => cur?.transfer !== true);
@@ -481,6 +488,13 @@ const CashCollectionDetailsPage = () => {
                                 csfCollection = current.csfCollection;
                                 csfWithdrawal = current.csfWithdrawal;
                                 csfIn = current.csfIn;
+                                admissionCollection = current.admissionCollection;
+                                lrfCollection = current.lrfCollection;
+                                cbhbCollection = current.cbhbCollection;
+                                addHospitalization = current.addHospitalization;
+                                otherPassbookCollection = current.otherPassbookCollection;
+                                otherPictureCollection = current.otherPictureCollection;
+                                otherIncome = current.otherPassbookCollection + current.otherPictureCollection;
                             }
                         }
 
@@ -565,6 +579,13 @@ const CashCollectionDetailsPage = () => {
                             csfWithdrawalStr: csfWithdrawal > 0 ? formatPricePhp(csfWithdrawal) : '-',
                             csfIn: csfIn,
                             csfInStr: csfIn > 0 ? formatPricePhp(csfIn) : '-',
+                            admissionCollection: admissionCollection,
+                            lrfCollection: lrfCollection,
+                            cbhbCollection: cbhbCollection,
+                            addHospitalization: addHospitalization,
+                            otherPassbookCollection: otherPassbookCollection,
+                            otherPictureCollection: otherPictureCollection,
+                            otherIncome: otherIncome,
                         }
 
                         if (loanBalance > 0 && !cc?.maturedPD) {
