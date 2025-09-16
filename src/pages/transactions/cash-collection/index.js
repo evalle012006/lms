@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ChevronDown, ChevronUp, Search, Calendar, Download, RefreshCw, Eye, EyeOff, Info, ArrowUpDown } from 'lucide-react';
+import { ChevronDown, ChevronUp, Search, Calendar, Download, RefreshCw, Eye, EyeOff, Info, ArrowUpDown, Lock, Unlock } from 'lucide-react';
 import { useDispatch, useSelector } from "react-redux";
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { getApiBaseUrl } from "@/lib/constants";
@@ -10,22 +10,26 @@ import Spinner from "@/components/Spinner";
 import { toast } from "react-toastify";
 import Layout from '@/components/Layout';
 import { buildModernBranchCashCollectionsSourceQuery, shouldIncludeViewMode } from '@/lib/utils';
+import InputNumber from "@/lib/ui/InputNumber";
+import { setBranch } from "@/redux/actions/branchActions";
 
 const ModernBranchCashCollections = () => {
   const dispatch = useDispatch();
   const router = useRouter();
   
   const currentUser = useSelector(state => state.user.data);
+  const currentBranch = useSelector(state => state.branch.data);
   const branchList = useSelector(state => state.branch.list);
   const branchCollectionData = useSelector(state => state.cashCollection.branch);
   const currentDate = useSelector(state => state.systemSettings.currentDate);
+  const currentTime = useSelector(state => state.systemSettings.currentTime);
   const isHoliday = useSelector(state => state.systemSettings.holiday);
   const isWeekend = useSelector(state => state.systemSettings.weekend);
   
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState(() => {
     // Check if there's a date in the URL parameters, otherwise use current date
-    return router.query.date || moment().format('YYYY-MM-DD');
+    return router.query.date || currentDate;
   });
   const [viewMode, setViewMode] = useState(() => {
     // Set default based on user role
@@ -48,6 +52,155 @@ const ModernBranchCashCollections = () => {
   const [currentLevel, setCurrentLevel] = useState(null);
   const [parentId, setParentId] = useState(router.query.parentId || null);
   const [parentViewMode, setParentViewMode] = useState(router.query.parentViewMode || null);
+
+  const [cohData, setCohData] = useState();
+  const [cohAmount, setCohAmount] = useState(0);
+
+  const getCurrentBranch = async () => {
+    console.log('Fetching current branch data for branch ID:', currentUser);
+    if (currentUser.role.rep >= 3) {
+      try {
+        const apiUrl = `${getApiBaseUrl()}branches?`;
+        const params = { 
+          _id: currentUser.designatedBranchId, 
+          date: currentDate 
+        };
+        const response = await fetchWrapper.get(apiUrl + new URLSearchParams(params));
+        
+        if (response.success) {
+          dispatch(setBranch(response.branch));
+          // Set COH data from the fetched branch
+          if (response.branch?.cashOnHand?.length > 0) {
+            setCohData(response.branch.cashOnHand[0]);
+          } else {
+            setCohData({ amount: 0 });
+          }
+        } else {
+          toast.error('Error while loading branch data');
+        }
+      } catch (error) {
+        console.error('Error fetching current branch:', error);
+        toast.error('Error while loading branch data');
+      }
+    }
+  };
+
+  const handleCOHDataChange = async (value) => {
+    // Validation
+    if (value && isNaN(parseFloat(value))) {
+      toast.error('Please enter a valid number');
+      return;
+    }
+
+    const amount = value ? parseFloat(value) : 0;
+    
+    // Prevent negative values
+    if (amount < 0) {
+      toast.error('COH amount cannot be negative');
+      setCohAmount(0);
+      return;
+    }
+
+    let updatedCohData = {...cohData};
+    if (cohData && cohData.hasOwnProperty("_id")) {
+      updatedCohData.amount = amount;
+      updatedCohData.modifiedBy = currentUser._id;
+    } else {
+      updatedCohData.branchId = currentUser.designatedBranchId;
+      updatedCohData.amount = amount;
+      updatedCohData.insertedBy = currentUser._id;
+      updatedCohData.dateAdded = currentDate;
+    }
+
+    try {
+      const apiUrl = getApiBaseUrl() + 'branches/save-update-coh';
+      const response = await fetchWrapper.post(apiUrl, updatedCohData);
+      
+      if (response.success) {
+        toast.success('Cash on Hand data successfully saved.');
+        setCohData(updatedCohData);
+      } else {
+        toast.error('Error saving Cash on Hand data.');
+      }
+    } catch (error) {
+      console.error('Error saving COH data:', error);
+      toast.error('Error saving Cash on Hand data.');
+    }
+  };
+
+  // Action handlers for open/close transactions
+  const handleOpen = async (row) => {
+    if (row.activeClients > 0 && !row.hasOwnProperty("allNew")) {
+      setLoading(true);
+
+      let data = { 
+        loId: row._id, 
+        mode: 'open', 
+        currentDate: currentDate, 
+        transactionType: row.transactionType 
+      };
+
+      try {
+        const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collections/update-group-transaction-status', data);
+        
+        if (response.success) {
+          toast.success(`${row.name} groups transactions are now open!`);
+          // Refresh the data instead of reloading the page
+          await fetchCashCollectionsData(dateFilter);
+        } else if (response.error && response.message) {
+          toast.error(response.message);
+        } else {
+          toast.error('Error updating group summary.');
+        }
+      } catch (error) {
+        console.error('Error opening transactions:', error);
+        toast.error('Error updating group summary.');
+      }
+
+      setLoading(false);
+    } else if (row.hasOwnProperty("allNew")) {
+      toast.error("All transactions are current releases no need to change the group's status.");
+    } else {
+      toast.error('No transaction detected for this Loan Officer!');
+    }
+  };
+
+  const handleClose = async (row) => {
+    if (row.activeClients > 0 && !row.hasOwnProperty("allNew")) {
+      setLoading(true);
+
+      let data = { 
+        loId: row._id, 
+        mode: 'close', 
+        currentDate: currentDate, 
+        currentTime: currentTime, 
+        transactionType: row.transactionType 
+      };
+
+      try {
+        const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collections/update-group-transaction-status', data);
+        
+        if (response.success) {
+          toast.success(`Selected loan officer groups are now closed!`);
+          // Refresh the data instead of reloading the page
+          await fetchCashCollectionsData(dateFilter);
+        } else if (response.error && response.message) {
+          toast.error(response.message);
+        } else {
+          toast.error('Error updating group summary.');
+        }
+      } catch (error) {
+        console.error('Error closing transactions:', error);
+        toast.error('Error updating group summary.');
+      }
+
+      setLoading(false);
+    } else if (row.hasOwnProperty("allNew")) {
+      toast.error("All transactions are current releases no need to change the group's status.");
+    } else {
+      toast.error('No transaction detected for this Loan Officer!');
+    }
+  };
 
   const buildApiParams = (baseParams) => {
     const params = new URLSearchParams();
@@ -532,11 +685,26 @@ const ModernBranchCashCollections = () => {
     }
   };
 
-  // useEffect(() => {
-  //   if (currentUser?.role && currentUser.role.rep > 3) {
-  //     router.push('/');
-  //   }
-  // }, [currentUser, router]);
+  useEffect(() => {
+    if (currentUser.role.rep === 3 && currentFilter === 'lo' && currentBranch?._id) {
+      // Use currentBranch from redux if available
+      if (currentBranch?.cashOnHand?.length > 0) {
+        setCohData(currentBranch.cashOnHand[0]);
+      } else {
+        setCohData({ amount: 0 });
+      }
+    } else if (currentUser.role.rep === 3 && currentFilter === 'lo') {
+      // Fetch currentBranch if not available
+      getCurrentBranch();
+    }
+  }, [currentUser, currentFilter, currentBranch, currentDate]);
+
+  // Update cohAmount when cohData changes
+  useEffect(() => {
+    if (cohData) {
+      setCohAmount(cohData?.amount || 0);
+    }
+  }, [cohData]);
 
   useEffect(() => {
     // Only set viewMode from router if user role allows it
@@ -1216,6 +1384,7 @@ const ModernBranchCashCollections = () => {
     csfIn: true,
     cashOnHand: currentUser.role.rep <= 3,
     totalNetCollectionStr: true,
+    actions: true, // ADDED: Actions column visibility
   });
 
   const columnDefs = useMemo(() => [
@@ -1254,18 +1423,23 @@ const ModernBranchCashCollections = () => {
     { key: 'pendingClients', label: 'PND', width: 'w-20' },
     { key: 'transferClients', label: 'TOC', width: 'w-20' },
     { key: 'cashOnHand', label: 'Cash On Hand', width: 'w-20' },
+    { key: 'actions', label: 'Actions', width: 'w-24' }, // ADDED: Actions column
   ], [currentFilter]);
 
-  // UPDATED: Filter visible columns - only show transactionType when filter is 'lo'
+  // UPDATED: Filter visible columns - only show transactionType and actions when filter is 'lo'
   const visibleColumnDefs = useMemo(() => {
     return columnDefs.filter(col => {
       // Show transactionType column ONLY when currentFilter is 'lo'
       if (col.key === 'transactionType') {
         return currentFilter === 'lo' && visibleColumns[col.key];
       }
+      // Show actions column ONLY when currentFilter is 'lo' AND user has rep === 3
+      if (col.key === 'actions') {
+        return currentFilter === 'lo' && currentUser.role.rep === 3 && visibleColumns[col.key];
+      }
       return visibleColumns[col.key];
     });
-  }, [visibleColumns, columnDefs, currentFilter]);
+  }, [visibleColumns, columnDefs, currentFilter, currentUser.role.rep]);
 
   return (
     <Layout header={false} noPad={true}>
@@ -1371,6 +1545,23 @@ const ModernBranchCashCollections = () => {
                         </select>
                       </div>
                     )}
+                    {(currentUser.role.rep === 3 && currentFilter === 'lo') && (
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm font-medium text-gray-700">COH:</span>
+                        <div className="w-32">
+                          <InputNumber 
+                            name="coh"
+                            value={cohAmount}
+                            onChange={(val) => { setCohAmount(val.target.value) }}
+                            onBlur={(val) => { handleCOHDataChange(val.target.value) }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                            filter={true}
+                            disabled={loading} 
+                            placeholder="0.00"
+                          />
+                        </div>
+                      </div>
+                    )}
                 </div>
                 
                 <div className="flex items-center space-x-2">
@@ -1415,8 +1606,11 @@ const ModernBranchCashCollections = () => {
                 <h3 className="font-medium text-gray-700 mb-2">Show/Hide Columns</h3>
                 <div className="grid grid-cols-2 gap-2">
                     {columnDefs.map(col => {
-                      // UPDATED: Only show transactionType column option when filter is 'lo'
                       if (col.key === 'transactionType' && currentFilter !== 'lo') {
+                        return null;
+                      }
+                      // Hide actions column from selector if not relevant
+                      if (col.key === 'actions' && (currentFilter !== 'lo' || currentUser.role.rep !== 3)) {
                         return null;
                       }
                       
@@ -1453,22 +1647,24 @@ const ModernBranchCashCollections = () => {
                                     <th 
                                     key={column.key}
                                     scope="col" 
-                                    className={`${column.width || 'w-auto'} px-3 py-3.5 text-left text-sm font-semibold text-gray-900 cursor-pointer group`}
-                                    onClick={() => handleSort(column.key)}
+                                    className={`${column.width || 'w-auto'} px-3 py-3.5 text-left text-sm font-semibold text-gray-900 ${column.key === 'actions' ? '' : 'cursor-pointer group'}`}
+                                    onClick={column.key === 'actions' ? undefined : () => handleSort(column.key)}
                                     >
                                     <div className="flex items-center">
                                         <span>{column.label}</span>
-                                        <span className="ml-1 flex-none text-gray-400 group-hover:text-gray-700">
-                                        {sortConfig.key === column.key ? (
-                                            sortConfig.direction === 'ascending' ? (
-                                            <ChevronUp size={16} />
-                                            ) : (
-                                            <ChevronDown size={16} />
-                                            )
-                                        ) : (
-                                            <ArrowUpDown size={16} className="opacity-0 group-hover:opacity-100" />
+                                        {column.key !== 'actions' && (
+                                          <span className="ml-1 flex-none text-gray-400 group-hover:text-gray-700">
+                                          {sortConfig.key === column.key ? (
+                                              sortConfig.direction === 'ascending' ? (
+                                              <ChevronUp size={16} />
+                                              ) : (
+                                              <ChevronDown size={16} />
+                                              )
+                                          ) : (
+                                              <ArrowUpDown size={16} className="opacity-0 group-hover:opacity-100" />
+                                          )}
+                                          </span>
                                         )}
-                                        </span>
                                     </div>
                                     </th>
                                 ))}
@@ -1479,18 +1675,47 @@ const ModernBranchCashCollections = () => {
                                   sortedData.map((row, index) => (
                                     <tr 
                                         key={row._id || index} 
-                                        onClick={() => handleRowClick(row)}
+                                        onClick={visibleColumnDefs.find(col => col.key === 'actions') ? undefined : () => handleRowClick(row)}
                                         className={`
-                                          ${row.status === 'close' ? 'bg-red-50' : ''} 
-                                          ${row.isDraft ? 'bg-orange-100' : ''} 
-                                          ${!row.isDraft && row.groupStatus && row.groupStatus !== 'closed' ? 'bg-blue-100' : ''} 
-                                          hover:bg-gray-50 cursor-pointer
+                                          ${(row.isDraft && currentFilter === 'group') ? 'bg-orange-100' : ''}
+                                          ${(row.groupStatus == 'pending' || row.groupStatus == null) ? 'bg-blue-100' : ''} 
+                                          ${visibleColumnDefs.find(col => col.key === 'actions') ? '' : 'hover:bg-gray-50 cursor-pointer'}
                                         `.trim()}
                                     >
                                         {visibleColumnDefs.map(column => (
                                         <td key={`${row._id}-${column.key}`} className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                                             {column.key === 'name' ? (
-                                            <div className="font-medium text-gray-900">{row[column.key]}</div>
+                                            <div 
+                                              className={`font-medium text-gray-900 ${!visibleColumnDefs.find(col => col.key === 'actions') ? 'cursor-pointer' : ''}`}
+                                              onClick={visibleColumnDefs.find(col => col.key === 'actions') ? () => handleRowClick(row) : undefined}
+                                            >
+                                              {row[column.key]}
+                                            </div>
+                                            ) : column.key === 'actions' ? (
+                                              <div className="flex space-x-2">
+                                                <button
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleOpen(row);
+                                                  }}
+                                                  className="p-1 text-green-600 hover:text-green-900 hover:bg-green-50 rounded"
+                                                  title="Open Transaction"
+                                                  disabled={loading}
+                                                >
+                                                  <Unlock size={16} />
+                                                </button>
+                                                <button
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleClose(row);
+                                                  }}
+                                                  className="p-1 text-red-600 hover:text-red-900 hover:bg-red-50 rounded"
+                                                  title="Close Transaction"
+                                                  disabled={loading}
+                                                >
+                                                  <Lock size={16} />
+                                                </button>
+                                              </div>
                                             ) : column.key === 'transactionType' ? (
                                               <div className="text-xs font-medium uppercase tracking-wider text-gray-700 bg-gray-100 px-2 py-1 rounded">
                                                 {row[column.key] || '-'}
@@ -1548,6 +1773,8 @@ const ModernBranchCashCollections = () => {
                                     <td key={`grand-total-${column.key}`} className="whitespace-nowrap px-3 py-4 text-sm text-gray-900 font-semibold border-t-2 border-gray-300">
                                             {column.key === 'name' ? (
                                             <div className="font-medium text-gray-900">GRAND TOTALS</div>
+                                            ) : column.key === 'actions' ? (
+                                              <div className="text-center text-gray-400">-</div>
                                             ) : column.key === 'transactionType' ? (
                                               <div className="text-xs font-medium uppercase tracking-wider text-gray-700 bg-gray-200 px-2 py-1 rounded">
                                                 {grandTotalRow[column.key] || 'ALL'}

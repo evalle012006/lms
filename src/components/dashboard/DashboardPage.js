@@ -96,10 +96,10 @@ const DashboardPage = () => {
         datasets: [{
             data: [0, 0, 0, 0],
             backgroundColor: [
-                '#4B5563', // Dark gray for Good Clients
-                '#14B8A6', // Teal for Late Clients  
-                '#60A5FA', // Light blue for Mis Payment Clients
-                '#A855F7'  // Purple for Past Due Clients
+                '#A7F3D0', // Pastel green for Good Clients
+                '#FEF3C7', // Pastel yellow for Late Clients  
+                '#FECACA', // Pastel red for Mis Payment Clients
+                '#DDD6FE'  // Pastel purple for Past Due Clients
             ],
             borderWidth: 0,
             cutout: '70%'
@@ -308,10 +308,10 @@ const DashboardPage = () => {
                 datasets: [{
                     data: [goodClients, pendingClients, mispaymentPerson, pastDuePerson],
                     backgroundColor: [
-                        '#4B5563', // Dark gray for Good Clients
-                        '#14B8A6', // Teal for Late Clients  
-                        '#60A5FA', // Light blue for Mis Payment Clients
-                        '#A855F7'  // Purple for Past Due Clients
+                        '#A7F3D0', // Pastel green for Good Clients
+                        '#FEF3C7', // Pastel yellow for Late Clients  
+                        '#FECACA', // Pastel red for Mis Payment Clients
+                        '#DDD6FE'  // Pastel purple for Past Due Clients
                     ],
                     borderWidth: 0,
                     cutout: '70%'
@@ -758,15 +758,15 @@ const DashboardPage = () => {
                                         <h3 className="text-lg font-bold text-gray-800 mb-4">Client Categories</h3>
                                         <div className="space-y-3">
                                             {[
-                                                { label: 'Good Clients', color: '#4B5563', value: summaryData.activeClients ? summaryData.activeClients - (summaryData.pendingClients || 0) - (summaryData.mispaymentPerson || 0) - (summaryData.pastDuePerson || 0) : 0 },
-                                                { label: 'Late Clients', color: '#14B8A6', value: summaryData.pendingClients || 0 },
-                                                { label: 'Mis Payment Clients', color: '#60A5FA', value: summaryData.mispaymentPerson || 0 },
-                                                { label: 'Past Due Clients', color: '#A855F7', value: summaryData.pastDuePerson || 0 }
+                                                { label: 'Good Clients', color: '#A7F3D0', value: summaryData.activeClients ? summaryData.activeClients - (summaryData.pendingClients || 0) - (summaryData.mispaymentPerson || 0) - (summaryData.pastDuePerson || 0) : 0 },
+                                                { label: 'Late Clients', color: '#FEF3C7', value: summaryData.pendingClients || 0 },
+                                                { label: 'Mis Payment Clients', color: '#FECACA', value: summaryData.mispaymentPerson || 0 },
+                                                { label: 'Past Due Clients', color: '#DDD6FE', value: summaryData.pastDuePerson || 0 }
                                             ].map((item, index) => (
                                                 <div key={index} className="flex items-center justify-between p-2 rounded">
                                                     <div className="flex items-center space-x-3">
                                                         <div 
-                                                            className="w-4 h-4 rounded-sm" 
+                                                            className="w-4 h-4 rounded-sm border border-gray-200" 
                                                             style={{ backgroundColor: item.color }}
                                                         ></div>
                                                         <span className="text-sm font-medium text-gray-700">{item.label}</span>
