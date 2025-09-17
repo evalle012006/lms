@@ -1781,6 +1781,10 @@ const ModernBranchCashCollections = () => {
                                               </div>
                                             ) : column.key === 'excess' && column.hasComparison ? (
                                             formatWithComparison(grandTotalRow.excessCurrent, grandTotalRow.excessPrevious)
+                                            ) : column.key === 'mcbu' && column.hasComparison ? (
+                                            formatWithComparison2(grandTotalRow.mcbu, grandTotalRow._value.mcbuCollection - grandTotalRow._value.mcbuWithdrawal - grandTotalRow._value.mcbuReturn)
+                                            ) : column.key === 'csf' && column.hasComparison ? (
+                                            formatWithComparison2(grandTotalRow.csf, grandTotalRow._value.csfCollection - grandTotalRow._value.csfWithdrawal - grandTotalRow._value.csfReturnAmt)
                                             ) : column.key === 'actualLoanCollection' && column.hasComparison ? (
                                             formatWithComparison(grandTotalRow.actualLoanCollectionCurrent, grandTotalRow.actualLoanCollectionPrevious)
                                             ) : column.key === 'activeClients' && column.hasComparison ? (
