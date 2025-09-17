@@ -138,7 +138,7 @@ async function updatePendingLoan(user_id, collection, currentDate) {
           addHospitalization: pendingLoan.addHospitalization,
           otherPassbookCollection: pendingLoan.otherPassbookCollection,
           otherPictureCollection: pendingLoan.otherPictureCollection,
-          status: 'tomorrow',
+          status: pendingLoan.status === 'active' ? 'tomorrow' : pendingLoan.status,
         };
 
 

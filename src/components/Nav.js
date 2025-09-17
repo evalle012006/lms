@@ -498,6 +498,18 @@ const MenuItems = [
                 hidden: false,
                 roles: [3]
             },
+            // {
+            //   label: "Denominations",
+            //   url: "/transactions/denominations",
+            //   icon: {
+            //       active: (props) => <McbuWithdrawalIcon {...props} />,
+            //       notActive: (props) => <McbuWithdrawalIcon {...props} />,
+            //   },
+            //   active: false,
+            //   hasSub: false,
+            //   hidden: false,
+            //   roles: []
+            // },
             {
               label: "MCBU/CSF Withdrawals",
               url: "/transactions/mcbu-withdrawal",
@@ -545,7 +557,19 @@ const MenuItems = [
                 hasSub: false,
                 hidden: false,
                 roles: []
-            }
+            },
+            {
+                label: "TEST",
+                url: "/transactions/branch-manager/cash-collection", 
+                icon: {
+                    active: (props) => <Ticket {...props} />,
+                    notActive: (props) => <Ticket {...props} />,
+                },
+                active: false,
+                hasSub: false,
+                hidden: false,
+                roles: [1]
+            },
         ]
     },
     {
@@ -620,7 +644,7 @@ const MenuItems = [
                 active: false,
                 hasSub: false,
                 hidden: false,
-                roles: []
+                roles: [1]
             },
             {
                 label: "System",
@@ -644,7 +668,7 @@ const MenuItems = [
                 active: false,
                 hasSub: false,
                 hidden: false,
-                roles: []
+                roles: [1]
             },
             {
                 label: "Reset",
@@ -656,7 +680,7 @@ const MenuItems = [
                 active: false,
                 hasSub: false,
                 hidden: false,
-                roles: []
+                roles: [1]
             }
         ]
     }
@@ -692,22 +716,40 @@ const isItemVisibleForRole = (item, userRole, userRoot, userTransactionType) => 
   if (userRoot) {
     // Hide daily/weekly transactions for root users, they use BM transactions
     if (item.label === 'Daily Transactions' || item.label === 'Weekly Transactions') {
+      console.log(`🔍 Role Debug - Root user: hiding ${item.label}`);
       return false;
     }
+    console.log(`🔍 Role Debug - Root user: showing ${item.label}`);
     return true;
   }
 
   // If item has no role restrictions, it's visible to all
   if (!item.roles || item.roles.length === 0) {
+    console.log(`🔍 Role Debug - No role restrictions for ${item.label}, showing to all`);
     return true;
   }
 
   // Check if user's role is in the allowed roles
   const hasRoleAccess = item.roles.includes(userRole);
+  
+  console.log(`🔍 Role Debug - Checking role access for ${item.label}:`, {
+    itemRoles: item.roles,
+    userRole,
+    hasRoleAccess,
+    transactionType: item.transactionType,
+    userTransactionType
+  });
 
   // For transaction type specific items
   if (item.transactionType && userRole === 4) {
-    return hasRoleAccess && userTransactionType === item.transactionType;
+    const result = hasRoleAccess && userTransactionType === item.transactionType;
+    console.log(`🔍 Role Debug - Transaction type check for ${item.label}:`, {
+      hasRoleAccess,
+      userTransactionType,
+      itemTransactionType: item.transactionType,
+      result
+    });
+    return result;
   }
 
   return hasRoleAccess;
@@ -954,39 +996,85 @@ const NavComponent = ({ isVisible, toggleNav, isMobile, onCollapseChange }) => {
 
   // Filter menu items based on user role
   const filteredMenuItems = useMemo(() => {
-    if (!userState) return [];
+    // Add debugging to see what userState looks like
+    console.log('🔍 Nav Debug - userState:', userState);
+    
+    if (!userState) {
+      console.log('❌ Nav Debug - No userState found, returning empty array');
+      return [];
+    }
 
     const userRole = userState?.role?.rep;
     const userRoot = userState?.root || false;
     const userTransactionType = userState?.transactionType;
 
-    return MenuItems.filter(item => {
+    // Add debugging for extracted values
+    console.log('🔍 Nav Debug - Extracted values:', {
+      userRole,
+      userRoot,
+      userTransactionType,
+      roleObject: userState?.role
+    });
+
+    // First, filter items based on visibility
+    const visibleItems = MenuItems.filter(item => {
       const isVisible = isItemVisibleForRole(item, userRole, userRoot, userTransactionType);
-      
-      if (!isVisible) return false;
+      console.log(`🔍 Nav Debug - Item "${item.label}" visibility:`, {
+        isVisible,
+        itemRoles: item.roles,
+        userRole,
+        userRoot,
+        transactionType: item.transactionType,
+        userTransactionType
+      });
+      return isVisible;
+    });
+
+    // Then, process each visible item (filter subitems and apply transformations)
+    const processedItems = visibleItems.map(item => {
+      // Create a copy of the item
+      let processedItem = { ...item };
 
       // Filter submenu items if the item has submenus
       if (item.hasSub && item.subMenuItems) {
-        const filteredSubItems = item.subMenuItems.filter(subItem => 
-          isItemVisibleForRole(subItem, userRole, userRoot, userTransactionType)
-        );
+        const filteredSubItems = item.subMenuItems.filter(subItem => {
+          const subItemVisible = isItemVisibleForRole(subItem, userRole, userRoot, userTransactionType);
+          console.log(`🔍 Nav Debug - SubItem "${subItem.label}" of "${item.label}" visibility:`, {
+            subItemVisible,
+            subItemRoles: subItem.roles,
+            userRole
+          });
+          return subItemVisible && !subItem.hidden;
+        });
         
-        // Return a copy with filtered submenu items
-        return {
-          ...item,
-          subMenuItems: filteredSubItems,
-          hidden: filteredSubItems.length === 0 && item.hasSub // Hide parent if no visible subitems
-        };
+        // Update the processed item with filtered subitems
+        processedItem.subMenuItems = filteredSubItems;
+        
+        // Hide parent if no visible subitems (but only if it originally had subitems)
+        if (filteredSubItems.length === 0 && item.hasSub) {
+          processedItem.hidden = true;
+        }
       }
 
-      return true;
-    }).map(item => {
       // Apply any label transformations
       if (item.label === 'BM Transactions' && userRole < 3) {
-        return { ...item, displayLabel: 'Transactions' };
+        processedItem.displayLabel = 'Transactions';
       }
-      return item;
+
+      return processedItem;
     });
+
+    // Filter out any items that became hidden during processing
+    const finalItems = processedItems.filter(item => !item.hidden);
+
+    console.log('🔍 Nav Debug - Final filtered menu items:', finalItems.map(item => ({
+      label: item.label,
+      displayLabel: item.displayLabel,
+      roles: item.roles,
+      subItemsCount: item.subMenuItems?.length || 0
+    })));
+
+    return finalItems;
   }, [userState]);
 
   // Handle menu item click to close mobile nav

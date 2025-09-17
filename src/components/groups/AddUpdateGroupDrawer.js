@@ -213,13 +213,15 @@ const AddUpdateGroup = ({ mode = 'add', group = {}, showSidebar, setShowSidebar,
                                             setFieldValue={setFieldValue}
                                             errors={touched.name && errors.name ? errors.name : undefined} />
                                     </div>
-                                    <div className="flex flex-col mt-4 text-gray-500">
-                                        <div>Group Occurence</div>
-                                        <div className="flex flex-row ml-4">
-                                            <RadioButton id={"radio_daily"} name="radio-occurence" label={"Daily"} checked={occurence === 'daily'} value="daily" disabled={mode === 'edit'} onChange={() => setOccurence('daily')} />
-                                            <RadioButton id={"radio_weekly"} name="radio-occurence" label={"Weekly"} checked={occurence === 'weekly'} value="weekly" disabled={mode === 'edit'} onChange={() => setOccurence('weekly')} />
+                                    {mode === 'add' && 
+                                        <div className="flex flex-col mt-4 text-gray-500">
+                                            <div>Group Occurence</div>
+                                            <div className="flex flex-row ml-4">
+                                                <RadioButton id={"radio_daily"} name="radio-occurence" label={"Daily"} checked={occurence === 'daily'} value="daily" disabled={mode === 'edit'} onChange={() => setOccurence('daily')} />
+                                                <RadioButton id={"radio_weekly"} name="radio-occurence" label={"Weekly"} checked={occurence === 'weekly'} value="weekly" disabled={mode === 'edit'} onChange={() => setOccurence('weekly')} />
+                                            </div>
                                         </div>
-                                    </div>
+                                    }
                                     <div className="mt-4">
                                         <SelectDropdown
                                             name="day"
