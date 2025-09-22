@@ -465,13 +465,13 @@ const CashCollectionDetailsPage = () => {
                         let csfCollection = cc.csfCollection;
                         let csfWithdrawal = cc.csfWithdrawal;
                         let csfIn = 0;
-                        let admissionCollection = loan.admissionCollection;
-                        let lrfCollection = loan.lrfCollection;
-                        let cbhbCollection = loan.cbhbCollection;
-                        let addHospitalization = loan.addHospitalization;
-                        let otherPassbookCollection = loan.otherPassbookCollection;
-                        let otherPictureCollection = loan.otherPictureCollection;
-                        let otherIncome = loan.otherPassbookCollection + loan.otherPictureCollection;
+                        let admissionCollection = loan?.admissionCollection ?? 0;
+                        let lrfCollection = loan?.lrfCollection ?? 0;
+                        let cbhbCollection = loan?.cbhbCollection ?? 0;
+                        let addHospitalization = loan?.addHospitalization ?? 0;
+                        let otherPassbookCollection = loan?.otherPassbookCollection ?? 0;
+                        let otherPictureCollection = loan?.otherPictureCollection ?? 0;
+                        let otherIncome = (loan?.otherPassbookCollection ?? 0) + (loan?.otherPictureCollection ?? 0);
                         
                         if (cc?.current?.length > 0) {
                             const current = cc.current.find(cur => cur?.transfer !== true);

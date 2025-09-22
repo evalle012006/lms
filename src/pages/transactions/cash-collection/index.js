@@ -1795,9 +1795,9 @@ const ModernBranchCashCollections = () => {
                                             ) : column.key === 'activeBorrowers' && column.hasComparison ? (
                                             formatWithComparison(grandTotalRow.activeBorrowers, grandTotalRow.activeBorrowersPrevious)
                                             ) : column.key === 'totalReleasesStr' && column.hasComparison ? (        
-                                            formatWithComparison(grandTotalRow.totalReleasesStr, grandTotalRow.totalReleasesPreviousStr)
+                                            formatWithComparison2(grandTotalRow.totalReleasesStr, grandTotalRow.currentReleaseAmount - grandTotalRow._value.fullPaymentAmount)
                                             ) : column.key === 'totalLoanBalanceStr' && column.hasComparison ? (        
-                                              formatWithComparison(grandTotalRow.totalLoanBalanceStr, grandTotalRow.totalLoanBalancePreviousStr)
+                                            formatWithComparison2(grandTotalRow.totalLoanBalanceStr, grandTotalRow.currentReleaseAmount - grandTotalRow._value.actualLoanCollection)
                                             ) : column.key === 'mcbuWithdrawal' && column.hasComparison ? (
                                             formatWithComparison(grandTotalRow.mcbuWithdrawalCurrent, grandTotalRow.mcbuWithdrawalPrevious)
                                             ) : column.key === 'noMcbuReturn' && column.hasComparison ? (
