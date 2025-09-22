@@ -1157,6 +1157,7 @@ const LoanApplicationPage = () => {
                         temp.duplicate = false;
                     }
                 } else {
+                    temp.groupLeader = client.groupLeader ? client.groupLeader : false;
                     temp.dateGranted = currentDate
                     temp.status = 'active';
                     temp.startDate = moment(currentDate).add(1, 'days').format('YYYY-MM-DD');

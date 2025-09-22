@@ -322,6 +322,9 @@ async function saveCashCollection(loan, group, currentDate, addToMutationList) {
     }));
   } else {
     // this entry is only when the approve or reject is not the same day when it applies
+
+    const mcbu = loan.mcbu ? loan.mcbu : 0;
+
     let data = {
       _id: generateUUID(),
       loanId: loan._id + "",
@@ -347,8 +350,8 @@ async function saveCashCollection(loan, group, currentDate, addToMutationList) {
       currentReleaseAmount: loan.amountRelease,
       fullPayment: 0,
       remarks: loan?.history?.remarks,
-      mcbu: loan.mcbu ? loan.mcbu : 0,
-      mcbuCol: 0,
+      mcbu: mcbu,
+      mcbuCol: loan?.groupLeader ? mcbu : 0,
       mcbuWithdrawal: 0,
       mcbuReturnAmt: 0,
       admissionCollection: loan.admissionCollection,
