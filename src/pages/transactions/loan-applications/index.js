@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
 import { PlusIcon } from '@heroicons/react/24/solid';
-import TableComponent, { StatusPill } from '@/lib/table';
+import TableComponent, { AvatarCell, StatusPill } from '@/lib/table';
 import { fetchWrapper } from "@/lib/fetch-wrapper";
 import { useDispatch, useSelector } from "react-redux";
 import Spinner from "@/components/Spinner";
@@ -517,6 +517,7 @@ const LoanApplicationPage = () => {
                                 loanBalanceStr: formatPricePhp(loan.loanBalance),
                                 loanRelease: loan.amountRelease,
                                 loanReleaseStr: formatPricePhp(loan.amountRelease),
+                                profile: loan?.client?.profile || '',
                                 fullName: UppercaseFirstLetter(`${loan?.client?.lastName}, ${loan?.client?.firstName} ${loan?.client?.middleName ? loan?.client?.middleName : ''}`),
                                 allowApproved: allowApproved,
                                 selected: false,
@@ -590,6 +591,7 @@ const LoanApplicationPage = () => {
                                 loanRelease: loan.amountRelease,
                                 loanReleaseStr: formatPricePhp(loan.amountRelease),
                                 fullName: UppercaseFirstLetter(`${loan?.client?.lastName}, ${loan?.client?.firstName} ${loan?.client?.middleName ? loan?.client?.middleName : ''}`),
+                                profile: loan?.client?.profile || '',
                                 allowApproved: allowApproved,
                                 selected: false,
                                 hasActiveLoan: hasActiveLoan,
@@ -655,6 +657,7 @@ const LoanApplicationPage = () => {
                                 loanRelease: loan.amountRelease,
                                 loanReleaseStr: formatPricePhp(loan.amountRelease),
                                 fullName: UppercaseFirstLetter(`${loan?.client?.lastName}, ${loan?.client?.firstName} ${loan?.client?.middleName ? loan?.client?.middleName : ''}`),
+                                profile: loan?.client?.profile || '',
                                 allowApproved: allowApproved,
                                 selected: false,
                                 hasActiveLoan: hasActiveLoan,
@@ -719,6 +722,7 @@ const LoanApplicationPage = () => {
                                 loanRelease: loan.amountRelease,
                                 loanReleaseStr: formatPricePhp(loan.amountRelease),
                                 fullName: UppercaseFirstLetter(`${loan?.client?.lastName}, ${loan?.client?.firstName} ${loan?.client?.middleName ? loan?.client?.middleName : ''}`),
+                                profile: loan?.client?.profile || '',
                                 allowApproved: allowApproved,
                                 selected: false,
                                 hasActiveLoan: hasActiveLoan,
@@ -798,6 +802,7 @@ const LoanApplicationPage = () => {
                         activeLoanStr: formatPricePhp(loan.activeLoan),
                         loanBalanceStr: formatPricePhp(loan.loanBalance),
                         fullName: UppercaseFirstLetter(`${loan?.client?.lastName}, ${loan?.client?.firstName} ${loan?.client?.middleName ? loan?.client?.middleName : ''}`),
+                        profile: loan?.client?.profile || '',
                         selected: false
                     });
                 });
@@ -822,6 +827,7 @@ const LoanApplicationPage = () => {
                         activeLoanStr: formatPricePhp(loan.activeLoan),
                         loanBalanceStr: formatPricePhp(loan.loanBalance),
                         fullName: UppercaseFirstLetter(`${loan?.client?.lastName}, ${loan?.client?.firstName} ${loan?.client?.middleName ? loan?.client?.middleName : ''}`),
+                        profile: loan?.client?.profile || '',
                         selected: false
                     });
                 });
@@ -846,6 +852,7 @@ const LoanApplicationPage = () => {
                         activeLoanStr: formatPricePhp(loan.activeLoan),
                         loanBalanceStr: formatPricePhp(loan.loanBalance),
                         fullName: UppercaseFirstLetter(`${loan?.client?.lastName}, ${loan?.client?.firstName} ${loan?.client?.middleName ? loan?.client?.middleName : ''}`),
+                        profile: loan?.client?.profile || '',
                         selected: false
                     });
                 });
@@ -927,7 +934,9 @@ const LoanApplicationPage = () => {
         },
         {
             Header: "Client Name",
-            accessor: 'fullName'
+            accessor: 'fullName',
+            Cell: AvatarCell,
+            imgAccessor: "profile"
         },
         {
             Header: "Loan Cycle",
@@ -1545,7 +1554,9 @@ const LoanApplicationPage = () => {
                 },
                 {
                     Header: "Client Name",
-                    accessor: 'fullName'
+                    accessor: 'fullName',
+                    Cell: AvatarCell,
+                    imgAccessor: "profile"
                 },
                 {
                     Header: "Loan Cycle",

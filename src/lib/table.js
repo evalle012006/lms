@@ -112,26 +112,26 @@ export function StatusPill({ value }) {
 export function AvatarCell({ value, column, row }) {
   const url = row.original[column.imgAccessor];
   const errorMessage = row.original.errorMsg ? row.original.errorMsg : '';
+  const email = row.original[column.emailAccessor];
 
   return (
     <div className="flex items-center">
-      {errorMessage && ( <ExclamationCircleIcon className="cursor-pointer h-5 mr-1" title={errorMessage} /> )}
-      <div className="image-container">
-        {url ? (
-          <img
-            className="image"
-            src={url}
-            alt=""
-          />
-        ) : (
-          <Avatar name={value} size="28" />
-        )}
+      {errorMessage && ( 
+        <ExclamationCircleIcon className="cursor-pointer h-5 mr-1 text-red-500" title={errorMessage} /> 
+      )}
+      <div className="image-container mr-3">
+        <Avatar 
+          name={value} 
+          src={url}
+          size={28}
+          className="flex-shrink-0"
+        />
       </div>
-      <div className="name-container">
-        <div className="text-sm text-gray-500">{value}</div>
-        <div className="text-sm text-gray-500">
-          {row.original[column.emailAccessor]}
-        </div>
+      <div className="name-container min-w-0 flex-1">
+        <div className="text-sm text-gray-900 font-medium truncate">{value}</div>
+        {email && (
+          <div className="text-sm text-gray-500 truncate">{email}</div>
+        )}
       </div>
     </div>
   );

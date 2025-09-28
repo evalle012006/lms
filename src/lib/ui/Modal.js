@@ -1,43 +1,123 @@
-import React, { useState } from "react";
+import React, { useEffect } from "react";
+import { XMarkIcon } from '@heroicons/react/24/outline';
 
-const Modal = ({ children, show, title, onClose, footer = false, marginTop, width }) => {
-    return (
-      <React.Fragment>
-        {show && (
-          <>
-              <div className="justify-center items-center flex overflow-x-hidden overflow-y-auto fixed inset-0 z-50 outline-none focus:outline-none">
-                <div className="relative w-auto my-6 mx-auto" style={{ marginTop: marginTop }}>
-                  {/*content*/}
-                  <div className={`border-0 rounded-lg shadow-lg relative flex flex-col w-full bg-white outline-none focus:outline-none`} style={{ width: width }}>
-                    {/*header*/}
-                    <div className="flex items-start justify-between p-5 border-b border-solid border-slate-200 rounded-t">
-                      {title && <span className="text-2xl font-proxima-bold font-semibold"> { title } </span>}
-                      <button className="p-1 ml-auto border-0 text-gray-400 float-right text-3xl leading-none font-semibold outline-none focus:outline-none"
-                        onClick={onClose}>
-                        <span className="font-proxima h-6 w-6 text-2xl block outline-none focus:outline-none"> x </span>
-                      </button>
-                    </div>
-                    {/*body*/}
-                    <div className="relative p-6 flex-auto">
-                      { children }
-                    </div>
-                    {/*footer*/}
-                    {footer && (
-                      <div className="flex items-center justify-end p-6 border-t border-solid border-slate-200 rounded-b">
-                        <button className="bg-emerald-500 text-white active:bg-emerald-600 font-bold uppercase text-sm px-6 py-3 rounded shadow hover:shadow-lg outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150"
-                          type="button" onClick={() => setShowModal(false)}>
-                          Save Changes
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div className="opacity-25 fixed inset-0 z-40 bg-black"></div>
-          </>
-        )}
-      </React.Fragment>
-    );
+const Modal = ({ 
+  children, 
+  show, 
+  title, 
+  onClose, 
+  footer = false, 
+  marginTop,
+  width = "90vw",
+  maxWidth = "1200px",
+  height = "90vh",
+  maxHeight = "800px",
+  size = "default" // "sm", "md", "lg", "xl", "full"
+}) => {
+
+  // Size configurations
+  const sizeConfigs = {
+    sm: { width: "400px", maxWidth: "400px", height: "auto", maxHeight: "500px" },
+    md: { width: "600px", maxWidth: "600px", height: "auto", maxHeight: "600px" },
+    lg: { width: "800px", maxWidth: "800px", height: "auto", maxHeight: "700px" },
+    xl: { width: "1000px", maxWidth: "1000px", height: "auto", maxHeight: "800px" },
+    "2xl": { width: "1200px", maxWidth: "1200px", height: "auto", maxHeight: "900px" },
+    full: { width: "95vw", maxWidth: "95vw", height: "95vh", maxHeight: "95vh" },
+    default: { width, maxWidth, height, maxHeight }
   };
-  
-  export default Modal;
+
+  const config = sizeConfigs[size] || sizeConfigs.default;
+
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (show) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    // Cleanup on unmount
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [show]);
+
+  // Handle escape key
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape' && show) {
+        onClose();
+      }
+    };
+
+    if (show) {
+      document.addEventListener('keydown', handleEscape);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [show, onClose]);
+
+  if (!show) return null;
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div 
+        className="fixed inset-0 z-50 bg-black bg-opacity-50 backdrop-blur-sm transition-opacity"
+        onClick={onClose}
+      />
+      
+      {/* Modal Container */}
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div 
+          className="relative bg-white rounded-lg shadow-2xl flex flex-col"
+          style={{
+            width: config.width,
+            maxWidth: config.maxWidth,
+            height: config.height,
+            maxHeight: config.maxHeight,
+            marginTop: marginTop || '0'
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          {(title || !footer) && (
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
+              {title && (
+                <h2 className="text-xl font-semibold text-gray-900 truncate pr-4">
+                  {title}
+                </h2>
+              )}
+              <button
+                className="flex-shrink-0 p-1 ml-auto text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                onClick={onClose}
+                type="button"
+              >
+                <span className="sr-only">Close</span>
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
+          )}
+
+          {/* Body - Scrollable */}
+          <div className="flex-1 overflow-y-auto overflow-x-hidden">
+            <div className="p-4">
+              {children}
+            </div>
+          </div>
+
+          {/* Footer */}
+          {footer && (
+            <div className="flex items-center justify-end p-4 border-t border-gray-200 bg-gray-50 flex-shrink-0">
+              {footer}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+};
+
+export default Modal;

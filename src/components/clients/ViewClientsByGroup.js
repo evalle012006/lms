@@ -1133,7 +1133,7 @@ const ViewClientsByGroupPage = ({groupId, status, client, setClientParent, setMo
                     </React.Fragment>
                 )}
             </div>
-            <Modal title="Client Detail Info" show={showClientInfoModal} onClose={handleCloseClientInfoModal} width="70rem">
+            <Modal title="Client Detail Info" show={showClientInfoModal} onClose={handleCloseClientInfoModal} width="70rem" size="xl">
                 <ClientDetailPage />
             </Modal>
             <Dialog show={showDeleteDialog}>

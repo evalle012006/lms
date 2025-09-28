@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 // from https://flatuicolors.com/
 const defaultColors = [
@@ -47,6 +47,18 @@ const hexToRgb = (hex) => {
   return [(bigint >> 16) & 255, (bigint >> 8) & 255, bigint & 255];
 };
 
+// Helper function to validate if URL is potentially valid
+const isValidUrl = (str) => {
+  if (!str) return false;
+  try {
+    new URL(str);
+    return true;
+  } catch {
+    // Check for relative URLs or base64 images
+    return str.startsWith('/') || str.startsWith('./') || str.startsWith('data:image/');
+  }
+};
+
 const Avatar = ({
   borderRadius = '100%',
   src,
@@ -59,12 +71,34 @@ const Avatar = ({
   onClick,
   className,
   padding = 4,
-  margin = 2
+  margin = 2,
+  loading = 'lazy', // Add loading prop for better performance
+  fallbackDelay = 0, // Delay before showing fallback (useful for loading states)
 }) => {
   const [imageError, setImageError] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
+  const [showFallback, setShowFallback] = useState(false);
+
+  // Reset error state when src changes
+  useEffect(() => {
+    if (src || srcset) {
+      setImageError(false);
+      setImageLoading(true);
+      setShowFallback(false);
+      
+      // If fallbackDelay is set and src is invalid, show fallback after delay
+      if (fallbackDelay > 0 && src && !isValidUrl(src)) {
+        const timer = setTimeout(() => {
+          setShowFallback(true);
+          setImageError(true);
+        }, fallbackDelay);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [src, srcset, fallbackDelay]);
 
   if (!name) {
-    console.error('User has no name!');
+    console.error('Avatar: name prop is required');
     return null;
   }
 
@@ -81,6 +115,7 @@ const Avatar = ({
     backgroundColor: 'transparent',
     overflow: 'hidden',
     borderRadius,
+    position: 'relative', // For loading indicator positioning
   };
 
   const imageStyle = {
@@ -89,15 +124,18 @@ const Avatar = ({
     width: '100%',
     height: '100%',
     objectFit: 'cover',
+    transition: 'opacity 0.2s ease-in-out', // Smooth transition
   };
 
-  const hasImage = (src || srcset) && !imageError;
+  // Determine if we should show image
+  const imageSource = src || srcset;
+  const shouldShowImage = imageSource && !imageError && !showFallback && isValidUrl(imageSource);
 
   const innerStyle = {
     width: '100%',
     height: '100%',
     borderRadius,
-    backgroundColor: hasImage ? 'transparent' : (color || colors[sumChars(name) % colors.length]),
+    backgroundColor: shouldShowImage ? 'transparent' : (color || colors[sumChars(name) % colors.length]),
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -107,36 +145,62 @@ const Avatar = ({
     color: '#ffffff',
     border: 'none',
     outline: 'none',
+    fontWeight: '600', // Make initials more prominent
+    letterSpacing: '0.5px', // Better letter spacing for initials
   };
 
-  const handleImageError = () => {
+  const handleImageError = (e) => {
+    console.warn(`Avatar: Failed to load image for ${name}:`, e.target.src);
     setImageError(true);
+    setImageLoading(false);
   };
 
-  let classes = ['UserAvatar'];
+  const handleImageLoad = () => {
+    setImageLoading(false);
+  };
 
-  if (hasImage) {
-    classes.push(`UserAvatar--image`);
+  // Determine CSS classes
+  let classes = ['UserAvatar'];
+  if (shouldShowImage) {
+    classes.push('UserAvatar--image');
   } else {
     classes.push(`UserAvatar--${contrast(innerStyle.backgroundColor)}`);
   }
 
+  // Add loading class if needed
+  if (imageLoading && shouldShowImage) {
+    classes.push('UserAvatar--loading');
+  }
+
   return (
     <div 
-      aria-label={name} 
+      aria-label={`${name}'s avatar`}
+      role="img"
       className={classes.join(' ')} 
       style={{...containerStyle, ...style}} 
       onClick={onClick}
+      title={name} // Add tooltip
     >
       <div className={`UserAvatarInner ${className || ''}`} style={innerStyle}>
-        {hasImage ? (
+        {shouldShowImage ? (
           <img
-            src={src || srcset}
-            alt={name}
+            src={imageSource}
+            srcSet={srcset}
+            alt={`${name}'s profile picture`}
             style={imageStyle}
             onError={handleImageError}
+            onLoad={handleImageLoad}
+            loading={loading}
+            draggable={false} // Prevent dragging
           />
-        ) : abbr}
+        ) : (
+          <span 
+            className="UserAvatar__initials"
+            aria-label={`${name} initials: ${abbr}`}
+          >
+            {abbr}
+          </span>
+        )}
       </div>
     </div>
   );

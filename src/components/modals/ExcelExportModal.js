@@ -142,11 +142,6 @@ const ExcelExportModal = ({ isOpen, onClose, dataSource = 'ldf', historyData = [
     const getFilteredData = () => {
         let data = getCurrentData();
         
-        console.log('=== FILTERING DEBUG ===');
-        console.log('Original data length:', data?.length || 0);
-        console.log('Current filters:', filters);
-        console.log('Sample data item:', data?.[0]);
-        
         // Always start with all data if no data available
         if (!data || data.length === 0) {
             console.log('No data available');
@@ -155,14 +150,10 @@ const ExcelExportModal = ({ isOpen, onClose, dataSource = 'ldf', historyData = [
         
         // For status = 'all', don't filter by status at all
         if (filters.status && filters.status !== 'all') {
-            console.log('Filtering by status:', filters.status);
-            const beforeLength = data.length;
             data = data.filter(item => {
                 const itemStatus = item.status;
-                console.log('Item status:', itemStatus, 'Filter status:', filters.status);
                 return itemStatus === filters.status;
             });
-            console.log('After status filter:', beforeLength, '->', data.length);
         } else {
             console.log('Skipping status filter (all selected)');
         }
@@ -174,7 +165,6 @@ const ExcelExportModal = ({ isOpen, onClose, dataSource = 'ldf', historyData = [
         
         if (filters.month && filters.year && 
             (parseInt(filters.month) !== currentMonth || parseInt(filters.year) !== currentYear)) {
-            console.log('Filtering by month/year:', filters.month, filters.year);
             const beforeLength = data.length;
             data = data.filter(item => {
                 const itemDate = new Date(item.dateGranted || item.dateAdded || item.admissionDate);
@@ -190,71 +180,52 @@ const ExcelExportModal = ({ isOpen, onClose, dataSource = 'ldf', historyData = [
                 }
                 return matches;
             });
-            console.log('After date filter:', beforeLength, '->', data.length);
         } else {
             console.log('Skipping date filter (current month/year or not specified)');
         }
         
         // Filter by loan officer (only if specific officer selected)
         if (filters.loanOfficer && filters.loanOfficer !== '') {
-            console.log('Filtering by loan officer:', filters.loanOfficer);
-            const beforeLength = data.length;
             data = data.filter(item => item.loId === filters.loanOfficer);
-            console.log('After loan officer filter:', beforeLength, '->', data.length);
         }
         
         // Filter by group (only if specific group selected)
         if (filters.group && filters.group !== '') {
-            console.log('Filtering by group:', filters.group);
-            const beforeLength = data.length;
             data = data.filter(item => item.groupId === filters.group);
-            console.log('After group filter:', beforeLength, '->', data.length);
         }
         
         // Apply date range filters
         if (filters.dateReleaseFrom) {
-            const beforeLength = data.length;
             data = data.filter(item => {
                 const releaseDate = new Date(item.dateGranted || item.dateRelease);
                 if (isNaN(releaseDate.getTime())) return false;
                 return releaseDate >= new Date(filters.dateReleaseFrom);
             });
-            console.log('After release date from filter:', beforeLength, '->', data.length);
         }
         
         if (filters.dateReleaseTo) {
-            const beforeLength = data.length;
             data = data.filter(item => {
                 const releaseDate = new Date(item.dateGranted || item.dateRelease);
                 if (isNaN(releaseDate.getTime())) return false;
                 return releaseDate <= new Date(filters.dateReleaseTo);
             });
-            console.log('After release date to filter:', beforeLength, '->', data.length);
         }
         
         if (filters.admissionDateFrom) {
-            const beforeLength = data.length;
             data = data.filter(item => {
                 const admissionDate = new Date(item.admissionDate || item.dateAdded);
                 if (isNaN(admissionDate.getTime())) return false;
                 return admissionDate >= new Date(filters.admissionDateFrom);
             });
-            console.log('After admission date from filter:', beforeLength, '->', data.length);
         }
         
         if (filters.admissionDateTo) {
-            const beforeLength = data.length;
             data = data.filter(item => {
                 const admissionDate = new Date(item.admissionDate || item.dateAdded);
                 if (isNaN(admissionDate.getTime())) return false;
                 return admissionDate <= new Date(filters.admissionDateTo);
             });
-            console.log('After admission date to filter:', beforeLength, '->', data.length);
         }
-        
-        console.log('=== FINAL RESULT ===');
-        console.log('Final filtered data length:', data.length);
-        console.log('======================');
         
         return data;
     };
