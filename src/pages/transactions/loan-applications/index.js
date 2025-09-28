@@ -31,6 +31,8 @@ import LDFListPage from "@/components/transactions/loan-application/LDFList";
 import RadioButton from "@/lib/ui/radio-button";
 import { getApiBaseUrl } from "@/lib/constants";
 import ForeCastApplication from "@/components/transactions/loan-application/ForecastApplications";
+import { useExcelExport } from '@/hooks/useExcelExport';
+import ExcelExportModal from "@/components/modals/ExcelExportModal";
 
 const LoanApplicationPage = () => {
     const isHoliday = useSelector(state => state.systemSettings.holiday);
@@ -85,8 +87,6 @@ const LoanApplicationPage = () => {
     const [totalAmountRelease, setTotalAmountRelease] = useState(0);
     const [noOfTomorrowLoans, setNoOfTomorrowLoans] = useState(0);
     const [totalTomorrowAmountRelease, setTotalTomorrowAmountRelease] = useState(0);
-    const [noOfForecastedLoans, setNoOfForecastedLoans] = useState(0);
-    const [totalForecastedAmountRelease, setTotalForecastedAmountRelease] = useState(0);
 
     const [selectedFilterBranch, setSelectedFilterBranch] = useState();
     const [selectedFilterUser, setSelectedFilterUser] = useState();
@@ -115,6 +115,9 @@ const LoanApplicationPage = () => {
         { label: 'New Member', value: 'new_member' },
         { label: 'Reloaner', value: 'reloaner' }
     ]
+
+    const [showExportModal, setShowExportModal] = useState(false);
+    const { exportLoansToExcel, isExporting } = useExcelExport();
 
     const handleBranchFilter = (selected) => {
         setSelectedBranch(selected.value);
@@ -243,67 +246,101 @@ const LoanApplicationPage = () => {
     }
 
     const exportLoanApplications = async () => {
-        setLoading(true);
-        let apiUrl = process.env.NEXT_PUBLIC_API_URL + 'transactions/loans/export-loans';
-        const fMonth = (typeof selectedMonth === 'number' && selectedMonth < 10) ? '0' + selectedMonth : selectedMonth;
-        const userName = currentUser?.firstName + ' ' + currentUser?.lastName;
-        if (currentUser?.role?.rep == 3) {
-            apiUrl = apiUrl + '?' + new URLSearchParams({ userId: currentUser._id, userName: userName, userRole: currentUser.role.shortCode, userBranchCode: currentUser.designatedBranch, month: fMonth, year: selectedYear + "" });
-            processExportLoanApplication(apiUrl);
-        } else if (currentUser?.role?.rep == 2) {
-            apiUrl = apiUrl + '?' + new URLSearchParams({ userId: currentUser._id, userName: userName, userRole: currentUser.role.shortCode, month: fMonth, year: selectedYear + "" });
-            processExportLoanApplication(apiUrl);
-        } else {
-            apiUrl = apiUrl + '?' + new URLSearchParams({ userId: currentUser._id, userRole: 'root', month: fMonth, year: selectedYear + "" });
-            processExportLoanApplication(apiUrl);
-        }
-    }
-
-    const processExportLoanApplication = async (apiUrl) => {
         try {
-            const requestOptions = {
-                keepalive: true,
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentUser.token}` },
-                credentials: 'include'
-            };
+            // Get the current data based on selected tab and filtering state
+            let dataToExport = [];
+            
+            switch (selectedTab) {
+                case 'ldf':
+                    dataToExport = isFiltering ? filteredList : list;
+                    break;
+                case 'application':
+                    dataToExport = isPendingFiltering ? filteredPendingList : pendingList;
+                    break;
+                case 'tomorrow':
+                    dataToExport = isTomorrowFiltering ? filteredTomorrowList : tomorrowList;
+                    break;
+                case 'forecast':
+                    dataToExport = isForecastedFiltering ? filteredForcastedList : forecastedList;
+                    break;
+                case 'history':
+                    dataToExport = historyList.length > 0 ? historyList : [];
+                    break;
+                default:
+                    dataToExport = list;
+            }
 
-            fetch(apiUrl, requestOptions)
-                .then(response => {
-                    // Get the filename from the Content-Disposition header
-                    const contentDisposition = response.headers.get('Content-Disposition');
-                    let filename = 'download.xlsx'; // default filename
-                    if (contentDisposition) {
-                        const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
-                        if (filenameMatch) {
-                            filename = filenameMatch[1];
-                        }
-                    }
-                    
-                    return Promise.all([response.blob(), filename]);
-                })
-                .then(([blob, filename]) => {
-                    const url = window.URL.createObjectURL(blob);
+            // Filter data based on selected month and year if needed
+            const filteredByDate = dataToExport.filter(loan => {
+                if (!loan.dateGranted && !loan.dateAdded) return true; // Include if no date info
+                
+                const loanDate = new Date(loan.dateGranted || loan.dateAdded);
+                const loanMonth = loanDate.getMonth() + 1;
+                const loanYear = loanDate.getFullYear();
+                
+                return loanMonth === selectedMonth && loanYear === selectedYear;
+            });
 
-                    const link = document.createElement('a');
-                    link.href = url;
-                    link.setAttribute('download', filename);
-                    document.body.appendChild(link);
-                    link.click();
-                    link.parentNode.removeChild(link);
-                    window.URL.revokeObjectURL(url);
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    toast.error('Error exporting loan applications.');
-                });
+            if (filteredByDate.length === 0) {
+                toast.warning(`No loan data available for ${selectedMonth}/${selectedYear}`);
+                return;
+            }
+
+            // Export using our client-side hook
+            await exportLoansToExcel(
+                filteredByDate,
+                currentUser,
+                selectedMonth,
+                selectedYear
+            );
+
         } catch (error) {
-            console.error('Error downloading file:', error);
-            toast.error('Error exporting loan applications.');
-        } finally {
-            setLoading(false);
+            console.error('Error exporting loan applications:', error);
+            toast.error('Error exporting loan applications: ' + error.message);
         }
-    }
+    };
+
+    const ExportButton = ({ onClick, isLoading = false, disabled = false, className = "" }) => (
+        <button
+            onClick={onClick}
+            disabled={disabled || isLoading}
+            className={`
+                inline-flex items-center gap-2 
+                bg-emerald-600 hover:bg-emerald-700 
+                disabled:bg-gray-400 disabled:cursor-not-allowed
+                text-white font-medium rounded-lg px-4 py-2 text-sm
+                transition-all duration-200 ease-in-out
+                shadow-sm hover:shadow-md
+                focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2
+                ${className}
+            `}
+        >
+            {isLoading ? (
+                <>
+                    <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    <span>Generating Excel...</span>
+                </>
+            ) : (
+                <>
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span>Export to Excel</span>
+                </>
+            )}
+        </button>
+    );
+
+    const ExportButtonWrapper = () => (
+        <ExportButton 
+            onClick={exportLoanApplications}
+            isLoading={isExporting}
+            disabled={isExporting}
+        />
+    );
 
     const getListBranch = async () => {
         if(!isBranchFetching) {
@@ -2015,7 +2052,7 @@ const LoanApplicationPage = () => {
                                             )}
                                         </div>
                                         <div className="flex flex-row justify-end">
-                                            <ButtonSolid label="Export" type="button" className="p-2 mr-3" onClick={exportLoanApplications} icon={[<CloudArrowDownIcon className="w-5 h-5" />, 'left']} />
+                                            <ExportButtonWrapper />
                                         </div>
                                     </div>
                                     <TableComponent columns={columns} data={historyList} hasActionButtons={false} showFilters={false} pageSize={500} />
@@ -2065,6 +2102,13 @@ const LoanApplicationPage = () => {
                     <ButtonSolid label="Yes, delete" type="button" className="p-2" onClick={handleDelete} />
                 </div>
             </Dialog>
+            {/* Excel Export Modal */}
+            <ExcelExportModal
+                isOpen={showExportModal}
+                onClose={() => setShowExportModal(false)}
+                dataSource={selectedTab}
+                historyData={historyList}
+            />
         </Layout>
     );
 }
