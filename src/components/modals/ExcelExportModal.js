@@ -144,7 +144,6 @@ const ExcelExportModal = ({ isOpen, onClose, dataSource = 'ldf', historyData = [
         
         // Always start with all data if no data available
         if (!data || data.length === 0) {
-            console.log('No data available');
             return [];
         }
         

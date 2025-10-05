@@ -33,6 +33,7 @@ import { getApiBaseUrl } from "@/lib/constants";
 import ForeCastApplication from "@/components/transactions/loan-application/ForecastApplications";
 import { useExcelExport } from '@/hooks/useExcelExport';
 import ExcelExportModal from "@/components/modals/ExcelExportModal";
+import LAFModal from "@/components/transactions/loan-application/LAFModal";
 
 const LoanApplicationPage = () => {
     const isHoliday = useSelector(state => state.systemSettings.holiday);
@@ -118,6 +119,19 @@ const LoanApplicationPage = () => {
 
     const [showExportModal, setShowExportModal] = useState(false);
     const { exportLoansToExcel, isExporting } = useExcelExport();
+
+    const [showLAFModal, setShowLAFModal] = useState(false);
+    const [selectedLoanForLAF, setSelectedLoanForLAF] = useState(null);
+
+    const handleShowLAF = (row) => {
+        setSelectedLoanForLAF(row.original);
+        setShowLAFModal(true);
+    };
+
+    const handleCloseLAF = () => {
+        setShowLAFModal(false);
+        setSelectedLoanForLAF(null);
+    };
 
     const handleBranchFilter = (selected) => {
         setSelectedBranch(selected.value);
@@ -1637,19 +1651,22 @@ const LoanApplicationPage = () => {
                         { label: 'Edit Loan', action: handleEditAction},
                         { label: 'Reject', action: handleShowWarningModal},
                         // { label: 'Delete Loan', action: handleDeleteAction},
-                        { label: 'View Disclosure', action: handleShowNDSAction}
+                        { label: 'View Disclosure', action: handleShowNDSAction},
+                        { label: 'View LAF', action: handleShowLAF}
                     ];
                 } else {
                     rowActionBtn = [
                         { label: 'Edit Loan', action: handleEditAction},
-                        { label: 'View Disclosure', action: handleShowNDSAction}
+                        { label: 'View Disclosure', action: handleShowNDSAction},
+                        { label: 'View LAF', action: handleShowLAF}
                     ];
                 }
             } else if (currentUser?.role?.rep === 4) {
                 rowActionBtn = [
                     { label: 'Edit Loan', action: handleEditAction},
                     // { label: 'Delete Loan', action: handleDeleteAction}
-                    { label: 'View Disclosure', action: handleShowNDSAction}
+                    { label: 'View Disclosure', action: handleShowNDSAction},
+                    { label: 'View LAF', action: handleShowLAF}
                 ];
             }
 
@@ -2119,6 +2136,11 @@ const LoanApplicationPage = () => {
                 onClose={() => setShowExportModal(false)}
                 dataSource={selectedTab}
                 historyData={historyList}
+            />
+            <LAFModal 
+                isOpen={showLAFModal}
+                onClose={handleCloseLAF}
+                loanData={selectedLoanForLAF}
             />
         </Layout>
     );
