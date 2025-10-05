@@ -1388,8 +1388,8 @@ const ModernBranchCashCollections = () => {
   });
 
   const columnDefs = useMemo(() => [
-    { key: 'name', label: getEntityColumnLabel(), width: 'w-64' },
-    { key: 'transactionType', label: 'Occurrence', width: 'w-24' }, // ADDED: Transaction Type/Occurrence column for loan officers only
+    { key: 'name', label: getEntityColumnLabel(), width: 'min-w-[180px] max-w-[240px] w-[180px]' },
+    { key: 'transactionType', label: 'Occurrence', width: 'w-24' },
     { key: 'activeClients', label: 'Active Clients', width: 'w-28', hasComparison: true },
     { key: 'mcbu', label: 'MCBU', width: 'w-40',  hasComparison: true },
     { key: 'csf', label: 'CSF', width: 'w-40',  hasComparison: true },
@@ -1471,8 +1471,8 @@ const ModernBranchCashCollections = () => {
                 </div>
             </div>
 
-            <div className="flex items-center justify-between p-4 bg-white border-b border-gray-200">
-                <div className="flex items-center space-x-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 bg-white border-b border-gray-200 gap-3 sm:gap-4">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-4 w-full sm:w-auto">
                     <div className="relative">
                         <input
                         type="date"
@@ -1515,11 +1515,11 @@ const ModernBranchCashCollections = () => {
                     {(currentUser.role && 
                       (currentUser.role.rep == 2) && 
                       (currentUser.role.shortCode === "deputy_director" || 
-                       currentUser.role.shortCode === "regional_manager" ||
-                       currentUser.role.shortCode === "area_admin") &&
-                      !viewingNestedContent && // Add this condition to hide when viewing nested content
-                      !router.query.id && // Also hide when there's an ID in the query (alternative check)
-                      !router.query.filter // Hide when there's a filter applied (lo, group, etc.)
+                      currentUser.role.shortCode === "regional_manager" ||
+                      currentUser.role.shortCode === "area_admin") &&
+                      !viewingNestedContent &&
+                      !router.query.id &&
+                      !router.query.filter
                     ) && (
                       <div className="relative">
                         <select
@@ -1564,7 +1564,7 @@ const ModernBranchCashCollections = () => {
                     )}
                 </div>
                 
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                     <div className="relative">
                         <input
                         type="text"
@@ -1609,7 +1609,6 @@ const ModernBranchCashCollections = () => {
                       if (col.key === 'transactionType' && currentFilter !== 'lo') {
                         return null;
                       }
-                      // Hide actions column from selector if not relevant
                       if (col.key === 'actions' && (currentFilter !== 'lo' || currentUser.role.rep !== 3)) {
                         return null;
                       }
@@ -1633,7 +1632,7 @@ const ModernBranchCashCollections = () => {
                 </div>
             )}
 
-            <div className="flex-1 overflow-x-auto px-6">
+            <div className="flex-1 overflow-x-auto overflow-y-auto px-4 sm:px-6">
                 {loading ? (
                 <div className="flex justify-center items-center h-64">
                     <Spinner />
@@ -1647,11 +1646,21 @@ const ModernBranchCashCollections = () => {
                                     <th 
                                     key={column.key}
                                     scope="col" 
-                                    className={`${column.width || 'w-auto'} px-3 py-3.5 text-left text-sm font-semibold text-gray-900 ${column.key === 'actions' ? '' : 'cursor-pointer group'}`}
+                                    className={`
+                                        ${column.width || 'w-auto'} 
+                                        px-3 py-3.5 text-left text-sm font-semibold text-gray-900 
+                                        ${column.key === 'actions' ? '' : 'cursor-pointer group'}
+                                        ${column.key === 'name' ? 'sticky left-0 z-20 bg-gray-50 border-r-2 border-gray-300' : ''}
+                                    `}
+                                    style={column.key === 'name' ? {
+                                        boxShadow: '2px 0 4px -1px rgba(0, 0, 0, 0.15)',
+                                        position: 'sticky',
+                                        left: 0,
+                                    } : {}}
                                     onClick={column.key === 'actions' ? undefined : () => handleSort(column.key)}
                                     >
                                     <div className="flex items-center">
-                                        <span>{column.label}</span>
+                                        <span className="break-words">{column.label}</span>
                                         {column.key !== 'actions' && (
                                           <span className="ml-1 flex-none text-gray-400 group-hover:text-gray-700">
                                           {sortConfig.key === column.key ? (
@@ -1676,9 +1685,8 @@ const ModernBranchCashCollections = () => {
                                     <tr 
                                         key={row._id || index} 
                                         onClick={(e) => {
-                                            // Check if the click came from an action button
                                             if (e.target.closest('button')) {
-                                                return; // Don't handle row click if action button was clicked
+                                                return;
                                             }
                                             handleRowClick(row);
                                         }}
@@ -1689,16 +1697,32 @@ const ModernBranchCashCollections = () => {
                                         `.trim()}
                                     >
                                         {visibleColumnDefs.map(column => (
-                                        <td key={`${row._id}-${column.key}`} className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                                        <td 
+                                            key={`${row._id}-${column.key}`} 
+                                            className={`
+                                                px-3 py-4 text-sm 
+                                                ${column.key === 'name' ? 
+                                                  `sticky left-0 z-10 font-medium text-gray-900 border-r-2 border-gray-300 break-words
+                                                  ${(row.isDraft && currentFilter === 'group') ? 'bg-orange-100' : 
+                                                    (row.groupStatus == 'pending' || row.groupStatus == null) ? 'bg-blue-100' : 
+                                                    'bg-white'}` 
+                                                  : 'whitespace-nowrap text-gray-500'}
+                                            `}
+                                            style={column.key === 'name' ? {
+                                                boxShadow: '2px 0 4px -1px rgba(0, 0, 0, 0.15)',
+                                                position: 'sticky',
+                                                left: 0,
+                                            } : {}}
+                                        >
                                             {column.key === 'name' ? (
-                                            <div className="font-medium text-gray-900">
+                                            <div className="font-medium text-gray-900 break-words leading-tight">
                                               {row[column.key]}
                                             </div>
                                             ) : column.key === 'actions' ? (
                                               <div className="flex space-x-2">
                                                 <button
                                                   onClick={(e) => {
-                                                    e.stopPropagation(); // Prevent row click when button is clicked
+                                                    e.stopPropagation();
                                                     handleOpen(row);
                                                   }}
                                                   className="p-1 text-green-600 hover:text-green-900 hover:bg-green-50 rounded"
@@ -1709,7 +1733,7 @@ const ModernBranchCashCollections = () => {
                                                 </button>
                                                 <button
                                                   onClick={(e) => {
-                                                    e.stopPropagation(); // Prevent row click when button is clicked
+                                                    e.stopPropagation();
                                                     handleClose(row);
                                                   }}
                                                   className="p-1 text-red-600 hover:text-red-900 hover:bg-red-50 rounded"
@@ -1773,9 +1797,20 @@ const ModernBranchCashCollections = () => {
                                 {grandTotalRow && (
                                 <tr className="bg-gray-100 font-medium sticky bottom-0 z-10">
                                     {visibleColumnDefs.map(column => (
-                                    <td key={`grand-total-${column.key}`} className="whitespace-nowrap px-3 py-4 text-sm text-gray-900 font-semibold border-t-2 border-gray-300">
+                                    <td 
+                                        key={`grand-total-${column.key}`} 
+                                        className={`
+                                            px-3 py-4 text-sm text-gray-900 font-semibold border-t-2 border-gray-300
+                                            ${column.key === 'name' ? 'sticky left-0 z-20 bg-gray-100 border-r-2 break-words' : 'whitespace-nowrap'}
+                                        `}
+                                        style={column.key === 'name' ? {
+                                            boxShadow: '2px 0 4px -1px rgba(0, 0, 0, 0.15)',
+                                            position: 'sticky',
+                                            left: 0,
+                                        } : {}}
+                                    >
                                             {column.key === 'name' ? (
-                                            <div className="font-medium text-gray-900">GRAND TOTALS</div>
+                                            <div className="font-medium text-gray-900 break-words leading-tight">GRAND TOTALS</div>
                                             ) : column.key === 'actions' ? (
                                               <div className="text-center text-gray-400">-</div>
                                             ) : column.key === 'transactionType' ? (
