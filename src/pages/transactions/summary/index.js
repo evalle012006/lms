@@ -378,87 +378,7 @@ const TransactionSummary = () => {
     // Render table headers based on user role
     const renderTableHeaders = () => {
         if (isBranchManagerView) {
-            // Branch Manager Headers (role.rep = 3)
-            return (
-                <thead className="bg-gray-50 border-b-2 border-gray-200">
-                    <tr>
-                        <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-left">Date</th>
-                        <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">TOC</th>
-                        <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">NM</th>
-                        <th colSpan={6} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">MCBU</th>
-                        <th colSpan={2} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">CSF</th>
-                        <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">Act. Clie.</th>
-                        <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">MCBU Bal.</th>
-                        <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">CSF Bal.</th>
-                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">Curr. Loan Rel. w/SC (Regular Loan Daily)</th>
-                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">Curr. Loan Rel. w/SC (Other Loan Weekly)</th>
-                        <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">Pers.</th>
-                        <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">Consol. Total Loan Release w/SC</th>
-                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">ACT LOAN RELEASE W/ Serv. Charge</th>
-                        <th colSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">COLLECTION (w/SC) REG. LOAN (Daily)</th>
-                        <th colSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">COLLECTION (w/SC) OTHER LOAN (Weekly)</th>
-                        <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">Consol. Total Act. Collection</th>
-                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">Pastdue</th>
-                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">FULL PAYMENT (w/SC Daily)</th>
-                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">FULL PAYMENT (w/SC Weekly)</th>
-                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">Consol. FULL PAYMENT</th>
-                        <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">Act. Bwr.</th>
-                        <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">Loan Balance</th>
-                    </tr>
-                    <tr>
-                        <th rowSpan={2} className="sticky top-[2.8rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Target Deposit</th>
-                        <th rowSpan={2} className="sticky top-[2.8rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Actual Deposit</th>
-                        <th rowSpan={2} className="sticky top-[2.8rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">WD</th>
-                        <th rowSpan={2} className="sticky top-[2.8rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Int.</th>
-                        <th colSpan={2} className="sticky top-[2.8rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">MCBU Return</th>
-                        <th rowSpan={2} className="sticky top-[2.8rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Actual Deposit</th>
-                        <th rowSpan={2} className="sticky top-[2.8rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">WD</th>
-                        <th rowSpan={2} className="sticky top-[2.8rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Target Deposit</th>
-                        <th rowSpan={2} className="sticky top-[2.8rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Actual Deposit</th>
-                        <th rowSpan={2} className="sticky top-[2.8rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">WD</th>
-                        <th rowSpan={2} className="sticky top-[2.8rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Int.</th>
-                        <th rowSpan={2} className="sticky top-[2.8rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">CSF Return</th>
-                        <th colSpan={3} className="sticky top-[2.8rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">REG. LOAN (Daily)</th>
-                        <th colSpan={3} className="sticky top-[2.8rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">OTHER LOAN (Weekly)</th>
-                    </tr>
-                    <tr>
-                        {/* MCBU Return */}
-                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Pers.</th>
-                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Amt</th>
-                        {/* Loan Release Daily */}
-                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Pers.</th>
-                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Amt</th>
-                        {/* Loan Release Weekly */}
-                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Pers.</th>
-                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Amt</th>
-                        {/* ACTIVE LOAN RELEASE W/ Service Charge */}
-                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Pers.</th>
-                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Amt</th>
-                        {/* REGULAR LOAN (Daily) */}
-                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Target</th>
-                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Adv. Pmt</th>
-                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Actl</th>
-                        {/* OTHER LOAN (Weekly) */}
-                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Target</th>
-                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Adv. Pmt</th>
-                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Actl</th>
-                        {/* PAST DUE */}
-                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Pers.</th>
-                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Amt</th>
-                        {/* FULL PAYMENT (w/SC Daily) */}
-                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Pers.</th>
-                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Amt</th>
-                        {/* FULL PAYMENT (w/SC Weekly) */}
-                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Pers.</th>
-                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Amt</th>
-                        {/* Consolidated FULL PAYMENT (w/SC) */}
-                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Pers.</th>
-                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Amt</th>
-                    </tr>
-                </thead>
-            );
-        } else {
-            // Loan Officer Headers (role.rep = 4) - Original structure
+            // Branch Manager Headers (role.rep = 3) - UPDATED WITH DAILY/WEEKLY BREAKDOWN
             return (
                 <thead className="bg-gray-50 border-b-2 border-gray-200">
                     {/* Row 1: Main column groups */}
@@ -474,7 +394,83 @@ const TransactionSummary = () => {
                         <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">Admission Coll</th>
                         <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">LRF</th>
                         <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">CBHB Coll</th>
-                        <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">Add. Hosp.</th>
+                        <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">Other Income</th>
+                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">Curr. Loan Rel. w/SC (Daily)</th>
+                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">Curr. Loan Rel. w/SC (Weekly)</th>
+                        <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">Pers.</th>
+                        <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">Consol. Total Loan Release w/SC</th>
+                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">Act Loan Release w/ Serv. Charge</th>
+                        <th colSpan={6} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">Collection (W/SC)</th>
+                        <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">Consol. Total Act. Collection</th>
+                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">Pastdue</th>
+                        <th colSpan={4} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">Full Payment</th>
+                        <th rowSpan={2} colSpan={2} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">Consol. Full Payment</th>
+                        <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">Act. Bwr.</th>
+                        <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">Loan Balance</th>
+                    </tr>
+
+                    {/* Row 2: Sub-column groups */}
+                    <tr>
+                        <th colSpan={2} className="sticky top-[2.8rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Target/Actual Deposit</th>
+                        <th rowSpan={2} className="sticky top-[2.8rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">WD</th>
+                        <th rowSpan={2} className="sticky top-[2.8rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">INT</th>
+                        <th colSpan={2} className="sticky top-[2.8rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">MCBU Return</th>
+                        <th rowSpan={2} className="sticky top-[2.8rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Actual</th>
+                        <th rowSpan={2} className="sticky top-[2.8rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">In</th>
+                        <th rowSpan={2} className="sticky top-[2.8rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">WD</th>
+                        <th rowSpan={2} className="sticky top-[2.8rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Return</th>
+                        <th colSpan={3} className="sticky top-[2.8rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Reg. Loan (Daily)</th>
+                        <th colSpan={3} className="sticky top-[2.8rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Other Loan (Weekly)</th>
+                        <th colSpan={2} className="sticky top-[2.8rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">W/SC (Daily)</th>
+                        <th colSpan={2} className="sticky top-[2.8rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">W/SC (Weekly)</th>
+                    </tr>
+
+                    {/* Row 3: Individual columns */}
+                    <tr>
+                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Target</th>
+                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Actual</th>
+                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Pers.</th>
+                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Amt</th>
+                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Pers.</th>
+                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Amt</th>
+                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Pers.</th>
+                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Amt</th>
+                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Pers.</th>
+                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Amt</th>
+                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Target</th>
+                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Adv Pmt</th>
+                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Actl</th>
+                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Target</th>
+                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Adv Pmt</th>
+                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Actl</th>
+                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Pers.</th>
+                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Amt</th>
+                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Pers.</th>
+                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Amt</th>
+                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Pers.</th>
+                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Amt</th>
+                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Pers.</th>
+                        <th className="sticky top-[5.6rem] bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 uppercase text-center">Amt</th>
+                    </tr>
+                </thead>
+            );
+        } else {
+            // Loan Officer Headers (role.rep = 4)
+            return (
+                <thead className="bg-gray-50 border-b-2 border-gray-200">
+                    {/* Row 1: Main column groups */}
+                    <tr>
+                        <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-left">Date</th>
+                        <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">TOC</th>
+                        <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">NM</th>
+                        <th colSpan={6} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">MCBU</th>
+                        <th colSpan={4} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">CSF</th>
+                        <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">MCBU Bal.</th>
+                        <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">CSF Bal.</th>
+                        <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">Active Clients</th>
+                        <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">Admission Coll</th>
+                        <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">LRF</th>
+                        <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">CBHB Coll</th>
                         <th rowSpan={3} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">Other Income</th>
                         <th rowSpan={2} colSpan={2} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">Curr. Loan Rel. with Serv. Charge</th>
                         <th rowSpan={2} colSpan={2} className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 px-4 py-3 text-gray-600 font-semibold uppercase tracking-wider text-center">Act Loan Release w/ Serv. Charge</th>
@@ -526,250 +522,20 @@ const TransactionSummary = () => {
         const { rowStyles, textStyles } = getRowStyling(item, index);
 
         if (isBranchManagerView) {
-            // Branch Manager Cells (role.rep = 3)
+            // Branch Manager Cells (role.rep = 3) - WITH DAILY/WEEKLY BREAKDOWN
             return (
                 <tr key={`${item.period}_${item.txn_type}_${index}`} className={`${rowStyles} ${textStyles} hover:shadow-sm transition-all duration-200`}>
-                    {/* Date with Transaction Type */}
+                    {/* Date */}
                     <td className="px-4 py-3 text-left whitespace-nowrap border-r border-gray-100">
                         {formatDateColumn(item)}
                     </td>
                     
-                    {/* TOC (transferClients - transferredClients) */}
+                    {/* TOC */}
                     <td className="px-4 py-3 text-center whitespace-nowrap">
                         {calculateTOC(item)}
                     </td>
                     
-                    {/* NM (Mispayment) */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {item.mispay || 0}
-                    </td>
-                    
-                    {/* MCBU Target Deposit - from API mcbuTarget field */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {formatCurrency(item.mcbuTarget)}
-                    </td>
-                    
-                    {/* MCBU Actual Deposit */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {formatCurrency(item.mcbuCollection)}
-                    </td>
-                    
-                    {/* MCBU Withdrawal */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {formatCurrency(item.mcbuWithdrawal)}
-                    </td>
-                    
-                    {/* MCBU Interest */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        -
-                    </td>
-                    
-                    {/* MCBU Return Person */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {item.mcbuReturnNo || 0}
-                    </td>
-                    
-                    {/* MCBU Return Amount */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {formatCurrency(item.mcbuReturn)}
-                    </td>
-                    
-                    {/* Active Clients */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {item.activeClients || 0}
-                    </td>
-                    
-                    {/* MCBU Balance - from API mcbu field */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {formatCurrency(item.mcbu)}
-                    </td>
-                    
-                    {/* CSF Actual Deposit */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {formatCurrency(item.csfCollection)}
-                    </td>
-                    
-                    {/* CSF Withdrawal */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {formatCurrency(item.csfWithdrawal)}
-                    </td>
-                    
-                    {/* CSF Balance - from API csf field */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {formatCurrency(item.csf)}
-                    </td>
-                    
-                    {/* CSF Target Deposit */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {formatCurrency(item.csfIn)}
-                    </td>
-                    
-                    {/* CSF Actual Deposit */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {formatCurrency(item.csfCollection)}
-                    </td>
-                    
-                    {/* CSF Withdrawal */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {formatCurrency(item.csfWithdrawal)}
-                    </td>
-                    
-                    {/* CSF Interest */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        -
-                    </td>
-                    
-                    {/* CSF Return Amount */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {formatCurrency(item.csfReturnAmt)}
-                    </td>
-                    
-                    {/* CSF Balance - from API csf field */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {formatCurrency(item.csf)}
-                    </td>
-                    
-                    {/* Daily Release Person */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {item.loanReleaseDailyPerson || (item.currentReleasePerson_New || 0)}
-                    </td>
-                    
-                    {/* Daily Release Amount */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {formatCurrency(item.loanReleaseDailyAmount || item.currentReleaseAmount)}
-                    </td>
-                    
-                    {/* Weekly Release Person */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {item.loanReleaseWeeklyPerson || (item.currentReleasePerson_Rel || 0)}
-                    </td>
-                    
-                    {/* Weekly Release Amount */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {formatCurrency(item.loanReleaseWeeklyAmount)}
-                    </td>
-                    
-                    {/* Consolidated Release Person */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {item.consolidatedLoanReleasePerson || ((item.currentReleasePerson_New || 0) + (item.currentReleasePerson_Rel || 0))}
-                    </td>
-                    
-                    {/* Consolidated Release Amount */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {formatCurrency(item.consolidatedLoanReleaseAmount)}
-                    </td>
-                    
-                    {/* Active Release Person */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {(item.currentReleasePerson_New || 0) + (item.currentReleasePerson_Rel || 0)}
-                    </td>
-                    
-                    {/* Active Release Amount */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {formatCurrency(item.totalLoanRelease)}
-                    </td>
-                    
-                    {/* Daily Collection Target */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {formatCurrency(item.collectionTargetDaily || item.targetLoanCollection)}
-                    </td>
-                    
-                    {/* Daily Collection Advance Payment */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {formatCurrency(item.collectionAdvancePaymentDaily || item.excess)}
-                    </td>
-                    
-                    {/* Daily Collection Actual */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {formatCurrency(item.collectionActualDaily || item.actualLoanCollection)}
-                    </td>
-                    
-                    {/* Weekly Collection Target */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {formatCurrency(item.collectionTargetWeekly)}
-                    </td>
-                    
-                    {/* Weekly Collection Advance Payment */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {formatCurrency(item.collectionAdvancePaymentWeekly)}
-                    </td>
-                    
-                    {/* Weekly Collection Actual */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {formatCurrency(item.collectionActualWeekly)}
-                    </td>
-                    
-                    {/* Consolidated Collection */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {formatCurrency(item.consolidatedCollection || item.actualLoanCollection)}
-                    </td>
-                    
-                    {/* Past Due Person */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {item.pastDueNo || 0}
-                    </td>
-                    
-                    {/* Past Due Amount */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {formatCurrency(item.pastDueAmount)}
-                    </td>
-                    
-                    {/* Daily Full Payment Person */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {item.fullPaymentDailyPerson || item.fullPaymentPerson || 0}
-                    </td>
-                    
-                    {/* Daily Full Payment Amount */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {formatCurrency(item.fullPaymentDailyAmount || item.fullPaymentAmount)}
-                    </td>
-                    
-                    {/* Weekly Full Payment Person */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {item.fullPaymentWeeklyPerson || 0}
-                    </td>
-                    
-                    {/* Weekly Full Payment Amount */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {formatCurrency(item.fullPaymentWeeklyAmount)}
-                    </td>
-                    
-                    {/* Consolidated Full Payment Person */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {item.consolidatedFullPaymentPerson || item.fullPaymentPerson || 0}
-                    </td>
-                    
-                    {/* Consolidated Full Payment Amount */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {formatCurrency(item.consolidatedFullPaymentAmount || item.fullPaymentAmount)}
-                    </td>
-                    
-                    {/* Active Borrowers */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {item.activeBorrowers || 0}
-                    </td>
-                    
-                    {/* Loan Balance */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {formatCurrency(item.totalLoanBalance)}
-                    </td>
-                </tr>
-            );
-        } else {
-            // Loan Officer Cells (role.rep = 4) - Original structure
-            return (
-                <tr key={`${item.period}_${item.txn_type}_${index}`} className={`${rowStyles} ${textStyles} hover:shadow-sm transition-all duration-200`}>
-                    {/* Date - Shows txn_type for FORWARDED/WEEKLY/MONTHLY/COMMULATIVE, period for DAILY */}
-                    <td className="px-4 py-3 text-left whitespace-nowrap border-r border-gray-100">
-                        {formatDateColumn(item)}
-                    </td>
-                    
-                    {/* TOC (transferClients - transferredClients) */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {calculateTOC(item)}
-                    </td>
-                    
-                    {/* NM (currentReleasePerson_New) */}
+                    {/* NM */}
                     <td className="px-4 py-3 text-center whitespace-nowrap">
                         {item.currentReleasePerson_New || 0}
                     </td>
@@ -784,12 +550,12 @@ const TransactionSummary = () => {
                         {formatCurrency(item.mcbuCollection)}
                     </td>
                     
-                    {/* MCBU | WD (Withdrawal) */}
+                    {/* MCBU | WD */}
                     <td className="px-4 py-3 text-center whitespace-nowrap">
                         {formatCurrency(item.mcbuWithdrawal)}
                     </td>
                     
-                    {/* MCBU | INT (Interest) */}
+                    {/* MCBU | INT */}
                     <td className="px-4 py-3 text-center whitespace-nowrap">
                         {formatCurrency(item.mcbuInterest || 0)}
                     </td>
@@ -814,7 +580,7 @@ const TransactionSummary = () => {
                         {formatCurrency(item.csfIn)}
                     </td>
                     
-                    {/* CSF | WD (Withdrawal) */}
+                    {/* CSF | WD */}
                     <td className="px-4 py-3 text-center whitespace-nowrap">
                         {formatCurrency(item.csfWithdrawal)}
                     </td>
@@ -824,12 +590,12 @@ const TransactionSummary = () => {
                         {formatCurrency(item.csfReturnAmt)}
                     </td>
                     
-                    {/* MCBU Bal. - MOVED HERE (before Active Clients) */}
+                    {/* MCBU Bal. */}
                     <td className="px-4 py-3 text-center whitespace-nowrap">
                         {formatCurrency(item.mcbu)}
                     </td>
                     
-                    {/* CSF Bal. - MOVED HERE (before Active Clients) */}
+                    {/* CSF Bal. */}
                     <td className="px-4 py-3 text-center whitespace-nowrap">
                         {formatCurrency(item.csf)}
                     </td>
@@ -854,9 +620,234 @@ const TransactionSummary = () => {
                         {formatCurrency(item.cbhbCollection)}
                     </td>
                     
-                    {/* Add. Hospitalization */}
+                    {/* Other Income */}
                     <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {formatCurrency(0)}
+                        {formatCurrency(item.otherIncome)}
+                    </td>
+                    
+                    {/* Curr. Loan Rel. w/SC (Daily) | Pers */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {item.currentReleasePersonDaily || 0}
+                    </td>
+                    
+                    {/* Curr. Loan Rel. w/SC (Daily) | Amt */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {formatCurrency(item.currentReleaseAmountDaily)}
+                    </td>
+                    
+                    {/* Curr. Loan Rel. w/SC (Weekly) | Pers */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {item.currentReleasePersonWeekly || 0}
+                    </td>
+                    
+                    {/* Curr. Loan Rel. w/SC (Weekly) | Amt */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {formatCurrency(item.currentReleaseAmountWeekly)}
+                    </td>
+                    
+                    {/* Pers. (Consolidated) */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {(item.currentReleasePerson_New || 0) + (item.currentReleasePerson_Rel || 0)}
+                    </td>
+                    
+                    {/* Consol. Total Loan Release w/SC */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {formatCurrency(item.currentReleaseAmount)}
+                    </td>
+                    
+                    {/* Act Loan Release w/ Serv. Charge | Pers */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {item.activeBorrowers || 0}
+                    </td>
+                    
+                    {/* Act Loan Release w/ Serv. Charge | Amt */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {formatCurrency(item.totalLoanRelease)}
+                    </td>
+                    
+                    {/* Collection (W/SC) | Reg. Loan (Daily) | Target */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {formatCurrency(item.targetLoanCollectionDaily)}
+                    </td>
+                    
+                    {/* Collection (W/SC) | Reg. Loan (Daily) | Adv Pmt */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {formatCurrency(item.excessDaily)}
+                    </td>
+                    
+                    {/* Collection (W/SC) | Reg. Loan (Daily) | Actl */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {formatCurrency(item.loanCollectionDaily)}
+                    </td>
+                    
+                    {/* Collection (W/SC) | Other Loan (Weekly) | Target */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {formatCurrency(item.targetLoanCollectionWeekly)}
+                    </td>
+                    
+                    {/* Collection (W/SC) | Other Loan (Weekly) | Adv Pmt */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {formatCurrency(item.excessWeekly)}
+                    </td>
+                    
+                    {/* Collection (W/SC) | Other Loan (Weekly) | Actl */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {formatCurrency(item.loanCollectionWeekly)}
+                    </td>
+                    
+                    {/* Consol. Total Act. Collection */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {formatCurrency(item.actualLoanCollection)}
+                    </td>
+                    
+                    {/* Pastdue | Pers. */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {item.pastDueNo || 0}
+                    </td>
+                    
+                    {/* Pastdue | Amt */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {formatCurrency(item.pastDueAmount)}
+                    </td>
+                    
+                    {/* Full Payment | W/SC (Daily) | Pers. */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {item.fullPaymentPersonDaily || 0}
+                    </td>
+                    
+                    {/* Full Payment | W/SC (Daily) | Amt */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {formatCurrency(item.fullPaymentAmountDaily)}
+                    </td>
+                    
+                    {/* Full Payment | W/SC (Weekly) | Pers. */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {item.fullPaymentPersonWeekly || 0}
+                    </td>
+                    
+                    {/* Full Payment | W/SC (Weekly) | Amt */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {formatCurrency(item.fullPaymentAmountWeekly)}
+                    </td>
+                    
+                    {/* Consol. Full Payment | Pers. */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {item.fullPaymentPerson || 0}
+                    </td>
+                    
+                    {/* Consol. Full Payment | Amt */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {formatCurrency(item.fullPaymentAmount)}
+                    </td>
+                    
+                    {/* Act. Bwr. */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {item.activeBorrowers || 0}
+                    </td>
+                    
+                    {/* Loan Balance */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {formatCurrency(item.totalLoanBalance)}
+                    </td>
+                </tr>
+            );
+        } else {
+            // Loan Officer Cells (role.rep = 4)
+            return (
+                <tr key={`${item.period}_${item.txn_type}_${index}`} className={`${rowStyles} ${textStyles} hover:shadow-sm transition-all duration-200`}>
+                    {/* Date */}
+                    <td className="px-4 py-3 text-left whitespace-nowrap border-r border-gray-100">
+                        {formatDateColumn(item)}
+                    </td>
+                    
+                    {/* TOC */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {calculateTOC(item)}
+                    </td>
+                    
+                    {/* NM */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {item.currentReleasePerson_New || 0}
+                    </td>
+                    
+                    {/* MCBU | Target Deposit */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {formatCurrency(item.mcbuTarget)}
+                    </td>
+                    
+                    {/* MCBU | Actual Deposit */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {formatCurrency(item.mcbuCollection)}
+                    </td>
+                    
+                    {/* MCBU | WD */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {formatCurrency(item.mcbuWithdrawal)}
+                    </td>
+                    
+                    {/* MCBU | INT */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {formatCurrency(item.mcbuInterest || 0)}
+                    </td>
+                    
+                    {/* MCBU | MCBU Return | Pers. */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {item.mcbuReturnNo || 0}
+                    </td>
+                    
+                    {/* MCBU | MCBU Return | Amt */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {formatCurrency(item.mcbuReturn)}
+                    </td>
+                    
+                    {/* CSF | Actual */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {formatCurrency(item.csfCollection)}
+                    </td>
+                    
+                    {/* CSF | In */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {formatCurrency(item.csfIn)}
+                    </td>
+                    
+                    {/* CSF | WD */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {formatCurrency(item.csfWithdrawal)}
+                    </td>
+                    
+                    {/* CSF | Return */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {formatCurrency(item.csfReturnAmt)}
+                    </td>
+                    
+                    {/* MCBU Bal. */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {formatCurrency(item.mcbu)}
+                    </td>
+                    
+                    {/* CSF Bal. */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {formatCurrency(item.csf)}
+                    </td>
+                    
+                    {/* Active Clients */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {item.activeClients || 0}
+                    </td>
+                    
+                    {/* Admission Coll */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {formatCurrency(item.admissionCollection)}
+                    </td>
+                    
+                    {/* LRF */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {formatCurrency(item.lrfCollection)}
+                    </td>
+                    
+                    {/* CBHB Coll */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {formatCurrency(item.cbhbCollection)}
                     </td>
                     
                     {/* Other Income */}
@@ -924,7 +915,7 @@ const TransactionSummary = () => {
                         {item.activeBorrowers || 0}
                     </td>
                     
-                    {/* Loan Balance - Single column, no sub-columns */}
+                    {/* Loan Balance */}
                     <td className="px-4 py-3 text-center whitespace-nowrap">
                         {formatCurrency(item.totalLoanBalance)}
                     </td>
