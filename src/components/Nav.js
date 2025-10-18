@@ -98,7 +98,6 @@ const CollapsedSubmenu = ({ item, activePath, isOpen, onClose, position }) => {
       <div 
         className="fixed inset-0 z-[45] bg-black bg-opacity-10"
         onClick={(e) => {
-          console.log('Backdrop clicked');
           onClose();
         }}
       />
@@ -111,10 +110,9 @@ const CollapsedSubmenu = ({ item, activePath, isOpen, onClose, position }) => {
           left: Math.min(position.left, window.innerWidth - 220),
           maxHeight: '400px',
           overflowY: 'auto',
-          pointerEvents: 'auto' // Ensure it's clickable
+          pointerEvents: 'auto'
         }}
         onClick={(e) => {
-          console.log('Dropdown container clicked');
           e.stopPropagation();
         }}
       >
@@ -134,7 +132,6 @@ const CollapsedSubmenu = ({ item, activePath, isOpen, onClose, position }) => {
                 try {
                   e.stopPropagation();
                   onClose();
-                  // Use setTimeout to ensure dropdown closes first
                   setTimeout(() => {
                     window.location.href = subItem.url;
                   }, 100);
@@ -152,7 +149,6 @@ const CollapsedSubmenu = ({ item, activePath, isOpen, onClose, position }) => {
     </>
   );
 
-  console.log('Creating portal for CollapsedSubmenu');
   return createPortal(dropdownContent, document.body);
 };
 
@@ -168,7 +164,7 @@ const MenuItems = [
         active: true,
         hasSub: false,
         hidden: false,
-        roles: [] // Empty means visible to all roles
+        roles: []
     },
     {
         label: "Branches",
@@ -180,7 +176,7 @@ const MenuItems = [
         active: false,
         hasSub: false,
         hidden: false,
-        roles: [1, 2]
+        roles: ["admin"]
     },
     {
         label: "Areas",
@@ -192,7 +188,7 @@ const MenuItems = [
         active: false,
         hasSub: false,
         hidden: false,
-        roles: [1, 2]
+        roles: ["admin"]
     },
     {
         label: "Regions",
@@ -204,7 +200,7 @@ const MenuItems = [
         active: false,
         hasSub: false,
         hidden: false,
-        roles: [1, 2]
+        roles: ["admin"]
     },
     {
         label: "Divisions",
@@ -216,7 +212,7 @@ const MenuItems = [
         active: false,
         hasSub: false,
         hidden: false,
-        roles: [1]
+        roles: ["admin"]
     },
     {
         label: "Groups",
@@ -228,7 +224,7 @@ const MenuItems = [
         active: false,
         hasSub: false,
         hidden: false,
-        roles: []
+        roles: ["admin", "branch_manager", "loan_officer"]
     },
     {
         label: "Clients",
@@ -241,7 +237,7 @@ const MenuItems = [
         borderBottom: true,
         hasSub: true,
         hidden: false,
-        roles: [],
+        roles: ["admin", "branch_manager", "loan_officer"],
         subMenuItems: [
             {
                 label: "Prospect Clients",
@@ -292,7 +288,7 @@ const MenuItems = [
         borderBottom: true,
         hasSub: true,
         hidden: false,
-        roles: [4], // Only for role 4 with daily transaction type
+        roles: ["loan_officer"],
         transactionType: 'daily',
         subMenuItems: [
             {
@@ -310,7 +306,6 @@ const MenuItems = [
             {
                 label: "Loan Officer Register (Daily)",
                 url: "/transactions/cash-collection/", 
-                // url: "/transactions/daily-cash-collection/",
                 icon: {
                     active: (props) => <Ticket {...props} />,
                     notActive: (props) => <Ticket {...props} />,
@@ -330,7 +325,19 @@ const MenuItems = [
                 active: false,
                 hasSub: false,
                 hidden: false,
-                roles: [3, 4]
+                roles: ["cashier", "loan_officer"]
+            },
+            {
+              label: "Denomination",
+              url: '/transactions/denomination',
+              icon: {
+                  active: (props) => <Banknote {...props} />,
+                  notActive: (props) => <Banknote {...props} />,
+              },
+              active: false,
+              hasSub: false,
+              hidden: false,
+              roles: []
             },
             {
               label: "MCBU/CSF Withdrawals",
@@ -369,7 +376,7 @@ const MenuItems = [
         borderBottom: true,
         hasSub: true,
         hidden: false,
-        roles: [4], // Only for role 4 with weekly transaction type
+        roles: ["loan_officer"],
         transactionType: 'weekly',
         subMenuItems: [
             {
@@ -387,7 +394,6 @@ const MenuItems = [
             {
                 label: "Loan Officer Register (Weekly)",
                 url: "/transactions/cash-collection/", 
-                // url: "/transactions/weekly-cash-collection/",
                 icon: {
                     active: (props) => <Ticket {...props} />,
                     notActive: (props) => <Ticket {...props} />,
@@ -407,7 +413,19 @@ const MenuItems = [
                 active: false,
                 hasSub: false,
                 hidden: false,
-                roles: [3, 4]
+                roles: ["cashier", "loan_officer"]
+            },
+            {
+              label: "Denomination",
+              url: '/transactions/denomination',
+              icon: {
+                  active: (props) => <Banknote {...props} />,
+                  notActive: (props) => <Banknote {...props} />,
+              },
+              active: false,
+              hasSub: false,
+              hidden: false,
+              roles: []
             },
             {
               label: "MCBU/CSF Withdrawals",
@@ -438,7 +456,7 @@ const MenuItems = [
     {
         label: "BM Transactions",
         url: "#branch-manager-transactions",
-        displayLabel: "Transactions", // Alternative label for certain roles
+        displayLabel: "Transactions",
         icon: {
             active: (props) => <ClipboardList {...props} />,
             notActive: (props) => <ClipboardList {...props} />,
@@ -447,7 +465,7 @@ const MenuItems = [
         borderBottom: true,
         hasSub: true,
         hidden: false,
-        roles: [2, 3],
+        roles: ["admin", "deputy_director", "regional_manager", "area_admin", "cashier", "finance", "branch_manager"],
         subMenuItems: [
             {
                 label: "Loan Approval",
@@ -459,12 +477,11 @@ const MenuItems = [
                 active: false,
                 hasSub: false,
                 hidden: false,
-                roles: []
+                roles: ["admin", "deputy_director", "regional_manager", "area_admin", "branch_manager"]
             },
             {
                 label: "Loan Officer Register",
                 url: "/transactions/cash-collection/", 
-                // url: "/transactions/branch-manager/cash-collection", 
                 icon: {
                     active: (props) => <Ticket {...props} />,
                     notActive: (props) => <Ticket {...props} />,
@@ -472,20 +489,8 @@ const MenuItems = [
                 active: false,
                 hasSub: false,
                 hidden: false,
-                roles: []
+                roles: ["admin", "deputy_director", "regional_manager", "area_admin", "branch_manager"]
             },
-            // {
-            //     label: "LOR (NEW)",
-            //     url: "/transactions/cash-collection/", 
-            //     icon: {
-            //         active: (props) => <Ticket {...props} />,
-            //         notActive: (props) => <Ticket {...props} />,
-            //     },
-            //     active: false,
-            //     hasSub: false,
-            //     hidden: false,
-            //     roles: []
-            // },
             {
                 label: "Transaction Summary",
                 url: "/transactions/summary", 
@@ -496,20 +501,20 @@ const MenuItems = [
                 active: false,
                 hasSub: false,
                 hidden: false,
-                roles: [3]
+                roles: ["branch_manager"]
             },
-            // {
-            //   label: "Denominations",
-            //   url: "/transactions/denominations",
-            //   icon: {
-            //       active: (props) => <McbuWithdrawalIcon {...props} />,
-            //       notActive: (props) => <McbuWithdrawalIcon {...props} />,
-            //   },
-            //   active: false,
-            //   hasSub: false,
-            //   hidden: false,
-            //   roles: []
-            // },
+            {
+              label: "Denomination",
+              url: '/transactions/denomination',
+              icon: {
+                  active: (props) => <Banknote {...props} />,
+                  notActive: (props) => <Banknote {...props} />,
+              },
+              active: false,
+              hasSub: false,
+              hidden: false,
+              roles: ["admin", "cashier", "branch_manager"]
+            },
             {
               label: "MCBU/CSF Withdrawals",
               url: "/transactions/mcbu-withdrawal",
@@ -520,7 +525,7 @@ const MenuItems = [
               active: false,
               hasSub: false,
               hidden: false,
-              roles: []
+              roles: ["admin", "deputy_director", "regional_manager", "area_admin", "branch_manager"]
             },
             {
                 label: "Transfer Client",
@@ -532,7 +537,7 @@ const MenuItems = [
                 active: false,
                 hasSub: false,
                 hidden: false,
-                roles: [2, 3]
+                roles: ["admin", "deputy_director", "regional_manager", "area_admin", "branch_manager"]
             },
             {
                 label: "Fund Transfer",
@@ -544,7 +549,7 @@ const MenuItems = [
                 active: false,
                 hasSub: false,
                 hidden: false,
-                roles: [1, 2, 3]
+                roles: ["admin", "branch_manager", "finance"]
             },
             {
                 label: "Bad Debts",
@@ -556,7 +561,7 @@ const MenuItems = [
                 active: false,
                 hasSub: false,
                 hidden: false,
-                roles: []
+                roles: ["admin", "deputy_director", "regional_manager", "area_admin", "branch_manager"]
             },
             {
                 label: "TEST",
@@ -568,7 +573,7 @@ const MenuItems = [
                 active: false,
                 hasSub: false,
                 hidden: false,
-                roles: [1]
+                roles: ["admin"]
             },
         ]
     },
@@ -632,7 +637,7 @@ const MenuItems = [
         active: true,
         hasSub: true,
         hidden: false,
-        roles: [1],
+        roles: ["admin"],
         subMenuItems: [
             {
                 label: "Users",
@@ -644,7 +649,7 @@ const MenuItems = [
                 active: false,
                 hasSub: false,
                 hidden: false,
-                roles: [1]
+                roles: ["admin"]
             },
             {
                 label: "System",
@@ -656,7 +661,7 @@ const MenuItems = [
                 active: false,
                 hasSub: false,
                 hidden: false,
-                roles: [1]
+                roles: ["admin"]
             },
             {
                 label: "Migration",
@@ -668,7 +673,7 @@ const MenuItems = [
                 active: false,
                 hasSub: false,
                 hidden: false,
-                roles: [1]
+                roles: ["admin"]
             },
             {
                 label: "Reset",
@@ -680,7 +685,7 @@ const MenuItems = [
                 active: false,
                 hasSub: false,
                 hidden: false,
-                roles: [1]
+                roles: ["admin"]
             }
         ]
     }
@@ -711,44 +716,39 @@ const setStoredCollapseState = (isCollapsed) => {
 };
 
 // Role-based visibility helper
-const isItemVisibleForRole = (item, userRole, userRoot, userTransactionType) => {
+const isItemVisibleForRole = (item, userShortCode, userRoot, userTransactionType, parentRoles = null) => {
   // Root users can see everything except items specifically excluded
   if (userRoot) {
     // Hide daily/weekly transactions for root users, they use BM transactions
     if (item.label === 'Daily Transactions' || item.label === 'Weekly Transactions') {
-      console.log(`🔍 Role Debug - Root user: hiding ${item.label}`);
       return false;
     }
-    console.log(`🔍 Role Debug - Root user: showing ${item.label}`);
     return true;
   }
 
   // If item has no role restrictions, it's visible to all
   if (!item.roles || item.roles.length === 0) {
-    console.log(`🔍 Role Debug - No role restrictions for ${item.label}, showing to all`);
     return true;
   }
 
-  // Check if user's role is in the allowed roles
-  const hasRoleAccess = item.roles.includes(userRole);
-  
-  console.log(`🔍 Role Debug - Checking role access for ${item.label}:`, {
-    itemRoles: item.roles,
-    userRole,
-    hasRoleAccess,
-    transactionType: item.transactionType,
-    userTransactionType
-  });
+  // For submenu items, check if submenu role is in parent's allowed roles
+  if (parentRoles && parentRoles.length > 0) {
+    // If submenu has specific roles, they must also be in parent's roles
+    if (item.roles && item.roles.length > 0) {
+      const hasCommonRole = item.roles.some(role => parentRoles.includes(role));
+      if (!hasCommonRole) {
+        // Submenu role not in parent's roles, hide it
+        return false;
+      }
+    }
+  }
 
-  // For transaction type specific items
-  if (item.transactionType && userRole === 4) {
+  // Check if user's shortCode is in the allowed roles
+  const hasRoleAccess = item.roles.includes(userShortCode);
+
+  // For transaction type specific items (only for loan_officer role)
+  if (item.transactionType && userShortCode === 'loan_officer') {
     const result = hasRoleAccess && userTransactionType === item.transactionType;
-    console.log(`🔍 Role Debug - Transaction type check for ${item.label}:`, {
-      hasRoleAccess,
-      userTransactionType,
-      itemTransactionType: item.transactionType,
-      result
-    });
     return result;
   }
 
@@ -772,8 +772,8 @@ function reducer(state, action) {
       return { 
         ...state, 
         isCollapsed: newCollapsedState,
-        openSubmenus: {}, // Close all submenus when toggling collapse
-        collapsedDropdown: null // Close any collapsed dropdown
+        openSubmenus: {},
+        collapsedDropdown: null
       };
     case 'SET_COLLAPSED':
       return { ...state, isCollapsed: action.payload };
@@ -996,37 +996,32 @@ const NavComponent = ({ isVisible, toggleNav, isMobile, onCollapseChange }) => {
 
   // Filter menu items based on user role
   const filteredMenuItems = useMemo(() => {
-    // Add debugging to see what userState looks like
-    console.log('🔍 Nav Debug - userState:', userState);
-    
     if (!userState) {
-      console.log('❌ Nav Debug - No userState found, returning empty array');
+      // console.log('❌ Nav Debug - No userState found, returning empty array');
       return [];
     }
 
-    const userRole = userState?.role?.rep;
+    const userShortCode = userState?.role?.shortCode;
     const userRoot = userState?.root || false;
     const userTransactionType = userState?.transactionType;
 
-    // Add debugging for extracted values
-    console.log('🔍 Nav Debug - Extracted values:', {
-      userRole,
-      userRoot,
-      userTransactionType,
-      roleObject: userState?.role
-    });
+    // console.log('🔍 Nav Debug - User info:', {
+    //   userShortCode,
+    //   userRoot,
+    //   userTransactionType
+    // });
 
     // First, filter items based on visibility
     const visibleItems = MenuItems.filter(item => {
-      const isVisible = isItemVisibleForRole(item, userRole, userRoot, userTransactionType);
-      console.log(`🔍 Nav Debug - Item "${item.label}" visibility:`, {
-        isVisible,
-        itemRoles: item.roles,
-        userRole,
-        userRoot,
-        transactionType: item.transactionType,
-        userTransactionType
-      });
+      const isVisible = isItemVisibleForRole(item, userShortCode, userRoot, userTransactionType);
+      // console.log(`🔍 Nav Debug - Item "${item.label}" visibility:`, {
+      //   isVisible,
+      //   itemRoles: item.roles,
+      //   userShortCode,
+      //   userRoot,
+      //   transactionType: item.transactionType,
+      //   userTransactionType
+      // });
       return isVisible;
     });
 
@@ -1038,12 +1033,20 @@ const NavComponent = ({ isVisible, toggleNav, isMobile, onCollapseChange }) => {
       // Filter submenu items if the item has submenus
       if (item.hasSub && item.subMenuItems) {
         const filteredSubItems = item.subMenuItems.filter(subItem => {
-          const subItemVisible = isItemVisibleForRole(subItem, userRole, userRoot, userTransactionType);
-          console.log(`🔍 Nav Debug - SubItem "${subItem.label}" of "${item.label}" visibility:`, {
-            subItemVisible,
-            subItemRoles: subItem.roles,
-            userRole
-          });
+          // Pass parent roles to submenu visibility check
+          const subItemVisible = isItemVisibleForRole(
+            subItem, 
+            userShortCode, 
+            userRoot, 
+            userTransactionType,
+            item.roles // Pass parent's roles for inheritance check
+          );
+          // console.log(`🔍 Nav Debug - SubItem "${subItem.label}" of "${item.label}" visibility:`, {
+          //   subItemVisible,
+          //   subItemRoles: subItem.roles,
+          //   parentRoles: item.roles,
+          //   userShortCode
+          // });
           return subItemVisible && !subItem.hidden;
         });
         
@@ -1057,7 +1060,7 @@ const NavComponent = ({ isVisible, toggleNav, isMobile, onCollapseChange }) => {
       }
 
       // Apply any label transformations
-      if (item.label === 'BM Transactions' && userRole < 3) {
+      if (item.label === 'BM Transactions' && userShortCode === 'branch_manager') {
         processedItem.displayLabel = 'Transactions';
       }
 
@@ -1067,12 +1070,12 @@ const NavComponent = ({ isVisible, toggleNav, isMobile, onCollapseChange }) => {
     // Filter out any items that became hidden during processing
     const finalItems = processedItems.filter(item => !item.hidden);
 
-    console.log('🔍 Nav Debug - Final filtered menu items:', finalItems.map(item => ({
-      label: item.label,
-      displayLabel: item.displayLabel,
-      roles: item.roles,
-      subItemsCount: item.subMenuItems?.length || 0
-    })));
+    // console.log('🔍 Nav Debug - Final filtered menu items:', finalItems.map(item => ({
+    //   label: item.label,
+    //   displayLabel: item.displayLabel,
+    //   roles: item.roles,
+    //   subItemsCount: item.subMenuItems?.length || 0
+    // })));
 
     return finalItems;
   }, [userState]);
@@ -1116,7 +1119,7 @@ const NavComponent = ({ isVisible, toggleNav, isMobile, onCollapseChange }) => {
           const currentPage = menu.subMenuItems.find(m => m.url === currentPath);
           if (currentPage) {
             page = currentPage;
-            parentMenu = menu; // Track the parent menu
+            parentMenu = menu;
           }
         }
       });
@@ -1138,8 +1141,6 @@ const NavComponent = ({ isVisible, toggleNav, isMobile, onCollapseChange }) => {
     // Always close collapsed dropdown when route changes
     localDispatch({ type: 'CLOSE_COLLAPSED_DROPDOWN' });
   }, [activePath, dispatch, getActivePath, router.asPath]);
-
-  // Remove the separate useEffect that was closing all submenus
 
   // Auto-collapse on mobile and prevent collapse functionality on mobile
   useEffect(() => {

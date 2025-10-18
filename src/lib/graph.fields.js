@@ -497,3 +497,25 @@ export const TRANSFER_CLIENT_FIELDS = `
   giverApproval { _id firstName lastName role }
   receiverApproval { _id firstName lastName role }
   `;
+
+  export const DENOMINATION_FIELDS = `
+  _id
+  group_id
+  lo_id
+  branch_id
+  active_clients
+  total_net_collection
+  total_remittance
+  amount_sit_down
+  bcc_vs_remittances
+  status
+  rejection_reason
+  history
+  approval_date
+  rejection_date
+  inserted_date
+  modified_date
+  inserted_by
+  modified_by
+  date_added
+`;

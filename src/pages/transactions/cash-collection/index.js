@@ -29,7 +29,7 @@ const ModernBranchCashCollections = () => {
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState(() => {
     // Check if there's a date in the URL parameters, otherwise use current date
-    return router.query.date || currentDate;
+    return router.query.date || currentDate || moment().format('YYYY-MM-DD');
   });
   const [viewMode, setViewMode] = useState(() => {
     // Set default based on user role
@@ -214,8 +214,13 @@ const ModernBranchCashCollections = () => {
     return params;
   };
 
-  const formatWithComparison = (current, previous) => {
+  const formatWithComparison = (current, previous, groupStatus = null) => {
     if (current === undefined || previous === undefined || current === '-' || previous === '-') {
+      return current;
+    }
+    
+    // If groupStatus is null, don't show comparison
+    if (groupStatus === null) {
       return current;
     }
     
@@ -234,7 +239,7 @@ const ModernBranchCashCollections = () => {
     if (isNaN(currentValue) || isNaN(previousValue)) {
       return current;
     }
-    
+
     diff = currentValue - previousValue;
     if (diff === 0) return current;
     
@@ -262,8 +267,17 @@ const ModernBranchCashCollections = () => {
     );
   };
 
-  const formatWithComparison2 = (current, diff) => {
+  const formatWithComparison2 = (current, diff, groupStatus = null) => {
     if (current === undefined) {
+      return current;
+    }
+    
+    // If groupStatus is null, don't show comparison
+    if (groupStatus === null) {
+      return current;
+    }
+
+    if (diff === 0) {
       return current;
     }
     
@@ -345,11 +359,15 @@ const ModernBranchCashCollections = () => {
       const formattedDate = date ? moment(date).format('YYYY-MM-DD') : moment().format('YYYY-MM-DD');
       const currentSystemDate = moment().format('YYYY-MM-DD');
       
-      const baseParams = {
+      let baseParams = {
         dateAdded: formattedDate,
         currentDate: currentSystemDate,
         _name: 'get_cash_collections_page_data',
       };
+
+      if ((currentUser.role.rep === 3 || currentFilter === 'lo') && selectedLoGroup !== 'all') {
+        baseParams.loGroup = selectedLoGroup;
+      }
       
       let filter = viewMode;
       
@@ -712,9 +730,12 @@ const ModernBranchCashCollections = () => {
       setViewMode(router.query.viewMode);
     }
     
-    // Set date from URL parameter if it exists
+     // Set date from URL parameter if it exists, otherwise use currentDate
     if (router.query.date) {
       setDateFilter(router.query.date);
+    } else if (currentDate && dateFilter !== currentDate) {
+      // If no date in URL but we have currentDate from Redux, use it
+      setDateFilter(currentDate);
     }
     
     setViewingNestedContent(!!router.query.id);
@@ -746,17 +767,94 @@ const ModernBranchCashCollections = () => {
     }, 1000);
     return () => clearTimeout(mounted);
   }, [dateFilter, selectedBranchGroup, selectedLoGroup, viewMode, router.query.id]);
-
   // Pre-save collections for weekly groups
+
+  // should allow also for BM that has weekly groups under them
+  // and also in closing of LO should check if there's cashCollection for weekly groups
+  // add loGroup filter if available
+  // useEffect(() => {
+  //   const shouldPreSave = () => {
+  //     // Must be viewing groups
+  //     if (currentFilter !== 'group' && router.query.filter !== 'group') {
+  //       return false;
+  //     }
+
+  //     // Must have required conditions
+  //     if (isHoliday || isWeekend || !currentDate || !router.query.id) {
+  //       return false;
+  //     }
+
+  //     // Must have data loaded
+  //     if (!data || data.length === 0) {
+  //       return false;
+  //     }
+
+  //     // Check if any groups have weekly occurrence
+  //     const hasWeeklyGroups = data.some(item => 
+  //       !item.totalData && item.occurence === 'weekly'
+  //     );
+
+  //     console.log('Pre-save check:', {
+  //       currentFilter,
+  //       routerFilter: router.query.filter,
+  //       isHoliday,
+  //       isWeekend,
+  //       currentDate,
+  //       currentDayName: moment().format('dddd').toLowerCase(),
+  //       loId: router.query.id,
+  //       dataLength: data.length,
+  //       hasWeeklyGroups,
+  //       weeklyGroupsData: data.filter(item => !item.totalData && item.occurence === 'weekly').map(item => ({
+  //         name: item.name,
+  //         occurence: item.occurence,
+  //         groupDay: item.groupDay,
+  //         targetLoanCollection: item.targetLoanCollection
+  //       }))
+  //     });
+
+  //     return hasWeeklyGroups;
+  //   };
+
+  //   if (shouldPreSave()) {
+  //     const preSaveCollections = async () => {
+  //       const requestData = {
+  //         loId: router.query.id, // This is the loan officer ID when viewing groups
+  //         currentDate: currentDate,
+  //         currentUser: currentUser._id
+  //       };
+
+  //       console.log('Triggering pre-save collections with data:', requestData);
+
+  //       try {
+  //         const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collections/pre-save-collections', requestData);
+  //         console.log('Pre-save collections completed for weekly groups:', response);
+  //       } catch (error) {
+  //         console.error('Error in pre-save collections:', error);
+  //       }
+  //     };
+
+  //     const timer = setTimeout(() => {
+  //       preSaveCollections();
+  //     }, 1500); // Slightly longer delay to ensure data is loaded
+
+  //     return () => clearTimeout(timer);
+  //   }
+  // }, [currentFilter, router.query.filter, isHoliday, isWeekend, currentDate, router.query.id, data, currentUser]);
+
   useEffect(() => {
     const shouldPreSave = () => {
-      // Must be viewing groups
-      if (currentFilter !== 'group' && router.query.filter !== 'group') {
+      const isLoanOfficer = currentUser?.role?.rep === 4;
+      const isBranchManager = currentUser?.role?.rep === 3;
+      const isGroupView = currentFilter === 'group' || router.query.filter === 'group';
+      const isLoFilter = currentFilter === 'lo' || router.query.filter === 'lo' || isBranchManager;
+      
+      // Must be one of these conditions
+      if (!isGroupView && !isLoFilter && !isBranchManager) {
         return false;
       }
 
       // Must have required conditions
-      if (isHoliday || isWeekend || !currentDate || !router.query.id) {
+      if (isHoliday || isWeekend || !currentDate) {
         return false;
       }
 
@@ -765,53 +863,132 @@ const ModernBranchCashCollections = () => {
         return false;
       }
 
-      // Check if any groups have weekly occurrence
-      const hasWeeklyGroups = data.some(item => 
-        !item.totalData && item.occurence === 'weekly'
-      );
+      // For group view, check if we have the router.query.id (loId)
+      if (isGroupView && !router.query.id) {
+        return false;
+      }
+
+      // Check for weekly transactions based on the view type
+      let hasWeeklyTransactions;
+      
+      if (isGroupView || isLoanOfficer) {
+        // For group view, check occurence property
+        hasWeeklyTransactions = data.some(item => 
+          !item.totalData && item.occurence === 'weekly'
+        );
+      } else {
+        // For LO filter, check transactionType property
+        hasWeeklyTransactions = data.some(item => 
+          !item.totalData && item.transactionType === 'weekly'
+        );
+      }
 
       console.log('Pre-save check:', {
         currentFilter,
         routerFilter: router.query.filter,
+        isGroupView,
+        isBranchManager,
+        isLoanOfficer,
+        isLoFilter,
         isHoliday,
         isWeekend,
         currentDate,
         currentDayName: moment().format('dddd').toLowerCase(),
         loId: router.query.id,
         dataLength: data.length,
-        hasWeeklyGroups,
-        weeklyGroupsData: data.filter(item => !item.totalData && item.occurence === 'weekly').map(item => ({
-          name: item.name,
-          occurence: item.occurence,
-          groupDay: item.groupDay,
-          targetLoanCollection: item.targetLoanCollection
-        }))
+        hasWeeklyTransactions,
+        weeklyItems: isGroupView 
+          ? data.filter(item => !item.totalData && item.occurence === 'weekly').map(item => ({
+              _id: item._id,
+              name: item.name,
+              occurence: item.occurence
+            }))
+          : data.filter(item => !item.totalData && item.transactionType === 'weekly').map(item => ({
+              _id: item._id,
+              name: item.name,
+              transactionType: item.transactionType
+            }))
       });
 
-      return hasWeeklyGroups;
+      return hasWeeklyTransactions;
     };
 
     if (shouldPreSave()) {
       const preSaveCollections = async () => {
-        const requestData = {
-          loId: router.query.id, // This is the loan officer ID when viewing groups
-          currentDate: currentDate,
-          currentUser: currentUser._id
-        };
+        const isLoanOfficer = currentUser?.role?.rep === 4;
+        const isBranchManager = currentUser?.role?.rep === 3;
+        const isGroupView = currentFilter === 'group' || router.query.filter === 'group' || isLoanOfficer;
+        const isLoFilter = currentFilter === 'lo' || router.query.filter === 'lo' || isBranchManager;
 
-        console.log('Triggering pre-save collections with data:', requestData);
+        // For group view or LO (existing implementation - single loId)
+        if (isGroupView || isLoanOfficer) {
+          const requestData = {
+            loId: router.query.id || currentUser._id,
+            currentDate: currentDate,
+            currentUser: currentUser._id,
+            mode: 'single' // Indicate single LO processing
+          };
 
-        try {
-          const response = await fetchWrapper.post(getApiBaseUrl() + 'transactions/cash-collections/pre-save-collections', requestData);
-          console.log('Pre-save collections completed for weekly groups:', response);
-        } catch (error) {
-          console.error('Error in pre-save collections:', error);
+          console.log('Triggering pre-save collections (group/LO filter view) with data:', requestData);
+
+          try {
+            const response = await fetchWrapper.post(
+              getApiBaseUrl() + 'transactions/cash-collections/pre-save-collections', 
+              requestData
+            );
+            console.log('Pre-save collections completed for weekly groups:', response);
+          } catch (error) {
+            console.error('Error in pre-save collections:', error);
+          }
+        } 
+        // For branch manager viewing loan officers (batch processing)
+        else if (isLoFilter) {
+          // Filter loan officers with transactionType = 'weekly'
+          const weeklyLoanOfficers = data.filter(item => 
+            !item.totalData && item.transactionType === 'weekly'
+          ).map(lo => ({
+            loId: lo._id,
+            loName: lo.name // Include name for logging purposes
+          }));
+
+          if (weeklyLoanOfficers.length === 0) {
+            console.log('No weekly loan officers found for batch pre-save');
+            return;
+          }
+
+          console.log('Triggering batch pre-save collections for weekly loan officers:', {
+            count: weeklyLoanOfficers.length,
+            loanOfficers: weeklyLoanOfficers
+          });
+
+          const requestData = {
+            loanOfficers: weeklyLoanOfficers, // Send array of LO objects
+            currentDate: currentDate,
+            currentUser: currentUser._id,
+            mode: 'batch' // Indicate batch processing
+          };
+
+          try {
+            const response = await fetchWrapper.post(
+              getApiBaseUrl() + 'transactions/cash-collections/pre-save-collections',
+              requestData
+            );
+            console.log('Batch pre-save completed:', response);
+            
+            // Optionally show a toast notification
+            if (response.success) {
+              console.log(`Pre-save successful for ${response.successCount || weeklyLoanOfficers.length} loan officers`);
+            }
+          } catch (error) {
+            console.error('Error in batch pre-save collections:', error);
+            toast.error('Error pre-saving collections for weekly loan officers');
+          }
         }
       };
 
       const timer = setTimeout(() => {
         preSaveCollections();
-      }, 1500); // Slightly longer delay to ensure data is loaded
+      }, 1500);
 
       return () => clearTimeout(timer);
     }
@@ -1250,36 +1427,12 @@ const ModernBranchCashCollections = () => {
     }
   };
 
-  const applyLoGroupFilter = (data) => {
-    if (currentFilter !== 'lo' || selectedLoGroup === 'all') {
-      return data;
-    }
-    
-    return data.filter(item => {
-      if (item.totalData) return true; // Always include total row
-      
-      const loNo = parseInt(item.loNo);
-      if (isNaN(loNo)) return false;
-      
-      if (selectedLoGroup === 'main') {
-        return loNo >= 1 && loNo <= 10;
-      } else if (selectedLoGroup === 'ext') {
-        return loNo >= 11;
-      }
-      
-      return true;
-    });
-  };
-
   const filteredData = useMemo(() => {
     const dataSource = currentFilter === 'branch' && branchCollectionData?.length > 0 
       ? branchCollectionData 
       : data;
     
-    // UPDATED: Apply LO group filter first
-    const loGroupFiltered = applyLoGroupFilter(dataSource);
-    
-    const normalRows = loGroupFiltered.filter(item => !item.totalData);
+    const normalRows = dataSource.filter(item => !item.totalData);
     
     if (!searchTerm) {
       return normalRows;
@@ -1295,10 +1448,8 @@ const ModernBranchCashCollections = () => {
       ? branchCollectionData 
       : data;
     
-    // UPDATED: Apply LO group filter to total row as well
-    const loGroupFiltered = applyLoGroupFilter(dataSource);
-    return loGroupFiltered.find(item => item.totalData === true);
-  }, [branchCollectionData, data, currentFilter, selectedLoGroup]);
+    return dataSource.find(item => item.totalData === true);
+  }, [branchCollectionData, data, currentFilter]);
 
   const sortedData = useMemo(() => {
     let dataToSort = filteredData;
@@ -1532,7 +1683,7 @@ const ModernBranchCashCollections = () => {
                         </select>
                       </div>
                     )}
-                    {((currentUser.role && currentUser.role.rep == 3 || currentLevel == "lo") && numberOfLo > 10 ) && (
+                    {((currentUser.role && currentUser.role.rep == 3 || currentLevel == "lo") && (numberOfLo > 10 || selectedLoGroup !== 'all')) && (
                       <div className="relative">
                         <select
                           value={selectedLoGroup}
@@ -1632,7 +1783,7 @@ const ModernBranchCashCollections = () => {
                 </div>
             )}
 
-            <div className="flex-1 overflow-x-auto overflow-y-auto px-4 sm:px-6">
+            <div className="flex-1 overflow-x-auto overflow-y-auto">
                 {loading ? (
                 <div className="flex justify-center items-center h-64">
                     <Spinner />
@@ -1640,25 +1791,26 @@ const ModernBranchCashCollections = () => {
                 ) : (
                     <div className="inline-block min-w-full align-middle">
                         <table className="min-w-full divide-y divide-gray-300">
-                            <thead className="bg-gray-50 sticky top-0 z-10">
-                                <tr>
+                            <thead className="bg-gray-50" style={{ position: 'sticky', top: 0, zIndex: 100 }}>
+                              <tr>
                                 {visibleColumnDefs.map(column => (
-                                    <th 
+                                  <th 
                                     key={column.key}
                                     scope="col" 
                                     className={`
-                                        ${column.width || 'w-auto'} 
-                                        px-3 py-3.5 text-left text-sm font-semibold text-gray-900 
-                                        ${column.key === 'actions' ? '' : 'cursor-pointer group'}
-                                        ${column.key === 'name' ? 'sticky left-0 z-20 bg-gray-50 border-r-2 border-gray-300' : ''}
+                                      ${column.width || 'w-auto'} 
+                                      px-3 py-3.5 text-left text-sm font-semibold text-gray-900 
+                                      ${column.key === 'actions' ? '' : 'cursor-pointer group'}
+                                      ${column.key === 'name' ? 'bg-gray-50 border-r-2 border-gray-300' : ''}
                                     `}
                                     style={column.key === 'name' ? {
-                                        boxShadow: '2px 0 4px -1px rgba(0, 0, 0, 0.15)',
-                                        position: 'sticky',
-                                        left: 0,
+                                      boxShadow: '2px 0 4px -1px rgba(0, 0, 0, 0.15)',
+                                      position: 'sticky',
+                                      left: 0,
+                                      zIndex: 101,
                                     } : {}}
                                     onClick={column.key === 'actions' ? undefined : () => handleSort(column.key)}
-                                    >
+                                  >
                                     <div className="flex items-center">
                                         <span className="break-words">{column.label}</span>
                                         {column.key !== 'actions' && (
@@ -1698,21 +1850,22 @@ const ModernBranchCashCollections = () => {
                                     >
                                         {visibleColumnDefs.map(column => (
                                         <td 
-                                            key={`${row._id}-${column.key}`} 
-                                            className={`
-                                                px-3 py-4 text-sm 
-                                                ${column.key === 'name' ? 
-                                                  `sticky left-0 z-10 font-medium text-gray-900 border-r-2 border-gray-300 break-words
-                                                  ${(row.isDraft && currentFilter === 'group') ? 'bg-orange-100' : 
-                                                    (row.groupStatus == 'pending' || row.groupStatus == null) ? 'bg-blue-100' : 
-                                                    'bg-white'}` 
-                                                  : 'whitespace-nowrap text-gray-500'}
-                                            `}
-                                            style={column.key === 'name' ? {
-                                                boxShadow: '2px 0 4px -1px rgba(0, 0, 0, 0.15)',
-                                                position: 'sticky',
-                                                left: 0,
-                                            } : {}}
+                                          key={`${row._id}-${column.key}`} 
+                                          className={`
+                                            px-3 py-4 text-sm 
+                                            ${column.key === 'name' ? 
+                                              `font-medium text-gray-900 border-r-2 border-gray-300 break-words
+                                              ${(row.isDraft && currentFilter === 'group') ? 'bg-orange-100' : 
+                                                (row.groupStatus == 'pending' || row.groupStatus == null) ? 'bg-blue-100' : 
+                                                'bg-white'}` 
+                                              : 'whitespace-nowrap text-gray-500'}
+                                          `}
+                                          style={column.key === 'name' ? {
+                                            boxShadow: '2px 0 4px -1px rgba(0, 0, 0, 0.15)',
+                                            position: 'sticky',
+                                            left: 0,
+                                            zIndex: 10,
+                                          } : {}}
                                         >
                                             {column.key === 'name' ? (
                                             <div className="font-medium text-gray-900 break-words leading-tight">
@@ -1748,35 +1901,35 @@ const ModernBranchCashCollections = () => {
                                                 {row[column.key] || '-'}
                                               </div>
                                             ) : column.key === 'excess' && column.hasComparison ? (
-                                            formatWithComparison(row.excessCurrent, row.excessPrevious)
+                                            formatWithComparison(row.excessCurrent, row.excessPrevious, row.groupStatus)
                                             ) : column.key === 'mcbu' && column.hasComparison ? (
-                                            formatWithComparison2(row.mcbu, row._value.mcbuCollection - row._value.mcbuWithdrawal - row._value.mcbuReturn)
+                                            formatWithComparison2(row.mcbu, row._value.mcbuCollection - row._value.mcbuWithdrawal - row._value.mcbuReturn, row.groupStatus)
                                             ) : column.key === 'csf' && column.hasComparison ? (
-                                            formatWithComparison2(row.csf, row._value.csfCollection - row._value.csfWithdrawal - row._value.csfReturnAmt)
+                                            formatWithComparison2(row.csf, row._value.csfCollection - row._value.csfWithdrawal - row._value.csfReturnAmt, row.groupStatus)
                                             ) : column.key === 'actualLoanCollection' && column.hasComparison ? (
-                                            formatWithComparison(row.actualLoanCollectionCurrent, row.actualLoanCollectionPrevious)
+                                            formatWithComparison(row.actualLoanCollectionCurrent, row.actualLoanCollectionPrevious, row.groupStatus)
                                             ) : column.key === 'activeClients' && column.hasComparison ? (
-                                            formatWithComparison(row.activeClients, row.activeClientsPrevious)
+                                            formatWithComparison(row.activeClients, row.activeClientsPrevious, row.groupStatus)
                                             ) : column.key === 'activeBorrowers' && column.hasComparison ? (
-                                            formatWithComparison(row.activeBorrowers, row.activeBorrowersPrevious)
+                                            formatWithComparison(row.activeBorrowers, row.activeBorrowersPrevious, row.groupStatus)
                                             ) : column.key === 'totalReleasesStr' && column.hasComparison ? (        
-                                            formatWithComparison2(row.totalReleasesStr, row.currentReleaseAmount - row._value.fullPaymentAmount)
+                                            formatWithComparison2(row.totalReleasesStr, row.currentReleaseAmount - row._value.fullPaymentAmount, row.groupStatus)
                                             ) : column.key === 'totalLoanBalanceStr' && column.hasComparison ? (        
-                                            formatWithComparison2(row.totalLoanBalanceStr, row.currentReleaseAmount - row._value.actualLoanCollection)
+                                            formatWithComparison2(row.totalLoanBalanceStr, row.currentReleaseAmount - row._value.actualLoanCollection, row.groupStatus)
                                             ) : column.key === 'mcbuWithdrawal' && column.hasComparison ? (
-                                            formatWithComparison(row.mcbuWithdrawalCurrent, row.mcbuWithdrawalPrevious)
+                                            formatWithComparison(row.mcbuWithdrawalCurrent, row.mcbuWithdrawalPrevious, row.groupStatus)
                                             ) : column.key === 'noMcbuReturn' && column.hasComparison ? (
-                                            formatWithComparison(row.noMcbuReturnCurrent, row.noMcbuReturnPrevious)
+                                            formatWithComparison(row.noMcbuReturnCurrent, row.noMcbuReturnPrevious, row.groupStatus)
                                             ) : column.key === 'mcbuReturn' && column.hasComparison ? (
-                                            formatWithComparison(row.mcbuReturnCurrent, row.mcbuReturnPrevious)
+                                            formatWithComparison(row.mcbuReturnCurrent, row.mcbuReturnPrevious, row.groupStatus)
                                             ) : column.key === 'fullPaymentPerson' && column.hasComparison ? (
-                                            formatWithComparison(row.fullPaymentPersonCurrent, row.fullPaymentPersonPrevious)
+                                            formatWithComparison(row.fullPaymentPersonCurrent, row.fullPaymentPersonPrevious, row.groupStatus)
                                             ) : column.key === 'fullPaymentAmount' && column.hasComparison ? (
-                                            formatWithComparison(row.fullPaymentAmountCurrent, row.fullPaymentAmountPrevious)
+                                            formatWithComparison(row.fullPaymentAmountCurrent, row.fullPaymentAmountPrevious, row.groupStatus)
                                             ) : column.key === 'mispay' && column.hasComparison ? (
-                                            formatWithComparison(row.mispayCurrent, row.mispayPrevious)
+                                            formatWithComparison(row.mispayCurrent, row.mispayPrevious, row.groupStatus)
                                             ) : column.key === 'noPastDue' && column.hasComparison ? (
-                                            formatWithComparison(row.noPastDueCurrent, row.noPastDuePrevious)
+                                            formatWithComparison(row.noPastDueCurrent, row.noPastDuePrevious, row.groupStatus)
                                             ) : row[column.key] === '-' ? (
                                             <span className="text-gray-400">-</span>
                                             ) : (
@@ -1800,8 +1953,8 @@ const ModernBranchCashCollections = () => {
                                     <td 
                                         key={`grand-total-${column.key}`} 
                                         className={`
-                                            px-3 py-4 text-sm text-gray-900 font-semibold border-t-2 border-gray-300
-                                            ${column.key === 'name' ? 'sticky left-0 z-20 bg-gray-100 border-r-2 break-words' : 'whitespace-nowrap'}
+                                          px-3 py-4 text-sm text-gray-900 font-semibold border-t-2 border-gray-300
+                                          ${column.key === 'name' ? 'sticky left-0 z-30 bg-gray-100 border-r-2 break-words' : 'whitespace-nowrap'}
                                         `}
                                         style={column.key === 'name' ? {
                                             boxShadow: '2px 0 4px -1px rgba(0, 0, 0, 0.15)',
@@ -1818,35 +1971,35 @@ const ModernBranchCashCollections = () => {
                                                 {grandTotalRow[column.key] || 'ALL'}
                                               </div>
                                             ) : column.key === 'excess' && column.hasComparison ? (
-                                            formatWithComparison(grandTotalRow.excessCurrent, grandTotalRow.excessPrevious)
+                                            formatWithComparison(grandTotalRow.excessCurrent, grandTotalRow.excessPrevious, grandTotalRow.groupStatus)
                                             ) : column.key === 'mcbu' && column.hasComparison ? (
-                                            formatWithComparison2(grandTotalRow.mcbu, grandTotalRow._value.mcbuCollection - grandTotalRow._value.mcbuWithdrawal - grandTotalRow._value.mcbuReturn)
+                                            formatWithComparison2(grandTotalRow.mcbu, grandTotalRow._value.mcbuCollection - grandTotalRow._value.mcbuWithdrawal - grandTotalRow._value.mcbuReturn, grandTotalRow.groupStatus)
                                             ) : column.key === 'csf' && column.hasComparison ? (
-                                            formatWithComparison2(grandTotalRow.csf, grandTotalRow._value.csfCollection - grandTotalRow._value.csfWithdrawal - grandTotalRow._value.csfReturnAmt)
+                                            formatWithComparison2(grandTotalRow.csf, grandTotalRow._value.csfCollection - grandTotalRow._value.csfWithdrawal - grandTotalRow._value.csfReturnAmt, grandTotalRow.groupStatus)
                                             ) : column.key === 'actualLoanCollection' && column.hasComparison ? (
-                                            formatWithComparison(grandTotalRow.actualLoanCollectionCurrent, grandTotalRow.actualLoanCollectionPrevious)
+                                            formatWithComparison(grandTotalRow.actualLoanCollectionCurrent, grandTotalRow.actualLoanCollectionPrevious, grandTotalRow.groupStatus)
                                             ) : column.key === 'activeClients' && column.hasComparison ? (
-                                            formatWithComparison(grandTotalRow.activeClients, grandTotalRow.activeClientsPrevious)
+                                            formatWithComparison(grandTotalRow.activeClients, grandTotalRow.activeClientsPrevious, grandTotalRow.groupStatus)
                                             ) : column.key === 'activeBorrowers' && column.hasComparison ? (
-                                            formatWithComparison(grandTotalRow.activeBorrowers, grandTotalRow.activeBorrowersPrevious)
+                                            formatWithComparison(grandTotalRow.activeBorrowers, grandTotalRow.activeBorrowersPrevious, grandTotalRow.groupStatus)
                                             ) : column.key === 'totalReleasesStr' && column.hasComparison ? (        
-                                            formatWithComparison2(grandTotalRow.totalReleasesStr, grandTotalRow.currentReleaseAmount - grandTotalRow._value.fullPaymentAmount)
+                                            formatWithComparison2(grandTotalRow.totalReleasesStr, grandTotalRow.currentReleaseAmount - grandTotalRow._value.fullPaymentAmount, grandTotalRow.groupStatus)
                                             ) : column.key === 'totalLoanBalanceStr' && column.hasComparison ? (        
-                                            formatWithComparison2(grandTotalRow.totalLoanBalanceStr, grandTotalRow.currentReleaseAmount - grandTotalRow._value.actualLoanCollection)
+                                            formatWithComparison2(grandTotalRow.totalLoanBalanceStr, grandTotalRow.currentReleaseAmount - grandTotalRow._value.actualLoanCollection, grandTotalRow.groupStatus)
                                             ) : column.key === 'mcbuWithdrawal' && column.hasComparison ? (
-                                            formatWithComparison(grandTotalRow.mcbuWithdrawalCurrent, grandTotalRow.mcbuWithdrawalPrevious)
+                                            formatWithComparison(grandTotalRow.mcbuWithdrawalCurrent, grandTotalRow.mcbuWithdrawalPrevious, grandTotalRow.groupStatus)
                                             ) : column.key === 'noMcbuReturn' && column.hasComparison ? (
-                                            formatWithComparison(grandTotalRow.noMcbuReturnCurrent, grandTotalRow.noMcbuReturnPrevious)
+                                            formatWithComparison(grandTotalRow.noMcbuReturnCurrent, grandTotalRow.noMcbuReturnPrevious, grandTotalRow.groupStatus)
                                             ) : column.key === 'mcbuReturn' && column.hasComparison ? (
-                                            formatWithComparison(grandTotalRow.mcbuReturnCurrent, grandTotalRow.mcbuReturnPrevious)
+                                            formatWithComparison(grandTotalRow.mcbuReturnCurrent, grandTotalRow.mcbuReturnPrevious, grandTotalRow.groupStatus)
                                             ) : column.key === 'fullPaymentPerson' && column.hasComparison ? (
-                                            formatWithComparison(grandTotalRow.fullPaymentPersonCurrent, grandTotalRow.fullPaymentPersonPrevious)
+                                            formatWithComparison(grandTotalRow.fullPaymentPersonCurrent, grandTotalRow.fullPaymentPersonPrevious, grandTotalRow.groupStatus)
                                             ) : column.key === 'fullPaymentAmount' && column.hasComparison ? (
-                                            formatWithComparison(grandTotalRow.fullPaymentAmountCurrent, grandTotalRow.fullPaymentAmountPrevious)
+                                            formatWithComparison(grandTotalRow.fullPaymentAmountCurrent, grandTotalRow.fullPaymentAmountPrevious, grandTotalRow.groupStatus)
                                             ) : column.key === 'mispay' && column.hasComparison ? (
-                                            formatWithComparison(grandTotalRow.mispayCurrent, grandTotalRow.mispayPrevious)
+                                            formatWithComparison(grandTotalRow.mispayCurrent, grandTotalRow.mispayPrevious, grandTotalRow.groupStatus)
                                             ) : column.key === 'noPastDue' && column.hasComparison ? (
-                                            formatWithComparison(grandTotalRow.noPastDueCurrent, grandTotalRow.noPastDuePrevious)
+                                            formatWithComparison(grandTotalRow.noPastDueCurrent, grandTotalRow.noPastDuePrevious, grandTotalRow.groupStatus)
                                             ) : grandTotalRow[column.key] === '-' ? (
                                             <span className="text-gray-400">-</span>
                                             ) : (

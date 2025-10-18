@@ -13,23 +13,156 @@ export default apiHandler({
 async function save(req, res) {
     let response = {};
     let statusCode = 200;
-    const { loId, currentDate } = req.body;
+    const { loId, loanOfficers, currentDate, mode = 'single' } = req.body;
 
-    const loans = await graph.apollo.query({
-        query: gql`
-        query groups ($where:pre_save_collection_model_bool_exp_bool_exp,  $args: get_pre_save_collection_data_arguments!) {
-            collections: get_pre_save_collection_data(args: $args, where: $where) {
-              _id,
-              loan
-              group
+    try {
+        // Batch mode - process multiple loan officers
+        if (mode === 'batch' && loanOfficers && Array.isArray(loanOfficers)) {
+            console.log(`Starting batch pre-save for ${loanOfficers.length} loan officers on date: ${currentDate}`);
+            
+            let successCount = 0;
+            let skippedCount = 0;
+            let errorCount = 0;
+            const results = [];
+
+            for (const lo of loanOfficers) {
+                try {
+                    const result = await preSaveForLoanOfficer(lo.loId, currentDate);
+                    
+                    if (result.skipped) {
+                        skippedCount++;
+                    } else if (result.success) {
+                        successCount++;
+                    }
+                    
+                    results.push({
+                        loId: lo.loId,
+                        loName: lo.loName,
+                        ...result
+                    });
+                } catch (error) {
+                    errorCount++;
+                    console.error(`Error pre-saving for LO ${lo.loName} (${lo.loId}):`, error.message);
+                    results.push({
+                        loId: lo.loId,
+                        loName: lo.loName,
+                        success: false,
+                        error: true,
+                        message: error.message
+                    });
+                }
             }
+
+            console.log(`Batch pre-save completed. Success: ${successCount}, Skipped: ${skippedCount}, Errors: ${errorCount}`);
+
+            response = {
+                success: true,
+                mode: 'batch',
+                total: loanOfficers.length,
+                successCount,
+                skippedCount,
+                errorCount,
+                results
+            };
+
+            res.status(statusCode)
+                .setHeader('Content-Type', 'application/json')
+                .end(JSON.stringify(response));
+            return;
         }
+
+        // Single mode - process one loan officer (existing implementation)
+        if (mode === 'single' && loId) {
+            const result = await preSaveForLoanOfficer(loId, currentDate);
+            
+            response = result;
+            res.status(statusCode)
+                .setHeader('Content-Type', 'application/json')
+                .end(JSON.stringify(response));
+            return;
+        }
+
+        // Invalid request
+        statusCode = 400;
+        response = {
+            success: false,
+            error: true,
+            message: 'Invalid request. Either provide loId with mode=single or loanOfficers array with mode=batch'
+        };
+
+        res.status(statusCode)
+            .setHeader('Content-Type', 'application/json')
+            .end(JSON.stringify(response));
+
+    } catch (error) {
+        console.error('Error in pre-save collections:', error);
+        statusCode = 500;
+        response = { 
+            success: false, 
+            error: true,
+            message: error.message || 'Error saving collections'
+        };
+        
+        res.status(statusCode)
+            .setHeader('Content-Type', 'application/json')
+            .end(JSON.stringify(response));
+    }
+}
+
+// Helper function to pre-save collections for a single loan officer
+async function preSaveForLoanOfficer(loId, currentDate) {
+    // First, check if collections already exist for this loId and date
+    // Using aggregate to check existence (more efficient)
+    const existingCollections = await graph.apollo.query({
+        query: gql`
+            query checkExisting($loId: String!, $currentDate: date!) {
+                cashCollections_aggregate(
+                    where: {
+                        loId: { _eq: $loId }
+                        dateAdded: { _eq: $currentDate }
+                        origin: { _eq: "pre-save" }
+                    }
+                ) {
+                    aggregate {
+                        count
+                    }
+                }
+            }
         `,
         variables: {
-           args: {
+            loId,
+            currentDate
+        }
+    });
+
+    // If collections already exist, return early to prevent duplicates
+    const existingCount = existingCollections.data.cashCollections_aggregate?.aggregate?.count || 0;
+    if (existingCount > 0) {
+        console.log(`Pre-save collections already exist for loId: ${loId} on date: ${currentDate} (count: ${existingCount})`);
+        return { 
+            success: true, 
+            message: 'Collections already pre-saved for this loan officer and date',
+            skipped: true,
+            existingCount
+        };
+    }
+
+    // Fetch loans that need pre-save collections
+    const loans = await graph.apollo.query({
+        query: gql`
+            query groups ($where:pre_save_collection_model_bool_exp_bool_exp,  $args: get_pre_save_collection_data_arguments!) {
+                collections: get_pre_save_collection_data(args: $args, where: $where) {
+                    _id,
+                    loan
+                    group
+                }
+            }
+        `,
+        variables: {
+            args: {
                 loId,
                 curr_date: currentDate
-           }
+            }
         }
     }).then(res => res.data.collections.map(c => ({
         ... c.loan,
@@ -37,8 +170,19 @@ async function save(req, res) {
         group: c.group,
     })));
 
-    // console.log('loansSize: ', loans.length)
+    // If no loans found, return early
+    if (!loans || loans.length === 0) {
+        console.log(`No loans found for pre-save for loId: ${loId} on date: ${currentDate}`);
+        return { 
+            success: true, 
+            message: 'No loans found for pre-save',
+            count: 0
+        };
+    }
 
+    console.log(`Pre-saving ${loans.length} collections for loId: ${loId} on date: ${currentDate}`);
+
+    // Create cash collections from loans
     const cashCollections = loans.map(loan => ({
         _id: generateUUID(),
         loanId: loan._id + '',
@@ -50,8 +194,6 @@ async function save(req, res) {
         slotNo: loan.slotNo,
         loanCycle: loan.loanCycle,
         mispayment: false,
-        // mispaymentStr: 'No',
-        // collection: 0,
         excess: 0,
         total: 0,
         noOfPayments: 0,
@@ -88,17 +230,18 @@ async function save(req, res) {
         origin: 'pre-save'
     }));
 
-
-
+    // Insert the collections
     await graph.mutation(
         insertQl(createGraphType('cashCollections', '_id')('collections'), {
             objects: cashCollections
         })
     );
 
-    response = {success: true};
+    console.log(`Successfully pre-saved ${cashCollections.length} collections for loId: ${loId}`);
 
-    res.status(statusCode)
-        .setHeader('Content-Type', 'application/json')
-        .end(JSON.stringify(response));
+    return { 
+        success: true, 
+        message: 'Collections pre-saved successfully',
+        count: cashCollections.length
+    };
 }
