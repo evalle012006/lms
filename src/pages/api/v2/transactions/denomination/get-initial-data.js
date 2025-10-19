@@ -1,7 +1,7 @@
 import { apiHandler } from '@/services/api-handler';
 import { findUserById } from '@/lib/graph.functions';
 import moment from 'moment';
-import { getHasuraBaseUrl } from '@/lib/constants';
+import { getLocalhost } from '@/lib/constants';
 
 export default apiHandler({
     get: getInitialData
@@ -63,7 +63,7 @@ async function getInitialData(req, res) {
             throw new Error('Unable to determine host from request headers');
         }
         
-        const apiUrl = `${getHasuraBaseUrl()}/api/v2/data/get_cash_collections_page_data?${params.toString()}`;
+        const apiUrl = `${getLocalhost()}/api/v2/data/get_cash_collections_page_data?${params.toString()}`;
         
         console.log('Fetching cash collections from:', apiUrl);
         console.log('Params:', Object.fromEntries(params));

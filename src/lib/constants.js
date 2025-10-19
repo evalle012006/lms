@@ -1,5 +1,6 @@
 export const getApiBaseUrl = () => process.env.NEXT_PUBLIC_API_URL;
 export const getHasuraBaseUrl = () => process.env.HASURA_URL;
+export const getLocalhost = () => process.env.NEXT_PUBLIC_LOCAL_HOST;
 
     //(localStorage.getItem('api_version') ? localStorage.getItem('api_version') + '/' : '');
 
