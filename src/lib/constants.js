@@ -1,4 +1,6 @@
 export const getApiBaseUrl = () => process.env.NEXT_PUBLIC_API_URL;
+export const getHasuraBaseUrl = () => process.env.HASURA_URL;
+
     //(localStorage.getItem('api_version') ? localStorage.getItem('api_version') + '/' : '');
 
 export const LOR_DAILY_REMARKS = [
