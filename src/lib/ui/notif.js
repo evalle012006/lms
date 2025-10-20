@@ -10,7 +10,7 @@ function Notif(props) {
                 <div className=' flex items-start no-underline leading-none p-2 md:p-4'>
                     <div className="relative">
                         {/* <img alt="Placeholder" className="w-12 rounded-full" src={props.image} /> */}
-                        <Avatar name={props.userFullName} src={props.userImage ? imgpath + '/images/profiles/' + props.userImage : ''} size="28" />
+                        <Avatar name={props.userFullName} src={props.userImage ? imgpath + '/files/images/profiles/' + props.userImage : ''} size="28" />
                         {props.status === 'inactive' && <span style={{ width: 10, height: 10, left: 17, backgroundColor: '#E03145' }} className="absolute top-0 bg-red border-2 border-white dark:border-gray-800 rounded-full"></span>}
                         {props.status === 'active' && <span style={{ width: 10, height: 10, left: 17, backgroundColor: 'green' }} className="absolute top-0 bg-red border-2 border-white dark:border-gray-800 rounded-full"></span>}
                     </div>

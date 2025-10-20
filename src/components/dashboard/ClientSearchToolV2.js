@@ -96,7 +96,7 @@ const ClientSearchTool = ({ origin = "", callback, setSelected }) => {
             if (response.success) {
                 const newClients = response.clients.map(client => ({
                     ...client,
-                    imgUrl: client.profile ? imgpath + '/images/clients/' + client.profile : '',
+                    imgUrl: client.profile ? imgpath + '/files/images/clients/' + client.profile : '',
                     birthdate: client.birthdate ? moment(client.birthdate).format('YYYY-MM-DD') : '-',
                     groupName: client.group?.name || '-',
                     branchName: client.branch?.name || '-',

@@ -5,7 +5,7 @@ import { formatBytes } from '../utils';
 
 const FilePreviewDownloader =  ({ file }) => {
     const imgpath = process.env.NEXT_PUBLIC_LOCAL_HOST !== 'local' ? process.env.NEXT_PUBLIC_LOCAL_HOST : process.env.NEXT_PUBLIC_URL ;
-    const url = imgpath + '/attachments/observations/' + file.path;
+    const url = imgpath + '/files/attachments/observations/' + file.path;
     const fileName = file.path.split('/')[1];
     const size = formatBytes(file.size);
     const fileType = { mime: file.type, ext: file.path && file.path.split('.').pop() };
