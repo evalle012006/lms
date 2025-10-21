@@ -136,32 +136,22 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
     }, []);
 
     const handleBranchChange = useCallback((field, value) => {
-        const branch = branchList.find( o => o.code ===value);
         const form = formikRef.current;
         form.setFieldValue(field, value);
-        form.setFieldValue('areaId', branch.areaId);
-        form.setFieldValue('regionId', branch.regionId);
-        form.setFieldValue('divisionId', branch.divisionId);
 
         setSelectedBranchFilter({ id: value, field });
     }, []);
 
     const handleAreaChange = useCallback((field, value) => {
-        const area = areaList.find( o => o._id === value);
         const form = formikRef.current;
         form.setFieldValue(field, value);
-        form.setFieldValue('regionId', area.regionId);
-        form.setFieldValue('divisionId', area.divisionId);
 
         setSelectedBranchFilter({ id: value, field });
     }, []);
 
     const handleRegionChange = useCallback((field, value) => {
-        const region = regionList.find( o => o._id === value);
         const form = formikRef.current;
         form.setFieldValue(field, value);
-        form.setFieldValue('areaId', null);
-        form.setFieldValue('divisionId', region.divisionId);
 
         setSelectedBranchFilter({ id: value, field });
     }, []);
@@ -169,8 +159,6 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
     const handleDivisionChange = useCallback((field, value) => {
         const form = formikRef.current;
         form.setFieldValue(field, value);
-        form.setFieldValue('areaId', null);
-        form.setFieldValue('regionId', null);
 
         setSelectedBranchFilter({ id: value, field });
     }, []);
@@ -191,6 +179,28 @@ const AddUpdateUser = ({ mode = 'add', user = {}, roles = [], showSidebar, setSh
 
             if (selectedRole.rep === 2) {
                 values.designatedBranch = values.designatedBranch || '[]';
+                if (selectedRole.shortCode === 'area_admin') {
+                    const selectedArea = areaList.find(a => a._id === values.areaId);
+                    if (selectedArea) {
+                        values.areaId = selectedArea._id;
+                        values.regionId = selectedArea.regionId;
+                        values.divisionId = selectedArea.divisionId;
+                    }
+                } else if (selectedRole.shortCode === 'regional_manager') {
+                    const selectedRegion = regionList.find(r => r._id === values.regionId);
+                    if (selectedRegion) {
+                        values.areaId = null;
+                        values.regionId = selectedRegion._id;
+                        values.divisionId = selectedRegion.divisionId;
+                    }
+                } else if (selectedRole.shortCode === 'deputy_director') {
+                    const selectedDivision = divisionList.find(d => d._id === values.divisionId);
+                    if (selectedDivision) {
+                        values.areaId = null;
+                        values.regionId = null;
+                        values.divisionId = selectedDivision._id;
+                    }
+                }
             } else if (selectedRole.rep >= 3) {
                 const selectedBranch = branchList.find(b => b.code === values.designatedBranch);
                 if (selectedBranch) {

@@ -549,7 +549,7 @@ const MenuItems = [
                 active: false,
                 hasSub: false,
                 hidden: false,
-                roles: ["admin", "branch_manager", "finance"]
+                roles: ["admin", "deputy_director", "regional_manager", "area_admin", "branch_manager", "finance"]
             },
             {
                 label: "Bad Debts",
